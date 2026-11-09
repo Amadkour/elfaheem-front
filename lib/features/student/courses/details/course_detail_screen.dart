@@ -14,6 +14,7 @@
 library;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
@@ -143,7 +144,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     return BasePage(
       useWebCard: true,
       enableFooterWidget: false,
-      maxWith: 1320,
+      width: AppWidth.wide,
       child: loading
           ? const CourseDetailSkeleton()
           : block != null

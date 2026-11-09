@@ -6,6 +6,7 @@
 //   orgAllCourses     every course of the tree (the list is paged at 100 by the server).
 library;
 
+import 'org_page_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
@@ -212,7 +213,7 @@ class _ProgramFormState extends State<_ProgramForm> {
             _Section(icon: DirIcons.login, title: t('الالتحاق', 'Admission'), children: [
               _ErrField(
                 error: _errors['capacity'],
-                child: Field(controller: _cap, label: t('السعة القصوى للطلاب (اختياري)', 'Student capacity (optional)'), keyboard: TextInputType.number, ltr: true),
+                child: OrgNumberField(controller: _cap, label: t('السعة القصوى للطلاب (اختياري)', 'Student capacity (optional)')),
               ),
               CourseSetField(
                 title: t('متطلبات الالتحاق', 'Entry prerequisites'),

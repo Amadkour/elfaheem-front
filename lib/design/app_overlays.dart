@@ -169,7 +169,7 @@ class _DrawerPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final screen = MediaQuery.sizeOf(context).width;
-    final w = width.clamp(0.0, screen - AppSpace.xl).toDouble();
+    final w = width.clamp(0.0, screen - AppSpace.xxl).toDouble();
     final hasActions = actions != null && actions!.isNotEmpty;
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
@@ -178,18 +178,25 @@ class _DrawerPanel extends StatelessWidget {
         child: FocusTraversalGroup(
           child: Align(
             alignment: AlignmentDirectional.centerEnd,
-            child: SizedBox(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpace.sm),
+              child: SizedBox(
               width: w,
               child: DecoratedBox(
                 key: const ValueKey('app.drawer.panel'),
                 decoration: BoxDecoration(
                   color: c.cardBg,
-                  boxShadow: AppElevation.of(context, 3),
-                  border: BorderDirectional(start: BorderSide(color: c.divider, width: AppBorder.hairline)),
+                  borderRadius: BorderRadius.circular(AppRadius.sheet),
+                  boxShadow: AppElevation.of(context, 4),
                 ),
                 child: Material(
                   color: c.cardBg,
                   surfaceTintColor: Colors.transparent,
+                  clipBehavior: Clip.antiAlias,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.sheet),
+                    side: BorderSide(color: c.divider, width: AppBorder.hairline),
+                  ),
                   child: SafeArea(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                       Padding(
@@ -231,6 +238,7 @@ class _DrawerPanel extends StatelessWidget {
                   ),
                 ),
               ),
+            ),
             ),
           ),
         ),

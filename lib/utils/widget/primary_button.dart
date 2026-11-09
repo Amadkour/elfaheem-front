@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 
 import '../../config/theme/theme_config_provider.dart';
 import '../../design/app_contrast.dart';
@@ -43,14 +44,14 @@ class _PrimaryButtonState extends State<PrimaryButton> {
     // directly in a Row) — that is what produced the "RenderBox was not laid out" cascade inside the
     // user-detail bottom sheet. Fill the width only when it is bounded; otherwise size to the content.
     final c = context.colors;
-    // The brand fill is the primary gradient (D-136); a caller's own colour (success, danger …) stays flat. A
+    // The brand fill is the primary gradient (D-136); a caller's own colour (success, danger …) gets its blend (D-360). A
     // disabled button is a flat neutral well with readable muted text (L10: white on a pale half-transparent
     // gradient was unreadable).
     final off = disabled && !widget.isLoading;
     final own = widget.background;
     final brand = own == null || own == c.primary;
     final ink = off ? c.textMedium : c.onHero;
-    final r = BorderRadius.circular(10);
+    final r = BorderRadius.circular(AppRadius.card);
     final motion = AppMotion.of(context);
     // keyboard focus: a crisp ring outside the button (a page-coloured gap, then the brand colour at 3:1)
     final ring = ensureContrast(c.primary, [c.background], min: 3);
@@ -72,8 +73,8 @@ class _PrimaryButtonState extends State<PrimaryButton> {
             duration: motion.fast,
             curve: AppMotion.curve,
             decoration: BoxDecoration(
-              color: off ? c.inputBg : (brand ? null : own),
-              gradient: off || !brand ? null : (_pressed ? c.primaryGradientPressed : c.primaryGradient),
+              color: off ? c.inputBg : null,
+              gradient: off ? null : (brand ? (_pressed ? c.primaryGradientPressed : c.primaryGradient) : AppGradients.blend(context, color: own)),
               borderRadius: r,
               border: off ? Border.all(color: c.divider) : null,
               boxShadow: shadows,

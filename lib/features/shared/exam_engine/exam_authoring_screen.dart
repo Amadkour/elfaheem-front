@@ -26,6 +26,7 @@ import 'exam_grading_widgets.dart' show ResultsViewField;
 import 'exam_media.dart';
 import 'exam_paper_sheet.dart' show openExamPaper;
 import 'offline/offline_exam_teacher.dart';
+import 'exam_page_width.dart';
 import 'paper/exam_setup.dart' show ExamSetup, ExamSetupApi;
 import 'paper/exam_setup_wizard.dart' show openExamSetupWizard;
 import 'paper/paper_exam_entry.dart' show PaperExamEntry, isPaperExam, openPaperSection;
@@ -217,14 +218,8 @@ class _ExamSettingsFormState extends State<ExamSettingsForm> with _Controllers {
       AppSectionTitle(t('التوقيت', 'Timing'), subtitle: t('بتوقيت ${AppTime.zoneId}', 'In ${AppTime.zoneId} time')),
       _DateTimeField(label: t('يبدأ', 'Opens'), value: d.startsAt, onChanged: (v) => setState(() => d.startsAt = v)),
       _DateTimeField(label: t('ينتهي', 'Closes'), value: d.endsAt, onChanged: (v) => setState(() => d.endsAt = v)),
-      AppField(
-          controller: ctl('dur', d.durationMinutes?.toString() ?? ''), label: t('المدة بالدقائق', 'Duration (minutes)'),
-          hint: t('فارغ = حتى موعد الانتهاء', 'Empty = until the closing time'), keyboard: TextInputType.number, ltr: true,
-          onChanged: (v) => d.durationMinutes = v.trim().isEmpty ? null : (parseIntField(v) ?? -1)),
-      AppField(
-          controller: ctl('att', '${d.maxAttempts}'), label: t('عدد المحاولات', 'Attempts allowed'), keyboard: TextInputType.number, ltr: true,
-          hint: t('0 = بلا حد', '0 = unlimited'),
-          onChanged: (v) => d.maxAttempts = parseIntField(v) ?? 0),
+      Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: ctl('dur', d.durationMinutes?.toString() ?? ''), label: t('المدة بالدقائق', 'Duration (minutes)'), hint: t('فارغ = حتى موعد الانتهاء', 'Empty = until the closing time'), min: 1, onChanged: (v) => d.durationMinutes = v?.toInt())),
+      Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: ctl('att', '${d.maxAttempts}'), label: t('عدد المحاولات', 'Attempts allowed'), hint: t('0 = بلا حد', '0 = unlimited'), min: 0, onChanged: (v) => d.maxAttempts = v?.toInt() ?? 0)),
       SessionLockPicker(sessions: widget.sessions, selected: d.sessionId, onChanged: (v) => setState(() => d.sessionId = v)),
       if (d.status == 'published')
         Padding(
@@ -283,18 +278,12 @@ class _ExamSettingsFormState extends State<ExamSettingsForm> with _Controllers {
       AppSwitchTile(
           title: t('إظهار درجة كل سؤال للطالب', 'Show each question\'s score to students'), value: d.showPerQuestion,
           onChanged: (v) => setState(() => d.showPerQuestion = v)),
-      AppField(
-          controller: ctl('pass%', fmtPoints(d.passingPercent)), label: t('نسبة النجاح ٪', 'Pass mark %'), keyboard: _numKeyboard, ltr: true,
-          onChanged: (v) => d.passingPercent = parseNum(v) ?? -1),
+      Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: ctl('pass%', fmtPoints(d.passingPercent)), label: t('نسبة النجاح ٪', 'Pass mark %'), min: 0, max: 100, step: 5, decimals: 2, onChanged: (v) => d.passingPercent = v?.toDouble() ?? -1)),
       AppSectionTitle(t('التظلمات', 'Appeals')),
       AppSwitchTile(title: t('السماح بالتظلم على الدرجات', 'Allow appeals on marks'), value: d.appealsEnabled, onChanged: (v) => setState(() => d.appealsEnabled = v)),
       if (d.appealsEnabled) ...[
-        AppField(
-            controller: ctl('apd', '${d.appealDays}'), label: t('مدة التظلم بالأيام بعد ظهور النتيجة', 'Appeal window (days after results show)'),
-            keyboard: TextInputType.number, ltr: true, onChanged: (v) => d.appealDays = parseIntField(v) ?? 0),
-        AppField(
-            controller: ctl('apn', '${d.appealsPerAttempt}'), label: t('أقصى عدد تظلمات للمحاولة', 'Most appeals per attempt'),
-            keyboard: TextInputType.number, ltr: true, onChanged: (v) => d.appealsPerAttempt = parseIntField(v) ?? 0),
+        Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: ctl('apd', '${d.appealDays}'), label: t('مدة التظلم بالأيام بعد ظهور النتيجة', 'Appeal window (days after results show)'), min: 0, onChanged: (v) => d.appealDays = v?.toInt() ?? 0)),
+        Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: ctl('apn', '${d.appealsPerAttempt}'), label: t('أقصى عدد تظلمات للمحاولة', 'Most appeals per attempt'), min: 0, onChanged: (v) => d.appealsPerAttempt = v?.toInt() ?? 0)),
         AppSwitchTile(
             title: t('مراجع مستقل', 'Independent reviewer'), subtitle: t('يقرر التظلم شخص غير من صحح الإجابة', 'Someone other than the original marker decides'),
             value: d.independentReviewer, onChanged: (v) => setState(() => d.independentReviewer = v)),
@@ -740,9 +729,7 @@ class _SectionFormState extends State<SectionForm> with _Controllers {
         AppField(controller: ctl('title', s.title), label: t('عنوان القسم', 'Section title'), onChanged: (v) => s.title = v),
         AppField(controller: ctl('ins', s.instructions), label: t('تعليمات للطلاب (اختياري)', 'Instructions for students (optional)'), maxLines: 3,
             onChanged: (v) => s.instructions = v),
-        AppField(
-            controller: ctl('box', s.timeBoxMinutes?.toString() ?? ''), label: t('وقت القسم بالدقائق (اختياري)', 'Section time in minutes (optional)'),
-            keyboard: TextInputType.number, ltr: true, onChanged: (v) => s.timeBoxMinutes = v.trim().isEmpty ? null : (parseIntField(v) ?? -1)),
+        Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: ctl('box', s.timeBoxMinutes?.toString() ?? ''), label: t('وقت القسم بالدقائق (اختياري)', 'Section time in minutes (optional)'), min: 1, onChanged: (v) => s.timeBoxMinutes = v?.toInt())),
         if (!structural)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -766,14 +753,11 @@ class _SectionFormState extends State<SectionForm> with _Controllers {
         ),
         _gap(),
         if (structural) ...[
-          AppField(controller: ctl('w', fmtPoints(s.weight)), label: t('وزن القسم (مضاعف الدرجة)', 'Section weight (score multiplier)'), keyboard: _numKeyboard,
-              ltr: true, onChanged: (v) => s.weight = parseNum(v) ?? 0),
+          Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: ctl('w', fmtPoints(s.weight)), label: t('وزن القسم (مضاعف الدرجة)', 'Section weight (score multiplier)'), min: 0, step: 0.5, decimals: 2, onChanged: (v) => s.weight = v?.toDouble() ?? 0)),
           AppSwitchTile(title: t('ترتيب الأسئلة عشوائياً لكل طالب', 'Shuffle questions per student'), value: s.shuffleQuestions,
               onChanged: (v) => setState(() => s.shuffleQuestions = v)),
           AppSwitchTile(title: t('ترتيب الخيارات عشوائياً', 'Shuffle options'), value: s.shuffleOptions, onChanged: (v) => setState(() => s.shuffleOptions = v)),
-          AppField(
-              controller: ctl('pool', s.poolSize?.toString() ?? ''), label: t('سحب عشوائي: عدد الأسئلة لكل طالب (اختياري)', 'Random pool: questions per student (optional)'),
-              keyboard: TextInputType.number, ltr: true, onChanged: (v) => s.poolSize = v.trim().isEmpty ? null : (parseIntField(v) ?? -1)),
+          Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: ctl('pool', s.poolSize?.toString() ?? ''), label: t('سحب عشوائي: عدد الأسئلة لكل طالب (اختياري)', 'Random pool: questions per student (optional)'), min: 1, onChanged: (v) => s.poolSize = v?.toInt())),
           AppField(
               controller: ctl('ptags', s.poolTags.join(', ')), label: t('وسوم السحب (اختياري، مفصولة بفواصل)', 'Pool tags (optional, comma separated)'),
               onChanged: (v) => s.poolTags = splitList(v)),
@@ -887,8 +871,7 @@ class _QuestionEditorFormState extends State<QuestionEditorForm> with _Controlle
       ),
       ..._typeEditor(context),
       AppSectionTitle(t('الدرجة والتصنيف', 'Points and tags'), subtitle: t('الدرجة: ${fmtPoints(d.points)} · الصعوبة: ${d.difficulty} من 5', 'Marks: ${fmtPoints(d.points)} · Difficulty: ${d.difficulty} of 5')),
-      AppField(controller: ctl('pts', fmtPoints(d.points)), label: t('الدرجة', 'Points'), keyboard: _numKeyboard, ltr: true,
-          onChanged: (v) => setState(() => d.points = parseNum(v) ?? 0)),
+      Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: ctl('pts', fmtPoints(d.points)), label: t('الدرجة', 'Points'), min: 0, step: 0.5, decimals: 2, onChanged: (v) => setState(() => d.points = v?.toDouble() ?? 0))),
       Text(t('الصعوبة', 'Difficulty'), style: appText(13, w: FontWeight.w700, c: c.textDark)),
       _gap(6),
       Wrap(spacing: 8, runSpacing: 8, children: [
@@ -1097,8 +1080,7 @@ class _QuestionEditorFormState extends State<QuestionEditorForm> with _Controlle
                 ]),
                 _gap(8),
                 AppField(controller: ctl('cc.${cr.uid}', cr.criterion), label: t('المعيار', 'Criterion'), maxLines: 2, onChanged: (v) => cr.criterion = v),
-                AppField(controller: ctl('cp.${cr.uid}', fmtPoints(cr.points)), label: t('درجة المعيار', 'Criterion points'), keyboard: _numKeyboard, ltr: true,
-                    onChanged: (v) => setState(() => cr.points = parseNum(v) ?? 0)),
+                Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: ctl('cp.${cr.uid}', fmtPoints(cr.points)), label: t('درجة المعيار', 'Criterion points'), min: 0, step: 0.5, decimals: 2, onChanged: (v) => setState(() => cr.points = v?.toDouble() ?? 0))),
                 AppField(controller: ctl('cm.${cr.uid}', cr.model), label: t('صياغة مرجعية (اختياري)', 'Reference wording (optional)'), maxLines: 2,
                     onChanged: (v) => cr.model = v),
                 AppField(
@@ -1337,7 +1319,7 @@ class _QuestionBankScreenState extends State<QuestionBankScreen> {
   @override
   Widget build(BuildContext context) => BasePage(
         key: const ValueKey('exam.question_bank'),
-        appBar: AppBar(title: Text(t('بنك الأسئلة', 'Question bank')), actions: [
+        appBar: AppHeader(title: t('بنك الأسئلة', 'Question bank'), actions: [
           IconButton(onPressed: () => _edit(null), icon: const Icon(Icons.add_rounded), tooltip: t('سؤال جديد', 'New question')),
         ]),
         child: QuestionBankBrowser(
@@ -1410,8 +1392,7 @@ class _QuestionPickerSheetState extends State<QuestionPickerSheet> {
       refreshTick: _tick,
       header: [
         AppSectionTitle(t('إضافة أسئلة', 'Add questions'), subtitle: widget.sectionTitle.isEmpty ? null : widget.sectionTitle),
-        AppField(controller: _points, label: t('درجة السؤال في هذا الاختبار (اختياري)', 'Points in this exam (optional)'),
-            hint: t('فارغ = درجة السؤال في البنك', 'Empty = the bank question\'s points'), keyboard: _numKeyboard, ltr: true),
+        Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: _points, label: t('درجة السؤال في هذا الاختبار (اختياري)', 'Points in this exam (optional)'), hint: t('فارغ = درجة السؤال في البنك', 'Empty = the bank question\'s points'), min: 0, step: 0.5, decimals: 2)),
         AppSwitchTile(title: t('إلزامي', 'Required'), value: _required, onChanged: (v) => setState(() => _required = v)),
         Align(
           alignment: AlignmentDirectional.centerStart,
@@ -1625,9 +1606,8 @@ class _AccommodationFormState extends State<AccommodationForm> with _Controllers
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
           AppSectionTitle(t('تيسير لطالب', 'Accommodation for a student')),
           AppField(controller: ctl('sid', ''), label: t('رقم الطالب', 'Student id'), keyboard: TextInputType.number, ltr: true, onChanged: (v) => a.studentId = v),
-          AppField(controller: ctl('min', ''), label: t('دقائق إضافية', 'Extra minutes'), keyboard: TextInputType.number, ltr: true, onChanged: (v) => a.extraMinutes = v),
-          AppField(controller: ctl('pct', ''), label: t('أو نسبة إضافية من الوقت ٪', 'Or extra time %'), keyboard: TextInputType.number, ltr: true,
-              onChanged: (v) => a.extraPercent = v),
+          Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: ctl('min', ''), label: t('دقائق إضافية', 'Extra minutes'), min: 0, onChanged: (v) => a.extraMinutes = v?.toString() ?? '')),
+          Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: ctl('pct', ''), label: t('أو نسبة إضافية من الوقت ٪', 'Or extra time %'), min: 0, step: 5, onChanged: (v) => a.extraPercent = v?.toString() ?? '')),
           AppSwitchTile(title: t('خط كبير', 'Large text'), value: a.largeText, onChanged: (v) => setState(() => a.largeText = v)),
           AppSwitchTile(title: t('قارئ شاشة', 'Screen reader'), value: a.screenReader, onChanged: (v) => setState(() => a.screenReader = v)),
           AppSwitchTile(title: t('مراقبة مخففة (ضعف الحدود)', 'Relaxed proctoring (double limits)'), value: a.relaxedThresholds,
@@ -2117,15 +2097,15 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
     if (nd != null) {
       return BasePage(
         key: const ValueKey('exam.authoring'),
-        appBar: AppBar(title: Text(t('اختبار جديد', 'New exam'))),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        appBar: AppHeader(title: t('اختبار جديد', 'New exam')),
+        child: ExamPageWidth(width: AppWidth.reading, builder: (side) => SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(side, 8, side, 24),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppHero(title: t('اختبار جديد', 'New exam'), subtitle: t('ابدأ بالإعدادات، ثم الأقسام والأسئلة والمراقبة', 'Start with the settings, then sections, questions and proctoring'),
                 icon: Icons.edit_note_rounded),
             ExamSettingsForm(draft: nd, creating: true, onSave: _create, sessions: _sessions),
           ]),
-        ),
+        )),
       );
     }
     final v = _view;
@@ -2134,8 +2114,8 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
       length: 4,
       child: BasePage(
         key: const ValueKey('exam.authoring'),
-        appBar: AppBar(
-          title: Text(v?.exam.title.isNotEmpty == true ? v!.exam.title : t('تحرير الاختبار', 'Edit exam'), maxLines: 1, overflow: TextOverflow.ellipsis),
+        appBar: AppHeader(
+          title: v?.exam.title.isNotEmpty == true ? v!.exam.title : t('تحرير الاختبار', 'Edit exam'),
           actions: [
             if (v != null && v.exam.courseId != null)
               IconButton(onPressed: _openSetup, icon: const Icon(Icons.fact_check_outlined), tooltip: t('إعداد الاختبار الورقي', 'Paper exam setup')),
@@ -2165,16 +2145,16 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
                     child: AppEmpty(icon: Icons.error_outline_rounded, title: _error!, actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load))
                 : const AppListSkeleton(items: 4, withAvatar: false))
             : TabBarView(children: [
-                SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                ExamPageWidth(width: AppWidth.reading, builder: (side) => SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(side, 8, side, 24),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     if (isPaperExam(_paper)) _paperEntry(v),
                     ExamSettingsForm(key: ValueKey('settings.$_settingsGen'), draft: w, onSave: _saveSettings, sessions: _sessions),
                   ]),
-                ),
+                )),
                 AppRefresh(
                   onRefresh: () => _load(side: false),
-                  child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
+                  child: ExamPageWidth(width: AppWidth.content, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, 12, side, 24), children: [
                     ExamSectionsPanel(
                       view: v,
                       onAddSection: () => _sectionSheet(SectionDraft()..title = t('القسم ${v.sections.length + 1}', 'Section ${v.sections.length + 1}')),
@@ -2189,21 +2169,21 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
                       onImportExcel: _importExcel,
                       onImportForms: _importForms,
                     ),
-                  ]),
+                  ])),
                 ),
-                ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
+                ExamPageWidth(width: AppWidth.reading, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, 12, side, 24), children: [
                   if (v.proctoring == null)
                     AppBanner(icon: Icons.info_outline_rounded, color: c.warning, text: authoringCodeText('policy_not_found'))
                   else
                     ProctoringPolicyForm(key: ValueKey('proctor.${v.exam.version}'), draft: _proctor, consents: _consents, consentsLoaded: _consentsLoaded,
                         onSave: _saveProctoring),
                   AccommodationsPanel(items: _accommodations, error: _accError, onAdd: _addAccommodation, onRevoke: _revokeAccommodation),
-                ]),
-                ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
+                ])),
+                ExamPageWidth(width: AppWidth.reading, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, 12, side, 24), children: [
                   if (isPaperExam(_paper)) _paperEntry(v),
                   if (v.exam.id != null) OfflineExamEntryTile(examId: v.exam.id!, title: v.exam.title),
                   ExamPublishPanel(view: v, onAction: _action, busy: _busyAction, error: _publishError),
-                ]),
+                ])),
               ]),
       ),
     );

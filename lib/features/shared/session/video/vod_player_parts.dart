@@ -482,7 +482,7 @@ String vodSpeedLabel(double s) => '${s == s.roundToDouble() ? s.toStringAsFixed(
 /// closes the player into the bar) rises right under the chip that opened it, so a second tap on the chip, or a
 /// tap while the sheet is still moving, picked that row (seen on the S24, round 7).
 Future<T?> showVodPicker<T>(BuildContext context, Widget Function(BuildContext sheetContext, void Function(T value) pick) builder) =>
-    showModalBottomSheet<T>(
+    showAppModalSheet<T>(
       useSafeArea: true,
       context: context,
       backgroundColor: Colors.transparent,

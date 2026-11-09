@@ -66,6 +66,7 @@ import 'admin_users_page.dart';
 import 'enrollment_request/teacher_transfers_provider.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
+import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_page.dart' show CertVerifyEntryTile;
 
 /// Current tab of the admin shell (the teacher uses TeacherDashboardProvider).
 class AdminDashboardProvider extends ChangeNotifier {
@@ -543,6 +544,7 @@ class _MorePageState extends State<_MorePage> {
               ),
             const CalendarEntryTile(),
             const ChatEntryTile(),
+            const CertVerifyEntryTile(),
             AppSettingsTile(
               icon: Icons.manage_accounts_rounded,
               color: AdminPalette.indigo.last,

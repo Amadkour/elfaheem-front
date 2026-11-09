@@ -11,6 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -961,12 +962,9 @@ Future<GoogleRoleChoice?> showGoogleRoleSheet(
       GoogleRoleChoice? initial,
       UsernameError? usernameError,
     }) {
-  return showModalBottomSheet<GoogleRoleChoice>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    backgroundColor: Colors.transparent,
-    constraints: const BoxConstraints(maxWidth: 560),
+  return showAppSideSheet<GoogleRoleChoice>(
+    context,
+    withCloseBar: true,
     builder: (_) => _GoogleRoleSheet(
       roles: context.read<MyAuthProvider>().roles
           .map((r) => r['text']!)
@@ -1084,10 +1082,7 @@ class _GoogleRoleSheetState extends State<_GoogleRoleSheet> {
     final inset = MediaQuery.of(context).viewInsets.bottom;
     final hasIdentity = (widget.email ?? '').isNotEmpty;
 
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-      child: Container(
-        color: c.cardBg,
+    return ClipRect(
         child: Stack(
           children: [
             // Soft brand glow behind the header
@@ -1111,19 +1106,6 @@ class _GoogleRoleSheetState extends State<_GoogleRoleSheet> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Drag handle
-                    Center(
-                      child: Container(
-                        width: 44,
-                        height: 4.5,
-                        decoration: BoxDecoration(
-                          color: c.divider,
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 22),
-
                     // Header
                     Row(
                       children: [
@@ -1278,7 +1260,6 @@ class _GoogleRoleSheetState extends State<_GoogleRoleSheet> {
             ),
           ],
         ),
-      ),
     );
   }
 }

@@ -416,7 +416,7 @@ class _ScanUploadPageState extends State<ScanUploadPage> {
       canPop: !sending,
       child: BasePage(
         key: const ValueKey('exam.scans.upload'),
-        appBar: AppBar(title: Text(t('رفع الأوراق', 'Upload papers'))),
+        appBar: AppHeader(title: t('رفع الأوراق', 'Upload papers')),
         child: Align(
           alignment: Alignment.topCenter,
           child: ConstrainedBox(

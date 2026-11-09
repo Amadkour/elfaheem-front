@@ -40,6 +40,15 @@ import 'paper/templates/omr_template_learn.dart' show openOmrTemplateLearn;
 const _numKeyboard = TextInputType.numberWithOptions(decimal: true);
 /// The builder's column on a wide window.
 const quickScreenMaxWidth = 820.0;
+
+/// Two fields side by side, or stacked where a number field's two buttons would leave no room to read the value.
+Widget _fieldPair(Widget a, Widget? b) => LayoutBuilder(builder: (context, box) {
+      if (box.maxWidth < 460) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [a, ?b]);
+      return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(child: a),
+        if (b != null) ...[const SizedBox(width: 10), Expanded(child: b)],
+      ]);
+    });
 const paperFileExtensions = ['pdf', 'docx', 'doc', 'png', 'jpg', 'jpeg'];
 
 /// Opens the quick builder; returns the created exam's id (null when the creator left without creating).
@@ -494,7 +503,7 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
     final errors = rawErrors.where((e) => e != 'mode_required').toList();
     return BasePage(
       key: const ValueKey('exam.quick'),
-      appBar: AppBar(title: Text(t('اختبار جديد', 'New exam')), actions: const [HelpInfoButton(pageId: 'teacher.exam_quick')]),
+      appBar: AppHeader(title: t('اختبار جديد', 'New exam'), actions: const [HelpInfoButton(pageId: 'teacher.exam_quick')]),
       // a desktop window: the builder reads as one column, not as 1400 px wide cards
       child: Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: quickScreenMaxWidth), child: !_started
           ? SingleChildScrollView(
@@ -632,8 +641,7 @@ class _QuickFilePanelState extends State<QuickFilePanel> {
           OutlinedButton(onPressed: widget.onPick, child: Text(widget.fileName == null ? t('اختر ملفاً', 'Choose a file') : t('تغيير', 'Change'))),
         ]),
         const SizedBox(height: 12),
-        AppField(controller: _points, label: t('الدرجة الكاملة', 'Full mark'), keyboard: _numKeyboard, ltr: true,
-            onChanged: (v) => widget.onPoints(parseNum(v) ?? 0)),
+        Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: _points, label: t('الدرجة الكاملة', 'Full mark'), min: 0, step: 0.5, decimals: 2, onChanged: (v) => widget.onPoints(v?.toDouble() ?? 0))),
         const SizedBox(height: 8),
         Text(
           widget.offline
@@ -1044,27 +1052,16 @@ class _QuickAdvancedPanelState extends State<QuickAdvancedPanel> {
           childrenPadding: const EdgeInsets.fromLTRB(14, AppSpace.xs, 14, 14),
           expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(children: [
-              Expanded(
-                  child: AppField(controller: _duration, label: t('المدة (دقيقة)', 'Duration (min)'), keyboard: TextInputType.number, ltr: true,
-                      onChanged: (v) => _set(() => q.durationMinutes = parseIntField(v) ?? 0))),
-              const SizedBox(width: 10),
-              Expanded(
-                  child: AppField(controller: _attempts, label: t('المحاولات', 'Attempts'), hint: t('0 = بلا حد', '0 = unlimited'), keyboard: TextInputType.number, ltr: true,
-                      onChanged: (v) => _set(() => q.maxAttempts = parseIntField(v) ?? 0))),
-            ]),
+            _fieldPair(
+              Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: _duration, label: t('المدة (دقيقة)', 'Duration (min)'), min: 0, step: 5, onChanged: (v) => _set(() => q.durationMinutes = v?.toInt() ?? 0))),
+              Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: _attempts, label: t('المحاولات', 'Attempts'), hint: t('0 = بلا حد', '0 = unlimited'), min: 0, onChanged: (v) => _set(() => q.maxAttempts = v?.toInt() ?? 0))),
+            ),
             const SizedBox(height: 10),
             AppField(controller: _description, label: t('وصف (اختياري)', 'Description (optional)'), maxLines: 2, onChanged: (v) => q.description = v),
             const SizedBox(height: 10),
             SessionLockPicker(sessions: widget.sessions, selected: q.sessionId, onChanged: (v) => _set(() => q.sessionId = v)),
             if (!q.isFile && q.mode != QuickMode.offline) ...[
-              AppField(
-                  controller: _pool,
-                  label: t('عدد الأسئلة لكل طالب', 'Questions per student'),
-                  hint: t('فارغ = كل الأسئلة؛ أقل من ذلك يعني سحباً عشوائياً', 'Empty = all of them; fewer means a random draw'),
-                  keyboard: TextInputType.number,
-                  ltr: true,
-                  onChanged: (v) => _set(() => q.poolSize = v.trim().isEmpty ? null : (parseIntField(v) ?? 0))),
+              Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: _pool, label: t('عدد الأسئلة لكل طالب', 'Questions per student'), hint: t('فارغ = كل الأسئلة؛ أقل من ذلك يعني سحباً عشوائياً', 'Empty = all of them; fewer means a random draw'), min: 1, onChanged: (v) => _set(() => q.poolSize = v?.toInt()))),
               const SizedBox(height: 10),
             ],
             _when(t('يبدأ', 'Opens'), q.startsAt, (d) => q.startsAt = d),
@@ -1089,17 +1086,11 @@ class _QuickAdvancedPanelState extends State<QuickAdvancedPanel> {
                 AppChoiceChip(label: resultsPolicyLabel(p), selected: q.resultsPolicy == p, onTap: () => _set(() => q.resultsPolicy = p)),
             ]),
             const SizedBox(height: 10),
-            Row(children: [
-              Expanded(
-                  child: AppField(controller: _passing, label: t('نسبة النجاح %', 'Pass mark %'), keyboard: _numKeyboard, ltr: true,
-                      onChanged: (v) => _set(() => q.passingPercent = parseNum(v) ?? 50))),
-              if (online) ...[
-                const SizedBox(width: 10),
-                Expanded(
-                    child: AppField(controller: _passcode, label: t('رمز دخول (اختياري)', 'Passcode (optional)'), ltr: true,
-                        onChanged: (v) => q.passcode = v)),
-              ],
-            ]),
+            _fieldPair(
+              Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: _passing, label: t('نسبة النجاح %', 'Pass mark %'), min: 0, max: 100, step: 5, decimals: 2, onChanged: (v) => _set(() => q.passingPercent = v?.toDouble() ?? 50))),
+              online ? AppField(controller: _passcode, label: t('رمز دخول (اختياري)', 'Passcode (optional)'), ltr: true,
+                  onChanged: (v) => q.passcode = v) : null,
+            ),
             const SizedBox(height: 8),
             Align(
               alignment: AlignmentDirectional.centerStart,

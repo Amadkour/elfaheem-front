@@ -50,6 +50,7 @@ class _View extends StatelessWidget {
     final p = context.watch<AdminVersionsProvider>();
     return AdminPage(
       key: const ValueKey('admin_versions'),
+      width: AppWidth.wide,
       title: t('سجل رسائل التحديث', 'Update prompt history'),
       subtitle: t('الإصدار الذي يطلب التطبيق من المستخدمين التحديث إليه، إجباريًا أو موصى به',
           'The version the app asks users to update to, forced or recommended'),

@@ -26,6 +26,7 @@ import 'cert_issue_actions.dart';
 import 'cert_issue_api.dart';
 import 'cert_issue_logic.dart';
 import 'cert_issue_photos.dart';
+import 'cert_expiry_card.dart' show certExpiryWire;
 import 'cert_issue_parts.dart';
 import 'cert_issue_word.dart';
 
@@ -117,11 +118,7 @@ class _CertIssueHistoryPageState extends State<CertIssueHistoryPage> {
     final c = context.colors;
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(
-        centerTitle: false,
-        title: Text('ci_history'.tr, style: AppType.section(context)),
-        actions: [AppRefreshAction(onRefresh: _load)],
-      ),
+      appBar: AppHeader(title: 'ci_history'.tr, actions: [AppRefreshAction(onRefresh: _load)]),
       body: ParentComponent(
         featureKey: kCertIssueFeature,
         child: SafeArea(
@@ -249,10 +246,7 @@ class CertBatchPage extends StatelessWidget {
     final c = context.colors;
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(
-        centerTitle: false,
-        title: Text(initial?.title ?? 'ci_batch'.tr, style: AppType.section(context), maxLines: 1, overflow: TextOverflow.ellipsis),
-      ),
+      appBar: AppHeader(title: initial?.title ?? 'ci_batch'.tr),
       body: SafeArea(child: CertBatchView(batchId: batchId, initial: initial, api: api, onChanged: onChanged)),
     );
   }
@@ -446,6 +440,20 @@ class _CertBatchViewState extends State<CertBatchView> {
       showAppNotice('ci_bad_email'.tr, error: true);
       return;
     }
+    // renewing an expired certificate: without a new date the replacement would be expired from its first day (D-420)
+    String? renewedUntil;
+    if (cert.expiresAt != null && cert.expiresAt!.isBefore(DateTime.now().toUtc())) {
+      final now = DateTime.now();
+      final day = await showDatePicker(
+        context: context,
+        helpText: 'cv_valid_until'.tr,
+        initialDate: now.add(const Duration(days: 365)),
+        firstDate: now.add(const Duration(days: 1)),
+        lastDate: DateTime(now.year + 50),
+      );
+      if (day == null || !mounted) return;
+      renewedUntil = certExpiryWire(day);
+    }
     try {
       await _api.reissue(cert.id, certReissueBody(
         before: before,
@@ -454,6 +462,7 @@ class _CertBatchViewState extends State<CertBatchView> {
         emailBefore: cert.recipientEmail,
         sendEmail: res.sendEmail,
         reason: res.reason,
+        expiresAt: renewedUntil,
       ));
       showAppNotice('ci_reissued_done'.tr);
       await _loadItems();
@@ -464,7 +473,8 @@ class _CertBatchViewState extends State<CertBatchView> {
         if (url == null || !mounted) return;
         try {
           await _api.reissue(cert.id, certReissueBody(before: before, after: res.values, email: email,
-              emailBefore: cert.recipientEmail, sendEmail: res.sendEmail, reason: res.reason, photoUrl: url));
+              emailBefore: cert.recipientEmail, sendEmail: res.sendEmail, reason: res.reason, photoUrl: url,
+              expiresAt: renewedUntil));
           showAppNotice('ci_reissued_done'.tr);
           await _loadItems();
         } catch (e2) {

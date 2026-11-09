@@ -1,0 +1,8 @@
+{
+ "detail": {
+  "code": "certificate_not_found",
+  "message": "لا توجد شهادة بهذا الرقم",
+  "message_en": "No certificate has this number",
+  "authentic": false
+ }
+}

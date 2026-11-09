@@ -7,6 +7,7 @@
 // removable chip.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
@@ -35,9 +36,8 @@ class NextCoursesField extends StatelessWidget {
   });
 
   Future<void> _openPicker(BuildContext context) async {
-    final choice = await showModalBottomSheet<Map<String, dynamic>>(
-      context: context,
-      backgroundColor: Colors.transparent,
+    final choice = await showAppSideSheet<Map<String, dynamic>>(
+      context,
       builder: (_) => _NextCoursePickerSheet(options: availableOptions),
     );
     if (choice != null) onAdd(choice);
@@ -210,15 +210,8 @@ class _NextCoursePickerSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Container(
-        margin: const EdgeInsets.all(12),
-        padding: const EdgeInsets.all(16),
-        constraints: const BoxConstraints(maxHeight: 420),
-        decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          borderRadius: BorderRadius.circular(20),
-        ),
+    return Padding(
+      padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,7 +240,6 @@ class _NextCoursePickerSheet extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }

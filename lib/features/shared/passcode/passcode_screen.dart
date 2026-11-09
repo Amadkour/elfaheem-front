@@ -1,3 +1,4 @@
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -6,6 +7,8 @@ import 'package:flutter/services.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 /// Returns true when [code] is accepted.
 ///
@@ -76,7 +79,7 @@ class PasscodeSheet extends StatefulWidget {
     int pinLength = 6,
     IconData icon = Icons.lock_outline_rounded,
   }) async {
-    final ok = await showModalBottomSheet<bool>(
+    final ok = await showAppModalSheet<bool>(
       useSafeArea: true,
       context: context,
       isScrollControlled: true,
@@ -115,7 +118,6 @@ class _PasscodeSheetState extends State<PasscodeSheet>
   // ── design tokens (the live theme) ─────────────────────────────────────────
   ThemeConfigProvider get _c => context.colors;
   Color get _bgColor => _c.onHero;
-  Color get _surfaceColor => _c.cardBg;
   Color get _accentGold => _c.primary;
   Color get _dotFilled => _c.primary;
   Color get _dotEmpty => _c.divider;
@@ -202,12 +204,7 @@ class _PasscodeSheetState extends State<PasscodeSheet>
       focusNode: _focus,
       onKeyEvent: _onKeyEvent,
       child: Container(
-        width: math.min(size.width, 500.0),
         constraints: BoxConstraints(maxHeight: size.height * 0.92),
-        decoration: BoxDecoration(
-          color: _surfaceColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-        ),
         padding: EdgeInsets.only(bottom: bottomPadding),
         child: SafeArea(
           top: false,
@@ -216,7 +213,7 @@ class _PasscodeSheetState extends State<PasscodeSheet>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildHandle(),
+                const SizedBox(height: AppSpace.sm),
                 _buildHeader(),
                 const SizedBox(height: 28),
                 // PIN dots and keypad stay left-to-right in RTL locales.
@@ -240,16 +237,6 @@ class _PasscodeSheetState extends State<PasscodeSheet>
     );
   }
 
-  Widget _buildHandle() => Container(
-    margin: const EdgeInsets.only(top: 14, bottom: 4),
-    width: 40,
-    height: 4,
-    decoration: BoxDecoration(
-      color: _c.divider,
-      borderRadius: BorderRadius.circular(2),
-    ),
-  );
-
   Widget _buildHeader() => Padding(
     padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
     child: Column(
@@ -259,11 +246,7 @@ class _PasscodeSheetState extends State<PasscodeSheet>
           height: 64,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [_accentGold, _c.heroEnd(_accentGold)],
-              begin: AlignmentDirectional.topStart,
-              end: AlignmentDirectional.bottomEnd,
-            ),
+            gradient: AppGradients.blend(context, color: _accentGold),
             boxShadow: [
               BoxShadow(
                 color: _accentGold.withValues(alpha: 0.35),

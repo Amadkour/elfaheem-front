@@ -25,7 +25,7 @@ void main() {
         starters: const [],
         initialLang: 'ar',
         colorSeed: '#1F4E8C',
-        loader: (key, lang, width, color) async {
+        loader: (key, lang, width, color, {bgHex, bg2Hex}) async {
           asked?.add('$key|$lang');
           return _png;
         },
@@ -71,7 +71,7 @@ void main() {
   test('the preview cache asks once, four at a time, and retries a failure', () async {
     var calls = 0, running = 0, peak = 0;
     var fail = true;
-    Future<Uint8List> fetch(String key, {required String lang, int width = 720, String? colorHex}) async {
+    Future<Uint8List> fetch(String key, {required String lang, int width = 720, String? colorHex, String? bgHex, String? bg2Hex}) async {
       calls++;
       running++;
       if (running > peak) peak = running;

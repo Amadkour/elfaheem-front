@@ -18,6 +18,7 @@
 //       builder: (_) => DataLabScreen(courseId: course.id, courseTitle: title)));
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart' show GestureBinding, PointerDeviceKind, PointerScrollEvent;
@@ -47,6 +48,7 @@ import 'data_lab_provider.dart';
 import 'data_lab_requests.dart';
 import 'data_lab_style_sheet.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppBackButton, AppGradients, showAppSideSheet;
 import '../../shared/exam_engine/marks/marks_links.dart' show markTemplatePicker;
 import '../../shared/exam_engine/marks/review/grade_review_entry.dart';
 import '../../shared/exam_engine/marks/review/grade_review_start.dart' show GradeColumn;
@@ -267,18 +269,14 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          _BarButton(icon: Icons.arrow_back_rounded, tooltip: _tr('dl_back', 'Back'), onTap: () => Navigator.of(context).maybePop()),
+          const AppBackButton(),
           const SizedBox(width: 10),
           Container(
             width: 38,
             height: 38,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              gradient: LinearGradient(
-                colors: [c.primary, c.primaryDark],
-                begin: AlignmentDirectional.topStart,
-                end: AlignmentDirectional.bottomEnd,
-              ),
+              gradient: AppGradients.blend(context),
               boxShadow: c.primaryShadow,
             ),
             child: Icon(Icons.science_rounded, color: c.onHero, size: 20),
@@ -340,7 +338,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
       child: Row(children: [
-        _BarButton(icon: Icons.arrow_back_rounded, tooltip: _tr('dl_back', 'Back'), onTap: () => Navigator.of(context).maybePop()),
+        const AppBackButton(),
         const SizedBox(width: 10),
         Expanded(
           child: Text(widget.courseTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(13, w: FontWeight.w800, c: c.textDark)),
@@ -503,7 +501,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
         width: 48,
         height: 48,
         decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [c.primary, c.primaryDark], begin: AlignmentDirectional.topStart, end: AlignmentDirectional.bottomEnd),
+          gradient: AppGradients.blend(context),
           borderRadius: BorderRadius.circular(16),
           boxShadow: c.primaryShadow,
         ),
@@ -601,7 +599,7 @@ class _SelectionBar extends StatelessWidget {
           child: Container(
             padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 8, 8),
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [c.primary, c.primaryDark], begin: AlignmentDirectional.topStart, end: AlignmentDirectional.bottomEnd),
+              gradient: AppGradients.blend(context),
               borderRadius: BorderRadius.circular(20),
               boxShadow: c.primaryShadow,
             ),
@@ -1425,12 +1423,10 @@ class _IdentityCell extends StatelessWidget {
 
 /// Hold a student's name: history of the line · new login details (students only).
 Future<void> _rowActions(BuildContext context, DataLabProvider p, DlRow row) async {
-  final picked = await showModalBottomSheet<String>(
-      useSafeArea: true,
-    context: context,
-    backgroundColor: Colors.transparent,
-    constraints: const BoxConstraints(maxWidth: 520),
-    builder: (ctx) {
+  final picked = await showAppSideSheet<String>(
+      context,
+      withCloseBar: true,
+      builder: (ctx) {
       final c = ctx.colors;
       Widget tile(String v, IconData icon, String title, String sub, Color color) => ListTile(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -1490,12 +1486,10 @@ Future<void> _rowActions(BuildContext context, DataLabProvider p, DlRow row) asy
 }
 
 /// The login details of one student, to copy or share (WhatsApp, SMS …).
-Future<void> _showLoginDetails(BuildContext context, Map<String, dynamic> r, String course) => showModalBottomSheet<void>(
-      useSafeArea: true,
-  context: context,
-  backgroundColor: Colors.transparent,
-  constraints: const BoxConstraints(maxWidth: 520),
-  builder: (ctx) {
+Future<void> _showLoginDetails(BuildContext context, Map<String, dynamic> r, String course) => showAppSideSheet<void>(
+      context,
+      withCloseBar: true,
+      builder: (ctx) {
     final c = ctx.colors;
     final msg = dlLoginMessage(name: '${r['name']}', login: '${r['login']}', password: '${r['password']}', link: '${r['link']}', course: course);
     Widget line(String label, String value, {bool big = false}) => Container(
@@ -1582,13 +1576,10 @@ Future<void> _showLoginDetails(BuildContext context, Map<String, dynamic> r, Str
 
 /// Which columns are pinned on the start side (student details and / or data columns) + reset of the widths.
 void showPinSheet(BuildContext context, DataLabProvider p) {
-  showModalBottomSheet<void>(
-      useSafeArea: true,
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    constraints: const BoxConstraints(maxWidth: 520),
-    builder: (_) => Directionality(
+  showAppSideSheet<void>(
+      context,
+      withCloseBar: true,
+      builder: (_) => Directionality(
       textDirection: pageDirection,
       child: ListenableBuilder(
         listenable: p,
@@ -1631,22 +1622,12 @@ void showPinSheet(BuildContext context, DataLabProvider p) {
             );
           }
 
-          return SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Material(
-                color: c.cardBg,
-                borderRadius: BorderRadius.circular(28),
-                clipBehavior: Clip.antiAlias,
-                child: ConstrainedBox(
+          return ConstrainedBox(
                   constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.85),
                   child: ListView(
                     shrinkWrap: true,
                     padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
                     children: [
-                      Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: c.divider, borderRadius: BorderRadius.circular(4)))),
-                      const SizedBox(height: 14),
                       Row(children: [
                         Icon(Icons.push_pin_rounded, color: c.primary),
                         const SizedBox(width: 8),
@@ -1678,10 +1659,7 @@ void showPinSheet(BuildContext context, DataLabProvider p) {
                       ),
                     ],
                   ),
-                ),
-              ),
-            ),
-          );
+                );
         },
       ),
     ),
@@ -1832,14 +1810,10 @@ class _HeadCell extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 void showColumnSettings(BuildContext context, DataLabProvider p, DlColumn col) {
-  showModalBottomSheet<void>(
-      useSafeArea: true,
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    barrierColor: context.colors.heroShade.withValues(alpha: 0.35),
-    constraints: const BoxConstraints(maxWidth: 540),
-    builder: (_) => Directionality(
+  showAppSideSheet<void>(
+      context,
+      withCloseBar: true,
+      builder: (_) => Directionality(
       textDirection: pageDirection,
       child: _ColumnSheet(p: p, col: col, outer: context),
     ),
@@ -1916,17 +1890,7 @@ class _ColumnSheetState extends State<_ColumnSheet> {
     final c = context.colors;
     final sorted = p.sort == col.key;
     final st = col.isNumber ? p.stat(col.key) : null;
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Material(
-          color: c.cardBg,
-          elevation: 8,
-          shadowColor: c.heroShade.withValues(alpha: 0.25),
-          borderRadius: BorderRadius.circular(28),
-          clipBehavior: Clip.antiAlias,
-          child: ConstrainedBox(
+    return ConstrainedBox(
             constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.88),
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
@@ -1942,7 +1906,7 @@ class _ColumnSheetState extends State<_ColumnSheet> {
                     height: 46,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(15),
-                      gradient: LinearGradient(colors: [c.primary, c.primaryDark], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                      gradient: AppGradients.blend(context),
                     ),
                     child: Icon(col.isCalculated ? Icons.functions_rounded : Icons.view_column_rounded, color: c.onHero, size: 22),
                   ),
@@ -2074,10 +2038,7 @@ class _ColumnSheetState extends State<_ColumnSheet> {
                 ],
               ]),
             ),
-          ),
-        ),
-      ),
-    );
+          );
   }
 }
 
@@ -2355,22 +2316,14 @@ class _ValueCell extends StatelessWidget {
   /// Hand highlight of this one cell (shared with everyone on the sheet).
   Future<void> _quickHighlight(BuildContext context) async {
     final current = p.columnOf(col.key)?.style.cells[row.rowId];
-    final picked = await showModalBottomSheet<(String?,)>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      constraints: const BoxConstraints(maxWidth: 520),
+    final picked = await showAppSideSheet<(String?,)>(
+      context,
+      withCloseBar: true,
       builder: (ctx) {
         final c = ctx.colors;
         return Directionality(
           textDirection: pageDirection,
-          child: SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Material(
-                color: c.cardBg,
-                borderRadius: BorderRadius.circular(24),
-                child: SingleChildScrollView(
+          child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
                   child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
@@ -2388,9 +2341,6 @@ class _ValueCell extends StatelessWidget {
                     DlSwatches(value: current, size: 34, onChanged: (t) => Navigator.pop(ctx, (t,))),
                   ]),
                 ),
-              ),
-            ),
-          ),
         );
       },
     );
@@ -2400,13 +2350,9 @@ class _ValueCell extends StatelessWidget {
   }
 
   Future<void> _edit(BuildContext context, bool manual, dynamic current) async {
-    final res = await showModalBottomSheet<String>(
-      useSafeArea: true,
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: context.colors.heroShade.withValues(alpha: 0.35),
-      constraints: const BoxConstraints(maxWidth: 520),
+    final res = await showAppSideSheet<String>(
+      context,
+      withCloseBar: true,
       builder: (_) => Directionality(
         textDirection: pageDirection,
         child: _CellEditor(p: p, row: row, col: col, manual: manual, current: current, outer: context),
@@ -2500,19 +2446,9 @@ class _CellEditorState extends State<_CellEditor> {
     final inset = MediaQuery.viewInsetsOf(context).bottom;
     return Padding(
       padding: EdgeInsets.only(bottom: inset),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Material(
-            color: c.cardBg,
-            borderRadius: BorderRadius.circular(28),
-            clipBehavior: Clip.antiAlias,
-            child: SingleChildScrollView(
+      child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(18, 10, 18, 16),
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: c.divider, borderRadius: BorderRadius.circular(4)))),
-                const SizedBox(height: 14),
                 Row(children: [
                   DlAvatar(name: r.name, size: 42),
                   const SizedBox(width: 12),
@@ -2619,9 +2555,6 @@ class _CellEditorState extends State<_CellEditor> {
                 ]),
               ]),
             ),
-          ),
-        ),
-      ),
     );
   }
 }

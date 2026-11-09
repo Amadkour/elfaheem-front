@@ -278,7 +278,6 @@ class _ExamListPageState extends State<_ExamListPage> {
         builder: (ctx) => orgStudioPage(
               ctx,
               title: t('جدول الامتحانات', 'Exam timetable'),
-              maxWidth: 1100,
               child: _ExamPage(p: widget.p, api: widget.api, id: id, canEdit: widget.canEdit, canApprove: widget.canApprove, canExport: widget.canExport),
             )));
     await _load();

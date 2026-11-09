@@ -1167,7 +1167,7 @@ class LearnUploadBody extends StatelessWidget {
     final needsColumns = idKind == 'shaded' || idKind == 'handwritten';
     Widget numField(TextEditingController ctl, String label, String key, {String? hint}) => KeyedSubtree(
           key: ValueKey(key),
-          child: AppField(controller: ctl, label: label, hint: hint, keyboard: TextInputType.number, ltr: true, textInputAction: TextInputAction.next),
+          child: Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: ctl, label: label, hint: hint, min: 1, textInputAction: TextInputAction.next)),
         );
     return LearnFrame(
       step: 0,

@@ -35,7 +35,7 @@ import '../home/teacher_models.dart';
 import 'attendance/teacher_attendance_screen.dart';
 import 'flags/teacher_read_flags_screen.dart';
 import 'package:flutter_education_app/design/app_charts.dart' show appCompactNumber;
-import 'package:flutter_education_app/design/app_kit.dart' show showAppSheet, AppSheetHeader;
+import 'package:flutter_education_app/design/app_kit.dart' show AppGradients, AppHeader, AppMeshStyle, AppMeshSurface, showAppSheet, AppSheetHeader;
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
@@ -257,7 +257,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
     return BasePage(
       key: const ValueKey('analytics_hub'),
       useWebCard: true,
-      width: AppWidth.content,
+      width: AppWidth.wide,
       enableFooterWidget: false,
       child: ColoredBox(
         color: context.colors.background,
@@ -462,12 +462,7 @@ class _AllClassesPageState extends State<_AllClassesPage> {
     }
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(
-        backgroundColor: c.background,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        title: Text(anTr('an2_all_courses_title', 'All courses'), style: anText(17, w: FontWeight.w600, c: c.textDark)),
-      ),
+      appBar: AppHeader(title: anTr('an2_all_courses_title', 'All courses')),
       body: AppRefresh(
         onRefresh: () => store.load([for (final x in all) x.id], force: true),
         child: CustomScrollView(
@@ -595,22 +590,17 @@ class _CourseAnalyticsCard extends StatelessWidget {
       borderColor: risk > 0 ? c.warning.withValues(alpha: 0.45) : null,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // ── title ──
-        Container(
+        AppMeshSurface(
+          style: AppMeshStyle.wash,
+          child: Padding(
           padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 14, 12),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: AlignmentDirectional.topStart,
-              end: AlignmentDirectional.bottomEnd,
-              colors: [c.primary.withValues(alpha: 0.08), Colors.transparent],
-            ),
-          ),
           child: Row(children: [
             Container(
               width: 48,
               height: 48,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(15),
-                gradient: LinearGradient(colors: [c.primary, c.primaryDark], begin: AlignmentDirectional.topStart, end: AlignmentDirectional.bottomEnd),
+                gradient: AppGradients.blend(context),
               ),
               child: Icon(Icons.menu_book_rounded, color: c.onHero, size: 24),
             ),
@@ -640,6 +630,7 @@ class _CourseAnalyticsCard extends StatelessWidget {
               ),
             ],
           ]),
+        ),
         ),
         // ── class snapshot ──
         if (loading)
@@ -737,7 +728,7 @@ class _DataLabButton extends StatelessWidget {
         child: Ink(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [c.primaryDark, c.primary], begin: AlignmentDirectional.topStart, end: AlignmentDirectional.bottomEnd),
+            gradient: AppGradients.blend(context),
             borderRadius: BorderRadius.circular(16),
             boxShadow: c.primaryShadow,
           ),

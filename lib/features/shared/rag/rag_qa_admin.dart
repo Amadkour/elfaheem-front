@@ -337,7 +337,7 @@ class RagQaAdminPage extends StatelessWidget {
     return BasePage(
       key: const ValueKey('rag.qa_admin'),
       useWebCard: true,
-      maxWith: 1000,
+      width: AppWidth.wide,
       appBar: ScreenAppBar(
           title: title ?? (scope == 'org' ? t('الإجابات المعتمدة للمؤسسة', 'Organization Q&A') : t('الإجابات المعتمدة', 'Curated Q&A')),
           actions: [if (scope == 'org') const ContextExitButton()]),

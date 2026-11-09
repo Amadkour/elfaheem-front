@@ -37,6 +37,7 @@ import 'cert_issue_api.dart';
 import 'cert_issue_history.dart';
 import 'cert_issue_lists.dart';
 import 'cert_issue_logic.dart';
+import 'cert_expiry_card.dart';
 import 'cert_issue_parts.dart';
 import 'cert_issue_photo_logic.dart';
 import 'cert_issue_photos.dart';
@@ -80,7 +81,14 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
   String? _coursesError;
   int? _courseId;
   final Map<String, TextEditingController> _constants = {};
+  DateTime? _expiryDay;                                     // null = does not expire (D-420)
   bool _courseEmail = false;
+
+  // the instructor's name a non-user's certificate needs (D-400)
+  static const _teacherKey = 'teacher_name';
+  bool _teacherError = false;
+  final _teacherFieldKey = GlobalKey();
+  Timer? _teacherDebounce;
 
   /// The course certificate each picked course's batch is recorded under (null = the course has none to use).
   final Map<int, int?> _courseCerts = {};
@@ -158,6 +166,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
   void dispose() {
     _pasteDebounce?.cancel();
     _searchDebounce?.cancel();
+    _teacherDebounce?.cancel();
     _watch?.dispose();
     _pasteCtrl.dispose();
     _searchCtrl.dispose();
@@ -185,6 +194,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
         for (final c in t.extraColumns) {
           _constants.putIfAbsent(c.key, TextEditingController.new);
         }
+        if (t.printsTeacher) _constants.putIfAbsent(_teacherKey, () => TextEditingController(text: t.teacherDefault));
         if (_langs.isEmpty || !_langs.every(t.langs.contains)) _langs = t.langs.toSet();
         _templateLoading = false;
       });
@@ -539,7 +549,32 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
 
   // ── preview / issue ────────────────────────────────────────────────────────
 
-  Map<String, String> get _constantValues => {for (final e in _constants.entries) e.key: e.value.text};
+  /// The instructor's name goes out only when this batch asks for it; otherwise the server's own default stands.
+  Map<String, String> get _constantValues => {
+        for (final e in _constants.entries)
+          if (e.key != _teacherKey || _teacherNeeded) e.key: e.value.text,
+      };
+
+  bool get _teacherNeeded => certTeacherRequired(standalone: _mode != IssueMode.course, template: _template, rows: _mode == IssueMode.course ? const [] : _draft.batchRows());
+
+  bool get _teacherMissing => _teacherNeeded && (_constants[_teacherKey]?.text.trim().isEmpty ?? true);
+
+  /// Blocked: the inline error and the field brought into view.
+  void _showTeacherError() {
+    setState(() => _teacherError = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _teacherFieldKey.currentContext;
+      if (ctx != null) Scrollable.ensureVisible(ctx, duration: AppMotion.of(ctx).base, alignment: .1);
+    });
+  }
+
+  void _onTeacherChanged(String _) {
+    setState(() {});
+    _teacherDebounce?.cancel();
+    _teacherDebounce = Timer(const Duration(milliseconds: 700), () {
+      if (mounted) _loadPreview();
+    });
+  }
 
   List<String> get _langList => [for (final l in (_template?.langs ?? const ['ar'])) if (_langs.contains(l)) l];
 
@@ -595,6 +630,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
         constants: _constantValues,
         title: _titleCtrl.text,
         rows: course ? _courseRows : _draft.batchRows(),
+        expiresAt: _expiryDay == null ? null : certExpiryWire(_expiryDay!),
       ));
       if (!mounted) return;
       setState(() {
@@ -606,7 +642,11 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _issuing = false);
-      showAppNotice(certIssueErrorText(e), error: true);
+      if (certIssueErrorCode(e) == 'teacher_name_required') {
+        _showTeacherError();
+      } else {
+        showAppNotice(certIssueErrorText(e), error: true);
+      }
     }
   }
 
@@ -685,6 +725,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
       case _photosStep:
         _goPreview();
       case 2:
+        if (_teacherMissing) return _showTeacherError();
         _issue();
     }
   }
@@ -717,13 +758,9 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
     final c = context.colors;
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(
-        centerTitle: false,
-        title: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text('ci_title'.tr, style: AppType.section(context)),
-          if ((widget.designName ?? '').isNotEmpty)
-            Text(widget.designName!, style: AppType.meta(context), maxLines: 1, overflow: TextOverflow.ellipsis),
-        ]),
+      appBar: AppHeader(
+        title: 'ci_title'.tr,
+        subtitle: widget.designName,
         actions: [
           IconButton(
             tooltip: 'ci_saved_lists'.tr,
@@ -739,7 +776,6 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
               builder: (_) => CertIssueHistoryPage(orgId: widget.orgId),
             )),
           ),
-          const SizedBox(width: AppSpace.xxs),
         ],
       ),
       body: ParentComponent(
@@ -750,7 +786,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
               padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xs),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 900),
+                  constraints: BoxConstraints(maxWidth: AppWidth.reading.max),
                   child: IssueStepper(labels: _stepLabels, current: _stepOrder.indexOf(_step).clamp(0, _stepOrder.length - 1), onTap: _step == 3 ? null : _goTo),
                 ),
               ),
@@ -781,7 +817,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
     final s = _draft.summary;
     return IssueStepBar(
       onBack: _step > 0 ? _back : null,
-      summary: _step == 1 ? s.label : (_step == _photosStep && _photos.blocked ? (AppConfig.lang == 'ar' ? 'أكمل الصور للمتابعة' : 'Add the missing photos to continue') : null),
+      summary: _step == 2 && _teacherError && _teacherMissing ? 'ci_teacher_required'.tr : _step == 1 ? s.label : (_step == _photosStep && _photos.blocked ? (AppConfig.lang == 'ar' ? 'أكمل الصور للمتابعة' : 'Add the missing photos to continue') : null),
       nextLabel: switch (_step) {
         2 => _mode == IssueMode.course ? 'ci_issue_course'.tr : 'ci_issue_n'.tr.replaceAll('{n}', '${s.ready}'),
         _ => 'ci_next'.tr,
@@ -819,7 +855,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
 
   Widget _centered(Widget child) => SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpace.md),
-        child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 760), child: child)),
+        child: Center(child: ConstrainedBox(constraints: BoxConstraints(maxWidth: AppWidth.reading.max), child: child)),
       );
 
   // step 1
@@ -1092,6 +1128,10 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
             ]),
         ]),
       ),
+      if (_teacherNeeded) ...[
+        const SizedBox(height: AppSpace.md),
+        KeyedSubtree(key: _teacherFieldKey, child: IssueTeacherField(controller: _constants[_teacherKey]!, showError: _teacherError, onChanged: _onTeacherChanged)),
+      ],
       if (!course && (_template?.extraColumns.isNotEmpty ?? false)) ...[
         const SizedBox(height: AppSpace.md),
         AppCard(
@@ -1103,6 +1143,8 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
           ),
         ),
       ],
+      const SizedBox(height: AppSpace.md),
+      CertExpiryCard(value: _expiryDay, onChanged: (d) => setState(() => _expiryDay = d)),
       const SizedBox(height: AppSpace.md),
       AppCard(
         child: IssuePreviewPanel(

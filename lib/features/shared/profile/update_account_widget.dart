@@ -1,5 +1,6 @@
  library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -29,6 +30,10 @@ import '../../student/courses/details/components/app_responsive.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppSkeletonBox;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_back_button.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_number_field.dart';
 
 class EditAccountScreen extends StatefulWidget {
   final bool isTeacher;
@@ -280,40 +285,62 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
 
     return BasePage(
       useWebCard: true,
-      maxWith: 1200,
+      width: AppWidth.content,
+      appBar: isWide ? ScreenAppBar(helpPageId: 'account.edit', title: 'update_account'.tr) : null,
+      // The same hero for every role; a teacher's Personal info / Documents switch sits under it (M18). A wide page
+      // keeps the hero beside the form instead of above it.
       child: SafeArea(
-        child: Column(
-          children: [
-            // ── App bar ────────────────────────────────────────────────────
-            if (isWide) ScreenAppBar(helpPageId: 'account.edit', title: 'update_account'.tr),
-
-            // ── Body: the same hero for every role; a teacher's Personal info / Documents switch sits under it (M18)
-            Expanded(child: _mobileLayout(p, c)),
-          ],
-        ),
+        child: LayoutBuilder(builder: (context, box) {
+          if (box.maxWidth < 860) return _mobileLayout(p, c, showBack: !isWide);
+          return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            SizedBox(
+              width: 320,
+              child: Padding(
+                padding: const EdgeInsetsDirectional.only(start: AppSpace.md, top: AppSpace.md),
+                child: _hero(p, c, showBack: false, card: true),
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(children: _formArea(p, c)),
+              ),
+            ),
+          ]);
+        }),
       ),
     );
   }
+
+  Widget _hero(ProfileProvider p, ThemeConfigProvider c, {required bool showBack, bool card = false}) => _MobileHero(
+        p: p,
+        c: c,
+        showBack: showBack,
+        card: card,
+        onImageChange: (f) async {
+          await p.changeImage(f);
+          setState(() {});
+        },
+      );
 
   // ══════════════════════════════════════════════════════════════════════════
   // MOBILE LAYOUT — hero header + form
   // ══════════════════════════════════════════════════════════════════════════
 
-  Widget _mobileLayout(ProfileProvider p, ThemeConfigProvider c) {
+  Widget _mobileLayout(ProfileProvider p, ThemeConfigProvider c, {required bool showBack}) {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Column(
         children: [
           // ── Hero header ────────────────────────────────────────────────
-          _MobileHero(
-            p: p,
-            c: c,
-            onImageChange: (f) async {
-              await p.changeImage(f);
-              setState(() {});
-            },
-          ),
+          _hero(p, c, showBack: showBack),
+          ..._formArea(p, c),
+        ],
+      ),
+    );
+  }
 
+  List<Widget> _formArea(ProfileProvider p, ThemeConfigProvider c) => [
           if (widget.isTeacher)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
@@ -376,10 +403,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
               },
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ];
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -473,7 +497,7 @@ class _DocumentsTabView extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
+          constraints: BoxConstraints(maxWidth: AppWidth.form.max),
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.all(24),
@@ -536,66 +560,37 @@ class _MobileHero extends StatelessWidget {
   final ThemeConfigProvider c;
   final Future<void> Function(XFile) onImageChange;
 
+  /// Off when an [AppHeader] above already carries the back button.
+  final bool showBack;
+
+  /// A free-standing card beside the form, rather than the phone's banner under the status bar.
+  final bool card;
+
   const _MobileHero({
     required this.p,
     required this.c,
     required this.onImageChange,
+    this.showBack = true,
+    this.card = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
+    return AppMeshSurface(
+      radius: card
+          ? BorderRadius.circular(AppRadius.sheet)
+          : const BorderRadius.vertical(bottom: Radius.circular(AppRadius.sheet)),
+      child: Padding(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 36),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [c.primary, c.primary],
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-        ),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(32),
-          bottomRight: Radius.circular(32),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: c.primary.withValues(alpha: 0.35),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
+      child: SizedBox(
+      width: double.infinity,
       child: Column(
         children: [
-          // ── Back button ────────────────────────────────────────────────
-          Align(
-            alignment: AlignmentDirectional.topStart,
-            child: Semantics(
-              button: true,
-              label: MaterialLocalizations.of(context).backButtonTooltip,
-              child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => Navigator.of(context).maybePop(),
-              child: Container(
-                width: 48,                       // 48 px touch target, the visible well stays 42
-                height: 48,
-                padding: const EdgeInsets.all(3),
-                child: Container(
-                decoration: BoxDecoration(
-                  color: context.colors.cardBg,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: context.colors.cardShadow,
-                ),
-                child: Icon(
-                  CupertinoIcons.back,
-                  color: context.colors.textDark,
-                  size: 22,
-                ),
-              ),
-              ),
+          if (showBack)
+            const Align(
+              alignment: AlignmentDirectional.topStart,
+              child: AppBackButton(onHero: true),
             ),
-            ),
-          ),
 
           Center(
             child: EditableImage(
@@ -626,10 +621,12 @@ class _MobileHero extends StatelessWidget {
             style: TextStyle(
               fontFamily: AppFonts.family,
               fontSize: 13,
-              color: context.colors.onHero.withValues(alpha: 0.75),
+              color: context.colors.onHeroMuted,
             ),
           ),
         ],
+      ),
+      ),
       ),
     );
   }
@@ -761,12 +758,7 @@ class _FormCard extends StatelessWidget {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    IconTextField(
-                      controller: experienceCtrl,
-                      label: 'experience'.tr,
-                      icon: Icons.schedule_rounded,
-                      keyboard: TextInputType.number,
-                    ),
+                    AppNumberField(controller: experienceCtrl, label: 'experience'.tr, min: 0),
                     const SizedBox(height: 14),
                     SectionLabel(label: 'specialization'.tr),
                     const SizedBox(height: 8),
@@ -1027,28 +1019,15 @@ class _ManagedRequirementRow extends StatelessWidget {
 
   void _showPicker(BuildContext context) {
     final c = context.colors;
-    showModalBottomSheet(
+    showAppModalSheet(
       useSafeArea: true,
       context: context,
-      backgroundColor: c.cardBg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: c.divider,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
               // Gallery/camera don't make sense as separate concepts on
               // web — the browser file picker (below) already covers it.
               if (!kIsWeb)
@@ -1240,28 +1219,15 @@ class _ManagedCustomEntryRow extends StatelessWidget {
 
   void _showPicker(BuildContext context) {
     final c = context.colors;
-    showModalBottomSheet(
+    showAppModalSheet(
       useSafeArea: true,
       context: context,
-      backgroundColor: c.cardBg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: c.divider,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
               // Gallery doesn't make sense as a separate concept on web —
               // the browser file picker (below) already covers it.
               if (!kIsWeb)

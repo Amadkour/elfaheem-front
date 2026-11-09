@@ -551,14 +551,11 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
     final c = context.colors;
     return BasePage(
       key: const ValueKey(kExamOmrFeatureKey),
-      appBar: AppBar(
+      appBar: AppHeader(
         // three actions leave a phone's title ~190 px: the short name there, the full one on wider screens
-        title: Text(
-            MediaQuery.sizeOf(context).width < Breakpoints.mobile
+        title: MediaQuery.sizeOf(context).width < Breakpoints.mobile
                 ? t('مراجعة الأوراق', 'Review papers')
                 : t('مراجعة الأوراق الممسوحة', 'Review scanned papers'),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis),
         actions: [
           IconButton(
               key: const ValueKey('omr.changes'),
@@ -618,7 +615,7 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
               child: Align(
                 alignment: AlignmentDirectional.topStart,
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 920),
+                  constraints: BoxConstraints(maxWidth: AppWidth.content.max),
                   child: ListView(padding: const EdgeInsets.all(AppSpace.lg), children: [detail]),
                 ),
               ),
@@ -813,7 +810,7 @@ class _OmrPaperPageState extends State<OmrPaperPage> {
     final title = p?.label == null ? t('الورقة', 'Paper') : t('الورقة · صفحة ${p!.label}', 'Paper · page ${p.label}');
     return BasePage(
       key: const ValueKey(kExamOmrFeatureKey),
-      appBar: AppBar(title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis)),
+      appBar: AppHeader(title: title),
       child: LayoutBuilder(builder: (context, box) {
         final pad = AppSpace.gutter(box.maxWidth);
         if (_error != null) return Padding(padding: EdgeInsets.all(pad), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!));

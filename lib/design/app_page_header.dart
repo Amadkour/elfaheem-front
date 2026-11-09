@@ -13,18 +13,18 @@
 //   )
 //   AppSection(title: 'Recent activity', trailing: TextButton(…), child: …)
 //
-// Surface (card colour) with the brand accent strip on top. The title wraps to two lines and ellipsises; nothing
+// The organic gradient (D-360), collapsing with the page's scroll; search and tabs sit on the card surface under it. The title wraps to two lines and ellipsises; nothing
 // overflows at 320 px or text scale 1.3. "Updated 3 min ago" re-draws once a minute while shown.
 library;
 
 import 'dart:async';
+import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 
-import 'app_gradients.dart';
 import 'app_kit.dart';
 import 'app_tokens.dart';
 
@@ -90,7 +90,7 @@ class AppPageHeader extends StatelessWidget {
   /// Tabs / filters under the header's content.
   final Widget? bottom;
 
-  /// The brand strip on top.
+  /// Kept for existing callers: the whole header is the gradient now (D-360).
   final bool accent;
 
   /// From this width the actions share the title's row.
@@ -99,37 +99,65 @@ class AppPageHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        border: Border(bottom: BorderSide(color: c.divider, width: AppBorder.hairline)),
-      ),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        if (accent) const AppAccentStrip(),
-        LayoutBuilder(builder: (context, box) {
-          final wide = box.maxWidth >= wideFrom;
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              if (breadcrumbs != null && breadcrumbs!.isNotEmpty) ...[
-                _Crumbs(breadcrumbs!),
-                const SizedBox(height: AppSpace.xxs),
-              ],
-              _titleRow(context, wide),
-              if (!wide && primaryAction != null) ...[
-                AppSpace.gapXs,
-                Align(alignment: AlignmentDirectional.centerEnd, child: primaryAction!),
-              ],
-              if (search != null) ...[AppSpace.gapSm, search!],
-              if (bottom != null) ...[AppSpace.gapXs, bottom!],
-            ]),
-          );
-        }),
-      ]),
-    );
+    return LayoutBuilder(builder: (context, box) {
+      final wide = box.maxWidth >= wideFrom;
+      const inset = EdgeInsets.symmetric(horizontal: AppSpace.md);
+      final hasCrumbs = breadcrumbs != null && breadcrumbs!.isNotEmpty;
+      return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        AppHeaderCollapse(
+          builder: (context, collapse, _) => RepaintBoundary(
+            child: AppMeshSurface(
+              drift: collapse,
+              child: AnimatedBuilder(
+                animation: collapse,
+                builder: (context, _) {
+                  final t = collapse.value;
+                  return Padding(
+                    padding: EdgeInsets.fromLTRB(AppSpace.md, lerpDouble(AppSpace.md, AppSpace.xxs, t)!, AppSpace.md, lerpDouble(AppSpace.md, AppSpace.xxs, t)!),
+                    child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      if (hasCrumbs && t < 1)
+                        ClipRect(
+                          child: Align(
+                            alignment: AlignmentDirectional.topStart,
+                            heightFactor: 1 - t,
+                            child: Opacity(
+                              opacity: 1 - t,
+                              child: Padding(padding: const EdgeInsets.only(bottom: AppSpace.xxs), child: _Crumbs(breadcrumbs!)),
+                            ),
+                          ),
+                        ),
+                      _titleRow(context, wide, t),
+                      if (!wide && primaryAction != null) ...[
+                        AppSpace.gapXs,
+                        Align(alignment: AlignmentDirectional.centerEnd, child: AppHeaderTray(child: primaryAction!)),
+                      ],
+                    ]),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+        if (search != null || bottom != null)
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: c.cardBg,
+              border: Border(bottom: BorderSide(color: c.divider, width: AppBorder.hairline)),
+            ),
+            child: Padding(
+              padding: inset.copyWith(top: AppSpace.sm, bottom: AppSpace.sm),
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                ?search,
+                if (search != null && bottom != null) AppSpace.gapXs,
+                ?bottom,
+              ]),
+            ),
+          ),
+      ]);
+    });
   }
 
-  Widget _titleRow(BuildContext context, bool wide) {
+  Widget _titleRow(BuildContext context, bool wide, double collapse) {
     final c = context.colors;
     final refresh = onRefresh == null
         ? null
@@ -137,33 +165,29 @@ class AppPageHeader extends StatelessWidget {
             tooltip: 'refresh'.tr,
             constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
             onPressed: onRefresh,
-            icon: Icon(Icons.refresh_rounded, size: AppIconSize.lg, color: c.textMedium),
+            icon: Icon(Icons.refresh_rounded, size: AppIconSize.lg, color: c.onHero),
           );
     return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
       if (onBack != null) ...[
-        IconButton(
-          tooltip: 'ds_back'.tr,
-          constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
-          onPressed: onBack,
-          icon: Icon(Icons.arrow_back_rounded, size: AppIconSize.lg, color: c.textDark),
-        ),
+        AppBackButton(onHero: true, onPressed: onBack),
         const SizedBox(width: AppSpace.xxs),
       ],
       if (icon != null) ...[
         Container(
           width: AppTouch.min - AppSpace.xs,
           height: AppTouch.min - AppSpace.xs,
-          decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)),
-          child: Icon(icon, size: AppIconSize.lg, color: c.primary),
+          decoration: BoxDecoration(color: c.heroGlass, borderRadius: BorderRadius.circular(AppRadius.chip)),
+          child: Icon(icon, size: AppIconSize.lg, color: c.onHero),
         ),
         AppSpace.gapSm,
       ],
-      Expanded(child: _titleBlock(context)),
+      Expanded(child: _titleBlock(context, collapse)),
       if (wide) ...[
         AppSpace.gapSm,
         ?refresh,
-        ...actions,
-        if (primaryAction != null) ...[AppSpace.gapXs, primaryAction!],
+        if (actions.isNotEmpty) AppHeaderTray(child: Row(mainAxisSize: MainAxisSize.min, children: actions)),
+        const AppFocusToggle(onHero: true),
+        if (primaryAction != null) ...[AppSpace.gapXs, AppHeaderTray(child: primaryAction!)],
       ] else ...[
         ?refresh,
         if (actions.isNotEmpty) _MoreButton(actions: actions),
@@ -171,21 +195,41 @@ class AppPageHeader extends StatelessWidget {
     ]);
   }
 
-  Widget _titleBlock(BuildContext context) {
+  Widget _titleBlock(BuildContext context, double collapse) {
+    final c = context.colors;
     final sub = subtitle;
+    final hasExtra = (sub != null && sub.isNotEmpty) || updatedAt != null;
+    final extraShare = (1 - collapse * 2).clamp(0.0, 1.0);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
       Semantics(
         header: true,
-        child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context)),
+        child: Text(
+          title,
+          maxLines: collapse < 0.4 ? 2 : 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle.lerp(AppType.headline(context), AppType.section(context), collapse)!.copyWith(color: c.onHero),
+        ),
       ),
-      if (sub != null && sub.isNotEmpty) ...[
-        const SizedBox(height: AppSpace.xxs),
-        Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
-      ],
-      if (updatedAt != null) ...[
-        const SizedBox(height: AppSpace.xxs),
-        _UpdatedText(at: updatedAt!),
-      ],
+      if (hasExtra && extraShare > 0)
+        ClipRect(
+          child: Align(
+            alignment: AlignmentDirectional.topStart,
+            heightFactor: extraShare,
+            child: Opacity(
+              opacity: extraShare,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                if (sub != null && sub.isNotEmpty) ...[
+                  const SizedBox(height: AppSpace.xxs),
+                  Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.onHeroMuted)),
+                ],
+                if (updatedAt != null) ...[
+                  const SizedBox(height: AppSpace.xxs),
+                  _UpdatedText(at: updatedAt!),
+                ],
+              ]),
+            ),
+          ),
+        ),
     ]);
   }
 }
@@ -199,7 +243,7 @@ class _Crumbs extends StatelessWidget {
     final c = context.colors;
     return Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
       for (var i = 0; i < items.length; i++) ...[
-        if (i > 0) Icon(Icons.chevron_right_rounded, size: AppIconSize.sm, color: c.textLight),
+        if (i > 0) Icon(Icons.chevron_right_rounded, size: AppIconSize.sm, color: c.onHeroMuted),
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 200),
           child: Text(
@@ -207,7 +251,7 @@ class _Crumbs extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppType.meta(context).copyWith(
-              color: i == items.length - 1 ? c.textDark : c.textMedium,
+              color: i == items.length - 1 ? c.onHero : c.onHeroMuted,
               fontWeight: i == items.length - 1 ? FontWeight.w500 : FontWeight.w400,
             ),
           ),
@@ -232,7 +276,7 @@ class _MoreButton extends StatelessWidget {
             Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: actions),
           ]),
         ),
-        icon: Icon(Icons.more_horiz_rounded, size: AppIconSize.lg, color: context.colors.textMedium),
+        icon: Icon(Icons.more_horiz_rounded, size: AppIconSize.lg, color: context.colors.onHero),
       );
 }
 
@@ -268,7 +312,7 @@ class _UpdatedTextState extends State<_UpdatedText> {
         key: const ValueKey('app.header.updated'),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: AppType.meta(context),
+        style: AppType.meta(context).copyWith(color: context.colors.onHeroMuted),
       );
 }
 

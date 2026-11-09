@@ -11,6 +11,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_back_button.dart';
 
 import '../../../../../config/app_config.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
@@ -452,11 +453,7 @@ class CourseBlockedView extends StatelessWidget {
               alignment: AlignmentDirectional.centerStart,
               child: Padding(
                 padding: const EdgeInsets.all(4),
-                child: IconButton(
-                  tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-                  icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: c.textDark),
-                  onPressed: onBack,
-                ),
+                child: AppBackButton(onPressed: onBack),
               ),
             ),
           Expanded(

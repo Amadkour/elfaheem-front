@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 class OutlineButton extends StatelessWidget {
   const OutlineButton({
@@ -22,8 +23,10 @@ class OutlineButton extends StatelessWidget {
         label: Text(label, style: TextStyle(color: color)),
         onPressed: onPressed,
         style: ButtonStyle(
-          overlayColor: WidgetStateProperty.all(color.withAlpha(100)),
-          side:WidgetStateProperty.all(BorderSide(color:color)),
+          overlayColor: WidgetStateProperty.all(color.withValues(alpha: 0.12)),
+          side: WidgetStateProperty.all(BorderSide(color: color, width: AppBorder.hairline)),
+          minimumSize: WidgetStateProperty.all(const Size(AppTouch.min, AppTouch.min)),
+          shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card))),
         ),
       ),
     );

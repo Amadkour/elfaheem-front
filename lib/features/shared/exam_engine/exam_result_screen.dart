@@ -9,6 +9,7 @@ import '../../admin/admin_common.dart' show asInt, asMapList, t;
 import 'exam_grading.dart' show ResultAnswer;
 import 'exam_grading_widgets.dart' show ResultAnswerCard;
 import 'exam_insights.dart';
+import 'exam_page_width.dart';
 import 'exam_insights_screen.dart' show StudentAppealSheet;
 
 /// The attempt's state in the result header: graded once marked (a paper exam's attempt is "submitted" by the scan),
@@ -42,7 +43,7 @@ class ExamResultBody extends StatelessWidget {
     final passed = result['passed'];
     final questions = asMapList(result['questions']);
     final answers = [for (final a in asMapList(result['answers'])) ResultAnswer.fromJson(a)];
-    return ListView(padding: const EdgeInsets.all(16), children: [
+    return ExamPageWidth(width: AppWidth.reading, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, 16, side, 16), children: [
       AppHero(
         title: examTitle,
         subtitle: resultStateText(state, needsReview: needsReview),
@@ -94,7 +95,7 @@ class ExamResultBody extends StatelessWidget {
             ),
         ],
       ],
-    ]);
+    ]));
   }
 }
 
@@ -165,7 +166,7 @@ class _ExamResultScreenState extends State<ExamResultScreen> {
   @override
   Widget build(BuildContext context) => BasePage(
         key: const ValueKey('exam.result'),
-        appBar: AppBar(title: Text(t('نتيجة الاختبار', 'Exam result')), actions: const [HelpInfoButton(pageId: 'exam.result')]),
+        appBar: AppHeader(title: t('نتيجة الاختبار', 'Exam result'), actions: const [HelpInfoButton(pageId: 'exam.result')]),
         child: ExamResultBody(result: widget.result, examTitle: widget.examTitle, appeals: _appeals, onAppeal: _canAppeal ? _appeal : null),
       );
 }

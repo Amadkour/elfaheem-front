@@ -31,6 +31,8 @@ import 'package:flutter_education_app/design/app_tokens.dart' show AppSpace, App
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 
 import 'about_terms_model.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pure helpers
@@ -224,11 +226,7 @@ class ReadingIconTile extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(size * 0.3),
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: [c.primary, c.heroEnd(c.primary, 0.3)],
-        ),
+        gradient: AppGradients.blend(context),
         boxShadow: [
           BoxShadow(color: c.primary.withValues(alpha: c.isDark ? 0.30 : 0.24), blurRadius: 14, offset: const Offset(0, 6)),
         ],
@@ -801,11 +799,7 @@ class ReadingBotMark extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: [c.primary, c.heroEnd(c.primary, 0.3)],
-        ),
+        gradient: AppGradients.blend(context),
       ),
       child: Icon(Icons.smart_toy_rounded, size: size * 0.56, color: c.onHero),
     );
@@ -995,7 +989,7 @@ class ReadingSkeleton extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760),
+            constraints: BoxConstraints(maxWidth: AppWidth.reading.max),
             child: Column(children: [
               card(0, const [
                 AppSkeletonBox(width: 52, height: 52, radius: 16),

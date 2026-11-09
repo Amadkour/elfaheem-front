@@ -13,6 +13,7 @@
 //  4. done        summary, the logins of the new accounts, lines that need a look.
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -27,6 +28,7 @@ import 'data_lab_api.dart';
 import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show showAppSideSheet;
 import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
@@ -453,12 +455,9 @@ class _ImportWizardState extends State<_ImportWizard> {
     final c = context.colors;
     final pv = _pv!;
     final cols = pv.existingColumns;
-    final picked = await showModalBottomSheet<String>(
-      useSafeArea: true,
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      constraints: const BoxConstraints(maxWidth: 520),
+    final picked = await showAppSideSheet<String>(
+      context,
+      withCloseBar: true,
       builder: (ctx) {
         Widget item(String value, IconData icon, String label, {String? sub, Color? color, bool enabled = true}) {
           final on = h.target == value;

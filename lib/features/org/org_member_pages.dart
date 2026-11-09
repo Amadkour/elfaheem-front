@@ -6,6 +6,7 @@
 //   OrgTimetableScreen    my weekly timetable from the published schedule (teacher · assistant · student)
 library;
 
+import 'package:flutter_education_app/design/app_mesh.dart';
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -58,15 +59,7 @@ class OrgHomeEntry extends StatelessWidget {
           onTap: () => first == null && pending == 0 && p.loaded
               ? openOrgJoin(context, onDone: p.loadMine)
               : Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgMembershipScreen())).then((_) => p.loadMine()),
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 6),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22),
-              gradient: LinearGradient(begin: AlignmentDirectional.centerStart, end: AlignmentDirectional.centerEnd, colors: [base.withValues(alpha: 0.95), c.heroEnd(base, 0.25)]),
-              boxShadow: [BoxShadow(color: base.withValues(alpha: 0.25), blurRadius: 14, offset: const Offset(0, 6))],
-            ),
-            child: Row(children: [
+          child: Container(margin: const EdgeInsets.symmetric(vertical: 6), decoration: BoxDecoration(borderRadius: BorderRadius.circular(22), boxShadow: [BoxShadow(color: base.withValues(alpha: 0.25), blurRadius: 14, offset: const Offset(0, 6))]), child: AppMeshSurface(color: base, radius: BorderRadius.circular(22), child: Padding(padding: const EdgeInsets.all(16), child: Row(children: [
               Container(
                 width: 46,
                 height: 46,
@@ -91,8 +84,7 @@ class OrgHomeEntry extends StatelessWidget {
                 ]),
               ),
               Icon(Icons.chevron_right_rounded, color: c.onHero),
-            ]),
-          ),
+            ])))),
         );
       }),
     );

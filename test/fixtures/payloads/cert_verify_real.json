@@ -1,0 +1,53 @@
+{
+ "authentic": true,
+ "state": "valid",
+ "valid": true,
+ "expired": false,
+ "never_expires": false,
+ "expires_at": "2027-09-05T17:00:42.828824",
+ "server_time": "2026-11-09T17:00:44.158431",
+ "access": "link",
+ "name_masked": false,
+ "status": "issued",
+ "serial": "NB-2026-ABCDEF",
+ "recipient_name": "سارة علي محمود",
+ "title": "شهادة إتمام",
+ "issuer": "جامعة النيل",
+ "organization": "جامعة النيل",
+ "issued_at": "2026-09-30T17:00:42.828824",
+ "revoked_at": null,
+ "replaced": false,
+ "langs": [
+  "ar",
+  "en"
+ ],
+ "images": {
+  "ar": "https://files.test/a.png",
+  "en": "https://files.test/e.png"
+ },
+ "course": {
+  "name_ar": "أساسيات بايثون",
+  "name_en": "Python Basics"
+ },
+ "teacher_name": "د. منى حسن",
+ "details": [
+  {
+   "key": "program",
+   "label_ar": "البرنامج",
+   "label_en": "Program",
+   "value": "علوم الحاسب"
+  },
+  {
+   "key": "hours",
+   "label_ar": "عدد الساعات",
+   "label_en": "Hours",
+   "value": "30"
+  },
+  {
+   "key": "grade",
+   "label_ar": "التقدير",
+   "label_en": "Grade",
+   "value": "ممتاز"
+  }
+ ]
+}

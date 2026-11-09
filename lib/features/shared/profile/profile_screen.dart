@@ -59,6 +59,9 @@ import '../points/points_wallet_page.dart' show PointsWalletPage;
 import '../records/records_page.dart' show RecordsPage, RecordsSettingsTile;
 import '../public_profile/public_profile_page.dart' show ShareMyProfileTile;
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
+import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_page.dart' show CertVerifyEntryTile;
+import 'package:flutter_education_app/design/app_header.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -103,26 +106,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
     final c = context.colors; // ← dynamic palette (light / dark)
     final isWide = context.showSidebar;
 
-    return BasePage(
-      key: const ValueKey('profile'),
-      useWebCard: true,
-      width: AppWidth.reading,
-      enableFooterWidget: false,
-      child: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: Breakpoints.contentMax,
-              ),
-              child: Column(
-                children: [
-                  // ── Web header ───────────────────────────────────────────
-                  if (isWide) _webHeader(c),
-                  const SizedBox(height: 24),
-
+    // Identity and account on one side, the settings and help on the other once the page is wide enough.
+    final lead = <Widget>[
                   // ── Avatar / profile header ──────────────────────────────
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -352,8 +337,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
-
+    ];
+    final rest = <Widget>[
                   // ── Security: two-step verification, for the roles the server allows (hidden otherwise) ──
                   const MfaSettingsEntry(padding: EdgeInsets.symmetric(horizontal: 20)),
 
@@ -417,6 +402,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                         title: 'help'.tr,
                         icon: Icons.help_center_rounded,
                         children: [
+                          const CertVerifyEntryTile(),
                           ParentComponent(
                             featureKey: 'profile.help_center',
                             // The teacher dashboard provides a shared ComplaintProvider
@@ -567,20 +553,33 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
+    ];
+
+    return BasePage(
+      key: const ValueKey('profile'),
+      useWebCard: true,
+      width: AppWidth.content,
+      enableFooterWidget: false,
+      appBar: isWide ? AppHeader(title: 'account'.tr, showBack: Navigator.of(context).canPop()) : null,
+      child: SafeArea(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: LayoutBuilder(builder: (context, box) {
+            if (box.maxWidth < _twoColumnsFrom) {
+              return Column(children: [const SizedBox(height: AppSpace.lg), ...lead, const SizedBox(height: 20), ...rest]);
+            }
+            return Padding(
+              padding: const EdgeInsets.only(top: AppSpace.lg),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(child: Column(children: lead)),
+                Expanded(child: Column(children: rest)),
+              ]),
+            );
+          }),
         ),
       ),
     );
   }
 
-  Widget _webHeader(ThemeConfigProvider c) => Container(
-    height: 56,
-    padding: const EdgeInsets.symmetric(horizontal: 24),
-    child: Row(
-      children: [Text('account'.tr, style: c.h2.copyWith(fontSize: 16))],
-    ),
-  );
+  static const double _twoColumnsFrom = 900;
 }

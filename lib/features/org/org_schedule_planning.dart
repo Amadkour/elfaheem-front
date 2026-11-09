@@ -348,7 +348,7 @@ CoursePlanApi coursePlanApi(OrgScheduleProvider p) => kOrgSchedulingMocks ? _moc
 /// dashboard's managed pages before the session lists it) the older bar with its exit button, exactly as before.
 /// The page under it registers its loader with OrgPageRefresh.register so Refresh reloads it in place.
 Widget orgStudioPage(BuildContext context,
-    {required String title, String? subtitle, Widget? primaryAction, double? maxWidth = 1000, bool webCard = true, required Widget child}) {
+    {required String title, String? subtitle, Widget? primaryAction, double? maxWidth, bool webCard = true, required Widget child}) {
   if (!orgUsesDashboardHeader(context, null)) {
     return BasePage(
       useWebCard: webCard,
@@ -357,7 +357,7 @@ Widget orgStudioPage(BuildContext context,
       child: child,
     );
   }
-  return OrgPushedPage(title: title, subtitle: subtitle, primaryAction: primaryAction, maxWidth: maxWidth ?? 1100, child: child);
+  return OrgPushedPage(title: title, subtitle: subtitle, primaryAction: primaryAction, maxWidth: maxWidth, child: child);
 }
 
 /// The open timetable's name, for a pushed page's subtitle (null when it has none).
@@ -371,7 +371,6 @@ Future<void> openCoursePlans(BuildContext context, OrgScheduleProvider p, {bool 
           ctx,
           title: t('الطلاب والمجموعات', 'Enrollment & groups'),
           subtitle: studioSubtitle(p),
-          maxWidth: 900,
           child: TimetableCoursesView(p: p, canEdit: canEdit, ownsRefresh: true),
         )));
 

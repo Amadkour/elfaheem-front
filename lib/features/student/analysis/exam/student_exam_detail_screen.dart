@@ -5,6 +5,7 @@
 library;
 
 import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -91,7 +92,7 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
 
     final remaining = exam.computedRemainingSubmissions ?? 0;
 
-    return BasePage( useWebCard: true,maxWith: 1100, child: SingleChildScrollView(
+    return BasePage( useWebCard: true, width: AppWidth.content, child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Column(children: [
           // ── Hero ────────────────────────────────────────────────────────
@@ -407,11 +408,7 @@ class _TimeBox extends StatelessWidget {
       width: 64,
       height: 64,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [context.colors.warning.withValues(alpha: 0.22), context.colors.warning.withValues(alpha: 0.08)],
-        ),
+        color: context.colors.warning.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: context.colors.warning.withValues(alpha: 0.25)),
       ),

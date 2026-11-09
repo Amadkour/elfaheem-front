@@ -5,6 +5,7 @@
 //   2. record the share click (who shared / who opened)
 //   3. GET /courses/{id} → CourseModel → replace this screen with the course profile
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_header.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
@@ -80,7 +81,7 @@ class _CourseLinkLoaderState extends State<CourseLinkLoader> {
     final c = context.colors;
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, foregroundColor: c.textDark),
+      appBar: AppHeader(title: gt('الكورس', 'Course')),
       body: Center(
         child: _error == null
             ? const AppLoadingIndicator(size: 96)

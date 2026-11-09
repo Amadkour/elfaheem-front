@@ -726,12 +726,8 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
           if (!widget.asTab) ...[
             Row(children: [
               if (Navigator.of(context).canPop()) ...[
-                IconButton(
-                  tooltip: t('رجوع', 'Back'),
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  icon: const Icon(Icons.arrow_back_rounded),
-                ),
-                const SizedBox(width: 2),
+                const AppBackButton(),
+                const SizedBox(width: AppSpace.xxs),
               ],
               Expanded(child: Text(_pageTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(22, w: FontWeight.w800, c: c.textDark))),
               const HelpInfoButton(pageId: 'calendar'),
@@ -832,12 +828,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     return Padding(
       padding: EdgeInsetsDirectional.fromSTEB(canPop ? 4 : 18, 8, 8, 4),
       child: Row(children: [
-        if (canPop)
-          IconButton(
-            tooltip: t('رجوع', 'Back'),
-            onPressed: () => Navigator.of(context).maybePop(),
-            icon: const Icon(Icons.arrow_back_rounded),
-          ),
+        if (canPop) const AppBackButton(),
         Expanded(
           // the list's hero carries the date; on the grid the month is the title, and opens the mini month
           child: !grid
@@ -889,7 +880,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
           if (canPop && !wide) ...[
-            IconButton(tooltip: t('رجوع', 'Back'), onPressed: () => Navigator.of(context).maybePop(), icon: const Icon(Icons.arrow_back_rounded)),
+            const AppBackButton(),
             const SizedBox(width: AppSpace.xxs),
           ],
           // the track hugs its two tabs instead of stretching across the toolbar

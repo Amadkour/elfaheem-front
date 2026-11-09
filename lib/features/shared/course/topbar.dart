@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
+import '../../../design/app_back_button.dart';
 
 class CourseDetailsTopBar extends StatelessWidget {
   const CourseDetailsTopBar({
@@ -62,11 +63,7 @@ class CourseDetailsTopBar extends StatelessWidget {
       children: [
         ...[
           if(onBack!=null)
-            GlassBtn(
-              icon: Icons.arrow_back_ios_rounded,
-              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-              onTap: onBack!,
-            ),
+            AppBackButton(onHero: true, onPressed: onBack),
           Spacer(),
 
         ],

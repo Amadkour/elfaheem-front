@@ -59,10 +59,42 @@ class CertStarter {
   }
 }
 
+/// One curated colour set of a template (D-401). The first of a template's list ([isOriginal]) is its own look.
+class CertPalette {
+  const CertPalette({required this.id, required this.nameAr, required this.nameEn, required this.bg, this.bg2, this.accent});
+  final String id, nameAr, nameEn, bg;
+  final String? bg2, accent;
+
+  bool get isOriginal => id == 'original';
+  String name(String lang) => lang == 'ar' ? nameAr : nameEn;
+
+  static CertPalette? tryParse(Object? j) {
+    if (j is! Map || '${j['id'] ?? ''}'.isEmpty || j['bg'] is! String) return null;
+    return CertPalette(id: '${j['id']}', nameAr: '${j['name_ar'] ?? ''}', nameEn: '${j['name_en'] ?? ''}', bg: j['bg'] as String, bg2: j['bg2'] as String?, accent: j['accent'] as String?);
+  }
+}
+
+/// One ready wording of the studio's library (`GET /certificate-designs/preambles`, D-402).
+class CertPreamble {
+  const CertPreamble({required this.key, required this.purpose, required this.titleAr, required this.titleEn, required this.textAr, required this.textEn});
+  final String key, purpose, titleAr, titleEn, textAr, textEn;
+
+  String title(String lang) => lang == 'ar' ? titleAr : titleEn;
+  String text(String lang) => lang == 'ar' ? textAr : textEn;
+
+  static CertPreamble? tryParse(Object? j) {
+    if (j is! Map || '${j['key'] ?? ''}'.isEmpty) return null;
+    return CertPreamble(key: '${j['key']}', purpose: '${j['purpose'] ?? ''}', titleAr: '${j['title_ar'] ?? ''}', titleEn: '${j['title_en'] ?? ''}', textAr: '${j['text_ar'] ?? ''}', textEn: '${j['text_en'] ?? ''}');
+  }
+}
+
 /// One ready-made design of the server gallery (`GET /certificate-designs/templates`): names and small JPEG previews.
 class CertServerTemplate {
-  const CertServerTemplate({required this.key, required this.nameAr, required this.nameEn, required this.orientation, this.category = 'formal', this.version = '', this.previewAr, this.previewEn});
+  const CertServerTemplate({required this.key, required this.nameAr, required this.nameEn, required this.orientation, this.category = 'formal', this.version = '', this.previewAr, this.previewEn, this.palettes = const []});
   final String key, nameAr, nameEn, orientation;
+
+  /// The curated background colours (empty on an older server).
+  final List<CertPalette> palettes;
 
   /// formal | academic | islamic | modern | corporate | kids.
   final String category;
@@ -94,6 +126,10 @@ class CertServerTemplate {
       version: '${j['version'] ?? ''}',
       previewAr: _img(j['preview_ar']),
       previewEn: _img(j['preview_en']),
+      palettes: [
+        if (j['palettes'] is List)
+          for (final x in j['palettes'] as List) ?CertPalette.tryParse(x),
+      ],
     );
   }
 }
@@ -188,7 +224,7 @@ class CertEngineApi {
 
   /// The renderer's font catalog: the ONLY list the picker shows (CLAUDE.md).
   Future<List<CertFontInfo>> fonts() async {
-    final r = await api.get('/api/v1/exports/layout/fonts');
+    final r = await api.get('/api/v1/exports/layout/fonts', queryParams: const {'include': 'all'});
     final items = r is List ? r : (r is Map ? r['items'] : null);
     return [
       if (items is List)
@@ -222,18 +258,28 @@ class CertEngineApi {
     ];
   }
 
-  /// One real render of a gallery template (JPEG bytes). [colorHex] previews it in another colour.
-  Future<Uint8List> templatePreview(String key, {required String lang, int width = 720, String? colorHex}) async {
-    final r = _map(await api.get('$_base/templates/$key/preview', queryParams: {'lang': lang, 'width': '$width', 'color': ?colorHex}));
+  /// The wording library (D-402).
+  Future<List<CertPreamble>> preambles() async {
+    final r = await api.get('$_base/preambles');
+    return [
+      if (r is List)
+        for (final j in r) ?CertPreamble.tryParse(j),
+    ];
+  }
+
+  /// One real render of a gallery template (JPEG bytes). [colorHex], [bgHex] and [bg2Hex] preview it in other colours.
+  Future<Uint8List> templatePreview(String key, {required String lang, int width = 720, String? colorHex, String? bgHex, String? bg2Hex}) async {
+    final r = _map(await api.get('$_base/templates/$key/preview', queryParams: {'lang': lang, 'width': '$width', 'color': ?colorHex, 'bg': ?bgHex, 'bg2': ?bg2Hex}));
     final b64 = '${r['image_base64'] ?? ''}';
     if (b64.isEmpty) throw const ApiException(statusCode: 0, message: 'empty preview');
     return base64Decode(b64);
   }
 
   /// Template [key] as an engine document (both languages; its backgrounds are uploaded to my own folder, so saving
-  /// it into a design is accepted); no design is created. [themeColor] is "#RRGGBB".
-  Future<CertDocLoad> templateDocument(String key, {int? orgId, String? themeColor}) async {
-    final r = _map(await api.post('$_base/templates/$key/document', body: {'org_id': orgId, 'theme_color': ?themeColor}));
+  /// it into a design is accepted); no design is created. [themeColor] is the accent, [bgHex] / [bg2Hex] the background
+  /// colours, all "#RRGGBB"; none = the template's own colours.
+  Future<CertDocLoad> templateDocument(String key, {int? orgId, String? themeColor, String? bgHex, String? bg2Hex}) async {
+    final r = _map(await api.post('$_base/templates/$key/document', body: {'org_id': orgId, 'theme_color': ?themeColor, 'bg_color': ?bgHex, 'bg2_color': ?bg2Hex}));
     return CertDocLoad(document: LayoutDocument.fromJson(_map(r['document'])), version: 0, converted: false);
   }
 

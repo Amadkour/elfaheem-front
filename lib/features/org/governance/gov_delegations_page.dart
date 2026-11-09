@@ -523,7 +523,7 @@ class _GovDelegationsPageState extends State<GovDelegationsPage> {
     // screen's own app bar
     if (orgUsesDashboardHeader(context, _orgId)) {
       final name = widget.entity?.name ?? '';
-      return OrgPushedPage(helpPageId: 'org.governance', title: t('التفويض', 'Delegation'), subtitle: name.isEmpty ? null : name, maxWidth: 900, child: body);
+      return OrgPushedPage(helpPageId: 'org.governance', title: t('التفويض', 'Delegation'), subtitle: name.isEmpty ? null : name, child: body);
     }
     return BasePage(
       useWebCard: true,

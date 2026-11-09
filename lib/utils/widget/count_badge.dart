@@ -56,8 +56,8 @@ class TileCountOverlay extends StatelessWidget {
                   ),
                   child: Text(
                     count > 99 ? '99+' : '$count',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onError,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),

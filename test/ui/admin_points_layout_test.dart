@@ -149,7 +149,7 @@ void main() {
             child: PointsGrantForm(
                 user: PointsUser(id: 1, name: '$longAr $longEn'), balance: 5, submit: (_, _) async => 0)),
         act: (t) async {
-          await t.tap(find.byIcon(Icons.remove_rounded));
+          await t.tap(find.byIcon(Icons.remove_rounded).first); // the Deduct choice; the number field's stepper comes after it
           await t.pump();
           await t.enterText(find.byType(TextField).first, '999');
           await t.ensureVisible(find.byIcon(Icons.check_rounded).last);

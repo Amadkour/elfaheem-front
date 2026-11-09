@@ -15,6 +15,7 @@
 library;
 
 import 'dart:async';
+import 'package:flutter_education_app/design/app_back_button.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -213,12 +214,7 @@ class UsernameConfirmContent extends StatelessWidget {
       children: [
         Row(
           children: [
-            IconButton(
-              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-              onPressed: idle ? onBack : null,
-              style: IconButton.styleFrom(backgroundColor: c.inputBg),
-              icon: Icon(Icons.arrow_back_rounded, color: c.textMedium, size: 20),
-            ),
+            IgnorePointer(ignoring: !idle, child: AppBackButton(onPressed: onBack)),
             const SizedBox(width: 12),
             Expanded(
               child: Text(

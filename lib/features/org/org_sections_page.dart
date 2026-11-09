@@ -4,6 +4,7 @@
 // (create / edit / delete; the backend allows assistants to touch section sessions only).
 library;
 
+import 'org_page_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
@@ -62,7 +63,7 @@ class _OrgSectionsPageState extends State<OrgSectionsPage> {
                   set(() => when = DateTime(d.year, d.month, d.day, tm?.hour ?? 10, tm?.minute ?? 0));
                 },
               ),
-            Field(controller: dur, label: t('المدة بالدقائق', 'Duration (minutes)'), keyboard: TextInputType.number, ltr: true),
+            OrgNumberField(controller: dur, label: t('المدة بالدقائق', 'Duration (minutes)')),
             PrimaryButton(isLoading: false, label: t('حفظ', 'Save'), onPressed: () async {
               if (name.text.trim().isEmpty) return toast(t('اكتب عنواناً', 'Add a title'), error: true);
               final b = {'course_id': course['id'], 'name': name.text.trim(), 'description': desc.text.trim(), 'type': type,

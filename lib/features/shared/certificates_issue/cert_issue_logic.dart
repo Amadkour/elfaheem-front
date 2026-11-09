@@ -107,7 +107,7 @@ class IssueColumn {
 
 /// GET designs/{id}/columns → the columns, the design's languages and the limits.
 class IssueTemplate {
-  const IssueTemplate({required this.columns, required this.langs, this.maxRows = 5000, this.maxUploadBytes = 5242880, this.photo = 'none'});
+  const IssueTemplate({required this.columns, required this.langs, this.maxRows = 5000, this.maxUploadBytes = 5242880, this.photo = 'none', this.printsTeacher = false, this.teacherDefault = ''});
 
   factory IssueTemplate.fromJson(Map<String, dynamic> j) => IssueTemplate(
         columns: [for (final c in _maps(j['columns'])) IssueColumn.fromJson(c)],
@@ -115,7 +115,15 @@ class IssueTemplate {
         maxRows: _int(j['max_rows'], 5000),
         maxUploadBytes: _int(j['max_upload_bytes'], 5242880),
         photo: _str(j['photo']) ?? 'none',
+        printsTeacher: j['prints_teacher'] == true,
+        teacherDefault: _str(j['teacher_default']) ?? '',
       );
+
+  /// Does the design print the instructor's name (D-400); false from an older server.
+  final bool printsTeacher;
+
+  /// What the instructor field starts with: the issuer's own name when they issue for themselves.
+  final String teacherDefault;
 
   /// Does the design hold a student photo: `required` · `optional` · `none` (D-386).
   final String photo;
@@ -127,6 +135,24 @@ class IssueTemplate {
 
   /// The columns other than the recipient's name (and e-mail) — what course mode fills once for everyone.
   List<IssueColumn> get extraColumns => [for (final c in columns) if (c.key != 'student_name' && c.key != _emailKey) c];
+}
+
+/// D-400: does this batch need an instructor's name typed in? A recipient with no platform account has no course to take
+/// it from, so a standalone batch that prints the name needs it for every such person without their own value.
+bool certTeacherRequired({required bool standalone, required IssueTemplate? template, required Iterable<Map<String, dynamic>> rows}) {
+  if (!standalone || template == null || !template.printsTeacher) return false;
+  return rows.any((r) {
+    if (r['student_id'] != null) return false;
+    final v = r['values'];
+    final own = v is Map ? '${v['teacher_name'] ?? ''}' : '';
+    return own.trim().isEmpty;
+  });
+}
+
+/// The server's code of a failed issuing call (empty when it has none).
+String certIssueErrorCode(Object error) {
+  final e = ApiException.from(error);
+  return e.code ?? '${apiErrorDetail(e)['code'] ?? ''}';
 }
 
 /// One example line in the expected order (shown above the paste box).
@@ -639,6 +665,7 @@ Map<String, dynamic> certBatchBody({
   Map<String, String>? constants,
   String? title,
   List<Map<String, dynamic>> rows = const [],
+  String? expiresAt,
 }) {
   final cons = _cleanConstants(constants);
   final ttl = title?.trim() ?? '';
@@ -654,6 +681,7 @@ Map<String, dynamic> certBatchBody({
     if (cons.isNotEmpty) 'constants': cons,
     if (ttl.isNotEmpty) 'title': ttl,
     if (mode == IssueMode.standalone || rows.isNotEmpty) 'rows': rows,
+    'expires_at': ?expiresAt,
   };
 }
 
@@ -732,7 +760,7 @@ Map<String, dynamic> certPersonBody({required Map<String, String> values, String
 
 /// POST issued/{id}/reissue: only what changed.
 Map<String, dynamic> certReissueBody({required Map<String, String> before, required Map<String, String> after,
-    String? email, String? emailBefore, bool sendEmail = false, String? reason, String? photoUrl}) {
+    String? email, String? emailBefore, bool sendEmail = false, String? reason, String? photoUrl, String? expiresAt}) {
   final changed = {
     for (final e in after.entries)
       if (e.key != _emailKey && (before[e.key] ?? '') != e.value.trim()) e.key: e.value.trim(),
@@ -745,6 +773,7 @@ Map<String, dynamic> certReissueBody({required Map<String, String> before, requi
     'send_email': sendEmail,
     if ((reason ?? '').trim().isNotEmpty) 'reason': reason!.trim(),
     'photo_url': ?photoUrl,
+    'expires_at': ?expiresAt,
   };
 }
 
@@ -845,6 +874,7 @@ class IssuedCert {
     this.createdAt,
     this.revokedAt,
     this.revokedReason,
+    this.expiresAt,
     this.reissuedFromId,
     this.emailed = false,
     this.recipientEmail,
@@ -864,6 +894,7 @@ class IssuedCert {
         createdAt: certUtc(j['created_at']),
         revokedAt: certUtc(j['revoked_at']),
         revokedReason: _str(j['revoked_reason']),
+        expiresAt: certUtc(j['expires_at']),
         reissuedFromId: _intOrNull(j['reissued_from_id']),
         emailed: j['emailed'] == true,
         recipientEmail: _str(j['recipient_email']),
@@ -877,7 +908,7 @@ class IssuedCert {
   final int? studentId;
   final String status;
   final String? urlAr, urlEn, verifyUrl;
-  final DateTime? createdAt, revokedAt;
+  final DateTime? createdAt, revokedAt, expiresAt;
   final String? revokedReason;
   final int? reissuedFromId;
   final bool emailed;
@@ -926,17 +957,39 @@ class RecipientListInfo {
   final List<Map<String, dynamic>> rows;
 }
 
-/// GET /public/certificates/verify/{token}.
+enum CertVerifyStatus { valid, expired, revoked }
+
+/// One public fact of a certificate, labelled by the server.
+class VerifyDetail {
+  const VerifyDetail({required this.key, required this.labelAr, required this.labelEn, required this.value});
+
+  final String key, labelAr, labelEn, value;
+
+  String get label => AppConfig.lang == 'ar' ? labelAr : labelEn;
+}
+
+/// GET /public/certificates/verify/{token} and /lookup?number= (D-420). The state is decided by the server's clock.
+/// An older server sends no `state`: it derives from `status`, and it had no expiry.
 class VerifyResult {
   const VerifyResult({
     required this.valid,
     required this.status,
+    this.state = CertVerifyStatus.valid,
     this.serial = '',
     this.recipientName = '',
     this.title,
     this.issuer,
+    this.organization,
+    this.teacherName,
+    this.courseNameAr,
+    this.courseNameEn,
     this.issuedAt,
     this.revokedAt,
+    this.expiresAt,
+    this.replaced = false,
+    this.nameMasked = false,
+    this.byNumber = false,
+    this.details = const [],
     this.langs = const [],
     this.images = const {},
   });
@@ -944,6 +997,30 @@ class VerifyResult {
   factory VerifyResult.fromJson(Map<String, dynamic> j) => VerifyResult(
         valid: j['valid'] == true,
         status: _str(j['status']) ?? (j['valid'] == true ? 'issued' : 'revoked'),
+        state: switch (_str(j['state'])) {
+          'revoked' => CertVerifyStatus.revoked,
+          'expired' => CertVerifyStatus.expired,
+          'valid' => CertVerifyStatus.valid,
+          _ => _str(j['status']) == 'revoked' || j['valid'] != true ? CertVerifyStatus.revoked : CertVerifyStatus.valid,
+        },
+        organization: _str(j['organization']),
+        teacherName: _str(j['teacher_name']),
+        courseNameAr: _str(_map(j['course'])['name_ar']),
+        courseNameEn: _str(_map(j['course'])['name_en']),
+        expiresAt: certUtc(j['expires_at']),
+        replaced: j['replaced'] == true,
+        nameMasked: j['name_masked'] == true,
+        byNumber: _str(j['access']) == 'number',
+        details: [
+          for (final d in (j['details'] is List ? j['details'] as List : const []))
+            if (d is Map && _str(d['value']) != null)
+              VerifyDetail(
+                key: _str(d['key']) ?? '',
+                labelAr: _str(d['label_ar']) ?? _str(d['key']) ?? '',
+                labelEn: _str(d['label_en']) ?? _str(d['key']) ?? '',
+                value: _str(d['value'])!,
+              ),
+        ],
         serial: _str(j['serial']) ?? '',
         recipientName: _str(j['recipient_name']) ?? '',
         title: _str(j['title']),
@@ -958,12 +1035,19 @@ class VerifyResult {
   final String status;
   final String serial;
   final String recipientName;
-  final String? title, issuer;
-  final DateTime? issuedAt, revokedAt;
+  final String? title, issuer, organization, teacherName, courseNameAr, courseNameEn;
+  final DateTime? issuedAt, revokedAt, expiresAt;
+  final CertVerifyStatus state;
+  final bool replaced, nameMasked, byNumber;
+  final List<VerifyDetail> details;
   final List<String> langs;
   final Map<String, String> images;
 
-  bool get revoked => status == 'revoked';
+  bool get revoked => state == CertVerifyStatus.revoked;
+  bool get expired => state == CertVerifyStatus.expired;
+
+  /// In the reader's language, else the other one.
+  String? get courseName => AppConfig.lang == 'ar' ? (courseNameAr ?? courseNameEn) : (courseNameEn ?? courseNameAr);
 
   /// The languages that carry an image, the reader's first.
   List<String> get imageLangs {
@@ -1029,6 +1113,9 @@ String certIssueErrorText(Object error) {
   final maxRows = _intOrNull(d['max_rows']);
   final text = switch (e.code ?? '${d['code'] ?? ''}') {
     'not_authenticated' => _t('سجّل الدخول للمتابعة', 'Sign in to continue'),
+    'cert_verify_rate_limited' => _t('محاولات تحقق كثيرة. حاول مرة أخرى بعد قليل', 'Too many checks. Try again shortly'),
+    'expiry_invalid' => _t('تاريخ الانتهاء غير صحيح', 'Invalid expiry date'),
+    'expiry_in_past' => _t('يجب أن يكون تاريخ الانتهاء في المستقبل', 'The expiry date must be in the future'),
     'cert_issue_forbidden' => _t('لا تملك صلاحية إصدار الشهادات', 'You are not allowed to issue certificates'),
     'org_not_found' => _t('المؤسسة غير موجودة', 'Organization not found'),
     'org_forbidden' => _t('لا يمكنك إصدار شهادات لهذه المؤسسة', 'You cannot issue certificates for this organization'),
@@ -1048,6 +1135,7 @@ String certIssueErrorText(Object error) {
     'unsupported_file' => _t('ارفع ملف ‎.xlsx أو ‎.csv', 'Upload an .xlsx or .csv file'),
     'bad_file' => _t('هذا الملف ليس ملف Excel صالحًا', 'This file is not a valid Excel (.xlsx) file'),
     'bad_lang' => _t('التصميم لا يدعم هذه اللغة', 'The design does not issue this language'),
+    'teacher_name_required' => _t('اكتب اسم المدرّس: لا يمكن تعبئته تلقائيًا لمستلم ليس له حساب على المنصة', "Enter the instructor's name: it cannot be filled in for a recipient without an account"),
     'no_recipients' => (_intOrNull(d['skipped']) ?? 0) > 0
         ? _t('كل الطلاب النشطين لديهم هذه الشهادة — فعّل «استبدال الشهادات الحالية» لإصدارها من جديد',
             'Every active student already holds this certificate — turn on “Replace existing certificates” to issue it again')

@@ -168,7 +168,7 @@ class ComplaintsHubView extends StatelessWidget {
           children: [
             Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 880),
+                constraints: BoxConstraints(maxWidth: AppWidth.content.max),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   HubHeaderCard(
                     wide: wide,
@@ -299,18 +299,8 @@ class HubHeaderCard extends StatelessWidget {
         _HeroStat(value: resolved, label: 'chub_stat_resolved'.tr),
     ]);
     final button = _NewButton(onTap: onNew);
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(c.radiusLarge),
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: [c.primary, c.heroEnd(c.primary, 0.38)],
-        ),
-        boxShadow: c.primaryShadow,
-      ),
-      child: Stack(children: [
+    return DecoratedBox(decoration: BoxDecoration(borderRadius: BorderRadius.circular(c.radiusLarge), boxShadow: c.primaryShadow),
+      child: AppMeshSurface(radius: BorderRadius.circular(c.radiusLarge), child: Stack(children: [
         // a soft mark in the corner — depth without noise
         PositionedDirectional(
           end: -28,
@@ -337,8 +327,7 @@ class HubHeaderCard extends StatelessWidget {
                   button,
                 ]),
         ),
-      ]),
-    );
+      ])));
   }
 }
 

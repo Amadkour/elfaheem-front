@@ -122,7 +122,7 @@ class _CertSavedListsPageState extends State<CertSavedListsPage> {
           separatorBuilder: (_, _) => const SizedBox(height: AppSpace.xs),
           itemBuilder: (context, i) => Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 760),
+              constraints: BoxConstraints(maxWidth: AppWidth.content.max),
               child: IssueSavedListTile(
                 list: _items[i],
                 onTap: () async {
@@ -140,11 +140,7 @@ class _CertSavedListsPageState extends State<CertSavedListsPage> {
     }
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(
-        centerTitle: false,
-        title: Text('ci_saved_lists'.tr, style: AppType.section(context)),
-        actions: [AppRefreshAction(onRefresh: _load)],
-      ),
+      appBar: AppHeader(title: 'ci_saved_lists'.tr, actions: [AppRefreshAction(onRefresh: _load)]),
       body: ParentComponent(featureKey: kCertIssueFeature, child: SafeArea(child: body)),
     );
   }
@@ -278,13 +274,28 @@ class _CertListDetailPageState extends State<CertListDetailPage> {
     } catch (e) {
       final x = ApiException.from(e);
       final d = apiErrorDetail(x);
-      if ((x.code ?? '${d['code'] ?? ''}') == 'photos_required' && d['missing'] is List && mounted) {
+      final code = x.code ?? '${d['code'] ?? ''}';
+      if (code == 'photos_required' && d['missing'] is List && mounted) {
         await _fillPhotos([for (final m in d['missing'] as List) if (m is Map) m.cast<String, dynamic>()]);
+      } else if (code == 'teacher_name_required' && mounted) {
+        await _issueWithTeacher();
       } else {
         showAppNotice(certIssueErrorText(e), error: true);
       }
     }
     if (mounted) setState(() => _busy = false);
+  }
+
+  /// D-400: the list holds people with no account and the design prints the instructor: ask once, then issue.
+  Future<void> _issueWithTeacher() async {
+    final name = await certAskText(context, title: 'ci_teacher_title'.tr, label: 'ci_teacher_label'.tr, message: 'ci_teacher_help'.tr);
+    if (name == null || name.isEmpty || !mounted) return;
+    try {
+      final b = await _api.issueList(widget.listId, designId: widget.designId, langs: widget.langs, constants: {'teacher_name': name});
+      if (mounted) _openBatch(b);
+    } catch (e) {
+      showAppNotice(certIssueErrorText(e), error: true);
+    }
   }
 
   /// The server named who lacks a photo: collect them, write them into the list, then issue again.
@@ -344,9 +355,8 @@ class _CertListDetailPageState extends State<CertListDetailPage> {
     final l = _list;
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(
-        centerTitle: false,
-        title: Text(l?.name ?? 'ci_saved_lists'.tr, style: AppType.section(context), maxLines: 1, overflow: TextOverflow.ellipsis),
+      appBar: AppHeader(
+        title: l?.name ?? 'ci_saved_lists'.tr,
         actions: [
           PopupMenuButton<String>(
             tooltip: 'ci_more'.tr,
@@ -434,7 +444,7 @@ class CertListBody extends StatelessWidget {
     final extra = loading && rows.isEmpty ? 1 : (error != null && rows.isEmpty ? 1 : (rows.isEmpty ? 1 : rows.length));
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 820),
+        constraints: BoxConstraints(maxWidth: AppWidth.content.max),
         child: ListView.builder(
           padding: const EdgeInsets.all(AppSpace.md),
           itemCount: 1 + extra,

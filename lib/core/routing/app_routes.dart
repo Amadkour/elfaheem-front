@@ -104,6 +104,8 @@ class AppRoutes {
   static const courseLink = AppRouteDef('link.course', '/c/:courseId', description: 'A course share link (`?ref=`)');
   static const profileLink = AppRouteDef('link.profile', '/@:username', description: 'A public profile (D-074)');
   static const liveLink = AppRouteDef('link.live', '/live/:token', signIn: false, description: "A live session's guest link");
+  static const verifyHome = AppRouteDef('link.verify_home', '/verify',
+      signIn: false, description: 'Certificate verification: type a number or scan a QR code (D-420)');
   static const verifyLink =
       AppRouteDef('link.verify', '/verify/:token', signIn: false, description: "A certificate's verification page");
   static const exportLink = AppRouteDef('link.export', '/e/:token', description: 'An Export Studio share link (D-134)');
@@ -120,7 +122,7 @@ class AppRoutes {
     studentHome, teacherHome, adminHome, parentHome, orgHome,
     course, orgMember, orgMemberships, calendar, inbox, notifications, subscription, editAccount, changePassword, profile,
     downloads, exports, exportLog, exportSchedules, exportLinks, entityView, meetingLinks,
-    courseLink, profileLink, liveLink, verifyLink, exportLink, orgJoinLink, orgInvitationLink, shareLink,
+    courseLink, profileLink, liveLink, verifyHome, verifyLink, exportLink, orgJoinLink, orgInvitationLink, shareLink,
     privacy, terms,
   ];
 

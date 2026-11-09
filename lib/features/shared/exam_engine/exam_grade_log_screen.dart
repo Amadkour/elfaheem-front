@@ -9,6 +9,7 @@ import '../../admin/admin_common.dart' show t;
 import 'exam_authoring.dart' show authoringError;
 import 'exam_grading.dart';
 import 'exam_grading_widgets.dart';
+import 'exam_page_width.dart';
 
 /// The list body (plain values for the layout harness): rows, an empty state, "load more".
 class GradeLogBody extends StatelessWidget {
@@ -118,10 +119,10 @@ class _ExamGradeLogScreenState extends State<ExamGradeLogScreen> {
     final choices = names.entries.toList()..sort((a, b) => a.value.compareTo(b.value));
     return BasePage(
       key: const ValueKey('exam.gradeLog'),
-      appBar: AppBar(title: Text(t('سجل الدرجات', 'Grade log'))),
+      appBar: AppHeader(title: t('سجل الدرجات', 'Grade log')),
       child: AppRefresh(
         onRefresh: _load,
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
+        child: ExamPageWidth(width: AppWidth.content, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, 8, side, 32), children: [
           AppHero(title: widget.examTitle, subtitle: t('كل تغيير في درجة مسجَّل: من، ومتى، ولماذا', 'Every change to a mark is recorded: who, when and why'), icon: Icons.history_rounded),
           const SizedBox(height: 4),
           if (choices.isNotEmpty)
@@ -148,7 +149,7 @@ class _ExamGradeLogScreenState extends State<ExamGradeLogScreen> {
           if (_error != null) AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!),
           if (!_loaded) const AppListSkeleton(items: 4),
           if (_loaded) GradeLogBody(items: _items, names: names, hasMore: _next != null, loadingMore: _more, onMore: () => _load(more: true)),
-        ]),
+        ])),
       ),
     );
   }

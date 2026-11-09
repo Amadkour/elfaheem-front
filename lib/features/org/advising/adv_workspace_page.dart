@@ -543,7 +543,7 @@ class AdvWorkspaceView extends StatelessWidget {
                   : t('يظهر طلابك هنا حين يسندهم إليك مدير الإرشاد.', 'Your students show here when the advising director assigns them to you.'),
             );
     } else {
-      body = AdvPageFrame(maxWidth: 960, children: [
+      body = AdvPageFrame(maxWidth: 1440, children: [
         _Facets(page: p),
         for (final s in p.items)
           AdvCaseCard(
@@ -607,7 +607,7 @@ class AdvWorkspacePage extends StatelessWidget {
   Widget build(BuildContext context) => OrgPushedPage(
         title: manage ? t('مساحة الإرشاد', 'Advising workspace') : t('طلابي', 'My students'),
         helpPageId: 'org.advising',
-        maxWidth: 960,
+        maxWidth: 1440,
         child: _AdvWorkspaceBody(orgId: orgId, manage: manage, sort: sort, outreach: outreach),
       );
 }

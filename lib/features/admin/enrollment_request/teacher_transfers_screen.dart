@@ -7,6 +7,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/master_detail/entity_chip.dart' show EntityGuardedChip;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -61,7 +62,7 @@ class _TransfersView extends StatelessWidget {
       child: BasePage(
         key: const ValueKey('transfer_requests'),
         useWebCard: true,
-        maxWith: 1100,
+        width: AppWidth.wide,
         appBar: ScreenAppBar(title: 'transfer_requests_title'.tr),
         child: !p.hasLoaded && !failedFirstLoad
             ? const AppListSkeleton()
@@ -165,7 +166,7 @@ class _TransferCard extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: Colors.black,
+        backgroundColor: context.colors.heroShade,
         insetPadding: const EdgeInsets.all(12),
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -178,10 +179,10 @@ class _TransferCard extends StatelessWidget {
                 child: Image.network(
                   transfer.proofImageUrl,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, _, _) => const Center(
+                  errorBuilder: (_, _, _) => Center(
                     child: Icon(
                       Icons.broken_image_outlined,
-                      color: Colors.white54,
+                      color: context.colors.onHeroMuted,
                       size: 48,
                     ),
                   ),
@@ -193,8 +194,8 @@ class _TransferCard extends StatelessWidget {
               right: 6,
               child: IconButton(tooltip: t('إغلاق', 'Close'), 
                 onPressed: () => Navigator.pop(ctx),
-                icon: const Icon(Icons.close_rounded, color: Colors.white),
-                style: IconButton.styleFrom(backgroundColor: Colors.black54),
+                icon: Icon(Icons.close_rounded, color: context.colors.onHero),
+                style: IconButton.styleFrom(backgroundColor: context.colors.heroGlass),
               ),
             ),
           ],
@@ -357,12 +358,7 @@ class _AmountPill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        gradient: LinearGradient(
-          colors: [
-            c.primary.withValues(alpha: 0.16),
-            c.primary.withValues(alpha: 0.06),
-          ],
-        ),
+        color: c.primary.withValues(alpha: 0.10),
         border: Border.all(color: c.primary.withValues(alpha: 0.2)),
       ),
       child: Text(

@@ -8,6 +8,7 @@
 //   GovCouncilSettingsPage   the thin network page around the form
 library;
 
+import '../org_page_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -151,9 +152,9 @@ class _GovCouncilSettingsFormState extends State<GovCouncilSettingsForm> {
               onTap: widget.canEdit ? _pickTime : null,
             ),
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(child: AppField(controller: _cutoff, label: t('إقفال الجدول قبل (أيام)', 'Agenda cut-off (days before)'), keyboard: TextInputType.number, ltr: true)),
+              Expanded(child: OrgNumberField(controller: _cutoff, label: t('إقفال الجدول قبل (أيام)', 'Agenda cut-off (days before)'), gap: false)),
               const SizedBox(width: 10),
-              Expanded(child: AppField(controller: _deadline, label: t('مهلة التصويت (ساعات)', 'Voting deadline (hours)'), keyboard: TextInputType.number, ltr: true)),
+              Expanded(child: OrgNumberField(controller: _deadline, label: t('مهلة التصويت (ساعات)', 'Voting deadline (hours)'), gap: false)),
             ]),
             Text(
               t('يُجمَّع جدول الأعمال قبل الجلسة بأيام الإقفال، ويُفتح التصويت في موعد الجلسة ويُغلق بعد المهلة تلقائياً.',

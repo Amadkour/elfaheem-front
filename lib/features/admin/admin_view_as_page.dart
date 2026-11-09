@@ -240,7 +240,7 @@ class _AdminViewAsPageState extends State<AdminViewAsPage> {
       subtitle: 'admin_view_only'.tr,
       icon: Icons.visibility_rounded,
       onRefresh: _load,
-      maxWidth: 900,
+      width: AppWidth.content,
       body: Padding(
         padding: AdminPage.bodyPadding(context),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [

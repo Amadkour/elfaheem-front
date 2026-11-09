@@ -134,16 +134,9 @@ class _RevisionBuiltinMarkSheetState extends State<RevisionBuiltinMarkSheet> {
         ),
       ]),
       AppSpace.gapMd,
-      AppField(
-        key: const ValueKey('rv.builtin.total'),
-        controller: _mark,
-        label: t('الدرجة الكلية للورقة', "The paper's full mark"),
-        keyboard: const TextInputType.numberWithOptions(decimal: true),
-        ltr: true,
-        onChanged: (_) {
+      Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(key: const ValueKey('rv.builtin.total'), controller: _mark, label: t('الدرجة الكلية للورقة', "The paper's full mark"), min: 0, decimals: 2, onChanged: (_) {
           if (_invalid) setState(() => _invalid = false);
-        },
-      ),
+        })),
       if (_invalid)
         Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text(t('اكتب رقمًا أكبر من صفر وحتى 1000.', 'Enter a number above 0, up to 1000.'), key: const ValueKey('rv.builtin.invalid'), style: AppType.meta(context).copyWith(color: c.danger)))
       else if (col != null)

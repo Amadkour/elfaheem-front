@@ -4,26 +4,32 @@
 // the server palette's primary family, every stop AA under the on-hero ink, mirrored in Arabic); this file only
 // says where they go.
 //
-// Use the gradient SPARINGLY, as a touch:
-//   ✓ page / section headers (AppPageHeader's accent strip, AppHero, AppGradientSurface)
-//   ✓ the ONE primary action of a screen (AppButton.primary, AppPrimaryButton)
-//   ✓ the selected tab / pill, the active sidebar item
-//   ✓ key chart series and ONE highlighted KPI (AppGradients.chart, AppGradientText, AppKpiCard(highlight: true))
-//   ✗ never behind body text, forms, lists or dense tables — they sit on cardBg / surface
-//   ✗ never two gradient fills side by side (two primary buttons, a gradient card inside a gradient hero)
+// D-360 replaces the "touch only" rule of D-180: every component with a main colour gets the organic gradient from
+// app_mesh.dart, through these roles:
+//   mesh    headers, heroes, banners, highlighted cards (layered blobs; content uses the on-hero ink)
+//   meshWash ordinary cards and panels (a faint wash; content keeps the normal ink)
+//   blend   buttons, chips, pills, selected tabs (a multi-stop angled blend)
+//   ✗ never an opaque fill behind body text, forms, lists or dense tables: they get meshWash or a plain surface
+//   ✗ never a gradient value in a screen: ask this file for it
 //   ✗ never the legacy accent / teal / gold getters for new UI (they predate D-136 and do not pass the ink check)
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
+import 'app_mesh.dart';
 import 'app_tokens.dart';
+
+export 'app_mesh.dart';
 
 /// Named gradient roles. Read them here (or `context.colors.primaryGradient` …) — never build a LinearGradient of
 /// brand colours by hand.
 abstract final class AppGradients {
   /// The primary fill: primary buttons, the selected tab or pill, the active nav item.
   static LinearGradient brand(BuildContext context) => context.colors.primaryGradient;
+
+  /// A small fill from any main colour: a chip, a pill, a status button.
+  static LinearGradient blend(BuildContext context, {Color? color, int seed = 0}) => AppMesh.blend(context, color: color, seed: seed);
 
   /// [brand] pressed (every stop a shade deeper).
   static LinearGradient brandPressed(BuildContext context) => context.colors.primaryGradientPressed;
@@ -67,30 +73,28 @@ class AppGradientSurface extends StatelessWidget {
     this.padding = const EdgeInsets.all(AppSpace.lg),
     this.radius,
     this.glow = true,
+    this.color,
+    this.seed = 0,
   });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
   final double? radius;
+
+  /// Kept for existing callers; the mesh has its own light.
   final bool glow;
+
+  /// The main colour (the brand primary by default).
+  final Color? color;
+  final int seed;
 
   @override
   Widget build(BuildContext context) {
     final r = BorderRadius.circular(radius ?? AppRadius.sheet);
     return DecoratedBox(
-      decoration: BoxDecoration(gradient: AppGradients.hero(context), borderRadius: r, boxShadow: AppShadow.raised(context)),
-      child: ClipRRect(
-        borderRadius: r,
-        child: Stack(children: [
-          if (glow) Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(gradient: AppGradients.heroGlow(context)))),
-          Padding(
-            padding: padding,
-            child: DefaultTextStyle.merge(
-              style: TextStyle(color: context.colors.onHero),
-              child: IconTheme.merge(data: IconThemeData(color: context.colors.onHero), child: child),
-            ),
-          ),
-        ]),
+      decoration: BoxDecoration(borderRadius: r, boxShadow: AppShadow.raised(context)),
+      child: RepaintBoundary(
+        child: AppMeshSurface(color: color, seed: seed, radius: r, child: Padding(padding: padding, child: child)),
       ),
     );
   }

@@ -666,6 +666,16 @@ class _MethodFormState extends State<_MethodForm> {
         ),
       );
 
+  Widget _numberField(TextEditingController ctrl, String labelKey, {int decimals = 0, num? max, String? Function(String?)? validator, String? helperKey}) =>
+      Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        AppNumberField(controller: ctrl, label: labelKey.tr, min: 0, max: max, decimals: decimals, validator: validator),
+        if (helperKey != null)
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpace.xxs),
+            child: Text(helperKey.tr, style: AppType.meta(context)),
+          ),
+      ]);
+
   Widget _switchTile(String labelKey, bool value, ValueChanged<bool> onChanged) {
     final c = context.colors;
     return Container(
@@ -688,8 +698,6 @@ class _MethodFormState extends State<_MethodForm> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    const number = TextInputType.numberWithOptions(decimal: true);
-
     return Form(
       key: _formKey,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -748,16 +756,10 @@ class _MethodFormState extends State<_MethodForm> {
                 _switchTile('apm_require_reference', _reqRef, (v) => setState(() => _reqRef = v)),
               ),
               _Pair(
-                _field(_min, 'apm_min_amount',
-                    keyboard: number, validator: _optionalAmount, helperKey: 'apm_amount_hint'),
-                _field(_max, 'apm_max_amount',
-                    keyboard: number, validator: _maxAmount, helperKey: 'apm_amount_hint'),
+                _numberField(_min, 'apm_min_amount', decimals: 2, validator: _optionalAmount, helperKey: 'apm_amount_hint'),
+                _numberField(_max, 'apm_max_amount', decimals: 2, validator: _maxAmount, helperKey: 'apm_amount_hint'),
               ),
-              _field(_window, 'apm_window',
-                  keyboard: TextInputType.number,
-                  validator: _windowMinutes,
-                  helperKey: 'apm_window_hint',
-                  icon: Icons.timer_outlined),
+              _numberField(_window, 'apm_window', max: 1440, validator: _windowMinutes, helperKey: 'apm_window_hint'),
             ],
           ),
         ],

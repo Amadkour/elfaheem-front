@@ -20,7 +20,7 @@ import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
 import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppNumberField;
 
 String _tr(String key, String fallback) => dlTr(key, fallback);
 
@@ -303,7 +303,7 @@ class _RequestsSheetState extends State<_RequestsSheet> {
         ]),
         if (d.type == 'number' && d.columnKey == null) ...[
           const SizedBox(height: 10),
-          DlField(controller: d.max, label: 'dl_max_value'.tr, keyboard: const TextInputType.numberWithOptions(decimal: true)),
+          AppNumberField(controller: d.max, label: 'dl_max_value'.tr, min: 0, decimals: 2),
         ],
         if (d.columnKey != null)
           Padding(

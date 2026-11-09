@@ -25,6 +25,8 @@ import '../../teacher/home/home_screen.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'instructor_courses_section.dart';
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
+import 'package:flutter_education_app/design/app_back_button.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SCREEN
@@ -313,15 +315,7 @@ class _HeroSliverAppBar extends StatelessWidget {
         background: Stack(
           fit: StackFit.expand,
           children: [
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: AlignmentDirectional.topStart,
-                  end: AlignmentDirectional.bottomEnd,
-                  colors: [context.colors.primary, context.colors.heroEnd(context.colors.primary)],
-                ),
-              ),
-            ),
+            const AppMeshSurface(),
             Positioned(
               top: -40,
               right: -40,
@@ -458,24 +452,13 @@ class _ProfileCard extends StatelessWidget {
 
   Widget _featureContent(BuildContext context) {
     final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: [c.primary, c.heroEnd(c.primary)],
-        ),
-        borderRadius: c.brLarge,
-        boxShadow: [
+    return DecoratedBox(decoration: BoxDecoration(borderRadius: c.brLarge, boxShadow: [
           BoxShadow(
             color: context.colors.primary.withValues(alpha: 0.4),
             blurRadius: 24,
             offset: const Offset(0, 10),
           ),
-        ],
-      ),
-      child: Column(
+        ]), child: AppMeshSurface(radius: c.brLarge, child: Padding(padding: const EdgeInsets.all(24), child: Column(
         children: [
           InstructorAvatar(teacher: teacher, size: 96, canOpen: false),
           const SizedBox(height: 16),
@@ -525,8 +508,7 @@ class _ProfileCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
+      ))));
   }
 }
 
@@ -1188,7 +1170,8 @@ class _DocImagePreview extends StatelessWidget {
           backgroundColor: context.colors.heroShade,
           appBar: AppBar(
             backgroundColor: context.colors.heroShade,
-            iconTheme: IconThemeData(color: context.colors.onHero),
+            automaticallyImplyLeading: false,
+            leading: const AppBackButton(onHero: true),
           ),
           body: Center(
             child: InteractiveViewer(

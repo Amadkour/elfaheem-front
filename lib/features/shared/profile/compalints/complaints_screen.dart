@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:async';
 import 'dart:developer';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
@@ -30,6 +31,8 @@ import 'package:flutter_education_app/utils/widget/swipe_request_card.dart';
 import 'package:flutter_education_app/utils/widget/paged_progress.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_mentions.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppSheetContent;
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
@@ -231,11 +234,11 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
     final swipeable =
         p.complaints.where((cm) => _canSwipe(cm, staff, myId)).length;
 
-    return BasePage(key: const ValueKey('complaints'), useWebCard: true, maxWith: 1000,
+    return BasePage(key: const ValueKey('complaints'), useWebCard: true, width: AppWidth.content,
+      appBar: ScreenAppBar(title: 'complaints_and_support'.tr),
       child: SafeArea(
         child: Column(
           children: [
-            ScreenAppBar(title: 'complaints_and_support'.tr),
             ParentComponent(
               featureKey: 'complaints.stats',
               child: _OverviewStrip(
@@ -640,42 +643,12 @@ class _FilterRow extends StatelessWidget {
   final VoidCallback onClear;
 
   void _openCategorySheet(BuildContext context) {
-    final c = context.colors;
-    showModalBottomSheet(
+    showAppModalSheet(
       useSafeArea: true,
       context: context,
-      backgroundColor: c.cardBg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+      builder: (ctx) => AppSheetContent(
+            title: _t('تصفية حسب النوع', 'Filter by category'),
             children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: c.divider,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Text(
-                _t('تصفية حسب النوع', 'Filter by category'),
-                style: TextStyle(
-                  fontFamily: AppFonts.display,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: c.textDark,
-                ),
-              ),
-              const SizedBox(height: 14),
               Wrap(
                 runSpacing: 8,
                 children: [
@@ -699,8 +672,6 @@ class _FilterRow extends StatelessWidget {
                 ],
               ),
             ],
-          ),
-        ),
       ),
     );
   }
@@ -1369,10 +1340,9 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     final auth = context.read<MyAuthProvider>();
     final complaint = p.selected;
     log(' persona is===========> ${auth.isStudent}');
-    return BasePage(child: SafeArea(
+    return BasePage(appBar: ScreenAppBar(title: 'complaint_details_title'.tr), child: SafeArea(
       child: Column(
         children: [
-          ScreenAppBar(title: 'complaint_details_title'.tr),
           if (p.isLoadingDetail)
             const Expanded(
               child: AppListSkeleton(items: 4, withAvatar: false),
@@ -1956,28 +1926,15 @@ class _ReplyInput extends StatelessWidget {
 
   void _showImagePicker(BuildContext context) {
     final c = context.colors;
-    showModalBottomSheet(
+    showAppModalSheet(
       useSafeArea: true,
       context: context,
-      backgroundColor: c.cardBg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: c.divider,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
               // Gallery doesn't make sense as a separate concept on web —
               // the browser's file picker (below) already covers it.
               if (!kIsWeb)

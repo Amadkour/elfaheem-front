@@ -2,6 +2,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../../config/app_config.dart' as helpers;
@@ -210,12 +212,7 @@ class _FeeBreakdownCardState extends State<FeeBreakdownCard> {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                c.primary,
-                                c.primary.withValues(alpha: .8),
-                              ],
-                            ),
+                            gradient: AppGradients.brand(context),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -394,11 +391,7 @@ class _PaymentResultViewState extends State<PaymentResultView>
                   margin: const EdgeInsets.only(bottom: 32),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [c1, c2],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    gradient: AppGradients.blend(context, color: c1),
                     boxShadow: [
                       BoxShadow(
                         color: c1.withValues(alpha: .45),
@@ -625,7 +618,7 @@ class EnrollScaffold extends StatelessWidget {
     return SafeArea(
       child: BasePage(
         useWebCard: true,
-        maxWith: 900,
+        width: AppWidth.reading,
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: AnimatedSwitcher(

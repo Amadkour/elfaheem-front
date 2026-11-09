@@ -9,6 +9,7 @@
 //   showGovCategorySheet     create / edit a category (kind · names · description · form link · order)
 library;
 
+import '../org_page_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -520,7 +521,7 @@ Future<bool> showGovCategorySheet(BuildContext context, GovApi api, int deptId, 
             Row(children: [
               Expanded(child: AppField(controller: key, label: t('المفتاح (اختياري)', 'Key (optional)'), ltr: true)),
               const SizedBox(width: 10),
-              SizedBox(width: 110, child: AppField(controller: order, label: t('الترتيب', 'Order'), keyboard: TextInputType.number)),
+              SizedBox(width: 110, child: OrgNumberField(controller: order, label: t('الترتيب', 'Order'), gap: false)),
             ]),
             if (edit != null) ...[
               const SizedBox(height: 6),

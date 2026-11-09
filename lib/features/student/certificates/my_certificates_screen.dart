@@ -7,6 +7,7 @@
 //   • finished courses get their certificate automatically (+ notification)
 
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppShimmer;
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +22,9 @@ import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
+import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_logic.dart' show kCertVerifyFeature;
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
+import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_page.dart' show openCertVerify;
 
 class MyCertificatesScreen extends StatelessWidget {
   const MyCertificatesScreen({super.key, this.embedded = false});
@@ -79,11 +83,23 @@ class _View extends StatelessWidget {
 
     final centred = Align(
       alignment: Alignment.topCenter,
-      child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 760), child: body),
+      child: ConstrainedBox(constraints: BoxConstraints(maxWidth: AppWidth.reading.max), child: body),
     );
     if (embedded) return centred;
     return Scaffold(
-      appBar: ScreenAppBar(title: 'my_certificates'.tr), // the app's back chip + title (L4)
+      appBar: ScreenAppBar( // the app's back chip + title (L4)
+        title: 'my_certificates'.tr,
+        actions: [
+          ParentComponent(
+            featureKey: kCertVerifyFeature,
+            child: IconButton(
+              tooltip: 'cv_entry_title'.tr,
+              icon: const Icon(Icons.verified_user_outlined),
+              onPressed: () => openCertVerify(context),
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(child: centred),
     );
   }

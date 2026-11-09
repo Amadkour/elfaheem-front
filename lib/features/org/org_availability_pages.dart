@@ -5,6 +5,8 @@
 //   AvailabilityRequestScreen    teachers / assistants: a FROZEN screen (can't be dismissed) until they submit
 library;
 
+import 'org_page_kit.dart';
+import 'package:flutter_education_app/design/app_mesh.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_hscroll.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -40,7 +42,6 @@ Future<void> openAvailabilityRequests(BuildContext context) {
               builder: (ctx) => orgStudioPage(
                 ctx,
                 title: t('طلبات المواعيد المتاحة', 'Availability requests'),
-                maxWidth: 900,
                 child: const OrgAvailabilityRequestsPage(),
               ),
             ),
@@ -105,9 +106,9 @@ class _OrgAvailabilityRequestsPageState extends State<OrgAvailabilityRequestsPag
               ]),
               const SizedBox(height: 10),
               Row(children: [
-                Expanded(child: Field(controller: minC, label: t('أقل عدد فترات', 'Minimum periods'), keyboard: TextInputType.number, ltr: true)),
+                Expanded(child: OrgNumberField(controller: minC, label: t('أقل عدد فترات', 'Minimum periods'))),
                 const SizedBox(width: 10),
-                Expanded(child: Field(controller: maxC, label: t('أقصى عدد (اختياري)', 'Maximum (optional)'), keyboard: TextInputType.number, ltr: true)),
+                Expanded(child: OrgNumberField(controller: maxC, label: t('أقصى عدد (اختياري)', 'Maximum (optional)'))),
               ]),
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -288,15 +289,7 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
           child: r == null
               ? (_failed ? ErrorRetry(message: t('تعذّر تحميل الطلب، تحقق من الاتصال', 'Could not load the request — check your connection'), onRetry: _load) : const AppListSkeleton())
               : Column(children: [
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.all(16),
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      gradient: LinearGradient(colors: [c.primary, c.primaryDark]),
-                    ),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Container(width: double.infinity, margin: const EdgeInsets.all(16), decoration: BoxDecoration(borderRadius: BorderRadius.circular(24)), child: AppMeshSurface(radius: BorderRadius.circular(24), child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(orgNameOf(asMap(r['organization'])), style: TextStyle(fontFamily: AppFonts.family, color: c.onHeroMuted, fontSize: 12.5)),
                       const SizedBox(height: 4),
                       Text('${r['title']}', style: TextStyle(fontFamily: AppFonts.family, color: c.onHero, fontSize: 19, fontWeight: FontWeight.w800)),
@@ -307,8 +300,7 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
                         _chip(Icons.timer_rounded, '${t('قبل', 'Before')} ${_stamp(r['deadline'])}'),
                         _chip(Icons.grid_view_rounded, maxC == null ? t('$minC فترات على الأقل', 'At least $minC periods') : t('من $minC إلى $maxC فترات', '$minC – $maxC periods')),
                       ]),
-                    ]),
-                  ),
+                    ])))),
                   Expanded(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(horizontal: 16),

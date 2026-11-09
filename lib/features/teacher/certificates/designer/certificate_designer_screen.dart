@@ -51,12 +51,12 @@ import 'certificate_design_models.dart';
 import 'certificate_designer_provider.dart';
 
 /// Logo, signature, background and image fields: pick → app cropper (zoom, circle, size — or "use original").
-Future<Uint8List?> _pickImage(BuildContext context) async {
+Future<Uint8List?> _pickImage(BuildContext context, {bool allowBackground = true}) async {
   final f = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 2400);
   if (f == null) return null;
   final bytes = await f.readAsBytes();
   if (!context.mounted) return null;
-  return showAppImageCropper(context, bytes);
+  return showAppImageCropper(context, bytes, allowBackground: allowBackground);
 }
 
 void _failed(CertificateDesignerProvider p, [String key = 'certd_upload_failed']) =>
@@ -218,35 +218,38 @@ class _DesignerViewState extends State<_DesignerView> {
       },
       child: Scaffold(
         backgroundColor: c.background,
-        appBar: AppBar(
+        appBar: PreferredSize(
+          preferredSize: Size.fromHeight(AppHeader.openHeightWithSubtitle * 1.6 + 2),
           // the design's name in either script whatever the UI language (an Arabic name in the English UI drew only
           // its punctuation: the Latin UI font has no Arabic glyphs); no name → the page's title
-          title: Text(hasDesign && p.design!.name.trim().isNotEmpty ? p.design!.name : 'cert_designer_title'.tr,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppType.section(context).copyWith(fontFamilyFallback: AppFonts.fallback)),
-          centerTitle: false,
-          actions: [
-            if (hasDesign) ...[
-              _AppBarAction(
-                icon: Icons.visibility_outlined,
-                label: 'certd_preview'.tr,
-                onPressed: working ? null : _showPreview,
+          child: DefaultTextStyle.merge(
+            style: TextStyle(fontFamilyFallback: AppFonts.fallback),
+            child: AppHeader(
+              compact: true,
+              title: hasDesign && p.design!.name.trim().isNotEmpty ? p.design!.name : 'cert_designer_title'.tr,
+              actions: [
+                if (hasDesign) ...[
+                  _AppBarAction(
+                    icon: Icons.visibility_outlined,
+                    label: 'certd_preview'.tr,
+                    onPressed: working ? null : _showPreview,
+                  ),
+                  const SizedBox(width: AppSpace.xxs),
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(end: AppSpace.xxs),
+                    child: _SaveButton(
+                      dirty: p.dirty,
+                      saving: p.saving,
+                      onPressed: (p.design!.canEdit && !working) ? _save : null,
+                    ),
+                  ),
+                ],
+              ],
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(2),
+                child: SizedBox(height: 2, child: working ? const LinearProgressIndicator(minHeight: 2) : null),
               ),
-              const SizedBox(width: AppSpace.xxs),
-              Padding(
-                padding: const EdgeInsetsDirectional.only(end: AppSpace.sm),
-                child: _SaveButton(
-                  dirty: p.dirty,
-                  saving: p.saving,
-                  onPressed: (p.design!.canEdit && !working) ? _save : null,
-                ),
-              ),
-            ],
-          ],
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(2),
-            child: SizedBox(height: 2, child: working ? const LinearProgressIndicator(minHeight: 2) : null),
+            ),
           ),
         ),
         body: SafeArea(
@@ -390,7 +393,7 @@ class _Wizard extends StatelessWidget {
     }
 
     Future<void> fromTemplate() async {
-      final bytes = await _pickImage(context);
+      final bytes = await _pickImage(context, allowBackground: false); // a whole certificate page
       if (bytes == null) return;
       final ok = await p.createFromTemplateImage(bytes, orgId: orgId);
       if (!ok && context.mounted) _failed(p, 'certificate_action_failed');
@@ -1016,8 +1019,8 @@ class _PagePanelState extends State<_PagePanel> {
     final edit = p.canEdit;
     final accent = ensureContrast(c.primary, [c.cardBg]);
 
-    Future<void> upload(Future<bool> Function(Uint8List b) send, [String failKey = 'certd_upload_failed']) async {
-      final b = await _pickImage(context);
+    Future<void> upload(Future<bool> Function(Uint8List b) send, [String failKey = 'certd_upload_failed', bool allowBackground = true]) async {
+      final b = await _pickImage(context, allowBackground: allowBackground);
       if (b == null) return;
       if (!await send(b) && context.mounted) _failed(p, failKey);
     }
@@ -1086,8 +1089,8 @@ class _PagePanelState extends State<_PagePanel> {
             english: en,
             state: en ? bgState : ((v.backgroundUrl ?? '').isEmpty ? CertInherit.none : CertInherit.own),
             enabled: edit,
-            onUpload: () => upload((b) => p.uploadBackground(l, b)),
-            onCustomize: () => upload((b) => p.uploadBackground(l, b)),
+            onUpload: () => upload((b) => p.uploadBackground(l, b), 'certd_upload_failed', false),
+            onCustomize: () => upload((b) => p.uploadBackground(l, b), 'certd_upload_failed', false),
             onRemove: () => p.setBackground(l, null),
             onReset: () => p.setBackground(l, null, inherit: true),
             more: [

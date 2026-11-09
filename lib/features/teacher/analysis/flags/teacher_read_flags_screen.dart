@@ -16,7 +16,8 @@ import 'package:flutter_education_app/features/student/analysis/student_analytic
 
 import '../../../../utils/widget/base_page.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart' show AppHeader, AppListSkeleton, AppWidth;
+import 'package:flutter_education_app/features/teacher/analysis/teacher_stat_band.dart';
 
 // ── models ────────────────────────────────────────────────────────────────────
 
@@ -161,38 +162,28 @@ class _View extends StatelessWidget {
   Widget _hero(BuildContext context, TeacherReadFlagsProvider p) {
     final failed = p.items.fold<int>(0, (s, i) => s + i.studentsFailed);
     final wrong = p.items.fold<int>(0, (s, i) => s + i.totalWrong);
-    return ExamHero(
-      colors: [context.colors.heroEnd(context.colors.danger, 0.55), context.colors.danger],
-      child: Column(children: [
-        ExamHeroBar(
-          title: courseTitle,
-          subtitle: 'tflag_btn_sub'.tr,
-          actions: [GlassIcon(icon: Icons.refresh_rounded, onTap: p.load)],
+    return TeacherStatBand(
+      color: context.colors.danger,
+      stats: [
+        HeroStat(
+          icon: Icons.flag_rounded,
+          color: context.colors.accent,
+          value: '${p.items.length}',
+          label: 'tflag_btn'.tr,
         ),
-        const SizedBox(height: 18),
-        Row(children: [
-          HeroStat(
-            icon: Icons.flag_rounded,
-            color: context.colors.accent,
-            value: '${p.items.length}',
-            label: 'tflag_btn'.tr,
-          ),
-          const SizedBox(width: 10),
-          HeroStat(
-            icon: Icons.groups_rounded,
-            color: context.colors.heroTint(context.colors.primaryLight, 0.5),
-            value: '$failed',
-            label: 'tflag_students'.tr,
-          ),
-          const SizedBox(width: 10),
-          HeroStat(
-            icon: Icons.close_rounded,
-            color: context.colors.danger,
-            value: '$wrong',
-            label: 'flag_total_wrong'.tr,
-          ),
-        ]),
-      ]),
+        HeroStat(
+          icon: Icons.groups_rounded,
+          color: context.colors.heroTint(context.colors.primaryLight, 0.5),
+          value: '$failed',
+          label: 'tflag_students'.tr,
+        ),
+        HeroStat(
+          icon: Icons.close_rounded,
+          color: context.colors.danger,
+          value: '$wrong',
+          label: 'flag_total_wrong'.tr,
+        ),
+      ],
     );
   }
 
@@ -255,7 +246,23 @@ class _View extends StatelessWidget {
 
     return Directionality(
       textDirection: Helpers.pageDirection,
-      child: BasePage( useWebCard: true,maxWith: 1100, child: body),
+      child: BasePage(
+        useWebCard: true,
+        width: AppWidth.wide,
+        appBar: AppHeader(
+          title: courseTitle,
+          subtitle: 'tflag_btn_sub'.tr,
+          color: context.colors.danger,
+          actions: [
+            IconButton(
+              tooltip: 'refresh'.tr,
+              onPressed: p.load,
+              icon: Icon(Icons.refresh_rounded, color: context.colors.primary),
+            ),
+          ],
+        ),
+        child: body,
+      ),
     );
   }
 }

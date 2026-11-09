@@ -43,7 +43,7 @@ class _FavouriteCoursesScreenState extends State<FavouriteCoursesScreen> {
     return BasePage(
       key: const ValueKey('favorites'),
       useWebCard: true,
-      width: AppWidth.content,
+      width: AppWidth.wide,
       appBar: ScreenAppBar(title: 'my_favorite'.tr),
       child: Column(children: [
         ParentComponent(
@@ -64,6 +64,7 @@ class _FavouriteCoursesScreenState extends State<FavouriteCoursesScreen> {
                   error: provider.hasError ? (provider.errorMessage ?? '') : null,
                   onRefresh: provider.fetchMyFavorites,
                   list: HomeCourseList(
+                  maxWidth: AppWidth.wide.max,
                   hasMore: false,
                   pageName: 'favorite',
                   courses: provider.favourites,

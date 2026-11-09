@@ -55,7 +55,6 @@ class GoLiveButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final fill = ensureContrast(c.danger, [c.onHero]);
-    final deep = Color.lerp(fill, Colors.black, 0.18)!;
     final label = labelFor(live);
     final icon = busy
         ? SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2, color: c.onHero))
@@ -64,7 +63,7 @@ class GoLiveButton extends StatelessWidget {
             : Icon(Icons.sensors_rounded, size: 19, color: c.onHero);
     final pill = DecoratedBox(
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [fill, deep], begin: AlignmentDirectional.topStart, end: AlignmentDirectional.bottomEnd),
+        gradient: AppGradients.blend(context, color: fill),
         borderRadius: BorderRadius.circular(40),
         boxShadow: [BoxShadow(color: fill.withValues(alpha: c.isDark ? 0.28 : 0.32), blurRadius: 14, offset: const Offset(0, 5))],
       ),
@@ -281,21 +280,8 @@ Future<void> openGoLive(
   }
 }
 
-/// A bottom sheet on phones, a centered dialog from 720 px (a full-width sheet on a desktop reads as a banner).
-Future<Object?> showGoLiveSheet(BuildContext context, Widget sheet) {
-  if (MediaQuery.sizeOf(context).width < 720) return showAppSheet<Object>(context, (_) => sheet);
-  return showDialog<Object>(
-    context: context,
-    builder: (ctx) => Dialog(
-      backgroundColor: ctx.colors.cardBg,
-      surfaceTintColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      clipBehavior: Clip.antiAlias,
-      child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 560, maxHeight: 760), child: sheet),
-    ),
-  );
-}
+/// The app's sheet: a bottom sheet on phones, the side panel on wide windows (D-360).
+Future<Object?> showGoLiveSheet(BuildContext context, Widget sheet) => showAppSheet<Object>(context, (_) => sheet);
 
 /// The pre-join page of the chosen session, with the sheet's camera / microphone choice. It waits for the teacher
 /// to press Join (D-106), which starts (or resumes) the session and opens the room.
@@ -708,15 +694,10 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final fill = ensureContrast(c.danger, [c.onHero]);
-    // a soft live-red wash behind the title, fading into the card
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [fill.withValues(alpha: c.isDark ? 0.14 : 0.07), fill.withValues(alpha: 0)],
-        ),
-      ),
+    // a soft live-red wash behind the title
+    return AppMeshSurface(
+      color: fill,
+      style: AppMeshStyle.wash,
       child: Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(20, 16, 12, 14),
       child: Row(children: [
@@ -725,7 +706,7 @@ class _Header extends StatelessWidget {
           height: 48,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: LinearGradient(colors: [fill, Color.lerp(fill, Colors.black, 0.2)!], begin: Alignment.topLeft, end: Alignment.bottomRight),
+            gradient: AppGradients.blend(context, color: fill),
             boxShadow: [BoxShadow(color: fill.withValues(alpha: 0.30), blurRadius: 16, offset: const Offset(0, 6))],
           ),
           child: Icon(Icons.sensors_rounded, color: c.onHero, size: 24),

@@ -7,6 +7,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
@@ -46,14 +47,7 @@ class PagedCountCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: c.primary.withValues(alpha: 0.22)),
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.centerStart,
-          end: AlignmentDirectional.centerEnd,
-          colors: [
-            c.primary.withValues(alpha: 0.12),
-            c.primary.withValues(alpha: 0.03),
-          ],
-        ),
+        gradient: AppGradients.wash(context),
       ),
       child: Row(
         children: [

@@ -51,7 +51,7 @@ class ChromeIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final onBar = ChromeBar.of(context) && !c.isDark;
+    final onBar = ChromeBar.of(context);
     final bg = onBar ? c.heroGlass : c.cardBg;
     final ink = onBar ? c.onHero : c.textMedium;
     final border = onBar ? c.heroGlassBorder : c.divider;

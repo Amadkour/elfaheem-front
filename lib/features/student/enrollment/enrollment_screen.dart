@@ -6,6 +6,7 @@
 library;
 
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/features/student/enrollment/saved_cards/saved_payment_models.dart';
@@ -198,11 +199,7 @@ class _SectionHeader extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [c.primary, c.primary.withValues(alpha: .7)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            gradient: AppGradients.brand(context),
             borderRadius: BorderRadius.circular(11),
             boxShadow: [
               BoxShadow(
@@ -242,11 +239,8 @@ class _CourseSummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [c.primary.withValues(alpha: .09), c.cardBg],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: c.cardBg,
+        gradient: AppGradients.wash(context),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: c.primary.withValues(alpha: .16)),
         boxShadow: [
@@ -338,9 +332,7 @@ class _PriceBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [tone.withValues(alpha: .15), tone.withValues(alpha: .06)],
-        ),
+        color: tone.withValues(alpha: .12),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: tone.withValues(alpha: .3)),
       ),
@@ -393,14 +385,7 @@ class _FreeCourseBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            c.success.withValues(alpha: .10),
-            c.success.withValues(alpha: .04),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: c.success.withValues(alpha: .08),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: c.success.withValues(alpha: .3)),
       ),
@@ -550,17 +535,7 @@ class _PlanTile extends StatelessWidget {
         margin: const EdgeInsets.all(2),
         padding: const EdgeInsets.all(7),
         decoration: BoxDecoration(
-          gradient: selected
-              ? LinearGradient(
-                  colors: [
-                    c.primary.withValues(alpha: .10),
-                    c.primary.withValues(alpha: .03),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          color: selected ? null : c.cardBg,
+          color: selected ? c.primary.withValues(alpha: .08) : c.cardBg,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected ? c.primary : c.divider,

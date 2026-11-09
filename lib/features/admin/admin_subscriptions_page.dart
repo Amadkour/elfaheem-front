@@ -5,6 +5,9 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_buttons.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_number_field.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart' show EntityKind;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
@@ -105,7 +108,7 @@ class _View extends StatelessWidget {
     return BasePage(
 
       useWebCard: true,
-      maxWith: 1100,
+      width: AppWidth.wide,
       appBar: ScreenAppBar(title: 'subscriptions'.tr),
       child: PagedList<AdminSubscriptionsProvider>(
         export: adminSubscriptionsExport,
@@ -198,10 +201,9 @@ Future<void> _editPlan(BuildContext context, AdminSubscriptionsProvider p, Plan 
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Field(
-                controller: price,
-                label: 'admin_price_empty_or_0_free'.tr,
-                keyboard: const TextInputType.numberWithOptions(decimal: true),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: AppNumberField(controller: price, label: 'admin_price_empty_or_0_free'.tr, min: 0, decimals: 2),
               ),
               ChoiceRow<String>(
                 label: 'currency_label'.tr,
@@ -209,7 +211,10 @@ Future<void> _editPlan(BuildContext context, AdminSubscriptionsProvider p, Plan 
                 value: currency,
                 onChanged: (v) => setS(() => currency = v),
               ),
-              Field(controller: days, label: 'admin_duration_days'.tr, keyboard: TextInputType.number),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: AppNumberField(controller: days, label: 'admin_duration_days'.tr, min: 0),
+              ),
               PrimaryButton(
                 label: 'save'.tr,
                 isLoading: busy,
@@ -363,10 +368,11 @@ class _SubTile extends StatelessWidget {
           const SizedBox(height: 12),
           Row(children: [
             Expanded(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(foregroundColor: c.danger),
-                icon: const Icon(Icons.close_rounded, size: 18),
-                label: Text('request_reject'.tr),
+              child: AppButton.danger(
+                label: 'request_reject'.tr,
+                icon: Icons.close_rounded,
+                dangerOutline: true,
+                expand: true,
                 onPressed: () async {
                   final reason = await askText(context,
                       title: 'rejection_reason_title'.tr, multiline: true);
@@ -376,11 +382,10 @@ class _SubTile extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: c.success),
-                icon: Icon(Icons.check_rounded, size: 18, color: c.onHero),
-                label: Text('admin_approve'.tr,
-                    style: TextStyle(color: c.onHero, fontFamily: AppFonts.family)),
+              child: AppButton.primary(
+                label: 'admin_approve'.tr,
+                icon: Icons.check_rounded,
+                expand: true,
                 onPressed: () async {
                   final ok = await confirm(context, message: 'admin_approve_this_subscription'.tr);
                   if (ok) await p.approve(s.id);

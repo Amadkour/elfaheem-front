@@ -12,6 +12,7 @@
 //   Navigator.push(context, MaterialPageRoute(
 //     builder: (_) => CertificateDesignsScreen(orgId: org.id)));
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:provider/provider.dart';
@@ -25,12 +26,14 @@ import 'certificate_design_models.dart';
 import '../studio/cert_engine_studio.dart' show openCertificateStudio;
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty;
+import 'package:flutter_education_app/design/app_kit.dart' show AppHeader, AppListSkeleton, AppEmpty;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_flow.dart' show openCertIssueFlow;
 import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_history.dart' show CertIssueHistoryPage;
 import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_lists.dart' show CertSavedListsPage;
+import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_logic.dart' show kCertVerifyFeature;
+import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_page.dart' show openCertVerify;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 class CertificateDesignsProvider extends BaseProvider {
@@ -149,7 +152,6 @@ class _View extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<CertificateDesignsProvider>();
-    final c = context.colors;
 
     Widget body;
     if (p.loading && p.items.isEmpty) {
@@ -188,10 +190,17 @@ class _View extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('cert_designs_title'.tr, style: c.h2.copyWith(fontSize: 16)),
-        centerTitle: true,
+      appBar: AppHeader(
+        title: 'cert_designs_title'.tr,
         actions: [
+          ParentComponent(
+            featureKey: kCertVerifyFeature,
+            child: IconButton(
+              tooltip: 'cv_entry_title'.tr,
+              icon: const Icon(Icons.verified_user_outlined),
+              onPressed: () => openCertVerify(context),
+            ),
+          ),
           // standalone issuing (features/shared/certificates_issue): saved recipient lists + the issued history
           if (certificateId == null)
             ParentComponent(
@@ -374,7 +383,7 @@ Future<void> showDesignAssignment(BuildContext context, int designId) async {
     picked.addAll(((d['course_ids'] as List?) ?? const []).map((e) => (e as num).toInt()));
   } catch (_) {}
   if (!context.mounted) return;
-  await showModalBottomSheet<void>(
+  await showAppModalSheet<void>(
     context: context,
     useSafeArea: true,
     isScrollControlled: true,

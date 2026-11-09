@@ -38,6 +38,8 @@
 // the screen-reader hint); a section with nothing to say is not drawn; what is live comes first.
 library;
 
+import 'chrome_button.dart';
+import 'package:flutter_education_app/design/app_mesh.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -174,7 +176,7 @@ class HomeHeader extends StatelessWidget {
             if (leading != null) ...[leading!, const SizedBox(width: 10)],
             Expanded(
               child: Text(homeGreetingKey(homeNow().hour).tr,
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, c: c.textLight)),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, c: c.onHeroMuted)),
             ),
             ...lineButtons,
           ]),
@@ -184,20 +186,18 @@ class HomeHeader extends StatelessWidget {
             child: Text(name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: appText(24, w: FontWeight.w600, c: c.textDark, h: 1.2).copyWith(letterSpacing: -0.3)),
+                style: appText(24, w: FontWeight.w600, c: c.onHero, h: 1.2).copyWith(letterSpacing: -0.3)),
           ),
           if (subtitle != null && subtitle!.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textMedium, h: 1.4)),
+            Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, c: c.onHeroMuted, h: 1.4)),
           ],
           if (contextSwitcher != null) ...[
             const SizedBox(height: 14),
             Align(alignment: AlignmentDirectional.centerStart, child: contextSwitcher!),
           ],
         ]);
-        return Padding(
-          padding: padding,
-          child: !wide
+        final content = !wide
               ? block
               : Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
                   Expanded(child: block),
@@ -210,7 +210,20 @@ class HomeHeader extends StatelessWidget {
                       for (final b in buttons) ...[const SizedBox(width: 8), b],
                     ]),
                   ),
-                ]),
+                ]);
+        // the greeting wears the same organic gradient as every page header (D-360); its buttons turn to glass on it
+        return Padding(
+          padding: padding.resolve(Directionality.of(context)).copyWith(top: AppSpace.sm, bottom: AppSpace.xs),
+          child: RepaintBoundary(
+            child: AppMeshSurface(
+              seed: 21,
+              radius: BorderRadius.circular(AppRadius.sheet),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpace.md + AppSpace.xxs),
+                child: ChromeBar(child: content),
+              ),
+            ),
+          ),
         );
       }),
     );
@@ -247,7 +260,7 @@ class HomeSplit extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// The widest a home (or a course list) grows on a desktop window.
-const double kHomeWideMax = 1200;
+const double kHomeWideMax = 1440;
 
 /// From this content width the home is a two-column dashboard (a 1280 px window with the sidebar is 1012 wide).
 const double kHomeWideMin = 960;
@@ -446,8 +459,8 @@ class HomeHeroCard extends StatelessWidget {
             child: ClipRRect(
               borderRadius: r,
               child: Stack(children: [
-                // the brand hero's faint warm glow (D-136), only on the default gradient
-                if (gradient == null) Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(gradient: c.heroGlow))),
+                // the organic brand gradient (D-360), only when the caller chose no gradient of its own
+                if (gradient == null) const Positioned.fill(child: RepaintBoundary(child: AppMeshSurface(seed: 11))),
                 // a single quiet ornament: a large ring bleeding off the end edge
                 PositionedDirectional(
                   end: -60,

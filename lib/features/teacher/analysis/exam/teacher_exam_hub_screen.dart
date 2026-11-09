@@ -15,6 +15,8 @@ import 'exam_files.dart';
 import 'teacher_exam_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/features/teacher/analysis/teacher_stat_band.dart';
+import 'package:flutter_education_app/features/teacher/courses/component/number_pair.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_review_screen.dart' show EngineReviewSection;
 import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring.dart' show ExamAuthoringApi;
@@ -125,7 +127,33 @@ class _HubViewState extends State<_HubView>
     return BasePage(
       key: const ValueKey('teacher_exams_hub'),
       useWebCard: true,
-      width: AppWidth.content,
+      width: AppWidth.wide,
+      appBar: AppHeader(
+        title: 'exam_hub_title'.tr,
+        subtitle: widget.courseTitle,
+        actions: [
+          // correct bubble sheets, any sheet, a whole class (D-340)
+          ParentComponent(
+            featureKey: 'exam.bubble',
+            child: IconButton(
+              key: const ValueKey('exam_hub.bubble'),
+              icon: Icon(Icons.grading_rounded, color: context.colors.primary),
+              tooltip: AppConfig.lang == 'ar' ? 'تصحيح أوراق التظليل' : 'Correct bubble sheets',
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => deferredBubbleHome(courseId: prov.courseId, courseTitle: widget.courseTitle, orgId: widget.orgId))),
+            ),
+          ),
+          // every exam across the courses (D-300)
+          ParentComponent(
+            featureKey: 'exam.all_exams',
+            child: IconButton(
+              key: const ValueKey('exam_hub.all_exams'),
+              icon: Icon(Icons.fact_check_rounded, color: context.colors.primary),
+              tooltip: AppConfig.lang == 'ar' ? 'كل الاختبارات' : 'All exams',
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => deferredExamsHome())),
+            ),
+          ),
+        ],
+      ),
       floatingActionButton: prov.tab == 0
           ? FloatingActionButton.extended(
               heroTag: "teacher_exam_float",
@@ -174,59 +202,26 @@ class _HubViewState extends State<_HubView>
     // the Exam Engine's exams of the course count too (the section above the legacy list reports them)
     final published = prov.exams.where((e) => e.isPublished).length + _engineExams.where((e) => e['status'] == 'published').length;
     final third = examHubThirdStat(prov.exams, _engineExams);
-    return ExamHero(
-      child: Column(
-        children: [
-          ExamHeroBar(title: 'exam_hub_title'.tr, subtitle: widget.courseTitle, actions: [
-            // correct bubble sheets, any sheet, a whole class (D-340)
-            ParentComponent(
-              featureKey: 'exam.bubble',
-              child: GlassIcon(
-                key: const ValueKey('exam_hub.bubble'),
-                icon: Icons.grading_rounded,
-                tooltip: AppConfig.lang == 'ar' ? 'تصحيح أوراق التظليل' : 'Correct bubble sheets',
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => deferredBubbleHome(courseId: prov.courseId, courseTitle: widget.courseTitle, orgId: widget.orgId))),
-              ),
-            ),
-            // every exam across the courses (D-300)
-            ParentComponent(
-              featureKey: 'exam.all_exams',
-              child: GlassIcon(
-                key: const ValueKey('exam_hub.all_exams'),
-                icon: Icons.fact_check_rounded,
-                tooltip: AppConfig.lang == 'ar' ? 'كل الاختبارات' : 'All exams',
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => deferredExamsHome())),
-              ),
-            ),
-          ]),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              HeroStat(
-                icon: Icons.quiz_rounded,
-                color: context.colors.heroTint(context.colors.primaryLight, 0.5),
-                value: '${prov.exams.length + _engineExams.length}',
-                label: 'tab_exams'.tr,
-              ),
-              const SizedBox(width: 10),
-              HeroStat(
-                icon: Icons.public_rounded,
-                color: context.colors.success,
-                value: '$published',
-                label: 'exam_published_badge'.tr,
-              ),
-              const SizedBox(width: 10),
-              HeroStat(
-                icon: third.icon,
-                color: context.colors.accent,
-                value: third.value,
-                label: third.label,
-              ),
-            ],
-          ),
-        ],
+    return TeacherStatBand(stats: [
+      HeroStat(
+        icon: Icons.quiz_rounded,
+        color: context.colors.heroTint(context.colors.primaryLight, 0.5),
+        value: '${prov.exams.length + _engineExams.length}',
+        label: 'tab_exams'.tr,
       ),
-    );
+      HeroStat(
+        icon: Icons.public_rounded,
+        color: context.colors.success,
+        value: '$published',
+        label: 'exam_published_badge'.tr,
+      ),
+      HeroStat(
+        icon: third.icon,
+        color: context.colors.accent,
+        value: third.value,
+        label: third.label,
+      ),
+    ]);
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -555,12 +550,10 @@ class _HubViewState extends State<_HubView>
         });
   }
 
-  void _showCreateSheet(BuildContext ctx) => showModalBottomSheet(
-      useSafeArea: true,
-    context: ctx,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) => _CreateExamSheet(
+  void _showCreateSheet(BuildContext ctx) => showAppSideSheet(
+      ctx,
+      withCloseBar: true,
+      builder: (_) => _CreateExamSheet(
       provider: ctx.read<TeacherExamProvider>(),
       initialSessionId: widget.initialSessionId,
     ),
@@ -575,11 +568,9 @@ class _HubViewState extends State<_HubView>
     if (!prov.sessionsLoaded) await prov.loadSessions();
     if (!mounted) return;
     // -1 = "no session" (detach); null = dismissed
-    final picked = await showModalBottomSheet<int>(
-      useSafeArea: true,
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    final picked = await showAppSideSheet<int>(
+      context,
+      withCloseBar: true,
       builder: (_) => _SessionPickerSheet(
         sessions: prov.sessions,
         selectedId: exam.sessionId,
@@ -606,11 +597,9 @@ class _HubViewState extends State<_HubView>
   ) {
     // Load questions if not already loaded
     prov.loadQuestions(exam.id);
-    showModalBottomSheet(
-      useSafeArea: true,
-      context: ctx,
-      isScrollControlled: true,
-      backgroundColor: context.colors.background,
+    showAppSideSheet(
+      ctx,
+      withCloseBar: true,
       builder: (_) => ChangeNotifierProvider.value(
         value: prov,
         child: _ManageQuestionsSheet(exam: exam),
@@ -619,22 +608,18 @@ class _HubViewState extends State<_HubView>
   }
 
   void _showAnswers(StudentExamResult r, ExamModel exam) =>
-      showModalBottomSheet(
-      useSafeArea: true,
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => _AnswersSheet(result: r, exam: exam),
+      showAppSideSheet(
+      context,
+      withCloseBar: true,
+      builder: (_) => _AnswersSheet(result: r, exam: exam),
       );
 
   /// Attempts + random-paper rules of an existing exam.
   void _showRulesSheet(TeacherExamProvider prov, ExamModel exam) =>
-      showModalBottomSheet(
-      useSafeArea: true,
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => _ExamRulesSheet(provider: prov, exam: exam),
+      showAppSideSheet(
+      context,
+      withCloseBar: true,
+      builder: (_) => _ExamRulesSheet(provider: prov, exam: exam),
       );
 
   void _snack(String msg, Color color) =>
@@ -964,24 +949,9 @@ class _ManageQuestionsSheet extends StatelessWidget {
 
     return Directionality(
       textDirection: Helpers.pageDirection,
-      child: Container(
-        height: MediaQuery.of(context).size.height * 0.88,
-        decoration: BoxDecoration(
-          color: context.colors.background,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
+      child: Column(
           children: [
-            // Handle
-            Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: context.colors.divider,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+
 
             // Title row
             Padding(
@@ -1171,7 +1141,6 @@ class _ManageQuestionsSheet extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 
@@ -1180,12 +1149,10 @@ class _ManageQuestionsSheet extends StatelessWidget {
     TeacherExamProvider prov, {
     required int examId,
     required Question? existing,
-  }) => showModalBottomSheet(
-      useSafeArea: true,
-    context: ctx,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) => ChangeNotifierProvider.value(
+  }) => showAppSideSheet(
+      ctx,
+      withCloseBar: true,
+      builder: (_) => ChangeNotifierProvider.value(
       value: prov,
       child: _QuestionFormSheet(examId: examId, existing: existing),
     ),
@@ -1576,27 +1543,10 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
 
     return Directionality(
       textDirection: Helpers.pageDirection,
-      child: Container(
-        decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Column(
+      child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle
-            Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: context.colors.divider,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+
 
             // Title bar
             Padding(
@@ -1647,23 +1597,15 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
 
                       // Marks field
                       SizedBox(
-                        width: 130,
-                        child: _Field(
-                          ctrl: _marksCtrl,
+                        width: 260,
+                        child: AppNumberField(
+                          controller: _marksCtrl,
                           label: 'field_marks_label'.tr,
                           hint: '1',
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          validator: (v) {
-                            if (v == null || v.trim().isEmpty) {
-                              return 'field_required'.tr;
-                            }
-                            if (double.tryParse(v.trim()) == null) {
-                              return 'field_invalid_number'.tr;
-                            }
-                            return null;
-                          },
+                          min: 0,
+                          step: 0.5,
+                          decimals: 2,
+                          required: true,
                         ),
                       ),
                       const SizedBox(height: 14),
@@ -1823,7 +1765,6 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
             ),
           ],
         ),
-      ),
     );
   }
 }
@@ -1968,26 +1909,9 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
   @override
   Widget build(BuildContext context) => Directionality(
     textDirection: Helpers.pageDirection,
-    child: Container(
-      decoration: BoxDecoration(
-        color: context.colors.background,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Column(
+    child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: context.colors.divider,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
           Padding(
             padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
             child: Row(
@@ -2030,35 +1954,31 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                       maxLines: 2,
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _Field(
-                            ctrl: _totalMarksCtrl,
-                            label: 'field_total_marks_label'.tr,
-                            hint: '100',
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _Field(
-                            ctrl: _passingCtrl,
-                            label: 'field_passing_label'.tr,
-                            hint: '60',
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _Field(
-                            ctrl: _durationCtrl,
-                            label: 'field_duration_label'.tr,
-                            hint: '60',
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                      ],
+                    NumberPair(
+                      first: AppNumberField(
+                        controller: _totalMarksCtrl,
+                        label: 'field_total_marks_label'.tr,
+                        hint: '100',
+                        min: 0,
+                        step: 5,
+                        decimals: 2,
+                      ),
+                      second: AppNumberField(
+                        controller: _passingCtrl,
+                        label: 'field_passing_label'.tr,
+                        hint: '60',
+                        min: 0,
+                        step: 5,
+                        decimals: 2,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    AppNumberField(
+                      controller: _durationCtrl,
+                      label: 'field_duration_label'.tr,
+                      hint: '60',
+                      min: 1,
+                      step: 5,
                     ),
                     const SizedBox(height: 14),
                     // ── Attach to a session (optional) ─────────────────────
@@ -2316,7 +2236,6 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
           ),
         ],
       ),
-    ),
   );
 }
 
@@ -2333,28 +2252,11 @@ class _SessionPickerSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Directionality(
     textDirection: Helpers.pageDirection,
-    child: Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.75,
-      ),
-      decoration: BoxDecoration(
-        color: context.colors.background,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: SafeArea(
+    child: SafeArea(
         top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: context.colors.divider,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
               child: Row(
@@ -2430,7 +2332,6 @@ class _SessionPickerSheet extends StatelessWidget {
           ],
         ),
       ),
-    ),
   );
 
   Widget _tile(
@@ -2469,23 +2370,8 @@ class _AnswersSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Directionality(
     textDirection: Helpers.pageDirection,
-    child: Container(
-      height: MediaQuery.of(context).size.height * 0.75,
-      decoration: BoxDecoration(
-        color: context.colors.cardBg,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Column(
+    child: Column(
         children: [
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: context.colors.divider,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
             child: Row(
@@ -2626,7 +2512,6 @@ class _AnswersSheet extends StatelessWidget {
           ),
         ],
       ),
-    ),
   );
 }
 
@@ -3242,17 +3127,12 @@ class _ExamRulesFieldsState extends State<_ExamRulesFields> {
           value: _limitAttempts,
           onChanged: (v) => _set(() => _limitAttempts = v),
           child: _limitAttempts
-              ? _Field(
-                  ctrl: _attemptsCtrl,
+              ? AppNumberField(
+                  controller: _attemptsCtrl,
                   label: 'field_max_submissions_label'.tr,
                   hint: '1',
-                  keyboardType: TextInputType.number,
-                  validator: (v) {
-                    final x = int.tryParse(v ?? '');
-                    return (x == null || x < 1)
-                        ? 'field_max_submissions_error'.tr
-                        : null;
-                  },
+                  min: 1,
+                  required: true,
                 )
               : null,
         ),
@@ -3276,17 +3156,12 @@ class _ExamRulesFieldsState extends State<_ExamRulesFields> {
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _Field(
-                      ctrl: _perStudentCtrl,
+                    AppNumberField(
+                      controller: _perStudentCtrl,
                       label: 'field_questions_per_student_label'.tr,
                       hint: '10',
-                      keyboardType: TextInputType.number,
-                      validator: (v) {
-                        final x = int.tryParse(v ?? '');
-                        return (x == null || x < 1)
-                            ? 'field_questions_per_student_error'.tr
-                            : null;
-                      },
+                      min: 1,
+                      required: true,
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -3367,26 +3242,9 @@ class _ExamRulesSheetState extends State<_ExamRulesSheet> {
   @override
   Widget build(BuildContext context) => Directionality(
     textDirection: Helpers.pageDirection,
-    child: Container(
-      decoration: BoxDecoration(
-        color: context.colors.background,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Column(
+    child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: context.colors.divider,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
             child: Row(
@@ -3462,6 +3320,5 @@ class _ExamRulesSheetState extends State<_ExamRulesSheet> {
           ),
         ],
       ),
-    ),
   );
 }

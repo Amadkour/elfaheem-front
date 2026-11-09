@@ -19,7 +19,9 @@
 //   KPIs             → AppKpiGrid(AppKpiCard …, one highlight: true)   status → AppStatusBadge(tone:)
 //   tabs             → AppTabs / AppUnderlineTabs      side panel    → showAppDrawer · dialog → showAppDialog
 //   load / error     → AppStateView / AppErrorState (appErrorMessage(e), never '$e') · AppUnsavedGuard on forms
-//   page header      → AppHero(+ AppHeroStat)        section title → AppSectionTitle
+//   page header      → AppHeader (Scaffold / BasePage appBar: gradient, collapses by itself) · AppBackButton
+//   big intro card   → AppHero(+ AppHeroStat)        section title → AppSectionTitle
+//   any number       → AppNumberField(controller:, label:, min:, max:, step:)   gradient → AppGradients / AppMeshSurface
 //   content block    → AppCard / AppActionCard        numbers       → AppStatTile in an AppGrid
 //   nothing yet      → AppEmpty                        loading       → AppListSkeleton (not a spinner)
 //   tip / warning    → AppBanner                       quick actions → AppPill
@@ -67,6 +69,11 @@ export 'app_states.dart';
 export 'app_overlays.dart';
 export 'app_kpi.dart';
 export 'app_page_header.dart';
+export 'app_header.dart';
+export 'app_back_button.dart';
+export 'app_side_sheet.dart';
+export 'app_focus_mode.dart';
+export 'app_number_field.dart';
 export 'app_notice.dart' show showAppNotice;
 export 'app_switch.dart';
 export 'app_refresh.dart';

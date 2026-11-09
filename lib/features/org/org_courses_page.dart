@@ -341,9 +341,9 @@ Future<Map<String, dynamic>?> showOrgCourseForm(BuildContext context, {Map<Strin
               const SizedBox(height: 12),
             ],
             Row(children: [
-              Expanded(child: Field(controller: fees, label: t('السعر السنوي', 'Yearly fee'), keyboard: TextInputType.number, ltr: true)),
+              Expanded(child: OrgNumberField(controller: fees, label: t('السعر السنوي', 'Yearly fee'), decimals: 2)),
               const SizedBox(width: 10),
-              Expanded(child: Field(controller: hours, label: t('عدد الساعات', 'Total hours'), keyboard: TextInputType.number, ltr: true)),
+              Expanded(child: OrgNumberField(controller: hours, label: t('عدد الساعات', 'Total hours'))),
             ]),
             OrgSwitchRow(
                 title: t('منشور', 'Published'),

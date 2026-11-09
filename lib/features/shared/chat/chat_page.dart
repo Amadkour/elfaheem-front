@@ -233,7 +233,7 @@ class ChatListView extends StatelessWidget {
           padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.xs, AppSpace.xs),
           child: Row(children: [
             if (onBack != null) ...[
-              IconButton(tooltip: 'chat_back'.tr, icon: const Icon(Icons.arrow_back_rounded), onPressed: onBack),
+              AppBackButton(onPressed: onBack),
               const SizedBox(width: AppSpace.xxs),
             ],
             Expanded(child: Text('chat_title'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: c.h2.copyWith(fontWeight: FontWeight.w700))),
@@ -795,7 +795,7 @@ class _ChatHeader extends StatelessWidget {
         decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.divider.withValues(alpha: 0.5)))),
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xs),
         child: Row(children: [
-          if (showBack) IconButton(tooltip: 'chat_back'.tr, icon: const Icon(Icons.arrow_back_rounded), onPressed: () => Navigator.of(context).maybePop()),
+          if (showBack) const AppBackButton(),
           Expanded(
             child: InkWell(
               borderRadius: BorderRadius.circular(AppRadius.card),

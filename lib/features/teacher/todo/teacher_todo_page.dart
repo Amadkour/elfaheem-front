@@ -194,7 +194,7 @@ class _TeacherTodoViewState extends State<TeacherTodoView> {
       final gutter = AppSpace.gutter(box.maxWidth);
       Widget width(Widget child) => Align(
             alignment: AlignmentDirectional.topCenter,
-            child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 880), child: child),
+            child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 1120), child: child), // AppWidth.content
           );
       final header = AppPageHeader(
         title: 'todo_title'.tr,

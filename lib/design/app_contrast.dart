@@ -85,3 +85,12 @@ Color ensureContrast(Color fg, List<Color> surfaces,
   }
   return best;
 }
+
+/// The harmonious partner of [c]: a neighbouring hue a little cooler (green -> teal, blue -> violet, red -> amber).
+/// A near-grey has no hue to turn, so it gets a lighter shade of itself.
+Color companionOf(Color c) {
+  final h = HSLColor.fromColor(c);
+  if (h.saturation < 0.12) return h.withLightness((h.lightness + 0.12).clamp(0.0, 1.0)).toColor();
+  final turn = h.hue >= 70 && h.hue < 200 ? 38.0 : (h.hue >= 200 && h.hue < 300 ? 30.0 : 24.0);
+  return h.withHue((h.hue + turn) % 360).withSaturation(h.saturation < 0.45 ? 0.45 : h.saturation).toColor();
+}

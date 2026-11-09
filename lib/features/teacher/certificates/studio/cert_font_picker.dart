@@ -1,9 +1,10 @@
 // features/teacher/certificates/studio/cert_font_picker.dart
 //
 // The font control of a certificate field (D-380..D-382). The list is the renderer's own catalog, fetched once from
-// `GET /exports/layout/fonts` (never a second copy here): each name drawn in its own face with the field's real text,
-// grouped Arabic / Latin, with a search. A font this app build does not bundle is downloaded from the server first
-// (`/fonts/{id}/file`), so the picker and the canvas still show the true face. A font that cannot draw the field's
+// `GET /exports/layout/fonts?include=all` (never a second copy here): Arabic / English tabs, grouped by style, each row
+// in its own face with the field's real text or a sample of the font's language, with a search across both tabs.
+// Nothing is downloaded when the list opens (D-410): the catalog is names only, and a row loads its font's regular file
+// when it scrolls into view, a few at a time, cancelled if it scrolls away first. A font that cannot draw the field's
 // script says so on its row, before it is chosen.
 //
 // A choice applies to the selected fields (one or several) or to every text field of the design, as one undo step.
@@ -13,6 +14,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show AppConfig;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../../../../design/app_kit.dart';
@@ -27,8 +29,17 @@ import 'cert_engine_api.dart';
 
 /// One font of the renderer's catalog.
 class CertFontInfo {
-  const CertFontInfo({required this.id, required this.family, required this.scripts, this.bold = false, this.italic = false, this.arabicFallback});
+  const CertFontInfo({required this.id, required this.family, required this.scripts, this.bold = false, this.italic = false, this.arabicFallback, this.style = '', this.labelAr = '', this.labelEn = '', this.bundled = true});
   final String id, family;
+
+  /// The catalog's grouping: naskh, kufi, calligraphic, display, sans, serif, engraved, script, blackletter ('' = older server).
+  final String style;
+
+  /// The server's own names of a font the app build does not carry ('' = the app's name, or the family).
+  final String labelAr, labelEn;
+
+  /// Whether the app ships this font's files (older builds only list these).
+  final bool bundled;
   final List<String> scripts;
   final bool bold, italic;
 
@@ -38,8 +49,12 @@ class CertFontInfo {
   bool get arabic => scripts.contains('arabic');
   bool get latin => scripts.contains('latin');
 
-  /// What the app calls it (its translated name when it bundles the font, else the family).
-  String get label => ExportFonts.has(id) ? ExportFonts.byId(id).label : family;
+  /// What the person sees: the server's name for the language, else the app's translated one, else the family.
+  String get label {
+    final own = AppConfig.lang == 'ar' ? labelAr : labelEn;
+    if (own.isNotEmpty) return own;
+    return ExportFonts.has(id) ? ExportFonts.byId(id).label : family;
+  }
 
   static CertFontInfo? tryParse(Object? j) {
     if (j is! Map || '${j['id'] ?? ''}'.isEmpty) return null;
@@ -51,6 +66,10 @@ class CertFontInfo {
       bold: j['bold'] == true,
       italic: j['italic'] == true,
       arabicFallback: j['arabic_fallback'] is String ? j['arabic_fallback'] as String : null,
+      style: '${j['style'] ?? ''}',
+      labelAr: '${j['label_ar'] ?? ''}',
+      labelEn: '${j['label_en'] ?? ''}',
+      bundled: j['bundled'] != false,
     );
   }
 }
@@ -72,7 +91,32 @@ String? certFontScriptNote(CertFontInfo font, String text) {
   return null;
 }
 
-/// The catalog, fetched once per run; a font the build lacks is downloaded and registered before it is listed.
+/// The style groups in the order the picker shows them; an unknown style comes last.
+const certFontStyleOrder = ['naskh', 'serif', 'kufi', 'calligraphic', 'engraved', 'script', 'display', 'blackletter', 'sans'];
+
+String certFontStyleLabel(String style) => switch (style) {
+      'naskh' => t('نسخ', 'Naskh'),
+      'serif' => t('كلاسيكي', 'Classic serif'),
+      'kufi' => t('كوفي', 'Kufi'),
+      'calligraphic' => t('خطوط يدوية', 'Calligraphic'),
+      'engraved' => t('منقوش', 'Engraved'),
+      'script' => t('توقيع وأسماء', 'Script'),
+      'display' => t('عناوين', 'Display'),
+      'blackletter' => t('قوطي', 'Blackletter'),
+      'sans' => t('عصري', 'Modern'),
+      _ => t('خطوط أخرى', 'Other fonts'),
+    };
+
+/// A row's preview text: the field's own text when the font can draw it, else a sample in the font's own language.
+String certFontSample(CertFontInfo f, String fieldText) {
+  final ar = certTextHasArabic(fieldText), latin = _hasLatin(fieldText);
+  if (f.arabic ? ar : (latin && !ar)) return fieldText;
+  if (f.arabic) return 'شهادة تقدير وتميّز';
+  return f.style == 'script' ? 'Sarah Al-Mansouri' : 'Certificate of Achievement';
+}
+
+/// The catalog, fetched once per run. Only names: a font the build lacks is announced to [ExportFonts], and its files
+/// come from the server when something draws it (D-410).
 abstract final class CertFontCatalog {
   static Future<List<CertFontInfo>>? _load;
 
@@ -82,8 +126,18 @@ abstract final class CertFontCatalog {
   static Future<List<CertFontInfo>> of(CertEngineApi api) => _load ??= () async {
         try {
           final fonts = await api.fonts();
+          ExportFonts.remoteFetch = (id, variant) async => base64Decode(await api.fontFile(id, variant: variant));
           for (final f in fonts) {
-            if (!ExportFonts.has(f.id)) await _fetchMissing(api, f);
+            ExportFonts.declareRemote(
+              id: f.id,
+              family: f.family,
+              arabic: f.arabic,
+              bold: f.bold,
+              italic: f.italic,
+              arabicFallback: f.arabicFallback,
+              labelAr: f.labelAr.isEmpty ? null : f.labelAr,
+              labelEn: f.labelEn.isEmpty ? null : f.labelEn,
+            );
           }
           return fonts;
         } catch (_) {
@@ -91,11 +145,44 @@ abstract final class CertFontCatalog {
           rethrow;
         }
       }();
+}
 
-  static Future<void> _fetchMissing(CertEngineApi api, CertFontInfo f) async {
-    final regular = base64Decode(await api.fontFile(f.id));
-    final bold = f.bold ? base64Decode(await api.fontFile(f.id, variant: 'bold')) : null;
-    await ExportFonts.addRemote(id: f.id, family: f.family, arabic: f.arabic, regular: regular, bold: bold, arabicFallback: f.arabicFallback);
+/// One preview font to load; [cancelled] when its row scrolled away first.
+class _FontFaceJob {
+  _FontFaceJob(this.id, this.done);
+  final String id;
+  final VoidCallback done;
+  bool cancelled = false;
+}
+
+/// The picker's rows ask for their font here: at most [_max] downloads at a time, in the order the rows appeared.
+abstract final class _FontFaceQueue {
+  static const _max = 3;
+  static int _running = 0;
+  static final _waiting = <_FontFaceJob>[];
+
+  static _FontFaceJob request(String id, VoidCallback done) {
+    final job = _FontFaceJob(id, done);
+    _waiting.add(job);
+    _pump();
+    return job;
+  }
+
+  static void cancel(_FontFaceJob job) {
+    job.cancelled = true;
+    _waiting.remove(job);
+  }
+
+  static void _pump() {
+    while (_running < _max && _waiting.isNotEmpty) {
+      final job = _waiting.removeAt(0);
+      _running++;
+      unawaited(ExportFonts.ensureFace(job.id).whenComplete(() {
+        _running--;
+        if (!job.cancelled) job.done();
+        _pump();
+      }));
+    }
   }
 }
 
@@ -146,6 +233,12 @@ class _CertFontPickerBodyState extends State<CertFontPickerBody> {
   final _search = TextEditingController();
   bool _all = false;
   String _q = '';
+  late bool _arabicTab = certTextHasArabic(widget.sample) || (widget.lang == 'ar' && !_sampleLatin);
+
+  /// The chosen style chip; null = every style of the tab.
+  String? _style;
+
+  bool get _sampleLatin => RegExp('[A-Za-z]').hasMatch(widget.sample);
 
   @override
   void dispose() {
@@ -153,20 +246,77 @@ class _CertFontPickerBodyState extends State<CertFontPickerBody> {
     super.dispose();
   }
 
-  bool _matches(CertFontInfo f) => _q.isEmpty || f.family.toLowerCase().contains(_q) || f.label.toLowerCase().contains(_q);
+  bool _matches(CertFontInfo f) =>
+      f.family.toLowerCase().contains(_q) || f.label.toLowerCase().contains(_q) || certFontStyleLabel(f.style).toLowerCase().contains(_q);
 
   Widget _heading(BuildContext context, String text) => Padding(
         padding: const EdgeInsets.only(top: AppSpace.sm, bottom: AppSpace.xxs),
         child: Text(text, style: appText(13, w: FontWeight.w700, c: context.colors.textMedium)),
       );
 
+  List<CertFontInfo> _sorted(Iterable<CertFontInfo> fonts) {
+    int rank(String s) {
+      final i = certFontStyleOrder.indexOf(s);
+      return i < 0 ? certFontStyleOrder.length : i;
+    }
+
+    return fonts.toList()..sort((a, b) => rank(a.style).compareTo(rank(b.style)));
+  }
+
+  /// The list's rows, in order: a heading is a String, a font row a [CertFontInfo].
+  List<Object> _rows() {
+    final out = <Object>[];
+    if (_q.isNotEmpty) {
+      // a search looks in both languages, the field's language first
+      final hits = widget.fonts.where(_matches).toList();
+      final sections = [(true, t('عربي', 'Arabic')), (false, t('إنجليزي', 'English'))];
+      if (!_arabicTab) sections.setAll(0, [sections[1], sections[0]]);
+      for (final (arabic, name) in sections) {
+        final list = _sorted(hits.where((f) => f.arabic == arabic));
+        if (list.isEmpty) continue;
+        out.add(name);
+        out.addAll(list);
+      }
+      return out;
+    }
+    String? last;
+    for (final f in _sorted(widget.fonts.where((f) => f.arabic == _arabicTab && (_style == null || f.style == _style)))) {
+      if (f.style != last) {
+        out.add(certFontStyleLabel(f.style));
+        last = f.style;
+      }
+      out.add(f);
+    }
+    return out;
+  }
+
+  Widget _styleChips() {
+    final styles = _sorted(widget.fonts.where((f) => f.arabic == _arabicTab)).map((f) => f.style).toSet().toList();
+    if (styles.length < 2) return const SizedBox.shrink();
+    Widget chip(String? value, String label) => Padding(
+          padding: const EdgeInsetsDirectional.only(end: AppSpace.xxs),
+          child: ChoiceChip(
+            key: ValueKey('cert-font-style-${value ?? 'all'}'),
+            label: Text(label),
+            selected: _style == value,
+            onSelected: (_) => setState(() => _style = value),
+          ),
+        );
+    return SizedBox(
+      height: AppTouch.min,
+      child: ListView(
+        key: const ValueKey('cert-font-styles'),
+        scrollDirection: Axis.horizontal,
+        children: [chip(null, t('الكل', 'All')), for (final s in styles) chip(s, certFontStyleLabel(s))],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final shown = widget.fonts.where(_matches).toList();
-    final arabic = [for (final f in shown) if (f.arabic) f];
-    final latin = [for (final f in shown) if (!f.arabic) f];
-    final sections = widget.lang == 'ar' ? [(t('عربي', 'Arabic'), arabic), (t('لاتيني', 'Latin'), latin)] : [(t('لاتيني', 'Latin'), latin), (t('عربي', 'Arabic'), arabic)];
+    final rows = _rows();
+    final searching = _q.isNotEmpty;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       TextField(
         key: const ValueKey('cert-font-search'),
@@ -175,6 +325,18 @@ class _CertFontPickerBodyState extends State<CertFontPickerBody> {
         decoration: InputDecoration(isDense: true, prefixIcon: const Icon(Icons.search_rounded, size: 20), hintText: t('ابحث عن خط', 'Search fonts')),
         onChanged: (v) => setState(() => _q = v.trim().toLowerCase()),
       ),
+      if (!searching) ...[
+        const SizedBox(height: AppSpace.xs),
+        StudioSegmented<bool>(
+          key: const ValueKey('cert-font-language'),
+          segments: [StudioSegment(value: true, label: t('عربي', 'Arabic')), StudioSegment(value: false, label: t('إنجليزي', 'English'))],
+          value: _arabicTab,
+          onChanged: (v) => setState(() {
+            _arabicTab = v;
+            _style = null;
+          }),
+        ),
+      ],
       if (widget.total > 1) ...[
         const SizedBox(height: AppSpace.xs),
         StudioSegmented<bool>(
@@ -188,26 +350,28 @@ class _CertFontPickerBodyState extends State<CertFontPickerBody> {
       ],
       const SizedBox(height: AppSpace.xxs),
       Expanded(
-        child: shown.isEmpty
+        child: rows.isEmpty
             ? AppEmpty(icon: Icons.font_download_off_outlined, title: t('لا يوجد خط بهذا الاسم', 'No font with that name'))
-            : ListView(
+            : ListView.builder(
                 key: const ValueKey('cert-font-list'),
-                children: [
-                  for (final (name, list) in sections)
-                    if (list.isNotEmpty) ...[
-                      _heading(context, name),
-                      for (final f in list)
-                        _FontRow(
-                          key: ValueKey('cert-font-${f.id}'),
-                          font: f,
-                          sample: widget.sample,
-                          selected: f.id == widget.value,
-                          note: certFontScriptNote(f, widget.sample),
-                          onTap: () => widget.onPick(CertFontChoice(f.id, all: _all)),
-                        ),
-                    ],
-                  const SizedBox(height: AppSpace.md),
-                ],
+                // only the rows near the screen exist, so only their fonts load
+                itemCount: rows.length + (searching ? 1 : 2),
+                itemBuilder: (ctx, i) {
+                  if (!searching && i == 0) return _styleChips();
+                  final at = i - (searching ? 0 : 1);
+                  if (at >= rows.length) return const SizedBox(height: AppSpace.md);
+                  final row = rows[at];
+                  if (row is String) return _heading(ctx, row);
+                  final f = row as CertFontInfo;
+                  return _FontRow(
+                    key: ValueKey('cert-font-${f.id}'),
+                    font: f,
+                    sample: certFontSample(f, widget.sample),
+                    selected: f.id == widget.value,
+                    note: certFontScriptNote(f, widget.sample),
+                    onTap: () => widget.onPick(CertFontChoice(f.id, all: _all)),
+                  );
+                },
               ),
       ),
       if (_all)
@@ -219,7 +383,7 @@ class _CertFontPickerBodyState extends State<CertFontPickerBody> {
   }
 }
 
-class _FontRow extends StatelessWidget {
+class _FontRow extends StatefulWidget {
   const _FontRow({super.key, required this.font, required this.sample, required this.selected, required this.note, required this.onTap});
   final CertFontInfo font;
   final String sample;
@@ -228,16 +392,51 @@ class _FontRow extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_FontRow> createState() => _FontRowState();
+}
+
+class _FontRowState extends State<_FontRow> {
+  _FontFaceJob? _job;
+
+  bool get _ready => ExportFonts.faceReady(widget.font.id);
+
+  @override
+  void initState() {
+    super.initState();
+    if (!_ready) {
+      _job = _FontFaceQueue.request(widget.font.id, () {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    final job = _job;
+    if (job != null) _FontFaceQueue.cancel(job);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final font = widget.font;
+    final rtl = certTextHasArabic(widget.sample);
+    final preview = TextStyle(
+      fontFamily: ExportFonts.byId(font.id).previewFamily,
+      fontFamilyFallback: exportFlutterFallback(font.id),
+      fontSize: rtl ? 22 : 24,
+      color: c.textDark,
+      height: rtl ? 1.7 : 1.35,
+    );
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpace.xxs),
       child: Material(
-        color: selected ? Color.alphaBlend(c.primary.withValues(alpha: .12), c.cardBg) : c.cardBg,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: BorderSide(color: selected ? c.primary : c.divider)),
+        color: widget.selected ? Color.alphaBlend(c.primary.withValues(alpha: .12), c.cardBg) : c.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: BorderSide(color: widget.selected ? c.primary : c.divider)),
         child: InkWell(
           borderRadius: AppRadius.cardAll,
-          onTap: onTap,
+          onTap: widget.onTap,
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: AppTouch.min),
             child: Padding(
@@ -245,26 +444,30 @@ class _FontRow extends StatelessWidget {
               child: Row(children: [
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(font.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: certFontStyle(font.id, 17, c.textDark)),
-                    Text(
-                      sample,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textDirection: certTextHasArabic(sample) ? TextDirection.rtl : TextDirection.ltr,
-                      style: certFontStyle(font.id, 15, c.textMedium),
-                    ),
-                    if (note != null)
+                    Text(font.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w600, c: c.textMedium)),
+                    if (_ready)
+                      Text(widget.sample, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: rtl ? TextDirection.rtl : TextDirection.ltr, style: preview)
+                    else
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
+                        child: FractionallySizedBox(
+                          widthFactor: .6,
+                          alignment: rtl ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
+                          child: Container(height: 14, decoration: BoxDecoration(color: c.textMedium.withValues(alpha: .14), borderRadius: AppRadius.cardAll)),
+                        ),
+                      ),
+                    if (widget.note != null)
                       Padding(
                         padding: const EdgeInsets.only(top: AppSpace.xxs),
                         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Icon(Icons.info_outline_rounded, size: 15, color: c.danger),
                           const SizedBox(width: AppSpace.xxs),
-                          Expanded(child: Text(note!, key: ValueKey('cert-font-note-${font.id}'), style: appText(12, c: c.danger))),
+                          Expanded(child: Text(widget.note!, key: ValueKey('cert-font-note-${font.id}'), style: appText(12, c: c.danger))),
                         ]),
                       ),
                   ]),
                 ),
-                if (selected) Icon(Icons.check_circle_rounded, size: 20, color: c.primary),
+                if (widget.selected) Icon(Icons.check_circle_rounded, size: 20, color: c.primary),
               ]),
             ),
           ),
@@ -285,7 +488,7 @@ Future<CertFontChoice?> showCertFontPicker(
   required int total,
 }) {
   return showAppSheet<CertFontChoice>(context, (ctx) {
-    final height = (MediaQuery.sizeOf(ctx).height * .78).clamp(360.0, 720.0);
+    final height = (MediaQuery.sizeOf(ctx).height * .82).clamp(360.0, 760.0);
     return SizedBox(
       height: height,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [

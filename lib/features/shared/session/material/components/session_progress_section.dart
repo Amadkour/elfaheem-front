@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import '../../../../../config/app_config.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public entry — the whole progress block
@@ -188,7 +189,7 @@ class _LabelRow extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [fillStart, fillEnd]),
+            gradient: AppGradients.blend(context, color: fillStart),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
@@ -213,9 +214,7 @@ class _CompletedBadgePill extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [context.colors.success, context.colors.success],
-      ),
+      gradient: AppGradients.blend(context, color: context.colors.success),
       borderRadius: BorderRadius.circular(20),
       boxShadow: [
         BoxShadow(

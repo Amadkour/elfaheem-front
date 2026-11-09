@@ -84,7 +84,7 @@ class _BubbleHomeScreenState extends State<BubbleHomeScreen> {
     final ok = await showAppSheet<bool>(context, (ctx) => AppSheetContent(title: t('تصحيح جديد', 'New correction'), children: [
           AppField(controller: title, label: t('الاسم', 'Name')),
           const SizedBox(height: AppSpace.sm),
-          AppField(controller: count, label: t('عدد الأسئلة المستخدمة', 'Questions used'), keyboard: TextInputType.number),
+          Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: count, label: t('عدد الأسئلة المستخدمة', 'Questions used'), min: 1)),
           const SizedBox(height: AppSpace.md),
           AppPrimaryButton(label: t('متابعة', 'Continue'), icon: Icons.arrow_forward_rounded, onPressed: () => Navigator.pop(ctx, true)),
         ]));
@@ -117,7 +117,7 @@ class _BubbleHomeScreenState extends State<BubbleHomeScreen> {
         return ListView(padding: EdgeInsets.all(wide ? AppSpace.lg : AppSpace.md), children: [
           Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1080),
+              constraints: BoxConstraints(maxWidth: AppWidth.wide.max),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 AppHero(
                   icon: Icons.grading_rounded,
@@ -264,7 +264,7 @@ class _BubbleRunScreenState extends State<BubbleRunScreen> {
       body = ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
         Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 880),
+            constraints: BoxConstraints(maxWidth: AppWidth.content.max),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               AppHero(icon: Icons.fact_check_rounded, title: run.title, subtitle: run.sheetName),
               const SizedBox(height: AppSpace.md),
@@ -399,7 +399,7 @@ class _BubbleKeyScreenState extends State<BubbleKeyScreen> {
     final points = TextEditingController(text: bubbleNumText(q.points));
     var all = q.multiAll;
     final result = await showAppSheet<bool>(context, (ctx) => StatefulBuilder(builder: (ctx, setS) => AppSheetContent(title: t('السؤال ${q.n}', 'Question ${q.n}'), children: [
-          AppField(controller: points, label: t('درجة السؤال', 'Marks for this question'), keyboard: TextInputType.number),
+          Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: points, label: t('درجة السؤال', 'Marks for this question'), min: 0, step: 0.5, decimals: 2)),
           const SizedBox(height: AppSpace.sm),
           AppSwitchRow(title: t('يجب تظليل كل الإجابات المحددة', 'The student must shade every chosen answer'), value: all, onChanged: (v) => setS(() => all = v)),
           const SizedBox(height: AppSpace.md),
@@ -482,7 +482,7 @@ class _BubbleKeyScreenState extends State<BubbleKeyScreen> {
         return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
           Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1180),
+              constraints: BoxConstraints(maxWidth: AppWidth.wide.max),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 Row(children: [
                   Expanded(child: Text('$set / ${_questions.length} ${t('مدخلة', 'entered')}', style: AppType.section(context))),

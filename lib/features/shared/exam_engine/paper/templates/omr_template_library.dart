@@ -293,7 +293,7 @@ class TemplateLibraryView extends StatelessWidget {
       children: [
         Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1180),
+            constraints: BoxConstraints(maxWidth: AppWidth.wide.max),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               _Header(families: families.length, published: published, pending: pending.length, onNew: onNew),
               const SizedBox(height: AppSpace.md),

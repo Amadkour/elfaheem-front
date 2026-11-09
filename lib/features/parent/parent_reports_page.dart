@@ -11,6 +11,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -194,8 +195,8 @@ class _ReportsBodyState extends State<_ReportsBody> {
       child: ChoiceChip(
         selected: on,
         showCheckmark: false,
-        avatar: id == null ? Icon(Icons.groups_rounded, size: 16, color: on ? Colors.white : c.textMedium) : AnAvatar(name: label, size: 22),
-        label: Text(label, style: anText(12.5, w: FontWeight.w700, c: on ? Colors.white : c.textDark)),
+        avatar: id == null ? Icon(Icons.groups_rounded, size: 16, color: on ? c.onHero : c.textMedium) : AnAvatar(name: label, size: 22),
+        label: Text(label, style: anText(12.5, w: FontWeight.w700, c: on ? c.onHero : c.textDark)),
         selectedColor: c.primary,
         backgroundColor: c.cardBg,
         side: BorderSide(color: on ? c.primary : c.divider),
@@ -263,7 +264,7 @@ class _ChildReportCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [tierColor, tierColor.withAlpha(185)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+          gradient: AppGradients.blend(context, color: tierColor),
           borderRadius: BorderRadius.circular(22),
           boxShadow: [BoxShadow(color: tierColor.withAlpha(70), blurRadius: 16, offset: const Offset(0, 6))],
         ),
@@ -271,29 +272,29 @@ class _ChildReportCard extends StatelessWidget {
           Row(children: [
             Container(
               padding: const EdgeInsets.all(2),
-              decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white24),
+              decoration: BoxDecoration(shape: BoxShape.circle, color: context.colors.heroGlass),
               child: AnAvatar(name: name, url: profile?.imageUrl, size: 34, color: tierColor, onColor: true),
             ),
             const SizedBox(width: 10),
-            Expanded(child: Text(name, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800))),
+            Expanded(child: Text(name, style: TextStyle(color: context.colors.onHero, fontSize: 18, fontWeight: FontWeight.w800))),
           ]),
           Text(range, style: TextStyle(color: context.colors.onHeroMuted, fontSize: 12)),
           const SizedBox(height: 14),
           Row(children: [
-            PlScoreRing(value: _n(_score, 'value'), color: Colors.white, size: 96, light: true),
+            PlScoreRing(value: _n(_score, 'value'), color: context.colors.onHero, size: 96, light: true),
             const SizedBox(width: 16),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('pl_tier_$tier'.tr, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+                Text('pl_tier_$tier'.tr, style: TextStyle(color: context.colors.onHero, fontSize: 20, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 4),
-                Text('pl_tier_desc_$tier'.tr, style: const TextStyle(color: Colors.white, fontSize: 12.5, height: 1.4)),
+                Text('pl_tier_desc_$tier'.tr, style: TextStyle(color: context.colors.onHero, fontSize: 12.5, height: 1.4)),
               ]),
             ),
           ]),
           Align(
             alignment: AlignmentDirectional.centerEnd,
             child: TextButton.icon(
-              style: TextButton.styleFrom(foregroundColor: Colors.white, visualDensity: VisualDensity.compact),
+              style: TextButton.styleFrom(foregroundColor: context.colors.onHero),
               icon: const Icon(Icons.help_outline_rounded, size: 16),
               label: Text('pl_score_how'.tr, style: const TextStyle(fontSize: 12)),
               onPressed: () => _scoreSheet(context),
@@ -686,17 +687,9 @@ class _ChildReportCard extends StatelessWidget {
 
   void _scoreSheet(BuildContext context) {
     final comps = plList(_score['components']);
-    showModalBottomSheet(
-      useSafeArea: true,
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('pl_score_how'.tr, style: ctx.colors.h2.copyWith(fontSize: 17)),
-            const SizedBox(height: 6),
+    showAppSheet(
+      context,
+      (ctx) => AppSheetContent(title: 'pl_score_how'.tr, children: [
             Text('pl_score_explain'.tr, style: ctx.colors.caption.copyWith(height: 1.4)),
             const SizedBox(height: 12),
             for (final k in comps)
@@ -717,8 +710,6 @@ class _ChildReportCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text('pl_score_note'.tr, style: ctx.colors.caption.copyWith(fontSize: 11)),
           ]),
-        ),
-      ),
     );
   }
 }

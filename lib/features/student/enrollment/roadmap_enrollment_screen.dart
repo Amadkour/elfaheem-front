@@ -7,6 +7,7 @@
 library;
 
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
@@ -244,11 +245,8 @@ class _Intro extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [c.primary.withValues(alpha: .08), c.cardBg],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: c.cardBg,
+        gradient: AppGradients.wash(context),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: c.primary.withValues(alpha: .15)),
       ),

@@ -13,6 +13,7 @@
 // Pure part: org_command_palette_logic.dart (test/org/org_command_palette_test.dart).
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:convert';
 
 import 'package:dio/dio.dart' show CancelToken;
@@ -158,7 +159,7 @@ Future<void> showOrgCommandPalette(
       builder: (ctx) => _PaletteDialog(child: OrgCommandPalettePanel(controller: controller, onSelect: (r) => select(ctx, r), wide: true)),
     );
   } else {
-    await showModalBottomSheet<void>(
+    await showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,

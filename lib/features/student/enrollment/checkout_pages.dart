@@ -7,6 +7,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_header.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:moyasar/moyasar.dart';
 
@@ -18,7 +19,6 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:webview_flutter/webview_flutter.dart'
 if (dart.library.html) 'webview_stub.dart';
 import 'package:flutter_education_app/core/display/lazy_fonts.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Hosted checkout WebView
@@ -74,12 +74,12 @@ class _MobileCheckoutPageState extends State<MobileCheckoutPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('complete_payment_title'.tr),
-        centerTitle: true,
+      appBar: AppHeader(
+        title: 'complete_payment_title'.tr,
         leading: IconButton(
-          icon: const Icon(Icons.close),
+          icon: Icon(Icons.close_rounded, color: context.colors.onHero),
           tooltip: 'cancel'.tr,
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           onPressed: () => Navigator.of(context).pop('cancelled'),
         ),
       ),
@@ -123,14 +123,7 @@ class MoyasarApplePayScreen extends StatelessWidget {
       textDirection: helpers.pageDirection,
       child: Scaffold(
         backgroundColor: c.background,
-        appBar: AppBar(
-          title: Text('Apple Pay',
-              style: TextStyle(fontFamily: AppFonts.display, fontWeight: FontWeight.w700)),
-          backgroundColor: c.cardBg,
-          surfaceTintColor: Colors.transparent,
-          elevation: 0,
-          iconTheme: IconThemeData(color: c.textDark),
-        ),
+        appBar: const AppHeader(title: 'Apple Pay'),
         body: ParentComponent(
           featureKey: 'payments.card',
           child: Padding(
@@ -164,14 +157,7 @@ class MoyasarCardPaymentScreen extends StatelessWidget {
       textDirection: helpers.pageDirection,
       child: Scaffold(
         backgroundColor: c.background,
-        appBar: AppBar(
-          title: Text('card_details_title'.tr,
-              style: TextStyle(fontFamily: AppFonts.display, color: c.textDark, fontWeight: FontWeight.w700)),
-          backgroundColor: c.cardBg,
-          surfaceTintColor: Colors.transparent,
-          elevation: 0,
-          iconTheme: IconThemeData(color: c.textDark),
-        ),
+        appBar: AppHeader(title: 'card_details_title'.tr),
         body: ParentComponent(
           featureKey: 'payments.card',
           // the card form draws with the moyasar package's Readex Pro (a lazy font on the web build)

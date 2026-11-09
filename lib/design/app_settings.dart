@@ -20,6 +20,7 @@
 // header takes values instead of the provider). Layout test: test/ui/app_settings_layout_test.dart.
 library;
 
+import 'package:flutter_education_app/design/app_mesh.dart';
 import 'package:flutter/material.dart';
 
 import '../config/app_config.dart';
@@ -308,12 +309,12 @@ class AppSettingsHeader extends StatelessWidget {
         width: double.infinity,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(c.radiusLarge + 4),
-          gradient: LinearGradient(
-              begin: AlignmentDirectional.topStart, end: AlignmentDirectional.bottomEnd, colors: [c.primary, c.primaryDark]),
+          color: c.primary,
           boxShadow: [BoxShadow(color: c.primary.withValues(alpha: 0.28), blurRadius: 24, offset: const Offset(0, 12))],
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(children: [
+          const Positioned.fill(child: RepaintBoundary(child: AppMeshSurface(seed: 9))),
           PositionedDirectional(top: -40, end: -30, child: bubble(150, 0.08)),
           PositionedDirectional(bottom: -50, start: -20, child: bubble(130, 0.06)),
           Padding(

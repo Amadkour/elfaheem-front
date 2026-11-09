@@ -518,7 +518,7 @@ class _ChatBlocksPageState extends State<ChatBlocksPage> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return BasePage(
-      appBar: ScreenAppBarTitle('chat_blocked_people'.tr),
+      appBar: AppHeader(title: 'chat_blocked_people'.tr),
       child: FutureBuilder<List<ChatBlock>>(
         future: _future,
         builder: (context, s) {
@@ -575,18 +575,6 @@ class _ChatBlocksPageState extends State<ChatBlocksPage> {
   }
 }
 
-/// Plain title app bar for the chat's pushed pages.
-class ScreenAppBarTitle extends StatelessWidget implements PreferredSizeWidget {
-  const ScreenAppBarTitle(this.title, {super.key});
-  final String title;
-
-  @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
-
-  @override
-  Widget build(BuildContext context) => AppBar(title: Text(title));
-}
-
 // ── the admins' review ───────────────────────────────────────────────────────────────────────────────────────
 
 class ChatReportsPage extends StatefulWidget {
@@ -619,7 +607,7 @@ class _ChatReportsPageState extends State<ChatReportsPage> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return BasePage(
-      appBar: ScreenAppBarTitle('chat_reports_title'.tr),
+      appBar: AppHeader(title: 'chat_reports_title'.tr),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),

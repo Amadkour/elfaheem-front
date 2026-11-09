@@ -4,6 +4,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
@@ -73,9 +74,8 @@ class StudentAttendanceWidget extends StatelessWidget {
                       height: 44,
                       decoration: BoxDecoration(
                           gradient: inSession
-                              ? LinearGradient(
-                              colors: [context.colors.danger, context.colors.danger])
-                              : context.colors.primaryGradient,
+                              ? AppGradients.blend(context, color: context.colors.danger)
+                              : AppGradients.brand(context),
                           borderRadius: BorderRadius.circular(22),
                           boxShadow: inSession ? [] : context.colors.primaryShadow),
                       child: provider.isLoading

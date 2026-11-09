@@ -501,7 +501,7 @@ class _ExamSetupWizardState extends State<ExamSetupWizard> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return BasePage(
-      appBar: AppBar(title: Text(t('إعداد الاختبار الورقي', 'Paper exam setup'))),
+      appBar: AppHeader(title: t('إعداد الاختبار الورقي', 'Paper exam setup')),
       child: _loading
           ? const AppListSkeleton(items: 4, withAvatar: false)
           : _loadError != null

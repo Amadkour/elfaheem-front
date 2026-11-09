@@ -24,6 +24,9 @@ import '../attendance/offline_attendance_tab.dart';
 import '../exam_engine/offline/offline_exam_screen.dart';
 import '../../admin/admin_common.dart' show t;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_header.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 // DownloadsScreen — every encrypted video saved on this device.
@@ -170,21 +173,17 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       textDirection: Helpers.pageDirection,
       child: BasePage(
 
-        appBar: AppBar(
-          backgroundColor: c.cardBg,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          centerTitle: true,
-          iconTheme: IconThemeData(color: c.textDark),
+        appBar: AppHeader(
+          title: offlineT('dl_title'),
           // Opened as the start page (nothing to go back to) → home button.
           leading: canPop
               ? null
               : IconButton(
                   tooltip: offlineT('dl_go_home'),
-                  icon: const Icon(Icons.home_rounded),
+                  constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+                  icon: Icon(Icons.home_rounded, color: c.onHero),
                   onPressed: _goHome,
                 ),
-          title: Text(offlineT('dl_title'), style: c.h3),
           actions: [
             const HelpInfoButton(pageId: 'downloads'),
             if (_items.isNotEmpty && _tab == 0)
@@ -359,18 +358,9 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [c.primary, c.primary.withValues(alpha: 0.75)],
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-        ),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: c.primaryShadow,
-      ),
-      child: Row(children: [
+    return DecoratedBox(decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), boxShadow: c.primaryShadow),
+      child: AppMeshSurface(radius: BorderRadius.circular(18),
+      child: Padding(padding: const EdgeInsets.all(16), child: Row(children: [
         Container(
           width: 46,
           height: 46,
@@ -394,8 +384,7 @@ class _SummaryCard extends StatelessWidget {
             ],
           ),
         ),
-      ]),
-    );
+      ]))));
   }
 }
 

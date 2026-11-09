@@ -12,6 +12,7 @@
 //   ConflictList          validate() conflicts in plain words (hard errors first)
 library;
 
+import 'org_page_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
@@ -134,7 +135,7 @@ Future<bool> showRoomForm(BuildContext context, OrgScheduleProvider p, Map<Strin
             ]),
             const SizedBox(height: 10),
             Row(children: [
-              Expanded(child: Field(controller: cap, label: t('السعة', 'Capacity'), keyboard: TextInputType.number, ltr: true)),
+              Expanded(child: OrgNumberField(controller: cap, label: t('السعة', 'Capacity'))),
               const SizedBox(width: 8),
               Expanded(child: Field(controller: building, label: t('المبنى', 'Building'))),
             ]),
@@ -168,7 +169,7 @@ Future<bool> showRoomForm(BuildContext context, OrgScheduleProvider p, Map<Strin
                 value: exclusive,
                 onChanged: (v) => set(() => exclusive = v)),
             if (kind == 'office')
-              Field(controller: maxM, label: t('أقصى عدد للموجودين بالمكتب', 'Maximum occupants'), keyboard: TextInputType.number, ltr: true),
+              OrgNumberField(controller: maxM, label: t('أقصى عدد للموجودين بالمكتب', 'Maximum occupants')),
             OrgSwitchRow(
                 title: t('متاح', 'Active'),
                 subtitle: active ? null : t('لن يستخدمه التوليد', 'The generator won\'t use it'),
@@ -622,9 +623,9 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
             _CapabilityPicker(label: t('إمكانات مطلوبة للمحاضرة', 'Capabilities the lecture needs'), value: caps, suggestions: allCaps, onChanged: () => set(() {})),
             // ── sizes: group size = the smaller of the course maximum and the room capacity ──
             Row(children: [
-              Expanded(child: Field(controller: expected, label: t('العدد المتوقع للطلاب', 'Expected enrolment'), keyboard: TextInputType.number, ltr: true)),
+              Expanded(child: OrgNumberField(controller: expected, label: t('العدد المتوقع للطلاب', 'Expected enrolment'))),
               const SizedBox(width: 8),
-              Expanded(child: Field(controller: lecMax, label: t('أقصى حجم لمجموعة النظري', 'Max theory group'), keyboard: TextInputType.number, ltr: true)),
+              Expanded(child: OrgNumberField(controller: lecMax, label: t('أقصى حجم لمجموعة النظري', 'Max theory group'))),
             ]),
             OrgSwitchRow(
               title: t('مقرر عملي أساساً', 'Practical-based course'),
@@ -647,12 +648,8 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
                 stepper(t('عدد السكاشن أسبوعياً (0 = لا يوجد)', 'Labs per week (0 = none)'), labSessions, 0, 14, (v) => labSessions = v),
                 if (labSessions > 0) ...[
                   stepper(t('فترات السكشن الواحد', 'Periods per lab'), labSpan, 1, 6, (v) => labSpan = v),
-                  Field(
-                      controller: labMax,
-                      label: t('أقصى حجم لمجموعة المعمل (فارغ = الافتراضي ${asInt(asMap(p.schedule?['settings'])['lab_group_default'], 25)})',
-                          'Max lab group (empty = default ${asInt(asMap(p.schedule?['settings'])['lab_group_default'], 25)})'),
-                      keyboard: TextInputType.number,
-                      ltr: true),
+                  OrgNumberField(controller: labMax, label: t('أقصى حجم لمجموعة المعمل (فارغ = الافتراضي ${asInt(asMap(p.schedule?['settings'])['lab_group_default'], 25)})',
+                          'Max lab group (empty = default ${asInt(asMap(p.schedule?['settings'])['lab_group_default'], 25)})')),
                   ChoiceRow<String>(
                     label: t('مكان السكشن', 'Lab room'),
                     options: {for (final k in roomKinds) k: roomKindLabel(k)},

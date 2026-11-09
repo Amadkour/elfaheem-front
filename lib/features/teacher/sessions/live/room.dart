@@ -1,3 +1,4 @@
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'dart:async';
 import 'dart:developer';
@@ -691,7 +692,7 @@ class _RoomPageState extends State<RoomPage>
   void _openChat() => _togglePanel(_SidePanel.chat);
 
   Future<void> _showLiveSheet(Widget child) {
-    return showModalBottomSheet<void>(
+    return showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -3676,7 +3677,7 @@ class _RoomPageState extends State<RoomPage>
 
   Future<void> _openSelfViewOptions() async {
     _pokeControls();
-    await showModalBottomSheet<void>(
+    await showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -3964,7 +3965,7 @@ class _RoomPageState extends State<RoomPage>
 
   Future<void> _openPresenterCamOptions() async {
     _pokeControls();
-    await showModalBottomSheet<void>(
+    await showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,

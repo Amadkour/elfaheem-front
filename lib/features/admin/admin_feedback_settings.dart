@@ -153,7 +153,7 @@ class _FeedbackSettingsFormState extends State<FeedbackSettingsForm> {
             value: _d.orgDefault,
             onChanged: widget.readOnly ? null : (v) => setState(() => _d.orgDefault = v)),
       const SizedBox(height: 8),
-      AppField(controller: _days, label: t('مدة الاحتفاظ (أيام)', 'Retention (days)'), keyboard: TextInputType.number),
+      AppNumberField(controller: _days, label: t('مدة الاحتفاظ (أيام)', 'Retention (days)'), min: 0),
       if (!widget.platform && s.effectiveDays != null)
         Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -288,7 +288,7 @@ class _AdminFeedbackSettingsPageState extends State<AdminFeedbackSettingsPage> {
     return BasePage(
       key: const ValueKey('admin.feedback_settings'),
       useWebCard: true,
-      maxWith: 800,
+      width: AppWidth.reading,
       appBar: ScreenAppBar(title: t('ملاحظات الامتحانات', 'Exam feedback')),
       child: _loading
           ? const AppListSkeleton(items: 3, withAvatar: false)

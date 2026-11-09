@@ -294,7 +294,7 @@ class GuestRecordView extends StatelessWidget {
     }
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 880),
+        constraints: BoxConstraints(maxWidth: AppWidth.reading.max),
         child: Padding(padding: const EdgeInsets.all(AppSpace.md), child: body),
       ),
     );

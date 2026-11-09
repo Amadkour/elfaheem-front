@@ -25,8 +25,8 @@ import 'hub_logic.dart';
 /// From this width the page is a list beside the selected exam's details.
 const hubSplitFrom = 1040.0;
 
-/// The content column's widest.
-const hubMaxWidth = 1360.0;
+/// The content column's widest: the hub fills the window; its detail pane grows with it.
+const hubMaxWidth = double.infinity;
 
 IconData hubActionIcon(HubAction a) => switch (a) {
       HubAction.edit => Icons.edit_outlined,
@@ -1058,7 +1058,7 @@ class ExamHubBody extends StatelessWidget {
               ),
               AppSpace.gapLg,
               SizedBox(
-                width: 380,
+                width: (box.maxWidth * 0.28).clamp(380.0, 520.0),
                 child: selected == null
                     ? const SizedBox.shrink()
                     : SingleChildScrollView(

@@ -32,7 +32,7 @@ import 'cert_engine_api.dart' show CertServerTemplate;
 enum CertSaveState { saved, unsaved, saving, conflict }
 
 /// The left rail's tools; [inspector] exists only as a sheet on a phone.
-enum CertTool { templates, elements, fields, images, layers, inspector }
+enum CertTool { templates, wordings, elements, fields, images, layers, inspector }
 
 const double kCertWide = 1180, kCertCompact = 720;
 const double kCertPanelWidth = 272, kCertInspectorWidth = 320, kCertRailWidth = 76;
@@ -326,7 +326,7 @@ class CertTopBar extends StatelessWidget {
       child: compact
           ? LayoutBuilder(
               builder: (context, box) => Row(children: [
-                IconButton(tooltip: t('رجوع', 'Back'), onPressed: onBack, icon: const Icon(Icons.arrow_back_rounded)),
+                AppBackButton(onPressed: onBack),
                 Expanded(child: nameBlock),
                 StudioToolButton(key: const ValueKey('cert-preview'), icon: Icons.visibility_outlined, label: t('معاينة', 'Preview'), onPressed: onPreview),
                 more,
@@ -338,7 +338,7 @@ class CertTopBar extends StatelessWidget {
               final roomy = box.maxWidth >= 1040;
               final hasZoom = roomy && ctl != null;
               return Row(children: [
-                IconButton(tooltip: t('رجوع', 'Back'), onPressed: onBack, icon: const Icon(Icons.arrow_back_rounded)),
+                AppBackButton(onPressed: onBack),
                 const SizedBox(width: AppSpace.xxs),
                 Expanded(child: Align(alignment: AlignmentDirectional.centerStart, child: nameBlock)),
                 if (ctl != null) ...[
@@ -419,6 +419,7 @@ class _RailItem {
 
 List<_RailItem> _railItems() => [
       _RailItem(CertTool.templates, Icons.dashboard_customize_outlined, t('القوالب', 'Templates')),
+      _RailItem(CertTool.wordings, Icons.format_quote_rounded, t('الصيغ', 'Wordings')),
       _RailItem(CertTool.elements, Icons.category_outlined, t('العناصر', 'Elements')),
       _RailItem(CertTool.fields, Icons.data_object_rounded, t('الحقول', 'Fields')),
       _RailItem(CertTool.images, Icons.image_outlined, t('الصور', 'Images')),
@@ -427,6 +428,7 @@ List<_RailItem> _railItems() => [
 
 String certToolTitle(CertTool tool) => switch (tool) {
       CertTool.templates => t('القوالب', 'Templates'),
+      CertTool.wordings => t('صيغ جاهزة', 'Ready wordings'),
       CertTool.elements => t('العناصر', 'Elements'),
       CertTool.fields => t('الحقول', 'Fields'),
       CertTool.images => t('الصور', 'Images'),

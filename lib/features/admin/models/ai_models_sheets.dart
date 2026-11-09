@@ -399,8 +399,9 @@ class _LimitsSheetState extends State<LimitsSheet> {
             onChanged: (v) => setState(() => _priority = v ?? _priority),
           ),
         ),
-        AppField(controller: _ram, label: t('حد الذاكرة (ميغابايت، 0 = بلا حد)', 'RAM limit (MB, 0 = none)'), keyboard: TextInputType.number, ltr: true),
-        AppField(controller: _idle, label: t('التفريغ بعد الخمول (ثوانٍ، 0 = أبداً)', 'Unload when idle (seconds, 0 = never)'), keyboard: TextInputType.number, ltr: true),
+        AppNumberField(controller: _ram, label: t('حد الذاكرة (ميغابايت، 0 = بلا حد)', 'RAM limit (MB, 0 = none)'), min: 0, step: 256),
+        AppSpace.gapSm,
+        AppNumberField(controller: _idle, label: t('التفريغ بعد الخمول (ثوانٍ، 0 = أبداً)', 'Unload when idle (seconds, 0 = never)'), min: 0, step: 30),
       ],
       buttons: [
         OutlinedButton(onPressed: () => Navigator.of(context).pop(), child: Text(t('إلغاء', 'Cancel'))),
@@ -547,7 +548,7 @@ class _AddModelSheetState extends State<AddModelSheet> {
           AppField(controller: _version, label: t('الإصدار (اختياري)', 'Version (optional)'), ltr: true),
           if (_role == 'embedding') ...[
             AppField(controller: _prefix, label: t('بادئة الاستعلام (اختياري)', 'Query prefix (optional)'), hint: 'query: ', ltr: true),
-            AppField(controller: _dim, label: t('حجم المتجه (اختياري)', 'Vector size (optional)'), hint: '384', keyboard: TextInputType.number, ltr: true),
+            AppNumberField(controller: _dim, label: t('حجم المتجه (اختياري)', 'Vector size (optional)'), hint: '384', min: 0),
           ],
         ],
         if (_problem != null) Text(_problem!, style: appText(12, w: FontWeight.w600, c: c.danger)),

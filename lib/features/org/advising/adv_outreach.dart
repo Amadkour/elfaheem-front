@@ -16,6 +16,7 @@
 //   advOutreachOn             the kill switch `org.advising.outreach` (with the module's)
 library;
 
+import 'package:flutter_education_app/design/app_header.dart' show AppHeader;
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -401,7 +402,7 @@ class AdvOutreachListPage extends StatelessWidget {
   Widget build(BuildContext context) => OrgPushedPage(
         title: t('الرسائل الجماعية', 'Group messages'),
         helpPageId: 'org.advising',
-        maxWidth: 960,
+        maxWidth: 1440,
         child: _ListBody(orgId: orgId, manage: manage),
       );
 }
@@ -479,7 +480,7 @@ class _ListBodyState extends State<_ListBody> {
         onAction: _compose,
       );
     } else {
-      body = AdvPageFrame(maxWidth: 960, fab: true, children: [
+      body = AdvPageFrame(maxWidth: 1440, fab: true, children: [
         for (final o in p.items) AdvOutreachCard(outreach: o, showSender: widget.manage && !_mine, onTap: () => _openTracking(o.id)),
         if (p.pages > 1) ...[
           const SizedBox(height: AppSpace.sm),
@@ -1003,6 +1004,6 @@ class _AdvStudentMessagesPageState extends State<AdvStudentMessagesPage> {
     final title = t('رسائل الإرشاد', 'Advising messages');
     // a student opens it from the hub: the plain app bar; staff on the dashboard: the org header
     if (orgUsesDashboardHeader(context, widget.orgId)) return OrgPushedPage(title: title, maxWidth: 880, child: body);
-    return Scaffold(appBar: AppBar(title: Text(title)), body: body);
+    return Scaffold(appBar: AppHeader(title: title), body: body);
   }
 }

@@ -11,6 +11,7 @@ import '../../admin/admin_common.dart' show asInt, t;
 import 'exam_grading.dart';
 import 'exam_grading_widgets.dart';
 import 'exam_insights.dart';
+import 'exam_page_width.dart';
 import 'exam_review.dart' show scoreError;
 
 String _n(double? v) => v == null ? '—' : (v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2));
@@ -113,8 +114,7 @@ class _AppealDecisionSheetState extends State<AppealDecisionSheet> {
         ]),
         const SizedBox(height: 10),
         if (_accept)
-          AppField(controller: _score, label: t('الدرجة الجديدة (من ${_n(widget.points)})', 'New score (of ${_n(widget.points)})'),
-              keyboard: const TextInputType.numberWithOptions(decimal: true), ltr: true),
+          Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: _score, label: t('الدرجة الجديدة (من ${_n(widget.points)})', 'New score (of ${_n(widget.points)})'), min: 0, max: widget.points, step: 0.5, decimals: 2)),
         const SizedBox(height: 10),
         AppField(controller: _note, label: t('سبب القرار — يراه الطالب', 'Reason — the student sees it'), maxLines: 3),
         if (_error != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_error!, style: appText(12.5, c: c.danger))),
@@ -231,10 +231,10 @@ class _ExamAppealsScreenState extends State<ExamAppealsScreen> {
     final items = _items;
     return BasePage(
       key: const ValueKey('exam.appeals'),
-      appBar: AppBar(title: Text(t('التظلمات', 'Appeals'))),
+      appBar: AppHeader(title: t('التظلمات', 'Appeals')),
       child: AppRefresh(
         onRefresh: _load,
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
+        child: ExamPageWidth(width: AppWidth.content, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, 8, side, 32), children: [
           AppHero(title: widget.examTitle, subtitle: t('طلبات إعادة التصحيح — كل قرار مسجل', 'Regrade requests — every decision is recorded'), icon: Icons.gavel_rounded),
           Wrap(spacing: 8, runSpacing: 8, children: [
             for (final s in const ['open', 'in_review', 'accepted', 'rejected', 'all'])
@@ -247,7 +247,7 @@ class _ExamAppealsScreenState extends State<ExamAppealsScreen> {
           if (items != null)
             for (final a in items)
               AppealCard(appeal: a, onClaim: a.state == 'open' ? () => _claim(a) : null, onDecide: a.open ? () => _decide(a) : null),
-        ]),
+        ])),
       ),
     );
   }
@@ -476,12 +476,12 @@ class _ExamAnalyticsScreenState extends State<ExamAnalyticsScreen> {
     final d = _data;
     return BasePage(
       key: const ValueKey('exam.analytics'),
-      appBar: AppBar(title: Text(t('تحليلات الاختبار', 'Exam analytics')), actions: [
+      appBar: AppHeader(title: t('تحليلات الاختبار', 'Exam analytics'), actions: [
         IconButton(onPressed: _busy ? null : _refresh, icon: const Icon(Icons.refresh_rounded), tooltip: t('إعادة الحساب', 'Recompute')),
       ]),
       child: AppRefresh(
         onRefresh: _load,
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
+        child: ExamPageWidth(width: AppWidth.content, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, 8, side, 32), children: [
           AppHero(title: widget.examTitle, subtitle: d?.computedAt == null ? t('لم تُحسب بعد', 'Not computed yet') : t('آخر حساب: ${AppTime.dateTime(DateTime.parse(d!.computedAt!))}', 'Computed: ${AppTime.dateTime(DateTime.parse(d.computedAt!))}'),
               icon: Icons.insights_rounded),
           if (_error != null) AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger),
@@ -495,7 +495,7 @@ class _ExamAnalyticsScreenState extends State<ExamAnalyticsScreen> {
                 data: d,
                 onVoid: (it) => _busy ? null : _void(it, restore: false),
                 onRestore: (it) => _busy ? null : _void(it, restore: true)),
-        ]),
+        ])),
       ),
     );
   }

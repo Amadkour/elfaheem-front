@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 class CustomButton extends StatelessWidget {
   final String text;
@@ -29,8 +30,9 @@ class CustomButton extends StatelessWidget {
         backgroundColor: color,
         foregroundColor: textColor,
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+        minimumSize: const Size(AppTouch.min, AppTouch.min),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.card),
         ),
       ),
       child: isLoading
@@ -50,7 +52,7 @@ class CustomButton extends StatelessWidget {
             text,
             style: const TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

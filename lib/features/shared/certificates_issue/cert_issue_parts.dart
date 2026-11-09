@@ -362,6 +362,36 @@ class IssueConstantsForm extends StatelessWidget {
 // Recipients: columns, paste, upload, search
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// D-400: the instructor's name when a recipient has no account: nothing can fill it in for them. [showError] turns the
+/// empty field into its inline error (after the person tried to issue, or the server refused).
+class IssueTeacherField extends StatelessWidget {
+  const IssueTeacherField({super.key, required this.controller, required this.showError, required this.onChanged});
+
+  final TextEditingController controller;
+  final bool showError;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final empty = controller.text.trim().isEmpty;
+    return AppCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        Text('ci_teacher_title'.tr, style: AppType.section(context)),
+        const SizedBox(height: AppSpace.xxs),
+        Text('ci_teacher_help'.tr, style: AppType.meta(context)),
+        const SizedBox(height: AppSpace.sm),
+        TextField(
+          key: const ValueKey('ci-teacher-name'),
+          controller: controller,
+          textInputAction: TextInputAction.done,
+          onChanged: onChanged,
+          decoration: InputDecoration(labelText: 'ci_teacher_label'.tr, errorText: showError && empty ? 'ci_teacher_required'.tr : null),
+        ),
+      ]),
+    );
+  }
+}
+
 /// The expected columns, in order, as chips (shown BEFORE any input).
 class IssueColumnChips extends StatelessWidget {
   const IssueColumnChips({super.key, required this.columns, this.showExample = true});
@@ -1264,6 +1294,10 @@ class IssuedCertTile extends StatelessWidget {
               if (cert.studentId == null) AppBadgePill('ci_manual_recipient'.tr, color: c.textMedium),
               if (cert.emailed) AppBadgePill('ci_emailed'.tr, color: c.primary, icon: Icons.mail_outline_rounded),
             ]),
+            if (cert.expiresAt != null) ...[
+              const SizedBox(height: AppSpace.xxs),
+              Text('${'cv_valid_until'.tr}: ${AppTime.date(cert.expiresAt!)}', style: AppType.meta(context)),
+            ],
             if (cert.revoked && (cert.revokedReason ?? '').isNotEmpty) ...[
               const SizedBox(height: AppSpace.xxs),
               Text('${'ci_reason'.tr}: ${cert.revokedReason}', style: AppType.meta(context), maxLines: 2, overflow: TextOverflow.ellipsis),
@@ -1402,150 +1436,4 @@ class IssueErrorBox extends StatelessWidget {
       ]),
     );
   }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Public verification
-// ─────────────────────────────────────────────────────────────────────────────
-
-enum VerifyState { loading, found, notFound, error }
-
-/// What a visitor sees at `/verify/<token>`: a clear valid / revoked / not found verdict, the facts, the image.
-class CertVerifyView extends StatelessWidget {
-  const CertVerifyView({
-    super.key,
-    required this.state,
-    this.result,
-    this.lang,
-    this.onLang,
-    this.onRetry,
-    this.errorText,
-    this.imageBuilder,
-  });
-
-  final VerifyState state;
-  final VerifyResult? result;
-  final String? lang;
-  final ValueChanged<String>? onLang;
-  final VoidCallback? onRetry;
-  final String? errorText;
-
-  /// Draws the certificate image (network in the app; the layout test passes a box).
-  final Widget Function(String url)? imageBuilder;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final content = switch (state) {
-      VerifyState.loading => const AppListSkeleton(items: 3, withAvatar: false, padding: EdgeInsets.zero),
-      VerifyState.notFound => _verdict(context, Icons.search_off_rounded, c.textMedium, 'ci_verify_not_found'.tr,
-          'ci_verify_not_found_sub'.tr),
-      VerifyState.error => IssueErrorBox(message: errorText ?? 'ci_verify_error'.tr, onRetry: onRetry),
-      VerifyState.found => _found(context, result!),
-    };
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpace.md),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 820),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Row(children: [
-              Icon(Icons.verified_outlined, color: c.primary),
-              const SizedBox(width: AppSpace.xs),
-              Expanded(child: Text('ci_verify_title'.tr, style: AppType.pageTitle(context))),
-            ]),
-            const SizedBox(height: AppSpace.md),
-            content,
-          ]),
-        ),
-      ),
-    );
-  }
-
-  Widget _verdict(BuildContext context, IconData icon, Color col, String title, String sub) => AppCard(
-        child: Row(children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(color: col.withValues(alpha: 0.12), shape: BoxShape.circle),
-            child: Icon(icon, color: col, size: 28),
-          ),
-          const SizedBox(width: AppSpace.md),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, style: AppType.section(context).copyWith(color: col)),
-              const SizedBox(height: AppSpace.xxs),
-              Text(sub, style: AppType.meta(context)),
-            ]),
-          ),
-        ]),
-      );
-
-  Widget _found(BuildContext context, VerifyResult r) {
-    final c = context.colors;
-    final langs = r.imageLangs;
-    final shown = langs.contains(lang) ? lang! : (langs.isEmpty ? null : langs.first);
-    final facts = <(IconData, String, String)>[
-      (Icons.person_outline_rounded, 'ci_verify_recipient'.tr, r.recipientName),
-      if (r.title != null) (Icons.workspace_premium_outlined, 'ci_verify_cert'.tr, r.title!),
-      if (r.issuer != null) (Icons.apartment_rounded, 'ci_verify_issuer'.tr, r.issuer!),
-      if (r.issuedAt != null) (Icons.event_outlined, 'ci_verify_date'.tr, AppTime.date(r.issuedAt!)),
-      (Icons.tag_rounded, 'ci_verify_serial'.tr, r.serial),
-      if (r.revoked && r.revokedAt != null) (Icons.block_rounded, 'ci_verify_revoked_on'.tr, AppTime.date(r.revokedAt!)),
-    ];
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-      r.valid
-          ? _verdict(context, Icons.verified_rounded, c.success, 'ci_verify_valid'.tr, 'ci_verify_valid_sub'.tr)
-          : _verdict(context, Icons.gpp_bad_outlined, c.danger, 'ci_verify_revoked'.tr, 'ci_verify_revoked_sub'.tr),
-      const SizedBox(height: AppSpace.md),
-      AppCard(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          for (final f in facts)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs + 2),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Icon(f.$1, size: 18, color: c.textMedium),
-                const SizedBox(width: AppSpace.sm),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(f.$2, style: AppType.meta(context)),
-                    SelectableText(f.$3, style: AppType.row(context)),
-                  ]),
-                ),
-              ]),
-            ),
-        ]),
-      ),
-      if (shown != null) ...[
-        const SizedBox(height: AppSpace.md),
-        if (langs.length > 1 && onLang != null)
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: SegmentedButton<String>(
-              showSelectedIcon: false,
-              segments: [for (final l in langs) ButtonSegment(value: l, label: Text(certLangLabel(l)))],
-              selected: {shown},
-              onSelectionChanged: (s) => onLang!(s.first),
-            ),
-          ),
-        const SizedBox(height: AppSpace.sm),
-        Opacity(
-          opacity: r.valid ? 1 : 0.55,
-          child: ClipRRect(
-            borderRadius: AppRadius.cardAll,
-            child: (imageBuilder ?? _networkImage)(r.images[shown]!),
-          ),
-        ),
-      ],
-    ]);
-  }
-
-  static Widget _networkImage(String url) => Image.network(
-        url,
-        fit: BoxFit.contain,
-        errorBuilder: (_, _, _) => const AspectRatio(aspectRatio: 1.414, child: Center(child: Icon(Icons.broken_image_outlined))),
-        loadingBuilder: (ctx, child, p) => p == null
-            ? child
-            : AppShimmer(child: AspectRatio(aspectRatio: 1.414, child: AppSkeletonBox(width: double.infinity, height: double.infinity, radius: AppRadius.card))),
-      );
 }

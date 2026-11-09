@@ -148,18 +148,9 @@ class _ProfileHero extends StatelessWidget {
       if (p.isTeacher && students > 0)
         AppHeroStat(icon: Icons.groups_rounded, value: appCompactNumber(students), label: t('طلاب', 'Students')),
     ];
-    return Container(
-      padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(c.radiusLarge),
-        gradient: LinearGradient(
-          colors: [c.primary, c.primaryDark],
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-        ),
-        boxShadow: c.primaryShadow,
-      ),
-      child: Column(children: [
+    return DecoratedBox(decoration: BoxDecoration(borderRadius: BorderRadius.circular(c.radiusLarge), boxShadow: c.primaryShadow),
+      child: AppMeshSurface(radius: BorderRadius.circular(c.radiusLarge),
+      child: Padding(padding: const EdgeInsets.fromLTRB(18, 22, 18, 18), child: Column(children: [
         Container(
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: c.heroGlassBorder, width: 2)),
@@ -204,8 +195,7 @@ class _ProfileHero extends StatelessWidget {
             ],
           ]),
         ],
-      ]),
-    );
+      ]))));
   }
 }
 

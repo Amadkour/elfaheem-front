@@ -175,7 +175,6 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
       title: name.isEmpty ? t('القسم', 'Department') : name,
       subtitle: departmentKindLine(_unit, isDept: _isDept),
       refresh: _refresh,
-      maxWidth: 1240,
       primaryAction: _state == _Load.ready && editable
           ? OrgHeaderButton(
               key: const ValueKey('org.dept.edit'),

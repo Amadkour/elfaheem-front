@@ -409,7 +409,7 @@ class AdvAdvisorsPage extends StatelessWidget {
   Widget build(BuildContext context) => OrgPushedPage(
         title: manage ? t('المرشدون', 'Advisors') : t('ملفي كمرشد', 'My advisor profile'),
         helpPageId: 'org.advising',
-        maxWidth: 1000,
+        maxWidth: 1440,
         child: _AdvAdvisorsBody(orgId: orgId, manage: manage),
       );
 }

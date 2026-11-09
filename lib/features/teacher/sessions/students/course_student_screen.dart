@@ -17,6 +17,7 @@
 //   • One staggered fade/slide-in on first load; no per-hover motion spam.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/entities/entity_models.dart' show EntitySummary;
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
@@ -34,6 +35,7 @@ import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/search_text_field.dart';
 import '../../../teacher/home/teacher_models.dart';
 import 'course_student_provider.dart';
+import 'package:flutter_education_app/design/app_back_button.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
@@ -189,10 +191,7 @@ class _HeroHeader extends StatelessWidget {
         children: [
           Row(
             children: [
-              _CircleBtn(
-                icon: Icons.arrow_back_ios_new_rounded,
-                onTap: () => Navigator.maybePop(context),
-              ),
+              AppBackButton(onHero: true, onPressed: () => Navigator.maybePop(context)),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -287,32 +286,6 @@ class _ProgressRing extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _CircleBtn extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _CircleBtn({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        width: 36,
-        height: 36,
-        margin: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: context.colors.onHero.withValues(alpha: 0.18),
-          shape: BoxShape.circle,
-          border: Border.all(color: context.colors.onHero.withValues(alpha: 0.25)),
-        ),
-        child: Icon(icon, size: 16, color: context.colors.onHero, semanticLabel: MaterialLocalizations.of(context).backButtonTooltip),
       ),
     );
   }
@@ -938,7 +911,7 @@ Future<CourseCertificate?> _pickCertificate(
     return null;
   }
   if (certs.length == 1) return certs.first;
-  return showModalBottomSheet<CourseCertificate>(
+  return showAppModalSheet<CourseCertificate>(
       useSafeArea: true,
     context: context,
     backgroundColor: Colors.transparent,

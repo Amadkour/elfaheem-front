@@ -12,6 +12,9 @@
 //                                Arabic stand-in of a font that cannot join Arabic in a PDF
 //   ExportFonts.ensurePreview    registers a font for the live previews (FontLoader, family 'xf_<id>'): only the
 //                                fonts somebody shows are loaded; nothing at start-up
+//   ExportFonts.declareRemote    a font only the server has (D-410): its id is known at once, its files come from
+//                                [ExportFonts.remoteFetch] the first time something draws it; ensureFace = its regular
+//                                file only (a row of the font picker)
 //   ExportFonts.ensureCertFamilies  registers the certificate studio's own families ('CertCinzel', …) — those files
 //                                are plain assets now, not pubspec `fonts:` (7.1: the web build no longer downloads
 //                                6 MB of certificate fonts at start-up); the studio engine calls it when it opens
@@ -219,13 +222,20 @@ abstract final class ExportFonts {
 
   static final Map<String, ExportFont> _byId = {for (final f in catalog) f.id: f};
 
-  /// Registers a font of the server's catalog this build does not bundle (the certificate font picker, D-380): its
-  /// bytes came from the server, so the picker and the canvas still draw it in its own face.
-  static Future<void> addRemote({required String id, required String family, required bool arabic, required Uint8List regular, Uint8List? bold, String? arabicFallback}) async {
-    final r = 'remote:$id:regular', b = bold == null ? r : 'remote:$id:bold';
-    _bytes[r] = Future.value(regular);
-    if (bold != null) _bytes[b] = Future.value(bold);
-    _byId[id] = ExportFont(id: id, regularAsset: r, boldAsset: b, labelKey: 'export_font_$id', labelEn: family, labelAr: family, arabic: arabic, arabicFallbackId: arabicFallback);
+  /// Reads a file of a server-only font: (font id, 'regular' | 'bold' | 'italic') -> the bytes.
+  static Future<Uint8List> Function(String id, String variant)? remoteFetch;
+
+  /// Announces a font of the server's catalog this build does not bundle (D-410). Nothing is downloaded here: the
+  /// canvas and the picker name it at once, and its files arrive through [remoteFetch] when something draws it. A
+  /// bundled font of the same id wins. An italic file is its own id, `<id>_italic`, as for the bundled families.
+  static void declareRemote({required String id, required String family, required bool arabic, bool bold = false, bool italic = false, String? arabicFallback, String? labelAr, String? labelEn}) {
+    if (_byId.containsKey(id)) return;
+    final r = 'remote:$id:regular';
+    _byId[id] = ExportFont(id: id, regularAsset: r, boldAsset: bold ? 'remote:$id:bold' : r, labelKey: 'export_font_$id', labelEn: labelEn ?? family, labelAr: labelAr ?? family, arabic: arabic, arabicFallbackId: arabicFallback);
+    if (italic) {
+      final i = 'remote:$id:italic';
+      _byId['${id}_italic'] = ExportFont(id: '${id}_italic', regularAsset: i, boldAsset: i, labelKey: 'export_font_$id', labelEn: labelEn ?? family, labelAr: labelAr ?? family, arabic: arabic, arabicFallbackId: arabicFallback);
+    }
   }
 
   static List<String> get ids => [for (final f in catalog) f.id];
@@ -246,10 +256,20 @@ abstract final class ExportFonts {
   static final Map<String, Future<Uint8List>> _bytes = {};
 
   /// [asset]'s bytes, loaded once.
-  static Future<Uint8List> bytes(String asset) => _bytes[asset] ??= loader(asset).then((b) => Uint8List.sublistView(b)).catchError((Object e) {
+  static Future<Uint8List> bytes(String asset) => _bytes[asset] ??= _read(asset).catchError((Object e) {
         _bytes.remove(asset);
         throw e;
       });
+
+  static Future<Uint8List> _read(String asset) async {
+    if (asset.startsWith('remote:')) {
+      final parts = asset.split(':');
+      final fetch = remoteFetch;
+      if (fetch == null) throw StateError('no remote font source for $asset');
+      return fetch(parts[1], parts[2]);
+    }
+    return Uint8List.sublistView(await loader(asset));
+  }
 
   /// How many font files have been loaded so far (tests: nothing at start-up, one file per font used).
   @visibleForTesting
@@ -260,6 +280,8 @@ abstract final class ExportFonts {
     _bytes.clear();
     _pdf.clear();
     _preview.clear();
+    _face.clear();
+    _faceReady.clear();
     _cert = null;
   }
 
@@ -309,6 +331,28 @@ abstract final class ExportFonts {
       _preview.remove(f.id);
       debugPrint('[ExportFonts] $id preview failed: $e');
     });
+  }
+
+  static final Map<String, Future<void>> _face = {};
+  static final Set<String> _faceReady = {};
+
+  /// Whether [ensureFace] has finished for [id] (even unsuccessfully: the row then shows the fallback font).
+  static bool faceReady(String id) => _faceReady.contains(byId(id).id);
+
+  /// Only [id]'s regular file as its preview family: what one row of a font picker needs. [ensurePreview] adds the
+  /// bold when a design uses the font.
+  static Future<void> ensureFace(String id) {
+    final f = byId(id);
+    return _face[f.id] ??= () async {
+      try {
+        await (FontLoader(f.previewFamily)..addFont(bytes(f.regularAsset).then((b) => ByteData.sublistView(b)))).load();
+        version.value++;
+      } catch (e) {
+        _face.remove(f.id);
+        debugPrint('[ExportFonts] $id face failed: $e');
+      }
+      _faceReady.add(f.id);
+    }();
   }
 
   /// [ensurePreview] for every font (the font pickers draw each option in its own font).

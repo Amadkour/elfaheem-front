@@ -17,6 +17,7 @@ import '../../student/models.dart';
 import 'categories_provider.dart';
 import 'model.dart';
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 const double _kWideBreakpoint = 840;
 
@@ -60,11 +61,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   Widget build(BuildContext context) {
     return BasePage(
       useWebCard: true,
-      maxWith: 1100,
+      width: AppWidth.wide,
+      appBar: ScreenAppBar(title: 'categories'.tr),
       child: SafeArea(
         child: Column(
           children: [
-            ScreenAppBar(title: 'categories'.tr),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -658,6 +659,7 @@ class _CoursesSliver extends StatelessWidget {
       child: ParentComponent(
         featureKey: 'categories.courses',
         child: HomeCourseList(
+          maxWidth: AppWidth.wide.max,
           courses: courses
               .map((e) => e.toCourseModel)
               .cast<CourseModel>()

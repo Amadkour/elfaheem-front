@@ -11,7 +11,7 @@ import '../../config/app_config.dart';
 
 /// Dispose controllers only AFTER the sheet / dialog has fully left the screen.
 ///
-/// `showModalBottomSheet(...).whenComplete(dispose)` runs the moment the route is POPPED, but the
+/// `showAppModalSheet(...).whenComplete(dispose)` runs the moment the route is POPPED, but the
 /// sheet is still on screen for its ~250 ms closing animation (and rebuilds when the keyboard hides).
 /// Disposing right away makes the still-mounted TextFields throw "used after being disposed".
 void disposeAfterRoute(Iterable<TextEditingController> controllers) {

@@ -538,7 +538,7 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
   Widget build(BuildContext context) {
     return BasePage(
       key: const ValueKey('exam.omr.progress'),
-      appBar: AppBar(title: Text(widget.camera ? t('الأوراق المصوّرة', 'Captured papers') : t('معالجة الأوراق', 'Processing papers'))),
+      appBar: AppHeader(title: widget.camera ? t('الأوراق المصوّرة', 'Captured papers') : t('معالجة الأوراق', 'Processing papers')),
       child: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
@@ -561,7 +561,7 @@ class _PickFirst extends StatelessWidget {
   Widget build(BuildContext context) {
     return BasePage(
       key: const ValueKey('exam.omr.pick'),
-      appBar: AppBar(title: Text(t('رفع الأوراق', 'Upload papers'))),
+      appBar: AppHeader(title: t('رفع الأوراق', 'Upload papers')),
       child: Center(
         child: Padding(
           padding: const EdgeInsets.all(AppSpace.lg),

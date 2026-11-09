@@ -92,7 +92,7 @@ class _ParentOverviewPageState extends State<ParentOverviewPage> with AutomaticK
           children: [
             Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1100),
+                constraints: const BoxConstraints(maxWidth: kHomeWideMax),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   HomeEntrance(
                     index: 0,

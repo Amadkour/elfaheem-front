@@ -682,7 +682,7 @@ class RagLearningPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BasePage(
       useWebCard: true,
-      maxWith: 1000,
+      width: AppWidth.wide,
       appBar: ScreenAppBar(
           title: orgId == null ? t('التعلّم من الملاحظات', 'Learning from feedback') : t('تعلّم مساعد المؤسسة', 'Organization assistant learning'),
           actions: [if (orgId != null) const ContextExitButton()]),

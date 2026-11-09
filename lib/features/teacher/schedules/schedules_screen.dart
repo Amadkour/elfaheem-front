@@ -1,19 +1,19 @@
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse, CourseSchedule;
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/theme/theme_config_provider.dart';
-import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/primary_button.dart';
 import '../../admin/admin_common.dart';
 import 'schedules_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppTime;
+import 'package:flutter_education_app/design/app_kit.dart' show AppHeader, AppTime;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 // ══════════════════════════════════════════════════════════════════════════════
@@ -23,11 +23,8 @@ import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 class TeacherSchedulesScreen extends StatefulWidget {
   final TeacherCourse course;
   const TeacherSchedulesScreen({super.key, required this.course});
-  static void openAddScheduleScreenSheet(BuildContext context,) => showModalBottomSheet(
-      useSafeArea: true,
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
+  static void openAddScheduleScreenSheet(BuildContext context,) => showAppSideSheet<void>(
+    context,
     builder: (_) => ChangeNotifierProvider.value(
       value: context.read<TeacherSchedulesProvider>(),
       child: const AddScheduleSheet(),
@@ -58,13 +55,12 @@ class _TeacherSchedulesScreenState extends State<TeacherSchedulesScreen> {
       key: const ValueKey('teacher_schedules'),
       useWebCard: true,
       width: AppWidth.content,
+      appBar: AppHeader(
+        title: '${'appointment'.tr} ${Helpers.AppConfig.lang=='ar'?widget.course.titleAr:widget.course.titleEn}',
+        actions: [_AddBtn(onTap:()=> TeacherSchedulesScreen.openAddScheduleScreenSheet(context))],
+      ),
       child:
-      SafeArea(child: Column(children: [
-        ScreenAppBar(
-          title: '${'appointment'.tr} ${Helpers.AppConfig.lang=='ar'?widget.course.titleAr:widget.course.titleEn}',
-          actions: [_AddBtn(onTap:()=> TeacherSchedulesScreen.openAddScheduleScreenSheet(context))],
-        ),
-
+      SafeArea(top: false, child: Column(children: [
         // Info banner
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
@@ -206,7 +202,7 @@ class _ManageCard extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: ctx,
       builder: (BuildContext context) => Directionality(
-          textDirection: TextDirection.rtl,
+          textDirection: Helpers.pageDirection,
           child: AlertDialog(
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16)),
@@ -338,7 +334,7 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
       final ok = await showDialog<bool>(
           context: context,
           builder: (_) => Directionality(
-              textDirection: TextDirection.rtl,
+              textDirection: Helpers.pageDirection,
               child: AlertDialog(
                 title:  Text('duplicate-schedule'.tr,
                     style: TextStyle(
@@ -388,30 +384,13 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
     final loading =
         context.watch<TeacherSchedulesProvider>().isLoading;
     return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Container(
-        padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 32),
-        decoration:  BoxDecoration(
-            color: context.colors.cardBg,
-            borderRadius:
-            BorderRadius.vertical(top: Radius.circular(28))),
+      textDirection: Helpers.pageDirection,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Handle
-            Center(
-                child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                        color: context.colors.divider,
-                        borderRadius: BorderRadius.circular(2)))),
-            const SizedBox(height: 18),
             Text('add-weekly-appointment'.tr, style: context.colors.h2),
             const SizedBox(height: 20),
 
@@ -551,18 +530,9 @@ class _AddBtn extends StatelessWidget {
   const _AddBtn({required this.onTap});
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    behavior: HitTestBehavior.opaque,
-    onTap: onTap,
-    child: Container(
-        width: 40,
-        height: 40,
-        margin: const EdgeInsetsDirectional.fromSTEB(8, 4, 4, 4),
-        decoration: BoxDecoration(
-            gradient: context.colors.primaryGradient,
-            shape: BoxShape.circle,
-            boxShadow: context.colors.primaryShadow),
-        child: Icon(Icons.add_rounded,
-            color: context.colors.onHero, size: 22, semanticLabel: 'add_schedule'.tr)),
+  Widget build(BuildContext context) => IconButton(
+    tooltip: 'add_schedule'.tr,
+    onPressed: onTap,
+    icon: Icon(Icons.add_rounded, color: context.colors.primary, size: 24),
   );
 }

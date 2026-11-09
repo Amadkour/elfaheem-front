@@ -13,6 +13,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
+import 'package:flutter_education_app/design/app_responsive.dart' show AppWidthBox;
 import '../shared/legal/legal_links.dart' show legalSettingsGroup;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart' show AttentionTabs;
@@ -50,6 +52,7 @@ import 'package:flutter_education_app/features/shared/display/display_settings_p
 import 'package:flutter_education_app/features/shared/get_app/get_app_banner.dart' show GetAppTile;
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
 import 'package:flutter_education_app/design/quick_meeting_entry.dart';
+import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_page.dart' show CertVerifyEntryTile;
 import 'package:flutter_education_app/design/master_detail/entity_search_palette.dart';
 
 class ParentTabProvider extends ChangeNotifier {
@@ -192,7 +195,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         Icons.notifications_rounded,
         'pl_tab_alerts',
         () => _refresh('alerts'),
-        _lazy('alerts', _ParentTab(titleKey: 'pl_tab_alerts', epoch: _epochs['alerts'], child: const ParentAlertsPage())),
+        _lazy('alerts', _ParentTab(titleKey: 'pl_tab_alerts', epoch: _epochs['alerts'], width: AppWidth.content, child: const ParentAlertsPage())),
         attentionKeys: const [AttentionTabs.parentAlerts],
       ),
       'link': DashboardItem(
@@ -200,7 +203,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         Icons.link_rounded,
         'pl_tab_link',
         () => _refresh('link'),
-        _lazy('link', _ParentTab(titleKey: 'pl_tab_link', epoch: _epochs['link'], child: const ParentLinkPage())),
+        _lazy('link', _ParentTab(titleKey: 'pl_tab_link', epoch: _epochs['link'], width: AppWidth.reading, child: const ParentLinkPage())),
         attentionKeys: const [AttentionTabs.parentLink],
       ),
       'more': DashboardItem(
@@ -295,22 +298,28 @@ class _LazyTabState extends State<_LazyTab> {
 }
 
 class _ParentTab extends StatelessWidget {
-  const _ParentTab({required this.titleKey, required this.child, this.epoch});
+  const _ParentTab({required this.titleKey, required this.child, this.epoch, this.width});
 
   final String titleKey;
   final Widget child;
   final ValueNotifier<int>? epoch;
 
+  /// The width role of a page of cards or a form; null = the page manages its own width.
+  final AppWidth? width;
+
   @override
-  Widget build(BuildContext context) => BasePage(
-        appBar: ScreenAppBar(title: titleKey.tr, showBack: false, actions: const [QuickMeetingIcon(), CalendarEntryIcon(), ChatEntryIcon()]),
-        child: epoch == null
-            ? child
-            : ValueListenableBuilder<int>(
-                valueListenable: epoch!,
-                builder: (_, e, _) => KeyedSubtree(key: ValueKey(e), child: child),
-              ),
-      );
+  Widget build(BuildContext context) {
+    final body = epoch == null
+        ? child
+        : ValueListenableBuilder<int>(
+            valueListenable: epoch!,
+            builder: (_, e, _) => KeyedSubtree(key: ValueKey(e), child: child),
+          );
+    return BasePage(
+      appBar: ScreenAppBar(title: titleKey.tr, showBack: false, actions: const [QuickMeetingIcon(), CalendarEntryIcon(), ChatEntryIcon()]),
+      child: width == null ? body : AppWidthBox(width: width!, gutters: false, child: body),
+    );
+  }
 }
 
 // ── "More" tab ────────────────────────────────────────────────────────────────
@@ -352,6 +361,7 @@ class _ParentMorePageState extends State<_ParentMorePage> {
           title: 'account'.tr,
           icon: Icons.account_circle_rounded,
           children: [
+            const CertVerifyEntryTile(),
             AppSettingsTile(
               icon: Icons.manage_accounts_rounded,
               color: c.primary,

@@ -13,6 +13,7 @@
 //   OrgUnitJoinScreen    the unit's eligibility form → dry run → join / request; the server's answer is final
 library;
 
+import 'org_page_kit.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -421,7 +422,7 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
                       onSelected: (on) => setState(() => on ? d.programIds.add(asInt(p['id'])) : d.programIds.remove(asInt(p['id'])))),
               ]),
               const SizedBox(height: 12),
-              Field(controller: _capacity, label: t('الحد الأقصى للأعضاء (اختياري)', 'Maximum members (optional)'), keyboard: TextInputType.number, ltr: true),
+              OrgNumberField(controller: _capacity, label: t('الحد الأقصى للأعضاء (اختياري)', 'Maximum members (optional)')),
             ]),
           ),
           if (d.needsApprover) ...[
@@ -622,7 +623,7 @@ class _CodesTabState extends State<_CodesTab> {
                     value: oneTime,
                     onChanged: (v) => set(() => oneTime = v)),
               if (!oneTime)
-                Field(controller: maxC, label: t('أقصى عدد استخدامات (فارغ = بلا حد)', 'Maximum uses (empty = unlimited)'), keyboard: TextInputType.number, ltr: true),
+                OrgNumberField(controller: maxC, label: t('أقصى عدد استخدامات (فارغ = بلا حد)', 'Maximum uses (empty = unlimited)')),
               if (err != null) _banner(ctx, Icons.error_outline_rounded, c.danger, err!),
               AppButton.primary(
                 busy: busy,

@@ -2,6 +2,7 @@
 // Small reusable building blocks of the Data Lab (all colours come from the app theme).
 library;
 
+import 'package:flutter_education_app/design/app_mesh.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -96,9 +97,10 @@ class DlHero extends StatelessWidget {
     // the brand hero gradient with a faint warm glow in the top-end corner behind the content (D-136)
     return Container(
       margin: const EdgeInsets.fromLTRB(14, 8, 14, 10),
-      decoration: BoxDecoration(borderRadius: r, gradient: c.heroGradient, boxShadow: c.primaryShadow),
-      child: DecoratedBox(
-        decoration: BoxDecoration(borderRadius: r, gradient: c.heroGlow),
+      decoration: BoxDecoration(borderRadius: r, boxShadow: c.primaryShadow),
+      child: AppMeshSurface(
+        radius: r,
+        seed: title.hashCode,
         child: Padding(
           padding: const EdgeInsets.all(18),
           child: Column(children: [

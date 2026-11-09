@@ -6,6 +6,7 @@
 ///   Teacher : [AttendanceTeacherButton]  -> bottom sheet with the rotating code + live present counter
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -25,6 +26,7 @@ import 'relay_host_provider.dart';
 import 'student_checkin_provider.dart';
 import 'teacher_attendance_controller.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 
 // Status colours come from the LIVE theme (success / danger / warning), so the sheet follows the app theme
 // and dark mode like every other screen — no fixed colours here.
@@ -64,7 +66,7 @@ Future<void> showStudentCheckInSheet(BuildContext context, {int? sessionId, int?
   try {
     host = context.read<RelayHostProvider>();
   } catch (_) {}
-  return showModalBottomSheet(
+  return showAppModalSheet(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -90,32 +92,12 @@ class _SheetFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surface = Theme.of(context).colorScheme.surface;
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          boxShadow: [BoxShadow(color: context.colors.heroShade.withValues(alpha: 0.18), blurRadius: 30, offset: const Offset(0, -6))],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: _refreshable(SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            if (header != null)
-              header!
-            else
-              Container(
-                  width: 42,
-                  height: 4,
-                  margin: const EdgeInsets.only(top: 12, bottom: 4),
-                  decoration: BoxDecoration(
-                      color: context.colors.divider, borderRadius: BorderRadius.circular(2))),
-            Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 24), child: child),
-          ]),
-        )),
-      ),
-    );
+    return _refreshable(SingleChildScrollView(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        ?header,
+        Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 24), child: child),
+      ]),
+    ));
   }
 
   Widget _refreshable(Widget scroll) => onRefresh == null ? scroll : AppRefresh(onRefresh: onRefresh!, child: scroll);
@@ -131,23 +113,10 @@ class _PremiumHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 10, 12, 18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: [c.primary, c.heroEnd(c.primary)], // M22: theme ink, not purple
-        ),
-      ),
+    return AppMeshSurface(
+      child: Padding(
+      padding: const EdgeInsets.fromLTRB(20, 18, 12, 18),
       child: Column(children: [
-        Container(
-            width: 42,
-            height: 4,
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(color: context.colors.onHero.withValues(alpha: 0.38), borderRadius: BorderRadius.circular(2))),
         Row(children: [
           Container(
             width: 48,
@@ -176,6 +145,7 @@ class _PremiumHeader extends StatelessWidget {
           if (trailing != null) trailing!,
         ]),
       ]),
+      ),
     );
   }
 }
@@ -465,7 +435,7 @@ class _StudentSheetState extends State<_StudentSheet> with WidgetsBindingObserve
           height: 52,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              gradient: p.busy ? null : LinearGradient(colors: [primary, context.colors.heroEnd(primary)]),
+              gradient: p.busy ? null : AppGradients.blend(context, color: primary),
               color: p.busy ? context.colors.divider : null,
               borderRadius: BorderRadius.circular(18),
               boxShadow: p.busy
@@ -743,7 +713,7 @@ Future<void> showTeacherAttendanceSheet(BuildContext context, int sessionId, {St
     host = context.read<RelayHostProvider>();
   } catch (_) {}
   final ctl = TeacherAttendanceController.instance..prepare(sessionId, host, title: title);
-  return showModalBottomSheet(
+  return showAppModalSheet(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

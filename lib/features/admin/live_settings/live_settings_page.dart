@@ -607,16 +607,10 @@ class _PreviewCard extends StatelessWidget {
       (t('الصوت', 'Audio'), b.audioKbps, c.onHero.withValues(alpha: 0.22)),
     ];
     final total = b.perViewerWithShareKbps;
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(c.radiusLarge),
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: [c.primary, c.heroEnd(c.primary, 0.45)],
-        ),
-        boxShadow: c.primaryShadow,
-      ),
+    return AppMeshSurface(
+      color: c.primary,
+      radius: BorderRadius.circular(c.radiusLarge),
+      child: Padding(
       padding: const EdgeInsets.all(20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -705,6 +699,7 @@ class _PreviewCard extends StatelessWidget {
           wide: true,
         ),
       ]),
+      ),
     );
   }
 }

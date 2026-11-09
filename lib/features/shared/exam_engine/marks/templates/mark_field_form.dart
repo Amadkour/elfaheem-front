@@ -139,16 +139,10 @@ class _MarkFieldFormState extends State<MarkFieldForm> {
             ),
           ),
           if (f.readsNumber) ...[
-            AppField(
-              controller: _digits,
-              label: t('عدد الخانات (اختياري)', 'Number of digits (optional)'),
-              keyboard: TextInputType.number,
-              ltr: true,
-              onChanged: (s) {
-                final n = parseNumber(s)?.toInt();
+            Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: _digits, label: t('عدد الخانات (اختياري)', 'Number of digits (optional)'), min: 1, onChanged: (v) {
+                final n = v?.toInt();
                 _coalesce(n == null || n <= 0 ? f.copyWith(clearDigits: true) : f.copyWith(digits: n), 'digits');
-              },
-            ),
+              })),
             AppSpace.gapXs,
             _stripSection(context),
           ],
@@ -249,11 +243,5 @@ class _MarkFieldFormState extends State<MarkFieldForm> {
     ]);
   }
 
-  Widget _numField(TextEditingController ctl, String label, MarkField Function(double?) apply, String key, {bool integer = false}) => AppField(
-        controller: ctl,
-        label: label,
-        keyboard: TextInputType.numberWithOptions(decimal: !integer),
-        ltr: true,
-        onChanged: (s) => _coalesce(apply(parseNumber(s)), key),
-      );
+  Widget _numField(TextEditingController ctl, String label, MarkField Function(double?) apply, String key, {bool integer = false}) => Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: ctl, label: label, min: 0, step: integer ? 1 : 0.5, decimals: integer ? 0 : 2, onChanged: (v) => _coalesce(apply(v?.toDouble()), key)));
 }

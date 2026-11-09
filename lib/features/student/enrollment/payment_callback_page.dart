@@ -35,6 +35,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
@@ -195,11 +196,7 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage>
                       height: 120,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [c1, c2],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        gradient: AppGradients.blend(context, color: c1),
                         boxShadow: [
                           BoxShadow(
                             color: c1.withValues(alpha: .4),
@@ -285,11 +282,7 @@ class _GradBtn extends StatelessWidget {
     child: Container(
       height: 56,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [c1, c2],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: AppGradients.blend(context, color: c1),
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(

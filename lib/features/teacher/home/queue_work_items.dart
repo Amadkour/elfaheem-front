@@ -769,7 +769,7 @@ class _InlineStartButton extends StatelessWidget {
   LinearGradient _gradient(BuildContext context) {
     final c = context.colors;
     final base = session.isOngoing ? c.danger : (session.isToday ? c.primary : c.success);
-    return LinearGradient(colors: [base, c.heroEnd(base)], begin: Alignment.topCenter, end: Alignment.bottomCenter);
+    return AppGradients.blend(context, color: base);
   }
 
   @override
@@ -784,7 +784,7 @@ class _InlineStartButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (session.isOngoing) ...[_LiveDot(), const SizedBox(height: 5)],
-            Icon(_icon, color: Colors.white, size: 20),
+            Icon(_icon, color: context.colors.onHero, size: 20),
             const SizedBox(height: 4),
             Text(
               _label,
@@ -792,7 +792,7 @@ class _InlineStartButton extends StatelessWidget {
                 fontFamily: AppFonts.family,
                 fontSize: 10,
                 fontWeight: FontWeight.normal,
-                color: Colors.white,
+                color: context.colors.onHero,
               ),
             ),
           ],

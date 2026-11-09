@@ -558,7 +558,7 @@ class _SharedRecordPageState extends State<SharedRecordPage> {
     final c = context.colors;
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(title: Text(t('تسجيل', 'Recording'))),
+      appBar: AppHeader(title: t('تسجيل', 'Recording'), showBack: Navigator.of(context).canPop()),
       body: _error == null
           ? const AppListSkeleton(items: 2)
           : AppEmpty(

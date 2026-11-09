@@ -172,14 +172,6 @@ class MentionCardBody extends StatelessWidget {
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(color: c.divider, borderRadius: BorderRadius.circular(2)),
-            ),
-          ),
           body,
         ]),
       ),

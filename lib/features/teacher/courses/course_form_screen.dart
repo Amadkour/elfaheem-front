@@ -1,3 +1,4 @@
+import 'package:flutter_education_app/design/app_kit.dart' show AppHeader, AppMeshStyle, AppMeshSurface, AppNumberField, AppSheetContent, showAppSheet;
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'dart:typed_data';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
@@ -22,6 +23,7 @@ import '../schedules/schedules_provider.dart'
     show kDayOrder, kDayLabels, slotDayLabel;
 import 'component/add_item_dialog.dart';
 import 'component/gradient_button.dart';
+import 'component/number_pair.dart';
 import 'component/section_card.dart';
 import 'component/currency_selector.dart';
 import 'component/course_progress_status_card.dart';
@@ -455,12 +457,9 @@ class _CourseFormInnerState extends State<_CourseFormInner>
       ...formProvider.form.schedules.map((s) => s.day),
       ...formProvider.pendingSchedules.map((s) => s.day),
     };
-    await showModalBottomSheet(
-      useSafeArea: true,
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _LocalAddScheduleSheet(
+    await showAppSheet<void>(
+      context,
+      (_) => _LocalAddScheduleSheet(
         existingDays: existingDays,
         onAdd: (day, start, end) => formProvider.addPendingSchedule(
           PendingSchedule(day: day, startTime: start, endTime: end),
@@ -486,23 +485,15 @@ class _CourseFormInnerState extends State<_CourseFormInner>
       key: const ValueKey('course_form'),
       useWebCard: true,
       width: AppWidth.reading,
+      appBar: AppHeader(
+        title: _isEdit ? 'edit_course_title'.tr : 'create_new_course_title'.tr,
+        subtitle: _isEdit ? 'edit_badge'.tr : 'new_badge'.tr,
+        actions: const [HelpInfoButton(pageId: 'teacher.course_editor')],
+      ),
       child: FadeTransition(
         opacity: _fadeAnim,
         child: Column(
           children: [
-            // ── Gradient hero header ───────────────────────────────────────
-            _HeroHeader(
-              isEdit: _isEdit,
-              logoBytes: _logoBytes,
-              imageUrl: widget.course?.imageUrl,
-              logoFile: _logoFile,
-              onChange: (XFile file) async {
-                _logoBytes = await file.readAsBytes();
-                setState(() {
-                  _logoFile = file;
-                });
-              },
-            ),
             // ── Scrollable form ────────────────────────────────────────────
             Expanded(
               child: Form(
@@ -513,6 +504,17 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      _CoverPicker(
+                        logoBytes: _logoBytes,
+                        imageUrl: widget.course?.imageUrl,
+                        logoFile: _logoFile,
+                        onChange: (XFile file) async {
+                          _logoBytes = await file.readAsBytes();
+                          setState(() {
+                            _logoFile = file;
+                          });
+                        },
+                      ),
                       // Basic info (always visible)
                       ParentComponent(
                           featureKey: 'course_form.basic_info',
@@ -609,54 +611,29 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                               const SizedBox(height: 14),
                               // Yearly = the existing price field; the other two
                               // plans are optional (empty = not offered).
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _LabeledField(
-                                      label: 'price_yearly_label'.tr,
-                                      child: MyTextField(
-                                        controller: _priceCtrl,
-                                        label: 'price_yearly_label'.tr,
-                                        keyboard:
-                                        const TextInputType.numberWithOptions(
-                                          decimal: true,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              AppNumberField(
+                                controller: _priceCtrl,
+                                label: 'price_yearly_label'.tr,
+                                min: 0,
+                                step: 10,
+                                decimals: 2,
                               ),
                               const SizedBox(height: 14),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _LabeledField(
-                                      label: 'price_six_months_label'.tr,
-                                      child: MyTextField(
-                                        controller: _priceSixMonthsCtrl,
-                                        label: 'price_six_months_label'.tr,
-                                        keyboard:
-                                        const TextInputType.numberWithOptions(
-                                          decimal: true,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: _LabeledField(
-                                      label: 'price_monthly_label'.tr,
-                                      child: MyTextField(
-                                        controller: _priceMonthlyCtrl,
-                                        label: 'price_monthly_label'.tr,
-                                        keyboard:
-                                        const TextInputType.numberWithOptions(
-                                          decimal: true,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              NumberPair(
+                                first: AppNumberField(
+                                  controller: _priceSixMonthsCtrl,
+                                  label: 'price_six_months_label'.tr,
+                                  min: 0,
+                                  step: 10,
+                                  decimals: 2,
+                                ),
+                                second: AppNumberField(
+                                  controller: _priceMonthlyCtrl,
+                                  label: 'price_monthly_label'.tr,
+                                  min: 0,
+                                  step: 10,
+                                  decimals: 2,
+                                ),
                               ),
                               const SizedBox(height: 6),
                               Text(
@@ -732,13 +709,11 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                             onToggle: () =>
                                 setState(() => _advancedOpen = !_advancedOpen),
                             children: [
-                              _LabeledField(
+                              AppNumberField(
+                                controller: _hoursCtrl,
                                 label: 'expected_hours_label'.tr,
-                                child: MyTextField(
-                                  controller: _hoursCtrl,
-                                  label: 'hours_label'.tr,
-                                  keyboard: TextInputType.number,
-                                ),
+                                min: 0,
+                                decimals: 1,
                               ),
                               const SizedBox(height: 18),
                               Text(
@@ -762,55 +737,27 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _LabeledField(
-                                      label: 'discount_percentage_label'.tr,
-                                      // "Discount %"
-                                      child: MyTextField(
-                                        controller: _discountPercentCtrl,
-                                        label: 'discount_percentage_label'.tr,
-                                        keyboard:
-                                        const TextInputType.numberWithOptions(
-                                          decimal: true,
-                                        ),
-                                        validator: (v) {
-                                          final n = double.tryParse(v ?? '');
-                                          if (v != null &&
-                                              v.trim().isNotEmpty &&
-                                              (n == null || n <= 0 || n > 100)) {
-                                            return 'discount_percentage_validator'
-                                                .tr; // "0–100"
-                                          }
-                                          return null;
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: _LabeledField(
-                                      label: 'discount_days_label'.tr,
-                                      // "Days (optional)"
-                                      child: MyTextField(
-                                        controller: _discountDaysCtrl,
-                                        label: 'discount_days_label'.tr,
-                                        keyboard: TextInputType.number,
-                                        validator: (v) {
-                                          final n = int.tryParse(v ?? '');
-                                          if (v != null &&
-                                              v.trim().isNotEmpty &&
-                                              (n == null || n <= 0)) {
-                                            return 'discount_days_validator'
-                                                .tr; // "must be a positive number of days"
-                                          }
-                                          return null;
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              NumberPair(
+                                first: AppNumberField(
+                                  controller: _discountPercentCtrl,
+                                  label: 'discount_percentage_label'.tr, // "Discount %"
+                                  min: 0,
+                                  max: 100,
+                                  step: 5,
+                                  decimals: 2,
+                                  validator: (v) {
+                                    final n = double.tryParse(v ?? '');
+                                    if (v != null && v.trim().isNotEmpty && (n == null || n <= 0 || n > 100)) {
+                                      return 'discount_percentage_validator'.tr; // "0–100"
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                second: AppNumberField(
+                                  controller: _discountDaysCtrl,
+                                  label: 'discount_days_label'.tr, // "Days (optional)"
+                                  min: 1,
+                                ),
                               ),
                               if (_isEdit &&
                                   (widget.course?.discountActive ?? false) &&
@@ -1092,15 +1039,14 @@ class _CourseFormInnerState extends State<_CourseFormInner>
 // Hero header with gradient + image picker
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _HeroHeader extends StatelessWidget {
-  final bool isEdit;
+/// The course's cover at the top of the form.
+class _CoverPicker extends StatelessWidget {
   final Uint8List? logoBytes;
   final XFile? logoFile;
   final String? imageUrl;
   final Future<void> Function(XFile file) onChange;
 
-  const _HeroHeader({
-    required this.isEdit,
+  const _CoverPicker({
     required this.logoBytes,
     required this.imageUrl,
     this.logoFile,
@@ -1108,149 +1054,18 @@ class _HeroHeader extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final top = MediaQuery.of(context).padding.top;
-    final unit = context.height / 12;
-    return SizedBox(
-      height: (3 * unit) + top,
-      width: double.infinity,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Gradient background
-          Positioned(
-            top: 0,
-            right: 0,
-            left: 0,
-            child: Container(
-              height: unit * 2,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    context.colors.primaryDark,
-                    context.colors.primary,
-                    context.colors.primaryLight,
-                  ],
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 0,
-            right: 0,
-            left: 0,
-            child: Container(height: unit, color: context.colors.background),
-          ),
-          // Decorative circles
-          Positioned(
-            top: -30,
-            left: -30,
-            child: Container(
-              width: 140,
-              height: 140,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: context.colors.onHero.withValues(alpha: 0.06),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 30,
-            right: -20,
-            child: Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: context.colors.onHero.withValues(alpha: 0.08),
-              ),
-            ),
-          ),
-          // Back button + title
-          Positioned(
-            top: top + 12,
-            right: 16,
-            left: 16,
-            child: Row(
-              children: [
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    width: 38,
-                    height: 38,
-                    margin: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: context.colors.onHero.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.arrow_back_ios_rounded,
-                      color: context.colors.onHero,
-                      size: 16,
-                      semanticLabel: MaterialLocalizations.of(context).backButtonTooltip,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: Text(
-                    isEdit
-                        ? 'edit_course_title'.tr
-                        : 'create_new_course_title'.tr,
-                    style: TextStyle(
-                      color: context.colors.onHero,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      fontFamily: AppFonts.display,
-                    ),
-                  ),
-                ),
-                const HelpInfoButton(pageId: 'teacher.course_editor'),
-                // Mode badge
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: context.colors.onHero.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: context.colors.onHero.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    isEdit ? 'edit_badge'.tr : 'new_badge'.tr,
-                    style: TextStyle(
-                      color: context.colors.onHero,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: AppFonts.display,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Align(
-            alignment: AlignmentGeometry.bottomCenter,
-            child: EditableImage(
-              onChange: onChange,
-              imageUrl: imageUrl,
-              imageByte: logoBytes,
-              imageFile: logoFile,
-              size: context.height / 6,
-            ),
-          ),
-        ],
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: EditableImage(
+        onChange: onChange,
+        imageUrl: imageUrl,
+        imageByte: logoBytes,
+        imageFile: logoFile,
+        size: context.height / 6,
       ),
-    );
-  }
+    ),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1371,7 +1186,7 @@ class _EditCertificateTemplateCardState
     );
     if (file == null || !mounted) return;
 
-    final img = await cropImageWithName(context, await file.readAsBytes(), file.name);
+    final img = await cropImageWithName(context, await file.readAsBytes(), file.name, allowBackground: false); // a certificate page, not a photo
     if (img == null) return;
     final bytes = img.bytes;
     setState(() {
@@ -1386,7 +1201,8 @@ class _EditCertificateTemplateCardState
       title: _titleCtrl.text.trim().isEmpty
           ? 'default_certificate_title'.tr
           : _titleCtrl.text.trim(),
-      file: file,
+      // what the person cropped and saw in the preview, not the file they first picked
+      file: XFile.fromData(bytes, name: img.name, path: img.name),
     );
 
     if (!mounted) return;
@@ -1858,11 +1674,8 @@ class _StickyFooter extends StatelessWidget {
                 duration: const Duration(milliseconds: 220),
                 height: 52,
                 decoration: BoxDecoration(
-                  gradient: canSave
-                      ? context.colors.primaryGradient
-                      : LinearGradient(
-                    colors: [context.colors.divider, context.colors.divider],
-                  ),
+                  gradient: canSave ? context.colors.primaryGradient : null,
+                  color: canSave ? null : context.colors.divider,
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: canSave ? context.colors.primaryShadow : null,
                 ),
@@ -2041,7 +1854,7 @@ class _LocalAddScheduleSheetState extends State<_LocalAddScheduleSheet> {
       final ok = await showDialog<bool>(
         context: context,
         builder: (_) => Directionality(
-          textDirection: TextDirection.rtl,
+          textDirection: Directionality.of(context),
           child: AlertDialog(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
@@ -2097,36 +1910,9 @@ class _LocalAddScheduleSheetState extends State<_LocalAddScheduleSheet> {
   }
 
   @override
-  Widget build(BuildContext context) => Directionality(
-    textDirection: TextDirection.rtl,
-    child: Container(
-      padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 32,
-      ),
-      decoration: BoxDecoration(
-        color: context.colors.cardBg,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: context.colors.divider,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
-          Text('add-weekly-appointment'.tr, style: context.colors.h2),
-          const SizedBox(height: 20),
+  Widget build(BuildContext context) => AppSheetContent(
+    title: 'add-weekly-appointment'.tr,
+    children: [
           Text(
             'today'.tr,
             style: context.colors.label.copyWith(
@@ -2212,9 +1998,7 @@ class _LocalAddScheduleSheetState extends State<_LocalAddScheduleSheet> {
             enable: _valid,
             onTap: _submit,
           ),
-        ],
-      ),
-    ),
+    ],
   );
 }
 
@@ -2291,12 +2075,15 @@ class _CertificateDesignsLink extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredCertificateDesigns())),
-        child: Container(
+        child: AppMeshSurface(
+          color: c.accent2,
+          style: AppMeshStyle.wash,
+          radius: BorderRadius.circular(20),
+          child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: c.divider),
-            gradient: LinearGradient(colors: [c.accent2.withValues(alpha: 0.12), c.cardBg]),
           ),
           child: Row(children: [
             Container(
@@ -2314,6 +2101,7 @@ class _CertificateDesignsLink extends StatelessWidget {
             ),
             Icon(Icons.chevron_right_rounded, color: c.textLight),
           ]),
+        ),
         ),
       ),
     );

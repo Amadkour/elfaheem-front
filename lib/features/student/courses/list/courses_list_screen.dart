@@ -8,7 +8,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart' show AppEmpty, AppListSkeleton;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
@@ -17,7 +17,6 @@ import 'package:flutter_education_app/features/student/courses/list/courses_prov
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart' as Helpers;
-import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/paged_progress.dart';
@@ -127,7 +126,7 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
     return BasePage(
       key: const ValueKey('courses_list'),
       useWebCard: true,
-      width: AppWidth.content,
+      width: AppWidth.wide,
       enableFooterWidget: false,
       appBar: ScreenAppBar(
         title: mine ? 'my_courses'.tr : (widget.openSearch ? 'search'.tr : 'explorer_courses'.tr),
@@ -137,10 +136,17 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
           children: [
             ParentComponent(
               featureKey: 'courses_list.search',
-              child: MySearchBar(
-                controller: _searchCtrl,
-                hint: 'search_course_by_name_description',
-                onChanged: _onQuery,
+              // a search box reads best at a form's width, even on a wide window
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: AppWidth.form.max),
+                  child: MySearchBar(
+                    controller: _searchCtrl,
+                    hint: 'search_course_by_name_description',
+                    onChanged: _onQuery,
+                  ),
+                ),
               ),
             ),
             if (loaded > 0 && (total > 0 || !hasMore) && shownTotal > 20)
@@ -158,9 +164,9 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
                   : error
                   ? ErrorRetry(message: errorText ?? 'retry'.tr, onRetry: refresh)
                   : (courses.isEmpty && !hasMore)
-                  ? _EmptyState(
+                  ? AppEmpty(
                 icon: Icons.menu_book_rounded,
-                message: 'no_courses_in_section'.tr,
+                title: 'no_courses_in_section'.tr,
               )
                   : ParentComponent(
                 featureKey: 'courses_list.list',
@@ -177,6 +183,7 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
                         arguments: c);
                   },
                   isTeacher: false,
+                  maxWidth: AppWidth.wide.max,
                   pageName: mine
                       ? 'my-courses-profile'
                       : 'other-courses-profile',
@@ -188,34 +195,4 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
       ),
     );
   }
-}
-
-class _EmptyState extends StatelessWidget {
-  final IconData icon;
-  final String message;
-
-  const _EmptyState({required this.icon, required this.message});
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            color: context.colors.primaryLight.withValues(alpha: 0.3),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, size: 38, color: context.colors.primary),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          message,
-          style: context.colors.body.copyWith(fontWeight: FontWeight.w600),
-        ),
-      ],
-    ),
-  );
 }

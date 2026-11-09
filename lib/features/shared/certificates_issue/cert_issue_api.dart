@@ -11,6 +11,7 @@ import 'dart:typed_data';
 import '../../../core/api_client.dart';
 import 'package:flutter_education_app/features/shared/course/course_scope.dart' show modeCourseScopeQuery;
 import 'cert_issue_logic.dart';
+import 'cert_verify_logic.dart' show kCertLookupBase;
 import 'cert_issue_photo_logic.dart';
 
 /// A course the issuer may pick in "Link to a course".
@@ -168,11 +169,12 @@ class CertIssueApi {
     );
   }
 
-  Future<IssueBatch> issueList(int listId, {int? designId, List<String>? langs, bool email = false}) async =>
+  Future<IssueBatch> issueList(int listId, {int? designId, List<String>? langs, bool email = false, Map<String, String>? constants}) async =>
       IssueBatch.fromJson(_m(await _api.post('$_b/lists/$listId/issue', body: {
         'design_id': ?designId,
         if (langs != null && langs.isNotEmpty) 'langs': langs,
         'email': email,
+        if (constants != null && constants.isNotEmpty) 'constants': constants,
       })));
 
   // ── courses and students the issuer may reach ─────────────────────────────
@@ -231,6 +233,12 @@ class CertIssueApi {
   }
 
   // ── public ────────────────────────────────────────────────────────────────
+
+  /// No sign-in: `auth: false`, so ApiClient neither sends a token nor redirects to the login.
+  static Future<VerifyResult> lookup(String number, {ApiClient? api}) async {
+    final r = await (api ?? ApiClient()).get(kCertLookupBase, queryParams: {'number': number}, auth: false);
+    return VerifyResult.fromJson(r is Map ? r.map((k, v) => MapEntry('$k', v)) : <String, dynamic>{});
+  }
 
   /// No sign-in: `auth: false`, so ApiClient neither sends a token nor redirects to the login.
   static Future<VerifyResult> verify(String token, {ApiClient? api}) async {

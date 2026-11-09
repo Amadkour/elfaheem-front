@@ -124,8 +124,8 @@ class _OmrResultsPageState extends State<OmrResultsPage> {
     final r = _r;
     return BasePage(
       key: const ValueKey(kExamOmrFeatureKey),
-      appBar: AppBar(
-        title: Text(r == null || r.title.isEmpty ? t('نتائج الاختبار الورقي', 'Paper exam results') : r.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      appBar: AppHeader(
+        title: r == null || r.title.isEmpty ? t('نتائج الاختبار الورقي', 'Paper exam results') : r.title,
         actions: [
           IconButton(
             key: const ValueKey('omr.export'),
@@ -144,7 +144,7 @@ class _OmrResultsPageState extends State<OmrResultsPage> {
           child: ListView(padding: EdgeInsets.fromLTRB(pad, AppSpace.md, pad, AppSpace.xl), children: [
             Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1200),
+                constraints: BoxConstraints(maxWidth: AppWidth.wide.max),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   if (_error != null)
                     AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!, action: TextButton(onPressed: _load, child: Text(t('إعادة المحاولة', 'Try again')))),

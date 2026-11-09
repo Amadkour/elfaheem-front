@@ -173,7 +173,7 @@ class _HelpFlowFormState extends State<HelpFlowForm> {
         AppSpace.gapXs,
         AppField(controller: s.narration.en, label: '${_t('التعليق الصوتي', 'Narration')} · English', maxLines: 3, ltr: true),
         AppSpace.gapXs,
-        AppField(controller: s.duration, label: _t('المدة (ثوانٍ)', 'Duration (seconds)'), keyboard: TextInputType.number, ltr: true),
+        AppNumberField(controller: s.duration, label: _t('المدة (ثوانٍ)', 'Duration (seconds)'), min: 0),
       ]),
     );
   }

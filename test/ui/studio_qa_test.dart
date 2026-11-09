@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_header.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -251,7 +252,7 @@ void main() {
     for (var i = 0; i < 6; i++) {
       await t.pump(const Duration(milliseconds: 100));
     }
-    final title = t.widget<Text>(find.descendant(of: find.byType(AppBar), matching: find.text(name)));
+    final title = t.widget<Text>(find.descendant(of: find.byType(AppHeader), matching: find.text(name)));
     expect(title.style?.fontFamilyFallback, containsAll(AppFonts.fallback));
     expect(AppFonts.fallback.length, 2, reason: 'the current language font, then the other one');
     await t.pumpWidget(const SizedBox());

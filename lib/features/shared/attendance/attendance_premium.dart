@@ -22,6 +22,7 @@ import 'attendance_store.dart';
 import 'attendance_strings.dart';
 import 'attendance_widgets.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Premium pill
@@ -92,11 +93,7 @@ class _PremiumPillState extends State<_PremiumPill> with SingleTickerProviderSta
               height: 30,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(11),
-                gradient: LinearGradient(
-                  begin: AlignmentDirectional.centerStart,
-                  end: AlignmentDirectional.centerEnd,
-                  colors: [widget.from, widget.to],
-                ),
+                gradient: AppGradients.blend(context, color: widget.from),
                 boxShadow: [
                   BoxShadow(
                     color: widget.to.withValues(alpha: 0.28 + 0.22 * pulse),

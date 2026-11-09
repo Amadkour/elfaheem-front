@@ -26,6 +26,7 @@ import 'package:provider/provider.dart';
 import '../../../utils/widget/primary_button.dart';
 import 'subscription_provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_header.dart';
 
 class SubscriptionScreen extends StatelessWidget {
   const SubscriptionScreen({super.key});
@@ -345,8 +346,9 @@ class _ViewState extends State<_View> {
       textDirection: dir,
       child: Scaffold(
         backgroundColor: c.background,
-        appBar: AppBar(
-          title: Text('sub_title'.tr, style: TextStyle(fontFamily: AppFonts.family)),
+        appBar: AppHeader(
+          title: 'sub_title'.tr,
+          showBack: Navigator.of(context).canPop(),
           actions: [AppRefreshAction(onRefresh: p.load), const HelpInfoButton(pageId: 'account.subscription')],
         ),
         body: p.loaded ? AppRefresh(onRefresh: p.load, scrollable: scrollable, child: body) : body,
