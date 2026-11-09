@@ -185,6 +185,7 @@ class _AdminOrganizationsPageState extends State<AdminOrganizationsPage> {
   @override
   Widget build(BuildContext context) {
     return AdminPage(
+      width: AppWidth.wide,
       title: t('المؤسسات', 'Organizations'),
       subtitle: t('اعتماد المؤسسات وإدارتها وتغيير مديريها', 'Approve, edit and manage organizations and their admins'),
       icon: Icons.domain_rounded,
@@ -704,7 +705,7 @@ class AdminOrgAdminsPage extends StatelessWidget {
         final c = context.colors;
         return BasePage(
           useWebCard: true,
-          maxWith: 900,
+          width: AppWidth.wide,
           appBar: ScreenAppBar(title: t('مديرو المؤسسات', 'Organization admins'), actions: [
             IconButton(
               tooltip: t('حساب جديد', 'New account'),

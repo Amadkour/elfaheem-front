@@ -603,10 +603,10 @@ class AdminServicesHub extends StatefulWidget {
   /// Reloads the counts on the cards (the dashboard's badge refresh); null = no pull-to-refresh.
   final Future<void> Function()? onRefresh;
 
-  static const double maxWidth = 1200;
+  static const double maxWidth = 1440;
 
-  /// 1 column on a narrow window, then 2 → 3 → 4.
-  static int columnsFor(double width) => width >= 960 ? 4 : (width >= 700 ? 3 : (width >= 440 ? 2 : 1));
+  /// 1 column on a narrow window, then 2 → 3 → 4 → 5.
+  static int columnsFor(double width) => width >= 1320 ? 5 : (width >= 960 ? 4 : (width >= 700 ? 3 : (width >= 440 ? 2 : 1)));
 
   /// The services of [items] whose label or description contains every word of [q].
   static List<AdminService> filter(List<AdminService> items, String q) {

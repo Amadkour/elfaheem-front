@@ -348,14 +348,26 @@ class _FormState extends State<ParentLinkSettingsForm> {
         ),
       );
 
-  Widget _tf(TextEditingController c, String label, {bool ltr = false, bool number = false, String? helper, int lines = 1, bool obscure = false}) =>
+  Widget _numberField(TextEditingController c, String label, {String? helper}) => Padding(
+        padding: const EdgeInsets.only(bottom: AppSpace.sm),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+          AppNumberField(controller: c, label: label, min: 0, onChanged: (_) => setState(() {})),
+          if (helper != null)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpace.xxs),
+              child: Text(helper, style: AppType.meta(context)),
+            ),
+        ]),
+      );
+
+  Widget _tf(TextEditingController c, String label, {bool ltr = false, String? helper, int lines = 1, bool obscure = false}) =>
       Padding(
         padding: const EdgeInsets.only(bottom: AppSpace.sm),
         child: TextField(
           controller: c,
           maxLines: obscure ? 1 : lines,
           obscureText: obscure,
-          keyboardType: number ? TextInputType.number : TextInputType.text,
+          keyboardType: TextInputType.text,
           textDirection: ltr ? TextDirection.ltr : null,
           onChanged: (_) => setState(() {}),
           decoration: InputDecoration(labelText: label, helperText: helper, helperMaxLines: 3),
@@ -396,7 +408,7 @@ class _FormState extends State<ParentLinkSettingsForm> {
                   ]),
                 ),
                 AppSpace.gapXs,
-                _tf(_ttl, 'pl_code_ttl'.tr, number: true, helper: 'pl_code_ttl_hint'.tr),
+                _numberField(_ttl, 'pl_code_ttl'.tr, helper: 'pl_code_ttl_hint'.tr),
               ]),
               _section('pl_mode_advanced'.tr, [
                 _list('pl_fields'.tr, _advFields, false),
@@ -438,7 +450,7 @@ class _FormState extends State<ParentLinkSettingsForm> {
                       onChanged: (v) => setState(() => _clearSecret = v),
                     ),
                 ],
-                _tf(_timeout, 'pl_timeout'.tr, number: true),
+                _numberField(_timeout, 'pl_timeout'.tr),
                 _tf(_template, 'pl_body_template'.tr, ltr: true, lines: 6, helper: 'pl_template_hint'.tr),
                 _tf(_path, 'pl_success_path'.tr, ltr: true, helper: 'pl_success_path_hint'.tr),
                 _tf(_value, 'pl_success_value'.tr, ltr: true),

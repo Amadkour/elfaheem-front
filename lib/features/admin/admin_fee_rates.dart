@@ -387,17 +387,11 @@ class _FeeEditSheetState extends State<_FeeEditSheet> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
           child: Column(children: [
-            AppField(
-              controller: _percent,
-              label: 'admin_fee_percent'.tr,
-              keyboard: const TextInputType.numberWithOptions(decimal: true),
-            ),
-            if (widget.hasFixed)
-              AppField(
-                controller: _fixed,
-                label: 'admin_fee_fixed'.tr,
-                keyboard: const TextInputType.numberWithOptions(decimal: true),
-              ),
+            AppNumberField(controller: _percent, label: 'admin_fee_percent'.tr, min: 0, max: 100, decimals: 2),
+            if (widget.hasFixed) ...[
+              AppSpace.gapSm,
+              AppNumberField(controller: _fixed, label: 'admin_fee_fixed'.tr, min: 0, decimals: 2),
+            ],
             AppButton.primary(label: 'save'.tr, busy: _busy, onPressed: _busy ? null : _save),
             if (m['is_default'] != true)
               TextButton(

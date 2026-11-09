@@ -327,7 +327,7 @@ class ReleaseDetailView extends StatelessWidget {
         padding: pad,
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1240),
+            constraints: BoxConstraints(maxWidth: AppWidth.wide.max),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(flex: 3, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: main)),
               const SizedBox(width: AppSpace.md),

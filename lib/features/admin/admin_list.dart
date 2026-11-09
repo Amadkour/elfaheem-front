@@ -349,11 +349,7 @@ class AdminAvatar extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [c.primary.withValues(alpha: 0.22), c.primary.withValues(alpha: 0.10)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: c.primary.withValues(alpha: 0.16),
       ),
       child: Text(
         name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase(),

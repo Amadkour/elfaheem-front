@@ -622,6 +622,7 @@ class _DataCenterPageState extends State<DataCenterPage> {
     }
     if (widget.embedded) return content;
     return AdminPage(
+      width: AppWidth.wide,
       title: t('مركز البيانات', 'Data Center'),
       subtitle: t('كل البيانات في مكان واحد — ابحث وصدّر', 'Every dataset in one place — search and export'),
       icon: Icons.insights_rounded,
@@ -762,6 +763,7 @@ class _AdminRequirementsPageState extends State<AdminRequirementsPage> {
     final items = _items ?? const <Map<String, dynamic>>[];
     final addButton = AppButton.primary(label: t('مطلب جديد', 'New requirement'), icon: Icons.add_rounded, onPressed: _items == null ? null : () => _edit());
     return AdminPage(
+      width: AppWidth.wide,
       title: t('مطالب المنصة', 'Platform requirements'),
       subtitle: t('اطلب من مستخدميك الموافقة أو الاطلاع', 'Ask your users to agree or read'),
       icon: Icons.fact_check_rounded,

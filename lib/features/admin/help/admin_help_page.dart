@@ -126,7 +126,7 @@ class _AdminHelpPageState extends State<AdminHelpPage> {
     return BasePage(
       key: const ValueKey(adminHelpFeatureKey),
       useWebCard: true,
-      maxWith: 1000,
+      width: AppWidth.wide,
       appBar: ScreenAppBar(
         helpPageId: 'admin.help',
         title: _t('إدارة المساعدة', 'Help management'),
@@ -360,7 +360,7 @@ class _AdminHelpEditPageState extends State<AdminHelpEditPage> {
     final d = _draft;
     return BasePage(
       useWebCard: true,
-      maxWith: 900,
+      width: AppWidth.reading,
       appBar: ScreenAppBar(
         title: widget.pageId,
         actions: [
@@ -464,7 +464,7 @@ class _AdminHelpFlowPageState extends State<AdminHelpFlowPage> {
   Widget build(BuildContext context) {
     return BasePage(
       useWebCard: true,
-      maxWith: 900,
+      width: AppWidth.reading,
       appBar: ScreenAppBar(
         title: widget.isNew ? _t('مسار جديد', 'New flow') : widget.flow.key,
         actions: [

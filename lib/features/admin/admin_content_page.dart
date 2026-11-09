@@ -21,6 +21,8 @@ library;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_buttons.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -641,13 +643,10 @@ class _AdminContentPageState extends State<AdminContentPage> {
           ]),
         const SizedBox(height: 12),
         Wrap(spacing: 10, runSpacing: 8, children: [
-          OutlinedButton.icon(
+          AppButton.secondary(
+            label: 'content_upload_splash_logo'.tr,
+            icon: Icons.add_photo_alternate_rounded,
             onPressed: uploading ? null : () => _pickImage('/about/info/splash-logo'),
-            icon: const Icon(Icons.add_photo_alternate_rounded, size: 18),
-            label: Text('content_upload_splash_logo'.tr, style: TextStyle(fontFamily: AppFonts.family)),
-            style: OutlinedButton.styleFrom(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
           ),
           if (logo.isNotEmpty)
             TextButton.icon(
@@ -763,22 +762,15 @@ class _AdminContentPageState extends State<AdminContentPage> {
             ],
             const SizedBox(height: 14),
             Wrap(spacing: 10, runSpacing: 8, children: [
-              FilledButton.icon(
+              AppButton.primary(
+                label: 'btn_edit'.tr,
+                icon: Icons.edit_rounded,
                 onPressed: () => _form(_aboutCfg, item: info, path: '/about/info', single: true),
-                icon: const Icon(Icons.edit_rounded, size: 18),
-                label: Text('btn_edit'.tr, style: TextStyle(fontFamily: AppFonts.family)),
-                style: FilledButton.styleFrom(
-                  backgroundColor: c.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
               ),
-              OutlinedButton.icon(
+              AppButton.secondary(
+                label: 'content_upload_logo'.tr,
+                icon: Icons.add_photo_alternate_rounded,
                 onPressed: uploading ? null : () => _pickImage('/about/info/logo'),
-                icon: const Icon(Icons.add_photo_alternate_rounded, size: 19),
-                label: Text('content_upload_logo'.tr, style: TextStyle(fontFamily: AppFonts.family)),
-                style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
               ),
             ]),
           ]),
@@ -813,7 +805,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
             constraints: const BoxConstraints(minWidth: 60),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: _pal(context).green),
+              gradient: AppGradients.blend(context, color: _pal(context).green.last),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Text(_loc(s, 'value'),
@@ -850,7 +842,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
             height: 50,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: _pal(context).purple),
+              gradient: AppGradients.blend(context, color: _pal(context).purple.last),
               borderRadius: BorderRadius.circular(16),
             ),
             child: emoji.isNotEmpty

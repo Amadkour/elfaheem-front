@@ -215,8 +215,7 @@ class AdCard extends StatelessWidget {
           if (showImage)
             Image.network(orgFileUrl(media), fit: BoxFit.cover, errorBuilder: (_, _, _) => const SizedBox.shrink())
           else
-            DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
-                begin: AlignmentDirectional.topStart, end: AlignmentDirectional.bottomEnd, colors: [c.primary, c.primaryDark]))),
+            AppMeshSurface(color: c.primary, child: const SizedBox.expand()),
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
@@ -574,6 +573,7 @@ class _AdminAdsViewState extends State<_AdminAdsView> {
     final first = p.rows.isEmpty;
     return AdminPage(
       helpPageId: 'admin.ads',
+      width: AppWidth.wide,
       title: t('الإعلانات', 'Ads'),
       icon: Icons.ads_click_rounded,
       onRefresh: p.isLoading ? null : () => _refresh(p),
@@ -710,9 +710,9 @@ class _AdminAdsViewState extends State<_AdminAdsView> {
                 value: enabled,
                 onChanged: (v) => set(() => enabled = v)),
             AppSwitchTile(title: t('مراجعة كل إعلان قبل نشره', 'Review every ad before it goes live'), value: approval, onChanged: (v) => set(() => approval = v)),
-            AppField(controller: price, label: t('السعر لكل يوم', 'Price per day'), keyboard: const TextInputType.numberWithOptions(decimal: true), ltr: true),
+            AppNumberField(controller: price, label: t('السعر لكل يوم', 'Price per day'), min: 0, decimals: 2),
             err(priceErr),
-            AppField(controller: days, label: t('أقصى مدة (أيام)', 'Max duration (days)'), keyboard: TextInputType.number, ltr: true),
+            AppNumberField(controller: days, label: t('أقصى مدة (أيام)', 'Max duration (days)'), min: 0),
             err(daysErr),
             AppButton.primary(label: t('حفظ', 'Save'), busy: busy, expand: true, onPressed: busy ? null : save),
           ]);
@@ -762,7 +762,7 @@ class _TeacherAdsPageState extends State<TeacherAdsPage> {
     final c = context.colors;
     return BasePage(
       useWebCard: true,
-      maxWith: 900,
+      width: AppWidth.content,
       appBar: ScreenAppBar(title: t('إعلاناتي', 'My ads')),
       child: _blocked != null
           ? OrgEmpty(icon: Icons.campaign_rounded, title: t('الإعلانات غير متاحة حالياً', 'Ads are not available right now'), message: _blocked)

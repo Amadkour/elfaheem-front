@@ -10,6 +10,7 @@ library;
 import 'dart:math' show Random;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_number_field.dart';
 import 'package:flutter/scheduler.dart' show SchedulerBinding, SchedulerPhase;
 import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -1070,11 +1071,14 @@ class _CourseDetailState extends State<_CourseDetail> {
                         ],
                       ),
                     const SizedBox(height: 12),
-                    Field(
-                      controller: _fee,
-                      label: 'admin_platform_fee_empty_default'.tr,
-                      keyboard: const TextInputType.numberWithOptions(
-                        decimal: true,
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: AppNumberField(
+                        controller: _fee,
+                        label: 'admin_platform_fee_empty_default'.tr,
+                        min: 0,
+                        max: 100,
+                        decimals: 2,
                       ),
                     ),
                     Text(
@@ -1442,71 +1446,33 @@ class _CourseFormState extends State<_CourseForm> {
                     label: 'description'.tr,
                     maxLines: 3,
                   ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Field(
-                          controller: _fees,
-                          label: 'price_yearly_label'.tr,
-                          keyboard: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          validator: (v) {
-                            final n = double.tryParse((v ?? '').trim());
-                            return (n == null || n < 0)
-                                ? 'admin_invalid_price'.tr
-                                : null;
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Field(
-                          controller: _max,
-                          label: 'admin_max_students'.tr,
-                          keyboard: TextInputType.number,
-                        ),
-                      ),
-                    ],
+                  _NumberPair(
+                    AppNumberField(
+                      controller: _fees,
+                      label: 'price_yearly_label'.tr,
+                      min: 0,
+                      decimals: 2,
+                      required: true,
+                    ),
+                    AppNumberField(
+                      controller: _max,
+                      label: 'admin_max_students'.tr,
+                      min: 0,
+                    ),
                   ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Field(
-                          controller: _sixMonths,
-                          label: 'price_six_months_label'.tr,
-                          keyboard: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          validator: (v) {
-                            final s = (v ?? '').trim();
-                            if (s.isEmpty) return null;
-                            final n = double.tryParse(s);
-                            return (n == null || n < 0)
-                                ? 'admin_invalid_price'.tr
-                                : null;
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Field(
-                          controller: _monthly,
-                          label: 'price_monthly_label'.tr,
-                          keyboard: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          validator: (v) {
-                            final s = (v ?? '').trim();
-                            if (s.isEmpty) return null;
-                            final n = double.tryParse(s);
-                            return (n == null || n < 0)
-                                ? 'admin_invalid_price'.tr
-                                : null;
-                          },
-                        ),
-                      ),
-                    ],
+                  _NumberPair(
+                    AppNumberField(
+                      controller: _sixMonths,
+                      label: 'price_six_months_label'.tr,
+                      min: 0,
+                      decimals: 2,
+                    ),
+                    AppNumberField(
+                      controller: _monthly,
+                      label: 'price_monthly_label'.tr,
+                      min: 0,
+                      decimals: 2,
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
@@ -1615,4 +1581,26 @@ class _CourseFormState extends State<_CourseForm> {
       ],
     );
   }
+}
+
+/// Two number fields side by side once each has room for its two 48 px step buttons; stacked on a phone.
+class _NumberPair extends StatelessWidget {
+  const _NumberPair(this.first, this.second);
+
+  final Widget first, second;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: LayoutBuilder(builder: (context, box) {
+          if (box.maxWidth < 420) {
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [first, AppSpace.gapSm, second]);
+          }
+          return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: first),
+            AppSpace.gapSm,
+            Expanded(child: second),
+          ]);
+        }),
+      );
 }

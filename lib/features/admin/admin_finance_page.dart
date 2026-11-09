@@ -85,6 +85,7 @@ class _View extends StatelessWidget {
     final p = context.watch<AdminFinanceProvider>();
     return AdminPage(
       helpPageId: 'admin.payments',
+      width: AppWidth.wide,
       title: t('المدفوعات والتحويلات', 'Payments & payouts'),
       icon: Icons.receipt_long_rounded,
       onRefresh: () {
@@ -1136,23 +1137,22 @@ class _FilterSheetState extends State<_FilterSheet> {
           child: Row(
             children: [
               Expanded(
-                child: OutlinedButton(
+                child: AppButton.secondary(
+                  label: t('إعادة ضبط', 'Reset'),
+                  expand: true,
                   onPressed: () => setState(() {
                     _d.reset();
                     _min.clear();
                     _max.clear();
                   }),
-                  child: Text(t('إعادة ضبط', 'Reset')),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 flex: 2,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: c.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
+                child: AppButton.primary(
+                  label: t('تطبيق', 'Apply'),
+                  expand: true,
                   onPressed: () {
                     final lo = parseAmountLoose(_min.text);
                     final hi = parseAmountLoose(_max.text);
@@ -1165,8 +1165,6 @@ class _FilterSheetState extends State<_FilterSheet> {
                     p.applyFilters(widget.tab, _d);
                     Navigator.pop(context);
                   },
-                  child: Text(t('تطبيق', 'Apply'),
-                      style: TextStyle(color: c.onHero, fontFamily: AppFonts.family)),
                 ),
               ),
             ],
@@ -1390,21 +1388,21 @@ class _PaymentCardState extends State<_PaymentCard> {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
+                  child: AppButton.danger(
+                    label: t('رفض', 'Reject'),
+                    icon: Icons.close_rounded,
+                    dangerOutline: true,
+                    expand: true,
                     onPressed: widget.ctl!.busy ? null : widget.ctl!.reject,
-                    icon: const Icon(Icons.close_rounded, size: 18),
-                    label: Text(t('رفض', 'Reject')),
-                    style: OutlinedButton.styleFrom(foregroundColor: _red),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: ElevatedButton.icon(
+                  child: AppButton.primary(
+                    label: t('موافقة', 'Approve'),
+                    icon: Icons.check_rounded,
+                    expand: true,
                     onPressed: widget.ctl!.busy ? null : widget.ctl!.approve,
-                    icon: Icon(Icons.check_rounded, size: 18, color: c.onHero),
-                    label: Text(t('موافقة', 'Approve'),
-                        style: TextStyle(color: c.onHero, fontFamily: AppFonts.family)),
-                    style: ElevatedButton.styleFrom(backgroundColor: _green),
                   ),
                 ),
               ],
@@ -1416,7 +1414,9 @@ class _PaymentCardState extends State<_PaymentCard> {
             const SizedBox(height: 10),
             Align(
               alignment: AlignmentDirectional.centerStart,
-              child: OutlinedButton.icon(
+              child: AppButton.secondary(
+                label: t('استرداد', 'Refund'),
+                icon: Icons.undo_rounded,
                 onPressed: () async {
                   final fin = context.read<AdminFinanceProvider>();
                   final changed = await showRefundSheet(context,
@@ -1430,9 +1430,6 @@ class _PaymentCardState extends State<_PaymentCard> {
                     fin.load(fin.tab, silent: true);
                   }
                 },
-                icon: const Icon(Icons.undo_rounded, size: 18),
-                label: Text(t('استرداد', 'Refund')),
-                style: OutlinedButton.styleFrom(foregroundColor: _violet),
               ),
             ),
           ],
@@ -1849,12 +1846,11 @@ class _ImageViewer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: Text(title, style: TextStyle(fontFamily: AppFonts.family, fontSize: 15)),
+      backgroundColor: c.heroShade,
+      appBar: AppHeader(
+        title: title,
         actions: [
           IconButton(
             tooltip: t('نسخ الرابط', 'Copy link'),
@@ -1877,8 +1873,8 @@ class _ImageViewer extends StatelessWidget {
             fit: BoxFit.contain,
             loadingBuilder: (_, child, prog) => prog == null
                 ? child
-                : const Center(child: CircularProgressIndicator(color: Colors.white)),
-            errorBuilder: (_, _, _) => const Icon(Icons.broken_image_rounded, color: Colors.white54, size: 64),
+                : Center(child: CircularProgressIndicator(color: c.onHero)),
+            errorBuilder: (_, _, _) => Icon(Icons.broken_image_rounded, color: c.onHeroMuted, size: 64),
           ),
         ),
       ),

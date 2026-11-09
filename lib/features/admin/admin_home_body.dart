@@ -137,7 +137,7 @@ class AdminHomeBody extends StatelessWidget {
   /// The search field under the greeting; default: [AdminSearchLauncher] (opens the global search).
   final Widget? search;
 
-  static const _maxWidth = 1180.0;
+  static final _maxWidth = AppWidth.wide.max;
 
   @override
   Widget build(BuildContext context) {
@@ -185,7 +185,7 @@ class AdminHomeBody extends StatelessWidget {
         children: [
           Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: _maxWidth),
+              constraints: BoxConstraints(maxWidth: _maxWidth),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: sections),
             ),
           ),

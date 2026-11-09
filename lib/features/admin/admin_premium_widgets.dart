@@ -12,6 +12,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
@@ -122,19 +124,8 @@ class ServiceIcon extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: colors,
-        ),
+        gradient: AppGradients.blend(context, color: colors.last),
         borderRadius: BorderRadius.circular(size * 0.36),
-        boxShadow: [
-          BoxShadow(
-            color: colors.last.withValues(alpha: 0.24),
-            blurRadius: 12,
-            offset: const Offset(0, 5),
-          ),
-        ],
       ),
       child: Icon(icon, color: context.colors.onHero, size: size * 0.52),
     );
@@ -158,45 +149,14 @@ class PremiumHero extends StatelessWidget {
   final String? subtitle;
   final Widget? footer;
 
-  Widget _blob(double size, double alpha) => Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: AdminPalette.ink.withValues(alpha: alpha),
-    ),
-  );
-
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: colors,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: colors.last.withValues(alpha: 0.30),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: Stack(
-          children: [
-            PositionedDirectional(end: -30, top: -30, child: _blob(130, 0.10)),
-            PositionedDirectional(
-              start: -24,
-              bottom: -44,
-              child: _blob(110, 0.08),
-            ),
-            Padding(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: AppMeshSurface(
+        color: colors.last,
+        radius: BorderRadius.circular(AppRadius.card),
+        child: Padding(
               padding: const EdgeInsets.all(22),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,8 +207,6 @@ class PremiumHero extends StatelessWidget {
                 ],
               ),
             ),
-          ],
-        ),
       ),
     );
   }

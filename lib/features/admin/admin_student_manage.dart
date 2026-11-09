@@ -391,7 +391,10 @@ Future<void> _grantDialog(BuildContext context, AdminUsersProvider p, int userId
               onChanged: (v) => setS(() => plan = v),
             ),
             if (plan == 'custom')
-              Field(controller: daysCtrl, label: 'admin_days_2'.tr, keyboard: TextInputType.number),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: AppNumberField(controller: daysCtrl, label: 'admin_days_2'.tr, min: 1),
+              ),
           ]),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: Text('exam_cancel'.tr)),

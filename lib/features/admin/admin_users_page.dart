@@ -6,6 +6,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_number_field.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
@@ -1036,10 +1037,9 @@ class _UserFormState extends State<_UserForm> {
                       onStatusChanged: (s) => setState(() => _usernameStatus = s),
                     ),
                   if (!editing && role == 'teacher')
-                    Field(
-                      controller: _years,
-                      label: 'admin_experience_years'.tr,
-                      keyboard: TextInputType.number,
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: AppNumberField(controller: _years, label: 'admin_experience_years'.tr, min: 0),
                     ),
                   AppPasswordField(controller: _password, label: editing
                         ? 'admin_new_password_optional'.tr

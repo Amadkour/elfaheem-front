@@ -492,6 +492,7 @@ class _AdminMoneyPageState extends State<AdminMoneyPage> {
       // the kill switch (a super admin can switch the fee screens off)
       key: const ValueKey('admin.fee_policy'),
       child: AdminPage(
+        width: AppWidth.wide,
         title: t('الرسوم والتقارير المالية', 'Fees & financial reports'),
         icon: Icons.account_balance_rounded,
         onRefresh: _refresh,
@@ -681,7 +682,7 @@ class _FeePolicyFormState extends State<FeePolicyForm> {
       ),
       const SizedBox(height: 12),
       if (_d.bearer == 'split')
-        AppField(controller: _share, label: t('حصة الطالب من الرسوم %', 'Student share of the fee %'), keyboard: TextInputType.number),
+        AppNumberField(controller: _share, label: t('حصة الطالب من الرسوم %', 'Student share of the fee %'), min: 0, max: 100),
       AppDropdown<String>(
         value: _d.vatOn,
         decoration: InputDecoration(labelText: t('أساس الضريبة', 'VAT base')),
@@ -908,7 +909,7 @@ class _OrgFeeFormState extends State<OrgFeeForm> {
   }
 
   Widget _field(TextEditingController c, String label, String effective) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        AppField(controller: c, label: label, hint: t('فارغ = يرث', 'Empty = inherit'), keyboard: const TextInputType.numberWithOptions(decimal: true)),
+        AppNumberField(controller: c, label: label, hint: t('فارغ = يرث', 'Empty = inherit'), min: 0, decimals: 2),
         if (effective.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 10, top: 0), child: Text(effective, style: appText(11.5, c: context.colors.textLight))),
       ]);
 
@@ -1098,7 +1099,7 @@ class _RefundSheetState extends State<RefundSheet> {
             Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('${t('مسترد سابقاً', 'Already refunded')}: ${money(_refunded, widget.currency)}', style: appText(13, c: c.textMedium))),
           if (_remaining != null)
             Padding(padding: const EdgeInsets.only(bottom: 10), child: Text('${t('المتبقي القابل للاسترداد', 'Left to refund')}: ${money(_remaining!, widget.currency)}', style: appText(13, c: c.textMedium))),
-          AppField(controller: _amount, label: t('المبلغ (فارغ = كل المتبقي)', 'Amount (empty = everything left)'), keyboard: const TextInputType.numberWithOptions(decimal: true)),
+          AppNumberField(controller: _amount, label: t('المبلغ (فارغ = كل المتبقي)', 'Amount (empty = everything left)'), min: 0, decimals: 2),
           AppField(controller: _reason, label: t('السبب', 'Reason'), maxLines: 2),
           if (widget.superAdmin) ...[
             AppSwitchTile(

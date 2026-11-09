@@ -212,7 +212,7 @@ class AppReleasesPageState extends State<AppReleasesPage> {
       key: const ValueKey(kAppReleasesFeatureKey),
       title: t('إصدارات التطبيق', 'App versions'),
       icon: Icons.rocket_launch_rounded,
-      maxWidth: 1100 + 2 * AppSpace.md,
+      width: AppWidth.wide,
       onRefresh: _load,
       primaryAction: AppButton.primary(
         key: const ValueKey('releases.new'),
@@ -228,7 +228,7 @@ class AppReleasesPageState extends State<AppReleasesPage> {
           children: [
             Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1100),
+                constraints: BoxConstraints(maxWidth: AppWidth.wide.max),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   if (_config != null && _config!.supportsRunner) ...[
                     RunnerStatusCard(runners: _config!.runners, onNewToken: _rotate),

@@ -221,6 +221,7 @@ class _AdminUsernameStatsPageState extends State<AdminUsernameStatsPage> {
       );
     }
     return AdminPage(
+      width: AppWidth.wide,
       title: title,
       subtitle: t('هل يستخدم الناس اسم المستخدم الاختياري؟', 'Are people using the optional @username?'),
       icon: Icons.alternate_email_rounded,
