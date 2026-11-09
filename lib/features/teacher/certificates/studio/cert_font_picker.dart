@@ -459,6 +459,23 @@ class _CertFontControlState extends State<CertFontControl> {
           padding: const EdgeInsets.only(top: AppSpace.xxs),
           child: Text(note, key: const ValueKey('cert-font-field-note'), style: appText(12, c: c.danger)),
         ),
+      if (widget.targets.any((e) => e.style.font != null))
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton.icon(
+            key: const ValueKey('cert-font-page'),
+            onPressed: () {
+              widget.ctl.record('font', () {
+                for (final e in widget.targets) {
+                  e.style.font = null;
+                }
+              });
+              setState(() {});
+            },
+            icon: const Icon(Icons.format_clear_rounded, size: AppIconSize.sm + 2),
+            label: Text(t('خط الصفحة', "The page's font")),
+          ),
+        ),
     ]);
   }
 }

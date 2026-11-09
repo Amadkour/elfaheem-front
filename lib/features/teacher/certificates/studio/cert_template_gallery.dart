@@ -45,9 +45,9 @@ const kCertTemplateCategories = <(String, String, String)>[
 ];
 
 /// Opens the gallery as a full page. Null when closed without a pick.
-Future<CertGalleryPick?> showCertGallery(BuildContext context, {required List<CertStarter> starters, required List<CertServerTemplate> templates, required String lang}) {
-  final api = CertEngineApi();
-  final loader = CertTemplatePreviewCache(api.templatePreview).load;
+Future<CertGalleryPick?> showCertGallery(BuildContext context, {required List<CertStarter> starters, required List<CertServerTemplate> templates, required String lang, CertEngineApi? api}) {
+  final previews = api ?? CertEngineApi();
+  final loader = CertTemplatePreviewCache(previews.templatePreview).load;
   return Navigator.of(context).push<CertGalleryPick>(MaterialPageRoute(
     fullscreenDialog: true,
     builder: (ctx) => BasePage(

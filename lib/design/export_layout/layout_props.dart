@@ -281,24 +281,7 @@ class LayoutElementProps extends StatelessWidget {
     }
   }
 
-  Future<void> _pickImage(BuildContext context) async {
-    try {
-      final f = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 2400);
-      if (f == null) return;
-      var bytes = await f.readAsBytes();
-      if (!context.mounted) return;
-      final cropped = await showAppImageCropper(context, bytes);
-      if (cropped == null) return;
-      bytes = cropped;
-      final nm = f.name.isEmpty ? 'image.png' : f.name;
-      final id = uploadFor != null ? await uploadFor!(element, bytes, nm) : await upload(bytes, nm);
-      if (id == null) return;
-      LayoutAssets.put(id, bytes);
-      _edit('image', () => element.value = id);
-    } catch (_) {
-      showAppNotice(t('تعذّر اختيار الصورة', 'Could not pick the image'), error: true);
-    }
-  }
+  Future<void> _pickImage(BuildContext context) => layoutPickElementImage(context, element, upload: upload, uploadFor: uploadFor, edit: _edit);
 
   Widget _color(String label, String? hex, ValueChanged<String?> onChanged, {bool allowNone = false}) => StudioColorField(
         label: label,
@@ -485,6 +468,32 @@ class LayoutElementProps extends StatelessWidget {
         style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(AppTouch.min)),
       ),
     ];
+  }
+}
+
+/// Picks an image, crops it, uploads it and stores it in [element] (one undo step through [edit]).
+Future<void> layoutPickElementImage(
+  BuildContext context,
+  LayoutElement element, {
+  required LayoutAssetUploader upload,
+  LayoutElementUploader? uploadFor,
+  required void Function(String label, VoidCallback mutate, {bool coalesce}) edit,
+}) async {
+  try {
+    final f = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 2400);
+    if (f == null) return;
+    var bytes = await f.readAsBytes();
+    if (!context.mounted) return;
+    final cropped = await showAppImageCropper(context, bytes);
+    if (cropped == null) return;
+    bytes = cropped;
+    final nm = f.name.isEmpty ? 'image.png' : f.name;
+    final id = uploadFor != null ? await uploadFor(element, bytes, nm) : await upload(bytes, nm);
+    if (id == null) return;
+    LayoutAssets.put(id, bytes);
+    edit('image', () => element.value = id);
+  } catch (_) {
+    showAppNotice(t('تعذّر اختيار الصورة', 'Could not pick the image'), error: true);
   }
 }
 

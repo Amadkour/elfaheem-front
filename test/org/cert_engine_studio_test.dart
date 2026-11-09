@@ -13,7 +13,6 @@ import 'package:flutter_education_app/features/teacher/certificates/studio/cert_
 import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_panels.dart' show CertThemeColorField;
 import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_presets.dart';
 import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_studio.dart';
-import 'package:flutter_education_app/design/export_layout/layout_canvas.dart' show LayoutAddOption;
 import 'package:flutter_education_app/design/export_layout/layout_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -136,11 +135,9 @@ void main() {
     await settle(tester);
   }
 
-  /// Adds a text element through the canvas' "Add" menu.
+  /// Adds a text element through the Elements tab (open by default on a computer).
   Future<void> addText(WidgetTester tester) async {
-    await tester.tap(find.byTooltip('Add an element'));
-    await settle(tester, 300);
-    await tester.tap(find.widgetWithText(PopupMenuItem<LayoutAddOption>, 'Text').first);
+    await tester.tap(find.byKey(const ValueKey('cert-add-Text')));
     await settle(tester, 300);
   }
 
@@ -155,8 +152,9 @@ void main() {
     expect(find.byKey(const ValueKey('cert-converted-banner')), findsOneWidget);
     expect(find.text('Moved to the new studio — nothing changes until you save.'), findsOneWidget);
     expect(find.text('All changes saved'), findsOneWidget);
-    final btn = tester.widget<IconButton>(find.byKey(const ValueKey('cert-save')));
-    expect(btn.onPressed, isNull);
+    // nothing to save: the one primary action is Issue until something changes
+    expect(find.byKey(const ValueKey('cert-save')), findsNothing);
+    expect(find.byKey(const ValueKey('cert-issue')), findsOneWidget);
     expect(puts, isEmpty);
     await tester.pumpWidget(const SizedBox());
   });
@@ -309,9 +307,7 @@ void main() {
 
   testWidgets('the watermark text is a locked, faint, tilted element at the back of the page', (tester) async {
     await open(tester);
-    await tester.tap(find.byTooltip('Add an element'));
-    await settle(tester, 300);
-    await tester.tap(find.widgetWithText(PopupMenuItem<LayoutAddOption>, 'Watermark text'));
+    await tester.tap(find.byKey(const ValueKey('cert-add-Watermark text')));
     await settle(tester, 300);
     await save(tester);
     final els = ((((puts.single['document'] as Map)['designs'] as Map)['ar'] as Map)['row'] as Map)['elements'] as List;
@@ -333,6 +329,9 @@ void main() {
     await settle(tester, 300);
     await tester.tap(find.text('Page and background'));
     await settle(tester, 300);
+    await tester.tap(find.byKey(const ValueKey('cert-section-generate')));
+    await settle(tester, 300);
+    await tester.ensureVisible(find.byKey(const ValueKey('cert-gen-modern')));
     await tester.tap(find.byKey(const ValueKey('cert-gen-modern')));
     await tester.pump();
     await tester.ensureVisible(find.byKey(const ValueKey('cert-gen-go')));
@@ -342,8 +341,6 @@ void main() {
     expect(calls['draft']!.single['style'], 'modern');
     expect(calls['draft']!.single['design_id'], 7);
     expect(calls['draft']!.single['reset_fields'], false);
-    await tester.tapAt(const Offset(5, 5));
-    await settle(tester, 300);
     await save(tester);
     final designs = (puts.single['document'] as Map)['designs'] as Map;
     expect(((designs['en'] as Map)['page'] as Map)['background_image'], 'https://x/en.png');
@@ -432,6 +429,8 @@ void main() {
     await settle(tester, 300);
     await tester.tap(find.text('Page and background'));
     await settle(tester, 300);
+    await tester.tap(find.byKey(const ValueKey('cert-section-generate')));
+    await settle(tester, 300);
     await tester.ensureVisible(find.text('Dark colours'));
     await tester.tap(find.text('Dark colours'));
     await tester.pump();
@@ -457,11 +456,9 @@ void main() {
       return Uint8List.fromList([9, 8, 7]);
     });
     fetched.clear();
-    await tester.tap(find.byIcon(Icons.layers_outlined));
+    await tester.tap(find.byKey(const ValueKey('cert-rail-layers')));
     await settle(tester, 300);
     await tester.tap(find.text('sig1'));
-    await settle(tester, 300);
-    await tester.tap(find.byIcon(Icons.tune_rounded).first);
     await settle(tester, 300);
     await tester.ensureVisible(find.byKey(const ValueKey('cert-sig-clean')));
     await tester.tap(find.byKey(const ValueKey('cert-sig-clean')));

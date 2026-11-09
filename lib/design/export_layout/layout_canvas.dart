@@ -200,6 +200,21 @@ class LayoutAddOption {
   final bool toBack;
 }
 
+/// What a host that draws its own workspace around the canvas needs ([LayoutCanvasEditor.canvasOnly]).
+class LayoutEditorHandle {
+  const LayoutEditorHandle({required this.ctl, required this.add, required this.fieldFocus, required this.sampleOf});
+  final StudioController<LayoutElement> ctl;
+
+  /// The text an element shows on this page (sample values filled): what the font picker draws each font with.
+  final String Function(LayoutElement) sampleOf;
+
+  /// Adds a ready element at its place and selects it (one undo step).
+  final void Function(LayoutAddOption option) add;
+
+  /// Focused by a double click on a bound field: the host's field picker.
+  final FocusNode fieldFocus;
+}
+
 class LayoutCanvasEditor extends StatefulWidget {
   const LayoutCanvasEditor({
     super.key,
@@ -227,7 +242,28 @@ class LayoutCanvasEditor extends StatefulWidget {
     this.backgroundFit = 'cover',
     this.pageMargins,
     this.fontControl,
+    this.canvasOnly = false,
+    this.onHandle,
+    this.onHandleGone,
+    this.onWantsProperties,
+    this.backdrop,
+    this.pageShadow,
+    this.canvasPadding = AppSpace.md,
   });
+
+  /// Draws only the canvas: the host builds the toolbar, the properties and the layers around it, through the
+  /// [LayoutEditorHandle] it receives in [onHandle].
+  final bool canvasOnly;
+  final ValueChanged<LayoutEditorHandle>? onHandle;
+  final ValueChanged<LayoutEditorHandle>? onHandleGone;
+
+  /// A double click asks for the properties ([canvasOnly] hosts open their panel).
+  final VoidCallback? onWantsProperties;
+
+  /// The colour behind the page and the page's shadow; null = the engine's.
+  final Color? backdrop;
+  final List<BoxShadow>? pageShadow;
+  final double canvasPadding;
 
   final List<LayoutElement> elements;
 
@@ -273,6 +309,7 @@ class LayoutCanvasEditor extends StatefulWidget {
 
 class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
   late StudioController<LayoutElement> _ctl;
+  LayoutEditorHandle? _handle;
   String _sig = '';
   final _dockOpen = ValueNotifier<bool>(false);
   final _fieldFocus = FocusNode(debugLabel: 'layout-field-picker');
@@ -300,6 +337,8 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
       nudgeBigStep: 5,
     )..addListener(_onCtl);
     _sig = _signature();
+    final h = _handle = LayoutEditorHandle(ctl: _ctl, add: _add, fieldFocus: _fieldFocus, sampleOf: _sampleOf);
+    widget.onHandle?.call(h);
   }
 
   String _signature() => jsonEncode([for (final e in widget.elements) e.toJson()]);
@@ -319,6 +358,7 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
   void didUpdateWidget(covariant LayoutCanvasEditor old) {
     super.didUpdateWidget(old);
     if (!identical(old.elements, widget.elements)) {
+      if (_handle != null) widget.onHandleGone?.call(_handle!);
       _ctl
         ..removeListener(_onCtl)
         ..dispose();
@@ -343,6 +383,7 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
 
   @override
   void dispose() {
+    if (_handle != null) widget.onHandleGone?.call(_handle!);
     _ctl
       ..removeListener(_onCtl)
       ..dispose();
@@ -401,6 +442,7 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
     if (e == null || e.locked) return;
     if (_ctl.single?.id != id) _ctl.select(id);
     if (!widget.wide) _dockOpen.value = true;
+    widget.onWantsProperties?.call();
     if (e.bind == null || e.computed != null) return;
     // the panel is (re)built for this element on the next frame: focus its picker then
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -504,27 +546,28 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final sel = _ctl.single?.payload;
+    final studio = StudioCanvas<LayoutElement>(
+      key: ObjectKey(_ctl),
+      controller: _ctl,
+      pageColor: layoutColor(widget.background, kStudioPaper)!,
+      pageBackground: widget.pageMargins == null && widget.backgroundImage != null ? _backgroundWidget() : null,
+      paperInsets: widget.pageMargins ?? EdgeInsets.zero,
+      paperBuilder: widget.pageMargins == null ? null : _paper,
+      buildKey: Object.hash(_buildKey, widget.border?.color, widget.border?.width, widget.radius),
+      padding: widget.canvasPadding,
+      backdrop: widget.backdrop,
+      pageShadow: widget.pageShadow,
+      onItemDoubleTap: _doubleTap,
+      inlineText: _inlineText,
+      inlineStyle: _inlineStyle,
+      onInlineCommit: (item, text) => item.payload.value = text,
+      overlayBuilder: widget.border == null ? null : _borderOverlay,
+      itemBuilder: _buildItem,
+    );
+    if (widget.canvasOnly) return studio;
     final canvas = DecoratedBox(
       decoration: BoxDecoration(color: c.background, border: Border.all(color: c.divider), borderRadius: AppRadius.cardAll),
-      child: ClipRRect(
-        borderRadius: AppRadius.cardAll,
-        child: StudioCanvas<LayoutElement>(
-          key: ObjectKey(_ctl),
-          controller: _ctl,
-          pageColor: layoutColor(widget.background, kStudioPaper)!,
-          pageBackground: widget.pageMargins == null && widget.backgroundImage != null ? _backgroundWidget() : null,
-          paperInsets: widget.pageMargins ?? EdgeInsets.zero,
-          paperBuilder: widget.pageMargins == null ? null : _paper,
-          buildKey: Object.hash(_buildKey, widget.border?.color, widget.border?.width, widget.radius),
-          padding: AppSpace.md,
-          onItemDoubleTap: _doubleTap,
-          inlineText: _inlineText,
-          inlineStyle: _inlineStyle,
-          onInlineCommit: (item, text) => item.payload.value = text,
-          overlayBuilder: widget.border == null ? null : _borderOverlay,
-          itemBuilder: _buildItem,
-        ),
-      ),
+      child: ClipRRect(borderRadius: AppRadius.cardAll, child: studio),
     );
     final multi = widget.fontControl != null && sel == null && _ctl.selection.length > 1
         ? [for (final id in _ctl.selection) if (_ctl.itemById(id)?.payload != null && _fontable(_ctl.itemById(id)!.payload)) _ctl.itemById(id)!.payload]

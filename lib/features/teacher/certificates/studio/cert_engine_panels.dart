@@ -8,16 +8,19 @@ library;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show AppConfig;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../../../../design/app_kit.dart';
 import '../../../../design/app_notice.dart';
 import '../../../../design/app_tokens.dart';
+import '../../../../design/export_layout/layout_api.dart' show LayoutApi, LayoutFont;
 import '../../../../design/export_layout/layout_element_view.dart' show layoutColor, layoutHex;
 import '../../../../design/export_layout/layout_model.dart';
 import '../../../../design/studio/studio.dart';
 import '../../../admin/admin_common.dart' show t;
 import 'cert_engine_api.dart';
+import 'cert_engine_inspector.dart' show CertColorWell, CertInspectorSection;
 import 'cert_engine_presets.dart';
 
 export 'cert_template_gallery.dart' show CertGalleryPick, showCertGallery;
@@ -153,12 +156,43 @@ class _PageSheet extends StatefulWidget {
 }
 
 class _PageSheetState extends State<_PageSheet> {
+  @override
+  Widget build(BuildContext context) => AppSheetContent(
+        title: t('الصفحة', 'Page'),
+        children: [
+          CertPageControls(design: widget.design, onChanged: widget.onChanged, pickBackground: widget.pickBackground, generateBackground: widget.generateBackground, memory: const {}, framed: false),
+        ],
+      );
+}
+
+/// The page of one design: size, orientation, colour, background image, a generated background. The inspector's
+/// "nothing selected" state and the page sheet draw this one. [onChanged] runs after every change (the studio redraws
+/// and marks the design unsaved); [pickBackground] picks + uploads and returns the URL.
+class CertPageControls extends StatefulWidget {
+  const CertPageControls({super.key, required this.design, required this.onChanged, required this.pickBackground, this.generateBackground, required this.memory, this.framed = true});
+  final LayoutDesign design;
+  final VoidCallback onChanged;
+  final Future<String?> Function() pickBackground;
+  final Future<String?> Function(String style, String color, bool dark)? generateBackground;
+
+  /// Which sections are open.
+  final Map<String, bool> memory;
+
+  /// In the inspector (a scrolling list with folding sections); false = inside a sheet that scrolls itself.
+  final bool framed;
+
+  @override
+  State<CertPageControls> createState() => _CertPageControlsState();
+}
+
+class _CertPageControlsState extends State<CertPageControls> {
   LayoutPage get p => widget.design.page;
   bool _generating = false;
   String _style = 'classic';
   /// Null = the app's theme colour (the legacy wizard's default).
   String? _color;
   bool _dark = false;
+  late final Map<String, bool> _memory = widget.framed ? widget.memory : <String, bool>{};
 
   Future<void> _generate() async {
     setState(() => _generating = true);
@@ -181,121 +215,114 @@ class _PageSheetState extends State<_PageSheet> {
     widget.onChanged();
   }
 
+  CertInspectorSection _section(String id, String title, List<Widget> children, {bool open = true, bool first = false}) =>
+      CertInspectorSection(id: id, title: title, memory: _memory, initiallyOpen: open, first: first, children: children);
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return AppSheetContent(
-      title: t('الصفحة', 'Page'),
-      children: [
-        StudioPropField(
-          label: t('المقاس', 'Size'),
-          child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-            for (final s in const ['A4', 'A3', 'A5', 'Letter', 'custom'])
-              ChoiceChip(
-                label: Text(s == 'custom' ? t('مخصص', 'Custom') : s),
-                selected: p.size == s,
-                onSelected: (_) => _page(() => p.size = s),
-              ),
-          ]),
+    final size = StudioPropField(
+      label: t('المقاس', 'Size'),
+      child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+        for (final s in const ['A4', 'A3', 'A5', 'Letter', 'custom'])
+          ChoiceChip(
+            label: Text(s == 'custom' ? t('مخصص', 'Custom') : s),
+            selected: p.size == s,
+            onSelected: (_) => _page(() => p.size = s),
+          ),
+      ]),
+    );
+    final orientation = StudioSegmented<bool>(
+      segments: [
+        StudioSegment(value: true, label: t('أفقي', 'Landscape'), icon: Icons.crop_landscape_rounded),
+        StudioSegment(value: false, label: t('عمودي', 'Portrait'), icon: Icons.crop_portrait_rounded),
+      ],
+      value: p.landscape,
+      onChanged: (v) => _page(() => p.orientation = v ? 'landscape' : 'portrait'),
+    );
+    final background = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Row(children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            icon: const Icon(Icons.wallpaper_rounded),
+            label: Text(p.backgroundImage == null ? t('اختيار صورة', 'Choose an image') : t('تغيير الصورة', 'Change the image')),
+            style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(AppTouch.min)),
+            onPressed: () async {
+              final url = await widget.pickBackground();
+              if (url != null) _plain(() => p.backgroundImage = url);
+            },
+          ),
         ),
-        if (p.size == 'custom') ...[
-          const SizedBox(height: AppSpace.sm),
+        if (p.backgroundImage != null)
+          IconButton(
+            tooltip: t('إزالة', 'Remove'),
+            icon: Icon(Icons.delete_outline_rounded, color: c.danger),
+            onPressed: () => _plain(() => p.backgroundImage = null),
+          ),
+      ]),
+      if (p.backgroundImage != null) ...[
+        const SizedBox(height: AppSpace.xs),
+        StudioSegmented<String>(
+          segments: [StudioSegment(value: 'cover', label: t('ملء', 'Cover')), StudioSegment(value: 'contain', label: t('احتواء', 'Contain')), StudioSegment(value: 'fill', label: t('تمديد', 'Stretch'))],
+          value: p.backgroundFit,
+          onChanged: (k) => _plain(() => p.backgroundFit = k),
+        ),
+        const SizedBox(height: AppSpace.xxs),
+        Text(t('تظهر صورة الخلفية في المعاينة وفي الملف النهائي.', 'The background image shows in the preview and in the final file.'), style: appText(12, c: c.textMedium)),
+      ],
+    ]);
+    final generator = [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+        for (final (k, ar, en) in const [('classic', 'كلاسيكي', 'Classic'), ('modern', 'عصري', 'Modern'), ('dark', 'داكن', 'Dark')])
+          ChoiceChip(key: ValueKey('cert-gen-$k'), label: Text(t(ar, en)), selected: _style == k, onSelected: (_) => setState(() => _style = k)),
+      ]),
+      CertThemeColorField(label: t('لون السمة', 'Theme colour'), hex: _color ?? certThemeHex(context), onChanged: (h) => setState(() => _color = h)),
+      AppSwitchTile(
+        key: const ValueKey('cert-gen-dark'),
+        title: t('ألوان داكنة', 'Dark colours'),
+        subtitle: t('خلفية بدرجات داكنة بدل الفاتحة.', 'A background in dark tones instead of light ones.'),
+        value: _dark,
+        onChanged: (v) => setState(() => _dark = v),
+      ),
+      FilledButton.icon(
+        key: const ValueKey('cert-gen-go'),
+        onPressed: _generating ? null : _generate,
+        icon: _generating ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.auto_awesome_rounded),
+        label: Text(t('إنشاء', 'Generate')),
+        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(AppTouch.min)),
+      ),
+      Text(t('تُطبَّق على لغة هذا التبويب فقط.', 'Applied to the language of this tab only.'), style: appText(12, c: c.textMedium)),
+    ];
+    final sections = <Widget>[
+      _section('page', t('الورقة', 'Paper'), [
+        size,
+        if (p.size == 'custom')
           Row(children: [
             Expanded(child: StudioStepper(label: t('العرض (مم)', 'Width (mm)'), value: p.customWidth, min: 60, max: 600, step: 5, onChanged: (v) => _page(() => p.customWidth = v))),
             const SizedBox(width: AppSpace.xs),
             Expanded(child: StudioStepper(label: t('الارتفاع (مم)', 'Height (mm)'), value: p.customHeight, min: 60, max: 600, step: 5, onChanged: (v) => _page(() => p.customHeight = v))),
           ]),
-        ],
-        const SizedBox(height: AppSpace.sm),
-        StudioPropField(
-          label: t('الاتجاه', 'Orientation'),
-          child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-            ChoiceChip(
-              avatar: const Icon(Icons.crop_landscape_rounded, size: 18),
-              label: Text(t('أفقي', 'Landscape')),
-              selected: p.landscape,
-              onSelected: (_) => _page(() => p.orientation = 'landscape'),
-            ),
-            ChoiceChip(
-              avatar: const Icon(Icons.crop_portrait_rounded, size: 18),
-              label: Text(t('عمودي', 'Portrait')),
-              selected: !p.landscape,
-              onSelected: (_) => _page(() => p.orientation = 'portrait'),
-            ),
-          ]),
-        ),
-        const SizedBox(height: AppSpace.sm),
-        StudioColorField(
+        orientation,
+      ], first: true),
+      _section('colour', t('اللون', 'Colour'), [
+        CertColorWell(
           label: t('لون الصفحة', 'Page colour'),
           value: layoutColor(p.background),
           allowNone: true,
           onChanged: (col) => _plain(() => p.background = col == null ? null : layoutHex(col)),
         ),
-        const SizedBox(height: AppSpace.sm),
-        StudioPropField(
-          label: t('صورة الخلفية', 'Background image'),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Row(children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.wallpaper_rounded),
-                  label: Text(p.backgroundImage == null ? t('اختيار صورة', 'Choose an image') : t('تغيير الصورة', 'Change the image')),
-                  onPressed: () async {
-                    final url = await widget.pickBackground();
-                    if (url != null) _plain(() => p.backgroundImage = url);
-                  },
-                ),
-              ),
-              if (p.backgroundImage != null)
-                IconButton(
-                  tooltip: t('إزالة', 'Remove'),
-                  icon: Icon(Icons.delete_outline_rounded, color: c.danger),
-                  onPressed: () => _plain(() => p.backgroundImage = null),
-                ),
-            ]),
-            if (p.backgroundImage != null) ...[
-              const SizedBox(height: AppSpace.xs),
-              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-                for (final (k, ar, en) in const [('cover', 'ملء', 'Cover'), ('contain', 'احتواء', 'Contain'), ('fill', 'تمديد', 'Stretch')])
-                  ChoiceChip(label: Text(t(ar, en)), selected: p.backgroundFit == k, onSelected: (_) => _plain(() => p.backgroundFit = k)),
-              ]),
-              const SizedBox(height: AppSpace.xxs),
-              Text(t('تظهر صورة الخلفية في المعاينة وفي الملف النهائي.', 'The background image shows in the preview and in the final file.'), style: appText(12, c: c.textMedium)),
-            ],
-          ]),
-        ),
-        if (widget.generateBackground != null) ...[
-          const SizedBox(height: AppSpace.sm),
-          StudioPropField(
-            label: t('إنشاء خلفية', 'Generate a background'),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-                for (final (k, ar, en) in const [('classic', 'كلاسيكي', 'Classic'), ('modern', 'عصري', 'Modern'), ('dark', 'داكن', 'Dark')])
-                  ChoiceChip(key: ValueKey('cert-gen-$k'), label: Text(t(ar, en)), selected: _style == k, onSelected: (_) => setState(() => _style = k)),
-              ]),
-              const SizedBox(height: AppSpace.xs),
-              CertThemeColorField(label: t('لون السمة', 'Theme colour'), hex: _color ?? certThemeHex(context), onChanged: (h) => setState(() => _color = h)),
-              AppSwitchTile(
-                key: const ValueKey('cert-gen-dark'),
-                title: t('ألوان داكنة', 'Dark colours'),
-                subtitle: t('خلفية بدرجات داكنة بدل الفاتحة.', 'A background in dark tones instead of light ones.'),
-                value: _dark,
-                onChanged: (v) => setState(() => _dark = v),
-              ),
-              const SizedBox(height: AppSpace.xs),
-              FilledButton.icon(
-                key: const ValueKey('cert-gen-go'),
-                onPressed: _generating ? null : _generate,
-                icon: _generating ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.auto_awesome_rounded),
-                label: Text(t('إنشاء', 'Generate')),
-                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(AppTouch.min)),
-              ),
-              Text(t('تُطبَّق على لغة هذا التبويب فقط.', 'Applied to the language of this tab only.'), style: appText(12, c: c.textMedium)),
-            ]),
-          ),
-        ],
-      ],
-    );
+      ]),
+      _section('background', t('صورة الخلفية', 'Background image'), [background]),
+      if (widget.generateBackground != null) _section('generate', t('إنشاء خلفية', 'Generate a background'), generator, open: !widget.framed),
+    ];
+    if (!widget.framed) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: sections);
+    return ListView(padding: const EdgeInsets.only(bottom: AppSpace.lg), children: [
+      Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xs),
+        child: Text(t('الصفحة', 'Page'), style: AppType.row(context)),
+      ),
+      ...sections,
+    ]);
   }
 }
 
@@ -417,6 +444,8 @@ Future<CertConflictChoice?> showCertConflictDialog(BuildContext context) => show
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
+        icon: Icon(Icons.sync_problem_rounded, color: ctx.colors.warning),
         title: Text(t('حُفظ هذا التصميم في مكان آخر', 'This design was saved elsewhere meanwhile')),
         content: Text(t(
           'عُدّل التصميم من تبويب أو جهاز آخر. يمكنك تحميل النسخة المحفوظة (وتجاهل تعديلاتك)، أو الإبقاء على تعديلاتك وحفظها فوقها.',
@@ -435,6 +464,8 @@ Future<bool?> showCertDraftPrompt(BuildContext context, {required bool outdated}
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
+        icon: Icon(Icons.restore_page_outlined, color: ctx.colors.primary),
         title: Text(t('تعديلات غير محفوظة على هذا الجهاز', 'Unsaved edits on this device')),
         content: Text(outdated
             ? t('وجدنا مسودة قديمة لهذا التصميم، وقد حُفظ التصميم بعدها في مكان آخر. استعادتها ستكتب فوق النسخة المحفوظة عند الحفظ.',
@@ -548,20 +579,24 @@ class _PreviewDialogState extends State<_PreviewDialog> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final desk = Color.alphaBlend(c.textDark.withValues(alpha: c.isDark ? .03 : .07), c.background);
     return Dialog(
       insetPadding: const EdgeInsets.all(AppSpace.sm),
+      backgroundColor: desk,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 900, maxHeight: 700),
+        constraints: const BoxConstraints(maxWidth: 1040, maxHeight: 780),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.xs, 0),
+            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.xs, AppSpace.xxs, 0),
             child: Row(children: [
-              Expanded(child: Text(t('معاينة', 'Preview'), style: appText(16, w: FontWeight.w700, c: c.textDark))),
+              Expanded(child: Text(t('معاينة', 'Preview'), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w600, c: c.textDark))),
               if (widget.languages.length > 1)
                 for (final l in widget.languages)
                   Padding(
                     padding: const EdgeInsetsDirectional.only(end: AppSpace.xxs),
-                    child: ChoiceChip(label: Text(l == 'ar' ? 'العربية' : 'English'), selected: _lang == l, onSelected: (_) => _pick(l)),
+                    child: ChoiceChip(label: Text(l == 'ar' ? t('العربية', 'Arabic') : 'English'), selected: _lang == l, onSelected: (_) => _pick(l)),
                   ),
               IconButton(tooltip: t('إغلاق', 'Close'), icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(context)),
             ]),
@@ -580,16 +615,7 @@ class _PreviewDialogState extends State<_PreviewDialog> {
                     ]),
                   );
                 }
-                if (!snap.hasData) {
-                  return const Padding(padding: EdgeInsets.all(AppSpace.xl), child: Center(child: CircularProgressIndicator()));
-                }
-                return InteractiveViewer(
-                  maxScale: 5,
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpace.sm),
-                    child: Image.memory(snap.data!, fit: BoxFit.contain, cacheWidth: 1400, gaplessPlayback: true),
-                  ),
-                );
+                return CertDeskPreview(png: snap.data);
               },
             ),
           ),
@@ -627,6 +653,77 @@ class _PreviewDialogState extends State<_PreviewDialog> {
             child: Text(t('بقيم تجريبية — لا يُحفظ شيء.', 'With sample values — nothing is saved.'), style: appText(12, c: c.textMedium)),
           ),
         ]),
+      ),
+    );
+  }
+}
+
+/// The certificate as it will look: a sheet lying on a desk, lit from above, with a real shadow under it. [png] null
+/// draws the sheet's outline while the server renders it.
+class CertDeskPreview extends StatelessWidget {
+  const CertDeskPreview({super.key, required this.png});
+  final Uint8List? png;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final motion = AppMotion.of(context);
+    final png = this.png;
+    final shadow = [
+      ...AppElevation.of(context, 4),
+      BoxShadow(color: Colors.black.withValues(alpha: c.isDark ? .5 : .22), blurRadius: 3, offset: const Offset(0, 1)),
+    ];
+    final sheet = png == null
+        ? AspectRatio(
+            aspectRatio: 1.414,
+            child: Container(
+              key: const ValueKey('cert-preview-skeleton'),
+              decoration: BoxDecoration(color: c.cardBg, boxShadow: shadow),
+              padding: const EdgeInsets.all(AppSpace.md),
+              child: const AppShimmer(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    AppSkeletonBox(width: 240, height: 22),
+                    SizedBox(height: AppSpace.lg),
+                    AppSkeletonBox(width: 300, height: 30),
+                    SizedBox(height: AppSpace.lg),
+                    AppSkeletonBox(width: 320, height: 12),
+                    SizedBox(height: AppSpace.xs),
+                    AppSkeletonBox(width: 260, height: 12),
+                  ]),
+                ),
+              ),
+            ),
+          )
+        : DecoratedBox(
+            decoration: BoxDecoration(boxShadow: shadow),
+            child: Image.memory(png, fit: BoxFit.contain, cacheWidth: 1400, gaplessPlayback: true),
+          );
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        // the light falls from the top of the desk
+        gradient: RadialGradient(
+          center: const Alignment(0, -1.1),
+          radius: 1.5,
+          colors: [c.cardBg.withValues(alpha: c.isDark ? .35 : .7), c.cardBg.withValues(alpha: 0)],
+        ),
+      ),
+      child: InteractiveViewer(
+        maxScale: 5,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.xl),
+            child: TweenAnimationBuilder<double>(
+              key: ValueKey(png == null),
+              tween: Tween(begin: motion.off ? 1 : .985, end: 1),
+              duration: motion.slow,
+              curve: AppMotion.curve,
+              builder: (context, v, child) => Transform.scale(scale: v, child: child),
+              child: sheet,
+            ),
+          ),
+        ),
       ),
     );
   }

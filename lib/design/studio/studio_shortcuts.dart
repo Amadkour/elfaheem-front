@@ -182,19 +182,26 @@ class StudioKeyHost {
     return route == null || route.isCurrent;
   }
 
-  /// Drawn right now: reached by a hit test at its centre (an IndexedStack paints and hits only the current child).
-  bool get _onScreen {
+  /// Drawn right now: not under an Offstage and, inside an IndexedStack, its current child. A walk up the render tree,
+  /// not a hit test: what covers the canvas (the empty page prompt, a floating tool panel) does not stop the keys.
+  bool get onScreen {
     final ro = contextOf().findRenderObject();
     if (ro is! RenderBox || !ro.attached || !ro.hasSize || ro.size.isEmpty) return false;
-    RenderObject? top = ro;
-    while (top != null && top is! RenderView) {
-      top = top.parent;
+    RenderObject child = ro;
+    for (var p = ro.parent; p != null; child = p, p = p.parent) {
+      if (p is RenderOffstage && p.offstage) return false;
+      if (p is RenderIndexedStack && !identical(_childAt(p, p.index), child)) return false;
     }
-    if (top is! RenderView) return false;
-    final centre = ro.localToGlobal(ro.size.center(Offset.zero));
-    final result = BoxHitTestResult();
-    top.hitTest(result, position: centre);
-    return result.path.any((e) => identical(e.target, ro));
+    return child is RenderView;
+  }
+
+  static RenderBox? _childAt(RenderIndexedStack s, int? index) {
+    if (index == null) return null;
+    var c = s.firstChild;
+    for (var i = 0; i < index && c != null; i++) {
+      c = s.childAfter(c);
+    }
+    return c;
   }
 }
 
@@ -238,9 +245,17 @@ abstract final class StudioKeyboard {
 
   static StudioKeyHost? _active() {
     for (final h in _hosts.reversed) {
-      if (h._onTop && h._onScreen) return h;
+      if (h._onTop && h.onScreen) return h;
     }
     return null;
+  }
+
+  /// A click on the studio's own chrome (top bar, rail): the keys go back to the canvas on screen, so a control that
+  /// kept the focus (a font row, a dropdown) does not eat the next arrow or Delete. Never while typing; a text field
+  /// lets go of the focus itself on the same click.
+  static void focusCanvas() {
+    if (!AppKeyboardSupport.enabled || _typing()) return;
+    _active()?.focusOf().requestFocus();
   }
 
   static bool _typing() {
