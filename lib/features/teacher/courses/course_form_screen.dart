@@ -1202,7 +1202,7 @@ class _EditCertificateTemplateCardState
           ? 'default_certificate_title'.tr
           : _titleCtrl.text.trim(),
       // what the person cropped and saw in the preview, not the file they first picked
-      file: XFile.fromData(bytes, name: img.name),
+      file: XFile.fromData(bytes, name: img.name, path: img.name),
     );
 
     if (!mounted) return;
