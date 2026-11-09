@@ -82,6 +82,12 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
   final Map<String, TextEditingController> _constants = {};
   bool _courseEmail = false;
 
+  // the instructor's name a non-user's certificate needs (D-400)
+  static const _teacherKey = 'teacher_name';
+  bool _teacherError = false;
+  final _teacherFieldKey = GlobalKey();
+  Timer? _teacherDebounce;
+
   /// The course certificate each picked course's batch is recorded under (null = the course has none to use).
   final Map<int, int?> _courseCerts = {};
   bool _replaceExisting = false;
@@ -158,6 +164,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
   void dispose() {
     _pasteDebounce?.cancel();
     _searchDebounce?.cancel();
+    _teacherDebounce?.cancel();
     _watch?.dispose();
     _pasteCtrl.dispose();
     _searchCtrl.dispose();
@@ -185,6 +192,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
         for (final c in t.extraColumns) {
           _constants.putIfAbsent(c.key, TextEditingController.new);
         }
+        if (t.printsTeacher) _constants.putIfAbsent(_teacherKey, () => TextEditingController(text: t.teacherDefault));
         if (_langs.isEmpty || !_langs.every(t.langs.contains)) _langs = t.langs.toSet();
         _templateLoading = false;
       });
@@ -539,7 +547,32 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
 
   // ── preview / issue ────────────────────────────────────────────────────────
 
-  Map<String, String> get _constantValues => {for (final e in _constants.entries) e.key: e.value.text};
+  /// The instructor's name goes out only when this batch asks for it; otherwise the server's own default stands.
+  Map<String, String> get _constantValues => {
+        for (final e in _constants.entries)
+          if (e.key != _teacherKey || _teacherNeeded) e.key: e.value.text,
+      };
+
+  bool get _teacherNeeded => certTeacherRequired(standalone: _mode != IssueMode.course, template: _template, rows: _mode == IssueMode.course ? const [] : _draft.batchRows());
+
+  bool get _teacherMissing => _teacherNeeded && (_constants[_teacherKey]?.text.trim().isEmpty ?? true);
+
+  /// Blocked: the inline error and the field brought into view.
+  void _showTeacherError() {
+    setState(() => _teacherError = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _teacherFieldKey.currentContext;
+      if (ctx != null) Scrollable.ensureVisible(ctx, duration: AppMotion.of(ctx).base, alignment: .1);
+    });
+  }
+
+  void _onTeacherChanged(String _) {
+    setState(() {});
+    _teacherDebounce?.cancel();
+    _teacherDebounce = Timer(const Duration(milliseconds: 700), () {
+      if (mounted) _loadPreview();
+    });
+  }
 
   List<String> get _langList => [for (final l in (_template?.langs ?? const ['ar'])) if (_langs.contains(l)) l];
 
@@ -606,7 +639,11 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _issuing = false);
-      showAppNotice(certIssueErrorText(e), error: true);
+      if (certIssueErrorCode(e) == 'teacher_name_required') {
+        _showTeacherError();
+      } else {
+        showAppNotice(certIssueErrorText(e), error: true);
+      }
     }
   }
 
@@ -685,6 +722,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
       case _photosStep:
         _goPreview();
       case 2:
+        if (_teacherMissing) return _showTeacherError();
         _issue();
     }
   }
@@ -776,7 +814,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
     final s = _draft.summary;
     return IssueStepBar(
       onBack: _step > 0 ? _back : null,
-      summary: _step == 1 ? s.label : (_step == _photosStep && _photos.blocked ? (AppConfig.lang == 'ar' ? 'أكمل الصور للمتابعة' : 'Add the missing photos to continue') : null),
+      summary: _step == 2 && _teacherError && _teacherMissing ? 'ci_teacher_required'.tr : _step == 1 ? s.label : (_step == _photosStep && _photos.blocked ? (AppConfig.lang == 'ar' ? 'أكمل الصور للمتابعة' : 'Add the missing photos to continue') : null),
       nextLabel: switch (_step) {
         2 => _mode == IssueMode.course ? 'ci_issue_course'.tr : 'ci_issue_n'.tr.replaceAll('{n}', '${s.ready}'),
         _ => 'ci_next'.tr,
@@ -1087,6 +1125,10 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
             ]),
         ]),
       ),
+      if (_teacherNeeded) ...[
+        const SizedBox(height: AppSpace.md),
+        KeyedSubtree(key: _teacherFieldKey, child: IssueTeacherField(controller: _constants[_teacherKey]!, showError: _teacherError, onChanged: _onTeacherChanged)),
+      ],
       if (!course && (_template?.extraColumns.isNotEmpty ?? false)) ...[
         const SizedBox(height: AppSpace.md),
         AppCard(

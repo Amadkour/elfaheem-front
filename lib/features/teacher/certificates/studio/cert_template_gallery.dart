@@ -18,20 +18,24 @@ import '../../../../utils/widget/base_page.dart';
 import '../../../admin/admin_common.dart' show t;
 import 'cert_engine_api.dart';
 import 'cert_engine_panels.dart';
+import 'cert_template_colours.dart';
 
 /// What the gallery returned: a starter (a document) or a server template, with the colour the person chose.
 class CertGalleryPick {
-  const CertGalleryPick.starter(CertStarter this.starter) : template = null, colorHex = null;
-  const CertGalleryPick.template(CertServerTemplate this.template, {this.colorHex}) : starter = null;
+  const CertGalleryPick.starter(CertStarter this.starter) : template = null, colorHex = null, bgHex = null, bg2Hex = null;
+  const CertGalleryPick.template(CertServerTemplate this.template, {this.colorHex, this.bgHex, this.bg2Hex}) : starter = null;
   final CertStarter? starter;
   final CertServerTemplate? template;
 
   /// "#RRGGBB" when the person chose one (sent as `theme_color`); null keeps the template's own colours.
   final String? colorHex;
+
+  /// The background colours chosen (D-401), "#RRGGBB"; null keeps the template's own.
+  final String? bgHex, bg2Hex;
 }
 
-/// One image of a gallery card or the large preview: `(key, lang, width, colorHex)`, null when it could not be drawn.
-typedef CertTemplatePreviewLoader = Future<Uint8List?> Function(String key, String lang, int width, String? colorHex);
+/// One image of a gallery card or the large preview: `(key, lang, width, colorHex, bgHex:, bg2Hex:)`, null when it could not be drawn.
+typedef CertTemplatePreviewLoader = Future<Uint8List?> Function(String key, String lang, int width, String? colorHex, {String? bgHex, String? bg2Hex});
 
 /// The categories the filter offers, in order; a template's `category` is one of these keys.
 const kCertTemplateCategories = <(String, String, String)>[
@@ -69,17 +73,17 @@ Future<CertGalleryPick?> showCertGallery(BuildContext context, {required List<Ce
 /// The card images of one session: each one asked for once, at most four at a time.
 class CertTemplatePreviewCache {
   CertTemplatePreviewCache(this._fetch, {this.maxParallel = 4, this.maxEntries = 96});
-  final Future<Uint8List> Function(String key, {required String lang, int width, String? colorHex}) _fetch;
+  final Future<Uint8List> Function(String key, {required String lang, int width, String? colorHex, String? bgHex, String? bg2Hex}) _fetch;
   final int maxParallel, maxEntries;
   final _entries = <String, Future<Uint8List?>>{};
   final _waiting = Queue<void Function()>();
   int _running = 0;
 
-  Future<Uint8List?> load(String key, String lang, int width, String? colorHex) {
-    final id = '$key|$lang|$width|$colorHex';
+  Future<Uint8List?> load(String key, String lang, int width, String? colorHex, {String? bgHex, String? bg2Hex}) {
+    final id = '$key|$lang|$width|$colorHex|$bgHex|$bg2Hex';
     final hit = _entries.remove(id);
     if (hit != null) return _entries[id] = hit;
-    final future = _enqueue(() => _fetch(key, lang: lang, width: width, colorHex: colorHex));
+    final future = _enqueue(() => _fetch(key, lang: lang, width: width, colorHex: colorHex, bgHex: bgHex, bg2Hex: bg2Hex));
     _entries[id] = future;
     while (_entries.length > maxEntries) {
       _entries.remove(_entries.keys.first);
@@ -319,11 +323,11 @@ class _RoundIcon extends StatelessWidget {
 
 /// One rendered page: a skeleton while it loads, then the image; a failure shows the page's shape.
 class _Preview extends StatefulWidget {
-  const _Preview({super.key, required this.template, required this.lang, required this.width, required this.loader, this.colorHex});
+  const _Preview({super.key, required this.template, required this.lang, required this.width, required this.loader, this.colorHex, this.bgHex, this.bg2Hex});
   final CertServerTemplate template;
   final String lang;
   final int width;
-  final String? colorHex;
+  final String? colorHex, bgHex, bg2Hex;
   final CertTemplatePreviewLoader loader;
 
   @override
@@ -334,14 +338,15 @@ class _PreviewState extends State<_Preview> {
   late Future<Uint8List?> _image = _load();
 
   Future<Uint8List?> _load() {
-    final inline = widget.colorHex == null && widget.width <= 720 ? widget.template.preview(widget.lang) : null;
-    return inline != null ? Future.value(inline) : widget.loader(widget.template.key, widget.lang, widget.width, widget.colorHex);
+    final plain = widget.colorHex == null && widget.bgHex == null && widget.bg2Hex == null;
+    final inline = plain && widget.width <= 720 ? widget.template.preview(widget.lang) : null;
+    return inline != null ? Future.value(inline) : widget.loader(widget.template.key, widget.lang, widget.width, widget.colorHex, bgHex: widget.bgHex, bg2Hex: widget.bg2Hex);
   }
 
   @override
   void didUpdateWidget(_Preview old) {
     super.didUpdateWidget(old);
-    if (old.lang != widget.lang || old.template.key != widget.template.key || old.colorHex != widget.colorHex || old.width != widget.width) {
+    if (old.lang != widget.lang || old.template.key != widget.template.key || old.colorHex != widget.colorHex || old.bgHex != widget.bgHex || old.bg2Hex != widget.bg2Hex || old.width != widget.width) {
       _image = _load();
     }
   }
@@ -388,12 +393,66 @@ class _LargePreview extends StatefulWidget {
 
 class _LargePreviewState extends State<_LargePreview> {
   late String _lang = widget.initialLang;
-  String? _color;
+
+  /// The palette in use; null with a custom background.
+  CertPalette? _palette;
+
+  /// The curated palettes when the server sent them, else the older "brand colour" alone.
+  String? _customBg;
+  String? _accent;
+  CertTemplateColors _colors = const CertTemplateColors();
+  Timer? _debounce;
+
+  bool get _hasPalettes => widget.template.palettes.isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_hasPalettes) _palette = widget.template.palettes.first;
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _usePalette(CertPalette p) {
+    _debounce?.cancel();
+    setState(() {
+      _palette = p;
+      _customBg = null;
+      _accent = null;
+      _colors = certPaletteColors(p);
+    });
+  }
+
+  /// A custom background keeps the look's second colour and accent. Debounced: the field fires per keystroke.
+  void _useCustom(String hex) {
+    setState(() {
+      _customBg = hex;
+      _palette = null;
+    });
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      final base = _colors;
+      if (mounted) setState(() => _colors = CertTemplateColors(bg: hex, bg2: base.bg2, accent: base.accent));
+    });
+  }
+
+  void _useAccent(String hex) {
+    _debounce?.cancel();
+    setState(() {
+      _accent = hex;
+      _colors = CertTemplateColors(bg: _colors.bg, bg2: _colors.bg2, accent: hex);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final tp = widget.template;
+    final colors = _colors;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpace.md),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -407,19 +466,26 @@ class _LargePreviewState extends State<_LargePreview> {
           child: Container(
             padding: const EdgeInsets.all(AppSpace.sm),
             decoration: BoxDecoration(color: c.primary.withValues(alpha: .05), borderRadius: AppRadius.cardAll, border: Border.all(color: c.divider)),
-            child: _Preview(key: ValueKey('$_lang-$_color'), template: tp, lang: _lang, width: 1200, colorHex: _color, loader: widget.loader),
+            child: _Preview(key: ValueKey('$_lang-${colors.bg}-${colors.bg2}-${colors.accent}'), template: tp, lang: _lang, width: 1200, colorHex: colors.accent, bgHex: colors.bg, bg2Hex: colors.bg2, loader: widget.loader),
           ),
         ),
         const SizedBox(height: AppSpace.md),
         Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [
           AppChoiceChip(label: t('عربي', 'Arabic'), selected: _lang == 'ar', onTap: () => setState(() => _lang = 'ar')),
           AppChoiceChip(label: t('إنجليزي', 'English'), selected: _lang == 'en', onTap: () => setState(() => _lang = 'en')),
-          AppChoiceChip(label: t('ألوان التصميم الأصلية', 'Original colours'), selected: _color == null, onTap: () => setState(() => _color = null)),
+          if (!_hasPalettes)
+            AppChoiceChip(label: t('ألوان التصميم الأصلية', 'Original colours'), selected: colors.isOriginal, onTap: () => setState(() => _colors = const CertTemplateColors())),
         ]),
+        if (_hasPalettes) ...[
+          const SizedBox(height: AppSpace.md),
+          Text(t('ألوان الخلفية', 'Background colours'), style: AppType.section(context)),
+          const SizedBox(height: AppSpace.xs),
+          CertPalettePicker(palettes: tp.palettes, selectedId: _palette?.id, customBg: _customBg, lang: _lang, onPalette: _usePalette, onCustomBg: _useCustom),
+        ],
         const SizedBox(height: AppSpace.sm),
-        CertThemeColorField(label: t('أو لون مؤسستك', 'Or your brand colour'), hex: _color ?? widget.colorSeed, onChanged: (h) => setState(() => _color = h)),
+        CertThemeColorField(label: t('لون التمييز (اختياري)', 'Accent colour (optional)'), hex: _accent ?? colors.accent ?? widget.colorSeed, onChanged: _useAccent),
         const SizedBox(height: AppSpace.md),
-        AppPrimaryButton(label: t('استخدم هذا التصميم', 'Use this design'), onPressed: () => widget.onPick(CertGalleryPick.template(tp, colorHex: _color))),
+        AppPrimaryButton(label: t('استخدم هذا التصميم', 'Use this design'), onPressed: () => widget.onPick(CertGalleryPick.template(tp, colorHex: colors.accent, bgHex: colors.bg, bg2Hex: colors.bg2))),
       ]),
     );
   }

@@ -107,7 +107,7 @@ class IssueColumn {
 
 /// GET designs/{id}/columns → the columns, the design's languages and the limits.
 class IssueTemplate {
-  const IssueTemplate({required this.columns, required this.langs, this.maxRows = 5000, this.maxUploadBytes = 5242880, this.photo = 'none'});
+  const IssueTemplate({required this.columns, required this.langs, this.maxRows = 5000, this.maxUploadBytes = 5242880, this.photo = 'none', this.printsTeacher = false, this.teacherDefault = ''});
 
   factory IssueTemplate.fromJson(Map<String, dynamic> j) => IssueTemplate(
         columns: [for (final c in _maps(j['columns'])) IssueColumn.fromJson(c)],
@@ -115,7 +115,15 @@ class IssueTemplate {
         maxRows: _int(j['max_rows'], 5000),
         maxUploadBytes: _int(j['max_upload_bytes'], 5242880),
         photo: _str(j['photo']) ?? 'none',
+        printsTeacher: j['prints_teacher'] == true,
+        teacherDefault: _str(j['teacher_default']) ?? '',
       );
+
+  /// Does the design print the instructor's name (D-400); false from an older server.
+  final bool printsTeacher;
+
+  /// What the instructor field starts with: the issuer's own name when they issue for themselves.
+  final String teacherDefault;
 
   /// Does the design hold a student photo: `required` · `optional` · `none` (D-386).
   final String photo;
@@ -127,6 +135,24 @@ class IssueTemplate {
 
   /// The columns other than the recipient's name (and e-mail) — what course mode fills once for everyone.
   List<IssueColumn> get extraColumns => [for (final c in columns) if (c.key != 'student_name' && c.key != _emailKey) c];
+}
+
+/// D-400: does this batch need an instructor's name typed in? A recipient with no platform account has no course to take
+/// it from, so a standalone batch that prints the name needs it for every such person without their own value.
+bool certTeacherRequired({required bool standalone, required IssueTemplate? template, required Iterable<Map<String, dynamic>> rows}) {
+  if (!standalone || template == null || !template.printsTeacher) return false;
+  return rows.any((r) {
+    if (r['student_id'] != null) return false;
+    final v = r['values'];
+    final own = v is Map ? '${v['teacher_name'] ?? ''}' : '';
+    return own.trim().isEmpty;
+  });
+}
+
+/// The server's code of a failed issuing call (empty when it has none).
+String certIssueErrorCode(Object error) {
+  final e = ApiException.from(error);
+  return e.code ?? '${apiErrorDetail(e)['code'] ?? ''}';
 }
 
 /// One example line in the expected order (shown above the paste box).
@@ -1048,6 +1074,7 @@ String certIssueErrorText(Object error) {
     'unsupported_file' => _t('ارفع ملف ‎.xlsx أو ‎.csv', 'Upload an .xlsx or .csv file'),
     'bad_file' => _t('هذا الملف ليس ملف Excel صالحًا', 'This file is not a valid Excel (.xlsx) file'),
     'bad_lang' => _t('التصميم لا يدعم هذه اللغة', 'The design does not issue this language'),
+    'teacher_name_required' => _t('اكتب اسم المدرّس: لا يمكن تعبئته تلقائيًا لمستلم ليس له حساب على المنصة', "Enter the instructor's name: it cannot be filled in for a recipient without an account"),
     'no_recipients' => (_intOrNull(d['skipped']) ?? 0) > 0
         ? _t('كل الطلاب النشطين لديهم هذه الشهادة — فعّل «استبدال الشهادات الحالية» لإصدارها من جديد',
             'Every active student already holds this certificate — turn on “Replace existing certificates” to issue it again')

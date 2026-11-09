@@ -168,11 +168,12 @@ class CertIssueApi {
     );
   }
 
-  Future<IssueBatch> issueList(int listId, {int? designId, List<String>? langs, bool email = false}) async =>
+  Future<IssueBatch> issueList(int listId, {int? designId, List<String>? langs, bool email = false, Map<String, String>? constants}) async =>
       IssueBatch.fromJson(_m(await _api.post('$_b/lists/$listId/issue', body: {
         'design_id': ?designId,
         if (langs != null && langs.isNotEmpty) 'langs': langs,
         'email': email,
+        if (constants != null && constants.isNotEmpty) 'constants': constants,
       })));
 
   // ── courses and students the issuer may reach ─────────────────────────────

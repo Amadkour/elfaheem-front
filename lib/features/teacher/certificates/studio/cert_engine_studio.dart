@@ -34,6 +34,8 @@ import '../../../../core/api_client.dart';
 import '../../../../design/app_keyboard.dart' show AppKeyboardSupport;
 import '../../../../design/app_kit.dart';
 import '../../../../design/app_notice.dart';
+import 'cert_template_colours.dart';
+import 'cert_wordings_panel.dart';
 import '../../../../design/app_tokens.dart';
 import '../../../../design/export/export_fonts.dart' show ExportFonts;
 import '../../../../design/export_layout/layout_canvas.dart';
@@ -463,9 +465,9 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
   /// A server template's [lang] page, adopted into THIS design (like a starter): the server hands the template over as
   /// a document and stores no design, so the studio keeps its design id and version. Null when it failed (the error
   /// is shown).
-  Future<LayoutDesign?> _designFromTemplate(CertServerTemplate tp, String? colorHex, String lang) async {
+  Future<LayoutDesign?> _designFromTemplate(CertServerTemplate tp, String? colorHex, String lang, {String? bgHex, String? bg2Hex}) async {
     try {
-      final r = await _api.templateDocument(tp.key, orgId: widget.orgId, themeColor: colorHex);
+      final r = await _api.templateDocument(tp.key, orgId: widget.orgId, themeColor: colorHex, bgHex: bgHex, bg2Hex: bg2Hex);
       _pickedTemplate = r.document;
       final own = r.document.designs[lang];
       if (own != null) return own;
@@ -486,7 +488,7 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
     _pickedTemplate = null;
     if (pick == null || !mounted) return null;
     if (pick.starter != null) return _designFromStarter(pick.starter!, lang);
-    return _designFromTemplate(pick.template!, pick.colorHex, lang);
+    return _designFromTemplate(pick.template!, pick.colorHex, lang, bgHex: pick.bgHex, bg2Hex: pick.bg2Hex);
   }
 
   LayoutDesign _designFromStarter(CertStarter s, String lang) {
@@ -786,6 +788,75 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
     }
   }
 
+  // ── template colours and wordings (D-401, D-402) ─────────────────────────────────────────────────────────────────
+
+  int _recolourGen = 0;
+
+  /// The current page in the chosen colours (and the other language's page, when it came from the same template): the
+  /// server paints the page and fits the inks; what the person changed since picking the template stays.
+  Future<void> _recolourTemplate(String key, CertTemplateColors colors) async {
+    final gen = ++_recolourGen;
+    final CertDocLoad fresh;
+    try {
+      fresh = await _api.templateDocument(key, orgId: widget.orgId, themeColor: colors.accent, bgHex: colors.bg, bg2Hex: colors.bg2);
+    } catch (e) {
+      if (mounted) certNotifyError(e);
+      return;
+    }
+    if (!mounted || gen != _recolourGen) return;
+    setState(() {
+      for (final entry in doc.designs.entries) {
+        final next = fresh.document.designs[entry.key];
+        final memory = certTemplateMemory(entry.value);
+        if (next != null && memory != null && memory['key'] == key) certRecolourDesign(entry.value, next);
+      }
+    });
+    _touch();
+    unawaited(_prefetchImages());
+  }
+
+  /// "Template colours", on a page that still shows what its template drew.
+  Widget? _templateColours(LayoutDesign d) {
+    final memory = certTemplateMemory(d);
+    final key = memory?['key'] as String?;
+    if (memory == null || key == null) return null;
+    return CertTemplateColoursPanel(
+      key: ValueKey('template-colours-$_lang'),
+      templateKey: key,
+      lang: _lang,
+      load: _loadTemplates,
+      currentBg: memory['bg'] as String?,
+      currentBg2: memory['bg2'] as String?,
+      currentAccent: memory['accent'] as String?,
+      apply: (colors) => _recolourTemplate(key, colors),
+    );
+  }
+
+  List<CertPreamble>? _preambles;
+
+  Future<List<CertPreamble>> _loadPreambles() async {
+    try {
+      return _preambles ??= await _api.preambles();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// A wording goes in as a plain text block, selected, ready to edit; a second one lands below the first.
+  void _insertWording(CertPreamble p) {
+    final h = _handle;
+    if (h == null) return;
+    final d = _design;
+    final text = p.text(_lang);
+    final count = d.row.elements.where((e) => e.name == t('صيغة الشهادة', 'Certificate wording')).length;
+    h.add(LayoutAddOption(p.title(_lang), Icons.format_quote_rounded, (id) => certWordingElement(id, _lang, text, d, count), centered: true));
+    final added = h.ctl.single?.payload;
+    if (added != null) {
+      setState(() => added.y = certWordingElement('x', _lang, text, d, count).y);
+    }
+    _touch();
+  }
+
   /// A ready design from the Templates tab, for the current language: the template's own colours (what its thumbnail
   /// shows) and, like the gallery, the other language's page while that one is still empty.
   Future<void> _applyTemplate(CertServerTemplate tp) async {
@@ -869,6 +940,7 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
     final elements = [for (final o in options) if (!images.contains(o) && !fields.contains(o) && !variables.contains(o)) o];
     return switch (tool) {
       CertTool.templates => CertTemplatesSlot(key: ValueKey('templates-$_lang'), lang: _lang, load: _loadTemplates, previewOf: (k, l) => _templatePreviews.load(k, l, 480, null), onPick: (tp) => unawaited(_applyTemplate(tp)), onBrowse: () => unawaited(_pickStarter())),
+      CertTool.wordings => CertWordingsPanel(key: ValueKey('wordings-$_lang'), lang: _lang, load: _loadPreambles, onInsert: _insertWording),
       CertTool.elements => CertAddGrid(options: elements, onAdd: h.add, hint: t('اضغط عنصرًا ليُضاف إلى الصفحة.', 'Tap an element to add it to the page.')),
       CertTool.fields => CertFieldsPanel(options: fields, custom: variables, onAdd: h.add, onNewVariable: () => unawaited(_newVariable())),
       CertTool.images => CertAddGrid(
@@ -937,6 +1009,7 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
         memory: _sections,
         pickBackground: _pickBackground,
         generateBackground: _generateBackground,
+        templateColours: _templateColours(d),
         onChanged: () {
           setState(() {});
           _touch();
