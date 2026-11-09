@@ -586,6 +586,8 @@ Future<Map<String, dynamic>?> orgPickAndUpload(String uploadPath,
     {List<String>? extensions,
     BuildContext? context,
     CropShape cropShape = CropShape.square,
+    bool allowBackground = true,
+    bool allowTransparent = true,
     String Function(ApiException e)? errorText}) async {
   final f = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: extensions ?? orgFileExtensions);
   if (f == null) return null;
@@ -593,7 +595,8 @@ Future<Map<String, dynamic>?> orgPickAndUpload(String uploadPath,
   Uint8List? bytes = kIsWeb ? await f.readAsBytes() : null;
   final isImage = _imageExt.contains(name.split('.').last.toLowerCase());
   if (isImage && context != null && context.mounted) {
-    final cropped = await showAppImageCropper(context, bytes ?? await f.readAsBytes(), shape: cropShape);
+    final cropped = await showAppImageCropper(context, bytes ?? await f.readAsBytes(),
+        shape: cropShape, allowBackground: allowBackground, allowTransparent: allowTransparent);
     if (cropped == null) return null;
     bytes = cropped;
     name = '${name.replaceAll(RegExp(r'\.[^.]+$'), '')}.png';

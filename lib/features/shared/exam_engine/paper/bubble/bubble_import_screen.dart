@@ -112,7 +112,7 @@ class _BubbleImportScreenState extends State<BubbleImportScreen> {
   Future<void> _crop() async {
     final raw = _previews[_step];
     if (raw == null) return;
-    final bytes = await showAppImageCropper(context, raw, shape: CropShape.square, allowOriginal: false);
+    final bytes = await showAppImageCropper(context, raw, shape: CropShape.square, allowOriginal: false, allowBackground: false);
     if (bytes == null || !mounted) return;
     await _send('crop.png', bytes);
   }

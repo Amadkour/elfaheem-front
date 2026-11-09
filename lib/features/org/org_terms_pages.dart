@@ -83,7 +83,7 @@ class _OrgTermsAdminPageState extends State<OrgTermsAdminPage> {
                   onPressed: () async {
                     final f = await orgPickAndUpload('${s.base}/uploads',
                         extensions: kind == 'image' ? const ['png', 'jpg', 'jpeg', 'webp'] : null,
-                        context: ctx, cropShape: CropShape.wide);
+                        context: ctx, cropShape: CropShape.wide, allowBackground: false); // part of a legal text
                     if (f != null) set(() {
                       fileUrl = '${f['url']}';
                       fileName = '${f['name']}';

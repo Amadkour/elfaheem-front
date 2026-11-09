@@ -33,6 +33,7 @@ import '../../features/org/org_providers.dart' show orgBase;
 import '../../features/org/org_ui.dart' show orgFileUrl;
 import '../../features/shared/rag/app_assistant.dart' show AppAssistant;
 import '../../features/teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) '../../features/teacher/data_lab/data_lab_saver_web.dart' as saver;
+import '../app_image_cropper.dart';
 import '../app_kit.dart';
 import '../app_tokens.dart';
 import '../export/export_studio_model.dart';
@@ -868,9 +869,13 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
   Future<String?> _uploadImage() async {
     final f = await FilePicker.pickFile(type: FileType.image);
     if (f == null || !mounted || widget.orgId == null) return null;
-    final bytes = await f.readAsBytes();
+    final raw = await f.readAsBytes();
+    if (!mounted) return null;
+    final picked = await cropImageWithName(context, raw, f.name);
+    if (picked == null || !mounted) return null;
+    final bytes = picked.bytes;
     try {
-      final r = await ApiClient().postMultipart('$orgBase/orgs/${widget.orgId}/uploads', fields: const {}, fileField: 'file', fileName: f.name, fileBytes: bytes);
+      final r = await ApiClient().postMultipart('$orgBase/orgs/${widget.orgId}/uploads', fields: const {}, fileField: 'file', fileName: picked.name, fileBytes: bytes);
       final url = r is Map ? '${r['url'] ?? ''}' : '';
       if (url.isEmpty) return null;
       rememberExportImage(url, bytes);
@@ -885,10 +890,14 @@ class _ExportDesignerPageState extends State<ExportDesignerPage> {
   Future<void> _upload(ExportBlock b) async {
     final f = await FilePicker.pickFile(type: FileType.image);
     if (f == null || !mounted) return;
-    final bytes = await f.readAsBytes();
     if (widget.orgId == null) return toast(t('الرفع يحتاج مؤسسة مفتوحة — الصق رابط الصورة', 'Uploading needs an open organization — paste the image link'), error: true);
+    final raw = await f.readAsBytes();
+    if (!mounted) return;
+    final picked = await cropImageWithName(context, raw, f.name);
+    if (picked == null || !mounted) return;
+    final bytes = picked.bytes;
     try {
-      final r = await ApiClient().postMultipart('$orgBase/orgs/${widget.orgId}/uploads', fields: const {}, fileField: 'file', fileName: f.name, fileBytes: bytes);
+      final r = await ApiClient().postMultipart('$orgBase/orgs/${widget.orgId}/uploads', fields: const {}, fileField: 'file', fileName: picked.name, fileBytes: bytes);
       final url = r is Map ? '${r['url'] ?? ''}' : '';
       if (url.isEmpty || !mounted) return;
       rememberExportImage(url, bytes);
