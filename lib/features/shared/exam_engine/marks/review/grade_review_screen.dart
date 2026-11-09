@@ -364,8 +364,8 @@ class _GradeReviewScreenState extends State<GradeReviewScreen> with SingleTicker
     final wide = MediaQuery.sizeOf(context).width >= 900;
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(
-        title: Text(s == null || s.mode == MarkMode.review ? t('مراجعة الدرجات', 'Review grades') : t('استيراد الدرجات', 'Import marks')),
+      appBar: AppHeader(
+        title: s == null || s.mode == MarkMode.review ? t('مراجعة الدرجات', 'Review grades') : t('استيراد الدرجات', 'Import marks'),
         actions: [
           if (s != null && s.open) IconButton(tooltip: t('تصوير المزيد', 'Scan more'), onPressed: _scanMore, icon: const Icon(Icons.photo_camera_outlined)),
           if (_hub) IconButton(tooltip: t('السجل', 'History'), onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RevisionHistoryScreen(sessionId: widget.sessionId, api: _revision))), icon: const Icon(Icons.history_rounded)),

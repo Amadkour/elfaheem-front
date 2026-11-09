@@ -113,7 +113,7 @@ class _ExamConsentScreenState extends State<ExamConsentScreen> {
     final consent = _consent;
     return BasePage(
       key: const ValueKey('exam.consent'),
-      appBar: AppBar(title: Text(t('قبل الاختبار', 'Before the exam'))),
+      appBar: AppHeader(title: t('قبل الاختبار', 'Before the exam')),
       child: _error != null
           ? AppEmpty(icon: Icons.error_outline_rounded, title: _error!)
           : consent == null

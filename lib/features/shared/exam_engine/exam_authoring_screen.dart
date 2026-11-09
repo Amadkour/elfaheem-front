@@ -1337,7 +1337,7 @@ class _QuestionBankScreenState extends State<QuestionBankScreen> {
   @override
   Widget build(BuildContext context) => BasePage(
         key: const ValueKey('exam.question_bank'),
-        appBar: AppBar(title: Text(t('بنك الأسئلة', 'Question bank')), actions: [
+        appBar: AppHeader(title: t('بنك الأسئلة', 'Question bank'), actions: [
           IconButton(onPressed: () => _edit(null), icon: const Icon(Icons.add_rounded), tooltip: t('سؤال جديد', 'New question')),
         ]),
         child: QuestionBankBrowser(
@@ -2117,7 +2117,7 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
     if (nd != null) {
       return BasePage(
         key: const ValueKey('exam.authoring'),
-        appBar: AppBar(title: Text(t('اختبار جديد', 'New exam'))),
+        appBar: AppHeader(title: t('اختبار جديد', 'New exam')),
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -2134,8 +2134,8 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
       length: 4,
       child: BasePage(
         key: const ValueKey('exam.authoring'),
-        appBar: AppBar(
-          title: Text(v?.exam.title.isNotEmpty == true ? v!.exam.title : t('تحرير الاختبار', 'Edit exam'), maxLines: 1, overflow: TextOverflow.ellipsis),
+        appBar: AppHeader(
+          title: v?.exam.title.isNotEmpty == true ? v!.exam.title : t('تحرير الاختبار', 'Edit exam'),
           actions: [
             if (v != null && v.exam.courseId != null)
               IconButton(onPressed: _openSetup, icon: const Icon(Icons.fact_check_outlined), tooltip: t('إعداد الاختبار الورقي', 'Paper exam setup')),

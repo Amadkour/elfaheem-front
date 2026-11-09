@@ -569,7 +569,7 @@ class _OfflineExamStatusScreenState extends State<OfflineExamStatusScreen> {
   Widget build(BuildContext context) {
     return BasePage(
       key: const ValueKey('exam.offline.status'),
-      appBar: AppBar(title: Text(widget.title, overflow: TextOverflow.ellipsis)),
+      appBar: AppHeader(title: widget.title),
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 32), children: [
         AppCard(child: OfflineStepsView(stage: _s.stage, code: _s.code)),
         const SizedBox(height: 16),

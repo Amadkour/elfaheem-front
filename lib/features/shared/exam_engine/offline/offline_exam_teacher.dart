@@ -317,7 +317,7 @@ class _OfflineExamPanelState extends State<OfflineExamPanel> {
     final pkg = asMap(ov?['package']);
     return BasePage(
       key: const ValueKey('exam.offline.teacher'),
-      appBar: AppBar(title: Text(widget.title, overflow: TextOverflow.ellipsis)),
+      appBar: AppHeader(title: widget.title),
       child: ov == null && _error == null
           ? const AppListSkeleton(items: 4)
           : AppRefresh(

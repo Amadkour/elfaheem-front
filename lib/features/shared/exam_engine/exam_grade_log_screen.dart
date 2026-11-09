@@ -118,7 +118,7 @@ class _ExamGradeLogScreenState extends State<ExamGradeLogScreen> {
     final choices = names.entries.toList()..sort((a, b) => a.value.compareTo(b.value));
     return BasePage(
       key: const ValueKey('exam.gradeLog'),
-      appBar: AppBar(title: Text(t('سجل الدرجات', 'Grade log'))),
+      appBar: AppHeader(title: t('سجل الدرجات', 'Grade log')),
       child: AppRefresh(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [

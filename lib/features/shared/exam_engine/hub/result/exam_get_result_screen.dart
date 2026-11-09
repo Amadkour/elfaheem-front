@@ -267,8 +267,8 @@ class _ExamGetResultScreenState extends State<ExamGetResultScreen> {
     final b = _board;
     return BasePage(
       key: const ValueKey('exam.hub.result'),
-      appBar: AppBar(
-        title: Text(widget.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      appBar: AppHeader(
+        title: widget.title,
         actions: [AppRefreshAction(onRefresh: () => _load())],
       ),
       child: LayoutBuilder(builder: (context, box) {

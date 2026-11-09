@@ -165,7 +165,7 @@ class _ExamResultScreenState extends State<ExamResultScreen> {
   @override
   Widget build(BuildContext context) => BasePage(
         key: const ValueKey('exam.result'),
-        appBar: AppBar(title: Text(t('نتيجة الاختبار', 'Exam result')), actions: const [HelpInfoButton(pageId: 'exam.result')]),
+        appBar: AppHeader(title: t('نتيجة الاختبار', 'Exam result'), actions: const [HelpInfoButton(pageId: 'exam.result')]),
         child: ExamResultBody(result: widget.result, examTitle: widget.examTitle, appeals: _appeals, onAppeal: _canAppeal ? _appeal : null),
       );
 }

@@ -231,7 +231,7 @@ class _ExamAppealsScreenState extends State<ExamAppealsScreen> {
     final items = _items;
     return BasePage(
       key: const ValueKey('exam.appeals'),
-      appBar: AppBar(title: Text(t('التظلمات', 'Appeals'))),
+      appBar: AppHeader(title: t('التظلمات', 'Appeals')),
       child: AppRefresh(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
@@ -476,7 +476,7 @@ class _ExamAnalyticsScreenState extends State<ExamAnalyticsScreen> {
     final d = _data;
     return BasePage(
       key: const ValueKey('exam.analytics'),
-      appBar: AppBar(title: Text(t('تحليلات الاختبار', 'Exam analytics')), actions: [
+      appBar: AppHeader(title: t('تحليلات الاختبار', 'Exam analytics'), actions: [
         IconButton(onPressed: _busy ? null : _refresh, icon: const Icon(Icons.refresh_rounded), tooltip: t('إعادة الحساب', 'Recompute')),
       ]),
       child: AppRefresh(

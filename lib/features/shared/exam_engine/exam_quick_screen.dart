@@ -494,7 +494,7 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
     final errors = rawErrors.where((e) => e != 'mode_required').toList();
     return BasePage(
       key: const ValueKey('exam.quick'),
-      appBar: AppBar(title: Text(t('اختبار جديد', 'New exam')), actions: const [HelpInfoButton(pageId: 'teacher.exam_quick')]),
+      appBar: AppHeader(title: t('اختبار جديد', 'New exam'), actions: const [HelpInfoButton(pageId: 'teacher.exam_quick')]),
       // a desktop window: the builder reads as one column, not as 1400 px wide cards
       child: Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: quickScreenMaxWidth), child: !_started
           ? SingleChildScrollView(

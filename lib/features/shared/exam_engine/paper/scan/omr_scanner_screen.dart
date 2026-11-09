@@ -661,7 +661,7 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
     if (_setupProblem != null) {
       return Scaffold(
         backgroundColor: c.background,
-        appBar: AppBar(title: Text(title)),
+        appBar: AppHeader(title: title),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(AppSpace.lg),
@@ -679,7 +679,7 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
     if (_issue != null) {
       return Scaffold(
         backgroundColor: c.background,
-        appBar: AppBar(title: Text(title)),
+        appBar: AppHeader(title: title),
         body: CameraProblemView(
           issue: _issue!,
           web: kIsWeb,

@@ -487,7 +487,7 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
     final gradeReview = widget.onOpenGradeReview ?? ExamReviewScreen.openGradeReviewHook ?? openGradeReviewForExam;
     return BasePage(
       key: const ValueKey('exam.review'),
-      appBar: AppBar(title: Text(t('مراجعة التصحيح', 'Review marking')), actions: [
+      appBar: AppHeader(title: t('مراجعة التصحيح', 'Review marking'), actions: [
         IconButton(onPressed: _scans, icon: const Icon(Icons.document_scanner_outlined), tooltip: t('الأوراق الممسوحة', 'Scanned pages')),
         IconButton(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamAppealsScreen(examId: widget.examId, examTitle: widget.examTitle,

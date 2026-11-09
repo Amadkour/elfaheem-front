@@ -207,7 +207,7 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> {
     final isPublished = v != null && v.exam.resultsPolicy == 'when_published' && v.exam.resultsPublishedAt != null;
     return BasePage(
       key: const ValueKey('exam.results'),
-      appBar: AppBar(title: Text(widget.examTitle, maxLines: 1, overflow: TextOverflow.ellipsis)),
+      appBar: AppHeader(title: widget.examTitle),
       child: AppRefresh(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
