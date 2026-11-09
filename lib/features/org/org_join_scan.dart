@@ -78,8 +78,20 @@ Future<String?> openJoinScanner(BuildContext context) => Navigator.of(context).p
       MaterialPageRoute(fullscreenDialog: true, builder: (_) => const JoinScannerPage()),
     );
 
+/// The same scanner for another kind of code (D-420): [parse] accepts a payload or returns null to keep scanning.
+Future<String?> openQrScanner(BuildContext context,
+        {required String? Function(String?) parse, required String title, required String prompt, String? rejected}) =>
+    Navigator.of(context).push<String>(MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (_) => JoinScannerPage(parse: parse, title: title, prompt: prompt, rejected: rejected),
+    ));
+
 class JoinScannerPage extends StatefulWidget {
-  const JoinScannerPage({super.key});
+  const JoinScannerPage({super.key, this.parse, this.title, this.prompt, this.rejected});
+
+  /// Null = the organization join code.
+  final String? Function(String?)? parse;
+  final String? title, prompt, rejected;
 
   @override
   State<JoinScannerPage> createState() => _JoinScannerPageState();
@@ -118,7 +130,7 @@ class _JoinScannerPageState extends State<JoinScannerPage> with WidgetsBindingOb
   void _onDetect(BarcodeCapture cap) {
     if (_done) return;
     for (final b in cap.barcodes) {
-      final code = parseJoinQr(b.rawValue);
+      final code = (widget.parse ?? parseJoinQr)(b.rawValue);
       if (code != null) {
         _done = true;
         HapticFeedback.mediumImpact();
@@ -129,7 +141,7 @@ class _JoinScannerPageState extends State<JoinScannerPage> with WidgetsBindingOb
     }
     if (cap.barcodes.isNotEmpty) {
       _hintTimer?.cancel();
-      setState(() => _hint = t('هذا الرمز ليس كود انضمام — امسح رمز QR الذي أرسلته مؤسستك', 'This isn\'t a join code — scan the QR your institution sent'));
+      setState(() => _hint = widget.rejected ?? t('هذا الرمز ليس كود انضمام — امسح رمز QR الذي أرسلته مؤسستك', 'This isn\'t a join code — scan the QR your institution sent'));
       _hintTimer = Timer(const Duration(seconds: 3), () => mounted ? setState(() => _hint = null) : null);
     }
   }
@@ -168,7 +180,7 @@ class _JoinScannerPageState extends State<JoinScannerPage> with WidgetsBindingOb
               child: Row(children: [
                 _RoundButton(icon: Icons.close_rounded, tooltip: t('إغلاق', 'Close'), onTap: () => Navigator.of(context).pop()),
                 Expanded(
-                  child: Text(t('امسح كود الانضمام', 'Scan join code'),
+                  child: Text(widget.title ?? t('امسح كود الانضمام', 'Scan join code'),
                       textAlign: TextAlign.center,
                       style: AppType.section(context).copyWith(color: _camInk)),
                 ),
@@ -202,7 +214,7 @@ class _JoinScannerPageState extends State<JoinScannerPage> with WidgetsBindingOb
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 250),
                         child: Text(
-                          _hint ?? t('وجّه الكاميرا إلى رمز QR الخاص بمؤسستك', 'Point the camera at your institution\'s QR code'),
+                          _hint ?? widget.prompt ?? t('وجّه الكاميرا إلى رمز QR الخاص بمؤسستك', 'Point the camera at your institution\'s QR code'),
                           key: ValueKey(_hint),
                           textAlign: TextAlign.center,
                           style: AppType.bodyStrong(context).copyWith(color: _hint == null ? _camInk : c.warning, height: 1.5),

@@ -22,6 +22,8 @@ import 'register_screen.dart';
 import 'username.dart' show IdentifierIconData;
 import '../../utils/widget/parent_component.dart';
 import '../org/org_application_screen.dart';
+import '../shared/certificates_issue/cert_verify_logic.dart' show kCertVerifyFeature;
+import '../shared/certificates_issue/cert_verify_page.dart' show openCertVerify;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -248,6 +250,15 @@ class _LoginScreenState extends State<LoginScreen> {
               spacing: 8,
               runSpacing: 8,
               children: [
+                // the public check (D-420): no account, no authenticated call
+                ParentComponent(
+                  featureKey: kCertVerifyFeature,
+                  child: AuthTextAction(
+                    icon: Icons.verified_user_outlined,
+                    label: 'cv_entry_title'.tr,
+                    onTap: () => openCertVerify(context),
+                  ),
+                ),
                 // institutions apply here; the platform team approves them before any dashboard opens
                 ParentComponent(
                   featureKey: 'register.organization',

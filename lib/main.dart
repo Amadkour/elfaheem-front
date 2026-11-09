@@ -61,6 +61,7 @@ import 'features/shared/attendance/attendance_teacher_banner.dart';
 import 'features/shared/guest/guest_live_api.dart' show guestLiveTokenFromRoute, legacyHashRoute;
 import 'features/shared/guest/guest_live_page.dart';
 import 'features/shared/certificates_issue/cert_issue_logic.dart' show certVerifyTokenFromRoute;
+import 'features/shared/certificates_issue/cert_verify_logic.dart' show isCertVerifyHomeRoute;
 import 'features/shared/certificates_issue/cert_verify_page.dart';
 import 'design/export/export_studio_api.dart' show exportLinkTokenFromRoute;
 import 'features/shared/exports/export_link_open_page.dart';
@@ -536,7 +537,8 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
   }
 
   bool _isLink(String r) =>
-      guestLiveTokenFromRoute(r) != null || certVerifyTokenFromRoute(r) != null || exportLinkTokenFromRoute(r) != null ||
+      guestLiveTokenFromRoute(r) != null || certVerifyTokenFromRoute(r) != null || isCertVerifyHomeRoute(r) ||
+      exportLinkTokenFromRoute(r) != null ||
       DeepLinkService.parse(r) != null || DeepLinkService.parseProfile(r) != null || AppLink.parse(r) != null ||
       const {'link.org_join', 'link.org_invitation'}.contains(AppRoutes.match(r)?.id) ||
       ExploreRequest.matches(r) || isInstitutionRoute(r) ||
@@ -773,6 +775,9 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
     final verifyToken = certVerifyTokenFromRoute(settings.name);
     if (verifyToken != null) {
       return _fade(CertVerifyPage(token: verifyToken), settings);
+    }
+    if (isCertVerifyHomeRoute(settings.name)) {
+      return _fade(const CertVerifyPage(), settings);
     }
     // /e/<token> — an Export Studio share link (D-134): sign-in required, the page downloads the file
     final exportToken = exportLinkTokenFromRoute(settings.name);

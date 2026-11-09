@@ -1,0 +1,8 @@
+{
+ "detail": {
+  "code": "cert_verify_rate_limited",
+  "message": "محاولات تحقق كثيرة. حاول مرة أخرى بعد قليل",
+  "message_en": "Too many checks. Try again shortly",
+  "retry_after": 60
+ }
+}

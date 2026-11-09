@@ -50,6 +50,7 @@ import 'org_ui.dart' show orgPickAndUpload;
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/features/shared/display/display_settings_page.dart' show DisplaySettingsTile;
+import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_page.dart' show CertVerifyEntryTile;
 import 'package:flutter_education_app/features/shared/get_app/get_app_banner.dart' show GetAppTile;
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
 
@@ -195,6 +196,7 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
         AppSettingsGroup(title: t('التفضيلات', 'Preferences'), icon: Icons.settings_rounded, children: [
           AppLanguageTile(color: AdminPalette.violet.last),
           const DisplaySettingsTile(),
+          const CertVerifyEntryTile(),
           if (GetAppTile.available) const GetAppTile(), // web: the store / installer for this device
           const AppAssistantOpenTile(),
           const AppAssistantBubbleTile(),

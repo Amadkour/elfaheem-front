@@ -37,6 +37,7 @@ import 'cert_issue_api.dart';
 import 'cert_issue_history.dart';
 import 'cert_issue_lists.dart';
 import 'cert_issue_logic.dart';
+import 'cert_expiry_card.dart';
 import 'cert_issue_parts.dart';
 import 'cert_issue_photo_logic.dart';
 import 'cert_issue_photos.dart';
@@ -80,6 +81,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
   String? _coursesError;
   int? _courseId;
   final Map<String, TextEditingController> _constants = {};
+  DateTime? _expiryDay;                                     // null = does not expire (D-420)
   bool _courseEmail = false;
 
   // the instructor's name a non-user's certificate needs (D-400)
@@ -628,6 +630,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
         constants: _constantValues,
         title: _titleCtrl.text,
         rows: course ? _courseRows : _draft.batchRows(),
+        expiresAt: _expiryDay == null ? null : certExpiryWire(_expiryDay!),
       ));
       if (!mounted) return;
       setState(() {
@@ -1140,6 +1143,8 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
           ),
         ),
       ],
+      const SizedBox(height: AppSpace.md),
+      CertExpiryCard(value: _expiryDay, onChanged: (d) => setState(() => _expiryDay = d)),
       const SizedBox(height: AppSpace.md),
       AppCard(
         child: IssuePreviewPanel(

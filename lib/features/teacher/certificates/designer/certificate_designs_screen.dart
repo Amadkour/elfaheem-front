@@ -32,6 +32,8 @@ import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_flow.dart' show openCertIssueFlow;
 import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_history.dart' show CertIssueHistoryPage;
 import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_lists.dart' show CertSavedListsPage;
+import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_logic.dart' show kCertVerifyFeature;
+import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_page.dart' show openCertVerify;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 class CertificateDesignsProvider extends BaseProvider {
@@ -191,6 +193,14 @@ class _View extends StatelessWidget {
       appBar: AppHeader(
         title: 'cert_designs_title'.tr,
         actions: [
+          ParentComponent(
+            featureKey: kCertVerifyFeature,
+            child: IconButton(
+              tooltip: 'cv_entry_title'.tr,
+              icon: const Icon(Icons.verified_user_outlined),
+              onPressed: () => openCertVerify(context),
+            ),
+          ),
           // standalone issuing (features/shared/certificates_issue): saved recipient lists + the issued history
           if (certificateId == null)
             ParentComponent(

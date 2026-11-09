@@ -59,6 +59,7 @@ import '../points/points_wallet_page.dart' show PointsWalletPage;
 import '../records/records_page.dart' show RecordsPage, RecordsSettingsTile;
 import '../public_profile/public_profile_page.dart' show ShareMyProfileTile;
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
+import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_page.dart' show CertVerifyEntryTile;
 import 'package:flutter_education_app/design/app_header.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 
@@ -401,6 +402,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                         title: 'help'.tr,
                         icon: Icons.help_center_rounded,
                         children: [
+                          const CertVerifyEntryTile(),
                           ParentComponent(
                             featureKey: 'profile.help_center',
                             // The teacher dashboard provides a shared ComplaintProvider
