@@ -397,21 +397,21 @@ class _ComputedFieldsEditorPageState extends State<ComputedFieldsEditorPage> {
         },
         child: Scaffold(
           backgroundColor: c.surface,
-          appBar: AppBar(
-            backgroundColor: c.surface,
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            automaticallyImplyLeading: false,
-            leading: IconButton(
-              key: const ValueKey('cc-close'),
-              tooltip: inEditor ? t('رجوع', 'Back') : t('إغلاق', 'Close'),
-              icon: Icon(inEditor ? Icons.arrow_back_rounded : Icons.close_rounded),
-              onPressed: inEditor ? () => setState(() => _sel = null) : _close,
-            ),
-            title: Text(t('الأعمدة المحسوبة', 'Computed columns'), style: appText(17, w: FontWeight.w700, c: c.textDark)),
+          appBar: AppHeader(
+            compact: true,
+            title: t('الأعمدة المحسوبة', 'Computed columns'),
+            leading: inEditor
+                ? AppBackButton(key: const ValueKey('cc-close'), onHero: true, onPressed: () => setState(() => _sel = null))
+                : IconButton(
+                    key: const ValueKey('cc-close'),
+                    tooltip: t('إغلاق', 'Close'),
+                    constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+                    icon: Icon(Icons.close_rounded, color: c.onHero),
+                    onPressed: _close,
+                  ),
             actions: [
               Padding(
-                padding: const EdgeInsetsDirectional.only(end: AppSpace.sm),
+                padding: const EdgeInsets.all(AppSpace.xxs),
                 child: FilledButton(key: const ValueKey('cc-save'), onPressed: _save, child: Text(t('حفظ', 'Save'))),
               ),
             ],

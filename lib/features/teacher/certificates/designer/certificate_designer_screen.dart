@@ -225,6 +225,7 @@ class _DesignerViewState extends State<_DesignerView> {
           child: DefaultTextStyle.merge(
             style: TextStyle(fontFamilyFallback: AppFonts.fallback),
             child: AppHeader(
+              compact: true,
               title: hasDesign && p.design!.name.trim().isNotEmpty ? p.design!.name : 'cert_designer_title'.tr,
               actions: [
                 if (hasDesign) ...[

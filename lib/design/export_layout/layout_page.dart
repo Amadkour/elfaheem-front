@@ -397,6 +397,7 @@ class _ExportLayoutPageState extends State<ExportLayoutPage> {
     final c = context.colors;
     return BasePage(
       appBar: ScreenAppBar(
+        compact: true,
         title: '${widget.designOnly ? t('تصميم', 'Design') : t('تصدير', 'Export')} · ${widget.export.title}',
         actions: [
           IconButton(key: const ValueKey('layout-open-templates'), tooltip: t('القوالب', 'Templates'), onPressed: _templates, icon: const Icon(Icons.bookmarks_outlined)),

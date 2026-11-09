@@ -15,6 +15,7 @@ import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 import 'app_back_button.dart';
 import 'app_focus_mode.dart';
@@ -189,8 +190,9 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
     final hasSub = sub != null && sub.isNotEmpty;
     final open = (hasSub ? openHeightWithSubtitle : openHeight) * scale;
     final shutHeight = compactHeight * (1 + (scale - 1) * 0.5);
-    final titleOpen = AppType.headline(context).copyWith(color: c.onHero);
-    final titleCompact = AppType.section(context).copyWith(color: c.onHero);
+    // the fallback: a title in the other script (a design or course name) still draws in full
+    final titleOpen = AppType.headline(context).copyWith(color: c.onHero, fontFamilyFallback: AppFonts.fallback);
+    final titleCompact = AppType.section(context).copyWith(color: c.onHero, fontFamilyFallback: AppFonts.fallback);
     final tabs = bottom;
     Widget paint(BuildContext context, Animation<double> collapse) => RepaintBoundary(
         child: Semantics(
