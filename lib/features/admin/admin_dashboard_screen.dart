@@ -542,6 +542,7 @@ class _MorePageState extends State<_MorePage> {
                 onTap: () => showContextSwitcherSheet(context, allowPersonal: false),
               ),
             const CalendarEntryTile(),
+            const ChatEntryTile(),
             AppSettingsTile(
               icon: Icons.manage_accounts_rounded,
               color: AdminPalette.indigo.last,

@@ -23431,6 +23431,146 @@
     "en": "Back",
     "ar": "رجوع"
   },
+  "chat_tile_subtitle": {
+    "en": "Your conversations, requests and messages from anyone",
+    "ar": "محادثاتك وطلبات المراسلة ورسائل الجميع"
+  },
+  "chat_new_message": {
+    "en": "New message",
+    "ar": "رسالة جديدة"
+  },
+  "chat_nm_search_hint": {
+    "en": "Search by name or @username",
+    "ar": "ابحث بالاسم أو @اسم_المستخدم"
+  },
+  "chat_nm_recent": {
+    "en": "Recent",
+    "ar": "الأحدث"
+  },
+  "chat_nm_suggested": {
+    "en": "Suggested for you",
+    "ar": "مقترحون لك"
+  },
+  "chat_nm_results": {
+    "en": "People",
+    "ar": "الأشخاص"
+  },
+  "chat_nm_empty_title": {
+    "en": "Find someone to message",
+    "ar": "ابحث عمّن تريد مراسلته"
+  },
+  "chat_nm_empty_body": {
+    "en": "Search by name or @username. People from your courses and organization appear first.",
+    "ar": "ابحث بالاسم أو @اسم_المستخدم. يظهر أولًا من تربطك بهم مقررات أو مؤسسة."
+  },
+  "chat_nm_no_results_title": {
+    "en": "No one by that name",
+    "ar": "لم نجد أحدًا بهذا الاسم"
+  },
+  "chat_nm_no_results_body": {
+    "en": "Check the spelling or try their @username. Students you have no course, organization or parent link with do not appear here.",
+    "ar": "راجع الإملاء أو جرّب @اسم_المستخدم. لا يظهر هنا الطلاب الذين لا يربطك بهم مقرر أو مؤسسة أو ولاية أمر."
+  },
+  "chat_nm_short_query": {
+    "en": "Type at least two letters to search everyone",
+    "ar": "اكتب حرفين على الأقل للبحث في الجميع"
+  },
+  "chat_nm_reach_direct": {
+    "en": "Direct",
+    "ar": "مباشر"
+  },
+  "chat_nm_reach_request": {
+    "en": "Request",
+    "ar": "طلب"
+  },
+  "chat_nm_reach_open": {
+    "en": "Open chat",
+    "ar": "فتح"
+  },
+  "chat_nm_reach_sent": {
+    "en": "Waiting",
+    "ar": "بانتظار الرد"
+  },
+  "chat_nm_reach_received": {
+    "en": "Wants to chat",
+    "ar": "يريد مراسلتك"
+  },
+  "chat_nm_requests_none": {
+    "en": "You have used today's requests. New ones open tomorrow.",
+    "ar": "استخدمت طلبات اليوم، تُفتح طلبات جديدة غدًا."
+  },
+  "chat_nm_request_title": {
+    "en": "Message request",
+    "ar": "طلب محادثة"
+  },
+  "chat_nm_request_explain": {
+    "en": "You and {name} have no course or organization in common, so your first message arrives as a request. You can write more once they accept.",
+    "ar": "لا يربطك مقرر أو مؤسسة بـ{name}، لذا تصل رسالتك الأولى كطلب. يمكنك كتابة المزيد بعد قبوله."
+  },
+  "chat_nm_request_first": {
+    "en": "Your first message",
+    "ar": "رسالتك الأولى"
+  },
+  "chat_nm_request_hint": {
+    "en": "Say who you are and why you are writing",
+    "ar": "عرّف بنفسك واذكر سبب مراسلتك"
+  },
+  "chat_nm_request_send": {
+    "en": "Send request",
+    "ar": "إرسال الطلب"
+  },
+  "chat_nm_request_done": {
+    "en": "Request sent. You'll be able to write more once they accept.",
+    "ar": "تم إرسال الطلب، يمكنك كتابة المزيد بعد قبوله."
+  },
+  "chat_rel_teacher": {
+    "en": "Your teacher",
+    "ar": "معلمك"
+  },
+  "chat_rel_student": {
+    "en": "Your student",
+    "ar": "طالبك"
+  },
+  "chat_rel_classmate": {
+    "en": "Classmate",
+    "ar": "زميلك"
+  },
+  "chat_rel_child": {
+    "en": "Your child",
+    "ar": "ابنك"
+  },
+  "chat_rel_parent": {
+    "en": "Your parent",
+    "ar": "ولي أمرك"
+  },
+  "chat_rel_child_teacher": {
+    "en": "Teacher of",
+    "ar": "معلم"
+  },
+  "chat_rel_student_parent": {
+    "en": "Parent of",
+    "ar": "ولي أمر"
+  },
+  "chat_person_student": {
+    "en": "Student",
+    "ar": "طالب"
+  },
+  "chat_person_teacher": {
+    "en": "Teacher",
+    "ar": "معلم"
+  },
+  "chat_person_parent": {
+    "en": "Parent",
+    "ar": "ولي أمر"
+  },
+  "chat_person_admin": {
+    "en": "Administrator",
+    "ar": "مدير"
+  },
+  "chat_person_staff": {
+    "en": "Staff",
+    "ar": "موظف"
+  },
   "chat_new_chat": {
     "en": "New chat",
     "ar": "محادثة جديدة"

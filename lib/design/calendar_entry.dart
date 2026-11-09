@@ -3,6 +3,7 @@
 //
 //   CalendarEntryIcon   the small tinted icon for a home header / app bar (HomeHeader.actions, ScreenAppBar.actions)
 //   CalendarEntryTile   the "Calendar" row of a More / profile list (AppSettingsGroup / SettingsGroup children)
+//   ChatEntryTile       the "Messages" row of the same lists, with the unread count (kill switch `chat`, D-374)
 //
 // Both hide behind the kill switch `calendar.entry`. Layout test: test/ui/app_refresh_layout_test.dart.
 library;
@@ -57,6 +58,29 @@ class CalendarEntryIcon extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The Messages row of every role's profile / More page, with the unread count of the attention feed (D-374).
+class ChatEntryTile extends StatelessWidget implements AppSettingsSearchable {
+  const ChatEntryTile({super.key});
+
+  @override
+  String get searchText => '${'chat_title'.tr} messages chat رسائل محادثة';
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: AttentionService.instance,
+        builder: (context, _) => AppSettingsTile(
+          featureKey: chatEntryFeatureKey,
+          icon: Icons.forum_rounded,
+          color: context.colors.primary,
+          label: 'chat_title'.tr,
+          subtitle: 'chat_tile_subtitle'.tr,
+          keywords: 'messages chat inbox رسائل محادثات',
+          badge: AttentionService.instance.count(AttentionTabs.chat),
+          onTap: () => AppShellNav.navigatorFor(context).pushNamed('/chat'),
+        ),
+      );
 }
 
 class CalendarEntryTile extends StatelessWidget implements AppSettingsSearchable {

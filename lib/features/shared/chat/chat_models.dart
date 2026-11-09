@@ -18,11 +18,14 @@ DateTime chatUtc(Object? iso) {
 int? _intOf(Object? v) => v == null ? null : int.tryParse('$v');
 
 class ChatPerson {
-  const ChatPerson({required this.id, required this.name, this.imageUrl, this.role = ''});
+  const ChatPerson({required this.id, required this.name, this.imageUrl, this.role = '', this.username});
   final int id;
   final String name;
   final String? imageUrl;
   final String role;
+
+  /// A confirmed @username; the server leaves it out everywhere else (D-371).
+  final String? username;
 
   static ChatPerson? fromJson(Object? j) {
     if (j is! Map) return null;
@@ -31,6 +34,7 @@ class ChatPerson {
       name: '${j['name'] ?? ''}',
       imageUrl: (j['image_url'] as String?)?.isNotEmpty == true ? j['image_url'] as String : null,
       role: '${j['role'] ?? ''}',
+      username: (j['username'] as String?)?.isNotEmpty == true ? j['username'] as String : null,
     );
   }
 }
@@ -91,6 +95,32 @@ ChatComposerState chatComposerState(Object? raw) => switch ('$raw') {
       _ => ChatComposerState.ended,
     };
 
+/// A chat that began as a message request (D-370). `mine`: I sent it. The sender of a declined one reads `pending`.
+class ChatRequestInfo {
+  const ChatRequestInfo({required this.state, required this.mine});
+  final String state;
+  final bool mine;
+
+  bool get pending => state == 'pending';
+
+  static ChatRequestInfo? fromJson(Object? j) {
+    if (j is! Map) return null;
+    return ChatRequestInfo(state: '${j['state'] ?? 'pending'}', mine: j['mine'] == true);
+  }
+}
+
+/// The inbox's calm "Message requests" line (D-370).
+class ChatRequestsSummary {
+  const ChatRequestsSummary({this.count = 0, this.latestAt});
+  final int count;
+  final DateTime? latestAt;
+
+  static ChatRequestsSummary fromJson(Object? j) {
+    if (j is! Map) return const ChatRequestsSummary();
+    return ChatRequestsSummary(count: _intOf(j['count']) ?? 0, latestAt: j['latest_at'] == null ? null : chatUtc(j['latest_at']));
+  }
+}
+
 class ChatConversation {
   ChatConversation({
     required this.id,
@@ -110,6 +140,9 @@ class ChatConversation {
     this.peerReadId,
     this.peerDeliveredId,
     this.composer,
+    this.composerReason = '',
+    this.composerReasonEn = '',
+    this.request,
     this.groupOpen = true,
     this.canManage = false,
     this.memberCount,
@@ -135,6 +168,10 @@ class ChatConversation {
   bool pinned, muted;
   int? lastReadId, peerReadId, peerDeliveredId;
   ChatComposerState? composer;
+
+  /// Why the composer is not open, in both languages (the server says it; shown before the person writes).
+  String composerReason, composerReasonEn;
+  ChatRequestInfo? request;
   bool groupOpen, canManage, canBlock, attachmentsOn, reportOn;
   int? memberCount;
 
@@ -175,6 +212,9 @@ class ChatConversation {
       peerReadId: _intOf(j['peer_read_id']),
       peerDeliveredId: _intOf(j['peer_delivered_id']),
       composer: composer is Map ? chatComposerState(composer['state']) : null,
+      composerReason: composer is Map ? '${composer['reason'] ?? ''}' : '',
+      composerReasonEn: composer is Map ? '${composer['reason_en'] ?? ''}' : '',
+      request: ChatRequestInfo.fromJson(j['request']),
       groupOpen: j['group_open'] != false,
       canManage: j['can_manage'] == true,
       canBlock: j['can_block'] != false,
@@ -327,6 +367,67 @@ class ChatContact {
         orgId: (j['org'] is Map) ? _intOf((j['org'] as Map)['id']) : null,
         conversationId: _intOf(j['conversation_id']),
       );
+}
+
+/// How a chat with this person would start: `state` is thread | direct | request | request_sent | request_received | unavailable.
+class ChatReach {
+  const ChatReach({required this.state, this.conversationId, this.reason = '', this.reasonEn = ''});
+  final String state;
+  final int? conversationId;
+  final String reason, reasonEn;
+
+  String get reasonText => AppConfig.lang == 'ar' ? reason : (reasonEn.isNotEmpty ? reasonEn : reason);
+  bool get unavailable => state == 'unavailable';
+  bool get needsRequest => state == 'request';
+
+  static ChatReach fromJson(Object? j) {
+    if (j is! Map) return const ChatReach(state: 'unavailable');
+    return ChatReach(state: '${j['state'] ?? 'unavailable'}', conversationId: _intOf(j['conversation_id']), reason: '${j['reason'] ?? ''}', reasonEn: '${j['reason_en'] ?? ''}');
+  }
+}
+
+/// One person the New message sheet offers (D-371, `GET /chat/people`).
+class ChatPersonRow {
+  const ChatPersonRow({required this.user, this.course, this.child, this.orgName, this.orgId, this.relation = 'none', required this.reach});
+  final ChatPerson user;
+  final ChatCourse? course;
+  final ChatPerson? child;
+  final String? orgName;
+  final int? orgId;
+  final String relation;
+  final ChatReach reach;
+
+  static ChatPersonRow fromJson(Map<String, dynamic> j) => ChatPersonRow(
+        user: ChatPerson.fromJson(j['user']) ?? const ChatPerson(id: 0, name: ''),
+        course: ChatCourse.fromJson(j['course']),
+        child: ChatPerson.fromJson(j['child']),
+        orgName: (j['org'] is Map) ? '${(j['org'] as Map)['name'] ?? ''}' : null,
+        orgId: (j['org'] is Map) ? _intOf((j['org'] as Map)['id']) : null,
+        relation: '${j['relation'] ?? 'none'}',
+        reach: ChatReach.fromJson(j['reach']),
+      );
+
+  /// What the chat page's start call needs (it opens `conversationId`, or starts the direct chat).
+  ChatContact toContact() => ChatContact(user: user, course: course, child: child, orgName: orgName, orgId: orgId, conversationId: reach.conversationId);
+}
+
+class ChatPeople {
+  const ChatPeople({this.recent = const [], this.suggested = const [], this.results = const [], this.requestsLeft = 0, this.requestsPerDay = 0, this.requestsOn = true});
+  final List<ChatPersonRow> recent, suggested, results;
+  final int requestsLeft, requestsPerDay;
+  final bool requestsOn;
+
+  static ChatPeople fromJson(Map<String, dynamic> j) {
+    List<ChatPersonRow> rows(Object? v) => [for (final x in (v as List? ?? const [])) if (x is Map) ChatPersonRow.fromJson(Map<String, dynamic>.from(x))];
+    return ChatPeople(
+      recent: rows(j['recent']),
+      suggested: rows(j['suggested']),
+      results: rows(j['results']),
+      requestsLeft: _intOf(j['requests_left']) ?? 0,
+      requestsPerDay: _intOf(j['requests_per_day']) ?? 0,
+      requestsOn: j['requests_on'] != false,
+    );
+  }
 }
 
 class ChatBlock {
