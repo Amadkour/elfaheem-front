@@ -12,6 +12,11 @@
 // goes on as a new paper only if the teacher says so.
 // The manual shutter always works; torch / switch where the camera has them; a dead camera shows the fix and a way
 // out (upload instead). Phones and browsers (omr_camera.dart).
+// Exam Hub (F4): with [OmrScannerScreen.onPaper] the screen is the camera of the correction loop: after an accepted
+// shot it hands the paper over (hub/correct/sheet_review_screen.dart) and stays alive underneath, so "Next" is back here
+// at once; grading never holds the next shot. On a camera that measures frames ([OmrFineCamera]) the hopeless ones stay
+// on the device, the guide shows what is good and what is missing, a tap sets the focus, and a new paper is noticed
+// by the picture itself.
 library;
 
 import 'dart:async';
@@ -42,8 +47,39 @@ Duration? omrResultStays(OmrPageResult? r) => switch (r?.tier) {
       OmrTier.retake || OmrTier.reject => null,
     };
 
+/// What the paper's screen asks the camera to do next.
+enum OmrPaperStep { nextPaper, retake, finish }
+
+/// Shows an accepted paper and answers when the person leaves it.
+typedef OmrPaperShown = Future<OmrPaperStep> Function(BuildContext context, OmrCaptureResult result, Uint8List photo);
+
+/// How the camera screen ended in the correction loop.
+enum OmrScannerExit { finished }
+
+/// The on-device problem in the person's words; [torch]: the torch can be offered.
+String omrLocalIssueText(OmrLocalIssue i, {bool torch = false}) => switch (i) {
+      OmrLocalIssue.tooDark => torch
+          ? t('الإضاءة ضعيفة: شغّل الفلاش أو انتقل إلى مكان أوضح', 'Too dark: turn on the torch or move to better light')
+          : t('الإضاءة ضعيفة: انتقل إلى مكان أوضح', 'Too dark: move to better light'),
+      OmrLocalIssue.tooBright => t('الضوء قوي على الورقة: غيّر زاوية الهاتف قليلًا', 'Too much glare: tilt the phone a little'),
+      OmrLocalIssue.blurry => t('الصورة غير واضحة: ثبّت الهاتف', 'Not sharp: hold the phone still'),
+      OmrLocalIssue.moving => t('ثبّت الهاتف', 'Hold steady'),
+    };
+
+/// 1 → "1", 1.5 → "1.5".
+String omrZoomText(double z) => z == z.roundToDouble() ? '${z.toInt()}' : '$z';
+
 class OmrScannerScreen extends StatefulWidget {
-  const OmrScannerScreen({super.key, required this.examId, this.examTitle = '', this.camera, this.api, this.clock});
+  const OmrScannerScreen({super.key, required this.examId, this.examTitle = '', this.camera, this.api, this.clock, this.onPaper, this.batchId, this.replacePageId});
+
+  /// Set by the correction loop: each accepted paper is shown there; "Finish" pops [OmrScannerExit.finished].
+  final OmrPaperShown? onPaper;
+
+  /// Goes on scanning into this batch (resume); a batch that is gone starts a new one.
+  final int? batchId;
+
+  /// The first shot replaces this page (a retake asked for from the corrected papers).
+  final int? replacePageId;
 
   final int examId;
   final String examTitle;
@@ -60,8 +96,10 @@ class OmrScannerScreen extends StatefulWidget {
 class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBindingObserver {
   late final OmrScanApi _api = widget.api ?? OmrScanApi();
   late final DateTime Function() _now = widget.clock ?? DateTime.now;
-  final _gate = AutoCaptureGate();
-  final _pacer = HintPacer();
+  // the correction loop is quicker (a frame every 320 ms, within the server's 5 / s): once steady, a shot in about 0.8 s
+  late final _gate = widget.onPaper != null ? AutoCaptureGate(streak: 2, minSpan: const Duration(milliseconds: 500)) : AutoCaptureGate();
+  late final _pacer = widget.onPaper != null ? HintPacer(interval: const Duration(milliseconds: 320)) : HintPacer();
+  static const _rules = OmrFrameRules();
 
   OmrCamera? _cam;
   bool _starting = true;
@@ -82,18 +120,44 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
   bool _previewOpen = false;
 
   /// Retake chosen on a paper the server kept: the next shot replaces this page (null: a new paper).
-  int? _replaceTarget;
+  late int? _replaceTarget = widget.replacePageId;
+
+  /// The paper's screen is open above the camera: the hints wait.
+  bool _paperOpen = false;
+
+  /// Show each paper after its shot (the correction loop's default); off = keep shooting, look later.
+  bool _showEach = true;
+
+  OmrFrameStats? _lastStats, _shotStats;
+  OmrLocalIssue? _localIssue;
+  int _localHolds = 0;
+
+  /// A manual shot the device refused: pressing the shutter again soon sends it anyway.
+  DateTime? _vetoAt;
+
+  /// The last focus tap, drawn briefly.
+  Offset? _focusTap;
+  Timer? _focusHide;
+  Size _lastFrame = Size.zero;
+
+  /// The shot being checked by the server (what the paper's screen shows until the server's image arrives).
+  Uint8List? _lastPhoto;
 
   /// A question is open over the camera (send a refused retake as a new paper?): the hints wait.
   bool _asking = false;
 
-  int? _batchId;
+  late int? _batchId = widget.batchId;
   int? _expected;
   int _captured = 0;
   bool _auto = true;
   bool _paused = false;
 
-  bool get _holding => _capturing || _paused || _previewOpen || _asking || (_result?.blocks ?? false) || _setupProblem != null;
+  bool get _holding => _capturing || _paused || _previewOpen || _paperOpen || _asking || (_result?.blocks ?? false) || _setupProblem != null;
+
+  OmrFineCamera? get _fine {
+    final c = _cam;
+    return c is OmrFineCamera ? c as OmrFineCamera : null;
+  }
 
   @override
   void initState() {
@@ -107,6 +171,7 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
     WidgetsBinding.instance.removeObserver(this);
     _gen++;
     _hideResult?.cancel();
+    _focusHide?.cancel();
     final cam = _cam;
     _cam = null;
     if (cam != null) unawaited(cam.dispose());
@@ -195,12 +260,38 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
         continue;
       }
       final sw = Stopwatch()..start();
-      final f = await cam.frame(maxSide: 640);
+      final fine = _fine;
+      // after a few frames held on the device one goes anyway: the server has the last word (kOmrMaxLocalHolds)
+      final f = fine == null
+          ? await cam.frame(maxSide: 640)
+          : await fine.frameMeasured(
+              maxSide: 640, rules: _localHolds >= kOmrMaxLocalHolds ? null : _rules, prev: _lastStats, sheetSeen: (_hint?.cornersFound ?? 0) > 0);
       if (!mounted || gen != _gen) return;
       if (f == null || f.jpeg.length > OmrLimits.hintMaxBytes) {
         await _wait(_pacer.afterError(), gen);
         continue;
       }
+      if (f.width > 0 && f.height > 0) _lastFrame = Size(f.width.toDouble(), f.height.toDouble());
+      final stats = f.stats;
+      if (stats != null) {
+        // the picture itself says a new paper came: the next one needs no "take it away first"
+        final moved = omrThumbMotion(stats, _shotStats);
+        if (!_gate.armed && moved != null && moved > kOmrNewPaperMotion) {
+          _gate.reset();
+          _shotStats = null;
+        }
+        _lastStats = stats;
+      }
+      if (f.issue != null) {
+        _localHolds++;
+        prev = null; // the server's own steadiness needs two frames it actually saw
+        _gate.feed(OmrLiveHint(ok: false, code: f.issue == OmrLocalIssue.moving ? 'moving' : 'blurry', en: '', ar: ''), _now());
+        setState(() => _localIssue = f.issue);
+        await _wait(_pacer.interval, gen);
+        continue;
+      }
+      _localHolds = 0;
+      if (_localIssue != null) setState(() => _localIssue = null);
       final r = await _api.liveHint(widget.examId, f.jpeg, prev: prev);
       if (!mounted || gen != _gen) return;
       if (_holding) continue; // a shutter press while the frame was out: this answer is about the old picture
@@ -243,6 +334,7 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
       _previewBytes = null;
       _previewLoading = false;
     });
+    _shotStats = _lastStats;
     _gate.captured();
     final photo = await cam.photo();
     if (!mounted) return;
@@ -252,9 +344,38 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
       showAppNotice(t('تعذّر التقاط الصورة — حاول مرة أخرى', 'The photo could not be taken — try again'), error: true);
       return;
     }
+    if (await _vetoed(photo, cam)) return;
+    _lastPhoto = photo;
     final target = _replaceTarget;
     if (target != null) return _replaceShot(target, photo);
     await _captureShot(photo);
+  }
+
+  /// The finished photo is hopeless (too dark, burnt out, blurred): nothing is sent. Auto-capture just tries again; a
+  /// manual press within a few seconds of the same answer is taken as "send it anyway".
+  Future<bool> _vetoed(Uint8List photo, OmrCamera cam) async {
+    if (cam is! OmrFineCamera) return false;
+    final again = _vetoAt != null && _now().difference(_vetoAt!) < const Duration(seconds: 5);
+    if (again) {
+      _vetoAt = null;
+      return false;
+    }
+    final stats = await omrPhotoStats(photo);
+    if (!mounted) return true;
+    final issue = stats == null ? null : _rules.issueOf(stats, sheetSeen: true);
+    if (issue == null || issue == OmrLocalIssue.moving) return false;
+    _vetoAt = _now();
+    _gate.reset();
+    setState(() {
+      _capturing = false;
+      _localIssue = issue;
+    });
+    unawaited(HapticFeedback.heavyImpact());
+    showAppNotice(
+        t('${omrLocalIssueText(issue, torch: cam.canTorch && !cam.torchOn)}. لم تُرسل الصورة. اضغط مرة أخرى لإرسالها كما هي.',
+            '${omrLocalIssueText(issue, torch: cam.canTorch && !cam.torchOn)}. The photo was not sent. Press again to send it anyway.'),
+        error: true);
+    return true;
   }
 
   /// A new paper: `POST …/omr/capture`.
@@ -324,6 +445,11 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
       }
     });
     if (url != null) unawaited(_loadPreview(res, url));
+    if (_wantsPaper(res)) {
+      unawaited(HapticFeedback.mediumImpact());
+      unawaited(_openPaper(res));
+      return;
+    }
     if (!res.blocks) {
       unawaited(HapticFeedback.mediumImpact());
       final stay = omrResultStays(res.result);
@@ -335,6 +461,26 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
     } else {
       unawaited(HapticFeedback.heavyImpact());
     }
+  }
+
+  bool _wantsPaper(OmrCaptureResult res) =>
+      widget.onPaper != null && _showEach && res.accepted && !res.blocks && !res.duplicate && res.pageId != null && res.batchId != null && _lastPhoto != null;
+
+  /// The correction loop: the paper's own screen over the camera; the camera is still running when it closes.
+  Future<void> _openPaper(OmrCaptureResult res) async {
+    _hideResult?.cancel();
+    setState(() => _paperOpen = true);
+    final step = await widget.onPaper!(context, res, _lastPhoto!);
+    if (!mounted) return;
+    setState(() {
+      _paperOpen = false;
+      _result = null;
+      _previewBytes = null;
+      _previewLoading = false;
+      if (step == OmrPaperStep.retake) _replaceTarget = res.pageId;
+    });
+    if (step == OmrPaperStep.retake) _gate.reset();
+    if (step == OmrPaperStep.finish) unawaited(_finish());
   }
 
   Future<void> _loadPreview(OmrCaptureResult res, String url) async {
@@ -400,6 +546,41 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
     if (mounted) setState(() {});
   }
 
+  Future<void> _cycleZoom() async {
+    final fine = _fine;
+    if (fine == null) return;
+    await fine.setZoom(omrNextZoom(fine.zoom));
+    if (mounted) setState(() {});
+  }
+
+  void _tapFocus(TapUpDetails d, Size view) {
+    final fine = _fine;
+    if (fine == null || !fine.canFocus || _lastFrame.isEmpty) return;
+    unawaited(fine.focusAt(omrCoverPoint(d.localPosition, view, _lastFrame)));
+    _focusHide?.cancel();
+    setState(() => _focusTap = d.localPosition);
+    _focusHide = Timer(const Duration(milliseconds: 900), () {
+      if (mounted) setState(() => _focusTap = null);
+    });
+  }
+
+  /// What is good and what is missing, inside the guide.
+  List<OmrGuideCheck> _checks() {
+    final fine = _fine;
+    if (fine == null || _starting || _holding || _result != null) return const [];
+    final h = _hint, s = _lastStats, local = _localIssue;
+    final dark = local == OmrLocalIssue.tooDark || local == OmrLocalIssue.tooBright || h?.code == 'too_dark' || h?.code == 'too_bright';
+    final soft = local == OmrLocalIssue.blurry || h?.code == 'blurry';
+    final moving = local == OmrLocalIssue.moving || h?.code == 'moving';
+    final found = h?.cornersFound ?? 0;
+    return [
+      OmrGuideCheck(t('الأطراف $found/4', 'Edges $found/4'), Icons.crop_free_rounded, h == null ? null : found >= 4),
+      OmrGuideCheck(t('الإضاءة', 'Light'), Icons.wb_sunny_outlined, s == null && h == null ? null : !dark),
+      OmrGuideCheck(t('الوضوح', 'Sharp'), Icons.center_focus_strong_outlined, s == null && h == null ? null : !soft),
+      OmrGuideCheck(t('الثبات', 'Steady'), Icons.back_hand_outlined, h?.motion == null && local == null ? null : !moving),
+    ];
+  }
+
   Future<void> _switch() async {
     final cam = _cam;
     if (cam == null) return;
@@ -435,6 +616,10 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
   }
 
   Future<void> _finish() async {
+    if (widget.onPaper != null) {
+      Navigator.of(context).pop(OmrScannerExit.finished);
+      return;
+    }
     final id = _batchId;
     if (id == null) {
       Navigator.of(context).maybePop();
@@ -455,6 +640,10 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
     if (_result != null) return ('', OmrHintTone.neutral, null); // the result card speaks
     if (!_gate.armed && _captured > 0) {
       return (t('أبعد الورقة وضع الورقة التالية', 'Take the paper away and place the next one'), OmrHintTone.neutral, Icons.swap_horiz_rounded);
+    }
+    final local = _localIssue;
+    if (local != null) {
+      return (omrLocalIssueText(local, torch: (_cam?.canTorch ?? false) && !(_cam?.torchOn ?? false)), OmrHintTone.warn, local == OmrLocalIssue.tooDark ? Icons.flashlight_on_rounded : null);
     }
     if (_note != null) return (_note!, OmrHintTone.warn, Icons.cloud_queue_rounded);
     final h = _hint;
@@ -509,7 +698,30 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
     return Scaffold(
       backgroundColor: c.charcoalDark,
       body: Stack(children: [
-        Positioned.fill(child: cam == null ? const SizedBox.shrink() : cam.preview()),
+        Positioned.fill(
+          child: cam == null
+              ? const SizedBox.shrink()
+              : LayoutBuilder(
+                  builder: (_, box) => GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapUp: (d) => _tapFocus(d, box.biggest),
+                    child: cam.preview(),
+                  ),
+                ),
+        ),
+        if (_focusTap != null)
+          Positioned(
+            key: const ValueKey('omr.focus.ring'),
+            left: _focusTap!.dx - 32,
+            top: _focusTap!.dy - 32,
+            child: IgnorePointer(
+              child: Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: c.onHero, width: 2)),
+              ),
+            ),
+          ),
         Positioned.fill(
           child: ScannerOverlay(
             message: msg,
@@ -518,6 +730,7 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
             quarters: (_holding || res != null ? null : _hint?.cornerQuarters) ?? const [false, false, false, false],
             progress: _gate.progress,
             scanning: !_holding && !_starting && _gate.armed,
+            checks: _checks(),
           ),
         ),
         Positioned(
@@ -533,6 +746,9 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
               onCount: _setExpected,
               torchOn: cam?.torchOn ?? false,
               onTorch: (cam?.canTorch ?? false) ? _toggleTorch : null,
+              torchSuggested: _localIssue == OmrLocalIssue.tooDark && !(cam?.torchOn ?? false),
+              showEachOn: _showEach,
+              onShowEach: widget.onPaper == null ? null : () => setState(() => _showEach = !_showEach),
             ),
           ),
         ),
@@ -580,6 +796,8 @@ class _OmrScannerScreenState extends State<OmrScannerScreen> with WidgetsBinding
                     _auto = v;
                     _gate.reset();
                   }),
+                  zoomLabel: (_fine?.canZoom ?? false) ? '${omrZoomText(_fine!.zoom)}×' : null,
+                  onZoom: (_fine?.canZoom ?? false) ? _cycleZoom : null,
                 ),
             ]),
           ),
