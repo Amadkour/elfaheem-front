@@ -48,3 +48,5 @@ designer, reachable from the studio's More › Classic designer and for everyone
 `certificates.engine` is disabled. Tests: `test/export/layout_computed_test.dart`, `studio_controller_test.dart`,
 `test/ui/layout_computed_builder_layout_test.dart`, `studio_layers_test.dart`, `layout_element_view_test.dart`,
 `test/org/cert_engine_studio_test.dart`, `test/ui/cert_engine_studio_layout_test.dart`.
+
+**Certificate studio workspace (D-387 – D-389)** — `cert_engine_shell.dart` (top bar, rail, panels, the phone's sheet, skeleton, empty page; plain values and slots), `cert_engine_inspector.dart` (the selection's inspector, folding sections, `CertColorWell`, `CertNumberField`), `CertPageControls` and `CertFontControl` in `cert_engine_panels.dart`. The canvas is `LayoutCanvasEditor(canvasOnly: true)`, which hands up a `LayoutEditorHandle` per language. The Templates tab is `CertTemplatesSlot`; the top bar's keyboard button goes in `CertStudioShell.keyboardAction`. Tests: `test/ui/cert_studio_shell_test.dart`; renders: `CERT_SHOTS=<dir> flutter test test/visual/cert_engine_studio_visual_test.dart`.

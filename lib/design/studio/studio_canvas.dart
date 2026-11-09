@@ -69,7 +69,15 @@ class StudioCanvas<P> extends StatefulWidget {
     this.onInlineCommit,
     this.contextMenu = true,
     this.buildKey,
+    this.backdrop,
+    this.pageShadow,
   });
+
+  /// The colour behind the page (the app's background when null).
+  final Color? backdrop;
+
+  /// The page's shadow (the theme's card shadow when null).
+  final List<BoxShadow>? pageShadow;
 
   /// A value that changes whenever the host's [itemBuilder] would draw something else for the SAME items (the page
   /// font, the language, sample values …). When the builder is a stable method tear-off, the canvas keeps its
@@ -593,6 +601,7 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
             background: widget.pageBackground,
             overlay: widget.overlayBuilder,
             decorate: !hasPaper,
+            shadow: widget.pageShadow,
             hidden: _editingId,
           );
           final theme = Theme.of(context);
@@ -625,7 +634,7 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
               height: paperSize.height,
               child: IgnorePointer(
                 child: DecoratedBox(
-                  decoration: BoxDecoration(color: widget.pageColor, boxShadow: AppShadow.card(context)),
+                  decoration: BoxDecoration(color: widget.pageColor, boxShadow: widget.pageShadow ?? AppShadow.card(context)),
                   child: widget.paperBuilder == null ? const SizedBox.expand() : widget.paperBuilder!(context, scale),
                 ),
               ),
@@ -684,7 +693,7 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
         onScaleStart: _onScaleStart,
         onScaleUpdate: _onScaleUpdate,
         onScaleEnd: _onScaleEnd,
-        child: ColoredBox(color: c.background, child: SizedBox.expand(child: canvas)),
+        child: ColoredBox(color: widget.backdrop ?? c.background, child: SizedBox.expand(child: canvas)),
       ),
     );
 
@@ -1050,8 +1059,12 @@ class _StudioPageLayer<P> extends StatefulWidget {
     this.background,
     this.overlay,
     this.decorate = true,
+    this.shadow,
     this.hidden,
   });
+
+  /// The page's shadow (the theme's card shadow when null).
+  final List<BoxShadow>? shadow;
 
   final StudioController<P> controller;
   final double scale;
@@ -1103,7 +1116,7 @@ class _StudioPageLayerState<P> extends State<_StudioPageLayer<P>> {
   Widget build(BuildContext context) {
     final controller = widget.controller, hidden = widget.hidden, scale = widget.scale;
     final paper = widget.paper, background = widget.background, overlay = widget.overlay, decorate = widget.decorate;
-    final shadow = AppShadow.card(context);
+    final shadow = widget.shadow ?? AppShadow.card(context);
     return _StudioScale(
       scale: scale,
       child: ListenableBuilder(

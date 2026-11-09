@@ -10,6 +10,8 @@
 //     notifier read by the title and the save button only — an edit or a drag never rebuilds this screen. The local
 //     draft is written after 2 s without edits, keyed by user and design, and offered back (never dropped silently).
 //   • Preview: the server draws one page per language with sample values, cached by the document's content.
+//   • The workspace around the canvas (top bar, rail, inspector, the phone's sheet) is cert_engine_shell.dart and
+//     cert_engine_inspector.dart (D-387, D-388); each language's canvas hands up its controller as a LayoutEditorHandle.
 //
 // `certificateDesignerPage` is the one switch between this studio and the legacy designer (kill switch
 // `certificates.engine`).
@@ -32,15 +34,21 @@ import '../../../../core/api_client.dart';
 import '../../../../design/app_kit.dart';
 import '../../../../design/app_notice.dart';
 import '../../../../design/app_tokens.dart';
+import '../../../../design/export/export_fonts.dart' show ExportFonts;
 import '../../../../design/export_layout/layout_canvas.dart';
 import '../../../../design/export_layout/layout_element_view.dart' show LayoutAssets;
 import '../../../../design/export_layout/layout_model.dart';
-import '../../../../design/studio/studio.dart' show StudioController;
+import '../../../../design/export_layout/layout_props.dart' show layoutKindIcon, layoutKindLabel;
+import '../../../../design/studio/studio.dart' show StudioController, StudioLayersPanel;
 import '../../../admin/admin_common.dart' show t;
+import '../../../shared/certificates_issue/cert_issue_flow.dart' show openCertIssueFlow;
+import '../../../shared/certificates_issue/cert_issue_logic.dart' show kCertIssueFeature;
 import '../designer/certificate_designer_screen.dart' show CertificateDesignerScreen;
 import 'cert_engine_api.dart';
+import 'cert_engine_inspector.dart';
 import 'cert_engine_panels.dart';
 import 'cert_engine_presets.dart';
+import 'cert_engine_shell.dart';
 
 /// The kill switch that sends everyone back to the legacy designer.
 const kCertEngineKillSwitch = 'certificates.engine';
@@ -139,7 +147,21 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
   /// Read by the title / save button only.
   final _dirty = ValueNotifier<bool>(false);
   final _saving = ValueNotifier<bool>(false);
+
+  /// The last save was refused and the person has not decided yet.
+  final _conflict = ValueNotifier<bool>(false);
+
+  /// What the status pill and the primary action read: one value from the three above.
+  final _saveState = ValueNotifier<CertSaveState>(CertSaveState.saved);
   Timer? _draftTimer;
+
+  /// Each language's canvas hands its controller up (the workspace around it draws the undo, the layers, …).
+  final Map<String, LayoutEditorHandle> _handles = {};
+  bool _chromeQueued = false;
+  final _shell = GlobalKey<CertStudioShellState>();
+
+  /// Which inspector sections are open: survives a new selection and a language switch.
+  final Map<String, bool> _sections = {};
   final Map<String, Uint8List> _previews = {};
 
   /// The photo a signature element was uploaded from (this session): "Clean signature again" re-runs from it.
@@ -156,6 +178,10 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
   void initState() {
     super.initState();
     _id = widget.designId;
+    unawaited(ExportFonts.ensureCertFamilies()); // the certificate families are plain assets: registered when a studio opens
+    _dirty.addListener(_syncSaveState);
+    _saving.addListener(_syncSaveState);
+    _conflict.addListener(_syncSaveState);
     unawaited(_boot());
   }
 
@@ -167,7 +193,27 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
     if (pending && _doc != null && _dirty.value) unawaited(_flushDraft());
     _dirty.dispose();
     _saving.dispose();
+    _conflict.dispose();
+    _saveState.dispose();
     super.dispose();
+  }
+
+  void _syncSaveState() {
+    _saveState.value = _conflict.value
+        ? CertSaveState.conflict
+        : (_saving.value ? CertSaveState.saving : (_dirty.value ? CertSaveState.unsaved : CertSaveState.saved));
+  }
+
+  LayoutEditorHandle? get _handle => _handles[_lang];
+
+  /// A canvas appeared or went away during a build: the workspace follows on the next frame.
+  void _chromeChanged() {
+    if (_chromeQueued) return;
+    _chromeQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _chromeQueued = false;
+      if (mounted) setState(() {});
+    });
   }
 
   // ── loading ─────────────────────────────────────────────────────────────────────────────────────────────────
@@ -232,6 +278,7 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
     _savedSig = _sigNow();
     if (!d.languages.contains(_lang)) _lang = d.languages.first;
     _dirty.value = false;
+    _conflict.value = false;
     _gen++;
   }
 
@@ -323,6 +370,7 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
       return true;
     } on CertConflict {
       _saving.value = false;
+      _conflict.value = true;
       return _resolveConflict();
     } catch (e) {
       _saving.value = false;
@@ -335,6 +383,7 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
     if (!mounted) return;
     _version = v;
     _savedSig = sig;
+    _conflict.value = false;
     setState(() => _converted = false);
     if (_sigNow() == sig) {
       _draftTimer?.cancel();
@@ -712,28 +761,169 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
     }
   }
 
+  /// A ready design from the Templates tab, for the current language.
+  Future<void> _applyTemplate(CertServerTemplate tp) async {
+    if (_design.row.elements.isNotEmpty) {
+      final ok = await appConfirm(context, message: t('سيحلّ التصميم الجاهز محلّ تصميم ${_langName(_lang)} الحالي. المتابعة؟', 'The ready design replaces the current ${_langName(_lang)} design. Continue?'), confirmLabel: t('استبدال', 'Replace'));
+      if (!ok || !mounted) return;
+    }
+    final made = await _designFromTemplate(tp, certThemeHex(context), _lang);
+    if (made == null || !mounted) return;
+    setState(() => certAdoptDesign(_design, made));
+    _touch();
+    unawaited(_prefetchImages());
+  }
+
+  /// Shows the page in the inspector (nothing selected), in the sheet on a phone.
+  void _showPage() {
+    _handle?.ctl.clearSelection();
+    _shell.currentState?.showInspector();
+  }
+
+  void _onMenu(String v) {
+    switch (v) {
+      case 'page':
+        _showPage();
+      case 'rename':
+        unawaited(_rename());
+      case 'langs':
+        unawaited(_chooseLanguages());
+      case 'starter':
+        unawaited(_pickStarter());
+      case 'mirror':
+        unawaited(_mirrorIntoCurrent());
+      case 'variable':
+        unawaited(_newVariable());
+      case 'classic':
+        unawaited(_openClassic());
+    }
+  }
+
+  Widget _moreMenu() => PopupMenuButton<String>(
+        key: const ValueKey('cert-menu'),
+        tooltip: t('المزيد', 'More'),
+        icon: const Icon(Icons.more_horiz_rounded),
+        onSelected: _onMenu,
+        itemBuilder: (_) => [
+          _item('page', Icons.crop_landscape_rounded, t('الصفحة والخلفية', 'Page and background')),
+          _item('rename', Icons.drive_file_rename_outline_rounded, t('إعادة تسمية', 'Rename')),
+          _item('langs', Icons.translate_rounded, t('اللغات', 'Languages')),
+          _item('starter', Icons.dashboard_customize_outlined, t('تصاميم جاهزة', 'Ready designs')),
+          if (doc.languages.length > 1)
+            _item('mirror', Icons.flip_rounded, _lang == 'en' ? t('ابدأ الإنجليزي من العربي', 'Start English from the Arabic design') : t('ابدأ العربي من الإنجليزي', 'Start Arabic from the English design')),
+          _item('variable', Icons.data_object_rounded, t('متغيّر جديد', 'New variable')),
+          if (_id != null) _item('classic', Icons.history_edu_outlined, t('المصمم الكلاسيكي', 'Classic designer')),
+        ],
+      );
+
+  /// A course certificate is issued by the course; a design on its own goes to the issuing flow.
+  VoidCallback? get _issue {
+    final id = _id;
+    if (id == null || widget.certificateId != null || AppConfig.disableList.contains(kCertIssueFeature)) return null;
+    return () => unawaited(openCertIssueFlow(context, designId: id, designName: doc.name, orgId: widget.orgId));
+  }
+
+  String _pageCaption() {
+    final p = _design.page;
+    final size = p.size == 'custom' ? t('مخصص', 'Custom') : p.size;
+    final side = p.landscape ? t('أفقي', 'Landscape') : t('عمودي', 'Portrait');
+    return '$size · $side · \u2066${p.contentWidth.round()} × ${p.contentHeight.round()} mm\u2069';
+  }
+
+  Widget _toolBody(BuildContext context, CertTool tool) {
+    final h = _handle;
+    if (h == null) return const SizedBox.shrink();
+    final custom = certCustomKeysOf(doc);
+    final options = certAddOptions(_lang, custom);
+    bool isImage(LayoutElement e) => e.kind == 'image' || e.kind == 'signature';
+    bool isVariable(LayoutElement e) => e.kind == 'text' && (e.value ?? '').contains('{{');
+    final built = {for (final o in options) o: o.build('x')};
+    final images = [for (final o in options) if (isImage(built[o]!)) o];
+    final fields = [for (final o in options) if (built[o]!.kind == 'field') o];
+    final variables = [for (final o in options) if (isVariable(built[o]!)) o];
+    final elements = [for (final o in options) if (!images.contains(o) && !fields.contains(o) && !variables.contains(o)) o];
+    return switch (tool) {
+      CertTool.templates => CertTemplatesSlot(key: ValueKey('templates-$_lang'), lang: _lang, load: _loadTemplates, onPick: (tp) => unawaited(_applyTemplate(tp)), onBrowse: () => unawaited(_pickStarter())),
+      CertTool.elements => CertAddGrid(options: elements, onAdd: h.add, hint: t('اضغط عنصرًا ليُضاف إلى الصفحة.', 'Tap an element to add it to the page.')),
+      CertTool.fields => CertFieldsPanel(options: fields, custom: variables, onAdd: h.add, onNewVariable: () => unawaited(_newVariable())),
+      CertTool.images => CertAddGrid(
+          options: images,
+          onAdd: h.add,
+          footer: OutlinedButton.icon(
+            key: const ValueKey('cert-page-background'),
+            onPressed: _showPage,
+            icon: const Icon(Icons.wallpaper_rounded, size: AppIconSize.md),
+            label: Text(t('صورة خلفية للصفحة', 'A background for the page')),
+            style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(AppTouch.min)),
+          ),
+        ),
+      CertTool.layers => StudioLayersPanel<LayoutElement>(
+          key: ObjectKey(h.ctl),
+          controller: h.ctl,
+          nameOf: (i) => i.payload.name ?? layoutKindLabel(i.payload.kind),
+          iconOf: (i) => layoutKindIcon(i.payload.kind),
+        ),
+      CertTool.inspector => const SizedBox.shrink(),
+    };
+  }
+
+  Widget _inspector() {
+    final h = _handle;
+    if (h == null) return const SizedBox.shrink();
+    final d = _design;
+    return CertInspector(
+      key: ObjectKey(h.ctl),
+      ctl: h.ctl,
+      fields: certFieldOptions(_lang, certCustomKeysOf(doc)),
+      upload: _upload,
+      uploadFor: _uploadFor,
+      extraFor: _extraFor,
+      pageFont: d.page.font,
+      pageFontSize: d.page.fontSize,
+      pageRtl: d.page.rtl,
+      fieldFocus: h.fieldFocus,
+      memory: _sections,
+      page: CertPageControls(
+        key: ValueKey('page-$_gen-$_lang'),
+        design: d,
+        memory: _sections,
+        pickBackground: _pickBackground,
+        generateBackground: _generateBackground,
+        onChanged: () {
+          setState(() {});
+          _touch();
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    if (_loading || _error != null || _doc == null) {
+    if (_loading) return Scaffold(backgroundColor: c.background, body: const SafeArea(child: CertStudioSkeleton()));
+    if (_error != null || _doc == null) {
       return Scaffold(
+        backgroundColor: c.background,
         appBar: AppBar(title: Text(t('استوديو الشهادات', 'Certificate studio'))),
-        body: _loading
-            ? const AppListSkeleton(withAvatar: false)
-            : Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpace.lg),
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    Text(_error ?? '', textAlign: TextAlign.center, style: appText(14, c: c.textDark)),
-                    const SizedBox(height: AppSpace.md),
-                    FilledButton(onPressed: _boot, child: Text(t('إعادة المحاولة', 'Retry'))),
-                    if (_forbidden) ...[
-                      const SizedBox(height: AppSpace.xs),
-                      OutlinedButton(onPressed: _copyForMe, child: Text(t('إنشاء نسخة قابلة للتعديل', 'Make an editable copy'))),
-                    ],
-                  ]),
-                ),
-              ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpace.lg),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(_forbidden ? Icons.lock_outline_rounded : Icons.cloud_off_rounded, size: AppIconSize.hero, color: c.textLight),
+                const SizedBox(height: AppSpace.sm),
+                Text(_error ?? '', textAlign: TextAlign.center, style: appText(14, c: c.textDark, h: 1.5)),
+                const SizedBox(height: AppSpace.md),
+                FilledButton(onPressed: _boot, child: Text(t('إعادة المحاولة', 'Retry'))),
+                if (_forbidden) ...[
+                  const SizedBox(height: AppSpace.xs),
+                  OutlinedButton(onPressed: _copyForMe, child: Text(t('إنشاء نسخة قابلة للتعديل', 'Make an editable copy'))),
+                ],
+              ]),
+            ),
+          ),
+        ),
       );
     }
     return ValueListenableBuilder<bool>(
@@ -744,89 +934,38 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
         child: child!,
       ),
       child: Scaffold(
-        appBar: _appBar(context),
-        body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          if (_converted) _banner(context),
-          if (doc.languages.length > 1) _tabs(context),
-          Expanded(child: _editors()),
-        ]),
-      ),
-    );
-  }
-
-  PreferredSizeWidget _appBar(BuildContext context) {
-    final c = context.colors;
-    return AppBar(
-      titleSpacing: 0,
-      title: ValueListenableBuilder<bool>(
-        valueListenable: _dirty,
-        builder: (context, dirty, _) => Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          InkWell(
-            key: const ValueKey('cert-title'),
-            onTap: () => unawaited(_rename()),
-            child: Text(doc.name ?? t('تصميم الشهادة', 'Certificate design'), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w700, c: c.textDark)),
+        backgroundColor: c.background,
+        body: CertStudioShell(
+          key: _shell,
+          ctl: _handle?.ctl,
+          title: doc.name ?? t('تصميم الشهادة', 'Certificate design'),
+          onRename: () => unawaited(_rename()),
+          saveState: _saveState,
+          onSave: () => unawaited(_save()),
+          onIssue: _issue,
+          onConflict: () => unawaited(_resolveConflict()),
+          onPreview: _preview,
+          onBack: () => unawaited(Navigator.of(context).maybePop()),
+          languages: doc.languages,
+          lang: _lang,
+          onLang: (l) => setState(() => _lang = l),
+          onManageLanguages: () => unawaited(_chooseLanguages()),
+          more: _moreMenu(),
+          canvas: _editors(),
+          inspector: _inspector(),
+          toolBody: _toolBody,
+          emptyPage: (context) => CertEmptyPage(
+            onTemplates: () => _shell.currentState?.showTool(CertTool.templates),
+            onAddText: () {
+              final o = certAddOptions(_lang, const []).first;
+              _handle?.add(o);
+            },
           ),
-          Text(
-            dirty ? t('تعديلات غير محفوظة', 'Unsaved changes') : t('كل التعديلات محفوظة', 'All changes saved'),
-            key: const ValueKey('cert-save-state'),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: appText(12, c: dirty ? c.danger : c.textMedium),
-          ),
-        ]),
-      ),
-      actions: [
-        ValueListenableBuilder<bool>(
-          valueListenable: _saving,
-          builder: (context, saving, _) => ValueListenableBuilder<bool>(
-            valueListenable: _dirty,
-            builder: (context, dirty, _) => saving
-                ? const Padding(padding: EdgeInsets.all(AppSpace.sm), child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5)))
-                : IconButton(
-                    key: const ValueKey('cert-save'),
-                    tooltip: t('حفظ', 'Save'),
-                    onPressed: dirty ? () => unawaited(_save()) : null,
-                    icon: Badge(isLabelVisible: dirty, smallSize: 9, child: const Icon(Icons.save_rounded)),
-                  ),
-          ),
+          pageCaption: _pageCaption(),
+          onPageTap: _showPage,
+          banner: _converted ? _banner(context) : null,
         ),
-        IconButton(key: const ValueKey('cert-preview'), tooltip: t('معاينة', 'Preview'), onPressed: _preview, icon: const Icon(Icons.visibility_outlined)),
-        PopupMenuButton<String>(
-          key: const ValueKey('cert-menu'),
-          tooltip: t('المزيد', 'More'),
-          onSelected: (v) {
-            switch (v) {
-              case 'page':
-                unawaited(showCertPageSheet(context, design: _design, pickBackground: _pickBackground, generateBackground: _generateBackground, onChanged: () {
-                  setState(() {});
-                  _touch();
-                }));
-              case 'rename':
-                unawaited(_rename());
-              case 'langs':
-                unawaited(_chooseLanguages());
-              case 'starter':
-                unawaited(_pickStarter());
-              case 'mirror':
-                unawaited(_mirrorIntoCurrent());
-              case 'variable':
-                unawaited(_newVariable());
-              case 'classic':
-                unawaited(_openClassic());
-            }
-          },
-          itemBuilder: (_) => [
-            _item('page', Icons.crop_landscape_rounded, t('الصفحة والخلفية', 'Page and background')),
-            _item('rename', Icons.drive_file_rename_outline_rounded, t('إعادة تسمية', 'Rename')),
-            _item('langs', Icons.translate_rounded, t('اللغات', 'Languages')),
-            _item('starter', Icons.dashboard_customize_outlined, t('تصاميم جاهزة', 'Ready designs')),
-            if (doc.languages.length > 1)
-              _item('mirror', Icons.flip_rounded, _lang == 'en' ? t('ابدأ الإنجليزي من العربي', 'Start English from the Arabic design') : t('ابدأ العربي من الإنجليزي', 'Start Arabic from the English design')),
-            _item('variable', Icons.data_object_rounded, t('متغيّر جديد', 'New variable')),
-            if (_id != null) _item('classic', Icons.history_edu_outlined, t('المصمم الكلاسيكي', 'Classic designer')),
-          ],
-        ),
-      ],
+      ),
     );
   }
 
@@ -868,34 +1007,6 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
     );
   }
 
-  Widget _tabs(BuildContext context) {
-    final c = context.colors;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
-      child: Row(children: [
-        for (final l in doc.languages)
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
-              child: Material(
-                color: _lang == l ? c.primary.withValues(alpha: .12) : c.cardBg,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.chip), side: BorderSide(color: _lang == l ? c.primary : c.divider)),
-                child: InkWell(
-                  key: ValueKey('cert-tab-$l'),
-                  borderRadius: BorderRadius.circular(AppRadius.chip),
-                  onTap: () => setState(() => _lang = l),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(minHeight: AppTouch.min),
-                    child: Center(child: Text(_langName(l), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: _lang == l ? FontWeight.w700 : FontWeight.w500, c: _lang == l ? c.primary : c.textDark))),
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ]),
-    );
-  }
-
   /// One canvas per language, all alive (an IndexedStack): switching keeps each one's selection and undo history.
   /// The page's margins (mm): the canvas draws the whole paper, its background image included, around the content box.
   static EdgeInsets _marginsOf(LayoutPage p) => EdgeInsets.fromLTRB(p.margins.left, p.margins.top, p.margins.right, p.margins.bottom);
@@ -930,7 +1041,20 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
               backgroundImage: doc.designs[l]!.page.backgroundImage,
               backgroundFit: doc.designs[l]!.page.backgroundFit,
               pageMargins: _marginsOf(doc.designs[l]!.page),
-              wide: box.maxWidth >= 900,
+              wide: true,
+              canvasOnly: true,
+              backdrop: certBackdrop(context),
+              pageShadow: AppElevation.of(context, 3),
+              canvasPadding: AppSpace.xl,
+              onHandle: (h) {
+                _handles[l] = h;
+                _chromeChanged();
+              },
+              onHandleGone: (h) {
+                if (identical(_handles[l], h)) _handles.remove(l);
+                _chromeChanged();
+              },
+              onWantsProperties: () => _shell.currentState?.showInspector(),
             ),
         ],
       ),
