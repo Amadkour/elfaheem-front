@@ -274,13 +274,28 @@ class _CertListDetailPageState extends State<CertListDetailPage> {
     } catch (e) {
       final x = ApiException.from(e);
       final d = apiErrorDetail(x);
-      if ((x.code ?? '${d['code'] ?? ''}') == 'photos_required' && d['missing'] is List && mounted) {
+      final code = x.code ?? '${d['code'] ?? ''}';
+      if (code == 'photos_required' && d['missing'] is List && mounted) {
         await _fillPhotos([for (final m in d['missing'] as List) if (m is Map) m.cast<String, dynamic>()]);
+      } else if (code == 'teacher_name_required' && mounted) {
+        await _issueWithTeacher();
       } else {
         showAppNotice(certIssueErrorText(e), error: true);
       }
     }
     if (mounted) setState(() => _busy = false);
+  }
+
+  /// D-400: the list holds people with no account and the design prints the instructor: ask once, then issue.
+  Future<void> _issueWithTeacher() async {
+    final name = await certAskText(context, title: 'ci_teacher_title'.tr, label: 'ci_teacher_label'.tr, message: 'ci_teacher_help'.tr);
+    if (name == null || name.isEmpty || !mounted) return;
+    try {
+      final b = await _api.issueList(widget.listId, designId: widget.designId, langs: widget.langs, constants: {'teacher_name': name});
+      if (mounted) _openBatch(b);
+    } catch (e) {
+      showAppNotice(certIssueErrorText(e), error: true);
+    }
   }
 
   /// The server named who lacks a photo: collect them, write them into the list, then issue again.

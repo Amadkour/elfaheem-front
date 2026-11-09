@@ -19557,6 +19557,22 @@
     "en": "Revoked on",
     "ar": "تاريخ الإلغاء"
   },
+  "ci_teacher_title": {
+    "en": "Instructor's name",
+    "ar": "اسم المدرّس"
+  },
+  "ci_teacher_label": {
+    "en": "Instructor's name (required)",
+    "ar": "اسم المدرّس (مطلوب)"
+  },
+  "ci_teacher_help": {
+    "en": "Some recipients have no account on the platform, so the name printed on their certificate cannot be filled in automatically.",
+    "ar": "بعض المستلمين ليس لهم حساب على المنصة، لذا لا يمكن تعبئة الاسم المطبوع على شهادتهم تلقائيًا."
+  },
+  "ci_teacher_required": {
+    "en": "Enter the instructor's name to issue the certificates",
+    "ar": "اكتب اسم المدرّس لإصدار الشهادات"
+  },
   "ci_defaults_title": {
     "en": "Values for everyone",
     "ar": "قيم لكل المستلمين"

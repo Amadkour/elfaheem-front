@@ -362,6 +362,36 @@ class IssueConstantsForm extends StatelessWidget {
 // Recipients: columns, paste, upload, search
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// D-400: the instructor's name when a recipient has no account: nothing can fill it in for them. [showError] turns the
+/// empty field into its inline error (after the person tried to issue, or the server refused).
+class IssueTeacherField extends StatelessWidget {
+  const IssueTeacherField({super.key, required this.controller, required this.showError, required this.onChanged});
+
+  final TextEditingController controller;
+  final bool showError;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final empty = controller.text.trim().isEmpty;
+    return AppCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        Text('ci_teacher_title'.tr, style: AppType.section(context)),
+        const SizedBox(height: AppSpace.xxs),
+        Text('ci_teacher_help'.tr, style: AppType.meta(context)),
+        const SizedBox(height: AppSpace.sm),
+        TextField(
+          key: const ValueKey('ci-teacher-name'),
+          controller: controller,
+          textInputAction: TextInputAction.done,
+          onChanged: onChanged,
+          decoration: InputDecoration(labelText: 'ci_teacher_label'.tr, errorText: showError && empty ? 'ci_teacher_required'.tr : null),
+        ),
+      ]),
+    );
+  }
+}
+
 /// The expected columns, in order, as chips (shown BEFORE any input).
 class IssueColumnChips extends StatelessWidget {
   const IssueColumnChips({super.key, required this.columns, this.showExample = true});

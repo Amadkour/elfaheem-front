@@ -167,7 +167,7 @@ class _PageSheetState extends State<_PageSheet> {
 /// "nothing selected" state and the page sheet draw this one. [onChanged] runs after every change (the studio redraws
 /// and marks the design unsaved); [pickBackground] picks + uploads and returns the URL.
 class CertPageControls extends StatefulWidget {
-  const CertPageControls({super.key, required this.design, required this.onChanged, required this.pickBackground, this.generateBackground, required this.memory, this.framed = true});
+  const CertPageControls({super.key, required this.design, required this.onChanged, required this.pickBackground, this.generateBackground, required this.memory, this.framed = true, this.templateColours});
   final LayoutDesign design;
   final VoidCallback onChanged;
   final Future<String?> Function() pickBackground;
@@ -178,6 +178,9 @@ class CertPageControls extends StatefulWidget {
 
   /// In the inspector (a scrolling list with folding sections); false = inside a sheet that scrolls itself.
   final bool framed;
+
+  /// The "Template colours" section, when this page was made from a template (D-401).
+  final Widget? templateColours;
 
   @override
   State<CertPageControls> createState() => _CertPageControlsState();
@@ -302,6 +305,7 @@ class _CertPageControlsState extends State<CertPageControls> {
           ]),
         orientation,
       ], first: true),
+      if (widget.templateColours != null) _section('template', t('ألوان القالب', 'Template colours'), [widget.templateColours!]),
       _section('colour', t('اللون', 'Colour'), [
         CertColorWell(
           label: t('لون الصفحة', 'Page colour'),

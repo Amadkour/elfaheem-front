@@ -94,7 +94,7 @@ LayoutField? certFieldOf(String lang, String key) {
 Map<String, String> certSampleValues(String lang, List<String> custom) => {
       for (final p in kCertPlaceholders) p.key: p.sample(lang),
       'verify_url': 'https://nextbrain.site/v/NB-2026-000123',
-      for (final k in custom) k: k.replaceAll('_', ' '),
+      for (final k in custom) k: k == 'hours' ? (lang == 'ar' ? '٣٠' : '30') : k.replaceAll('_', ' '),
     };
 
 // ── the Add menu ─────────────────────────────────────────────────────────────────────────────────────────────────
@@ -194,6 +194,7 @@ LayoutDocument certNewDocument(Map<String, LayoutDesign> designs) => LayoutDocum
 /// stay as they are (the person translates them); this is an explicit copy, never a fallback.
 LayoutDesign certMirrorDesign(LayoutDesign src, {required bool toRtl}) {
   final copy = src.copy();
+  copy.extra.remove('template'); // the template's art is not mirrored: the mirror is a page of its own, not that template's
   final width = copy.page.contentWidth;
   copy.page.rtl = toRtl;
   for (final e in copy.row.elements) {
@@ -218,6 +219,67 @@ void certAdoptDesign(LayoutDesign target, LayoutDesign src) {
     ..elements.addAll(from.row.elements);
   target.watermark = from.watermark;
   target.frame = from.frame;
+  final memory = from.extra['template'];
+  if (memory == null) {
+    target.extra.remove('template');
+  } else {
+    target.extra['template'] = memory;
+  }
+}
+
+/// What a page made from a template remembers (D-401); null for any other page, or one whose background was replaced
+/// since (then the template's colours no longer describe it).
+Map<String, dynamic>? certTemplateMemory(LayoutDesign d) {
+  final m = d.extra['template'];
+  if (m is! Map) return null;
+  final memory = m.map((k, v) => MapEntry('$k', v));
+  return memory['key'] is String && memory['background'] == d.page.backgroundImage ? memory : null;
+}
+
+/// [target], a page made from a template, in the colours of [fresh], the same template's page drawn by the server in the
+/// new colours. Only what the person left as the template drew it changes: a text they recoloured keeps its colour, a logo
+/// they replaced stays, and positions and wording are never touched.
+void certRecolourDesign(LayoutDesign target, LayoutDesign fresh) {
+  final old = target.extra['template'];
+  final next = fresh.extra['template'];
+  if (old is! Map || next == null) return;
+  final ink = old['ink'] is Map ? old['ink'] as Map : const {};
+  final byId = {for (final e in fresh.row.elements) e.id: e};
+  for (final e in target.row.elements) {
+    final f = byId[e.id];
+    if (f == null) continue;
+    final drawn = ink[e.id];
+    if (drawn is String && drawn.toUpperCase() == e.style.color.toUpperCase()) {
+      e.style.color = f.style.color;
+      if (e.kind == 'line' && e.style.border != null && f.style.border != null) e.style.border!.color = f.style.border!.color;
+    }
+    if (old['emblem'] != null && old['emblem'] == e.value && f.value != null) e.value = f.value;
+  }
+  target.page.backgroundImage = fresh.page.backgroundImage;
+  target.extra['template'] = next;
+}
+
+/// A wording inserted from the library as a text block on [d] (D-402): the page's body ink when a template set one, the
+/// language's reading face, wide enough for its lines. [index] counts the wordings already inserted, so the next one
+/// does not land on top of the last.
+LayoutElement certWordingElement(String id, String lang, String text, LayoutDesign d, int index) {
+  final width = d.page.contentWidth * .72;
+  final perLine = (width * (lang == 'ar' ? 2.6 : 2.3)).round().clamp(40, 200);
+  final lines = (text.length / perLine).ceil() + '\n'.allMatches(text).length;
+  final height = (lines * 9.5 + 4).clamp(14.0, d.page.contentHeight * .5).toDouble();
+  final memory = certTemplateMemory(d);
+  final ink = memory?['ink'] is Map ? ((memory!['ink'] as Map)['body'] ?? (memory['ink'] as Map)['intro']) : null;
+  final e = LayoutElement(
+    id: id,
+    kind: 'text',
+    w: mm(width),
+    h: mm(height),
+    value: text,
+    name: t('صيغة الشهادة', 'Certificate wording'),
+    style: LayoutStyle(font: lang == 'ar' ? 'amiri' : 'eb_garamond', size: 15, align: 'center', color: ink is String ? ink : '#2A2A2A', padding: 0, lineHeight: 1.7, valign: 'top'),
+  );
+  e.y = mm(((d.page.contentHeight - height) / 2 + index * (height + 4)).clamp(0, d.page.contentHeight - height).toDouble());
+  return e;
 }
 
 /// The page of [d] changed from [oldW]×[oldH] to its current size: the elements keep their relative places.
