@@ -149,9 +149,6 @@ class ChatConversation {
     this.canBlock = true,
     this.attachmentsOn = true,
     this.reportOn = true,
-    this.request,
-    this.composerReason = '',
-    this.composerReasonEn = '',
   }) : loadedLastId = last?.id;
 
   final int id;
@@ -177,12 +174,6 @@ class ChatConversation {
 
   /// The newest message the server had counted when this row was loaded: an event at or below it is a replay.
   final int? loadedLastId;
-
-  /// A message request (D-370); null for an ordinary chat.
-  ChatRequestInfo? request;
-
-  /// Why the composer is not open, in both languages (the server says it).
-  String composerReason, composerReasonEn;
 
   bool get isGroup => kind == 'course_group';
 
@@ -221,24 +212,7 @@ class ChatConversation {
       memberCount: _intOf(j['member_count']),
       attachmentsOn: j['attachments_on'] != false,
       reportOn: j['report_on'] != false,
-      request: ChatRequestInfo.fromJson(j['request']),
-      composerReason: composer is Map ? '${composer['reason'] ?? ''}' : '',
-      composerReasonEn: composer is Map ? '${composer['reason_en'] ?? ''}' : '',
     );
-  }
-}
-
-/// `request` on a conversation: who is waiting on whom.
-class ChatRequestInfo {
-  const ChatRequestInfo({required this.state, required this.mine});
-  final String state; // pending | accepted | declined
-  final bool mine; // I sent it
-
-  bool get pending => state == 'pending';
-
-  static ChatRequestInfo? fromJson(Object? j) {
-    if (j is! Map) return null;
-    return ChatRequestInfo(state: '${j['state'] ?? 'pending'}', mine: j['mine'] == true);
   }
 }
 

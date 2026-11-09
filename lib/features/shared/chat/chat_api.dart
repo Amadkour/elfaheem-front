@@ -58,18 +58,6 @@ class ChatApi {
     );
   }
 
-  /// The message requests waiting on me (D-370).
-  Future<(List<ChatConversation>, bool)> requests({int offset = 0, int limit = 40}) async {
-    final r = _m(await _c.get('$_b/requests', queryParams: {'offset': offset, 'limit': limit}));
-    return ([for (final x in (r['items'] as List)) ChatConversation.fromJson(_m(x))], r['has_more'] == true);
-  }
-
-  Future<ChatConversation> acceptRequest(int id) async => ChatConversation.fromJson(_m(await _c.post('$_b/requests/$id/accept')));
-
-  Future<void> declineRequest(int id) => _c.post('$_b/requests/$id/decline');
-
-  Future<void> blockRequest(int id) => _c.post('$_b/requests/$id/block');
-
   Future<ChatConversation> thread(int id) async => ChatConversation.fromJson(_m(await _c.get('$_b/conversations/$id')));
 
   Future<ChatConversation> start({required int peerId, int? courseId, int? orgId}) async => ChatConversation.fromJson(_m(await _c.post('$_b/conversations', body: {

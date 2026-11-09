@@ -207,6 +207,33 @@ void main() {
     }, size: const Size(1440, 900), lang: 'en', dark: true);
   });
 
+  testWidgets('a received request phone', (t) async {
+    await shot(t, 'request_thread', (ar) {
+      final hub = hubWith(ar);
+      final th = ChatThreadController(1, hub: hub)
+        ..loaded = true
+        ..loading = false
+        ..visible = true
+        ..conversation = (_c(9, ar ? 'خالد سمير' : 'Khaled Samir', '')
+          ..composer = ChatComposerState.requestReceived
+          ..request = const ChatRequestInfo(state: 'pending', mine: false))
+        ..messages = [_m(1, ar ? 'السلام عليكم، هل يمكنني السؤال عن موعد الدرس القادم؟' : 'Hello, may I ask when the next lesson is?', 5)];
+      hub.registerThread(th);
+      return ChatThreadView(conversationId: 1, controller: th, showBack: true);
+    }, size: const Size(390, 844), lang: 'ar', dark: false);
+  });
+
+  testWidgets('requests sheet', (t) async {
+    await shot(t, 'requests', (ar) {
+      final hub = hubWith(ar, requests: 2);
+      hub.requests = [
+        _c(21, ar ? 'خالد سمير' : 'Khaled Samir', ar ? 'السلام عليكم، هل يمكنني السؤال عن موعد الدرس القادم؟' : 'Hello, may I ask when the next lesson is?', minutes: 12),
+        _c(22, ar ? 'نور أحمد' : 'Nour Ahmed', ar ? 'أرغب في الانضمام إلى مجموعتك' : 'I would like to join your group', minutes: 300),
+      ];
+      return ChatRequestsSheet(hub: hub, onOpen: (_) {});
+    }, size: const Size(390, 844), lang: 'ar', dark: false);
+  });
+
   testWidgets('empty inbox phone', (t) async {
     await shot(t, 'empty', (ar) {
       final hub = ChatHub.forTest()
