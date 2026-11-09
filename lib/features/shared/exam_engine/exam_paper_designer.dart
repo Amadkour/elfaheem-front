@@ -20,6 +20,7 @@ import '../../../design/export_layout/layout_element_view.dart' show LayoutAsset
 import '../../../design/export_layout/layout_model.dart';
 import '../../admin/admin_common.dart' show t;
 import 'exam_paper.dart';
+import 'exam_paper_bands.dart' show PaperPrintedId, kPaperMaxIdentifiers;
 import 'exam_paper_design_api.dart';
 import 'exam_paper_xlsx.dart';
 import 'exam_versions.dart';
@@ -57,6 +58,8 @@ List<LayoutField> paperFields({bool cover = false}) => [
       const LayoutField(key: 'version', labelAr: 'النموذج', labelEn: 'Version'),
       const LayoutField(key: 'student_name', labelAr: 'اسم الطالب', labelEn: 'Student name'),
       const LayoutField(key: 'seat', labelAr: 'رقم الجلوس', labelEn: 'Seat number'),
+      const LayoutField(key: 'identifiers', labelAr: 'معرّفات الطالب', labelEn: 'Student identifiers'),
+      for (var i = 1; i <= kPaperMaxIdentifiers; i++) LayoutField(key: 'identifier_$i', labelAr: 'المعرّف $i', labelEn: 'Identifier $i'),
       const LayoutField(key: 'instructions', labelAr: 'التعليمات', labelEn: 'Instructions'),
       const LayoutField(key: 'page', labelAr: 'رقم الصفحة', labelEn: 'Page'),
       const LayoutField(key: 'pages', labelAr: 'عدد الصفحات', labelEn: 'Pages'),
@@ -64,7 +67,7 @@ List<LayoutField> paperFields({bool cover = false}) => [
 
 /// The sample row the designer's preview prints.
 Map<String, Object?> paperSampleRow({required String institution, required String course, required String title, required String date,
-        required String duration, required String total, required String instructions, String university = ''}) =>
+        required String duration, required String total, required String instructions, String university = '', List<PaperPrintedId> identifiers = const []}) =>
     {
       'institution': institution,
       'university': university,
@@ -76,6 +79,8 @@ Map<String, Object?> paperSampleRow({required String institution, required Strin
       'version': 'A',
       'student_name': t('اسم الطالب', 'Student name'),
       'seat': '1024',
+      'identifiers': [for (final x in identifiers) '${x.label(rtl: AppConfig.lang == 'ar')}: ${x.value}'].join('   ·   '),
+      for (var i = 0; i < kPaperMaxIdentifiers; i++) 'identifier_${i + 1}': i < identifiers.length ? identifiers[i].value : '',
       'instructions': instructions,
       'page': '1',
       'pages': '2',

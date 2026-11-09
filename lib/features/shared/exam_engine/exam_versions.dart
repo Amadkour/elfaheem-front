@@ -15,6 +15,7 @@ import 'exam_authoring.dart' show authoringError;
 import 'paper/exam_setup.dart' show versionsBubbleText;
 import 'exam_engine_api.dart' show EngineResult, engineCall;
 import 'exam_paper.dart';
+import 'exam_paper_bands.dart' show ExamPaperCopy, PaperPrintedId;
 
 /// The most versions the server makes (MAX_FORMS).
 const kMaxVersions = 10;
@@ -210,7 +211,7 @@ Map<String, dynamic> printPlanBody({required bool named, List<int>? studentIds, 
     };
 
 class PrintPlanItem {
-  const PrintPlanItem({required this.copyNo, this.form, this.studentId, this.studentName = '', this.identifierMasked = '', this.pages = const []});
+  const PrintPlanItem({required this.copyNo, this.form, this.studentId, this.studentName = '', this.identifierMasked = '', this.pages = const [], this.identifiers = const []});
   final int copyNo;
   final String? form;
   final int? studentId;
@@ -218,6 +219,9 @@ class PrintPlanItem {
 
   /// The QR payload of each page, page 1 first.
   final List<String> pages;
+
+  /// `student.identifiers`: what is printed on this copy (masked by the server where the rules say so).
+  final List<PaperPrintedId> identifiers;
 }
 
 class PrintPlan {
@@ -235,13 +239,17 @@ class PrintPlan {
             studentName: x['student'] is Map ? '${asMap(x['student'])['name'] ?? ''}' : '',
             identifierMasked: x['student'] is Map ? '${asMap(x['student'])['identifier_masked'] ?? ''}' : '',
             pages: [for (final p in (x['pages'] as List?) ?? const []) '$p'],
+            identifiers: x['student'] is Map
+                ? [for (final i in asMapList(asMap(x['student'])['identifiers'])) PaperPrintedId(labelAr: '${i['label_ar'] ?? ''}', labelEn: '${i['label_en'] ?? ''}', value: '${i['value'] ?? ''}')]
+                : const [],
           ),
       ]);
 }
 
 /// One paper per plan item: the item's version applied, its student's name and one QR per page. A copy whose version
 /// has fewer pages than the plan's keeps only its own pages' QRs ([pagesOf] by version code, null = the plan's).
-List<ExamPaperDoc> copiesFor(ExamPaperDoc base, PrintPlan plan, ExamVersions versions, {Map<String?, int> pagesOf = const {}}) {
+/// A named copy prints its student's identifiers; a blank copy shows [blankIds] (labels only) to write in by hand.
+List<ExamPaperDoc> copiesFor(ExamPaperDoc base, PrintPlan plan, ExamVersions versions, {Map<String?, int> pagesOf = const {}, List<PaperPrintedId> blankIds = const []}) {
   final out = <ExamPaperDoc>[];
   for (final item in plan.items) {
     final v = versions.byCode(item.form);
@@ -249,7 +257,8 @@ List<ExamPaperDoc> copiesFor(ExamPaperDoc base, PrintPlan plan, ExamVersions ver
     final own = pagesOf[item.form];
     final qr = own == null || own >= item.pages.length ? item.pages : item.pages.sublist(0, own);
     doc = doc.copyWith(studentName: item.studentName, qrPages: qr);
-    out.add(doc);
+    final ids = item.studentId != null ? item.identifiers : blankIds;
+    out.add(ids.isEmpty ? doc : ExamPaperCopy.of(doc, ids));
   }
   return out;
 }

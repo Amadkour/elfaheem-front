@@ -25,14 +25,34 @@ Future<Uint8List> examPaperPdf(ExamPaperDoc d, PaperTemplate tpl, {required Byte
 
 /// Several papers (per-student copies, versions) in ONE PDF; [pages] holds each paper's page count in order. A paper
 /// with [ExamPaperDoc.qrPages] draws page p's QR in its footer; with [ExamPaperDoc.qrSlots] it only reserves the room,
-/// so a counting pass lays out exactly like the real copy.
+/// so a counting pass lays out exactly like the real copy. [document]: the written document (the preview replays it).
 class PaperPdfResult {
-  const PaperPdfResult(this.bytes, this.pages);
+  const PaperPdfResult(this.bytes, this.pages, [this.document]);
   final Uint8List bytes;
   final List<int> pages;
+  final pw.Document? document;
 }
 
-Future<PaperPdfResult> examPaperPdfMany(List<ExamPaperDoc> docs, PaperTemplate tpl, {required ByteData regular, required ByteData bold}) async {
+/// Thrown out of a build when the control's `cancelled` turns true.
+class PaperBuildCancelled implements Exception {
+  const PaperBuildCancelled();
+}
+
+/// A long build: told how far it got, and asked between papers whether to stop. With a control the writer gives the
+/// event loop a turn after each paper, so a class of hundreds does not freeze the screen.
+class PaperBuildControl {
+  PaperBuildControl({this.onStep, bool Function()? cancelled}) : _cancelled = cancelled;
+  final void Function(int done, int total)? onStep;
+  final bool Function()? _cancelled;
+
+  Future<void> tick(int done, int total) async {
+    onStep?.call(done, total);
+    await Future<void>.delayed(Duration.zero);
+    if (_cancelled?.call() == true) throw const PaperBuildCancelled();
+  }
+}
+
+Future<PaperPdfResult> examPaperPdfMany(List<ExamPaperDoc> docs, PaperTemplate tpl, {required ByteData regular, required ByteData bold, PaperBuildControl? control}) async {
   final doc = pw.Document(
     title: docs.isEmpty ? '' : docs.first.title,
     author: docs.isEmpty || docs.first.institution.isEmpty ? 'NextBrain' : docs.first.institution,
@@ -40,11 +60,35 @@ Future<PaperPdfResult> examPaperPdfMany(List<ExamPaperDoc> docs, PaperTemplate t
     theme: pw.ThemeData.withFont(base: pw.Font.ttf(regular), bold: pw.Font.ttf(bold), fontFallback: [pw.Font.helvetica()]),
   );
   // each paper's own page count first, in a throwaway document (layout happens in addPage): the footer of the real
-  // document then prints a number that is fixed up front, whatever pdf's page context says
+  // document then prints a number that is fixed up front, whatever pdf's page context says. Copies of one version with
+  // the same boxes lay out alike (a name stays on one line), so a class is counted once per version.
   final theme = pw.ThemeData.withFont(base: pw.Font.ttf(regular), bold: pw.Font.ttf(bold), fontFallback: [pw.Font.helvetica()]);
-  final counts = [for (final d in docs) _addPaper(pw.Document(theme: theme), d, tpl, null, -1)];
-  final pages = [for (var i = 0; i < docs.length; i++) _addPaper(doc, docs[i], tpl, counts[i], i)];
-  return PaperPdfResult(await doc.save(), pages);
+  final known = <String, int>{};
+  final counts = <int>[];
+  // the bar: counting, laying out and painting each paper are about equal shares
+  final total = docs.length * 3;
+  for (var i = 0; i < docs.length; i++) {
+    final d = docs[i];
+    final key = '${d.version}|${d.printedIds.length}|${d.qrPages.length}|${d.qrSlots}|${d.cover != null}';
+    counts.add(known[key] ??= _addPaper(pw.Document(theme: theme), d, tpl, null, -1, null));
+    if (control != null && (i + 1) % 8 == 0) await control.tick(i + 1, total);
+  }
+  // laid out and painted by hand, paper by paper (Document.save would paint them all in one go, the long freeze)
+  final laidOut = <List<pw.Page>>[];
+  final pages = <int>[];
+  for (var i = 0; i < docs.length; i++) {
+    final own = <pw.Page>[];
+    pages.add(_addPaper(doc, docs[i], tpl, counts[i], i, own));
+    laidOut.add(own);
+    if (control != null) await control.tick(docs.length + i + 1, total);
+  }
+  for (var i = 0; i < laidOut.length; i++) {
+    for (final p in laidOut[i]) {
+      p.postProcess(doc);
+    }
+    if (control != null) await control.tick(docs.length * 2 + i + 1, total);
+  }
+  return PaperPdfResult(await doc.document.save(), pages, doc);
 }
 
 /// The QR's side in the footer (points); a reserved slot takes the same room as a real one.
@@ -55,7 +99,7 @@ void Function(int paper, int no, int total)? paperFooterProbe;
 
 /// The cover page of [d] (its student's name filled in), drawn from the cover design's item block; the built-in cover when the
 /// design is null. Not part of the paper's own page count, numbering or QR payloads.
-void _addCover(pw.Document doc, ExamPaperDoc d) {
+void _addCover(pw.Document doc, ExamPaperDoc d, void Function(pw.Page) add) {
   final cover = d.cover!;
   final design = paperDesignFor(cover.design ?? paperCoverDesign(rtl: d.rtl), rtl: d.rtl);
   if (design == null) return;
@@ -65,7 +109,7 @@ void _addCover(pw.Document doc, ExamPaperDoc d) {
   final items = resolvePaperElements(design.row.elements, ctx);
   final bg = paperBackground(design, d.assets);
   final w = page.width * PdfPageFormat.mm, h = page.height * PdfPageFormat.mm;
-  doc.addPage(pw.Page(
+  add(pw.Page(
     pageTheme: pw.PageTheme(pageFormat: PdfPageFormat(w, h), margin: pw.EdgeInsets.zero, textDirection: d.rtl ? pw.TextDirection.rtl : pw.TextDirection.ltr),
     build: (_) => pw.SizedBox(
       width: w,
@@ -82,9 +126,20 @@ void _addCover(pw.Document doc, ExamPaperDoc d) {
   ));
 }
 
-int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTotal, int paperIndex) {
+/// [painted]: null lets the document keep the pages (a throwaway counting pass, never saved); a list collects them for the
+/// caller to paint itself.
+int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTotal, int paperIndex, List<pw.Page>? painted) {
   var lastPage = 1;
-  if (d.cover != null) _addCover(doc, d);
+  void add(pw.Page p) {
+    if (painted == null) {
+      doc.addPage(p);
+    } else {
+      p.generate(doc);
+      painted.add(p);
+    }
+  }
+
+  if (d.cover != null) _addCover(doc, d, add);
   // pw.Context page numbers count the whole document: a paper in a merged PDF numbers its own pages from 1
   final offset = doc.document.pdfPageList.pages.length;
   final style = PaperStyle.of(tpl);
@@ -220,19 +275,19 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTota
 
   // ── the student's box (two rows of label + writing space)
   pw.Widget studentBox() {
-    pw.Widget field(String label, [String name = '']) => pw.Container(
+    pw.Widget field(PaperBoxCell f) => pw.Container(
           height: 26,
           padding: const pw.EdgeInsets.symmetric(horizontal: 8),
           alignment: d.rtl ? pw.Alignment.centerRight : pw.Alignment.centerLeft,
-          child: txt(name.isEmpty ? '$label:' : '$label: $name', size: 10, color: muted, maxLines: 1),
+          child: txt(f.value.isEmpty ? '${f.label}:' : '${f.label}: ${f.value}', size: 10, color: muted, maxLines: 1),
         );
     final border = pw.TableBorder.all(color: classic ? accent : line, width: classic ? .9 : .6);
     return pw.Table(
       border: border,
       columnWidths: {0: const pw.FlexColumnWidth(3), 1: const pw.FlexColumnWidth(2)},
       children: [
-        pw.TableRow(children: rtlCols([field(w.name, d.studentName), field(w.id)])),
-        pw.TableRow(children: rtlCols([field(w.group), field(d.seatNumber ? w.seat : w.score)])),
+        for (final r in paperStudentBoxRows(d))
+          pw.TableRow(children: rtlCols([field(r[0]), r.length > 1 ? field(r[1]) : pw.SizedBox()])),
       ],
     );
   }
@@ -539,7 +594,7 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTota
     ]),
   ));
 
-  doc.addPage(pw.MultiPage(
+  add(pw.MultiPage(
     pageTheme: pw.PageTheme(
       pageFormat: PdfPageFormat.a4,
       margin: pw.EdgeInsets.fromLTRB(40, classic ? 40 : 32, 40, classic ? 34 : 28),
