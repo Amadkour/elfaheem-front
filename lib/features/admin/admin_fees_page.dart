@@ -73,6 +73,7 @@ class _ViewState extends State<_View> {
     final gutter = AppSpace.gutter(MediaQuery.sizeOf(context).width);
 
     return AdminPage(
+      width: AppWidth.wide,
       title: t('الرسوم', 'Fees'),
       subtitle: t('نسب الرسوم وسياسة من يتحمّلها', 'Fee rates and who bears them'),
       icon: Icons.percent_rounded,

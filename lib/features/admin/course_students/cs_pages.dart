@@ -159,7 +159,7 @@ class _CourseStudentsPageState extends State<CourseStudentsPage> {
     final c = context.colors;
     final ex = _q.extra;
     return BasePage(
-      maxWith: 1280,
+      width: AppWidth.wide,
       appBar: ScreenAppBar(title: t('الدورات والطلاب', 'Courses & students')),
       child: AppRefresh(
         onRefresh: _load,
@@ -336,7 +336,7 @@ class _CourseRosterPageState extends State<CourseRosterPage> {
     final title = _data.courseName.isNotEmpty ? _data.courseName : widget.courseName;
     final selected = _q.status == null ? null : csFilterStatuses.where((s) => csStatusWire(s) == _q.status).firstOrNull;
     return BasePage(
-      maxWith: 1280,
+      width: AppWidth.wide,
       appBar: ScreenAppBar(title: title),
       child: AppRefresh(
         onRefresh: _load,

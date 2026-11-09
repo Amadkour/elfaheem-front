@@ -546,7 +546,7 @@ class AiModelsPageState extends State<AiModelsPage> {
           children: [
             Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1180),
+                constraints: BoxConstraints(maxWidth: AppWidth.wide.max),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                     AppChoiceChip(

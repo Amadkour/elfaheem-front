@@ -179,6 +179,7 @@ class _AdminFeatureGuidePageState extends State<AdminFeatureGuidePage> {
   Widget build(BuildContext context) {
     return AdminPage(
       key: const ValueKey('rag.features_guide'),
+      width: AppWidth.wide,
       title: t('دليل ميزات التطبيق', 'App features guide'),
       subtitle: t('ما يعرفه مساعد التطبيق عن الميزات: لمن هي، وأين، وكيف تُستخدم.', 'What the app assistant knows about the features: who has them, where, and how to use them.'),
       icon: Icons.menu_book_rounded,

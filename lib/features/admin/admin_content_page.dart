@@ -21,6 +21,7 @@ library;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -813,7 +814,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
             constraints: const BoxConstraints(minWidth: 60),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: _pal(context).green),
+              gradient: AppGradients.blend(context, color: _pal(context).green.last),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Text(_loc(s, 'value'),
@@ -850,7 +851,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
             height: 50,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: _pal(context).purple),
+              gradient: AppGradients.blend(context, color: _pal(context).purple.last),
               borderRadius: BorderRadius.circular(16),
             ),
             child: emoji.isNotEmpty

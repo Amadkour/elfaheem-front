@@ -437,12 +437,12 @@ class _CsActionSheetState extends State<CsActionSheet> {
         ),
         if (_showDays) ...[
           const SizedBox(height: AppSpace.sm),
-          AppField(
+          AppNumberField(
             controller: _days,
             label: _daysRequired ? t('عدد الأيام (1 - 3650)', 'Days (1 - 3650)') : t('عدد الأيام (اختياري)', 'Days (optional)'),
             hint: widget.action == 'grant' ? t('فارغ = مدة الباقة أو بلا نهاية', "Empty = the plan's length, or no end") : null,
-            keyboard: TextInputType.number,
-            ltr: true,
+            min: 1,
+            max: 3650,
             onChanged: (_) => setState(() {}),
           ),
         ],

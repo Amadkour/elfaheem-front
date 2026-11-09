@@ -109,7 +109,7 @@ class _CourseTrashPageState extends State<CourseTrashPage> {
     final items = _tab == 0 ? _trash.items.length : _purged.items.length;
     final total = _tab == 0 ? _trash : _purged;
     return BasePage(
-      maxWith: 1100,
+      width: AppWidth.wide,
       appBar: ScreenAppBar(title: t('الكورسات المحذوفة', 'Deleted courses')),
       child: AppRefresh(
         onRefresh: _load,

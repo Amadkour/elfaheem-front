@@ -5,6 +5,7 @@ library;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -486,11 +487,7 @@ class _BrandMark extends StatelessWidget {
     width: compact ? 42 : 54,
     height: compact ? 42 : 54,
     decoration: BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [context.colors.primary, context.colors.primary],
-      ),
+      gradient: AppGradients.blend(context, color: context.colors.primary),
       borderRadius: BorderRadius.circular(compact ? 14 : 18),
       boxShadow: [
         BoxShadow(

@@ -79,6 +79,7 @@ class _AdminAppVersionsPageState extends State<AdminAppVersionsPage> {
             final p = context.watch<AdminUpdatePolicyProvider>();
             return AdminPage(
               key: const ValueKey('admin_app_versions'),
+              width: AppWidth.wide,
               title: t('إصدارات التطبيق', 'App versions'),
               subtitle: t('ما يُطلب من مستخدمي كل منصة التحديث إليه، ورسالته، والإصدار المنشور خلفه',
                   'What each platform’s users are asked to update to, its message, and the build behind it'),

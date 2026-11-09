@@ -57,6 +57,7 @@ class _ListState extends State<_List> {
   Widget build(BuildContext context) {
     final p = context.watch<AdminParentLinkProvider>();
     return AdminPage(
+      width: AppWidth.wide,
       title: 'pl_requests_title'.tr,
       icon: Icons.family_restroom_rounded,
       onRefresh: p.isLoading ? null : _reload,

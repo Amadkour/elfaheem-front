@@ -94,6 +94,7 @@ class _AdminParentLinkingPageState extends State<AdminParentLinkingPage> {
         final onSettings = tab == 1;
         return AdminPage(
           key: const ValueKey('admin_parent_linking'),
+          width: AppWidth.wide,
           title: t('ربط أولياء الأمور', 'Parent linking'),
           subtitle: narrow
               ? null

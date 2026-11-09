@@ -5,6 +5,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_number_field.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart' show EntityKind;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
@@ -105,7 +107,7 @@ class _View extends StatelessWidget {
     return BasePage(
 
       useWebCard: true,
-      maxWith: 1100,
+      width: AppWidth.wide,
       appBar: ScreenAppBar(title: 'subscriptions'.tr),
       child: PagedList<AdminSubscriptionsProvider>(
         export: adminSubscriptionsExport,
@@ -198,10 +200,9 @@ Future<void> _editPlan(BuildContext context, AdminSubscriptionsProvider p, Plan 
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Field(
-                controller: price,
-                label: 'admin_price_empty_or_0_free'.tr,
-                keyboard: const TextInputType.numberWithOptions(decimal: true),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: AppNumberField(controller: price, label: 'admin_price_empty_or_0_free'.tr, min: 0, decimals: 2),
               ),
               ChoiceRow<String>(
                 label: 'currency_label'.tr,
@@ -209,7 +210,10 @@ Future<void> _editPlan(BuildContext context, AdminSubscriptionsProvider p, Plan 
                 value: currency,
                 onChanged: (v) => setS(() => currency = v),
               ),
-              Field(controller: days, label: 'admin_duration_days'.tr, keyboard: TextInputType.number),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: AppNumberField(controller: days, label: 'admin_duration_days'.tr, min: 0),
+              ),
               PrimaryButton(
                 label: 'save'.tr,
                 isLoading: busy,

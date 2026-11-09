@@ -96,6 +96,7 @@ class _AdminPayoutsPageState extends State<AdminPayoutsPage> {
       child: ListenableBuilder(
         listenable: _requests,
         builder: (context, _) => AdminPage(
+          width: AppWidth.wide,
           title: 'admin_teacher_payouts'.tr,
           icon: Icons.account_balance_wallet_rounded,
           onRefresh: () => _load(_tab),
@@ -1101,12 +1102,14 @@ class _SettingsViewState extends State<_SettingsView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                AppField(
+                AppNumberField(
                   controller: _min,
                   label: '${'admin_amount_empty_default'.tr} ${money(p.defaultMin)})',
-                  keyboard: const TextInputType.numberWithOptions(decimal: true),
+                  min: 0,
+                  decimals: 2,
                   onSubmitted: (_) => _saveMin(p),
                 ),
+                AppSpace.gapSm,
                 Align(
                   alignment: AlignmentDirectional.centerEnd,
                   child: AppButton.primary(

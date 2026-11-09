@@ -12,7 +12,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
@@ -249,45 +248,12 @@ class _NumRow extends StatelessWidget {
   final VoidCallback onChanged;
   final String? error;
 
-  void _step(int delta) {
-    final cur = int.tryParse(controller.text.trim()) ?? min;
-    controller.text = '${(cur + delta).clamp(min, max)}';
-    onChanged();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final cur = int.tryParse(controller.text.trim()) ?? min;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(label, style: AppType.label(context).copyWith(color: enabled ? null : c.textLight)),
-        const SizedBox(height: AppSpace.xxs),
-        Row(children: [
-          AppIconButton(
-              icon: Icons.remove_rounded,
-              tooltip: t('تقليل', 'Decrease'),
-              onPressed: enabled && cur > min ? () => _step(-1) : null),
-          AppSpace.gapXs,
-          Expanded(
-            child: AbsorbPointer(
-              absorbing: !enabled,
-              child: AppField(
-                controller: controller,
-                label: t('القيمة', 'Value'),
-                keyboard: TextInputType.number,
-                ltr: true,
-                onChanged: (_) => onChanged(),
-              ),
-            ),
-          ),
-          AppSpace.gapXs,
-          AppIconButton(
-              icon: Icons.add_rounded,
-              tooltip: t('زيادة', 'Increase'),
-              onPressed: enabled && cur < max ? () => _step(1) : null),
-        ]),
+        AppNumberField(controller: controller, label: label, min: min, max: max, enabled: enabled, onChanged: (_) => onChanged()),
         if (error != null) CfgFieldError(error!),
       ]),
     );

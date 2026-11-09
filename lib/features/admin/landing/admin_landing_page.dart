@@ -127,7 +127,7 @@ class _AdminLandingPageState extends State<AdminLandingPage> {
     final s = _saved;
     return BasePage(
       useWebCard: true,
-      maxWith: 900,
+      width: AppWidth.reading,
       appBar: ScreenAppBar(title: landingTitle()),
       child: s == null
           ? (_error != null

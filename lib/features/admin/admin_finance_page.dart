@@ -85,6 +85,7 @@ class _View extends StatelessWidget {
     final p = context.watch<AdminFinanceProvider>();
     return AdminPage(
       helpPageId: 'admin.payments',
+      width: AppWidth.wide,
       title: t('المدفوعات والتحويلات', 'Payments & payouts'),
       icon: Icons.receipt_long_rounded,
       onRefresh: () {
@@ -1849,12 +1850,11 @@ class _ImageViewer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: Text(title, style: TextStyle(fontFamily: AppFonts.family, fontSize: 15)),
+      backgroundColor: c.heroShade,
+      appBar: AppHeader(
+        title: title,
         actions: [
           IconButton(
             tooltip: t('نسخ الرابط', 'Copy link'),
@@ -1877,8 +1877,8 @@ class _ImageViewer extends StatelessWidget {
             fit: BoxFit.contain,
             loadingBuilder: (_, child, prog) => prog == null
                 ? child
-                : const Center(child: CircularProgressIndicator(color: Colors.white)),
-            errorBuilder: (_, _, _) => const Icon(Icons.broken_image_rounded, color: Colors.white54, size: 64),
+                : Center(child: CircularProgressIndicator(color: c.onHero)),
+            errorBuilder: (_, _, _) => Icon(Icons.broken_image_rounded, color: c.onHeroMuted, size: 64),
           ),
         ),
       ),

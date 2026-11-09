@@ -15,6 +15,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -57,6 +58,7 @@ class _AdminPointsPageState extends State<AdminPointsPage> {
         // the kill switch: a super admin can switch the points admin off (the page then shows "coming soon")
         key: const ValueKey(kAdminPointsFeatureKey),
         child: AdminPage(
+          width: AppWidth.wide,
           title: t('النقاط والمحافظ', 'Points & wallets'),
           icon: Icons.stars_rounded,
           onRefresh: _refresh,
@@ -644,12 +646,7 @@ class _PointsGrantFormState extends State<PointsGrantForm> {
           AppChoiceChip(label: t('خصم', 'Deduct'), icon: Icons.remove_rounded, selected: _deduct, onTap: () => setState(() => _deduct = true)),
         ]),
         const SizedBox(height: 12),
-        TextField(
-          controller: _points,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.allow(RegExp('[0-9٠-٩]'))],
-          decoration: InputDecoration(labelText: t('عدد النقاط', 'Points'), prefixIcon: const Icon(Icons.stars_rounded)),
-        ),
+        AppNumberField(controller: _points, label: t('عدد النقاط', 'Points'), min: 1, step: 10),
         const SizedBox(height: 12),
         AppField(controller: _note, label: t('ملاحظة', 'Note'), maxLines: 2),
         if (_error != null) ...[
@@ -874,20 +871,29 @@ class _PointsSettingsFormState extends State<PointsSettingsForm> {
 
   Widget _num(TextEditingController c, String label, {String? helper, bool decimal = false}) => Padding(
         padding: const EdgeInsets.only(bottom: 12),
-        child: TextField(
-          controller: c,
-          keyboardType: TextInputType.numberWithOptions(decimal: decimal),
-          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(decimal ? '[0-9.,٫٠-٩]' : '[0-9٠-٩]'))],
-          onChanged: (_) => setState(() => _error = null),
-          decoration: InputDecoration(labelText: label, helperText: helper, helperMaxLines: 2),
-        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+          AppNumberField(
+            controller: c,
+            label: label,
+            min: 0,
+            decimals: decimal ? 4 : 0,
+            step: decimal ? 0.5 : 1,
+            onChanged: (_) => setState(() => _error = null),
+          ),
+          if (helper != null)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpace.xxs),
+              child: Text(helper, style: AppType.meta(context)),
+            ),
+        ]),
       );
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final v = _value;
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: [
+    final side = math.max(16.0, (MediaQuery.sizeOf(context).width - AppWidth.reading.max) / 2);
+    return ListView(padding: EdgeInsets.fromLTRB(side, 12, side, 32), children: [
       AppSectionTitle(t('باقة الاجتماعات المباشرة للطلاب', 'Student live-meeting plan')),
       _num(_free, t('الدقائق المجانية لكل اجتماع', 'Free minutes per meeting'),
           helper: t('وقت البث المجاني لاجتماع ينشئه طالب بلا باقة', 'Live time a student without the plan gets per meeting')),
