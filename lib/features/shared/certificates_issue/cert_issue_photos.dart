@@ -371,7 +371,7 @@ class IssuePhotosBody extends StatelessWidget {
     final list = [...photos.outstanding, ...photos.people.where((p) => !photos.outstanding.contains(p))];
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 760),
+        constraints: BoxConstraints(maxWidth: AppWidth.reading.max),
         child: ListView.builder(
           key: const ValueKey('cert-photos-list'),
           padding: const EdgeInsets.all(AppSpace.md),

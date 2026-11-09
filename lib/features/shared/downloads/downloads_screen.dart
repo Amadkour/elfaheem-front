@@ -26,6 +26,7 @@ import '../../admin/admin_common.dart' show t;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_header.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 // DownloadsScreen — every encrypted video saved on this device.
@@ -357,18 +358,9 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [c.primary, c.primary.withValues(alpha: 0.75)],
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-        ),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: c.primaryShadow,
-      ),
-      child: Row(children: [
+    return DecoratedBox(decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), boxShadow: c.primaryShadow),
+      child: AppMeshSurface(radius: BorderRadius.circular(18),
+      child: Padding(padding: const EdgeInsets.all(16), child: Row(children: [
         Container(
           width: 46,
           height: 46,
@@ -392,8 +384,7 @@ class _SummaryCard extends StatelessWidget {
             ],
           ),
         ),
-      ]),
-    );
+      ]))));
   }
 }
 

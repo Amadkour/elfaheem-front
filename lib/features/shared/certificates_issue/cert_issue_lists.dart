@@ -122,7 +122,7 @@ class _CertSavedListsPageState extends State<CertSavedListsPage> {
           separatorBuilder: (_, _) => const SizedBox(height: AppSpace.xs),
           itemBuilder: (context, i) => Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 760),
+              constraints: BoxConstraints(maxWidth: AppWidth.content.max),
               child: IssueSavedListTile(
                 list: _items[i],
                 onTap: () async {
@@ -429,7 +429,7 @@ class CertListBody extends StatelessWidget {
     final extra = loading && rows.isEmpty ? 1 : (error != null && rows.isEmpty ? 1 : (rows.isEmpty ? 1 : rows.length));
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 820),
+        constraints: BoxConstraints(maxWidth: AppWidth.content.max),
         child: ListView.builder(
           padding: const EdgeInsets.all(AppSpace.md),
           itemCount: 1 + extra,

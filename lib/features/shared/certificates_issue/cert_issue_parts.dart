@@ -1447,7 +1447,7 @@ class CertVerifyView extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpace.md),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 820),
+          constraints: BoxConstraints(maxWidth: AppWidth.reading.max),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(children: [
               Icon(Icons.verified_outlined, color: c.primary),
