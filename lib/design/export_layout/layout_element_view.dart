@@ -14,6 +14,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
+import '../export/export_fonts.dart' show ExportFonts;
 import '../export_hub/export_designer.dart' show exportFlutterFont, exportFlutterFallback;
 import 'layout_logic.dart';
 import 'layout_model.dart';
@@ -86,7 +87,10 @@ Map<String, String> layoutSampleVars({required String lang, String title = '', S
 /// [pageFontSize] when the element has none), pt → mm; [bold] = a rule's override of the weight.
 TextStyle layoutTextStyle(LayoutElement e, String pageFont, double scale, Color color, {double pageFontSize = 10, bool? bold}) {
   final s = e.style;
-  final family = s.font ?? pageFont;
+  final fontId = s.font ?? pageFont;
+  // the renderer draws italic with the family's own italic file when it has one (fonts.py pdf_font, not when bold)
+  final wantBold = bold ?? s.bold;
+  final family = s.italic && !wantBold && ExportFonts.has('${fontId}_italic') ? '${fontId}_italic' : fontId;
   final sh = s.shadow;
   final textual = e.kind == 'text' || e.kind == 'field' || e.kind == 'badge' || e.kind == 'page_number';
   return TextStyle(

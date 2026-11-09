@@ -29,6 +29,7 @@ import '../app_kit.dart';
 import '../app_tokens.dart';
 import '../studio/studio.dart';
 import 'layout_element_view.dart';
+import 'layout_logic.dart' show layoutFillVars;
 import 'layout_model.dart';
 import 'layout_props.dart';
 
@@ -207,6 +208,7 @@ class LayoutCanvasEditor extends StatefulWidget {
     this.backgroundImage,
     this.backgroundFit = 'cover',
     this.pageMargins,
+    this.fontControl,
   });
 
   final List<LayoutElement> elements;
@@ -243,6 +245,9 @@ class LayoutCanvasEditor extends StatefulWidget {
   /// Mode "page": the margins (mm) of the whole page around this canvas, which is then its content box. The paper
   /// (margins included) is drawn and fitted as one and the background image fills it. Null = the canvas is the card.
   final EdgeInsets? pageMargins;
+
+  /// The host's font control (certificates): one element, or several selected text elements.
+  final LayoutFontControl? fontControl;
 
   @override
   State<LayoutCanvasEditor> createState() => _LayoutCanvasEditorState();
@@ -465,6 +470,16 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
         Object.hashAllUnordered(widget.vars.entries.map((e) => Object.hash(e.key, e.value))),
       );
 
+  bool _fontable(LayoutElement e) => e.kind == 'text' || e.kind == 'field' || e.kind == 'badge' || e.kind == 'page_number' || e.kind == 'signature';
+
+  /// The text an element shows in this design: its value with the sample values filled, a bound field's sample.
+  String _sampleOf(LayoutElement e) {
+    if (e.kind == 'signature') return layoutFillVars(e.sigName ?? e.sigTitle ?? '', widget.vars);
+    final b = e.bind;
+    if (b != null) return widget.vars[b.field] ?? widget.fieldOf?.call(b.field)?.label(widget.lang) ?? b.field;
+    return layoutFillVars(e.value ?? '', widget.vars);
+  }
+
   String _layerName(StudioItem<LayoutElement> i) => i.payload.name ?? layoutKindLabel(i.payload.kind);
 
   @override
@@ -493,8 +508,11 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
         ),
       ),
     );
+    final multi = widget.fontControl != null && sel == null && _ctl.selection.length > 1
+        ? [for (final id in _ctl.selection) if (_ctl.itemById(id)?.payload != null && _fontable(_ctl.itemById(id)!.payload)) _ctl.itemById(id)!.payload]
+        : const <LayoutElement>[];
     final props = sel == null
-        ? _EmptyProps(wide: widget.wide)
+        ? (multi.isNotEmpty ? _MultiFontProps(child: widget.fontControl!(context, _ctl, multi, _sampleOf)) : _EmptyProps(wide: widget.wide))
         : LayoutElementProps(
             key: ValueKey('props-${sel.id}'),
             ctl: _ctl,
@@ -505,6 +523,8 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
             extraFor: widget.extraFor,
             pageFontSize: widget.pageFontSize,
             fieldFocus: _fieldFocus,
+            fontControl: widget.fontControl,
+            sampleOf: _sampleOf,
             onClose: () => _ctl.clearSelection(),
           );
     final toolbar = StudioToolbar(controller: _ctl, leading: [_addMenu(context)]);
@@ -570,6 +590,15 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
       ]),
     );
   }
+}
+
+/// Several elements selected: the host's font control for all of them.
+class _MultiFontProps extends StatelessWidget {
+  const _MultiFontProps({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(padding: const EdgeInsets.all(AppSpace.md), child: child);
 }
 
 class _EmptyProps extends StatelessWidget {

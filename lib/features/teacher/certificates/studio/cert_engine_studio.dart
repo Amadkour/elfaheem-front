@@ -41,6 +41,7 @@ import '../designer/certificate_designer_screen.dart' show CertificateDesignerSc
 import 'cert_engine_api.dart';
 import 'cert_engine_panels.dart';
 import 'cert_engine_presets.dart';
+import 'cert_font_picker.dart';
 
 /// The kill switch that sends everyone back to the legacy designer.
 const kCertEngineKillSwitch = 'certificates.engine';
@@ -200,6 +201,9 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
       if (!mounted) return;
       _adopt(r);
       setState(() => _loading = false);
+      for (final n in r.fontNotes) {
+        showAppNotice(t('خط «${n['family']}» غير متاح في الاستوديو: استُخدم «${n['to_family']}» بدلًا منه. يمكنك اختيار غيره.', '"${n['family']}" is not available in the studio: "${n['to_family']}" is used instead. You can pick another.'));
+      }
       unawaited(_prefetchImages());
       await _checkDraft();
       if (_fresh && mounted) {
@@ -930,6 +934,7 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
               backgroundImage: doc.designs[l]!.page.backgroundImage,
               backgroundFit: doc.designs[l]!.page.backgroundFit,
               pageMargins: _marginsOf(doc.designs[l]!.page),
+              fontControl: (ctx, ctl, targets, sampleOf) => CertFontControl(key: ValueKey('cert-font-$l/${targets.map((e) => e.id).join(',')}'), ctl: ctl, targets: targets, sampleOf: sampleOf, lang: l, api: _api),
               wide: box.maxWidth >= 900,
             ),
         ],

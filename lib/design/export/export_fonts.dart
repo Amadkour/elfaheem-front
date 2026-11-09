@@ -85,6 +85,7 @@ const _officeNames = <String, String>{
   'scheherazade': 'Scheherazade New',
   'reem_kufi': 'Reem Kufi',
   'el_messiri': 'El Messiri',
+  'noto_kufi': 'Noto Kufi Arabic',
   'cairo': 'Cairo',
   'markazi': 'Markazi Text',
   'bahij': 'Bahij TheSansArabic',
@@ -205,9 +206,27 @@ abstract final class ExportFonts {
       labelAr: 'IBM Plex عربي',
       arabic: true,
     ),
+    const ExportFont(
+      id: 'noto_kufi',
+      regularAsset: 'assets/fonts/ui/noto_kufi/NotoKufiArabic-400.ttf',
+      boldAsset: 'assets/fonts/ui/noto_kufi/NotoKufiArabic-700.ttf',
+      labelKey: 'export_font_noto_kufi',
+      labelEn: 'Noto Kufi Arabic',
+      labelAr: 'نوتو كوفي',
+      arabic: true,
+    ),
   ];
 
   static final Map<String, ExportFont> _byId = {for (final f in catalog) f.id: f};
+
+  /// Registers a font of the server's catalog this build does not bundle (the certificate font picker, D-380): its
+  /// bytes came from the server, so the picker and the canvas still draw it in its own face.
+  static Future<void> addRemote({required String id, required String family, required bool arabic, required Uint8List regular, Uint8List? bold, String? arabicFallback}) async {
+    final r = 'remote:$id:regular', b = bold == null ? r : 'remote:$id:bold';
+    _bytes[r] = Future.value(regular);
+    if (bold != null) _bytes[b] = Future.value(bold);
+    _byId[id] = ExportFont(id: id, regularAsset: r, boldAsset: b, labelKey: 'export_font_$id', labelEn: family, labelAr: family, arabic: arabic, arabicFallbackId: arabicFallback);
+  }
 
   static List<String> get ids => [for (final f in catalog) f.id];
 

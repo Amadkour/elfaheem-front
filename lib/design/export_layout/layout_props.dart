@@ -105,8 +105,11 @@ typedef LayoutAssetUploader = Future<String?> Function(Uint8List bytes, String n
 /// Like [LayoutAssetUploader] but told which element the image is for (a signature goes to another endpoint).
 typedef LayoutElementUploader = Future<String?> Function(LayoutElement el, Uint8List bytes, String name);
 
+/// A host's font control for [targets] (one element, or several selected ones); [sampleOf] gives an element's text.
+typedef LayoutFontControl = Widget Function(BuildContext context, StudioController<LayoutElement> ctl, List<LayoutElement> targets, String Function(LayoutElement) sampleOf);
+
 class LayoutElementProps extends StatelessWidget {
-  const LayoutElementProps({super.key, required this.ctl, required this.element, required this.fields, required this.upload, this.uploadFor, this.extraFor, this.onClose, this.pageFontSize = 10, this.fieldFocus});
+  const LayoutElementProps({super.key, required this.ctl, required this.element, required this.fields, required this.upload, this.uploadFor, this.extraFor, this.onClose, this.pageFontSize = 10, this.fieldFocus, this.fontControl, this.sampleOf});
 
   final StudioController<LayoutElement> ctl;
   final LayoutElement element;
@@ -125,6 +128,12 @@ class LayoutElementProps extends StatelessWidget {
 
   /// Focused by a double click on a bound field on the canvas: the inline field picker.
   final FocusNode? fieldFocus;
+
+  /// The host's font control (a certificate field's font); null = no per-element font (the page font is used).
+  final LayoutFontControl? fontControl;
+  final String Function(LayoutElement)? sampleOf;
+
+  bool get _hasFont => element.kind == 'text' || element.kind == 'field' || element.kind == 'badge' || element.kind == 'page_number' || element.kind == 'signature';
 
   void _edit(String label, VoidCallback mutate, {bool coalesce = false}) => ctl.record(label, mutate, coalesce: coalesce);
 
@@ -166,7 +175,7 @@ class LayoutElementProps extends StatelessWidget {
           StudioPropSection(title: t('القواعد', 'Rules'), children: [
             LayoutRulesEditor(element: e, fields: fields, edit: _edit),
           ]),
-        if (!_decor) StudioPropSection(title: t('الخط والألوان', 'Text and colours'), children: _style()),
+        if (!_decor) StudioPropSection(title: t('الخط والألوان', 'Text and colours'), children: _style(context)),
         if (textual || e.kind == 'page_number') StudioPropSection(title: t('الطباعة', 'Typography'), children: _typography()),
         StudioPropSection(title: _decor ? t('الشكل', 'Shape') : t('الإطار', 'Border'), children: _shape()),
         StudioPropSection(title: t('المظهر', 'Appearance'), children: _appearance()),
@@ -298,9 +307,10 @@ class LayoutElementProps extends StatelessWidget {
         onChanged: (c) => onChanged(c == null ? null : layoutHex(c)),
       );
 
-  List<Widget> _style() {
+  List<Widget> _style(BuildContext context) {
     final s = element.style;
     return [
+      if (fontControl != null && _hasFont) fontControl!(context, ctl, [element], sampleOf ?? (e) => e.value ?? ''),
       Row(children: [
         Expanded(child: StudioStepper(label: t('الحجم (pt)', 'Size (pt)'), value: s.size ?? pageFontSize, min: 4, max: 96, step: .5, decimals: 1, onChanged: (v) => _edit('size', () => s.size = v, coalesce: true))),
         const SizedBox(width: AppSpace.xs),
