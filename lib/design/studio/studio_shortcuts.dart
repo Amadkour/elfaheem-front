@@ -285,9 +285,16 @@ abstract final class StudioKeyboard {
     bool next() => _prev?.call(e) ?? false;
     if (!AppKeyboardSupport.enabled) return next();
     final host = _active();
-    if (host == null || _typing() || host.controller.editingId != null || host.controller.dragging) return next();
+    if (host == null || host.controller.dragging) return next();
     final kb = HardwareKeyboard.instance;
     final primary = studioMacKeys ? kb.isMetaPressed : kb.isControlPressed;
+    if (_typing() || host.controller.editingId != null) {
+      // typing keeps every key, except the two the browser would take over a whole page for: its Save dialog and bookmarks
+      if (!primary || kb.isAltPressed) return next();
+      if (e.logicalKey == LogicalKeyboardKey.keyS && !kb.isShiftPressed) return _run(host, StudioCommand.save, e, big: false) ? _done(e) : next();
+      if (e.logicalKey == LogicalKeyboardKey.keyD) return _done(e);
+      return next();
+    }
     final cmd = studioCommandFor(e.logicalKey, e.physicalKey, e.character,
         primary: primary, shift: kb.isShiftPressed, alt: kb.isAltPressed);
     if (cmd == null) return next();
@@ -295,6 +302,11 @@ abstract final class StudioKeyboard {
     if (!_run(host, cmd, e, big: kb.isShiftPressed)) return next();
     _last = e;
     if (_plain.contains(cmd) && !host.focusOf().hasFocus) host.focusOf().requestFocus();
+    return true;
+  }
+
+  static bool _done(KeyDownEvent e) {
+    _last = e;
     return true;
   }
 
