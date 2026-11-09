@@ -11,6 +11,7 @@ import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/main.dart' show navigatorKey;
 
 import '../../../../admin/admin_common.dart' show t;
+import '../../hub/revision/exam_revision_flow.dart' show openExamRevision;
 import '../../paper/scan/omr_camera.dart' show OmrCamera;
 import '../mark_sessions_api.dart';
 import 'grade_review_capture.dart';
@@ -22,7 +23,8 @@ abstract final class GradeReviewHooks {
   static MarkTemplatePicker? templatePicker;
 }
 
-/// Starts a review / import for [courseId]. [columns] are the gradebook's numeric, writable columns.
+/// Starts a review / import for [courseId]. [columns] are the gradebook's numeric, writable columns. A review goes
+/// through the guided revision; [legacy] keeps this short form (mark import, an older server, tests that inject).
 Future<void> openGradeReview(
   BuildContext context, {
   required int courseId,
@@ -33,7 +35,12 @@ Future<void> openGradeReview(
   MarkMode mode = MarkMode.review,
   MarkSessionsApi? api,
   OmrCamera Function()? camera,
+  bool legacy = false,
 }) async {
+  if (!legacy && mode == MarkMode.review && api == null && camera == null) {
+    await openExamRevision(context, courseId: courseId, examId: exams.isEmpty ? null : exams.first.id, title: exams.isEmpty ? null : exams.first.title);
+    return;
+  }
   final picker = pickTemplate ?? GradeReviewHooks.templatePicker;
   if (picker == null) {
     showAppNotice(t('قائمة نماذج الأوراق غير متاحة بعد', 'The paper templates list is not available yet'), error: true);

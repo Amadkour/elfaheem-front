@@ -104,7 +104,7 @@ class GradeCaptureHud extends StatelessWidget {
 }
 
 class GradeCaptureScreen extends StatefulWidget {
-  const GradeCaptureScreen({super.key, required this.session, this.api, this.camera, this.onDone});
+  const GradeCaptureScreen({super.key, required this.session, this.api, this.camera, this.onDone, this.bridge, this.title, this.finishLabel, this.topExtra, this.bottomExtra});
 
   final MarkSession session;
   final MarkSessionsApi? api;
@@ -114,6 +114,15 @@ class GradeCaptureScreen extends StatefulWidget {
 
   /// "Review results": the caller replaces this screen with the results.
   final void Function(BuildContext context)? onDone;
+
+  /// The Exam Hub's revision run: holds the camera, hears each queued page, knows when the camera is between papers.
+  final GradeCaptureBridge? bridge;
+
+  /// Replace the screen's own title and the finish button's text.
+  final String? title, finishLabel;
+
+  /// Drawn under the counter and above the shutter (the quiet result line, the papers' arrows).
+  final Widget? topExtra, bottomExtra;
 
   @override
   State<GradeCaptureScreen> createState() => _GradeCaptureScreenState();
@@ -135,12 +144,18 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
   /// The counters and the last photo's problem (retake / already scanned: hints and auto-capture wait).
   late final GradeCaptureTally _tally = GradeCaptureTally(read: widget.session.counts.read, waiting: widget.session.counts.pending);
 
-  bool get _holding => _tally.capturing || _paused || _tally.problem != null;
+  bool get _holding => _tally.capturing || _paused || _tally.problem != null || (widget.bridge?.hold ?? false);
+
+  void _report() => widget.bridge?.report(busy: _tally.capturing || _gate.progress > 0);
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    widget.bridge?.attach(() {
+      _gate.reset();
+      _report();
+    });
     _watch = EventOrPoll(
       kind: kMarkSessionJobKind,
       id: '${widget.session.id}',
@@ -267,6 +282,7 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
           _hint = h;
           _note = null;
         });
+        _report();
         if (fire) unawaited(_shoot());
         wait = _pacer.afterOk(sw.elapsed);
       } else if (r.status == 503 || r.status == 429) {
@@ -283,14 +299,16 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
 
   Future<void> _shoot() async {
     final cam = _cam;
-    if (_tally.capturing || _tally.problem != null || cam == null) return;
+    if (_tally.capturing || _tally.problem != null || cam == null || (widget.bridge?.hold ?? false)) return;
     setState(() => _tally.capturing = true);
     _gate.captured();
+    _report();
     final photo = await cam.photo();
     if (!mounted) return;
     if (photo == null || photo.isEmpty) {
       setState(() => _tally.capturing = false);
       _gate.reset();
+      _report();
       showAppNotice(t('تعذّر التقاط الصورة — حاول مرة أخرى', 'The photo could not be taken — try again'), error: true);
       return;
     }
@@ -306,11 +324,14 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
     final o = markPageOutcome(r, arabic: AppConfig.lang == 'ar');
     if (o.ok) {
       setState(_tally.queued);
+      _report();
+      if (o.pageId != null) widget.bridge?.onQueued?.call(o.pageId!, image);
       unawaited(HapticFeedback.mediumImpact());
       return true;
     }
     _gate.reset();
     setState(() => _tally.refused(o));
+    _report();
     unawaited(HapticFeedback.heavyImpact());
     if (o.kind == MarkPageKind.error) showAppNotice(gradeOutcomeText(o), error: true);
     return false;
@@ -383,21 +404,23 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final title = widget.session.mode == MarkMode.review ? t('مراجعة الدرجات', 'Review grades') : t('استيراد الدرجات', 'Import marks');
+    final title = widget.title ?? (widget.session.mode == MarkMode.review ? t('مراجعة الدرجات', 'Review grades') : t('استيراد الدرجات', 'Import marks'));
     if (_issue != null) {
       return Scaffold(
         backgroundColor: c.background,
         appBar: AppBar(title: Text(title), actions: [
-          TextButton(onPressed: _finish, child: Text(t('النتائج', 'Results'))),
+          TextButton(onPressed: _finish, child: Text(widget.finishLabel ?? t('النتائج', 'Results'))),
         ]),
         body: Column(children: [
           Padding(
             padding: const EdgeInsets.all(AppSpace.md),
             child: GradeCaptureHud(sheets: _tally.sent, read: _tally.read, waiting: _tally.waiting, problem: _tally.problem, onRetake: _retake, onDismiss: _retake, checking: _tally.capturing),
           ),
+          if (widget.topExtra != null) Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.md), child: widget.topExtra!),
           Expanded(
             child: CameraProblemView(issue: _issue!, web: kIsWeb, onRetry: _start, onSettings: kIsWeb ? null : () => openAppSettings(), onUpload: _pickAndUpload),
           ),
+          if (widget.bottomExtra != null) SafeArea(top: false, child: Padding(padding: const EdgeInsets.all(AppSpace.md), child: widget.bottomExtra!)),
         ]),
       );
     }
@@ -434,6 +457,7 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
                 padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
                 child: GradeCaptureHud(sheets: _tally.sent, read: _tally.read, waiting: _tally.waiting, checking: _tally.capturing),
               ),
+              if (widget.topExtra != null) Padding(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0), child: widget.topExtra!),
             ]),
           ),
         ),
@@ -444,6 +468,7 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
           child: SafeArea(
             top: false,
             child: Column(mainAxisSize: MainAxisSize.min, children: [
+              if (widget.bottomExtra != null && _tally.problem == null) Padding(padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs), child: widget.bottomExtra!),
               if (_tally.problem != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
@@ -454,7 +479,7 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
                   onShutter: cam == null || _starting ? null : _shoot,
                   busy: _tally.capturing,
                   onFinish: _finish,
-                  finishLabel: t('النتائج (${_tally.sent})', 'Results (${_tally.sent})'),
+                  finishLabel: widget.finishLabel ?? t('النتائج (${_tally.sent})', 'Results (${_tally.sent})'),
                   onSwitch: (cam?.canSwitch ?? false) ? _switch : null,
                   autoOn: _auto,
                   onAuto: (v) => setState(() {

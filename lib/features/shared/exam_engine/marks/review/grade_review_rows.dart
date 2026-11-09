@@ -184,6 +184,7 @@ class GradeRowDetail extends StatelessWidget {
     this.onDismiss,
     this.onAssign,
     this.onFix,
+    this.onRetake,
   });
 
   final MarkRow row;
@@ -191,7 +192,7 @@ class GradeRowDetail extends StatelessWidget {
   final Future<Uint8List?> Function(String url)? loadCrop;
 
   /// Null = not offered (row decided, nothing to write, or a blocking issue is open).
-  final VoidCallback? onApply, onKeep, onDismiss, onAssign;
+  final VoidCallback? onApply, onKeep, onDismiss, onAssign, onRetake;
   final void Function(MarkPart part)? onFix;
 
   @override
@@ -264,6 +265,7 @@ class GradeRowDetail extends StatelessWidget {
             _Act(key: const ValueKey('gr.act.apply'), icon: Icons.check_circle_outline_rounded, label: t('تطبيق التصحيح (A)', 'Apply correction (A)'), primary: true, onTap: onApply!),
           if (onKeep != null) _Act(key: const ValueKey('gr.act.keep'), icon: Icons.lock_outline_rounded, label: t('إبقاء المسجّل (H)', 'Keep recorded (H)'), onTap: onKeep!),
           if (onAssign != null) _Act(key: const ValueKey('gr.act.assign'), icon: Icons.person_search_outlined, label: t('تحديد الطالب', 'Assign student'), onTap: onAssign!),
+          if (onRetake != null) _Act(key: const ValueKey('gr.act.retake'), icon: Icons.replay_rounded, label: t('إعادة التصوير', 'Retake scan'), onTap: onRetake!),
           if (onDismiss != null) _Act(key: const ValueKey('gr.act.dismiss'), icon: Icons.close_rounded, label: t('تجاهل (D)', 'Dismiss (D)'), onTap: onDismiss!),
         ]),
       ],
