@@ -757,7 +757,8 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
             ),
             Divider(height: 1, color: c.divider),
             Expanded(child: _body(context)),
-            if (_step != 3) _bottomBar(context), // the Photos step's id is above 3: it needs the Next bar too
+            // the Photos step's id is above 3: it needs the Next bar too; the button follows the photos as they arrive
+            if (_step != 3) AnimatedBuilder(animation: _photos, builder: (context, _) => _bottomBar(context)),
           ]),
         ),
       ),
