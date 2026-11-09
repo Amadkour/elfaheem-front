@@ -46,6 +46,7 @@ import '../../features/shared/rag/rag_admin_links.dart' deferred as rag_admin_li
 import '../../features/shared/identity/identity_request_gate.dart' show openIdentityRequestsFromLink;
 import '../../features/shared/exam_engine/paper/exam_setup_wizard.dart' deferred as exam_setup_wizard;
 import '../../features/shared/exam_engine/exam_notice.dart' deferred as exam_notice;
+import '../../features/shared/exam_engine/hub/result/parent_grades_link.dart' deferred as parent_grades_link;
 import '../../features/admin/app_releases/app_releases_page.dart' show AppReleasesPage, kAppReleasesFeatureKey;
 
 class AppNavigator {
@@ -104,6 +105,9 @@ class AppNavigator {
   /// app_releases (super admins only, D-143: [targetId] = the release → its page, else App versions)
   ///
   /// org_invitations (a push / notification for a phone invitation; no org_id, I am not a member yet) → My organizations with the invitations card.
+  ///
+  /// parent_grades (D-350, a parent's notice that a child's result is out): the child's report with its grades; the
+  /// notice does not say which child, so a parent of several picks one (a `student_id` in [data] is used if a server sends it).
   ///
   /// exam_notice (D-247; also exam_appeal · exam_result): [data] is the push / notification target (`exam_id`, `attempt_id`,
   /// `kind` …), else [targetId] is the exam.
@@ -185,6 +189,12 @@ class AppNavigator {
       case 'exam_results':
         if (!await _deferred('exam_notice', exam_notice.loadLibrary, () => exam_notice.openExamNotice(nav, exam_notice.ExamNotice.parse({...data, if (data['kind'] == null && kind != null) 'kind': kind, if (data['exam_id'] == null && data['data'] == null) 'exam_id': targetId, if (data['org_id'] == null) 'org_id': orgId}, module: module),
             teacher: const ['teacher', 'org-admin', 'org-staff', 'admin', 'super-admin'].contains(ctx.read<MyAuthProvider>().currentUser?.role)))) {
+          await nav.pushNamed('/notifications');
+        }
+        return;
+      case 'parent_grades': // "a new result for your child" (D-350): that child's grades, for a parent only
+        if (ctx.read<MyAuthProvider>().currentUser?.role != 'parent' ||
+            !await _deferred('parent_grades_link', parent_grades_link.loadLibrary, () => parent_grades_link.openParentGradesLink(nav, ctx, data))) {
           await nav.pushNamed('/notifications');
         }
         return;
