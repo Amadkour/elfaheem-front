@@ -1,0 +1,233 @@
+// The wizard's one exam on the server. `ensure` makes the draft the first time it is needed and afterwards brings that
+// same draft up to date, so going Back and changing an answer never makes a second one. Every part remembers what it
+// last sent and sends only a difference, and a failure leaves the record exact, so calling it again finishes the job.
+//
+// `PUT /exams/{id}` replaces `settings`, and the identifier step writes `settings.print_identifiers` through the setup
+// route, so an update always merges into what the server holds.
+library;
+
+import 'dart:async' show unawaited;
+import 'dart:convert';
+
+import 'package:flutter_education_app/core/api_client.dart';
+
+import '../../../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
+import '../../exam_authoring.dart';
+import '../../exam_engine_api.dart' show EngineResult, ExamEngineApi, engineCall;
+import '../../exam_quick.dart';
+import '../../exam_versions.dart' show ExamVersionsApi, versionBody, versionsErrorText;
+import '../../paper/exam_setup.dart' show ExamSetupApi, ObjectiveQuestion, setupErrorText;
+import 'exam_create_logic.dart';
+
+class _Placed {
+  _Placed(this.fingerprint, this.questionId, this.placementId);
+  final String fingerprint;
+  final int questionId, placementId;
+}
+
+/// What the server holds beyond the questions this wizard placed (a Google Forms import).
+typedef ImportedCount = ({int questions, double points, int notBubble});
+
+class ExamCreateSync {
+  ExamCreateSync({ExamAuthoringApi? api, ExamSetupApi? setup, ExamVersionsApi? versions, Future<EngineResult> Function(int)? deleter})
+      : api = api ?? ExamAuthoringApi(),
+        _setupApi = setup ?? ExamSetupApi(),
+        _versionsApi = versions ?? ExamVersionsApi(),
+        _deleter = deleter;
+
+  final ExamAuthoringApi api;
+  final ExamSetupApi _setupApi;
+  final ExamVersionsApi _versionsApi;
+  final Future<EngineResult> Function(int)? _deleter;
+
+  int? examId;
+  int? _sectionId;
+  bool published = false;
+  final List<_Placed> _placed = [];
+  String? _examSent, _sectionSent, _setupSent, _fileSent;
+  int _versionsMade = 0;
+  bool _markersSet = false;
+
+  /// The draft exists and holds [p]: returns the error to show, or null.
+  Future<String?> ensure(ExamCreatePlan p) async {
+    final q = p.exam;
+    q.mode ??= QuickMode.online;
+    if (q.orgId == null && q.courseId != null) q.orgId = (await api.resolveScope(q.courseId!)).orgId;
+    return await _exam(p) ?? await _section(q) ?? await _questions(p) ?? await _file(q) ?? await _setup(p);
+  }
+
+  Future<String?> _exam(ExamCreatePlan p) async {
+    final body = p.exam.toExamDraft().toBody();
+    final planned = {...asMap(body['settings']), if (p.isPaper) 'paper_plan': p.paperPlanJson};
+    body['settings'] = planned;
+    final sent = jsonEncode(body);
+    if (sent == _examSent) return null;
+    if (examId == null) {
+      final r = await api.createExam(body);
+      if (!r.ok) return authoringError(r);
+      examId = asInt(r.map['id']);
+    } else {
+      final held = await api.exam(examId!);
+      if (!held.ok) return authoringError(held);
+      body['settings'] = {...asMap(held.map['settings']), ...planned};
+      final r = await api.updateExam(examId!, body);
+      if (!r.ok) return authoringError(r);
+    }
+    _examSent = sent;
+    return null;
+  }
+
+  Future<String?> _section(QuickExam q) async {
+    final body = q.toSection().toBody();
+    final sent = jsonEncode(body);
+    if (sent == _sectionSent && _sectionId != null) return null;
+    final EngineResult r;
+    if (_sectionId == null) {
+      r = await api.addSection(examId!, body);
+      if (r.ok) _sectionId = asInt(r.map['id']);
+    } else {
+      r = await api.updateSection(examId!, _sectionId!, body);
+    }
+    if (!r.ok) return authoringError(r);
+    _sectionSent = sent;
+    return null;
+  }
+
+  /// Keeps the questions that did not change, replaces those that did, then puts them in the teacher's order.
+  Future<String?> _questions(ExamCreatePlan p) async {
+    final q = p.exam;
+    final drafts = q.questionDrafts();
+    final prints = [for (final d in drafts) _fingerprint(d, q)];
+    final spare = List<_Placed>.of(_placed);
+    final kept = <_Placed?>[
+      for (final f in prints)
+        () {
+          final i = spare.indexWhere((x) => x.fingerprint == f);
+          return i < 0 ? null : spare.removeAt(i);
+        }(),
+    ];
+    for (final old in spare) {
+      final r = await api.unplace(examId!, old.placementId);
+      if (!r.ok) return authoringError(r);
+      _placed.remove(old);
+      unawaited(api.archiveQuestion(old.questionId));   // only ever a question this wizard wrote a moment ago
+    }
+    for (var i = 0; i < drafts.length; i++) {
+      if (kept[i] != null) continue;
+      final d = drafts[i];
+      final created = await api.createQuestion(d.toCreate(orgId: q.orgId, courseId: q.courseId));
+      if (!created.ok) return authoringError(created);
+      final placed = await api.place(examId!, _sectionId!, questionId: asInt(created.map['id']), points: d.points);
+      if (!placed.ok) return authoringError(placed);
+      kept[i] = _Placed(prints[i], asInt(created.map['id']), asInt(placed.map['placement_id']));
+      _placed.add(kept[i]!);
+    }
+    final want = [for (final x in kept) x!.placementId];
+    final have = [for (final x in _placed) x.placementId];
+    // imported questions are in the same section: the server wants the whole set, and the wizard does not own them
+    if (want.length > 1 && p.importedQuestions == 0 && jsonEncode(want) != jsonEncode(have)) {
+      final r = await api.reorderQuestions(examId!, _sectionId!, want);
+      if (!r.ok) return authoringError(r);
+    }
+    _placed
+      ..clear()
+      ..addAll([for (final x in kept) x!]);
+    return null;
+  }
+
+  String _fingerprint(QuestionDraft d, QuickExam q) => jsonEncode([d.toCreate(orgId: q.orgId, courseId: q.courseId), d.points]);
+
+  Future<String?> _file(QuickExam q) async {
+    final key = q.isFile && q.hasFile ? '${q.fileName}:${q.fileBytes?.length ?? q.filePath}' : null;
+    if (key == _fileSent) return null;
+    final r = key == null
+        ? await api.removePaperFile(examId!)
+        : await api.uploadPaperFile(examId!, fileName: q.fileName!, bytes: q.fileBytes, path: q.filePath);
+    if (!r.ok) return authoringError(r);
+    _fileSent = key;
+    return null;
+  }
+
+  Future<String?> _setup(ExamCreatePlan p) async {
+    final body = p.setupBody;
+    if (body == null) return null;
+    final sent = jsonEncode(body);
+    if (sent == _setupSent) return null;
+    final r = await _setupApi.putSetup(examId!, body);
+    if (!r.ok) return setupErrorText(r);
+    _setupSent = sent;
+    _markersSet = false;
+    return null;
+  }
+
+  /// Everything, then the printed versions and their marks, then Publish. Safe to call again after a failure.
+  Future<String?> finish(ExamCreatePlan p) async {
+    final e = await ensure(p);
+    if (e != null) return e;
+    if (p.isPaper) {
+      final v = await _versions(p);
+      if (v != null) return v;
+    }
+    if (published) return null;
+    final r = await api.lifecycle(examId!, ExamAction.publish);
+    if (!r.ok) return authoringError(r);
+    published = true;
+    return null;
+  }
+
+  Future<String?> _versions(ExamCreatePlan p) async {
+    final n = p.effectiveVersions;
+    if (n <= 1 && _versionsMade <= 1) return null;
+    if (n <= 1 && _markersSet) {
+      final off = await _setupApi.putSetup(examId!, {'form_markers': const <String>[]});
+      if (!off.ok) return setupErrorText(off);
+      _markersSet = false;
+    }
+    final made = await _versionsApi.generate(
+        examId!, versionBody(count: n, shuffleQuestions: p.shuffleQuestions && !p.isBubble, shuffleOptions: p.shuffleOptions));
+    if (!made.ok) return versionsErrorText(made);
+    _versionsMade = n;
+    if (n > 1) {
+      final on = await _setupApi.putSetup(examId!, {'form_markers': kVersionMarkers});
+      if (!on.ok) return setupErrorText(on);
+      _markersSet = true;
+    }
+    return null;
+  }
+
+  /// What the server holds that this wizard did not place (read back after a Google Forms import).
+  Future<ImportedCount?> imported() async {
+    final id = examId;
+    if (id == null) return null;
+    final r = await api.exam(id);
+    if (!r.ok) return null;
+    final mine = {for (final x in _placed) x.placementId};
+    var n = 0, notBubble = 0;
+    var pts = 0.0;
+    for (final s in asMapList(r.map['sections'])) {
+      for (final x in asMapList(s['questions'])) {
+        if (mine.contains(asInt(x['placement_id']))) continue;
+        n++;
+        pts += x['points'] is num ? (x['points'] as num).toDouble() : 0;
+        if (!ObjectiveQuestion.types.contains('${x['type']}')) notBubble++;
+      }
+    }
+    return (questions: n, points: pts, notBubble: notBubble);
+  }
+
+  /// Removes the draft and the questions written for it.
+  Future<String?> discard() async {
+    final id = examId;
+    if (id == null) return null;
+    final r = await (_deleter?.call(id) ?? engineCall(() => ApiClient().delete('${ExamEngineApi.base}/exams/$id')));
+    if (!r.ok) return r.message.isEmpty ? t('تعذّر حذف المسودة', 'Could not delete the draft') : authoringError(r);
+    for (final x in _placed) {
+      unawaited(api.archiveQuestion(x.questionId));
+    }
+    _placed.clear();
+    examId = null;
+    _sectionId = null;
+    _examSent = _sectionSent = _setupSent = _fileSent = null;
+    return null;
+  }
+}
