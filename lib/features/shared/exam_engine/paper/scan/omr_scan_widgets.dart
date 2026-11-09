@@ -57,7 +57,11 @@ class ScannerOverlay extends StatefulWidget {
     this.progress = 0,
     this.scanning = true,
     this.icon,
+    this.checks = const [],
   });
+
+  /// The small readiness chips inside the guide (edges · light · sharp · steady); empty = none drawn.
+  final List<OmrGuideCheck> checks;
 
   /// The server's sentence ("Move closer.", "Too dark, move to better light.") or the screen's own state line;
   /// empty = no message (a result card speaks instead).
@@ -142,6 +146,13 @@ class _ScannerOverlayState extends State<ScannerOverlay> with SingleTickerProvid
             ),
           ),
         ),
+        if (widget.checks.isNotEmpty && guide.height >= 160)
+          Positioned(
+            left: guide.left + AppSpace.xxs,
+            width: guide.width - AppSpace.xs,
+            top: guide.bottom - AppTouch.min,
+            child: IgnorePointer(child: _GuideChecks(checks: widget.checks)),
+          ),
         if (guide != Rect.zero && widget.message.isNotEmpty)
           Positioned(
             left: AppSpace.md,
@@ -180,6 +191,37 @@ class _ScannerOverlayState extends State<ScannerOverlay> with SingleTickerProvid
           ),
       ]);
     });
+  }
+}
+
+/// One readiness chip inside the guide. [ok] null: not known yet (drawn quietly).
+class OmrGuideCheck {
+  const OmrGuideCheck(this.label, this.icon, this.ok);
+  final String label;
+  final IconData icon;
+  final bool? ok;
+}
+
+class _GuideChecks extends StatelessWidget {
+  const _GuideChecks({required this.checks});
+  final List<OmrGuideCheck> checks;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Wrap(alignment: WrapAlignment.center, spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
+      for (final k in checks)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 3),
+          decoration: BoxDecoration(color: c.heroShade.withValues(alpha: .72), borderRadius: BorderRadius.circular(AppRadius.hero)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(k.ok == null ? k.icon : (k.ok! ? Icons.check_circle_rounded : Icons.error_outline_rounded),
+                size: AppIconSize.xs, color: k.ok == null ? c.onHeroMuted : (k.ok! ? c.success : c.warning)),
+            const SizedBox(width: AppSpace.xxs),
+            Text(k.label, maxLines: 1, style: appText(11.5, w: FontWeight.w600, c: c.onHero)),
+          ]),
+        ),
+    ]);
   }
 }
 
@@ -298,7 +340,17 @@ class ScannerTopBar extends StatelessWidget {
     this.onCount,
     this.torchOn = false,
     this.onTorch,
+    this.torchSuggested = false,
+    this.showEachOn,
+    this.onShowEach,
   });
+
+  /// It is too dark and the torch would help: the button stands out.
+  final bool torchSuggested;
+
+  /// "Show each paper after the shot"; null [onShowEach]: not offered.
+  final bool? showEachOn;
+  final VoidCallback? onShowEach;
 
   final String title;
   final VoidCallback onClose;
@@ -325,6 +377,7 @@ class ScannerTopBar extends StatelessWidget {
         if (countLabel != null) ...[
           const SizedBox(width: AppSpace.xs),
           Flexible(
+            flex: 2,
             child: Material(
               color: c.heroShade.withValues(alpha: .7),
               borderRadius: BorderRadius.circular(AppRadius.hero),
@@ -348,7 +401,20 @@ class ScannerTopBar extends StatelessWidget {
         ],
         if (onTorch != null) ...[
           const SizedBox(width: AppSpace.xs),
-          _CamButton(icon: torchOn ? Icons.flash_on_rounded : Icons.flash_off_rounded, label: t('الفلاش', 'Torch'), onPressed: onTorch, active: torchOn),
+          _CamButton(
+              icon: torchOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
+              label: torchSuggested ? t('الإضاءة ضعيفة: شغّل الفلاش', 'Low light: turn on the torch') : t('الفلاش', 'Torch'),
+              onPressed: onTorch,
+              active: torchOn || torchSuggested),
+        ],
+        if (onShowEach != null) ...[
+          const SizedBox(width: AppSpace.xs),
+          _CamButton(
+              icon: showEachOn == true ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+              label: showEachOn == true
+                  ? t('عرض كل ورقة بعد تصويرها: مفعّل', 'Show each paper after the shot: on')
+                  : t('عرض كل ورقة بعد تصويرها: متوقف', 'Show each paper after the shot: off'),
+              onPressed: onShowEach),
         ],
       ]),
     );
@@ -365,7 +431,13 @@ class ScannerControls extends StatelessWidget {
     this.onSwitch,
     this.autoOn = true,
     this.onAuto,
+    this.zoomLabel,
+    this.onZoom,
   });
+
+  /// "1×" and the step to the next zoom; null: this camera has no zoom.
+  final String? zoomLabel;
+  final VoidCallback? onZoom;
 
   /// The manual shutter (always there: auto-capture is a help, not the only way).
   final VoidCallback? onShutter;
@@ -400,21 +472,50 @@ class ScannerControls extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.md),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        if (onAuto != null)
+        if (onAuto != null || onZoom != null)
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpace.sm),
-            child: Material(
-              color: c.heroShade.withValues(alpha: .7),
-              borderRadius: BorderRadius.circular(AppRadius.hero),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Flexible(child: Text(t('التقاط تلقائي', 'Auto-capture'), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w600, c: c.onHero))),
-                  const SizedBox(width: AppSpace.xs),
-                  AppSwitch(value: autoOn, onChanged: onAuto),
-                ]),
-              ),
-            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              if (onAuto != null)
+                Flexible(
+                  child: Material(
+                    color: c.heroShade.withValues(alpha: .7),
+                    borderRadius: BorderRadius.circular(AppRadius.hero),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Flexible(child: Text(t('التقاط تلقائي', 'Auto-capture'), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w600, c: c.onHero))),
+                        const SizedBox(width: AppSpace.xs),
+                        AppSwitch(value: autoOn, onChanged: onAuto),
+                      ]),
+                    ),
+                  ),
+                ),
+              if (onZoom != null) ...[
+                if (onAuto != null) const SizedBox(width: AppSpace.xs),
+                Tooltip(
+                  message: t('تكبير', 'Zoom'),
+                  child: Semantics(
+                    button: true,
+                    label: t('تكبير ${zoomLabel ?? ''}', 'Zoom ${zoomLabel ?? ''}'),
+                    child: Material(
+                      key: const ValueKey('omr.zoom'),
+                      color: c.heroShade.withValues(alpha: .7),
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: onZoom,
+                        child: SizedBox(
+                          width: AppTouch.min,
+                          height: AppTouch.min,
+                          child: Center(child: Text(zoomLabel ?? '', maxLines: 1, textDirection: TextDirection.ltr, style: appText(13.5, w: FontWeight.w800, c: c.onHero))),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ]),
           ),
         Row(children: [
           Expanded(

@@ -3,6 +3,9 @@
 // (canvas.toBlob — every browser, Safari included). The torch is the track's `torch` constraint where the browser
 // offers it (Chrome on Android); switching re-opens the stream with the other facingMode.
 // Needs a secure context (https or localhost): elsewhere navigator.mediaDevices is missing → `unsupported`.
+// Exam Hub (F4): asks for 2560 × 1440 as `ideal` (a wish: a browser gives what the camera has and never refuses it), and
+// where the track offers them: continuous focus and zoom (`getCapabilities`). Frames are measured on the canvas before
+// they are encoded (omr_camera.dart [OmrFrameRules]).
 library;
 
 import 'dart:async';
@@ -20,7 +23,7 @@ OmrCamera createPlatformCamera() => _WebCamera();
 
 int _seq = 0;
 
-class _WebCamera implements OmrCamera {
+class _WebCamera implements OmrCamera, OmrFineCamera {
   _WebCamera() : _viewType = 'nb-omr-camera-${_seq++}' {
     _video
       ..autoplay = true
@@ -44,6 +47,9 @@ class _WebCamera implements OmrCamera {
   bool _torch = false;
   bool _canTorch = false;
   bool _canSwitch = true;
+  bool _canZoom = false;
+  double _zoom = 1;
+  double _zoomMin = 1, _zoomMax = 1;
 
   web.MediaStreamTrack? get _track {
     final s = _stream;
@@ -62,8 +68,8 @@ class _WebCamera implements OmrCamera {
             audio: false.toJS,
             video: {
               'facingMode': {'ideal': front ? 'user' : 'environment'},
-              'width': {'ideal': 1920},
-              'height': {'ideal': 1080},
+              'width': {'ideal': kOmrVideoRungs.first.$1},
+              'height': {'ideal': kOmrVideoRungs.first.$2},
             }.jsify()!,
           ))
           .toDart;
@@ -84,11 +90,25 @@ class _WebCamera implements OmrCamera {
     await _waitForSize();
     _torch = false;
     _canTorch = false;
+    _canZoom = false;
+    _zoom = 1;
     final t = _track;
     if (t != null) {
       try {
         final caps = t.getCapabilities() as JSObject;
         _canTorch = caps.has('torch') && caps['torch'].dartify() == true;
+        if (caps.has('zoom')) {
+          final z = caps['zoom'].dartify();
+          if (z is Map && z['max'] is num && (z['max'] as num) > 1) {
+            _zoomMin = (z['min'] as num?)?.toDouble() ?? 1;
+            _zoomMax = (z['max'] as num).toDouble();
+            _canZoom = true;
+          }
+        }
+        if (caps.has('focusMode')) {
+          final modes = caps['focusMode'].dartify();
+          if (modes is List && modes.contains('continuous')) await _advanced({'focusMode': 'continuous'});
+        }
       } catch (_) {}
     }
     try {
@@ -116,7 +136,27 @@ class _WebCamera implements OmrCamera {
   @override
   Widget preview() => HtmlElementView(viewType: _viewType);
 
-  Future<Uint8List?> _grab(int maxSide, double quality) async {
+  Future<void> _advanced(Map<String, Object> c) async {
+    final t = _track;
+    if (t == null) return;
+    await t
+        .applyConstraints({
+          'advanced': [c],
+        }.jsify()! as web.MediaTrackConstraints)
+        .toDart;
+  }
+
+  /// The numbers of the frame just drawn on [ctx] ([w] × [h]); null when the browser refuses to read it back.
+  OmrFrameStats? _measure(web.CanvasRenderingContext2D ctx, int w, int h) {
+    try {
+      final px = ctx.getImageData(0, 0, w, h).data.toDart;
+      return omrAnalyzeRgba(Uint8List.view(px.buffer, px.offsetInBytes, px.lengthInBytes), w, h);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Uint8List?> _grab(int maxSide, double quality, {void Function(web.CanvasRenderingContext2D, int, int, void Function() stop)? inspect}) async {
     final vw = _video.videoWidth, vh = _video.videoHeight;
     if (vw == 0 || vh == 0) return null;
     final long = vw > vh ? vw : vh;
@@ -128,6 +168,9 @@ class _WebCamera implements OmrCamera {
     final ctx = canvas.getContext('2d') as web.CanvasRenderingContext2D?;
     if (ctx == null) return null;
     ctx.drawImage(_video, 0, 0, w, h);
+    var stopped = false;
+    inspect?.call(ctx, w, h, () => stopped = true);
+    if (stopped) return Uint8List(0);
     final done = Completer<web.Blob?>();
     canvas.toBlob(((web.Blob? b) => done.complete(b)).toJS, 'image/jpeg', quality.toJS);
     final blob = await done.future;
@@ -145,6 +188,51 @@ class _WebCamera implements OmrCamera {
     final s = long > maxSide ? maxSide / long : 1.0;
     return OmrFrame(b, (vw * s).round(), (vh * s).round());
   }
+
+  @override
+  Future<OmrFrame?> frameMeasured({int maxSide = 640, int quality = 70, OmrFrameRules? rules, OmrFrameStats? prev, bool sheetSeen = false}) async {
+    OmrFrameStats? stats;
+    OmrLocalIssue? issue;
+    final b = await _grab(maxSide, quality / 100, inspect: (ctx, w, h, stop) {
+      stats = _measure(ctx, w, h);
+      final st = stats;
+      issue = st == null ? null : rules?.issueOf(st, prev: prev, sheetSeen: sheetSeen);
+      if (issue != null) stop();
+    });
+    if (b == null) return null;
+    final vw = _video.videoWidth, vh = _video.videoHeight;
+    final long = vw > vh ? vw : vh;
+    final s = long > maxSide ? maxSide / long : 1.0;
+    return OmrFrame(b, (vw * s).round(), (vh * s).round(), stats: stats, issue: issue);
+  }
+
+  @override
+  bool get canZoom => _canZoom;
+
+  @override
+  double get zoom => _zoom;
+
+  @override
+  Future<void> setZoom(double level) async {
+    if (!_canZoom) return;
+    final v = level.clamp(_zoomMin, _zoomMax).toDouble();
+    try {
+      await _advanced({'zoom': v});
+      _zoom = level;
+    } catch (_) {
+      _canZoom = false;
+    }
+  }
+
+  /// Browsers expose no reliable focus point: continuous focus is asked for in open().
+  @override
+  bool get canFocus => false;
+
+  @override
+  Future<void> focusAt(Offset point) async {}
+
+  @override
+  String? get resolutionLabel => _video.videoWidth == 0 ? null : '${_video.videoWidth} × ${_video.videoHeight}';
 
   @override
   Future<Uint8List?> photo() => _grab(1 << 14, 0.92);
