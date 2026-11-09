@@ -278,7 +278,7 @@ class SheetsOptionsView extends StatelessWidget {
         AppField(controller: idsController, label: t('أرقام طلاب إضافية', 'More student ids'), hint: '12, 15, 40', ltr: true, maxLines: 2),
         const SizedBox(height: 10),
       ],
-      AppField(controller: blankController, label: t('عدد الأوراق الفارغة', 'Blank sheets'), keyboard: TextInputType.number, ltr: true),
+      Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: blankController, label: t('عدد الأوراق الفارغة', 'Blank sheets'), min: 0)),
       const SizedBox(height: 12),
       AppPrimaryButton(label: t('تنزيل PDF', 'Download PDF'), icon: Icons.download_rounded, onPressed: busy ? null : onSubmit, busy: busy),
       const SizedBox(height: 8),

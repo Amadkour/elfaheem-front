@@ -356,7 +356,7 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
   @override
   Widget build(BuildContext context) {
     return BasePage(
-      appBar: AppBar(title: Text(t('تجهيز الاختبار وتسليمه', 'Print and deliver'), maxLines: 1, overflow: TextOverflow.ellipsis)),
+      appBar: AppHeader(title: t('تجهيز الاختبار وتسليمه', 'Print and deliver')),
       child: _body(context),
     );
   }

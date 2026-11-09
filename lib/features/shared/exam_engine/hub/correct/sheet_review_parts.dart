@@ -546,7 +546,7 @@ class SheetReviewView extends StatelessWidget {
     if (notBubble) {
       return Scaffold(
         backgroundColor: c.background,
-        appBar: AppBar(title: Text(t('الورقة', 'Paper'))),
+        appBar: AppHeader(title: t('الورقة', 'Paper')),
         body: Padding(
           padding: const EdgeInsets.all(AppSpace.lg),
           child: AppEmpty(

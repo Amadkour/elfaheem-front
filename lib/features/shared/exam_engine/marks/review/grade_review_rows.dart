@@ -367,16 +367,9 @@ class _GradeFixMarkSheetState extends State<GradeFixMarkSheet> {
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Text('${t('سؤال', 'Q')} ${widget.part.questionNo ?? widget.part.fieldId} · ${t('الحد الأقصى', 'max')} ${markNumberText(widget.part.max)}', style: appText(13.5, c: c.textMedium)),
       const SizedBox(height: AppSpace.sm),
-      AppField(
-        controller: _ctl,
-        label: t('الدرجة الصحيحة', 'The right mark'),
-        keyboard: const TextInputType.numberWithOptions(decimal: true),
-        ltr: true,
-        onSubmitted: (_) => _save(),
-        onChanged: (_) {
+      Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: _ctl, label: t('الدرجة الصحيحة', 'The right mark'), min: 0, max: widget.part.max, step: 0.5, decimals: 2, onSubmitted: (_) => _save(), onChanged: (_) {
           if (_error != null) setState(() => _error = null);
-        },
-      ),
+        })),
       if (_error != null) Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text(_error!, key: const ValueKey('gr.fix.error'), style: appText(12.5, c: c.danger))),
       const SizedBox(height: AppSpace.md),
       AppPrimaryButton(label: t('حفظ وإعادة الحساب', 'Save and recompute'), icon: Icons.check_rounded, onPressed: _save),

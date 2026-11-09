@@ -207,7 +207,7 @@ class _DataLabSheetState extends State<_DataLabSheet> {
           const SizedBox(height: AppSpace.sm),
           AppField(controller: _label, label: t('اسم العمود', 'Column name')),
           const SizedBox(height: AppSpace.xs),
-          AppField(controller: _max, label: t('الدرجة العظمى', 'Full mark'), keyboard: const TextInputType.numberWithOptions(decimal: true), ltr: true),
+          Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: _max, label: t('الدرجة العظمى', 'Full mark'), min: 0, decimals: 2)),
         ],
       ] else
         ResultLabDiff(preview: p),

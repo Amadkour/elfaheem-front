@@ -185,7 +185,7 @@ class _ExamCorrectionScreenState extends State<ExamCorrectionScreen> {
     final c = context.colors;
     final batches = _batches;
     return BasePage(
-      appBar: AppBar(title: Text(t('تصحيح الاختبار', 'Correct the exam'))),
+      appBar: AppHeader(title: t('تصحيح الاختبار', 'Correct the exam')),
       background: c.background,
       child: _error != null
           ? Center(
@@ -305,7 +305,7 @@ class CorrectionStartView extends StatelessWidget {
         padding: EdgeInsets.fromLTRB(gutter, AppSpace.md, gutter, AppSpace.xl),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1120),
+            constraints: BoxConstraints(maxWidth: AppWidth.content.max),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               head,
               if (wide)

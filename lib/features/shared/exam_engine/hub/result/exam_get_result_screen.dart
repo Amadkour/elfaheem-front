@@ -267,8 +267,8 @@ class _ExamGetResultScreenState extends State<ExamGetResultScreen> {
     final b = _board;
     return BasePage(
       key: const ValueKey('exam.hub.result'),
-      appBar: AppBar(
-        title: Text(widget.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      appBar: AppHeader(
+        title: widget.title,
         actions: [AppRefreshAction(onRefresh: () => _load())],
       ),
       child: LayoutBuilder(builder: (context, box) {
@@ -279,7 +279,7 @@ class _ExamGetResultScreenState extends State<ExamGetResultScreen> {
           child: ListView(padding: EdgeInsets.fromLTRB(pad, AppSpace.md, pad, AppSpace.xl), children: [
             Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1240),
+                constraints: BoxConstraints(maxWidth: AppWidth.wide.max),
                 child: AnimatedSwitcher(
                   duration: AppMotion.of(context).base,
                   child: b == null

@@ -226,16 +226,10 @@ class _RevisionSheetMappingState extends State<RevisionSheetMapping> {
           ),
         ),
       AppSpace.gapXs,
-      AppField(
-        controller: _max,
-        label: t('الدرجة العظمى في الملف (اتركها فارغة لتساوي درجة الورقة)', "The sheet's full mark (leave empty to use the paper's total)"),
-        keyboard: const TextInputType.numberWithOptions(decimal: true),
-        ltr: true,
-        onChanged: (v) {
-          final x = double.tryParse(v.trim().replaceAll('٫', '.').replaceAll(',', '.'));
+      Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: _max, label: t('الدرجة العظمى في الملف (اتركها فارغة لتساوي درجة الورقة)', "The sheet's full mark (leave empty to use the paper's total)"), min: 0, decimals: 2, onChanged: (v) {
+          final x = v?.toDouble();
           widget.onMax(x != null && x > 0 ? x : null);
-        },
-      ),
+        })),
     ]);
   }
 }

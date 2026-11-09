@@ -408,7 +408,7 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
     if (_issue != null) {
       return Scaffold(
         backgroundColor: c.background,
-        appBar: AppBar(title: Text(title), actions: [
+        appBar: AppHeader(title: title, actions: [
           TextButton(onPressed: _finish, child: Text(widget.finishLabel ?? t('النتائج', 'Results'))),
         ]),
         body: Column(children: [

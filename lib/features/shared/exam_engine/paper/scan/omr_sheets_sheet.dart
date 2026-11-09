@@ -219,7 +219,7 @@ class OmrSheetsOptionsView extends StatelessWidget {
       ],
       const SizedBox(height: AppSpace.md),
       if (!named)
-        AppField(controller: copiesController, label: t('عدد النسخ لكل نموذج', 'Copies of each model'), keyboard: TextInputType.number, ltr: true)
+        Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: copiesController, label: t('عدد النسخ لكل نموذج', 'Copies of each model'), min: 1))
       else ...[
         students,
         const SizedBox(height: AppSpace.xs),

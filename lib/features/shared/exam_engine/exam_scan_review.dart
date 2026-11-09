@@ -31,6 +31,7 @@ import 'paper/scan/omr_scan.dart' show omrDetailOf;
 import 'paper/scan/omr_scan_section.dart';
 import 'paper/scan/scan_sources.dart';
 import 'paper/scan/scan_upload_view.dart';
+import 'exam_page_width.dart';
 
 /// The legacy page image, or — for a bubble-sheet page — the engine's answer that it must be opened in the OMR page
 /// view (409 `omr_page_use_review`; the JSON body of a bytes request arrives as bytes).
@@ -237,7 +238,7 @@ class _ScanPageScreenState extends State<ScanPageScreen> {
     ]);
     return BasePage(
       key: const ValueKey('exam.scan'),
-      appBar: AppBar(title: Text(t('الورقة الممسوحة', 'Scanned page'))),
+      appBar: AppHeader(title: t('الورقة الممسوحة', 'Scanned page')),
       child: wide
           ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(16), child: image)),
@@ -425,10 +426,10 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
     final pages = _pages;
     return BasePage(
       key: const ValueKey('exam.scans'),
-      appBar: AppBar(title: Text(t('الأوراق الممسوحة', 'Scanned pages'))),
+      appBar: AppHeader(title: t('الأوراق الممسوحة', 'Scanned pages')),
       child: AppRefresh(
         onRefresh: _load,
-        child: ListView(padding: const EdgeInsets.all(16), children: [
+        child: ExamPageWidth(width: AppWidth.content, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, 16, side, 16), children: [
           if (_omr) ...[
             ParentComponent(featureKey: kExamAutoCorrectKey, child: OmrScanSection(examId: widget.examId, examTitle: widget.examTitle, ownSheet: _setup?.template?.ownSheet ?? false, onChanged: _load)),
             const SizedBox(height: 8),
@@ -475,7 +476,7 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
                     color: p.unmatched || p.status == 'review' ? c.warning : (p.status == 'rejected' ? c.danger : c.textMedium)),
               ]),
             ),
-        ]),
+        ])),
       ),
     );
   }

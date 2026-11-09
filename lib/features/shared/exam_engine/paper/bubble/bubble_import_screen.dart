@@ -266,7 +266,7 @@ class _BubbleImportScreenState extends State<BubbleImportScreen> {
           padding: EdgeInsets.all(wide ? AppSpace.lg : AppSpace.md),
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1240),
+              constraints: BoxConstraints(maxWidth: AppWidth.wide.max),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 Text(t('راجع ما اكتشفناه', 'Check what was detected'), style: AppType.headline(context)),
                 const SizedBox(height: AppSpace.xxs),
@@ -330,7 +330,7 @@ class _BubbleImportScreenState extends State<BubbleImportScreen> {
           padding: EdgeInsets.all(wide ? AppSpace.lg : AppSpace.md),
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1000),
+              constraints: BoxConstraints(maxWidth: AppWidth.content.max),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 progress,
                 const SizedBox(height: AppSpace.md),

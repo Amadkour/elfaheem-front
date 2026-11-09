@@ -24,6 +24,7 @@ import 'paper/paper_exam_entry.dart' show PaperExamEntry;
 import 'paper/review/omr_review.dart' show omrLtr;
 import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'exam_page_width.dart';
 
 /// A student's answer as one line of text (choice ids, text, file name …).
 String answerSummary(Map<String, dynamic> answer) {
@@ -207,10 +208,10 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> {
     final isPublished = v != null && v.exam.resultsPolicy == 'when_published' && v.exam.resultsPublishedAt != null;
     return BasePage(
       key: const ValueKey('exam.results'),
-      appBar: AppBar(title: Text(widget.examTitle, maxLines: 1, overflow: TextOverflow.ellipsis)),
+      appBar: AppHeader(title: widget.examTitle),
       child: AppRefresh(
         onRefresh: _load,
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
+        child: ExamPageWidth(width: AppWidth.wide, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, 12, side, 24), children: [
           if (_error != null) AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!),
           PaperExamEntry(examId: widget.examId, examTitle: widget.examTitle, onChanged: _load, margin: const EdgeInsets.only(bottom: 12)),
           if (isPublished) Padding(padding: const EdgeInsets.only(bottom: 12), child: PublishedBanner(outcome: _outcome, publishedAt: v.exam.resultsPublishedAt, busy: _busy, onUnpublish: _unpublishResults)),
@@ -258,9 +259,16 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> {
                   icon: Icons.hourglass_empty_rounded,
                   title: t('لا توجد نتائج بعد', 'No results yet'),
                   message: _offline ? t('أدخل درجات الطلاب بعد الامتحان', 'Enter the students\' marks after the exam') : t('تظهر هنا عندما يسلّم الطلاب', 'They show up here as students submit')),
-            for (final r in rows) Padding(padding: const EdgeInsets.only(bottom: 8), child: ResultRowCard(row: r, onTap: () => _open(r))),
+            // two or three columns on a wide window: a result is a short card, it should not stretch across the page
+            LayoutBuilder(builder: (context, box) {
+              final cols = (box.maxWidth / 440).floor().clamp(1, 3);
+              final w = (box.maxWidth - AppSpace.xs * (cols - 1)) / cols;
+              return Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+                for (final r in rows) SizedBox(width: w, child: ResultRowCard(row: r, onTap: () => _open(r))),
+              ]);
+            }),
           ],
-        ]),
+        ])),
       ),
     );
   }
