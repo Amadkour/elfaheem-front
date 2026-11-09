@@ -776,13 +776,16 @@ class SetupProgress extends StatelessWidget {
 
 /// A selectable card: icon, title, one line, a check when chosen.
 class SetupChoiceTile extends StatelessWidget {
-  const SetupChoiceTile({super.key, required this.icon, required this.title, this.subtitle, required this.selected, required this.onTap, this.trailing});
+  const SetupChoiceTile({super.key, required this.icon, required this.title, this.subtitle, required this.selected, required this.onTap, this.trailing, this.badge});
   final IconData icon;
   final String title;
   final String? subtitle;
   final bool selected;
   final VoidCallback? onTap;
   final Widget? trailing;
+
+  /// A short status over the title ("Recommended"); it shrinks to the column rather than pushing the title out.
+  final Widget? badge;
 
   @override
   Widget build(BuildContext context) {
@@ -811,6 +814,10 @@ class SetupChoiceTile extends StatelessWidget {
                 const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    if (badge != null) ...[
+                      FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.centerStart, child: badge!),
+                      const SizedBox(height: AppSpace.xxs),
+                    ],
                     Text(title, style: appText(15, w: FontWeight.w800, c: c.textDark)),
                     if (subtitle != null) ...[
                       const SizedBox(height: 2),

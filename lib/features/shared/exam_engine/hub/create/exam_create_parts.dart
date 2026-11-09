@@ -1,0 +1,944 @@
+// The "New exam" wizard's presentational parts, plain values only (the layout harness pumps them): the shell (a summary
+// rail on a wide window, a compact progress header on a phone) and the body of each step that is not an existing kit.
+library;
+
+import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+
+import '../../../../admin/admin_common.dart' show t;
+import '../../exam_all.dart' show NewExamPlace;
+import '../../exam_authoring.dart' show fmtPoints;
+import '../../paper/exam_setup.dart' show OmrTemplateItem, versionsBubbleText;
+import '../../paper/exam_setup_wizard.dart' show SetupChoiceTile, SetupProgress;
+import 'exam_create_logic.dart';
+
+/// From this width the summary is a rail beside the step.
+const createRailFrom = 960.0;
+const _bodyMax = 720.0;
+const _railWidth = 300.0;
+
+enum CreateItemState { done, current, todo }
+
+/// One step in the summary: what it is, what was chosen, and how to go back to it.
+class CreateSummaryItem {
+  const CreateSummaryItem({required this.label, this.value, required this.state, this.onTap, this.locked = false});
+  final String label;
+  final String? value;
+  final CreateItemState state;
+
+  /// null = cannot be opened yet.
+  final VoidCallback? onTap;
+
+  /// Fixed since the draft exists (the place of an exam).
+  final bool locked;
+}
+
+class ExamCreateShell extends StatelessWidget {
+  const ExamCreateShell({
+    super.key,
+    required this.stepKey,
+    required this.items,
+    required this.index,
+    required this.stepLabel,
+    required this.title,
+    required this.body,
+    required this.primaryLabel,
+    required this.onPrimary,
+    required this.backLabel,
+    required this.onBack,
+    required this.onClose,
+    this.subtitle,
+    this.error,
+    this.hint,
+    this.busy = false,
+    this.primaryIcon,
+    this.estimate = const [],
+  });
+
+  /// Changes with the step: the page fades and starts at the top.
+  final Object stepKey;
+  final List<CreateSummaryItem> items;
+  final int index;
+  final String stepLabel;
+  final String title;
+  final String? subtitle;
+  final String? error;
+
+  /// Why the primary action is not available yet.
+  final String? hint;
+  final Widget body;
+  final String primaryLabel;
+  final IconData? primaryIcon;
+  final VoidCallback? onPrimary;
+  final bool busy;
+  final String backLabel;
+  final VoidCallback? onBack;
+  final VoidCallback onClose;
+  final List<(String, String)> estimate;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return ColoredBox(
+      color: c.background,
+      child: LayoutBuilder(builder: (context, box) {
+        final wide = box.maxWidth >= createRailFrom;
+        final main = _main(context, wide);
+        if (wide) {
+          return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            SizedBox(width: _railWidth, child: _Rail(items: items, estimate: estimate, onClose: onClose)),
+            Expanded(child: main),
+          ]);
+        }
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _PhoneHeader(items: items, index: index, stepLabel: stepLabel, onClose: onClose),
+          Expanded(child: main),
+        ]);
+      }),
+    );
+  }
+
+  Widget _main(BuildContext context, bool wide) {
+    final c = context.colors;
+    final motion = AppMotion.of(context);
+    Widget column(Widget child) => Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: _bodyMax), child: child));
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Expanded(
+        child: AnimatedSwitcher(
+          duration: motion.base,
+          switchInCurve: AppMotion.curve,
+          layoutBuilder: (current, previous) => Stack(alignment: Alignment.topCenter, children: [...previous, ?current]),
+          child: SingleChildScrollView(
+            key: ValueKey(stepKey),
+            padding: EdgeInsets.symmetric(horizontal: wide ? AppSpace.xl : AppSpace.md, vertical: wide ? AppSpace.xl : AppSpace.md),
+            child: column(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Text(title, style: appText(wide ? 24 : 20, w: FontWeight.w800, c: c.textDark, h: 1.3)),
+              if (subtitle != null) ...[
+                const SizedBox(height: AppSpace.xxs),
+                Text(subtitle!, style: appText(13.5, c: c.textMedium, h: 1.45)),
+              ],
+              SizedBox(height: wide ? AppSpace.lg : AppSpace.md),
+              if (error != null) ...[
+                AppBanner(key: const ValueKey('create.error'), icon: Icons.error_outline_rounded, color: c.danger, text: error!),
+                const SizedBox(height: AppSpace.md),
+              ],
+              body,
+            ])),
+          ),
+        ),
+      ),
+      DecoratedBox(
+        decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider, width: AppBorder.hairline))),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: wide ? AppSpace.xl : AppSpace.md, vertical: AppSpace.sm),
+            child: column(Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              if (hint != null) ...[
+                Text(hint!, key: const ValueKey('create.hint'), textAlign: TextAlign.center, style: appText(12.5, c: c.textMedium)),
+                const SizedBox(height: AppSpace.xs),
+              ],
+              Row(children: [
+                TextButton(
+                  key: const ValueKey('create.back'),
+                  onPressed: onBack,
+                  style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
+                  child: Text(backLabel),
+                ),
+                const SizedBox(width: AppSpace.sm),
+                Expanded(
+                  child: KeyedSubtree(
+                    key: const ValueKey('create.primary'),
+                    child: AppPrimaryButton(label: primaryLabel, icon: primaryIcon, busy: busy, onPressed: onPrimary),
+                  ),
+                ),
+              ]),
+            ])),
+          ),
+        ),
+      ),
+    ]);
+  }
+}
+
+class _Rail extends StatelessWidget {
+  const _Rail({required this.items, required this.estimate, required this.onClose});
+  final List<CreateSummaryItem> items;
+  final List<(String, String)> estimate;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return DecoratedBox(
+      decoration: BoxDecoration(color: c.cardBg, border: BorderDirectional(end: BorderSide(color: c.divider, width: AppBorder.hairline))),
+      child: SafeArea(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const AppAccentStrip(),
+          Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.lg, AppSpace.md, AppSpace.xs, AppSpace.sm),
+            child: Row(children: [
+              Expanded(child: Text(t('اختبار جديد', 'New exam'), style: appText(18, w: FontWeight.w800, c: c.textDark))),
+              IconButton(key: const ValueKey('create.close'), tooltip: t('إغلاق', 'Close'), onPressed: onClose, icon: Icon(Icons.close_rounded, color: c.textMedium)),
+            ]),
+          ),
+          Expanded(
+            child: ListView(padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm), children: [
+              for (var i = 0; i < items.length; i++) _RailRow(item: items[i], number: i + 1, last: i == items.length - 1),
+            ]),
+          ),
+          if (estimate.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(AppSpace.md),
+              child: Container(
+                key: const ValueKey('create.estimate'),
+                padding: const EdgeInsets.all(AppSpace.md),
+                decoration: BoxDecoration(color: c.primary.withValues(alpha: .06), borderRadius: BorderRadius.circular(AppRadius.card)),
+                child: Column(children: [
+                  for (var i = 0; i < estimate.length; i++) ...[
+                    if (i > 0) const SizedBox(height: AppSpace.xs),
+                    Row(children: [
+                      Expanded(child: Text(estimate[i].$1, style: appText(12.5, c: c.textMedium))),
+                      Text(estimate[i].$2, style: appText(14.5, w: FontWeight.w800, c: c.textDark)),
+                    ]),
+                  ],
+                ]),
+              ),
+            ),
+        ]),
+      ),
+    );
+  }
+}
+
+class _RailRow extends StatelessWidget {
+  const _RailRow({required this.item, required this.number, required this.last});
+  final CreateSummaryItem item;
+  final int number;
+  final bool last;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final current = item.state == CreateItemState.current;
+    final done = item.state == CreateItemState.done;
+    final dot = Container(
+      width: 26,
+      height: 26,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: done || current ? c.primary : Colors.transparent,
+        border: done || current ? null : Border.all(color: c.divider, width: AppBorder.strong),
+      ),
+      child: done
+          ? Icon(Icons.check_rounded, size: 16, color: c.onHero)
+          : Text('$number', style: appText(12, w: FontWeight.w800, c: current ? c.onHero : c.textMedium)),
+    );
+    return Semantics(
+      button: item.onTap != null,
+      selected: current,
+      child: InkWell(
+        onTap: item.onTap,
+        borderRadius: BorderRadius.circular(AppRadius.chip),
+        child: IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            SizedBox(
+              width: 42,
+              child: Column(children: [
+                const SizedBox(height: AppSpace.xs),
+                dot,
+                if (!last) Expanded(child: Center(child: Container(width: AppBorder.strong, color: done ? c.primary.withValues(alpha: .5) : c.divider))),
+              ]),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsetsDirectional.only(top: AppSpace.xs + 2, bottom: AppSpace.md, end: AppSpace.xs),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(item.label, style: appText(13.5, w: current ? FontWeight.w800 : FontWeight.w600, c: item.state == CreateItemState.todo ? c.textMedium : c.textDark)),
+                  if (item.value != null) ...[
+                    const SizedBox(height: 2),
+                    Text(item.value!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium, h: 1.35)),
+                  ],
+                ]),
+              ),
+            ),
+            if (item.locked)
+              Padding(padding: const EdgeInsets.only(top: AppSpace.sm), child: Icon(Icons.lock_outline_rounded, size: 15, color: c.textLight))
+            else if (item.onTap != null && done)
+              Padding(padding: const EdgeInsets.only(top: AppSpace.sm), child: Icon(Icons.edit_outlined, size: 15, color: c.textLight)),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _PhoneHeader extends StatelessWidget {
+  const _PhoneHeader({required this.items, required this.index, required this.stepLabel, required this.onClose});
+  final List<CreateSummaryItem> items;
+  final int index;
+  final String stepLabel;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final chips = [for (final x in items) if (x.value != null && x.state == CreateItemState.done) x];
+    return DecoratedBox(
+      decoration: BoxDecoration(color: c.cardBg, border: Border(bottom: BorderSide(color: c.divider, width: AppBorder.hairline))),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.only(top: AppSpace.xs, bottom: AppSpace.sm),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, 0, AppSpace.xxs, 0),
+              child: Row(children: [
+                Expanded(child: SetupProgress(index: index, total: items.length, label: stepLabel)),
+                IconButton(key: const ValueKey('create.close'), tooltip: t('إغلاق', 'Close'), onPressed: onClose, icon: Icon(Icons.close_rounded, color: c.textMedium)),
+              ]),
+            ),
+            if (chips.isNotEmpty) ...[
+              const SizedBox(height: AppSpace.xxs),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+                child: Row(children: [
+                  for (var i = 0; i < chips.length; i++) ...[
+                    if (i > 0) const SizedBox(width: AppSpace.xs),
+                    _SummaryChip(item: chips[i]),
+                  ],
+                ]),
+              ),
+            ],
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryChip extends StatelessWidget {
+  const _SummaryChip({required this.item});
+  final CreateSummaryItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Material(
+      color: c.primary.withValues(alpha: .08),
+      borderRadius: BorderRadius.circular(AppRadius.chip),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.chip),
+        onTap: item.onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 200, minHeight: 34),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Flexible(child: Text(item.value!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w700, c: c.primary))),
+              if (item.onTap != null) ...[
+                const SizedBox(width: AppSpace.xxs),
+                Icon(item.locked ? Icons.lock_outline_rounded : Icons.edit_outlined, size: 13, color: c.primary),
+              ],
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "Recommended", beside a choice.
+class CreateRecommended extends StatelessWidget {
+  const CreateRecommended({super.key});
+
+  @override
+  Widget build(BuildContext context) => AppBadgePill(t('موصى به', 'Recommended'), color: context.colors.success);
+}
+
+/// A choice that cannot be taken now, with the reason in its own line.
+class _Muted extends StatelessWidget {
+  const _Muted({required this.off, required this.child});
+  final bool off;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Opacity(opacity: off ? .55 : 1, child: child);
+}
+
+const _gap = SizedBox(height: AppSpace.sm);
+
+// ═══════════════════════════════════════ where ═════════════════════════════════════════════════════════════════
+
+class CreateWhereBody extends StatefulWidget {
+  const CreateWhereBody({super.key, required this.places, required this.selected, required this.onPick, this.orgNames = const {}});
+
+  /// null = loading.
+  final List<NewExamPlace>? places;
+  final NewExamPlace? selected;
+  final ValueChanged<NewExamPlace> onPick;
+  final Map<int, String> orgNames;
+
+  @override
+  State<CreateWhereBody> createState() => _CreateWhereBodyState();
+}
+
+class _CreateWhereBodyState extends State<CreateWhereBody> {
+  String _q = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final all = widget.places;
+    if (all == null) return const AppListSkeleton(items: 4, padding: EdgeInsets.zero);
+    final q = _q.trim().toLowerCase();
+    final list = q.isEmpty ? all : [for (final p in all) if (p.name.toLowerCase().contains(q) || p.courseId == null) p];
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (all.length > 8) ...[
+        AppSearchField(hint: t('ابحث عن مقرر', 'Search for a course'), onChanged: (v) => setState(() => _q = v)),
+        _gap,
+      ],
+      for (final p in list) ...[
+        SetupChoiceTile(
+          key: ValueKey('create.place.${p.courseId}.${p.orgId}'),
+          icon: p.courseId != null ? Icons.menu_book_rounded : (p.orgId != null ? Icons.apartment_rounded : Icons.person_outline_rounded),
+          title: p.name,
+          subtitle: _sub(p),
+          selected: widget.selected == p,
+          onTap: () => widget.onPick(p),
+        ),
+        _gap,
+      ],
+    ]);
+  }
+
+  String? _sub(NewExamPlace p) {
+    if (p.courseId != null) return p.orgId == null ? null : widget.orgNames[p.orgId];
+    if (p.orgId != null) return t('اختبار على مستوى المؤسسة، بدون مقرر', 'An organization exam, without a course');
+    return t('لا طلاب مرتبطون به، ولا أسئلة تلقائية', 'No students linked to it, and no automatic questions');
+  }
+}
+
+// ═══════════════════════════════════════ type ══════════════════════════════════════════════════════════════════
+
+class CreateTypeBody extends StatelessWidget {
+  const CreateTypeBody({super.key, required this.value, required this.onPick});
+  final CreateType? value;
+  final ValueChanged<CreateType> onPick;
+
+  @override
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        SetupChoiceTile(
+          key: const ValueKey('create.type.normal'),
+          icon: Icons.quiz_outlined,
+          title: t('اختبار عادي', 'Normal exam'),
+          subtitle: t('كل أنواع الأسئلة، على التطبيق أو على الورق', 'Every question type, in the app or on paper'),
+          selected: value == CreateType.normal,
+          badge: const CreateRecommended(),
+          onTap: () => onPick(CreateType.normal),
+        ),
+        _gap,
+        SetupChoiceTile(
+          key: const ValueKey('create.type.bubble'),
+          icon: Icons.grid_on_rounded,
+          title: t('ورقة تظليل', 'Bubble sheet'),
+          subtitle: t('يظلل الطالب إجابته على الورق وتُصحَّح الأوراق بالمسح. اختيار من متعدد وصح / خطأ فقط',
+              'Students shade their answers on paper and the sheets are marked by scanning. Multiple choice and true / false only'),
+          selected: value == CreateType.bubble,
+          onTap: () => onPick(CreateType.bubble),
+        ),
+      ]);
+}
+
+// ═══════════════════════════════════════ sheet notes ═══════════════════════════════════════════════════════════
+
+/// The teacher's own sheet types waiting for approval: visible, not choosable, and the way forward said.
+class CreatePendingTemplates extends StatelessWidget {
+  const CreatePendingTemplates({super.key, required this.items, this.justSent = false});
+  final List<OmrTemplateItem> items;
+
+  /// The sheet the teacher has just taught went for approval.
+  final bool justSent;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppBanner(
+        key: const ValueKey('create.pending'),
+        icon: Icons.hourglass_top_rounded,
+        color: c.warning,
+        text: justSent
+            ? t('أُرسلت ورقتك للاعتماد ولا يمكن استخدامها قبل موافقة مشرف المنصة. أكمل الآن بورقة أخرى، وستجدها هنا عند اعتمادها.',
+                'Your sheet went for approval and cannot be used until the platform admin accepts it. Continue with another one now; it will be here once approved.')
+            : t('هذه الأوراق بانتظار موافقة مشرف المنصة. اختر ورقة معتمدة لتكمل الآن.',
+                'These sheets are waiting for the platform admin to approve them. Choose an approved one to continue now.'),
+      ),
+      const SizedBox(height: AppSpace.xs),
+      for (final x in items) ...[
+        Opacity(
+          opacity: .6,
+          child: SetupChoiceTile(
+            icon: Icons.grid_on_rounded,
+            title: x.title,
+            subtitle: x.subtitle,
+            selected: false,
+            badge: AppBadgePill(t('بانتظار الاعتماد', 'Waiting'), color: c.warning),
+            onTap: null,
+          ),
+        ),
+        const SizedBox(height: AppSpace.xs),
+      ],
+    ]);
+  }
+}
+
+/// A sheet NextBrain does not print, in plain words.
+class CreateOwnSheetNote extends StatelessWidget {
+  const CreateOwnSheetNote({super.key});
+
+  @override
+  Widget build(BuildContext context) => AppBanner(
+        key: const ValueKey('create.ownsheet'),
+        icon: Icons.info_outline_rounded,
+        text: t('هذه ورقتك أنت: لا تطبعها NextBrain. اطبعها كما اعتدت، ثم صوّر الأوراق أو ارفعها للتصحيح. تُطبع ورقة الأسئلة وحدها من هنا، بنموذج واحد.',
+            'This is your own sheet: NextBrain does not print it. Print it the way you normally do, then photograph or upload the sheets for marking. Only the question paper prints from here, in one version.'),
+      );
+}
+
+// ═══════════════════════════════════════ questions ═════════════════════════════════════════════════════════════
+
+enum CreateQuestionWay { automatic, manual, file, forms }
+
+/// How the questions get here. The two main ways first, the others quieter below.
+class CreateQuestionWayBody extends StatelessWidget {
+  const CreateQuestionWayBody({super.key, required this.onPick, required this.hasCourse, required this.canGenerate, required this.canImportForms, required this.bubble});
+  final ValueChanged<CreateQuestionWay> onPick;
+  final bool hasCourse;
+
+  /// The generator's switch is on (regardless of the course).
+  final bool canGenerate;
+  final bool canImportForms;
+  final bool bubble;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (canGenerate) ...[
+        _Muted(
+          off: !hasCourse,
+          child: SetupChoiceTile(
+            key: const ValueKey('create.way.automatic'),
+            icon: Icons.auto_awesome_rounded,
+            title: t('تلقائي', 'Automatic'),
+            subtitle: hasCourse
+                ? t('أسئلة من مستندات المقرر، تراجعها وتعدّلها قبل النشر', 'Questions written from the course documents; you review and edit them')
+                : t('يحتاج إلى مقرر يقرأ منه الأسئلة. هذا الاختبار بلا مقرر، فاكتب الأسئلة بنفسك أو ارجع واختر مقررًا',
+                    'Needs a course to read from. This exam has none: write the questions yourself, or go back and choose a course'),
+            selected: false,
+            badge: hasCourse ? const CreateRecommended() : null,
+            onTap: hasCourse ? () => onPick(CreateQuestionWay.automatic) : null,
+          ),
+        ),
+        _gap,
+      ],
+      SetupChoiceTile(
+        key: const ValueKey('create.way.manual'),
+        icon: Icons.edit_note_rounded,
+        title: t('يدوي', 'Manual'),
+        subtitle: bubble
+            ? t('اكتب أسئلة اختيار من متعدد وصح / خطأ', 'Write multiple choice and true / false questions')
+            : t('اكتب الأسئلة بنفسك: اختيار من متعدد، صح / خطأ، أكمل، مطابقة وغيرها', 'Write them yourself: multiple choice, true / false, complete, matching and more'),
+        selected: false,
+        badge: hasCourse && canGenerate ? null : const CreateRecommended(),
+        onTap: () => onPick(CreateQuestionWay.manual),
+      ),
+      const SizedBox(height: AppSpace.md),
+      Text(t('طرق أخرى', 'Other ways'), style: appText(12.5, w: FontWeight.w700, c: c.textMedium)),
+      const SizedBox(height: AppSpace.xs),
+      _Muted(
+        off: bubble,
+        child: SetupChoiceTile(
+          key: const ValueKey('create.way.file'),
+          icon: Icons.upload_file_rounded,
+          title: t('ارفع ملف امتحان جاهز', 'Upload a ready exam file'),
+          subtitle: bubble
+              ? t('ورقة التظليل تحتاج إلى أسئلة بإجابات صحيحة، والملف لا يوفرها', 'A bubble sheet needs questions with right answers, which a file does not give')
+              : t('PDF أو Word أو صورة', 'A PDF, Word file or photo'),
+          selected: false,
+          onTap: bubble ? null : () => onPick(CreateQuestionWay.file),
+        ),
+      ),
+      if (canImportForms) ...[
+        _gap,
+        SetupChoiceTile(
+          key: const ValueKey('create.way.forms'),
+          icon: Icons.dynamic_form_outlined,
+          title: t('استيراد من Google Forms', 'Import from Google Forms'),
+          subtitle: t('نموذج من حسابك يصبح أسئلة هذا الاختبار', 'A form from your account becomes this exam\'s questions'),
+          selected: false,
+          onTap: () => onPick(CreateQuestionWay.forms),
+        ),
+      ],
+    ]);
+  }
+}
+
+/// What a bubble sheet changes for the questions, said once before the first one is written.
+class CreateBubbleRules extends StatelessWidget {
+  const CreateBubbleRules({super.key});
+
+  @override
+  Widget build(BuildContext context) => AppBanner(
+        key: const ValueKey('create.bubble.rules'),
+        icon: Icons.grid_on_rounded,
+        text: t('في ورقة التظليل: اختيار من متعدد وصح / خطأ فقط، ولكل سؤال إجابة صحيحة. يبقى ترتيب الأسئلة كما هو، ويمكن خلط الاختيارات.',
+            'On a bubble sheet: multiple choice and true / false only, each with a right answer. The question order stays fixed; the choices can be shuffled.'),
+      );
+}
+
+/// A bubble exam's questions that will not work, with the fix on the banner.
+class CreateBubbleProblems extends StatelessWidget {
+  const CreateBubbleProblems({super.key, required this.check, this.onRemove, this.onNormal, this.onEditor});
+  final BubbleCheck check;
+
+  /// Takes the questions a bubble cannot hold out of the exam.
+  final VoidCallback? onRemove;
+
+  /// Makes this a normal exam instead.
+  final VoidCallback? onNormal;
+
+  /// Opens the full editor (for imported questions).
+  final VoidCallback? onEditor;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final lines = <Widget>[];
+    Widget row(String text, {List<Widget> actions = const []}) => Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.xs),
+          // the fixes sit under the banner: its own action slot is a single short button in a row
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            AppBanner(icon: Icons.warning_amber_rounded, color: c.danger, text: text),
+            if (actions.isNotEmpty) Wrap(alignment: WrapAlignment.end, children: actions),
+          ]),
+        );
+    final n = check.notHeld.length;
+    if (n > 0) {
+      lines.add(row(
+        t('لا يمكن لورقة التظليل حمل ${questionsCountText(n)}: مقالي أو إجابة قصيرة أو أكمل أو مطابقة.',
+            'A bubble sheet cannot hold ${questionsCountText(n)}: essay, short answer, complete or matching.'),
+        actions: [
+          if (onRemove != null) TextButton(key: const ValueKey('create.bubble.remove'), onPressed: onRemove, child: Text(t('احذفها', 'Remove them'))),
+          if (onNormal != null) TextButton(key: const ValueKey('create.bubble.normal'), onPressed: onNormal, child: Text(t('اجعله اختبارًا عاديًا', 'Make it a normal exam'))),
+        ],
+      ));
+    }
+    if (check.importedNotHeld > 0) {
+      lines.add(row(
+        t('${questionsCountText(check.importedNotHeld)} من المستورد لا تناسب ورقة التظليل. احذفها من المحرر الكامل.',
+            '${questionsCountText(check.importedNotHeld)} of the imported ones do not fit a bubble sheet. Remove them in the full editor.'),
+        actions: [
+          if (onEditor != null) TextButton(onPressed: onEditor, child: Text(t('المحرر الكامل', 'Full editor'))),
+          if (onNormal != null) TextButton(onPressed: onNormal, child: Text(t('اجعله اختبارًا عاديًا', 'Make it a normal exam'))),
+        ],
+      ));
+    }
+    if (check.over > 0) {
+      lines.add(row(t('الورقة تتسع لـ${questionsCountText(check.capacity ?? 0)} فقط. احذف ${questionsCountText(check.over)} أو اختر ورقة أكبر.',
+          'This sheet holds only ${questionsCountText(check.capacity ?? 0)}. Remove ${questionsCountText(check.over)} or choose a larger sheet.')));
+    }
+    if (check.choicesOver > 0) {
+      lines.add(row(t('${questionsCountText(check.choicesOver)} بها اختيارات أكثر من فقاعات الورقة.', '${questionsCountText(check.choicesOver)} have more choices than the sheet has bubbles.')));
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: lines);
+  }
+}
+
+/// Questions already on the server from an import.
+class CreateImportedCard extends StatelessWidget {
+  const CreateImportedCard({super.key, required this.count, required this.points, this.onEditor});
+  final int count;
+  final double points;
+  final VoidCallback? onEditor;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return AppBanner(
+      key: const ValueKey('create.imported'),
+      icon: Icons.task_alt_rounded,
+      color: c.success,
+      text: t('استوردنا ${questionsCountText(count)} بمجموع ${fmtPoints(points)} درجة.', 'Imported ${questionsCountText(count)}, ${fmtPoints(points)} marks in all.'),
+      action: onEditor == null ? null : TextButton(onPressed: onEditor, child: Text(t('راجعها', 'Review'))),
+    );
+  }
+}
+
+// ═══════════════════════════════════════ publish ═══════════════════════════════════════════════════════════════
+
+class CreatePublishBody extends StatelessWidget {
+  const CreatePublishBody({
+    super.key,
+    required this.plan,
+    required this.onKind,
+    required this.onPaperPlan,
+    required this.onVersions,
+    required this.onShuffleQuestions,
+    required this.onShuffleOptions,
+    required this.electronicDetail,
+  });
+  final ExamCreatePlan plan;
+  final ValueChanged<PublishKind> onKind;
+  final ValueChanged<PaperPlan> onPaperPlan;
+  final ValueChanged<int> onVersions;
+  final ValueChanged<bool> onShuffleQuestions, onShuffleOptions;
+
+  /// The timing and the rules (the quick builder's panel).
+  final Widget electronicDetail;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final p = plan;
+    final noStudents = !p.hasCourse && p.exam.orgId == null;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (p.isBubble)
+        AppBanner(icon: Icons.print_outlined, text: t('ورقة التظليل تُطبع، فهذا الاختبار ورقي.', 'A bubble sheet is printed, so this exam is on paper.'))
+      else ...[
+        SetupChoiceTile(
+          key: const ValueKey('create.publish.electronic'),
+          icon: Icons.devices_rounded,
+          title: t('إلكتروني', 'Electronic'),
+          subtitle: t('يجيب الطلاب على التطبيق، والتصحيح تلقائي', 'Students answer in the app, marking is automatic'),
+          selected: p.isElectronic,
+          badge: const CreateRecommended(),
+          onTap: () => onKind(PublishKind.electronic),
+        ),
+        _gap,
+        SetupChoiceTile(
+          key: const ValueKey('create.publish.paper'),
+          icon: Icons.print_outlined,
+          title: t('ورقي', 'Paper'),
+          subtitle: t('تطبع الأوراق للقاعة أو ترسلها', 'You print the papers for the room, or send them'),
+          selected: p.isPaper,
+          onTap: () => onKind(PublishKind.paper),
+        ),
+      ],
+      if (p.isElectronic) ...[
+        const SizedBox(height: AppSpace.md),
+        AppBanner(
+          key: const ValueKey('create.audience'),
+          icon: noStudents ? Icons.warning_amber_rounded : Icons.groups_outlined,
+          color: noStudents ? c.warning : null,
+          text: noStudents
+              ? t('هذا الاختبار بلا مقرر ولا مؤسسة، فلن يظهر لأي طالب. اربطه بمقرر من المحرر الكامل، أو اختره ورقيًا.',
+                  'This exam has no course or organization, so no student will see it. Link it to a course in the full editor, or make it a paper exam.')
+              : (p.hasCourse
+                  ? t('يظهر لطلاب «${p.place?.name ?? ''}» عند موعده.', 'Students of "${p.place?.name ?? ''}" see it when it opens.')
+                  : t('يظهر لطلاب المؤسسة عند موعده.', 'The organization\'s students see it when it opens.')),
+        ),
+        const SizedBox(height: AppSpace.sm),
+        electronicDetail,
+      ],
+      if (p.isPaper) ...[
+        const SizedBox(height: AppSpace.lg),
+        Text(t('كيف تُطبع الأوراق؟', 'How is it printed?'), style: appText(15, w: FontWeight.w800, c: c.textDark)),
+        _gap,
+        SetupChoiceTile(
+          key: const ValueKey('create.paper.versions'),
+          icon: Icons.layers_outlined,
+          title: t('نموذج واحد أو عدة نماذج', 'One exam per version'),
+          subtitle: t('كل نموذج يُطبع بعدد الحاضرين', 'Each version is printed for those attending'),
+          selected: p.paperPlan == PaperPlan.versions,
+          badge: const CreateRecommended(),
+          onTap: () => onPaperPlan(PaperPlan.versions),
+        ),
+        if (p.paperPlan == PaperPlan.versions) ...[
+          const SizedBox(height: AppSpace.xs),
+          _VersionsPanel(plan: p, onVersions: onVersions, onShuffleQuestions: onShuffleQuestions, onShuffleOptions: onShuffleOptions),
+        ],
+        _gap,
+        _Muted(
+          off: !p.personalAllowed,
+          child: SetupChoiceTile(
+            key: const ValueKey('create.paper.personal'),
+            icon: Icons.badge_outlined,
+            title: t('ورقة شخصية لكل طالب', 'A personal version for each student'),
+            subtitle: p.personalAllowed
+                ? t('تُطبع باسم الطالب وبياناته فتُطابق ورقته تلقائيًا', 'Printed with the student\'s name and details, so each paper matches by itself')
+                : _personalWhyNot(p),
+            selected: p.paperPlan == PaperPlan.personal,
+            onTap: p.personalAllowed ? () => onPaperPlan(PaperPlan.personal) : null,
+          ),
+        ),
+      ],
+    ]);
+  }
+
+  String _personalWhyNot(ExamCreatePlan p) {
+    if (!p.hasCourse) return t('يحتاج إلى مقرر لنعرف طلابه', 'Needs a course, so we know its students');
+    if (p.exam.isFile) return t('الملف المرفوع يُطبع كما هو', 'An uploaded file prints as it is');
+    return t('ورقتك الخاصة لا تطبعها NextBrain', 'NextBrain does not print your own sheet');
+  }
+}
+
+class _VersionsPanel extends StatelessWidget {
+  const _VersionsPanel({required this.plan, required this.onVersions, required this.onShuffleQuestions, required this.onShuffleOptions});
+  final ExamCreatePlan plan;
+  final ValueChanged<int> onVersions;
+  final ValueChanged<bool> onShuffleQuestions, onShuffleOptions;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final p = plan;
+    if (!p.versionsAllowed) {
+      return AppBanner(
+        icon: Icons.info_outline_rounded,
+        text: p.exam.isFile
+            ? t('الملف المرفوع يُطبع كما هو، بنموذج واحد.', 'An uploaded file prints as it is, in one version.')
+            : t('ورقتك الخاصة لا تحمل رمزًا يميز النموذج، فهو نموذج واحد.', 'Your own sheet carries no version mark, so it is one version.'),
+      );
+    }
+    final n = p.versions;
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpace.md),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Expanded(child: Text(t('كم نموذجًا؟', 'How many versions?'), style: appText(14, w: FontWeight.w700, c: c.textDark))),
+          IconButton(key: const ValueKey('create.versions.less'), tooltip: t('أقل', 'Fewer'), onPressed: n > 1 ? () => onVersions(n - 1) : null, icon: const Icon(Icons.remove_circle_outline_rounded)),
+          SizedBox(width: 32, child: Text('$n', key: const ValueKey('create.versions.count'), textAlign: TextAlign.center, style: appText(18, w: FontWeight.w800, c: c.textDark))),
+          IconButton(key: const ValueKey('create.versions.more'), tooltip: t('أكثر', 'More'), onPressed: n < 10 ? () => onVersions(n + 1) : null, icon: const Icon(Icons.add_circle_outline_rounded)),
+        ]),
+        if (n > 1) ...[
+          AppSwitchTile(
+            title: t('اخلط ترتيب الأسئلة', 'Shuffle the questions'),
+            subtitle: p.isBubble ? versionsBubbleText : null,
+            value: p.shuffleQuestions && !p.isBubble,
+            dense: true,
+            onChanged: p.isBubble ? null : onShuffleQuestions,
+          ),
+          AppSwitchTile(title: t('اخلط ترتيب الاختيارات', 'Shuffle the choices'), value: p.shuffleOptions, dense: true, onChanged: onShuffleOptions),
+          if (versionsWouldMatch(p))
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpace.xs),
+              child: AppBanner(
+                key: const ValueKey('create.versions.same'),
+                icon: Icons.warning_amber_rounded,
+                color: c.warning,
+                text: t('ستخرج النماذج متطابقة: لا شيء يمكن خلطه. فعّل الخلط أو اكتفِ بنموذج واحد.',
+                    'The versions would come out the same: nothing can be shuffled. Turn shuffling on, or keep one version.'),
+              ),
+            ),
+        ],
+      ]),
+    );
+  }
+}
+
+// ═══════════════════════════════════════ leaving, done ═════════════════════════════════════════════════════════
+
+enum CreateLeave { keep, delete, save, discard }
+
+/// Leaving before the end: nothing is lost by surprise.
+class CreateLeaveBody extends StatelessWidget {
+  const CreateLeaveBody({super.key, required this.hasDraft, required this.canSave, required this.onPick, required this.onStay});
+  final bool hasDraft, canSave;
+  final ValueChanged<CreateLeave> onPick;
+  final VoidCallback onStay;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppBanner(
+        icon: hasDraft ? Icons.bookmark_added_outlined : Icons.info_outline_rounded,
+        text: hasDraft
+            ? t('اختبارك محفوظ كمسودة في صفحة الاختبارات، ويمكنك إكماله من هناك.', 'Your exam is saved as a draft on the Exams page, and you can finish it from there.')
+            : t('ما كتبته لم يُحفظ بعد.', 'What you wrote is not saved yet.'),
+      ),
+      const SizedBox(height: AppSpace.md),
+      if (hasDraft)
+        AppPrimaryButton(key: const ValueKey('create.leave.keep'), label: t('احتفظ بالمسودة واخرج', 'Keep the draft and leave'), onPressed: () => onPick(CreateLeave.keep))
+      else if (canSave)
+        AppPrimaryButton(key: const ValueKey('create.leave.save'), label: t('احفظ كمسودة واخرج', 'Save as a draft and leave'), onPressed: () => onPick(CreateLeave.save)),
+      const SizedBox(height: AppSpace.xs),
+      TextButton(key: const ValueKey('create.leave.stay'), onPressed: onStay, child: Text(t('أكمل الاختبار', 'Keep working'))),
+      TextButton(
+        key: ValueKey(hasDraft ? 'create.leave.delete' : 'create.leave.discard'),
+        onPressed: () => onPick(hasDraft ? CreateLeave.delete : CreateLeave.discard),
+        child: Text(hasDraft ? t('احذف المسودة', 'Delete the draft') : t('اخرج دون حفظ', 'Leave without saving'), style: appText(14, w: FontWeight.w600, c: c.danger)),
+      ),
+    ]);
+  }
+}
+
+/// The electronic exam is out: what happened and the next useful things.
+class CreateDoneBody extends StatelessWidget {
+  const CreateDoneBody({super.key, required this.title, required this.place, required this.lines, required this.onDone, required this.onOpen, this.onFollow, this.onShare});
+  final String title;
+  final String? place;
+  final List<(String, String)> lines;
+  final VoidCallback onDone, onOpen;
+  final VoidCallback? onFollow, onShare;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return ColoredBox(
+      color: c.background,
+      child: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpace.lg),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Center(
+                  child: Container(
+                    width: 84,
+                    height: 84,
+                    decoration: BoxDecoration(shape: BoxShape.circle, color: c.success.withValues(alpha: .12)),
+                    child: Icon(Icons.task_alt_rounded, size: 44, color: c.success),
+                  ),
+                ),
+                const SizedBox(height: AppSpace.lg),
+                Text(t('نُشر الاختبار', 'The exam is published'), key: const ValueKey('create.done'), textAlign: TextAlign.center, style: appText(23, w: FontWeight.w800, c: c.textDark)),
+                const SizedBox(height: AppSpace.xxs),
+                Text([title, ?place].join(' · '), textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(14, c: c.textMedium, h: 1.45)),
+                const SizedBox(height: AppSpace.lg),
+                AppCard(
+                  padding: const EdgeInsets.all(AppSpace.md),
+                  child: Column(children: [
+                    for (var i = 0; i < lines.length; i++) ...[
+                      if (i > 0) const SizedBox(height: AppSpace.xs),
+                      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                        Flexible(child: Text(lines[i].$1, style: appText(13, c: c.textMedium))),
+                        const SizedBox(width: AppSpace.sm),
+                        Flexible(child: Text(lines[i].$2, textAlign: TextAlign.end, style: appText(14, w: FontWeight.w700, c: c.textDark))),
+                      ]),
+                    ],
+                  ]),
+                ),
+                const SizedBox(height: AppSpace.lg),
+                AppPrimaryButton(key: const ValueKey('create.done.finish'), label: t('تم', 'Done'), onPressed: onDone),
+                const SizedBox(height: AppSpace.xs),
+                Wrap(alignment: WrapAlignment.center, spacing: AppSpace.xs, children: [
+                  TextButton.icon(key: const ValueKey('create.done.open'), onPressed: onOpen, icon: const Icon(Icons.edit_outlined, size: 18), label: Text(t('افتح الاختبار', 'Open the exam'))),
+                  if (onFollow != null)
+                    TextButton.icon(onPressed: onFollow, icon: const Icon(Icons.leaderboard_rounded, size: 18), label: Text(t('تابع النتائج', 'Follow the results'))),
+                  if (onShare != null)
+                    TextButton.icon(onPressed: onShare, icon: const Icon(Icons.campaign_outlined, size: 18), label: Text(t('أخبر الطلاب', 'Tell the students'))),
+                ]),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
