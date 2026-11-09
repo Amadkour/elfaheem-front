@@ -3655,3 +3655,8 @@ Deliver's preview replays the actual pages of the actual PDF with our own painte
 
 ## D-380 .. D-382 — Certificate fonts (2026-11-09)
 Full text in `../back/docs/DECISIONS.md`. D-380: a font chosen on a certificate field is kept through save, reload, preview and the issued file (legacy keys resolve to their family, an unknown font is refused with its name, never swapped). D-381: the picker `cert_font_picker.dart`, the renderer's catalog (`GET /exports/layout/fonts`) as the only list, a font not bundled is loaded from the server. D-382: Reem Kufi and Aref Ruqaa stay out of the catalog (the PDF renderer cannot join them); a converted design names the replacement.
+
+## D-384 — The certificate template gallery · 2026-11-09 · accepted
+
+The server's template collection (back D-383) opens as a full page, `studio/cert_template_gallery.dart`: real thumbnails per card (four at a time, skeleton, session cache), category filter, Arabic / English toggle, one tap to use. A larger preview offers another colour; by default a template keeps its own colours. A template fills the other language's page too when that page is empty, never overwriting work.
+

@@ -20,18 +20,7 @@ import '../../../admin/admin_common.dart' show t;
 import 'cert_engine_api.dart';
 import 'cert_engine_presets.dart';
 
-// ── starters and ready-made designs ──────────────────────────────────────────────────────────────────────────────
-
-/// What the gallery returned: a starter (a document) or a server template, with the theme colour the person chose.
-class CertGalleryPick {
-  const CertGalleryPick.starter(CertStarter this.starter, this.colorHex) : template = null;
-  const CertGalleryPick.template(CertServerTemplate this.template, this.colorHex) : starter = null;
-  final CertStarter? starter;
-  final CertServerTemplate? template;
-
-  /// "#RRGGBB" — sent as `theme_color` when a template is picked.
-  final String colorHex;
-}
+export 'cert_template_gallery.dart' show CertGalleryPick, showCertGallery;
 
 /// The theme colour as "#RRGGBB" (the legacy wizard's default).
 String certThemeHex(BuildContext context) => layoutHex(context.colors.primary);
@@ -55,126 +44,6 @@ class CertThemeColorField extends StatelessWidget {
           if (c != null) onChanged(layoutHex(c));
         },
       );
-}
-
-/// The gallery: the server's ready-made designs, then the starters. Null when closed without a pick.
-Future<CertGalleryPick?> showCertGallery(BuildContext context, {required List<CertStarter> starters, required List<CertServerTemplate> templates, required String lang}) {
-  final color = certThemeHex(context);
-  return showAppSheet<CertGalleryPick>(
-    context,
-    (ctx) => _GallerySheet(starters: [for (final s in starters) if (s.mode == 'page' || s.mode.isEmpty) s], templates: templates, lang: lang, initialColor: color),
-  );
-}
-
-class _GallerySheet extends StatefulWidget {
-  const _GallerySheet({required this.starters, required this.templates, required this.lang, required this.initialColor});
-  final List<CertStarter> starters;
-  final List<CertServerTemplate> templates;
-  final String lang;
-  final String initialColor;
-
-  @override
-  State<_GallerySheet> createState() => _GallerySheetState();
-}
-
-class _GallerySheetState extends State<_GallerySheet> {
-  late String _color = widget.initialColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final lang = widget.lang;
-    Widget heading(String text) => Padding(
-          padding: const EdgeInsets.only(top: AppSpace.xs, bottom: AppSpace.xs),
-          child: Text(text, style: appText(13.5, w: FontWeight.w800, c: c.textDark)),
-        );
-    return AppSheetContent(
-      title: t('اختر تصميمًا للبدء', 'Pick a design to start from'),
-      children: [
-        if (widget.starters.isEmpty && widget.templates.isEmpty)
-          AppEmpty(icon: Icons.dashboard_customize_outlined, title: t('لا توجد تصاميم جاهزة الآن', 'No ready designs right now'))
-        else ...[
-          Text(
-            t('سيحلّ التصميم المختار محلّ التصميم الحالي لهذه اللغة.', 'The design you pick replaces the current design of this language.'),
-            style: appText(12.5, c: c.textMedium),
-          ),
-          if (widget.templates.isNotEmpty) ...[
-            heading(t('تصاميم جاهزة', 'Ready-made designs')),
-            CertThemeColorField(label: t('لون التصميم', 'Design colour'), hex: _color, onChanged: (h) => setState(() => _color = h)),
-            const SizedBox(height: AppSpace.xs),
-            for (final tp in widget.templates)
-              _GalleryCard(
-                key: ValueKey('cert-template-${tp.key}'),
-                title: tp.name(lang),
-                subtitle: tp.orientation == 'portrait' ? t('طولي', 'Portrait') : t('أفقي', 'Landscape'),
-                preview: tp.preview(lang),
-                landscape: tp.orientation != 'portrait',
-                onTap: () => Navigator.pop(context, CertGalleryPick.template(tp, _color)),
-              ),
-          ],
-          if (widget.starters.isNotEmpty) ...[
-            heading(t('نماذج للبدء', 'Starters')),
-            for (final s in widget.starters)
-              _GalleryCard(
-                key: ValueKey('cert-starter-${s.key}'),
-                title: s.name(lang),
-                subtitle: s.description(lang),
-                landscape: (s.document.designs[lang] ?? (s.document.designs.values.isEmpty ? null : s.document.designs.values.first))?.page.landscape ?? true,
-                onTap: () => Navigator.pop(context, CertGalleryPick.starter(s, _color)),
-              ),
-          ],
-        ],
-      ],
-    );
-  }
-}
-
-class _GalleryCard extends StatelessWidget {
-  const _GalleryCard({super.key, required this.title, required this.subtitle, required this.landscape, required this.onTap, this.preview});
-  final String title, subtitle;
-  final bool landscape;
-  final Uint8List? preview;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpace.xs),
-      child: Material(
-        color: c.cardBg,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: BorderSide(color: c.divider)),
-        child: InkWell(
-          borderRadius: AppRadius.cardAll,
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: AppTouch.min),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpace.sm),
-              child: Row(children: [
-                Container(
-                  width: 72,
-                  height: 56,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(color: c.primary.withValues(alpha: .08), borderRadius: BorderRadius.circular(AppRadius.chip)),
-                  child: preview != null
-                      ? Image.memory(preview!, fit: BoxFit.cover, gaplessPlayback: true, excludeFromSemantics: true, errorBuilder: (_, _, _) => Icon(Icons.crop_landscape_rounded, color: c.primary))
-                      : Icon(landscape ? Icons.crop_landscape_rounded : Icons.crop_portrait_rounded, color: c.primary),
-                ),
-                const SizedBox(width: AppSpace.sm),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w700, c: c.textDark)),
-                    if (subtitle.isNotEmpty) Text(subtitle, maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium)),
-                  ]),
-                ),
-              ]),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 // ── how a language starts ────────────────────────────────────────────────────────────────────────────────────────

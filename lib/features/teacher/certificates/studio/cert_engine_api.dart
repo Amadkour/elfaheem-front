@@ -61,8 +61,14 @@ class CertStarter {
 
 /// One ready-made design of the server gallery (`GET /certificate-designs/templates`): names and small JPEG previews.
 class CertServerTemplate {
-  const CertServerTemplate({required this.key, required this.nameAr, required this.nameEn, required this.orientation, this.previewAr, this.previewEn});
+  const CertServerTemplate({required this.key, required this.nameAr, required this.nameEn, required this.orientation, this.category = 'formal', this.version = '', this.previewAr, this.previewEn});
   final String key, nameAr, nameEn, orientation;
+
+  /// formal | academic | islamic | modern | corporate | kids.
+  final String category;
+
+  /// Changes when the art changes.
+  final String version;
   final Uint8List? previewAr, previewEn;
 
   String name(String lang) => lang == 'ar' ? (nameAr.isEmpty ? nameEn : nameAr) : (nameEn.isEmpty ? nameAr : nameEn);
@@ -84,6 +90,8 @@ class CertServerTemplate {
       nameAr: '${j['name_ar'] ?? ''}',
       nameEn: '${j['name_en'] ?? ''}',
       orientation: j['orientation'] == 'portrait' ? 'portrait' : 'landscape',
+      category: '${j['category'] ?? 'formal'}',
+      version: '${j['version'] ?? ''}',
       previewAr: _img(j['preview_ar']),
       previewEn: _img(j['preview_en']),
     );
@@ -205,13 +213,21 @@ class CertEngineApi {
     ];
   }
 
-  /// The server's template gallery (names + previews, ar / en).
+  /// The server's template gallery (names and categories; each card fetches its own image, [templatePreview]).
   Future<List<CertServerTemplate>> templates() async {
-    final r = await api.get('$_base/templates');
+    final r = await api.get('$_base/templates', queryParams: {'previews': 'false'});
     return [
       if (r is List)
         for (final j in r) ?CertServerTemplate.tryParse(j),
     ];
+  }
+
+  /// One real render of a gallery template (JPEG bytes). [colorHex] previews it in another colour.
+  Future<Uint8List> templatePreview(String key, {required String lang, int width = 720, String? colorHex}) async {
+    final r = _map(await api.get('$_base/templates/$key/preview', queryParams: {'lang': lang, 'width': '$width', 'color': ?colorHex}));
+    final b64 = '${r['image_base64'] ?? ''}';
+    if (b64.isEmpty) throw const ApiException(statusCode: 0, message: 'empty preview');
+    return base64Decode(b64);
   }
 
   /// Template [key] as an engine document (both languages; its backgrounds are uploaded to my own folder, so saving

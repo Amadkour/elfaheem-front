@@ -234,6 +234,7 @@
   "GET /api/v1/categories",
   "GET /api/v1/certificate-designs",
   "GET /api/v1/certificate-designs/templates",
+  "GET /api/v1/certificate-designs/templates/{key}/preview",
   "GET /api/v1/certificate-designs/{design_id:int}",
   "GET /api/v1/certificate-designs/{design_id:int}/assignable-courses",
   "GET /api/v1/certificate-designs/{design_id:int}/document",
