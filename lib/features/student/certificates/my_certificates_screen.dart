@@ -22,6 +22,9 @@ import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
+import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_logic.dart' show kCertVerifyFeature;
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
+import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_page.dart' show openCertVerify;
 
 class MyCertificatesScreen extends StatelessWidget {
   const MyCertificatesScreen({super.key, this.embedded = false});
@@ -84,7 +87,19 @@ class _View extends StatelessWidget {
     );
     if (embedded) return centred;
     return Scaffold(
-      appBar: ScreenAppBar(title: 'my_certificates'.tr), // the app's back chip + title (L4)
+      appBar: ScreenAppBar( // the app's back chip + title (L4)
+        title: 'my_certificates'.tr,
+        actions: [
+          ParentComponent(
+            featureKey: kCertVerifyFeature,
+            child: IconButton(
+              tooltip: 'cv_entry_title'.tr,
+              icon: const Icon(Icons.verified_user_outlined),
+              onPressed: () => openCertVerify(context),
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(child: centred),
     );
   }

@@ -19557,6 +19557,162 @@
     "en": "Revoked on",
     "ar": "تاريخ الإلغاء"
   },
+  "cv_entry_title": {
+    "en": "Verify a certificate",
+    "ar": "تحقّق من شهادة"
+  },
+  "cv_entry_sub": {
+    "en": "Type the number printed on the certificate, or scan its QR code.",
+    "ar": "اكتب الرقم المطبوع على الشهادة، أو امسح رمز QR الموجود عليها."
+  },
+  "cv_number_label": {
+    "en": "Certificate number",
+    "ar": "رقم الشهادة"
+  },
+  "cv_verify": {
+    "en": "Verify",
+    "ar": "تحقّق"
+  },
+  "cv_scan": {
+    "en": "Scan QR code",
+    "ar": "مسح رمز QR"
+  },
+  "cv_scan_title": {
+    "en": "Scan the certificate",
+    "ar": "امسح رمز الشهادة"
+  },
+  "cv_scan_prompt": {
+    "en": "Point the camera at the QR code on the certificate",
+    "ar": "وجّه الكاميرا إلى رمز QR الموجود على الشهادة"
+  },
+  "cv_no_camera": {
+    "en": "To scan a QR code, open this page in the NextBrain app on your phone.",
+    "ar": "لمسح رمز QR، افتح هذه الصفحة في تطبيق NextBrain على هاتفك."
+  },
+  "cv_bad_number": {
+    "en": "This is not a certificate number. It looks like NB-2026-ABC234.",
+    "ar": "هذا ليس رقم شهادة. يبدو الرقم هكذا: NB-2026-ABC234."
+  },
+  "cv_real": {
+    "en": "Real certificate",
+    "ar": "شهادة حقيقية"
+  },
+  "cv_real_valid_sub": {
+    "en": "This certificate is in NextBrain's records and is valid today.",
+    "ar": "هذه الشهادة موجودة في سجلات NextBrain وهي سارية اليوم."
+  },
+  "cv_real_expired_sub": {
+    "en": "This certificate was really issued, but its validity has ended.",
+    "ar": "صدرت هذه الشهادة فعلاً، لكن مدة صلاحيتها انتهت."
+  },
+  "cv_real_revoked": {
+    "en": "Real, but revoked",
+    "ar": "حقيقية لكنها ملغاة"
+  },
+  "cv_real_revoked_sub": {
+    "en": "This certificate was issued and later cancelled by its issuer. It should not be accepted.",
+    "ar": "صدرت هذه الشهادة ثم ألغتها الجهة المُصدرة. لا ينبغي قبولها."
+  },
+  "cv_replaced_sub": {
+    "en": "This certificate was cancelled and a newer one was issued in its place. Ask for the new one.",
+    "ar": "أُلغيت هذه الشهادة وصدرت شهادة أحدث بدلاً منها. اطلب الشهادة الجديدة."
+  },
+  "cv_fake": {
+    "en": "Fake certificate",
+    "ar": "شهادة مزيفة"
+  },
+  "cv_fake_sub_number": {
+    "en": "No certificate with this number is in NextBrain's records. Check that you typed it correctly. If it matches the paper, do not trust this certificate.",
+    "ar": "لا توجد شهادة بهذا الرقم في سجلات NextBrain. تأكد من كتابته بشكل صحيح. وإن كان مطابقاً للورقة فلا تثق بهذه الشهادة."
+  },
+  "cv_fake_sub_link": {
+    "en": "This link is not in NextBrain's records. Do not trust this certificate.",
+    "ar": "هذا الرابط غير موجود في سجلات NextBrain. لا تثق بهذه الشهادة."
+  },
+  "cv_foreign_title": {
+    "en": "Not a NextBrain code",
+    "ar": "ليس رمزاً من NextBrain"
+  },
+  "cv_foreign_sub": {
+    "en": "This code points to {host}, not to NextBrain, and it was not opened. Treat this certificate as fake.",
+    "ar": "يشير هذا الرمز إلى {host} وليس إلى NextBrain، ولم يتم فتحه. اعتبر هذه الشهادة مزيفة."
+  },
+  "cv_foreign_sub_nohost": {
+    "en": "This code is not a NextBrain verification code, and it was not opened. Treat this certificate as fake.",
+    "ar": "هذا الرمز ليس رمز تحقق من NextBrain، ولم يتم فتحه. اعتبر هذه الشهادة مزيفة."
+  },
+  "cv_status_label": {
+    "en": "Status",
+    "ar": "الحالة"
+  },
+  "cv_valid": {
+    "en": "Valid",
+    "ar": "سارية"
+  },
+  "cv_expired": {
+    "en": "Expired",
+    "ar": "منتهية"
+  },
+  "cv_revoked": {
+    "en": "Revoked",
+    "ar": "ملغاة"
+  },
+  "cv_expiry_label": {
+    "en": "Expiry",
+    "ar": "الصلاحية"
+  },
+  "cv_no_expiry": {
+    "en": "Does not expire",
+    "ar": "لا تنتهي صلاحيتها"
+  },
+  "cv_valid_until": {
+    "en": "Valid until",
+    "ar": "سارية حتى"
+  },
+  "cv_expired_on": {
+    "en": "Expired on",
+    "ar": "انتهت في"
+  },
+  "cv_course": {
+    "en": "Course",
+    "ar": "الدورة"
+  },
+  "cv_org": {
+    "en": "Organization",
+    "ar": "المؤسسة"
+  },
+  "cv_teacher": {
+    "en": "Instructor",
+    "ar": "المدرب"
+  },
+  "cv_number_checked": {
+    "en": "Number checked",
+    "ar": "الرقم الذي تم التحقق منه"
+  },
+  "cv_masked_note": {
+    "en": "Part of the name is hidden because a number of this kind can be guessed. Scan the certificate's QR code to see the full name and the certificate itself.",
+    "ar": "أُخفي جزء من الاسم لأن هذا النوع من الأرقام يمكن تخمينه. امسح رمز QR على الشهادة لرؤية الاسم كاملاً والشهادة نفسها."
+  },
+  "cv_number_only_note": {
+    "en": "Scan the certificate's QR code to see the certificate itself and its results.",
+    "ar": "امسح رمز QR على الشهادة لرؤية الشهادة نفسها ونتائجها."
+  },
+  "cv_proof_note": {
+    "en": "\"Real\" means this number or link is in NextBrain's records. Compare the name and details above with the certificate you hold: an edited paper can carry a real number.",
+    "ar": "تعني \"حقيقية\" أن هذا الرقم أو الرابط موجود في سجلات NextBrain. قارن الاسم والتفاصيل أعلاه بالشهادة التي معك: فالورقة المعدّلة قد تحمل رقماً حقيقياً."
+  },
+  "cv_another": {
+    "en": "Check another certificate",
+    "ar": "تحقّق من شهادة أخرى"
+  },
+  "cv_expiry_toggle": {
+    "en": "This certificate expires",
+    "ar": "لهذه الشهادة تاريخ انتهاء"
+  },
+  "cv_expiry_off_sub": {
+    "en": "Off: the certificate does not expire",
+    "ar": "متوقف: الشهادة لا تنتهي صلاحيتها"
+  },
   "ci_defaults_title": {
     "en": "Values for everyone",
     "ar": "قيم لكل المستلمين"

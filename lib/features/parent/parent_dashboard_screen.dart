@@ -52,6 +52,7 @@ import 'package:flutter_education_app/features/shared/display/display_settings_p
 import 'package:flutter_education_app/features/shared/get_app/get_app_banner.dart' show GetAppTile;
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
 import 'package:flutter_education_app/design/quick_meeting_entry.dart';
+import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_page.dart' show CertVerifyEntryTile;
 import 'package:flutter_education_app/design/master_detail/entity_search_palette.dart';
 
 class ParentTabProvider extends ChangeNotifier {
@@ -360,6 +361,7 @@ class _ParentMorePageState extends State<_ParentMorePage> {
           title: 'account'.tr,
           icon: Icons.account_circle_rounded,
           children: [
+            const CertVerifyEntryTile(),
             AppSettingsTile(
               icon: Icons.manage_accounts_rounded,
               color: c.primary,

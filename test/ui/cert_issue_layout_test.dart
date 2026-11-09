@@ -7,10 +7,12 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/features/shared/certificates_issue/cert_expiry_card.dart';
 import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_history.dart';
 import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_lists.dart';
 import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_logic.dart';
 import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_parts.dart';
+import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_view.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';
@@ -257,6 +259,17 @@ void main() {
     await expectNoLayoutErrors(tester, () => CertVerifyView(state: VerifyState.found, result: valid, lang: 'ar', onLang: (_) {}, imageBuilder: box));
     await expectNoLayoutErrors(tester, () => CertVerifyView(state: VerifyState.found, result: revoked, imageBuilder: box));
     await expectNoLayoutErrors(tester, () => const CertVerifyView(state: VerifyState.notFound));
+    await expectNoLayoutErrors(tester, () => CertVerifyView(state: VerifyState.notFound, queried: 'NB-2026-AAAAAA', onAnother: () {}));
+    await expectNoLayoutErrors(tester, () => CertVerifyView(state: VerifyState.foreign, foreignHost: 'a-very-long-subdomain.of-some-untrusted-host.example.com', onAnother: () {}));
+    final ctl = TextEditingController();
+    await expectNoLayoutErrors(tester, () => CertVerifyView(state: VerifyState.entry, entry: CertVerifyEntry(controller: ctl, onSubmit: () {}, onScan: () {})));
+    await expectNoLayoutErrors(tester, () => CertVerifyView(state: VerifyState.entry, entry: CertVerifyEntry(controller: ctl, onSubmit: () {}, fieldError: 'x' * 90)));
+    for (final name in const ['real', 'expired', 'no_expiry', 'revoked', 'number', 'number_masked']) {
+      final r = VerifyResult.fromJson((jsonDecode(File('test/fixtures/payloads/cert_verify_$name.json').readAsStringSync()) as Map).cast());
+      await expectNoLayoutErrors(tester, () => CertVerifyView(state: VerifyState.found, result: r, lang: 'ar', onLang: (_) {}, imageBuilder: box, onAnother: () {}));
+    }
+    await expectNoLayoutErrors(tester, () => SingleChildScrollView(child: CertExpiryCard(value: DateTime(2030, 6, 30), onChanged: (_) {})));
+    await expectNoLayoutErrors(tester, () => SingleChildScrollView(child: CertExpiryCard(value: null, onChanged: (_) {})));
     await expectNoLayoutErrors(tester, () => CertVerifyView(state: VerifyState.error, onRetry: () {}));
     await expectNoLayoutErrors(tester, () => const CertVerifyView(state: VerifyState.loading));
   });
