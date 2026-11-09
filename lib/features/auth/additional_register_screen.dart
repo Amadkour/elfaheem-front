@@ -5,6 +5,7 @@
 library;
 
 import 'package:flutter_education_app/design/app_side_sheet.dart';
+import 'package:flutter_education_app/design/app_number_field.dart';
 import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/design/app_back_button.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -147,13 +148,11 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ParentComponent(featureKey: 'additional_register.experience', child: IconTextField(
+                    ParentComponent(featureKey: 'additional_register.experience', child: AppNumberField(
                       controller: _yearCtrl,
                       label: 'experience'.tr,
-                      icon: Icons.schedule_rounded,
-                      keyboard: TextInputType.number,
-                      // validator: (v) =>
-                      // (v == null || v.isEmpty) ? 'field_required'.tr : null,
+                      min: 0,
+                      max: 80,
                     )),
                     const SizedBox(height: 16),
 
