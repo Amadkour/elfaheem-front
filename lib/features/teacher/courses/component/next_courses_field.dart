@@ -36,9 +36,8 @@ class NextCoursesField extends StatelessWidget {
   });
 
   Future<void> _openPicker(BuildContext context) async {
-    final choice = await showAppModalSheet<Map<String, dynamic>>(
-      context: context,
-      backgroundColor: Colors.transparent,
+    final choice = await showAppSideSheet<Map<String, dynamic>>(
+      context,
       builder: (_) => _NextCoursePickerSheet(options: availableOptions),
     );
     if (choice != null) onAdd(choice);
@@ -211,15 +210,8 @@ class _NextCoursePickerSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Container(
-        margin: const EdgeInsets.all(12),
-        padding: const EdgeInsets.all(16),
-        constraints: const BoxConstraints(maxHeight: 420),
-        decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          borderRadius: BorderRadius.circular(20),
-        ),
+    return Padding(
+      padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,7 +240,6 @@ class _NextCoursePickerSheet extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }

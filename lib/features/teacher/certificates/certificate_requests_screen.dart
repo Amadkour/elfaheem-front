@@ -73,7 +73,7 @@ class _ViewState extends State<_View> {
           rootLabel: 'certificate_requests'.tr,
           list: Align(
             alignment: Alignment.topCenter,
-            child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 760), child: body),
+            child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 1120), child: body), // AppWidth.content
           ),
         ),
       ),

@@ -11,7 +11,8 @@ import 'attendance_model.dart';
 import 'teacher_attendance_provider.dart';
 import '../../../student/analysis/student_analytics_profile_screen.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart' show AppGradients, AppHeader, AppListSkeleton, AppWidth;
+import 'package:flutter_education_app/features/teacher/analysis/teacher_stat_band.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -64,7 +65,11 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
     return BasePage(
       key: const ValueKey('teacher_attendance'),
       useWebCard: true,
-      maxWith: 1100,
+      width: AppWidth.wide,
+      appBar: AppHeader(
+        title: widget.courseTitle,
+        subtitle: prov.selectedSession?.name ?? 'attendance_record'.tr,
+      ),
       child: Column(
         children: [
           _buildHero(prov),
@@ -80,40 +85,28 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
         !prov.isLoadingStudents &&
         !prov.hasError;
 
-    return ExamHero(
-      child: Column(children: [
-        ExamHeroBar(
-          title: widget.courseTitle,
-          subtitle: prov.selectedSession?.name ?? 'attendance_record'.tr,
+    if (!showStats) return const SizedBox.shrink();
+    return ParentComponent(
+      featureKey: 'teacher_attendance.stats',
+      child: TeacherStatBand(stats: [
+        HeroStat(
+          icon: Icons.people_rounded,
+          color: context.colors.heroTint(context.colors.primaryLight, 0.5),
+          value: '${prov.allStudents.length}',
+          label: 'total_students'.tr,
         ),
-        if (showStats) ...[
-          const SizedBox(height: 16),
-          ParentComponent(
-            featureKey: 'teacher_attendance.stats',
-            child: Row(children: [
-              HeroStat(
-                icon: Icons.people_rounded,
-                color: context.colors.heroTint(context.colors.primaryLight, 0.5),
-                value: '${prov.allStudents.length}',
-                label: 'total_students'.tr,
-              ),
-              const SizedBox(width: 10),
-              HeroStat(
-                icon: Icons.check_circle_rounded,
-                color: context.colors.success,
-                value: '${prov.presentCount}',
-                label: 'present'.tr,
-              ),
-              const SizedBox(width: 10),
-              HeroStat(
-                icon: Icons.cancel_rounded,
-                color: context.colors.danger,
-                value: '${prov.absentCount}',
-                label: 'absent'.tr,
-              ),
-            ]),
-          ),
-        ],
+        HeroStat(
+          icon: Icons.check_circle_rounded,
+          color: context.colors.success,
+          value: '${prov.presentCount}',
+          label: 'present'.tr,
+        ),
+        HeroStat(
+          icon: Icons.cancel_rounded,
+          color: context.colors.danger,
+          value: '${prov.absentCount}',
+          label: 'absent'.tr,
+        ),
       ]),
     );
   }
@@ -391,11 +384,7 @@ class _SessionFlag extends StatelessWidget {
         width: 96,
         decoration: BoxDecoration(
           gradient: isSelected
-              ? LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: [c.primaryDark, c.primary],
-          )
+              ? AppGradients.blend(context)
               : null,
           color: isSelected ? null : c.cardBg,
           borderRadius: BorderRadius.circular(18),

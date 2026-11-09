@@ -19,6 +19,7 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show toa
 import 'data_lab_api.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show showAppSideSheet;
 import 'package:flutter_education_app/core/api_error_text.dart';
 
 String _tr(String key, String fallback) => dlTr(key, fallback);
@@ -319,13 +320,10 @@ class _Dest extends StatelessWidget {
 // File ready: Save / Download · Share · (desktop) Open · Show in folder
 // ─────────────────────────────────────────────────────────────────────────────
 
-Future<void> showFileReadySheet(BuildContext context, DlExportFile file) => showAppModalSheet<void>(
-      useSafeArea: true,
-  context: context,
-  isScrollControlled: true,
-  backgroundColor: Colors.transparent,
-  constraints: const BoxConstraints(maxWidth: 520),
-  builder: (_) => Directionality(textDirection: pageDirection, child: _FileReady(file: file)),
+Future<void> showFileReadySheet(BuildContext context, DlExportFile file) => showAppSideSheet<void>(
+      context,
+      withCloseBar: true,
+      builder: (_) => Directionality(textDirection: pageDirection, child: _FileReady(file: file)),
 );
 
 class _FileReady extends StatefulWidget {
@@ -367,15 +365,7 @@ class _FileReadyState extends State<_FileReady> {
     };
     final direct = DlExportFile.canSaveDirectly;
     final desktopPath = _savedPath != null && (_savedPath!.contains('/') || _savedPath!.contains(r'\'));
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Material(
-          color: c.cardBg,
-          borderRadius: BorderRadius.circular(28),
-          clipBehavior: Clip.antiAlias,
-          child: Padding(
+    return Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Container(width: 40, height: 4, decoration: BoxDecoration(color: c.divider, borderRadius: BorderRadius.circular(4))),
@@ -454,9 +444,6 @@ class _FileReadyState extends State<_FileReady> {
                 ],
               ]),
             ]),
-          ),
-        ),
-      ),
-    );
+          );
   }
 }

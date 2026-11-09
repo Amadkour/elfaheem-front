@@ -15,6 +15,7 @@ import '../../student/analysis/student_analytics_profile_screen.dart';
 import 'data_lab_api.dart';
 import 'data_lab_models.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppGradients;
 
 class DataLabEntryCard extends StatefulWidget {
   const DataLabEntryCard({super.key, required this.courseId, required this.courseTitle});
@@ -101,7 +102,7 @@ class _EntryTile extends StatelessWidget {
           height: 50,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(colors: [c.primary, c.primaryDark]),
+            gradient: AppGradients.blend(context),
           ),
           child: Icon(icon, color: c.onHero, size: 26),
         ),

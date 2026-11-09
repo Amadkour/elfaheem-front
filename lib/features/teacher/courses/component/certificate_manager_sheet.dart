@@ -40,13 +40,12 @@ Future<void> showCertificateManagerSheet(
       String? templateUrl,
       int? orgId, // set when the course belongs to an organization (designs of the org are offered)
     }) {
-  final isWide = MediaQuery.of(context).size.width > 760;
+  // the two-pane layout needs the wide panel; below that the template sits above the students
+  final isWide = MediaQuery.sizeOf(context).width >= 1000;
 
-  return showAppModalSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    useSafeArea: true,
+  return showAppSideSheet<void>(
+    context,
+    width: isWide ? 860 : 520,
     builder: (_) => ChangeNotifierProvider(
       create: (_) => CertificateManagerProvider(),
       child: _CertificateManagerBody(
@@ -160,7 +159,7 @@ class _CertificateManagerBodyState extends State<_CertificateManagerBody> {
 
   @override
   Widget build(BuildContext context) {
-    final content = _Content(
+    return _Content(
       certificateId: widget.certificateId,
       certificateTitle: widget.certificateTitle,
       templateUrl: _templateUrl,
@@ -173,42 +172,6 @@ class _CertificateManagerBodyState extends State<_CertificateManagerBody> {
       onOpenDesignLibrary: _openDesignLibrary,
       designName: _design?['name'] as String?,
       onRemoveDesign: _design == null ? null : _removeDesign,
-    );
-
-    if (widget.isWide) {
-      return Center(
-        child: Material(
-          color: Colors.transparent,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 860, maxHeight: 640),
-            child: Container(
-              decoration: BoxDecoration(
-                color: context.colors.cardBg,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(color: context.colors.heroShade.withValues(alpha: 0.25), blurRadius: 40),
-                ],
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: content,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.92,
-      maxChildSize: 0.96,
-      minChildSize: 0.6,
-      builder: (_, scrollController) => Container(
-        decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: content,
-      ),
     );
   }
 }
@@ -403,13 +366,7 @@ class _TemplatePane extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: context.colors.divider, width: 1.2),
-                gradient: templateUrl == null
-                    ? LinearGradient(
-                  colors: [context.colors.accentTint, context.colors.accent.withValues(alpha: 0.55)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-                    : null,
+                color: templateUrl == null ? context.colors.accentTint : null,
               ),
               clipBehavior: Clip.antiAlias,
               child: isLoading

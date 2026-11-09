@@ -24,6 +24,7 @@ import 'package:provider/provider.dart';
 import 'data_lab_api.dart';
 import 'data_lab_models.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppGradients, AppNumberField;
 import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
 
@@ -163,7 +164,7 @@ class _GatePage extends StatelessWidget {
                     height: 92,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: LinearGradient(colors: [c.primary, c.primaryDark]),
+                      gradient: AppGradients.blend(context),
                       boxShadow: c.primaryShadow,
                     ),
                     child: Icon(icon, color: c.onHero, size: 42),
@@ -649,11 +650,21 @@ class _DataLabFormScreenState extends State<DataLabFormScreen> {
               }),
             ),
         ])
+      else if (q.isNumber)
+        AppNumberField(
+          controller: _ctrls[q.requestId]!,
+          label: q.maxValue != null ? '${'dl_gate_your_answer'.tr} (0 – ${dlFmt(q.maxValue)})' : 'dl_gate_your_answer'.tr,
+          min: 0,
+          max: q.maxValue,
+          decimals: 2,
+          onChanged: (_) {
+            if (_errors.containsKey(q.requestId)) setState(() => _errors.remove(q.requestId));
+          },
+        )
       else
         DlField(
           controller: _ctrls[q.requestId]!,
-          label: q.isNumber && q.maxValue != null ? '${'dl_gate_your_answer'.tr} (0 – ${dlFmt(q.maxValue)})' : 'dl_gate_your_answer'.tr,
-          keyboard: q.isNumber ? const TextInputType.numberWithOptions(decimal: true) : null,
+          label: 'dl_gate_your_answer'.tr,
           onChanged: (_) {
             if (_errors.containsKey(q.requestId)) setState(() => _errors.remove(q.requestId));
           },

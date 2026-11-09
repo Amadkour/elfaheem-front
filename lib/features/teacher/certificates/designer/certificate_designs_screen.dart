@@ -26,7 +26,7 @@ import 'certificate_design_models.dart';
 import '../studio/cert_engine_studio.dart' show openCertificateStudio;
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty;
+import 'package:flutter_education_app/design/app_kit.dart' show AppHeader, AppListSkeleton, AppEmpty;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_flow.dart' show openCertIssueFlow;
@@ -150,7 +150,6 @@ class _View extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<CertificateDesignsProvider>();
-    final c = context.colors;
 
     Widget body;
     if (p.loading && p.items.isEmpty) {
@@ -189,9 +188,8 @@ class _View extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('cert_designs_title'.tr, style: c.h2.copyWith(fontSize: 16)),
-        centerTitle: true,
+      appBar: AppHeader(
+        title: 'cert_designs_title'.tr,
         actions: [
           // standalone issuing (features/shared/certificates_issue): saved recipient lists + the issued history
           if (certificateId == null)

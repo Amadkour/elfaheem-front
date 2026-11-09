@@ -22,6 +22,7 @@ import 'data_lab_formula.dart';
 import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show showAppSideSheet;
 
 String _tr(String key, String fallback) => dlTr(key, fallback);
 
@@ -97,12 +98,9 @@ class _StyleSheetState extends State<_StyleSheet> {
   }
 
   Future<void> _editRule([int? index]) async {
-    final r = await showAppModalSheet<DlRule>(
-      useSafeArea: true,
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      constraints: const BoxConstraints(maxWidth: 560),
+    final r = await showAppSideSheet<DlRule>(
+      context,
+      withCloseBar: true,
       builder: (_) => Directionality(
         textDirection: pageDirection,
         child: _RuleEditor(p: p, col: col, rule: index == null ? null : _s.rules[index]),

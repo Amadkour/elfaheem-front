@@ -380,13 +380,13 @@ class GuestLinkBody extends StatelessWidget {
         onChanged: busy ? null : onCanPublishChanged,
       ),
       const SizedBox(height: 6),
-      AppField(
+      AppNumberField(
         controller: maxGuestsController,
         label: 'guest_link_max'.tr,
         hint: 'guest_link_max_hint'.tr,
-        keyboard: TextInputType.number,
-        ltr: true,
+        min: 1,
       ),
+      const SizedBox(height: 12),
       AppField(
         key: const ValueKey('guest_link.pin'),
         controller: pinController,

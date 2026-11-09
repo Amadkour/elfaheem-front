@@ -181,17 +181,7 @@ class PreJoinLayout extends StatelessWidget {
   Widget _header(BuildContext context) {
     final c = context.colors;
     return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-      IconButton.filledTonal(
-        key: const ValueKey('prejoin.back'),
-        onPressed: onBack,
-        tooltip: 'lr_go_back'.tr,
-        style: IconButton.styleFrom(
-          backgroundColor: c.cardBg,
-          foregroundColor: c.textDark,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        ),
-        icon: const Icon(Icons.arrow_back_rounded, size: 20),
-      ),
+      AppBackButton(key: const ValueKey('prejoin.back'), onPressed: onBack),
       const SizedBox(width: 12),
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

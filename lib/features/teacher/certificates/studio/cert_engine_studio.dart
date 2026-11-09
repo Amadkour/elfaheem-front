@@ -952,7 +952,7 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
     if (_error != null || _doc == null) {
       return Scaffold(
         backgroundColor: c.background,
-        appBar: AppBar(title: Text(t('استوديو الشهادات', 'Certificate studio'))),
+        appBar: AppHeader(title: t('استوديو الشهادات', 'Certificate studio')),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(AppSpace.lg),

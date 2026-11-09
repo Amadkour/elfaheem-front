@@ -4,7 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
-import '../../../../design/app_kit.dart' show AppSwitchTile;
+import '../../../../design/app_kit.dart' show AppNumberField, AppSwitchTile;
+import '../../courses/component/number_pair.dart';
 import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/primary_button.dart';
 import '../../../student/models.dart';
@@ -13,68 +14,32 @@ import 'package:flutter_education_app/features/shared/session/session_track_tabs
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
-// Screens at/above this width get the centered "card" treatment instead of a
-// full-width bottom sheet — covers desktop web and tablets in landscape.
-const double _kWideBreakpoint = 720;
-
-/// Opens the Add/Edit Lesson UI, picking the right chrome for the current
-/// screen size: a bottom sheet on phones, a centered card on wide screens.
+/// Opens the Add/Edit Lesson UI: the app's sheet (a bottom sheet on phones, the side panel on wide windows).
 Future<void> showSessionFormSheet(
     BuildContext context, {
       TeacherSessionItem? existing,
       bool? openLive,
     }) async {
   final provider = context.read<TeacherCourseScreenProvider>();
-  final isWide = MediaQuery.sizeOf(context).width >= _kWideBreakpoint;
-
-  final sheet = ChangeNotifierProvider.value(
-    value: provider,
-    child: SessionFormSheet(
-      existing: existing,
-      provider: provider,
-      openLive: openLive,
-      isWide: isWide,
+  await showAppSideSheet<void>(
+    context,
+    builder: (_) => ChangeNotifierProvider.value(
+      value: provider,
+      child: SessionFormSheet(existing: existing, provider: provider, openLive: openLive),
     ),
   );
-
-  if (isWide) {
-    await showDialog(
-      context: context,
-      barrierColor: context.colors.heroShade.withValues(alpha: 0.45),
-      builder: (_) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(24),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: sheet,
-          ),
-        ),
-      ),
-    );
-  } else {
-    await showAppModalSheet(
-      useSafeArea: true,
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => sheet,
-    );
-  }
 }
 
 class SessionFormSheet extends StatefulWidget {
   final TeacherSessionItem? existing;
   final TeacherCourseScreenProvider provider;
   final bool? openLive;
-  final bool isWide;
 
   const SessionFormSheet({
     super.key,
     this.existing,
     required this.provider,
     this.openLive,
-    this.isWide = false,
   });
 
   @override
@@ -239,44 +204,17 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
     final liveProvider = context.watch<TeacherCourseScreenProvider>();
     final loading = liveProvider.submitLoading;
     final detailsOpen = liveProvider.openMoreDetailsForAddSession;
-    final radius = context.colors.radiusXL;
 
     return PopScope(
       canPop: !loading,
-      child: Container(
-        constraints:
-        widget.isWide ? const BoxConstraints(maxHeight: 680) : null,
-        decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          borderRadius: widget.isWide
-              ? BorderRadius.circular(radius)
-              : BorderRadius.vertical(top: Radius.circular(radius)),
-          boxShadow: widget.isWide
-              ? [
-            BoxShadow(
-              color: context.colors.heroShade.withValues(alpha: 0.25),
-              blurRadius: 32,
-              offset: const Offset(0, 12),
-            ),
-          ]
-              : null,
-        ),
-        child: Directionality(
-          textDirection: Helpers.pageDirection,
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: 20,
-              right: 20,
-              top: widget.isWide ? 20 : 10,
-              bottom: MediaQuery.of(context).viewInsets.bottom +
-                  (widget.isWide ? 20 : 28),
-            ),
-            child: SingleChildScrollView(
+      child: Directionality(
+        textDirection: Helpers.pageDirection,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (!widget.isWide) _DragHandle(),
                   _Header(isEdit: _isEdit, loading: loading),
                   const SizedBox(height: 20),
 
@@ -342,25 +280,19 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                         ),
                       ],
                       const SizedBox(height: 14),
-                      Row(children: [
-                        Expanded(
-                          child: _PremiumField(
-                            controller: _durCtrl,
-                            label: 'duration_minutes_label'.tr,
-                            icon: Icons.timer_outlined,
-                            keyboardType: TextInputType.number,
-                          ),
+                      NumberPair(
+                        first: AppNumberField(
+                          controller: _durCtrl,
+                          label: 'duration_minutes_label'.tr,
+                          min: 1,
+                          step: 5,
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _PremiumField(
-                            controller: _orderCtrl,
-                            label: 'order_label'.tr,
-                            icon: Icons.sort_rounded,
-                            keyboardType: TextInputType.number,
-                          ),
+                        second: AppNumberField(
+                          controller: _orderCtrl,
+                          label: 'order_label'.tr,
+                          min: 0,
                         ),
-                      ]),
+                      ),
                     ],
                   ),
 
@@ -374,29 +306,6 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                   ),
                 ],
               ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Drag handle (bottom-sheet only)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _DragHandle extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: 40,
-        height: 4,
-        margin: const EdgeInsets.only(bottom: 14),
-        decoration: BoxDecoration(
-          color: context.colors.divider,
-          borderRadius: BorderRadius.circular(2),
         ),
       ),
     );
@@ -555,7 +464,6 @@ class _PremiumField extends StatelessWidget {
   final IconData icon;
   final String? errorText;
   final int maxLines;
-  final TextInputType? keyboardType;
   final ValueChanged<String>? onChanged;
 
   const _PremiumField({
@@ -564,7 +472,6 @@ class _PremiumField extends StatelessWidget {
     required this.icon,
     this.errorText,
     this.maxLines = 1,
-    this.keyboardType,
     this.onChanged,
   });
 
@@ -598,7 +505,6 @@ class _PremiumField extends StatelessWidget {
           child: TextField(
             controller: controller,
             maxLines: maxLines,
-            keyboardType: keyboardType,
             onChanged: onChanged,
             style: TextStyle(
               fontFamily: AppFonts.display,

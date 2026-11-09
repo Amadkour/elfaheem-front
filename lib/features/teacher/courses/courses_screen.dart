@@ -23,7 +23,7 @@ import '../sessions/sessions_provider.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_infinite_scroll.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppActionCard, AppSheetHeader, appConfirm, appText, showAppSheet;
+import 'package:flutter_education_app/design/app_kit.dart' show AppActionCard, AppButton, AppSheetContent, AppWidth, appConfirm, appText, showAppSheet;
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/plural.dart' show countText;
 import 'package:flutter_education_app/design/context_switcher.dart' show contextSwitchVisible, openOrgDashboard, showContextSwitcherSheet;
@@ -31,7 +31,6 @@ import 'package:flutter_education_app/features/shared/course/course_list_card.da
 import 'package:flutter_education_app/features/shared/course/course_price_tag.dart' show coursePriceLabel;
 import 'package:flutter_education_app/features/shared/course/course_scope.dart';
 import 'package:flutter_education_app/features/shared/course/course_scope_bar.dart';
-import 'package:flutter_education_app/design/home_kit.dart' show homeCardWidth, kHomeWideMax;
 import 'package:flutter_education_app/core/entities/entity_models.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/core/routing/web_history.dart';
@@ -107,12 +106,11 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
     final me = context.select<MyAuthProvider, int?>((a) => a.currentUser?.id);
     final onCourses = _space == TeacherSpace.courses || me == null;
 
-    // a desktop window: the home's wide calm card (the grid gets four columns instead of a narrow strip)
-    return LayoutBuilder(
-      builder: (context, area) => BasePage(
+    // a desktop window: the wide calm card (the grid gets more columns instead of a narrow strip)
+    return BasePage(
       key: const ValueKey('teacher_courses'),
       useWebCard: true,
-      maxWith: homeCardWidth(area.maxWidth),
+      width: AppWidth.wide,
       appBar: ScreenAppBar(title: 'my_courses'.tr, showBack: !kIsWeb),
       // the panel's sheet sits where the button floats: no button while it is open
       floatingActionButton: ListenableBuilder(
@@ -131,7 +129,7 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
             Align(
               alignment: Alignment.topCenter,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: kHomeWideMax),
+                constraints: BoxConstraints(maxWidth: AppWidth.wide.max),
                 child: TeacherSpaceTabs(selected: _space, onSelect: _setSpace),
               ),
             ),
@@ -148,7 +146,6 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
           ),
         ]),
       ),
-    ),
     );
   }
 }
@@ -217,7 +214,7 @@ class TeacherCoursesBody extends StatelessWidget {
   }
 }
 
-/// Centres [child] and caps it at the desktop home's width.
+/// Centres [child] and caps it at the page's width.
 class _Centered extends StatelessWidget {
   const _Centered({required this.child});
 
@@ -227,7 +224,7 @@ class _Centered extends StatelessWidget {
   Widget build(BuildContext context) => Align(
     alignment: Alignment.topCenter,
     child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: kHomeWideMax),
+      constraints: BoxConstraints(maxWidth: AppWidth.wide.max),
       child: child,
     ),
   );
@@ -274,10 +271,9 @@ Future<void> openOrgCoursesOf(BuildContext context, List<CourseScopeCount> holdi
   if (holding.length == 1) return open(holding.first.org!.id);
   await showAppSheet<void>(context, (ctx) {
     final c = ctx.colors;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        AppSheetHeader('ctx_organizations'.tr),
+    return AppSheetContent(
+      title: 'ctx_organizations'.tr,
+      children: [
         for (final h in holding)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -294,7 +290,7 @@ Future<void> openOrgCoursesOf(BuildContext context, List<CourseScopeCount> holdi
               },
             ),
           ),
-      ]),
+      ],
     );
   });
 }
@@ -349,17 +345,10 @@ class _NewCourseButton extends StatelessWidget {
   const _NewCourseButton();
 
   @override
-  Widget build(BuildContext context) => FilledButton.icon(
+  Widget build(BuildContext context) => AppButton.primary(
+    label: 'course_list_new'.tr,
+    icon: Icons.add_rounded,
     onPressed: () => _openNewCourse(context),
-    style: FilledButton.styleFrom(
-      backgroundColor: context.colors.primary,
-      foregroundColor: context.colors.onHero,
-      minimumSize: const Size(0, 44),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    ),
-    icon: const Icon(Icons.add_rounded, size: 18),
-    label: Text('course_list_new'.tr, style: appText(14, w: FontWeight.w600, c: context.colors.onHero)),
   );
 }
 
