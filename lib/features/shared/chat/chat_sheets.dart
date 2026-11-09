@@ -11,6 +11,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import 'chat_api.dart';
 import 'chat_models.dart';
+import 'chat_new_message.dart';
 import 'chat_page.dart' show chatErrorText;
 import 'chat_store.dart';
 import 'chat_widgets.dart';
@@ -22,64 +23,7 @@ const _kReportKey = 'chat.report';
 
 // ── new chat ─────────────────────────────────────────────────────────────────────────────────────────────────
 
-Future<ChatContact?> showChatContactPicker(BuildContext context) => showAppSheet<ChatContact>(context, (_) => const _ContactPicker());
-
-class _ContactPicker extends StatefulWidget {
-  const _ContactPicker();
-
-  @override
-  State<_ContactPicker> createState() => _ContactPickerState();
-}
-
-class _ContactPickerState extends State<_ContactPicker> {
-  Future<List<ChatContact>> _future = _api.contacts();
-
-  void _search(String q) => setState(() => _future = _api.contacts(q: q));
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return AppSheetContent(title: 'chat_new_chat'.tr, children: [
-      AppSearchField(hint: 'chat_search_people'.tr, autofocus: true, dense: true, onChanged: _search),
-      const SizedBox(height: AppSpace.sm),
-      FutureBuilder<List<ChatContact>>(
-        future: _future,
-        builder: (context, s) {
-          if (s.connectionState != ConnectionState.done) return const SizedBox(height: 220, child: AppListSkeleton(items: 4));
-          if (s.hasError) return AppEmpty(icon: Icons.cloud_off_rounded, title: chatErrorText(s.error!));
-          final items = s.data ?? const <ChatContact>[];
-          if (items.isEmpty) return AppEmpty(icon: Icons.person_search_rounded, title: 'chat_no_contacts'.tr, message: 'chat_no_contacts_body'.tr);
-          return Column(children: [
-            for (final it in items)
-              InkWell(
-                borderRadius: BorderRadius.circular(AppRadius.card),
-                onTap: () => Navigator.of(context).pop(it),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
-                  child: Row(children: [
-                    ChatAvatar(name: it.user.name, url: it.user.imageUrl, size: 44),
-                    const SizedBox(width: AppSpace.sm),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(it.user.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w600, c: c.textDark)),
-                        Text(
-                          [if (it.child != null) '${'chat_parent_of'.tr} ${it.child!.name.split(' ').first}', if (it.linkLine.isNotEmpty) it.linkLine].join(' · '),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: appText(12, w: FontWeight.w400, c: c.textMedium),
-                        ),
-                      ]),
-                    ),
-                    Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.textLight),
-                  ]),
-                ),
-              ),
-          ]);
-        },
-      ),
-    ]);
-  }
-}
+Future<ChatContact?> showChatContactPicker(BuildContext context) => showAppSheet<ChatContact>(context, (_) => const ChatNewMessageSheet());
 
 // ── actions ──────────────────────────────────────────────────────────────────────────────────────────────────
 

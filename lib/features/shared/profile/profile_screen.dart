@@ -184,6 +184,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           const CalendarEntryTile(),
+                          const ChatEntryTile(), // NextBrain Messages, every role (D-374)
                           // The Exam Hub (D-350): teachers, and whoever teaches inside an organization; never students or parents
                           if (context.read<MyAuthProvider>().isTeacher || examHubTeachesInAnyOrg(AppModeController.instance.liveEntries))
                             ParentComponent(
