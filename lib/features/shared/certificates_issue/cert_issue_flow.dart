@@ -23,6 +23,7 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/plural.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
@@ -756,7 +757,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
             ),
             Divider(height: 1, color: c.divider),
             Expanded(child: _body(context)),
-            if (_step < 3) _bottomBar(context),
+            if (_step != 3) _bottomBar(context), // the Photos step's id is above 3: it needs the Next bar too
           ]),
         ),
       ),
@@ -1037,7 +1038,13 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
       Text(
         course
             ? 'ci_preview_course_sub'.tr.replaceAll('{course}', courseName ?? '')
-            : 'ci_preview_sub'.tr.replaceAll('{n}', '${s.ready}'),
+            : countText(s.ready,
+                ar1: 'ستُصدر شهادة واحدة. هكذا تبدو.',
+                ar2: 'ستُصدر شهادتان. هكذا تبدو الأولى.',
+                arFew: 'ستُصدر {n} شهادات. هكذا تبدو الأولى.',
+                arMany: 'ستُصدر {n} شهادة. هكذا تبدو الأولى.',
+                en1: '1 certificate will be issued. This is how it looks.',
+                en: '{n} certificates will be issued. This is how the first one looks.'),
         style: AppType.meta(context),
       ),
       const SizedBox(height: AppSpace.md),

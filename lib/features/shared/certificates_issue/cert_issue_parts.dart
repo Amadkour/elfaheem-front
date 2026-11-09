@@ -9,6 +9,7 @@ library;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/plural.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
@@ -733,7 +734,13 @@ class IssueReviewHeader extends StatelessWidget {
           value: manualDefault,
           onChanged: onManualDefault,
           title: 'ci_manual_all'.tr,
-          subtitle: 'ci_manual_all_sub'.tr.replaceAll('{n}', '${summary.unmatched}'),
+          subtitle: countText(summary.unmatched,
+              ar1: 'اسم واحد لم يطابق طالبًا: يحصل صاحبه على شهادة بالاسم فقط.',
+              ar2: 'اسمان لم يطابقا طالبًا: يحصلان على شهادة بالاسم فقط.',
+              arFew: '{n} أسماء لم تطابق طالبًا: يحصلون على شهادات بالاسم فقط.',
+              arMany: '{n} اسمًا لم تطابق طالبًا: يحصلون على شهادات بالاسم فقط.',
+              en1: '1 name did not match a student: they get a certificate by name only.',
+              en: '{n} names did not match a student: they get a certificate by name only.'),
           padding: EdgeInsets.zero,
         ),
       ],
