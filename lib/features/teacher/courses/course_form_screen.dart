@@ -1201,7 +1201,8 @@ class _EditCertificateTemplateCardState
       title: _titleCtrl.text.trim().isEmpty
           ? 'default_certificate_title'.tr
           : _titleCtrl.text.trim(),
-      file: file,
+      // what the person cropped and saw in the preview, not the file they first picked
+      file: XFile.fromData(bytes, name: img.name),
     );
 
     if (!mounted) return;
