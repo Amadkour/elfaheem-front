@@ -550,7 +550,8 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
       key: ObjectKey(_ctl),
       controller: _ctl,
       pageColor: layoutColor(widget.background, kStudioPaper)!,
-      pageBackground: widget.pageMargins == null && widget.backgroundImage != null ? _backgroundWidget() : null,
+      // no margins means no paper around the page (StudioCanvas: hasPaper), so the page itself carries the image
+      pageBackground: (widget.pageMargins == null || widget.pageMargins == EdgeInsets.zero) && widget.backgroundImage != null ? _backgroundWidget() : null,
       paperInsets: widget.pageMargins ?? EdgeInsets.zero,
       paperBuilder: widget.pageMargins == null ? null : _paper,
       buildKey: Object.hash(_buildKey, widget.border?.color, widget.border?.width, widget.radius),
