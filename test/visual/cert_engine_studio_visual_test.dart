@@ -16,6 +16,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_keyboard.dart';
 import 'package:flutter_education_app/design/export/export_fonts.dart';
 import 'package:flutter_education_app/design/export_layout/layout_element_view.dart';
 import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_studio.dart';
@@ -142,6 +143,8 @@ void main() {
       'languages': ['ar', 'en'],
       'designs': {'ar': _design(true), 'en': _design(false)},
     };
+    final tpl = Platform.environment['CERT_TEMPLATE_DOC'];
+    if (tpl != null && tpl.isNotEmpty) document = (jsonDecode(File(tpl).readAsStringSync()) as Map).cast<String, dynamic>()..['name'] = 'Navy and gold';
     fake = FakeApi({
       'GET /api/v1/certificate-designs/7/document': (_) => {'document': document, 'version': 3, 'converted': false},
       'GET /api/v1/exports/layout/fonts': (_) => <Object>[],
@@ -155,8 +158,18 @@ void main() {
 
   Future<void> render(WidgetTester tester, String name, _Case k, {Future<void> Function(WidgetTester)? act}) async {
     final prevLang = AppConfig.lang;
+    AppKeyboardSupport.enabledOverride = k.size.width >= 1024 ? true : null;
+    addTearDown(() => AppKeyboardSupport.enabledOverride = null);
     debugDisableShadows = false;
     await tester.runAsync(() => ExportFonts.ensureCertFamilies().timeout(const Duration(seconds: 20), onTimeout: () {}));
+    // the picker's label draws in the field's own font; the preview families come straight from the files here
+    await tester.runAsync(() async {
+      for (final id in const ['amiri', 'tajawal', 'cairo']) {
+        final f = ExportFonts.byId(id);
+        final loader = FontLoader(f.previewFamily)..addFont(Future.value(ByteData.sublistView(File(f.regularAsset).readAsBytesSync())));
+        await loader.load();
+      }
+    });
     try {
       AppConfig.lang = k.lang;
       tester.view.devicePixelRatio = 1;
@@ -174,12 +187,31 @@ void main() {
             textDirection: k.lang == 'ar' ? TextDirection.rtl : TextDirection.ltr,
             child: RepaintBoundary(key: _shot, child: w!),
           ),
-          home: CertEngineStudio(designId: 7, drafts: CertEngineMemoryDrafts(), userId: 'u1', imageLoader: (_) async => null),
+          home: AppKeyboardSupport(
+            child: CertEngineStudio(
+              designId: 7,
+              drafts: CertEngineMemoryDrafts(),
+              userId: 'u1',
+              imageLoader: (u) async {
+                // CERT_TEMPLATE_DOC runs: the template's background, next to the document (https://…/<file>)
+                final dir = Platform.environment['CERT_TEMPLATE_DOC'];
+                if (dir == null || dir.isEmpty) return null;
+                final f = File('${File(dir).parent.path}/${u.split('/').last}');
+                return f.existsSync() ? f.readAsBytesSync() : null;
+              },
+            ),
+          ),
         ),
       ));
       await _pumps(tester);
-      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+      // a template's background decodes off the fake clock
+      final slow = (Platform.environment['CERT_TEMPLATE_DOC'] ?? '').isNotEmpty;
+      await tester.runAsync(() => Future<void>.delayed(Duration(milliseconds: slow ? 2500 : 200)));
       await _pumps(tester, 6);
+      if (slow) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 800)));
+        await _pumps(tester, 4);
+      }
       if (act != null) {
         await act(tester);
         await _pumps(tester, 6);
@@ -214,6 +246,23 @@ void main() {
   testWidgets('layers tool on a phone', (t) => render(t, 'tool', _cases[5], act: (t) async {
         await t.tap(find.byKey(const ValueKey('cert-rail-layers')));
       }));
+  // CERT_TEMPLATE_DOC: a real template's document (the server's own conversion), a text field selected
+  for (final k in [_cases[0], _cases[5]]) {
+    testWidgets('template ${k.label}', (t) => render(t, 'template', k, act: (t) async {
+          await t.tap(element('student_name'), warnIfMissed: false);
+          await _pumps(t, 12);
+          // the phone's sheet: the font row sits under the content section
+          if (k.size.width < 1000) await t.drag(find.descendant(of: find.byKey(const ValueKey('cert-sheet')), matching: find.byType(ListView)).first, const Offset(0, -320));
+        }));
+  }
+  testWidgets('photo element', (t) {
+    for (final d in (document['designs'] as Map).values) {
+      (((d as Map)['row'] as Map)['elements'] as List).add({'id': 'p1', 'kind': 'image', 'x': 124, 'y': 118, 'w': 40, 'h': 40, 'name': 'photo', 'bind': {'field': 'photo'}, 'style': {'padding': 0}});
+    }
+    return render(t, 'photo', _cases[0], act: (t) async {
+      await t.tap(element('p1'), warnIfMissed: false);
+    });
+  });
   testWidgets('preview', (t) => render(t, 'preview', _cases[1], act: (t) async {
         await t.tap(find.byKey(const ValueKey('cert-preview')));
       }));

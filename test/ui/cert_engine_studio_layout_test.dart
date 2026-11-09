@@ -80,7 +80,11 @@ void main() {
         for (final k in ['page', 'generate', 'gallery', 'sig', 'start', 'conflict']) {
           await t.tap(find.text(k));
           await t.pump(const Duration(milliseconds: 500));
-          await t.tapAt(const Offset(2, 2));
+          if (k == 'gallery') {
+            t.state<NavigatorState>(find.byType(Navigator)).pop(); // a full page, not a sheet
+          } else {
+            await t.tapAt(const Offset(2, 2));
+          }
           await t.pump(const Duration(milliseconds: 500));
         }
       },

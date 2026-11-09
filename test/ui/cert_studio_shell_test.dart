@@ -30,6 +30,7 @@ Widget _inspector(StudioController<LayoutElement> ctl) => CertInspector(
       ctl: ctl,
       fields: const [(key: 'student_name', label: 'Student name', numeric: false)],
       upload: (_, _) async => null,
+      fontControl: (_, _, _, _) => const SizedBox(key: ValueKey('cert-font'), height: 48),
       pageFont: 'tajawal',
       pageRtl: false,
       memory: <String, bool>{},
@@ -144,7 +145,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('2 elements selected'), findsOneWidget);
     expect(find.text('Match width'), findsOneWidget);
-    expect(find.byKey(const ValueKey('cert-font')), findsNothing);
+    expect(find.byKey(const ValueKey('cert-font')), findsOneWidget, reason: 'the font applies to the text among the selection');
   });
 
   testWidgets('on a phone a selection opens the inspector sheet and clearing it closes the sheet', (tester) async {

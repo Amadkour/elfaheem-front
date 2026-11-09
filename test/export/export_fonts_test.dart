@@ -65,7 +65,7 @@ void main() {
       // the older export-only families stay selectable (saved designs name them)
       expect(ExportFonts.has('bahij') && ExportFonts.has('plex'), isTrue);
       expect(exportFontFamilies, ExportFonts.ids);
-      expect(exportFontLabels().length, kCertFonts.length + 2);
+      expect(exportFontLabels().length, kCertFonts.length + 3); // bahij, plex, noto_kufi (D-380)
       // an unknown id prints in Tajawal
       expect(ExportFonts.byId('nope').id, 'tajawal');
     });

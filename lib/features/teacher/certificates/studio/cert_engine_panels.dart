@@ -8,13 +8,11 @@ library;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/config/app_config.dart' show AppConfig;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../../../../design/app_kit.dart';
 import '../../../../design/app_notice.dart';
 import '../../../../design/app_tokens.dart';
-import '../../../../design/export_layout/layout_api.dart' show LayoutApi, LayoutFont;
 import '../../../../design/export_layout/layout_element_view.dart' show layoutColor, layoutHex;
 import '../../../../design/export_layout/layout_model.dart';
 import '../../../../design/studio/studio.dart';

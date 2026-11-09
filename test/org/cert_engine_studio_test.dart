@@ -7,7 +7,11 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart' show RequestOptions;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/design/app_keyboard.dart';
+import 'package:flutter_education_app/design/export_layout/layout_element_view.dart' show LayoutElementView;
+import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_flow.dart' show CertIssueFlowPage;
 import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designer_screen.dart';
 import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_api.dart';
 import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_panels.dart' show CertThemeColorField;
@@ -392,13 +396,13 @@ void main() {
     await settle(tester, 300);
     await tester.tap(find.text('Replace'));
     await settle(tester, 400);
-    expect(find.text('Ready-made designs'), findsOneWidget);
+    expect(find.text('Choose your certificate design'), findsOneWidget);
     expect(find.text('ذهبي', skipOffstage: false), findsOneWidget);
     await tester.ensureVisible(find.byKey(const ValueKey('cert-template-gold')));
     await tester.tap(find.byKey(const ValueKey('cert-template-gold')));
     await settle(tester, 800);
     final b = calls['template']!.single;
-    expect(b['theme_color'], matches(r'^#[0-9A-F]{6}$'), reason: 'the theme colour goes with the pick');
+    expect(b.containsKey('theme_color'), isFalse, reason: 'a card keeps the template\'s own colours (D-384); a colour goes only when one is chosen');
     expect(b['org_id'], isNull);
     expect(calls['created'], isNull, reason: 'no design is created for a pick');
     expect(calls['delete'], isNull);
@@ -504,5 +508,115 @@ void main() {
     expect(s.single.key, 'classic');
     expect(s.single.name('en'), 'Classic');
     expect(s.single.document.designs['ar']!.row.elements, hasLength(1));
+  });
+
+  group('the packs together', () {
+    Finder element(String id) => find.byWidgetPredicate((w) => w is LayoutElementView && w.element.id == id, skipOffstage: false);
+    double xOf(WidgetTester t, String id) => t.widget<LayoutElementView>(element(id)).element.x;
+
+    Future<void> openKeyboard(WidgetTester tester) async {
+      AppKeyboardSupport.enabledOverride = true;
+      addTearDown(() => AppKeyboardSupport.enabledOverride = null);
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1440, 900);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(layoutHost(
+        AppKeyboardSupport(child: CertEngineStudio(designId: 7, drafts: drafts, userId: 'u1', imageLoader: (_) async => null)),
+        scaffold: false,
+        scale: 1,
+      ));
+      await settle(tester);
+    }
+
+    testWidgets('the keyboard: after a click on the rail or the top bar, only the visible language reacts', (tester) async {
+      served = _doc(both: true, ar: [_el('a1', 'شهادة', x: 150)], en: [_el('e1', 'Certificate', x: 40)]);
+      await openKeyboard(tester);
+      expect(find.byKey(const ValueKey('cert-keyboard')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('cert-tab-en')));
+      await settle(tester, 200);
+      await tester.tap(element('e1'), warnIfMissed: false);
+      await settle(tester, 200);
+      // the font row holds the focus, as after using it; a click on the rail gives the keys back to the canvas
+      expect(find.byKey(const ValueKey('cert-font-open')), findsOneWidget);
+      Focus.of(tester.element(find.descendant(of: find.byKey(const ValueKey('cert-font-open')), matching: find.byType(Icon)).first)).requestFocus();
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('cert-rail-layers')));
+      await settle(tester, 200);
+      final a0 = xOf(tester, 'a1'), e0 = xOf(tester, 'e1');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await settle(tester, 100);
+      expect(xOf(tester, 'e1'), greaterThan(e0));
+      expect(xOf(tester, 'a1'), a0);
+
+      // a selection left on the hidden language: the keys never touch it
+      await tester.tap(find.byKey(const ValueKey('cert-tab-ar')));
+      await settle(tester, 200);
+      await tester.tap(element('a1'), warnIfMissed: false);
+      await settle(tester, 200);
+      await tester.tap(find.byKey(const ValueKey('cert-tab-en')));
+      await settle(tester, 200);
+      await tester.tap(find.byKey(const ValueKey('cert-page-caption')));
+      await settle(tester, 200); // nothing selected on the visible page
+      await tester.sendKeyEvent(LogicalKeyboardKey.delete);
+      await settle(tester, 100);
+      expect(element('a1'), findsOneWidget);
+      expect(element('e1'), findsOneWidget);
+
+      // Ctrl+A: a multi selection shows the font row of the picker too
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await settle(tester, 200);
+      expect(find.byKey(const ValueKey('cert-font-open')), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('cert-keyboard')));
+      await settle(tester, 400);
+      expect(find.text('Keyboard shortcuts'), findsWidgets);
+    });
+
+    testWidgets('an empty page opens the full gallery; Use fills both languages with the template\'s own colours', (tester) async {
+      served = _doc(both: true, ar: [], en: []);
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('cert-empty-templates')));
+      await settle(tester, 400);
+      expect(find.text('Choose your certificate design'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('cert-template-gold')));
+      await settle(tester, 800);
+      expect(calls['template']!.single.containsKey('theme_color'), isFalse);
+      expect(element('t1'), findsOneWidget);
+      expect(element('t2'), findsOneWidget);
+      expect(find.byKey(const ValueKey('cert-empty-templates')), findsNothing);
+    });
+
+    testWidgets('a thumbnail in the Templates tab: its own colours, the full gallery one button away', (tester) async {
+      served = _doc(both: true, ar: [], en: []);
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('cert-rail-templates')));
+      await settle(tester, 300);
+      await tester.tap(find.byKey(const ValueKey('cert-slot-template-gold')));
+      await settle(tester, 800);
+      expect(calls['template']!.single.containsKey('theme_color'), isFalse);
+      expect(element('t2'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('cert-browse-templates')));
+      await settle(tester, 300);
+      await tester.tap(find.text('Replace'));
+      await settle(tester, 400);
+      expect(find.text('Choose your certificate design'), findsOneWidget);
+    });
+
+    testWidgets('a photo element has the Photo required switch; Issue opens the issue flow', (tester) async {
+      served = _doc(ar: [
+        {'id': 'p1', 'kind': 'image', 'x': 100, 'y': 40, 'w': 40, 'h': 40, 'bind': {'field': 'photo'}},
+        _el('a1', 'شهادة', x: 150),
+      ]);
+      await open(tester);
+      await tester.tap(element('p1'), warnIfMissed: false);
+      await settle(tester, 300);
+      expect(find.byKey(const ValueKey('cert-photo-required')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('cert-issue')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(CertIssueFlowPage), findsOneWidget);
+    });
   });
 }
