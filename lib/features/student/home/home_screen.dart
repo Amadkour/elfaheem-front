@@ -577,7 +577,7 @@ class _Feeds extends StatelessWidget {
       // ── Featured (ads) — after personal content, never above the greeting
       const HomeAdsSlider(),
       // ── Organizations (join a university / faculty)
-      if (!guest) const ParentComponent(key: ValueKey('student_home.org'), child: HomeOrgMix()),
+      if (!guest) const ParentComponent(key: ValueKey('student_home.org'), child: Padding(padding: EdgeInsets.symmetric(horizontal: 20), child: HomeOrgMix())),
       // ── the marketing call (GET /teacher/student-dashboard): other courses · categories · best teachers
       Consumer<HomeProvider>(builder: (context, provider, _) => _MarketingFeeds(provider: provider, guest: guest)),
     ]);

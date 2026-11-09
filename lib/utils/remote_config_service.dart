@@ -16,7 +16,9 @@ class RemoteConfigService {
   RemoteConfigService._();
   static final RemoteConfigService instance = RemoteConfigService._();
 
-  late final FirebaseRemoteConfig _rc;
+  /// Null until [init] ran (a slow start-up can time that step out): the getters below then answer the defaults.
+  /// A `late` field here threw from the app root's first build and left a grey screen.
+  FirebaseRemoteConfig? _config;
 
   // ── Defaults — used before fetch or when offline ──────────────────────────
 
@@ -29,9 +31,10 @@ class RemoteConfigService {
   // ── Init — call once in main() after Firebase.initializeApp() ─────────────
 
   Future<void> init() async {
-    _rc = FirebaseRemoteConfig.instance;
+    final rc = FirebaseRemoteConfig.instance;
+    _config = rc;
 
-    await _rc.setConfigSettings(RemoteConfigSettings(
+    await rc.setConfigSettings(RemoteConfigSettings(
       // In production use a longer interval (e.g. 1 hour = 3600 seconds).
       // During development, 0 means fetch every time (no cache).
       fetchTimeout:         const Duration(seconds: 10),
@@ -39,12 +42,12 @@ class RemoteConfigService {
     ));
 
     // Register defaults so the app works offline / before first fetch
-    await _rc.setDefaults(_defaults);
+    await rc.setDefaults(_defaults);
 
     // Fetch + activate in one call.
     // fetchAndActivate() returns true if new values were activated.
     try {
-      await _rc.fetchAndActivate();
+      await rc.fetchAndActivate();
     } catch (e) {
       // Network error — defaults are still active, app continues normally
       print('[RemoteConfig] fetch failed, using defaults: $e');
@@ -52,8 +55,8 @@ class RemoteConfigService {
 
     // Listen for real-time config updates (optional but nice to have)
     if (!kIsWeb) {
-      _rc.onConfigUpdated.listen((event) async {
-        await _rc.activate();
+      rc.onConfigUpdated.listen((event) async {
+        await rc.activate();
         print('[RemoteConfig] config updated: ${event.updatedKeys}');
       });
     }
@@ -62,11 +65,11 @@ class RemoteConfigService {
   // ── Getters ───────────────────────────────────────────────────────────────
 
   /// The app's display name — replaces the hardcoded "NextBrain" string.
-  String get appName => _rc.getString('app_name');
+  String get appName => _config?.getString('app_name') ?? _defaults['app_name'] as String;
 
   /// When true, show a maintenance screen or banner to users.
-  bool get maintenanceMode => _rc.getBool('maintenance_mode');
+  bool get maintenanceMode => _config?.getBool('maintenance_mode') ?? false;
 
   /// Minimum version number allowed — compare against your current version.
-  int get forceUpdateVersion => _rc.getInt('force_update_version');
+  int get forceUpdateVersion => _config?.getInt('force_update_version') ?? 0;
 }

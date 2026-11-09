@@ -36,6 +36,9 @@ class BasePage extends StatelessWidget {
   final bool useWebCard;
   final bool enableFooterWidget;
 
+  /// A [useWebCard] page's side margin from which the page pattern is drawn (D-560).
+  static const double _patternFromMargin = 64;
+
   /// Stacks the app-wide background-upload progress footer above whatever
   /// bottomNavigationBar the page already wants, so a video upload started
   /// on any screen stays visible while the teacher navigates elsewhere.
@@ -119,34 +122,24 @@ class BasePage extends StatelessWidget {
             final cardWidth = width != null
                 ? width!.inside(box.maxWidth)
                 : AppWidth.content.inside(box.maxWidth, max: maxWith);
+            // The body runs the whole height: a margin here stopped the scrolling content 12 px short of the window's
+            // edge, cut off by an invisible line (D-560). The pattern only fills a real side margin; next to a
+            // full-size card it was a thin noisy strip.
+            final margin = (box.maxWidth - cardWidth) / 2;
             return Stack(
             children: [
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: ElearningPatternPainter(
-                    color: context.colors.primaryLight.withValues(alpha: 0.07),
-                    width: cardWidth,
-                  ),
-                ),
-              ),
-              Align(
-                alignment: AlignmentGeometry.center,
-                child: Container(
-                  width: cardWidth,
-                  margin: const EdgeInsets.symmetric(vertical: AppSpace.sm),
-                  padding: const EdgeInsets.all(0.0),
-                  decoration: BoxDecoration(
-                    borderRadius:
-                    BorderRadius.circular(context.colors.radiusXL),
-                    color: context.colors.background,
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadiusGeometry.circular(
-                      context.colors.radiusXL,
+              if (margin >= _patternFromMargin)
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: ElearningPatternPainter(
+                      color: context.colors.primaryLight.withValues(alpha: 0.07),
+                      width: cardWidth,
                     ),
-                    child: w,
                   ),
                 ),
+              Align(
+                alignment: AlignmentDirectional.topCenter,
+                child: SizedBox(width: cardWidth, height: double.infinity, child: w),
               ),
             ],
           );

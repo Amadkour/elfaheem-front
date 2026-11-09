@@ -946,12 +946,12 @@ class CourseListToolbar extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: LayoutBuilder(builder: (context, box) {
-        final wide = box.maxWidth >= 640;
+        final wide = box.maxWidth >= 900; // below it the four filters keep whole labels on their own row
         if (wide) {
           return Row(children: [
             if (search != null) Expanded(child: search!),
             if (search != null && filter != null) const SizedBox(width: 16),
-            if (filter != null) SizedBox(width: math.min(340, box.maxWidth * 0.42), child: filter!),
+            if (filter != null) SizedBox(width: math.min(520, box.maxWidth * 0.5), child: filter!),
             if (action != null) ...[const SizedBox(width: 16), action!],
           ]);
         }

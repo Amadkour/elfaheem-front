@@ -31,6 +31,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 
 import 'analytics_summary.dart';
 import 'analytics_ui.dart' show anPct, anTr, anFmt;
+import 'package:flutter_education_app/design/app_shell_nav.dart' show ShellChrome;
 
 /// The metric's colour (the same in the rings, the legend, the bars and the tiles).
 Color anMetricColor(BuildContext context, AnMetric m) => anMetricColors(context)[m.index];
@@ -261,6 +262,8 @@ class AnPageHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    // a tab's first page: the shell's bar above already says it (D-551), so only the line under the title remains here
+    final titled = !ShellChrome.ownsHeaderOf(context);
     return SafeArea(
       bottom: false,
       child: Padding(
@@ -268,10 +271,10 @@ class AnPageHeader extends StatelessWidget {
         child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(28, w: FontWeight.w800, c: c.textDark, h: 1.15)),
+              if (titled) Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(28, w: FontWeight.w800, c: c.textDark, h: 1.15)),
               if (subtitle != null) ...[
-                const SizedBox(height: 4),
-                Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13.5, c: c.textMedium, h: 1.35)),
+                if (titled) const SizedBox(height: 4),
+                Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(titled ? 13.5 : 15, c: c.textMedium, h: 1.35)),
               ],
             ]),
           ),

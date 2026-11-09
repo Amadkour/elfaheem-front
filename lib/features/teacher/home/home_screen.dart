@@ -643,7 +643,7 @@ class TeacherHomeBody extends StatelessWidget {
       if (showFeeds) ...[
         const HomeAdsSlider(padding: EdgeInsets.fromLTRB(20, 0, 20, 12)),
         const ParentComponent(
-          child: ContentBox(key: ValueKey('teacher_home_org'), padding: EdgeInsets.symmetric(horizontal: 20), child: HomeOrgMix()),
+          child: Padding(key: ValueKey('teacher_home_org'), padding: EdgeInsets.symmetric(horizontal: 20), child: HomeOrgMix()),
         ),
       ],
       const SizedBox(height: 12),

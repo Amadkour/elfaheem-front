@@ -105,7 +105,7 @@ class _CourseAnalyticsViewState extends State<_CourseAnalyticsView>
     return Directionality(
       textDirection: pageDirection, // follows the app language (it was forced to RTL)
       child: BasePage(
-        width: AppWidth.content,
+        width: AppWidth.wide,
         useWebCard: true,
         child: NestedScrollView(
           headerSliverBuilder: (ctx, _) => [
