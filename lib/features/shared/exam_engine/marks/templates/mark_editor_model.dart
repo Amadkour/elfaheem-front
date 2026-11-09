@@ -6,6 +6,7 @@ import 'dart:ui' show Offset, Rect;
 import 'package:flutter/foundation.dart';
 
 import '../mark_templates_api.dart';
+import 'mark_strip.dart';
 
 class MarkEditorModel extends ChangeNotifier {
   MarkEditorModel(MarkSheetSpec spec) : _spec = spec {
@@ -136,6 +137,13 @@ class MarkEditorModel extends ChangeNotifier {
     _set(_replace(next), push: false);
   }
 
+  /// The strip of a field changed during a drag (after [beginDrag]); the field's box follows it.
+  void dragStrip(String id, MarkStrip strip) {
+    final f = _spec.field(id);
+    if (f == null) return;
+    _set(_replace(f.copyWith(strip: strip, box: strip.enclosingBox(_spec.aspect))), push: false);
+  }
+
   /// A drag that drew or moved nothing (a tap) leaves no undo step behind.
   void endDrag({required bool changed}) {
     if (!changed && _undo.isNotEmpty) _undo.removeLast();
@@ -143,7 +151,7 @@ class MarkEditorModel extends ChangeNotifier {
   }
 
   /// A field edited in the form. [coalesce] merges a run of edits (typing) into one undo step.
-  void update(MarkField f, {String? coalesce}) => _set(_replace(f), coalesce: coalesce);
+  void update(MarkField f, {String? coalesce}) => _set(_replace(f.strip == null ? f : f.copyWith(box: f.strip!.enclosingBox(_spec.aspect))), coalesce: coalesce);
 
   void setType(String id, FieldType type) {
     final f = _spec.field(id);
@@ -195,9 +203,11 @@ class MarkEditorModel extends ChangeNotifier {
   String? hit(Offset p) {
     String? best;
     var bestArea = double.infinity;
+    final aspect = _spec.aspect;
     for (final f in _spec.fields.reversed) {
-      if (f.box.inflate(0.002).contains(p)) {
-        final a = f.box.width * f.box.height;
+      final strip = f.strip;
+      if (strip != null ? strip.contains(p, aspect, pad: 0.004) : f.box.inflate(0.002).contains(p)) {
+        final a = strip != null ? strip.span * strip.height : f.box.width * f.box.height;
         if (a < bestArea) {
           best = f.id;
           bestArea = a;

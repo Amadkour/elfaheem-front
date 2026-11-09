@@ -15,6 +15,7 @@ import 'package:http_parser/http_parser.dart' show MediaType;
 import '../../../admin/admin_common.dart' show asMap, asMapList, t;
 import '../exam_authoring.dart' show parseEngineUtc;
 import '../exam_engine_api.dart' show EngineResult, engineCall;
+import 'templates/mark_strip.dart';
 
 /// The kill switch of the whole part (feature catalog `exam.mark_templates`).
 const kMarkTemplatesFeatureKey = 'exam.mark_templates';
@@ -133,6 +134,8 @@ class MarkField {
     this.guess,
     this.conf,
     this.extra = const {},
+    this.strip,
+    this.optional = false,
   });
 
   final String id;
@@ -153,6 +156,14 @@ class MarkField {
   /// Keys the app does not edit (an identifier's `cells`, …): kept as they came.
   final Map<String, dynamic> extra;
 
+  /// An identifier written on a printed rule at any angle (D-357); the [box] then encloses it.
+  final MarkStrip? strip;
+
+  /// A mark that may be left empty: an empty cell counts as 0 and raises no `mark_blank`.
+  final bool optional;
+
+  bool get readsNumber => source == 'national_id' || source == 'academic_id';
+
   MarkField copyWith({
     String? id,
     FieldType? type,
@@ -164,6 +175,9 @@ class MarkField {
     double? step,
     String? mode,
     List<MarkOption>? options,
+    MarkStrip? strip,
+    bool? optional,
+    bool clearStrip = false,
     bool clearDigits = false,
     bool clearQuestionNo = false,
     bool clearMax = false,
@@ -183,6 +197,8 @@ class MarkField {
         guess: guess,
         conf: conf,
         extra: extra,
+        strip: clearStrip ? null : (strip ?? this.strip),
+        optional: optional ?? this.optional,
       );
 
   /// A field of [type] with the defaults the editor starts from.
@@ -191,14 +207,14 @@ class MarkField {
       case FieldType.identifier:
         return copyWith(type: to, source: kIdentifierSources.contains(source) ? source : 'qr', clearQuestionNo: true, clearMax: true, clearStep: true);
       case FieldType.questionMark:
-        return copyWith(type: to, questionNo: questionNo ?? nextQuestionNo ?? 1, max: max ?? 1, step: step ?? 0.5, clearDigits: true);
+        return copyWith(type: to, questionNo: questionNo ?? nextQuestionNo ?? 1, max: max ?? 1, step: step ?? 0.5, clearDigits: true, clearStrip: true);
       case FieldType.total:
-        return copyWith(type: to, max: max ?? 10, clearQuestionNo: true, clearStep: true, clearDigits: true);
+        return copyWith(type: to, max: max ?? 10, clearQuestionNo: true, clearStep: true, clearDigits: true, clearStrip: true);
       case FieldType.answerRow:
         final labels = options.isNotEmpty ? [for (final o in options) o.label] : const ['A', 'B', 'C', 'D'];
-        return copyWith(type: to, questionNo: questionNo ?? nextQuestionNo ?? 1, options: splitOptions(box, labels, old: options), clearMax: true, clearStep: true, clearDigits: true);
+        return copyWith(type: to, questionNo: questionNo ?? nextQuestionNo ?? 1, options: splitOptions(box, labels, old: options), clearMax: true, clearStep: true, clearDigits: true, clearStrip: true);
       case FieldType.unset:
-        return copyWith(type: to);
+        return copyWith(type: to, clearStrip: true);
     }
   }
 
@@ -208,7 +224,7 @@ class MarkField {
     final opts = <MarkOption>[
       for (final o in asMapList(j['options'])) MarkOption('${o['label'] ?? ''}', boxFromJson(o['box'])),
     ];
-    const known = {'id', 'type', 'source', 'box', 'digits', 'question_no', 'max', 'step', 'mode', 'options', 'guess', 'conf'};
+    const known = {'id', 'type', 'source', 'box', 'digits', 'question_no', 'max', 'step', 'mode', 'options', 'guess', 'conf', 'strip', 'optional'};
     return MarkField(
       id: _s(j['id']) ?? fallbackId,
       type: type,
@@ -223,6 +239,8 @@ class MarkField {
       guess: _s(j['guess']),
       conf: _dn(j['conf']),
       extra: {for (final e in j.entries) if (!known.contains(e.key)) e.key: e.value},
+      strip: MarkStrip.fromJson(j['strip']),
+      optional: j['optional'] == true,
     );
   }
 
@@ -232,6 +250,7 @@ class MarkField {
       case FieldType.identifier:
         m['source'] = source;
         if (digits != null) m['digits'] = digits;
+        if (strip != null) m['strip'] = strip!.toJson();
       case FieldType.questionMark:
         m['question_no'] = questionNo;
         m['max'] = max;
@@ -245,6 +264,7 @@ class MarkField {
       case FieldType.unset:
         break;
     }
+    if (optional && type != FieldType.identifier && type != FieldType.unset) m['optional'] = true;
     return m;
   }
 }
@@ -393,6 +413,11 @@ class SpecIssue {
       'two_totals' => t('يوجد أكثر من مربع مجموع.', 'There is more than one total box.'),
       'sum_mismatch' => t('مجموع درجات الأجزاء ${params['sum']} لا يساوي درجة المجموع ${params['total']}.', 'The parts add up to ${params['sum']} but the total is ${params['total']}.'),
       'sum_no_parts' => t('قاعدة المجموع بلا أجزاء.', 'The sum rule has no parts.'),
+      'strip_point' => t('طرف الخط خارج الورقة.', 'An end of the line is outside the page.'),
+      'strip_short' => t('خط الرقم قصير جدًا. اسحب طرفيه على الخط المطبوع.', 'The line is too short. Drag its two ends along the printed line.'),
+      'strip_height' => t('ارتفاع منطقة الكتابة غير مناسب.', 'The height of the writing area is not valid.'),
+      'strip_search' => t('هامش البحث غير مناسب.', 'The search margin is not valid.'),
+      'strip_source' => t('الخط المائل يقرأ رقمًا فقط.', 'A slanted line reads a number only.'),
       _ => code,
     };
   }
@@ -446,6 +471,12 @@ List<SpecIssue> validateSpec(MarkSheetSpec spec) {
       out.add(SpecIssue('max_not_positive', fieldIds: [f.id]));
     }
     if (f.type == FieldType.questionMark && f.step != null && f.step! <= 0) out.add(SpecIssue('step_not_positive', fieldIds: [f.id]));
+    if (f.type == FieldType.identifier && f.strip != null) {
+      for (final code in f.strip!.errorCodes) {
+        out.add(SpecIssue(code, fieldIds: [f.id]));
+      }
+      if (!f.readsNumber) out.add(SpecIssue('strip_source', fieldIds: [f.id]));
+    }
     if (f.type == FieldType.answerRow) {
       if (f.options.isEmpty) out.add(SpecIssue('no_options', fieldIds: [f.id]));
       if (f.options.map((o) => o.label).toSet().length != f.options.length) out.add(SpecIssue('duplicate_option', fieldIds: [f.id]));
@@ -456,6 +487,7 @@ List<SpecIssue> validateSpec(MarkSheetSpec spec) {
   }
   for (var i = 0; i < fs.length; i++) {
     for (var j = i + 1; j < fs.length; j++) {
+      if (fs[i].strip != null || fs[j].strip != null) continue; // a slanted strip's box is not its real extent
       if (_overlaps(fs[i].box, fs[j].box)) out.add(SpecIssue('overlap', fieldIds: [fs[i].id, fs[j].id]));
     }
   }
@@ -537,6 +569,58 @@ class MarkTemplate {
         updatedAt: parseEngineUtc(j['updated_at']),
         hasImage: j['has_image'] != false,
       );
+}
+
+/// A ready-made template shipped with the server (D-357): `GET /mark-templates/builtins`.
+class MarkBuiltin {
+  const MarkBuiltin({required this.key, required this.nameAr, required this.nameEn, this.kind, this.noteAr = '', this.noteEn = '', this.fieldsCount = 0, this.totalMax});
+
+  final String key, nameAr, nameEn, noteAr, noteEn;
+  final MarkKind? kind;
+  final int fieldsCount;
+  final double? totalMax;
+
+  String get name => t(nameAr, nameEn);
+  String get note => t(noteAr, noteEn);
+
+  factory MarkBuiltin.fromJson(Map<String, dynamic> j) => MarkBuiltin(
+        key: '${j['key'] ?? ''}',
+        kind: MarkKind.parse(j['kind']),
+        nameAr: '${j['name_ar'] ?? ''}',
+        nameEn: '${j['name_en'] ?? ''}',
+        noteAr: '${j['note_ar'] ?? ''}',
+        noteEn: '${j['note_en'] ?? ''}',
+        fieldsCount: _in(j['fields_count']) ?? 0,
+        totalMax: _dn(j['total_max']),
+      );
+
+  /// The name a copy of this template gets for a paper out of [total]: the same copy is found again however many exams use it.
+  String copyName(double total) => '$name · ${numText(total)}';
+
+  /// Is [template] a copy of this built-in? The server keeps no link to the built-in, so a copy is known by its name.
+  bool isCopy(String template) {
+    final n = template.trim();
+    return (nameAr.isNotEmpty && n.startsWith(nameAr)) || (nameEn.isNotEmpty && n.startsWith(nameEn));
+  }
+
+  /// The teacher's own copy out of [total], if they already made one: reused rather than duplicated.
+  MarkTemplate? copyFor(Iterable<MarkTemplate> templates, double total) {
+    for (final x in templates) {
+      if (!x.retired && isCopy(x.name) && x.totalMax != null && (x.totalMax! - total).abs() < 0.0001) return x;
+    }
+    return null;
+  }
+}
+
+/// A full mark as typed (Arabic digits and decimal commas included); null unless the server would accept it (0 < x <= 1000).
+double? parseFullMark(String text) {
+  const arabic = '٠١٢٣٤٥٦٧٨٩';
+  var s = text.trim().replaceAll('٫', '.').replaceAll(',', '.');
+  for (var i = 0; i < arabic.length; i++) {
+    s = s.replaceAll(arabic[i], '$i');
+  }
+  final v = double.tryParse(s);
+  return v == null || !(v > 0) || v > 1000 ? null : v;
 }
 
 /// `detect` → the blank image's key and size, the page block and the proposals.
@@ -695,9 +779,11 @@ class MarkTemplatesApi {
         'kind': ?kind,
       }));
 
-  Future<EngineResult> detect((String, Uint8List) image, {int? orgId}) {
+  /// [wholePhoto]: the whole photo is the blank instead of the printed table only, so the editor can reach a corner outside it.
+  Future<EngineResult> detect((String, Uint8List) image, {int? orgId, bool wholePhoto = false}) {
     final form = FormData();
     if (orgId != null) form.fields.add(MapEntry('org_id', '$orgId'));
+    if (wholePhoto) form.fields.add(const MapEntry('whole_photo', 'true'));
     form.files.add(MapEntry('image', MultipartFile.fromBytes(image.$2, filename: image.$1, contentType: MediaType.parse(_mime(image.$1)))));
     return engineCall(() => _api.post('$_b/detect', body: form));
   }
@@ -719,6 +805,29 @@ class MarkTemplatesApi {
 
   /// The saved template (its `spec` and `name`) when the server has a detail route; the list row otherwise.
   Future<EngineResult> detail(int id) => engineCall(() => _api.get('$_b/$id'));
+
+  Future<List<MarkBuiltin>> builtins() async {
+    final r = await engineCall(() => _api.get('$_b/builtins'));
+    if (!r.ok) return const [];
+    return [for (final m in asMapList(r.map['items'])) MarkBuiltin.fromJson(m)].where((b) => b.key.isNotEmpty).toList();
+  }
+
+  Future<Uint8List?> builtinImage(String key) async {
+    try {
+      final b = await _api.getBytes('$_b/builtins/$key/image');
+      return b.isEmpty ? null : b;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// A copy of the built-in that the teacher owns. [totalMax] is this paper's full mark (the booklet prints none).
+  Future<EngineResult> createBuiltin(String key, {int? orgId, String? name, double? totalMax}) => engineCall(() => _api.post('$_b/builtin', body: {
+        'key': key,
+        'org_id': ?orgId,
+        'name': ?name,
+        'total_max': ?totalMax,
+      }));
 
   /// The signed blank image; null when it is not there.
   Future<Uint8List?> image(int id) async {

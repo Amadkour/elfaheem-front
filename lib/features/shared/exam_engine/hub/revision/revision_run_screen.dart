@@ -64,6 +64,8 @@ class _RevisionRunScreenState extends State<RevisionRunScreen> {
   Timer? _quietTimer;
   String? _retakeTip;
   List<GradeStudent>? _students;
+  Future<List<GradeStudent>>? _studentsLoad;
+  int? _choosing;
 
   /// A page's event can overtake the answer to the upload that created it.
   final _early = <int>{};
@@ -135,6 +137,7 @@ class _RevisionRunScreenState extends State<RevisionRunScreen> {
     final row = read.row;
     if (row != null) _papers = upsertRow(_papers, row);
     if (kind == RevisionReadKind.matched && row != null) _showQuiet(row);
+    if (row != null && row.needsStudent) unawaited(_loadStudents());
     setState(() => _cursor = _papers.isEmpty ? -1 : _papers.length - 1);
     _maybePresent();
   }
@@ -237,24 +240,37 @@ class _RevisionRunScreenState extends State<RevisionRunScreen> {
     _next();
   }
 
+  /// The list is read ahead, as soon as a paper needs a student, so "someone else" opens at once.
+  Future<List<GradeStudent>> _loadStudents() {
+    final have = _students;
+    if (have != null) return Future.value(have);
+    return _studentsLoad ??= _api.students(widget.info).catchError((Object _) => const <GradeStudent>[]).then((list) {
+      _studentsLoad = null;
+      if (list.isNotEmpty) _students = list; // an empty answer may be a failed one: asked again next time
+      return list;
+    });
+  }
+
+  Future<void> _choose(int studentId) async {
+    setState(() => _choosing = studentId);
+    await _decide('assign_student', studentId: studentId);
+    if (mounted) setState(() => _choosing = null);
+  }
+
+  /// Students who already have a paper in this session.
+  Set<int> get _taken => {for (final r in _papers) if (r.row.studentId != null && r.row.status != 'dismissed') r.row.studentId!};
+
   Future<void> _assign() async {
-    var all = _students;
-    if (all == null) {
+    var list = _students;
+    if (list == null) {
       setState(() => _busy = true);
-      try {
-        all = await _api.students(widget.info);
-      } catch (_) {
-        all = const [];
-      }
+      list = await _loadStudents();
       if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _students = all;
-      });
+      setState(() => _busy = false);
     }
-    final list = all;
-    final picked = await showAppSheet<GradeStudent>(context, (ctx) => AppSheetContent(title: t('تحديد الطالب', 'Assign student'), children: [GradeAssignSheet(students: list, onPick: (s) => Navigator.pop(ctx, s))]));
-    if (picked != null && mounted) await _decide('assign_student', studentId: picked.id);
+    final all = list;
+    final picked = await showAppSheet<GradeStudent>(context, (ctx) => AppSheetContent(title: t('تحديد الطالب', 'Assign student'), children: [GradeAssignSheet(students: all, taken: _taken, onPick: (s) => Navigator.pop(ctx, s))]));
+    if (picked != null && mounted) await _choose(picked.id);
   }
 
   Future<void> _fix(MarkPart p) async {
@@ -316,7 +332,7 @@ class _RevisionRunScreenState extends State<RevisionRunScreen> {
     if (_papers.isEmpty) return null;
     final i = _cursor.clamp(0, _papers.length - 1);
     final r = _papers[i];
-    final status = r.decided ? gradeStatusText(r.row.status) : switch (r.list) { MarkList.match => t('مطابقة', 'Match'), MarkList.mismatch => t('تختلف', 'Differs'), MarkList.unreadable => t('غير مقروءة', 'Unreadable') };
+    final status = r.decided ? gradeStatusText(r.row.status) : r.needsStudent ? t('اختر الطالب', 'Choose the student') : switch (r.list) { MarkList.match => t('مطابقة', 'Match'), MarkList.mismatch => t('تختلف', 'Differs'), MarkList.unreadable => t('غير مقروءة', 'Unreadable') };
     Widget arrow(IconData icon, String key, String tip, VoidCallback? onTap) => IconButton(
           key: ValueKey(key),
           tooltip: tip,
@@ -383,7 +399,8 @@ class _RevisionRunScreenState extends State<RevisionRunScreen> {
                 onRetake: a.rejected ? _rejectedRetake : () => _decide('retake'),
                 onLater: _later,
                 onAssign: _assign,
-                onConfirmCandidate: () => a.row?.candidateId == null ? null : _decide('assign_student', studentId: a.row!.candidateId),
+                onChoose: _choose,
+                pendingStudentId: _choosing,
                 onFix: _fix,
               )
             : const SizedBox.shrink(key: ValueKey('rv.panel.none')),

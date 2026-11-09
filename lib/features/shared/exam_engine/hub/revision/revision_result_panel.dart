@@ -13,6 +13,7 @@ import '../../../../admin/admin_common.dart' show t;
 import '../../marks/mark_sessions_api.dart';
 import '../../marks/review/grade_review_capture.dart' show gradeRetakeText;
 import '../../marks/review/grade_review_rows.dart';
+import 'revision_choose_student.dart';
 import 'revision_models.dart';
 import 'revision_wizard_steps.dart' show revisionAccent;
 
@@ -33,7 +34,8 @@ class RevisionResultPanel extends StatelessWidget {
     this.onRetake,
     this.onLater,
     this.onAssign,
-    this.onConfirmCandidate,
+    this.onChoose,
+    this.pendingStudentId,
     this.onFix,
   });
 
@@ -52,7 +54,13 @@ class RevisionResultPanel extends StatelessWidget {
   /// Other papers waiting after this one.
   final int behind;
   final Future<Uint8List?> Function(String url)? loadCrop;
-  final VoidCallback? onUpdate, onIgnore, onRetake, onLater, onAssign, onConfirmCandidate;
+  final VoidCallback? onUpdate, onIgnore, onRetake, onLater, onAssign;
+
+  /// One of the offered students was chosen.
+  final ValueChanged<int>? onChoose;
+
+  /// The student being linked right now.
+  final int? pendingStudentId;
   final void Function(MarkPart part)? onFix;
 
   @override
@@ -73,6 +81,7 @@ class RevisionResultPanel extends StatelessWidget {
                 decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(AppRadius.sheet), boxShadow: AppElevation.of(context, 3)),
                 child: switch (r) {
                   null => _rejected(context),
+                  _ when r.needsStudent => RevisionChooseStudent(row: r, behind: behind, busy: busy, pendingId: pendingStudentId, loadCrop: loadCrop, onChoose: onChoose, onSearch: onAssign, onRetake: onRetake, onLater: onLater),
                   _ when r.list == MarkList.mismatch => _mismatch(context, r),
                   _ => _unreadable(context, r),
                 },
@@ -140,16 +149,12 @@ class RevisionResultPanel extends StatelessWidget {
       Row(children: [
         Icon(Icons.warning_amber_rounded, color: c.warning),
         AppSpace.gapXs,
-        Expanded(child: Text(r.row.hasStudent ? gradeRowName(r.row) : t('لم نتعرّف على الطالب', 'We could not tell whose paper this is'), key: const ValueKey('rv.name'), style: AppType.section(context), maxLines: 2, overflow: TextOverflow.ellipsis)),
+        Expanded(child: Text(gradeRowName(r.row), key: const ValueKey('rv.name'), style: AppType.section(context), maxLines: 2, overflow: TextOverflow.ellipsis)),
       ]),
       if (r.row.identifierMasked.isNotEmpty) Text('${t('المقروء', 'Read')}: ${r.row.identifierMasked}', textDirection: TextDirection.ltr, style: AppType.meta(context)),
       if (problems.isNotEmpty) ...[
         AppSpace.gapXs,
         Text(problems.join(' · '), style: AppType.row(context).copyWith(color: c.textMedium)),
-      ],
-      if (r.candidateName != null) ...[
-        AppSpace.gapSm,
-        AppBanner(key: const ValueKey('rv.candidate'), icon: Icons.person_search_outlined, color: c.primary, text: t('الاسم المكتوب قد يكون: ${r.candidateName}. لا نربط بالاسم إلا بتأكيدك.', 'The name may be ${r.candidateName}. A name is only linked when you confirm it.')),
       ],
       if (shownMarks.isNotEmpty) ...[
         AppSpace.gapSm,
@@ -157,16 +162,6 @@ class RevisionResultPanel extends StatelessWidget {
           Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: GradeMarkTile(key: ValueKey('rv.mark.${m.fieldId}'), part: m, loadCrop: loadCrop, onFix: onFix == null || busy ? null : () => onFix!(m))),
       ],
       AppSpace.gapSm,
-      if (r.candidateName != null) ...[
-        AppPrimaryButton(key: const ValueKey('rv.confirm'), label: t('نعم، هذا هو الطالب', 'Yes, this student'), icon: Icons.check_rounded, busy: busy, onPressed: busy ? null : onConfirmCandidate),
-        AppSpace.gapXs,
-      ],
-      if (!r.row.hasStudent) ...[
-        r.candidateName == null
-            ? AppPrimaryButton(key: const ValueKey('rv.assign'), label: t('تحديد الطالب', 'Assign student'), icon: Icons.person_search_outlined, busy: busy, onPressed: busy ? null : onAssign)
-            : _Side(key: const ValueKey('rv.assign'), icon: Icons.person_search_outlined, label: t('طالب آخر', 'Someone else'), onTap: busy ? null : onAssign),
-        AppSpace.gapXs,
-      ],
       _Side(key: const ValueKey('rv.retake'), icon: Icons.replay_rounded, label: t('إعادة التصوير', 'Retake scan'), onTap: busy ? null : onRetake),
       _Later(onTap: busy ? null : onLater, label: t('تخطّي الآن', 'Skip for now')),
     ]);

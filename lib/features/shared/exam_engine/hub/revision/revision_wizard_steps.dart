@@ -11,9 +11,11 @@ import 'package:flutter_education_app/design/app_responsive.dart';
 
 import '../../../../admin/admin_common.dart' show t;
 import '../../marks/mark_sessions_api.dart' show markNumberText;
-import '../../marks/mark_templates_api.dart' show MarkTemplate, identifierSourceLabel, qualityCodeText;
+import '../../marks/mark_templates_api.dart' show MarkBuiltin, MarkTemplate, identifierSourceLabel, qualityCodeText;
 import '../../marks/review/grade_review_start.dart' show GradeColumn, gradeConversionText;
+import '../../marks/templates/mark_strip.dart';
 import '../../marks/templates/mark_template_common.dart' show confColor, kindIcon, pct;
+import 'revision_builtin.dart';
 import 'revision_models.dart';
 
 // ── small shared pieces ───────────────────────────────────────────────────────────────────────────────────────────
@@ -241,7 +243,7 @@ class _RevisionSheetMappingState extends State<RevisionSheetMapping> {
 // ── step 2: the template ──────────────────────────────────────────────────────────────────────────────────────────
 
 class RevisionTemplateStep extends StatelessWidget {
-  const RevisionTemplateStep({super.key, required this.setup, required this.templates, required this.onPick, required this.onCreate, required this.onEdit, required this.onStep, this.loading = false, this.loadingId});
+  const RevisionTemplateStep({super.key, required this.setup, required this.templates, required this.onPick, required this.onCreate, required this.onEdit, required this.onStep, this.loading = false, this.loadingId, this.builtins = const [], this.onBuiltin, this.loadBuiltinImage, this.builtinBusy});
 
   final RevisionSetup setup;
   final List<MarkTemplate> templates;
@@ -251,26 +253,56 @@ class RevisionTemplateStep extends StatelessWidget {
   final bool loading;
   final int? loadingId;
 
+  /// Ready-made covers, offered first.
+  final List<MarkBuiltin> builtins;
+  final ValueChanged<MarkBuiltin>? onBuiltin;
+  final RevisionBuiltinImage? loadBuiltinImage;
+
+  /// The built-in being copied right now.
+  final String? builtinBusy;
+
+  Widget _ready(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(t('أغلفة جاهزة', 'Ready-made covers'), key: const ValueKey('rv.builtins'), style: AppType.section(context)),
+        Text(t('ابدأ فورًا دون تحديد أي خانة.', 'Start at once, nothing to mark out.'), style: AppType.meta(context)),
+        AppSpace.gapXs,
+        for (final b in builtins)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
+            child: RevisionBuiltinCard(key: ValueKey('rv.builtin.${b.key}'), builtin: b, load: loadBuiltinImage, busy: builtinBusy == b.key, selected: setup.template != null && b.isCopy(setup.template!.name), onTap: builtinBusy == null && onBuiltin != null ? () => onBuiltin!(b) : null),
+          ),
+      ]);
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     if (loading) return const AppListSkeleton(items: 3);
     if (templates.isEmpty) {
-      return AppCard(
-        key: const ValueKey('rv.template.first'),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Icon(Icons.document_scanner_outlined, size: AppIconSize.hero, color: c.primary),
-          AppSpace.gapSm,
-          Text(t('لنعرّف ورقتك مرة واحدة', "Let's set up your paper once"), textAlign: TextAlign.center, style: AppType.section(context)),
-          const SizedBox(height: AppSpace.xxs),
-          Text(t('صوّر ورقة فارغة وسنحدد أماكن الدرجات ورقم الطالب. تأخذ دقيقة، وتستخدمها في كل مرة بعد ذلك.', "Photograph a blank paper and we find where the marks and the student's number go. It takes a minute, and you reuse it every time after."), textAlign: TextAlign.center, style: AppType.meta(context)),
-          AppSpace.gapMd,
-          AppPrimaryButton(key: const ValueKey('rv.template.new'), label: t('إعداد الورقة', 'Set up my paper'), icon: Icons.add_a_photo_outlined, onPressed: onCreate),
-        ]),
-      );
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (builtins.isNotEmpty) ...[_ready(context), AppSpace.gapSm],
+        AppCard(
+          key: const ValueKey('rv.template.first'),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Icon(Icons.document_scanner_outlined, size: AppIconSize.hero, color: c.primary),
+            AppSpace.gapSm,
+            Text(builtins.isEmpty ? t('لنعرّف ورقتك مرة واحدة', "Let's set up your paper once") : t('ورقتك مختلفة؟', 'Is your paper different?'), textAlign: TextAlign.center, style: AppType.section(context)),
+            const SizedBox(height: AppSpace.xxs),
+            Text(t('صوّر ورقة فارغة وسنحدد أماكن الدرجات ورقم الطالب. تأخذ دقيقة، وتستخدمها في كل مرة بعد ذلك.', "Photograph a blank paper and we find where the marks and the student's number go. It takes a minute, and you reuse it every time after."), textAlign: TextAlign.center, style: AppType.meta(context)),
+            AppSpace.gapMd,
+            builtins.isEmpty
+                ? AppPrimaryButton(key: const ValueKey('rv.template.new'), label: t('إعداد الورقة', 'Set up my paper'), icon: Icons.add_a_photo_outlined, onPressed: onCreate)
+                : OutlinedButton.icon(key: const ValueKey('rv.template.new'), onPressed: onCreate, icon: const Icon(Icons.add_a_photo_outlined), label: Text(t('إعداد ورقتي', 'Set up my paper'))),
+          ]),
+        ),
+      ]);
     }
     final current = setup.template;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (builtins.isNotEmpty) ...[
+        _ready(context),
+        AppSpace.gapSm,
+        Text(t('قوالبك', 'Your templates'), style: AppType.section(context)),
+        AppSpace.gapXs,
+      ],
       for (final x in templates)
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpace.xs),
@@ -305,16 +337,43 @@ class RevisionTemplateStep extends StatelessWidget {
 
 /// What a paper can be matched by: the template's own identifier first, then the other lists and the Data Lab columns.
 class RevisionMatchStep extends StatelessWidget {
-  const RevisionMatchStep({super.key, required this.setup, required this.options, required this.onPick});
+  const RevisionMatchStep({super.key, required this.setup, required this.options, required this.onPick, this.recommended, this.identifiers = 0, this.onSheetColumn});
   final RevisionSetup setup;
   final Map<RevisionMatch?, String> options;
   final ValueChanged<RevisionMatch?> onPick;
+
+  /// What the teacher's own data says this number is (a seat number on a slanted line).
+  final RevisionMatch? recommended;
+
+  /// How many Data Lab rows hold a student number.
+  final int identifiers;
+
+  /// A sheet and a slanted line: the column to match on can still be chosen here.
+  final ValueChanged<String>? onSheetColumn;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final tpl = setup.template;
-    final note = t('الاسم وحده لا يربط أي ورقة تلقائيًا: كل ورقة باسم مكتوب تنتظر تأكيدك.', 'A name alone never links a paper by itself: a paper with only a written name waits for you to confirm it.');
+    final strip = setup.usesStrip;
+    final note = strip
+        ? t('رقم مكتوب بخط اليد قد لا يكون واضحًا: حين لا نتأكد نسألك عن الطالب بلمسة واحدة.', "A handwritten number isn't always clear: when we aren't sure, we ask you for the student in one tap.")
+        : t('الاسم وحده لا يربط أي ورقة تلقائيًا: كل ورقة باسم مكتوب تنتظر تأكيدك.', 'A name alone never links a paper by itself: a paper with only a written name waits for you to confirm it.');
+    if (setup.source == RevisionSource.excel && strip && setup.sheet != null && onSheetColumn != null) {
+      final seat = revisionSeatColumn(setup.sheet, degreeColumn: setup.degreeColumn);
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(t('أي عمود يحوي رقم الجلوس؟', 'Which column holds the seat number?'), style: AppType.section(context)),
+        AppSpace.gapXs,
+        for (final col in setup.sheet!.columns)
+          if (col.name != setup.degreeColumn)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
+              child: RevisionChoiceCard(key: ValueKey('rv.match.sheet.${col.name}'), icon: Icons.view_column_outlined, title: col.name, subtitle: col.samples.isEmpty ? t('عمود في ملفك', 'A column of your file') : col.samples.take(3).join(' · '), selected: setup.matchColumn == col.name, recommended: col.name == seat, onTap: () => onSheetColumn!(col.name)),
+            ),
+        AppSpace.gapXs,
+        Text(note, style: AppType.meta(context)),
+      ]);
+    }
     if (setup.source == RevisionSource.excel) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppBanner(icon: Icons.badge_outlined, color: c.primary, text: t('سنطابق كل ورقة بعمود «${setup.matchColumn ?? ''}» من ملفك.', 'Each paper is matched by your column "${setup.matchColumn ?? ''}".')),
@@ -330,7 +389,12 @@ class RevisionMatchStep extends StatelessWidget {
         Text(note, style: AppType.meta(context)),
       ]);
     }
+    final rowId = identifiers > 0 ? t('من Data Lab · ${countText(identifiers, ar1: 'طالب واحد له رقم', ar2: 'طالبان لهما رقم', arFew: '$identifiers طلاب لهم أرقام', arMany: '$identifiers طالبًا لهم أرقام', en1: '1 student has one', en: '$identifiers students have one')}', 'From Data Lab · ${countText(identifiers, ar1: 'طالب واحد له رقم', ar2: 'طالبان لهما رقم', arFew: '$identifiers طلاب لهم أرقام', arMany: '$identifiers طالبًا لهم أرقام', en1: '1 student has one', en: '$identifiers students have one')}') : t('من Data Lab · لا أرقام مسجّلة بعد', 'From Data Lab · no numbers saved yet');
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (strip && recommended == null) ...[
+        AppBanner(key: const ValueKey('rv.match.steer'), icon: Icons.table_chart_outlined, color: c.primary, text: t('الرقم على هذا الغلاف رقم جلوس. اختر العمود الذي يحويه في Data Lab، أو أضفه هناك أولًا. الأرقام الأكاديمية كثيرًا ما تكون غير مسجّلة.', "The number on this cover is a seat number. Choose the Data Lab column that holds it, or add one there first. Academic numbers are often not saved.")),
+        AppSpace.gapSm,
+      ],
       for (final e in options.entries)
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpace.xs),
@@ -338,9 +402,9 @@ class RevisionMatchStep extends StatelessWidget {
             key: ValueKey('rv.match.${e.key?.source ?? 'template'}.${e.key?.key ?? ''}'),
             icon: e.key?.source == 'datalab' ? Icons.table_chart_outlined : Icons.badge_outlined,
             title: e.value,
-            subtitle: e.key == null ? t('كما هو محدد في القالب', 'As the template is set up') : (e.key!.source == 'datalab' ? t('عمود في Data Lab', 'A Data Lab column') : t('من بيانات الطلاب', "From the students' records")),
+            subtitle: e.key == null ? t('كما هو محدد في القالب', 'As the template is set up') : (e.key == kRevisionDataLabIdentifier ? rowId : (e.key!.source == 'datalab' ? t('عمود في Data Lab', 'A Data Lab column') : t('من بيانات الطلاب', "From the students' records"))),
             selected: setup.match == e.key,
-            recommended: e.key == null,
+            recommended: strip ? e.key == recommended && recommended != null : e.key == null,
             onTap: () => onPick(e.key),
           ),
         ),
@@ -355,18 +419,24 @@ String revisionTemplateMatchLabel(String source) => identifierSourceLabel(source
 // ── step 4: the sample read ───────────────────────────────────────────────────────────────────────────────────────
 
 class RevisionSampleView extends StatelessWidget {
-  const RevisionSampleView({super.key, required this.sample, required this.aspect, this.identifierBox, this.nameOnly = false});
+  const RevisionSampleView({super.key, required this.sample, required this.aspect, this.identifierBox, this.nameOnly = false, this.strip, this.onChangeMatch});
   final RevisionSample sample;
   final double aspect;
   final Rect? identifierBox;
   final bool nameOnly;
 
+  /// The identifier's slanted line, when the template has one.
+  final MarkStrip? strip;
+
+  /// Nobody in the course has this kind of number: offer to match on another column.
+  final VoidCallback? onChangeMatch;
+
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
-    final results = _Results(sample: sample, nameOnly: nameOnly);
+    final results = _Results(sample: sample, nameOnly: nameOnly, strip: strip != null, onChangeMatch: onChangeMatch);
     if (sample.preview == null) return results;
-    final picture = RevisionPagePreview(sample: sample, aspect: aspect, identifierBox: identifierBox);
+    final picture = RevisionPagePreview(sample: sample, aspect: aspect, identifierBox: identifierBox, strip: strip);
     if (!wide) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [ConstrainedBox(constraints: const BoxConstraints(maxHeight: 360), child: Center(child: picture)), AppSpace.gapSm, results]);
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Expanded(flex: 5, child: picture),
@@ -378,18 +448,20 @@ class RevisionSampleView extends StatelessWidget {
 
 /// The straightened photo with the read boxes drawn over it.
 class RevisionPagePreview extends StatelessWidget {
-  const RevisionPagePreview({super.key, required this.sample, required this.aspect, this.identifierBox});
+  const RevisionPagePreview({super.key, required this.sample, required this.aspect, this.identifierBox, this.strip});
   final RevisionSample sample;
   final double aspect;
   final Rect? identifierBox;
+  final MarkStrip? strip;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final idColor = sample.matched ? c.primary : c.warning;
     final boxes = <(Rect, Color)>[
-      if (identifierBox != null) (identifierBox!, sample.matched ? c.primary : c.warning),
+      if (identifierBox != null && strip == null) (identifierBox!, idColor),
       for (final f in sample.fields)
-        if (f.box != null) (f.box!, confColor(context, f.conf, ok: f.ok)),
+        if (f.box != null && !f.emptyAllowed) (f.box!, confColor(context, f.conf, ok: f.ok)),
     ];
     return AspectRatio(
       aspectRatio: aspect,
@@ -397,7 +469,7 @@ class RevisionPagePreview extends StatelessWidget {
         borderRadius: AppRadius.cardAll,
         child: Stack(fit: StackFit.expand, children: [
           Image.memory(sample.preview!, key: const ValueKey('rv.sample.photo'), fit: BoxFit.fill, gaplessPlayback: true, excludeFromSemantics: true),
-          CustomPaint(painter: _BoxesPainter(boxes)),
+          CustomPaint(painter: _BoxesPainter(boxes, band: strip?.band(aspect), bandColor: idColor)),
         ]),
       ),
     );
@@ -405,11 +477,21 @@ class RevisionPagePreview extends StatelessWidget {
 }
 
 class _BoxesPainter extends CustomPainter {
-  _BoxesPainter(this.boxes);
+  _BoxesPainter(this.boxes, {this.band, this.bandColor});
   final List<(Rect, Color)> boxes;
+
+  /// The slanted writing band, page fractions.
+  final List<Offset>? band;
+  final Color? bandColor;
 
   @override
   void paint(Canvas canvas, Size size) {
+    final b = band, col = bandColor;
+    if (b != null && col != null) {
+      final path = Path()..addPolygon([for (final p in b) Offset(p.dx * size.width, p.dy * size.height)], true);
+      canvas.drawPath(path, Paint()..color = col.withValues(alpha: .18));
+      canvas.drawPath(path, Paint()..color = col..style = PaintingStyle.stroke..strokeWidth = AppBorder.strong);
+    }
     for (final (b, col) in boxes) {
       final r = Rect.fromLTWH(b.left * size.width, b.top * size.height, b.width * size.width, b.height * size.height);
       canvas.drawRect(r, Paint()..color = col.withValues(alpha: .18));
@@ -418,28 +500,37 @@ class _BoxesPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_BoxesPainter old) => old.boxes != boxes;
+  bool shouldRepaint(_BoxesPainter old) => old.boxes != boxes || old.band != band;
 }
 
 class _Results extends StatelessWidget {
-  const _Results({required this.sample, required this.nameOnly});
+  const _Results({required this.sample, required this.nameOnly, this.strip = false, this.onChangeMatch});
   final RevisionSample sample;
-  final bool nameOnly;
+  final bool nameOnly, strip;
+  final VoidCallback? onChangeMatch;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final s = sample;
-    final verdict = s.verdict(nameOnly: nameOnly);
+    final verdict = s.verdict(nameOnly: nameOnly, strip: strip);
+    final read = [for (final f in s.fields) if (!f.emptyAllowed) f];
+    final empties = s.fields.length - read.length;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       switch (verdict) {
         SampleVerdict.good => AppBanner(key: const ValueKey('rv.verdict.good'), icon: Icons.check_circle_outline_rounded, color: c.success, text: t('قراءة جيدة: تعرّفنا على الطالب وكل الدرجات.', 'A good read: the student and every mark were recognised.')),
+        SampleVerdict.willAsk => AppBanner(key: const ValueKey('rv.verdict.ask'), icon: Icons.person_search_outlined, color: revisionAccent(context), text: t('قرأنا الدرجات. سنطلب منك اختيار الطالب، وهذا طبيعي مع الأرقام المكتوبة باليد ويأخذ لمسة واحدة لكل ورقة.', "The marks were read. We'll ask you to choose the student. That's normal for handwritten numbers and takes one tap per paper.")),
         SampleVerdict.partial => AppBanner(key: const ValueKey('rv.verdict.partial'), icon: Icons.warning_amber_rounded, color: c.warning, text: _partialText(s)),
         SampleVerdict.bad => AppBanner(key: const ValueKey('rv.verdict.bad'), icon: Icons.error_outline_rounded, color: c.danger, text: s.message.isNotEmpty ? s.message : qualityCodeText(s.code)),
       },
       if (s.ok) ...[
         AppSpace.gapSm,
-        AppCard(
+        if (s.rosterEmpty && onChangeMatch != null) ...[
+          AppBanner(key: const ValueKey('rv.sample.steer'), icon: Icons.table_chart_outlined, color: c.primary, text: t('لا يوجد هذا النوع من الأرقام عند طلاب هذا المقرر، فلن نجد أحدًا لتطابقه.', "No student in this course has this kind of number saved, so nothing can match it.")),
+          Align(alignment: AlignmentDirectional.centerStart, child: TextButton.icon(key: const ValueKey('rv.sample.change_match'), onPressed: onChangeMatch, icon: const Icon(Icons.table_chart_outlined), label: Text(t('المطابقة بعمود في Data Lab', 'Match on a Data Lab column')))),
+          AppSpace.gapXs,
+        ],
+        if (s.stripImage != null || s.candidates.isNotEmpty) RevisionStripRead(sample: s) else AppCard(
           padding: const EdgeInsets.all(AppSpace.sm),
           child: Row(children: [
             Icon(Icons.badge_outlined, color: s.matched ? revisionAccent(context) : c.warning),
@@ -456,8 +547,10 @@ class _Results extends StatelessWidget {
         ),
         AppSpace.gapSm,
         AppSectionTitle(t('الدرجات المقروءة', 'Degrees read')),
-        for (final f in s.fields)
+        for (final f in read)
           Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: _FieldRow(field: f)),
+        if (empties > 0)
+          Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: Text(countText(empties, ar1: 'خانة فارغة تُحسب صفرًا', ar2: 'خانتان فارغتان تُحسبان صفرًا', arFew: '$empties خانات فارغة تُحسب صفرًا', arMany: '$empties خانة فارغة تُحسب صفرًا', en1: '1 empty box counts as 0', en: '$empties empty boxes count as 0'), key: const ValueKey('rv.sample.empties'), style: AppType.meta(context))),
         if (s.fields.isEmpty) Text(t('لم تُقرأ أي درجة.', 'No degree was read.'), style: AppType.meta(context)),
         if (s.sum != null) ...[
           AppSpace.gapSm,
@@ -476,6 +569,63 @@ class _Results extends StatelessWidget {
     if (!s.matched && !nameOnly && bad == 0) return t('قُرئت الدرجات، لكن لم نجد طالبًا بهذا الرقم. تأكد أن الورقة من هذه المجموعة.', 'The marks were read, but no student has this number. Check the paper belongs to this group.');
     final n = countText(bad, ar1: 'درجة واحدة تحتاج', ar2: 'درجتان تحتاجان', arFew: '$bad درجات تحتاج', arMany: '$bad درجة تحتاج', en1: '1 degree needs', en: '$bad degrees need');
     return t('$n نظرة. جرّب إعدادًا آخر، أو تابع وستصلك هذه الأوراق لتصحيحها.', '$n a look. Try another setting, or continue and these papers come to you to correct.');
+  }
+}
+
+/// The number as the reader saw it: the straightened strip, large, with what was read and what happens next.
+class RevisionStripRead extends StatelessWidget {
+  const RevisionStripRead({super.key, required this.sample});
+  final RevisionSample sample;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final s = sample;
+    final accent = revisionAccent(context);
+    return AppCard(
+      key: const ValueKey('rv.sample.strip'),
+      padding: const EdgeInsets.all(AppSpace.sm),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(t('الرقم المكتوب على الورقة', 'The number written on the paper'), style: AppType.meta(context)),
+        if (s.stripImage != null) ...[
+          AppSpace.gapXs,
+          Container(
+            height: 112,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.chip), border: Border.all(color: c.divider)),
+            child: Image.memory(s.stripImage!, fit: BoxFit.contain, gaplessPlayback: true, excludeFromSemantics: true),
+          ),
+        ],
+        AppSpace.gapXs,
+        Row(children: [
+          Expanded(child: Text(t('قرأناه', 'We read'), style: AppType.row(context))),
+          Text(s.identifierMasked.isEmpty ? '—' : s.identifierMasked, key: const ValueKey('rv.sample.read'), textDirection: TextDirection.ltr, style: AppType.figure(context)),
+        ]),
+        if (s.ruleFound == false) Text(t('لم نجد الخط المطبوع في هذه الصورة، فقرأنا المكان الذي حددته.', "We couldn't find the printed line in this photo, so we read the place you marked."), style: AppType.meta(context)),
+        Divider(height: AppSpace.md, thickness: AppBorder.hairline, color: c.divider),
+        if (s.matched)
+          Row(children: [
+            Icon(Icons.check_circle_rounded, size: AppIconSize.md, color: c.success),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(child: Text(s.studentName ?? '', key: const ValueKey('rv.sample.student'), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.success))),
+          ])
+        else ...[
+          Row(children: [
+            Icon(Icons.person_search_outlined, size: AppIconSize.md, color: accent),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(child: Text(t('سنطلب منك اختيار الطالب', "We'll ask you to choose the student"), key: const ValueKey('rv.sample.student'), style: AppType.bodyStrong(context))),
+          ]),
+          if (s.candidates.isNotEmpty) ...[
+            AppSpace.gapXs,
+            Text(t('الأقرب إلى ما كُتب', 'Closest to what was written'), style: AppType.meta(context)),
+            const SizedBox(height: AppSpace.xxs),
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
+              for (final x in s.candidates) AppTag(x.name, x.alreadyMatched ? c.textMedium : accent, icon: Icons.person_outline_rounded),
+            ]),
+          ],
+        ],
+      ]),
+    );
   }
 }
 
@@ -510,7 +660,7 @@ class _FieldRow extends StatelessWidget {
 // ── step 5: how the paper is written ──────────────────────────────────────────────────────────────────────────────
 
 class RevisionStyleStep extends StatelessWidget {
-  const RevisionStyleStep({super.key, required this.styles, required this.onChanged, this.sample, this.previous, this.loading = false, this.onRestore, this.hasPhoto = false});
+  const RevisionStyleStep({super.key, required this.styles, required this.onChanged, this.sample, this.previous, this.loading = false, this.onRestore, this.hasPhoto = false, this.identifierTitle});
 
   final RevisionStyles styles;
   final ValueChanged<RevisionStyles> onChanged;
@@ -520,6 +670,9 @@ class RevisionStyleStep extends StatelessWidget {
   final bool loading, hasPhoto;
   final VoidCallback? onRestore;
 
+  /// What this paper's number is called, when it is more than "the student's number".
+  final String? identifierTitle;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -527,7 +680,7 @@ class RevisionStyleStep extends StatelessWidget {
     final cards = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       _StyleGroup(key: const ValueKey('rv.style.degree'), title: t('الدرجات', 'The degrees'), style: styles.degree, onChanged: (v) => onChanged(styles.copyWith(degree: v))),
       AppSpace.gapMd,
-      _StyleGroup(key: const ValueKey('rv.style.identifier'), title: t('رقم الطالب', "The student's number"), style: styles.identifier, onChanged: (v) => onChanged(styles.copyWith(identifier: v))),
+      _StyleGroup(key: const ValueKey('rv.style.identifier'), title: identifierTitle ?? t('رقم الطالب', "The student's number"), style: styles.identifier, onChanged: (v) => onChanged(styles.copyWith(identifier: v))),
       if (styles.anyPrinted) ...[
         AppSpace.gapSm,
         AppBanner(key: const ValueKey('rv.style.warn'), icon: Icons.info_outline_rounded, color: c.warning, text: t('«مطبوعة» للأرقام المكتوبة بالآلة فقط. اختيارها على خط اليد يزيد احتمال الأخطاء.', '"Printed" is for typed numbers only. Choosing it on handwriting makes mistakes more likely.')),

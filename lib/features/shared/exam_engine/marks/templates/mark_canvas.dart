@@ -12,6 +12,7 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 import '../../../../admin/admin_common.dart' show t;
 import '../mark_templates_api.dart';
 import 'mark_editor_model.dart';
+import 'mark_strip.dart';
 import 'mark_template_common.dart';
 
 /// The caption on a box: what it is, in a few characters.
@@ -30,7 +31,7 @@ String fieldCaption(MarkField f) {
   }
 }
 
-enum _Drag { none, move, resize, draw }
+enum _Drag { none, move, resize, draw, stripEnd1, stripEnd2, stripHeight, stripMove }
 
 enum _Handle { tl, t, tr, r, br, b, bl, l }
 
@@ -60,6 +61,7 @@ class _MarkCanvasState extends State<MarkCanvas> {
   _Handle? _handle;
   String? _dragId;
   Rect _startBox = Rect.zero;
+  MarkStrip? _startStrip;
   Offset _startPoint = Offset.zero;
   bool _moved = false;
 
@@ -87,7 +89,7 @@ class _MarkCanvasState extends State<MarkCanvas> {
 
   _Handle? _hitHandle(Offset p) {
     final sel = m.selected;
-    if (sel == null) return null;
+    if (sel == null || sel.strip != null) return null;
     final rx = 20 / _scale / _size.width;
     final ry = 20 / _scale / _size.height;
     _Handle? best;
@@ -103,10 +105,35 @@ class _MarkCanvasState extends State<MarkCanvas> {
     return best;
   }
 
+  /// Which handle of the selected strip is under [p]: a target of 24 logical pixels at any zoom, for a finger as well as a mouse.
+  _Drag? _hitStrip(Offset p) {
+    final strip = m.selected?.strip;
+    if (strip == null) return null;
+    final a = m.spec.aspect;
+    _Drag? best;
+    var bestD = 24.0 / _scale;
+    for (final (drag, at) in [(_Drag.stripEnd1, strip.p1), (_Drag.stripEnd2, strip.p2), (_Drag.stripHeight, strip.heightHandle(a))]) {
+      final d = Offset((at.dx - p.dx) * _size.width, (at.dy - p.dy) * _size.height).distance;
+      if (d <= bestD) {
+        best = drag;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
   void _panStart(DragStartDetails d) {
     final p = _norm(d.localPosition);
     _moved = false;
     _startPoint = p;
+    final sh = _hitStrip(p);
+    if (sh != null) {
+      _drag = sh;
+      _dragId = m.selectedId;
+      _startStrip = m.selected!.strip;
+      m.beginDrag();
+      return;
+    }
     final h = _hitHandle(p);
     if (h != null) {
       _drag = _Drag.resize;
@@ -119,9 +146,11 @@ class _MarkCanvasState extends State<MarkCanvas> {
     final id = m.hit(p);
     if (id != null) {
       m.select(id);
-      _drag = _Drag.move;
+      final f = m.spec.field(id)!;
+      _drag = f.strip != null ? _Drag.stripMove : _Drag.move;
+      _startStrip = f.strip;
       _dragId = id;
-      _startBox = m.spec.field(id)!.box;
+      _startBox = f.box;
       m.beginDrag();
       return;
     }
@@ -149,6 +178,18 @@ class _MarkCanvasState extends State<MarkCanvas> {
         } else {
           m.dragBox(_dragId!, r);
         }
+      case _Drag.stripEnd1:
+      case _Drag.stripEnd2:
+      case _Drag.stripHeight:
+      case _Drag.stripMove:
+        final s = _startStrip!, a = m.spec.aspect;
+        _moved = true;
+        m.dragStrip(_dragId!, switch (_drag) {
+          _Drag.stripEnd1 => s.withEnd(1, s.p1 + delta, a),
+          _Drag.stripEnd2 => s.withEnd(2, s.p2 + delta, a),
+          _Drag.stripHeight => s.withHeightAt(s.heightHandle(a) + delta, a),
+          _ => s.shifted(delta),
+        });
       case _Drag.none:
         break;
     }
@@ -177,14 +218,14 @@ class _MarkCanvasState extends State<MarkCanvas> {
   }
 
   void _panEnd([Object? _]) {
-    if (_drag == _Drag.move || _drag == _Drag.resize) m.endDrag(changed: _moved);
+    if (_drag != _Drag.none && _drag != _Drag.draw) m.endDrag(changed: _moved);
     _drag = _Drag.none;
     _dragId = null;
   }
 
   void _tapUp(TapUpDetails d) {
     final p = _norm(d.localPosition);
-    final id = _hitHandle(p) != null ? m.selectedId : m.hit(p);
+    final id = _hitHandle(p) != null || _hitStrip(p) != null ? m.selectedId : m.hit(p);
     m.select(id);
     widget.onFieldTap?.call(id);
   }
@@ -251,6 +292,27 @@ class _MarkCanvasState extends State<MarkCanvas> {
             onReset: () => _tc.value = Matrix4.identity(),
           ),
         ),
+        Positioned(
+          left: AppSpace.sm,
+          right: AppSpace.sm,
+          bottom: AppSpace.sm,
+          child: AnimatedBuilder(
+            animation: m,
+            builder: (context, _) {
+              if (m.selected?.strip == null) return const SizedBox.shrink();
+              return IgnorePointer(
+                child: Center(
+                  child: Container(
+                    key: const ValueKey('mk.strip.hint'),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+                    decoration: BoxDecoration(color: c.charcoalDark.withValues(alpha: .86), borderRadius: BorderRadius.circular(AppRadius.hero)),
+                    child: Text(t('اسحب الطرفين على الخط المطبوع', 'Drag the two ends onto the printed line'), textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.onHero)),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       ]);
     });
   }
@@ -307,9 +369,10 @@ class _MarkCanvasState extends State<MarkCanvas> {
     final s = _scale;
     final selected = f.id == m.selectedId;
     final txt = fieldCaption(f);
+    final at = f.strip?.bandBounds(m.spec.aspect) ?? f.box;
     return Positioned(
-      left: f.box.left * _size.width,
-      bottom: (1 - f.box.top) * _size.height,
+      left: at.left * _size.width,
+      bottom: (1 - at.top) * _size.height,
       child: Transform.scale(
         scale: 1 / s,
         alignment: Alignment.bottomLeft,
@@ -370,6 +433,11 @@ class _BoxPainter extends CustomPainter {
       final sel = f.id == m.selectedId;
       final col = colors[f.type]!;
       final bad = m.issuesOf(f.id).any((i) => i.error);
+      final strip = f.strip;
+      if (strip != null) {
+        _paintStrip(canvas, size, strip, col, bad ? danger : col, sel, s);
+        continue;
+      }
       final r = px(f.box);
       canvas.drawRect(r, Paint()..color = col.withValues(alpha: sel ? 0.30 : 0.16));
       canvas.drawRect(
@@ -390,7 +458,7 @@ class _BoxPainter extends CustomPainter {
       }
     }
     final sel = m.selected;
-    if (sel != null) {
+    if (sel != null && sel.strip == null) {
       final hs = 9 / s;
       for (final p in [sel.box.topLeft, sel.box.topCenter, sel.box.topRight, sel.box.centerRight, sel.box.bottomRight, sel.box.bottomCenter, sel.box.bottomLeft, sel.box.centerLeft]) {
         final c = Offset(p.dx * size.width, p.dy * size.height);
@@ -405,6 +473,66 @@ class _BoxPainter extends CustomPainter {
         );
       }
     }
+  }
+
+  void _paintStrip(Canvas canvas, Size size, MarkStrip strip, Color col, Color edge, bool sel, double s) {
+    Offset px(Offset p) => Offset(p.dx * size.width, p.dy * size.height);
+    Path poly(List<Offset> pts) => Path()..addPolygon([for (final p in pts) px(p)], true);
+    final a = m.spec.aspect;
+    if (sel) {
+      canvas.drawPath(
+        poly(strip.outer(a)),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1 / s
+          ..color = col.withValues(alpha: 0.4),
+      );
+    }
+    final band = poly(strip.band(a));
+    canvas.drawPath(band, Paint()..color = col.withValues(alpha: sel ? 0.30 : 0.16));
+    canvas.drawPath(
+      band,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2 / s
+        ..color = edge,
+    );
+    final p1 = px(strip.p1), p2 = px(strip.p2);
+    canvas.drawLine(
+      p1,
+      p2,
+      Paint()
+        ..strokeWidth = (sel ? 3.2 : 2.2) / s
+        ..strokeCap = StrokeCap.round
+        ..color = edge,
+    );
+    if (!sel) return;
+    void dot(Offset c, double r) {
+      canvas.drawCircle(c, r / s, Paint()..color = halo);
+      canvas.drawCircle(c, (r - 2.5) / s, Paint()..color = col);
+    }
+
+    dot(p1, 11);
+    dot(p2, 11);
+    final top = px(strip.heightHandle(a));
+    final mid = px(strip.midpoint());
+    canvas.drawLine(
+      mid,
+      top,
+      Paint()
+        ..strokeWidth = 1.2 / s
+        ..color = col,
+    );
+    // the height handle: an open ring, so it never reads as a third end of the line
+    canvas.drawCircle(top, 7 / s, Paint()..color = halo);
+    canvas.drawCircle(
+      top,
+      7 / s,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.2 / s
+        ..color = col,
+    );
   }
 
   @override

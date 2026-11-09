@@ -30,7 +30,7 @@ class MarkTemplateNewPage extends StatefulWidget {
 class _MarkTemplateNewPageState extends State<MarkTemplateNewPage> {
   late final MarkTemplatesApi _api = widget.api ?? MarkTemplatesApi();
   late MarkKind? _kind = widget.kind;
-  bool _busy = false;
+  bool _busy = false, _wholePhoto = false;
   String? _error;
 
   Future<void> _capture({required bool camera}) async {
@@ -42,7 +42,7 @@ class _MarkTemplateNewPageState extends State<MarkTemplateNewPage> {
       _busy = true;
       _error = null;
     });
-    final r = await _api.detect(img, orgId: widget.orgId);
+    final r = await _api.detect(img, orgId: widget.orgId, wholePhoto: _wholePhoto && kind == MarkKind.cover);
     if (!mounted) return;
     if (!r.ok) {
       setState(() {
@@ -127,6 +127,16 @@ class _MarkTemplateNewPageState extends State<MarkTemplateNewPage> {
         icon: Icons.lightbulb_outline_rounded,
         text: t('استخدم ورقة فارغة غير معبأة. ضعها على سطح مستوٍ في إضاءة جيدة وأظهرها كاملة.', 'Use a BLANK sheet, nothing filled in. Lay it flat in good light and show all of it.'),
       ),
+      if (kind == MarkKind.cover) ...[
+        AppSpace.gapXs,
+        AppSwitchTile(
+          key: const ValueKey('mk.whole_photo'),
+          title: t('رقم الطالب خارج الجدول المطبوع', "The student's number is outside the printed table"),
+          subtitle: t('نحتفظ بالصورة كاملة لتحديد الرقم في أي مكان، مثل ركن مطوي.', 'We keep the whole photo so you can mark the number anywhere, like a folded corner.'),
+          value: _wholePhoto,
+          onChanged: (v) => setState(() => _wholePhoto = v),
+        ),
+      ],
       AppSpace.gapMd,
       if (_error != null) ...[AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: context.colors.danger), AppSpace.gapSm],
       if (canUseCamera) ...[

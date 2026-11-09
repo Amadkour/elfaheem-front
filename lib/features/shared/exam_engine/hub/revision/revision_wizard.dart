@@ -29,16 +29,19 @@ import '../../marks/templates/mark_template_editor.dart';
 import '../../marks/templates/mark_template_new.dart';
 import '../../paper/scan/omr_camera.dart' show OmrCamera;
 import 'revision_api.dart';
+import 'revision_builtin.dart';
 import 'revision_models.dart';
 import 'revision_run_screen.dart';
 import 'revision_wizard_steps.dart';
 
 /// The degree columns and the columns that can identify a student, of one course's Data Lab.
-typedef RevisionColumns = ({List<GradeColumn> degree, List<({String key, String label})> match});
+/// [identifiers]: how many of the first rows hold a student number of the Data Lab's own (an imported seat number lands there).
+typedef RevisionColumns = ({List<GradeColumn> degree, List<({String key, String label})> match, int identifiers});
 
 Future<RevisionColumns> loadRevisionColumns(int courseId) async {
-  final g = await DataLabApi().grid(courseId, limit: 1, lang: AppConfig.lang);
+  final g = await DataLabApi().grid(courseId, limit: 40, lang: AppConfig.lang);
   return (
+    identifiers: g.rows.where((r) => (r.identifier ?? '').trim().isNotEmpty).length,
     degree: [for (final c in g.columns) if (c.isNumber && !c.isCalculated && !c.isLocked) GradeColumn(c.key, c.label, c.maxValue)],
     match: [for (final c in g.columns) if (!c.isCalculated && !c.isBuiltin) (key: c.key, label: c.label)],
   );
@@ -76,6 +79,7 @@ class _RevisionWizardScreenState extends State<RevisionWizardScreen> {
   String? _courseName;
   List<GradeColumn> _degreeColumns = const [];
   List<({String key, String label})> _matchColumns = const [];
+  int _identifiers = 0;
   bool _loadingColumns = false, _uploading = false;
   List<RevisionSession> _earlier = const [];
   int? _orgId;
@@ -83,6 +87,9 @@ class _RevisionWizardScreenState extends State<RevisionWizardScreen> {
   List<MarkTemplate> _tpls = const [];
   bool _loadingTpls = false;
   int? _loadingTplId;
+  List<MarkBuiltin> _builtins = const [];
+  String? _builtinBusy;
+  final _builtinImages = <String, Future<Uint8List?>>{};
 
   Uint8List? _photo;
   String _photoName = 'sheet.jpg';
@@ -150,6 +157,7 @@ class _RevisionWizardScreenState extends State<RevisionWizardScreen> {
       _loadingColumns = false;
       _degreeColumns = got?.degree ?? const [];
       _matchColumns = got?.match ?? const [];
+      _identifiers = got?.identifiers ?? 0;
       if (_degreeColumns.length == 1) _s.column = _degreeColumns.first;
     });
   }
@@ -167,11 +175,17 @@ class _RevisionWizardScreenState extends State<RevisionWizardScreen> {
     if (!r.ok) showAppNotice(revisionErrorText(r), error: true);
   }
 
+  /// The organization whose templates this revision uses.
+  int? get _templatesOrg => _s.courseId == null ? _orgId : (_courses.where((c) => c.id == _s.courseId).firstOrNull?.orgId ?? _orgId);
+
+  Future<Uint8List?> _builtinImage(String key) => _builtinImages[key] ??= _templates.builtinImage(key);
+
   Future<void> _loadTemplates({int? selectNewerThan}) async {
     setState(() => _loadingTpls = _tpls.isEmpty);
-    final org = _s.courseId == null ? _orgId : (_courses.where((c) => c.id == _s.courseId).firstOrNull?.orgId ?? _orgId);
-    final r = await _templates.list(orgId: org);
+    final r = await _templates.list(orgId: _templatesOrg);
+    final ready = _builtins.isEmpty ? await _templates.builtins() : _builtins;
     if (!mounted) return;
+    _builtins = ready;
     final items = r.ok ? [for (final m in asMapList(r.map['items'])) MarkTemplate.fromJson(m)].where((x) => !x.retired && (x.kind == MarkKind.markSheet || x.kind == MarkKind.cover)).toList() : <MarkTemplate>[];
     setState(() {
       _loadingTpls = false;
@@ -186,22 +200,75 @@ class _RevisionWizardScreenState extends State<RevisionWizardScreen> {
     }
   }
 
-  Future<void> _pickTemplate(MarkTemplate x) async {
+  Future<bool> _pickTemplate(MarkTemplate x) async {
     setState(() => _loadingTplId = x.id);
     final r = await _templates.detail(x.id);
-    if (!mounted) return;
+    if (!mounted) return false;
     setState(() => _loadingTplId = null);
+    if (!r.ok) {
+      showAppNotice(markErrorText(r), error: true);
+      return false;
+    }
+    setState(() => _adopt(x, r.map));
+    return true;
+  }
+
+  void _adopt(MarkTemplate x, Map<String, dynamic> detail) {
+    final spec = MarkSheetSpec.fromJson(asMap(detail['spec']), kind: x.kind ?? MarkKind.parse(detail['kind']));
+    final id = spec.fields.where((f) => f.type == FieldType.identifier).firstOrNull;
+    _s.template = RevisionTemplateChoice(id: x.id, name: x.name, totalMax: x.totalMax ?? 0, identifierSource: id?.source ?? '', aspect: spec.aspect, identifierBox: id?.box, strip: id?.strip, optionalFields: {for (final f in spec.fields) if (f.optional) f.id});
+    _s.match = null;
+    _s.matchTouched = false;
+    _clearSample();
+  }
+
+  /// One tap: the paper's full mark is all a ready-made cover asks, and a copy this teacher already made is reused.
+  Future<void> _useBuiltin(MarkBuiltin b) async {
+    final scale = _s.columnScale;
+    final known = scale == null ? null : b.copyFor(_tpls, scale);
+    if (known != null) {
+      if (await _pickTemplate(known) && mounted) await _go(_Step.match);
+      return;
+    }
+    final total = await showAppSheet<double>(
+      context,
+      (ctx) => AppSheetContent(title: t('الدرجة الكلية', 'The full mark'), children: [
+        RevisionBuiltinMarkSheet(builtin: b, initial: scale ?? b.totalMax, columnMax: scale, load: _builtinImage, onDone: (v) => Navigator.pop(ctx, v)),
+      ]),
+    );
+    if (total == null || !mounted) return;
+    final copy = b.copyFor(_tpls, total);
+    if (copy != null) {
+      if (await _pickTemplate(copy) && mounted) await _go(_Step.match);
+      return;
+    }
+    setState(() => _builtinBusy = b.key);
+    final r = await _templates.createBuiltin(b.key, orgId: _templatesOrg, name: b.copyName(total), totalMax: total);
+    if (!mounted) return;
+    setState(() => _builtinBusy = null);
     if (!r.ok) {
       showAppNotice(markErrorText(r), error: true);
       return;
     }
-    final spec = MarkSheetSpec.fromJson(asMap(r.map['spec']), kind: x.kind ?? MarkKind.parse(r.map['kind']));
-    final id = spec.fields.where((f) => f.type == FieldType.identifier).firstOrNull;
+    final x = MarkTemplate.fromJson(r.map);
     setState(() {
-      _s.template = RevisionTemplateChoice(id: x.id, name: x.name, totalMax: x.totalMax ?? 0, identifierSource: id?.source ?? '', aspect: spec.aspect, identifierBox: id?.box);
-      _s.match = null;
-      _clearSample();
+      _tpls = [..._tpls, x];
+      _adopt(x, r.map);
     });
+    await _go(_Step.match);
+  }
+
+  /// A number on a slanted line is a seat number: what to match it on comes from how the teacher's own data names it.
+  RevisionMatch? get _seatMatch => _s.usesStrip ? revisionSeatMatch(identifiers: _identifiers, columns: _matchColumns) : null;
+
+  void _steerMatch() {
+    if (!_s.usesStrip || _s.matchTouched) return;
+    if (_s.source == RevisionSource.excel) {
+      final seat = revisionSeatColumn(_s.sheet, degreeColumn: _s.degreeColumn);
+      if (seat != null) _s.matchColumn = seat;
+    } else {
+      _s.match = _seatMatch;
+    }
   }
 
   Future<void> _newTemplate() async {
@@ -264,7 +331,7 @@ class _RevisionWizardScreenState extends State<RevisionWizardScreen> {
     if (!mounted || gen != _gen) return;
     setState(() {
       _sampling = false;
-      if (r.ok) _sample = RevisionSample.fromJson(r.map, lang: AppConfig.lang, styles: _s.styles);
+      if (r.ok) _sample = RevisionSample.fromJson(r.map, lang: AppConfig.lang, styles: _s.styles, optional: tpl.optionalFields);
     });
     if (!r.ok) showAppNotice(revisionErrorText(r, fallback: t('تعذّرت قراءة الورقة', 'The paper could not be read')), error: true);
   }
@@ -314,7 +381,10 @@ class _RevisionWizardScreenState extends State<RevisionWizardScreen> {
   }
 
   Future<void> _go(_Step to) async {
-    setState(() => _step = to);
+    setState(() {
+      _step = to;
+      if (to == _Step.match) _steerMatch();
+    });
     if (to == _Step.template) await _loadTemplates();
   }
 
@@ -322,23 +392,32 @@ class _RevisionWizardScreenState extends State<RevisionWizardScreen> {
     final tpl = _s.template;
     if (tpl == null) return const {};
     String label(String s) => s == 'phone' ? t('رقم الهاتف', 'Phone number') : revisionTemplateMatchLabel(s);
-    return {
+    final rowId = tpl.strip != null ? t('رقم الجلوس في Data Lab', 'Seat number in Data Lab') : t('رقم الطالب في Data Lab', 'Student number in Data Lab');
+    final all = <RevisionMatch?, String>{
       null: label(tpl.identifierSource),
       for (final s in const ['national_id', 'academic_id', 'phone'])
         if (s != tpl.identifierSource) RevisionMatch(s): label(s),
+      if (tpl.strip != null || _identifiers > 0) kRevisionDataLabIdentifier: rowId,
       for (final c in _matchColumns) RevisionMatch('datalab', c.key): c.label,
     };
+    // what the teacher's data calls a seat number comes first; the rest keep their order
+    final seat = _seatMatch;
+    return seat == null || !all.containsKey(seat) ? all : {seat: all[seat]!, ...all};
   }
 
   (String, String) _head() => switch (_step) {
         _Step.source => (t('ماذا نقارن به؟', 'What should we compare with?'), t('اختر مصدر الدرجات المسجّلة.', 'Choose where the recorded degrees are.')),
         _Step.template => (t('شكل الورقة', 'The paper'), t('نستخدم القالب لنعرف أين تُكتب الدرجات ورقم الطالب.', "A template tells us where the degrees and the student's number are.")),
-        _Step.match => (t('كيف نربط الورقة بالطالب؟', 'How do we link a paper to a student?'), t('لا تُربط أي ورقة بالاسم وحده تلقائيًا.', 'A name alone never links a paper.')),
+        _Step.match => (t('كيف نربط الورقة بالطالب؟', 'How do we link a paper to a student?'), _s.usesStrip ? t('اختر ما يحمل رقم الجلوس في بياناتك.', 'Choose what holds the seat number in your data.') : t('لا تُربط أي ورقة بالاسم وحده تلقائيًا.', 'A name alone never links a paper.')),
         _Step.sample => (t('جرّب ورقة واحدة', 'Try one paper'), t('صوّر أو ارفع ورقة معبأة واحدة لترى ما سنقرأه. لن يُحفظ شيء.', 'Scan or upload ONE filled paper to see what we read. Nothing is saved.')),
         _Step.style => (t('كيف كُتبت الورقة؟', 'How is the paper written?'), t('اختر ما يناسب أوراقك، ونعيد قراءة ورقتك فورًا لتقارن.', 'Choose what fits your papers; we read your paper again at once so you can compare.')),
       };
 
-  bool get _sampleGood => _sample != null && _sample!.verdict(nameOnly: _s.template?.nameOnly ?? false) == SampleVerdict.good;
+  /// "We'll ask you to choose the student" is a normal state: it never holds Start back.
+  bool get _sampleGood {
+    final v = _sample?.verdict(nameOnly: _s.template?.nameOnly ?? false, strip: _s.usesStrip);
+    return v == SampleVerdict.good || v == SampleVerdict.willAsk;
+  }
 
   Widget _body() {
     return switch (_step) {
@@ -396,13 +475,25 @@ class _RevisionWizardScreenState extends State<RevisionWizardScreen> {
           onCreate: _newTemplate,
           onEdit: _editTemplate,
           onStep: (v) => setState(() => _s.step = v),
+          builtins: _builtins,
+          builtinBusy: _builtinBusy,
+          onBuiltin: _useBuiltin,
+          loadBuiltinImage: _builtinImage,
         ),
       _Step.match => RevisionMatchStep(
           key: const ValueKey('rv.step.match'),
           setup: _s,
           options: _matchOptions,
+          recommended: _seatMatch,
+          identifiers: _identifiers,
           onPick: (v) => setState(() {
             _s.match = v;
+            _s.matchTouched = true;
+            _clearSample();
+          }),
+          onSheetColumn: (x) => setState(() {
+            _s.matchColumn = x;
+            _s.matchTouched = true;
             _clearSample();
           }),
         ),
@@ -416,6 +507,7 @@ class _RevisionWizardScreenState extends State<RevisionWizardScreen> {
           loading: _sampling,
           onChanged: _changeStyles,
           onRestore: _previous == null ? null : _restoreStyles,
+          identifierTitle: _s.usesStrip ? t('رقم الجلوس', 'The seat number') : null,
         ),
     };
   }
@@ -440,7 +532,7 @@ class _RevisionWizardScreenState extends State<RevisionWizardScreen> {
       ]);
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      RevisionSampleView(key: const ValueKey('rv.step.sample'), sample: s, aspect: tpl.aspect, identifierBox: tpl.identifierBox, nameOnly: tpl.nameOnly),
+      RevisionSampleView(key: const ValueKey('rv.step.sample'), sample: s, aspect: tpl.aspect, identifierBox: tpl.identifierBox, nameOnly: tpl.nameOnly, strip: tpl.strip, onChangeMatch: _s.source == RevisionSource.gradebook && _s.match == null ? () => _go(_Step.match) : null),
       AppSpace.gapSm,
       Center(child: TextButton.icon(key: const ValueKey('rv.sample.again'), onPressed: () => _takeSample(camera: canUseCamera), icon: const Icon(Icons.replay_rounded), label: Text(t('تجربة ورقة أخرى', 'Try another paper')))),
     ]);

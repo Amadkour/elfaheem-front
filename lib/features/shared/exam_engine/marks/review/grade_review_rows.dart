@@ -386,8 +386,11 @@ class _GradeFixMarkSheetState extends State<GradeFixMarkSheet> {
 
 /// Searches the course's students (from the Data Lab grid) and answers the chosen one.
 class GradeAssignSheet extends StatefulWidget {
-  const GradeAssignSheet({super.key, required this.students, required this.onPick});
+  const GradeAssignSheet({super.key, required this.students, required this.onPick, this.taken = const {}});
   final List<GradeStudent> students;
+
+  /// Students who already have a paper here: marked, still choosable.
+  final Set<int> taken;
   final void Function(GradeStudent s) onPick;
 
   @override
@@ -424,6 +427,7 @@ class _GradeAssignSheetState extends State<GradeAssignSheet> {
               minTileHeight: AppTouch.min,
               leading: Icon(Icons.person_outline_rounded, color: c.primary),
               title: Text(shown[i].name, maxLines: 2, overflow: TextOverflow.ellipsis),
+              subtitle: widget.taken.contains(shown[i].id) ? Text(t('له ورقة أخرى في هذه المراجعة', 'Already has a paper in this revision'), style: appText(12, c: c.warning)) : null,
               onTap: () => widget.onPick(shown[i]),
             ),
           ),

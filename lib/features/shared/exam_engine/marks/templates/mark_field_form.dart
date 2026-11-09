@@ -7,6 +7,7 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 
 import '../../../../admin/admin_common.dart' show t;
 import '../mark_templates_api.dart';
+import 'mark_strip.dart';
 import 'mark_template_common.dart';
 
 class MarkFieldForm extends StatefulWidget {
@@ -131,11 +132,13 @@ class _MarkFieldFormState extends State<MarkFieldForm> {
               decoration: InputDecoration(labelText: t('ما الذي يحدد الطالب؟', 'What identifies the student?')),
               items: [for (final s in kIdentifierSources) DropdownMenuItem(value: s, child: Text(identifierSourceLabel(s)))],
               onChanged: (v) {
-                if (v != null) widget.onChanged(f.copyWith(source: v));
+                if (v == null) return;
+                final number = v == 'national_id' || v == 'academic_id';
+                widget.onChanged(number ? f.copyWith(source: v) : f.copyWith(source: v, clearStrip: true));
               },
             ),
           ),
-          if (f.source == 'national_id' || f.source == 'academic_id')
+          if (f.readsNumber) ...[
             AppField(
               controller: _digits,
               label: t('عدد الخانات (اختياري)', 'Number of digits (optional)'),
@@ -146,12 +149,22 @@ class _MarkFieldFormState extends State<MarkFieldForm> {
                 _coalesce(n == null || n <= 0 ? f.copyWith(clearDigits: true) : f.copyWith(digits: n), 'digits');
               },
             ),
+            AppSpace.gapXs,
+            _stripSection(context),
+          ],
         ];
       case FieldType.questionMark:
         return [
           _numField(_no, t('رقم السؤال', 'Question number'), (v) => v == null ? f.copyWith(clearQuestionNo: true) : f.copyWith(questionNo: v.toInt()), 'no', integer: true),
           _numField(_max, t('الدرجة العظمى', 'Maximum mark'), (v) => v == null ? f.copyWith(clearMax: true) : f.copyWith(max: v), 'max'),
           _numField(_step, t('الخطوة (مثل 0.5)', 'Step (for example 0.5)'), (v) => v == null ? f.copyWith(clearStep: true) : f.copyWith(step: v), 'step'),
+          AppSwitchTile(
+            key: const ValueKey('mk.optional'),
+            title: t('يمكن أن تبقى فارغة', 'May be left empty'),
+            subtitle: t('الخانة الفارغة تُحسب صفرًا، مثل سؤال لم يكن في هذا الامتحان.', 'An empty box counts as 0, like a question this exam did not have.'),
+            value: f.optional,
+            onChanged: (v) => widget.onChanged(f.copyWith(optional: v)),
+          ),
         ];
       case FieldType.total:
         return [_numField(_max, t('الدرجة العظمى للمجموع', 'Maximum total'), (v) => v == null ? f.copyWith(clearMax: true) : f.copyWith(max: v), 'max')];
@@ -199,6 +212,41 @@ class _MarkFieldFormState extends State<MarkFieldForm> {
           AppSpace.gapSm,
         ];
     }
+  }
+
+  /// A number written on a printed line at an angle: the switch, then the few things only this form can set.
+  Widget _stripSection(BuildContext context) {
+    final strip = f.strip;
+    Widget slider(String label, String key, double value, double min, double max, MarkStrip Function(double) apply) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text(label, style: AppType.meta(context)),
+          Slider(key: ValueKey('mk.strip.$key'), value: value.clamp(min, max).toDouble(), min: min, max: max, onChanged: (v) => _coalesce(f.copyWith(strip: apply(v)), 'strip.$key')),
+        ]);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppSwitchTile(
+        key: const ValueKey('mk.strip'),
+        title: t('مكتوب على خط مطبوع مائل', 'Written on a slanted printed line'),
+        subtitle: t('للأرقام المكتوبة على سطر بزاوية، مثل رقم الجلوس في ركن مطوي.', 'For a number written on a line at an angle, like a seat number on a folded corner.'),
+        value: strip != null,
+        onChanged: (v) => widget.onChanged(v ? f.copyWith(strip: MarkStrip.defaultFor(f.box)) : f.copyWith(clearStrip: true)),
+      ),
+      if (strip != null) ...[
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.xs),
+          child: Text(t('اسحب الطرفين المستديرين على الخط المطبوع. المنطقة الملوّنة هي مكان الكتابة.', 'Drag the two round ends along the printed line. The coloured area is where the number is written.'), style: AppType.meta(context)),
+        ),
+        slider(t('ارتفاع منطقة الكتابة', 'Height of the writing area'), 'height', strip.height, MarkStrip.minHeight, MarkStrip.maxHeight, (v) => strip.copyWith(height: v)),
+        slider(t('هامش البحث عن الخط في الصورة', 'How far to look for the line in a photo'), 'search', strip.search, 0, 0.15, (v) => strip.copyWith(search: v)),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton.icon(
+            key: const ValueKey('mk.strip.flip'),
+            onPressed: () => widget.onChanged(f.copyWith(strip: strip.flipped())),
+            icon: const Icon(Icons.swap_vert_rounded),
+            label: Text(t('الكتابة على الجهة الأخرى من الخط', 'The writing is on the other side of the line')),
+          ),
+        ),
+      ],
+    ]);
   }
 
   Widget _numField(TextEditingController ctl, String label, MarkField Function(double?) apply, String key, {bool integer = false}) => AppField(

@@ -13,6 +13,7 @@ import '../../../../admin/admin_common.dart' show asInt, asMap, t;
 import '../../exam_engine_api.dart' show EngineResult;
 import '../../exam_features.dart' show examFeatureCodeText;
 import '../../marks/mark_sessions_api.dart';
+import '../../marks/templates/mark_strip.dart';
 import '../../exam_authoring.dart' show parseEngineUtc;
 import '../../marks/review/grade_review_start.dart' show GradeColumn;
 
@@ -134,7 +135,7 @@ String revisionStyleLabel(RevisionStyle s) => '${digitScriptLabel(s.script)} · 
 // ── one sample read ───────────────────────────────────────────────────────────────────────────────────────────────
 
 class RevisionSampleField {
-  const RevisionSampleField({required this.fieldId, this.type = 'question_mark', this.questionNo, this.value, this.conf = 0, this.status = 'ok', this.max, this.box, this.crop});
+  const RevisionSampleField({required this.fieldId, this.type = 'question_mark', this.questionNo, this.value, this.conf = 0, this.status = 'ok', this.max, this.box, this.crop, this.optional = false});
 
   final String fieldId, type, status;
   final String? questionNo, value;
@@ -145,12 +146,18 @@ class RevisionSampleField {
   final Rect? box;
   final Uint8List? crop;
 
-  bool get ok => status == 'ok';
+  /// The template lets this box stay empty.
+  final bool optional;
+
+  /// An empty box the template allows: it counts as 0, it is not a problem and says nothing about accuracy.
+  bool get emptyAllowed => optional && status == 'blank' && value == null;
+
+  bool get ok => status == 'ok' || emptyAllowed;
   bool get isTotal => type == 'total';
 
   String get label => isTotal ? t('المجموع', 'Total') : '${t('سؤال', 'Q')} ${questionNo ?? fieldId}';
 
-  factory RevisionSampleField.fromJson(Map<String, dynamic> j) {
+  factory RevisionSampleField.fromJson(Map<String, dynamic> j, {bool optional = false}) {
     final b = j['box'];
     return RevisionSampleField(
       fieldId: '${j['field_id'] ?? ''}',
@@ -162,11 +169,50 @@ class RevisionSampleField {
       max: _num(j['max']),
       box: b is List && b.length >= 4 ? Rect.fromLTWH(_num(b[0]) ?? 0, _num(b[1]) ?? 0, _num(b[2]) ?? 0, _num(b[3]) ?? 0) : null,
       crop: _b64(j['crop_b64']),
+      optional: optional,
     );
   }
 }
 
-enum SampleVerdict { good, partial, bad }
+/// [willAsk]: everything was read except whose paper it is, and the teacher will simply be asked. A normal state, not a failure.
+enum SampleVerdict { good, willAsk, partial, bad }
+
+/// A student the reader thinks a written number may belong to.
+class RevisionCandidate {
+  const RevisionCandidate({required this.id, required this.name, this.score = 0, this.alreadyMatched = false, this.fromName = false});
+  final int id;
+  final String name;
+  final double score;
+
+  /// Another paper of this session already went to this student.
+  final bool alreadyMatched;
+
+  /// Suggested from a handwritten name, which never links by itself.
+  final bool fromName;
+
+  factory RevisionCandidate.fromJson(Map<String, dynamic> j) => RevisionCandidate(id: asInt(j['id']), name: '${j['name'] ?? ''}', score: _num(j['score']) ?? 0, alreadyMatched: j['already_matched'] == true);
+}
+
+List<RevisionCandidate> _candidates(Object? v) => [
+      for (final c in (v as List?) ?? const [])
+        if (c is Map && '${c['name'] ?? ''}'.trim().isNotEmpty) RevisionCandidate.fromJson(asMap(c)),
+    ];
+
+/// The choices in the order they are offered: the closest first, anyone who already has a paper last, three at most.
+List<RevisionCandidate> orderRevisionCandidates(Iterable<RevisionCandidate> all) {
+  final out = [...all]..sort((a, b) {
+      if (a.alreadyMatched != b.alreadyMatched) return a.alreadyMatched ? 1 : -1;
+      return b.score.compareTo(a.score);
+    });
+  return out.take(3).toList();
+}
+
+/// Why the teacher is being asked, in one calm sentence (`identifier.roster.reason`).
+String revisionUnsureText(String? reason, {required bool candidates}) => switch (reason) {
+      _ when !candidates => t('لم نجد هذا الرقم عند طلاب هذه القائمة. ابحث عن الطالب وسنقارن الدرجة.', "This number isn't in this list of students. Find the student and we compare the degree."),
+      'already_matched' => t('أقرب طالب له ورقة أخرى، فتركنا القرار لك.', 'The closest student already has a paper, so the choice is yours.'),
+      _ => t('لم نتأكد من الرقم المكتوب. اختر الطالب وسنقارن الدرجة.', "We weren't sure of the written number. Choose the student and we compare the degree."),
+    };
 
 class RevisionSample {
   const RevisionSample({
@@ -184,7 +230,21 @@ class RevisionSample {
     this.computed,
     this.consistent,
     this.styles = const RevisionStyles(),
+    this.candidates = const [],
+    this.rosterReason,
+    this.stripImage,
+    this.ruleFound,
   });
+
+  /// The closest students when the number did not link by itself, in the order they are offered.
+  final List<RevisionCandidate> candidates;
+  final String? rosterReason;
+
+  /// The straightened strip (`identifier.strip_b64`); null for a national id, a phone, an e-mail.
+  final Uint8List? stripImage;
+
+  /// Whether the printed line was found on this photo (null: not a strip).
+  final bool? ruleFound;
 
   final bool ok;
   final String code, message, identifierMasked;
@@ -201,24 +261,31 @@ class RevisionSample {
   bool get matched => studentId != null;
   List<RevisionSampleField> get problems => [for (final f in fields) if (!f.ok) f];
 
-  /// The mean confidence of what was read, 0 … 1 (0 when nothing was).
+  /// The mean confidence of what was read, 0 … 1 (0 when nothing was). A box allowed to stay empty says nothing either way.
   double get accuracy {
-    if (fields.isEmpty) return 0;
-    return fields.fold<double>(0, (a, f) => a + f.conf) / fields.length;
+    final read = [for (final f in fields) if (!f.emptyAllowed) f];
+    if (read.isEmpty) return 0;
+    return read.fold<double>(0, (a, f) => a + f.conf) / read.length;
   }
+
+  /// Nobody in this course has the number the template compares with: the sign to match on another column.
+  bool get rosterEmpty => rosterReason == 'no_candidates';
 
   /// The total this paper comes to: the computed sum, else the written one.
   double? get sum => computed ?? written;
 
   /// [nameOnly]: the template identifies by a handwritten name, which never links by itself, so a value read is enough.
-  SampleVerdict verdict({bool nameOnly = false}) {
+  /// [strip]: a number written on a printed line, where an unsure read is expected: the teacher is asked, nothing is wrong.
+  SampleVerdict verdict({bool nameOnly = false, bool strip = false}) {
     if (!ok) return SampleVerdict.bad;
-    final identified = nameOnly ? identifierMasked.isNotEmpty : matched;
-    return problems.isEmpty && identified ? SampleVerdict.good : SampleVerdict.partial;
+    if (problems.isNotEmpty) return SampleVerdict.partial;
+    if (nameOnly ? identifierMasked.isNotEmpty : matched) return SampleVerdict.good;
+    return strip || candidates.isNotEmpty ? SampleVerdict.willAsk : SampleVerdict.partial;
   }
 
-  factory RevisionSample.fromJson(Map<String, dynamic> j, {String lang = 'ar', RevisionStyles styles = const RevisionStyles()}) {
+  factory RevisionSample.fromJson(Map<String, dynamic> j, {String lang = 'ar', RevisionStyles styles = const RevisionStyles(), Set<String> optional = const {}}) {
     final id = asMap(j['identifier']);
+    final strip = id['strip'] is Map ? asMap(id['strip']) : null;
     final st = asMap(id['student']);
     final sum = asMap(j['sum']);
     final en = '${j['message_en'] ?? ''}', ar = '${j['message'] ?? ''}';
@@ -232,11 +299,15 @@ class RevisionSample {
       identifierConf: _num(id['conf']),
       studentId: st['id'] == null ? null : asInt(st['id']),
       studentName: st['name']?.toString(),
-      fields: [for (final f in (j['fields'] as List?) ?? const []) if (f is Map) RevisionSampleField.fromJson(asMap(f))],
+      fields: [for (final f in (j['fields'] as List?) ?? const []) if (f is Map) RevisionSampleField.fromJson(asMap(f), optional: optional.contains('${f['field_id']}'))],
       written: _num(sum['written']),
       computed: _num(sum['computed']),
       consistent: sum['consistent'] is bool ? sum['consistent'] as bool : null,
       styles: styles,
+      candidates: orderRevisionCandidates(_candidates(id['candidates'])),
+      rosterReason: asMap(id['roster'])['reason']?.toString(),
+      stripImage: _b64(id['strip_b64']),
+      ruleFound: strip == null ? null : strip['rule_found'] == true,
     );
   }
 }
@@ -278,8 +349,34 @@ class RevisionMatch {
   int get hashCode => Object.hash(source, key);
 }
 
+/// The Data Lab's own student-number column: where an imported "seat number" column lands.
+const kRevisionDataLabIdentifier = RevisionMatch('datalab', '__identifier');
+
+/// Does this column name a seat number, in either language?
+bool looksLikeSeatNumber(String label) {
+  final s = label.toLowerCase();
+  return s.contains('جلوس') || s.contains('seat') || s.contains('sitting');
+}
+
+/// What a number written on a slanted cover line should be matched on: a column named as a seat number, else the Data Lab's own
+/// student number when it holds any. Null: the teacher's data does not say, and the screen asks them instead.
+RevisionMatch? revisionSeatMatch({required int identifiers, required Iterable<({String key, String label})> columns}) {
+  for (final c in columns) {
+    if (looksLikeSeatNumber(c.label)) return RevisionMatch('datalab', c.key);
+  }
+  return identifiers > 0 ? kRevisionDataLabIdentifier : null;
+}
+
+/// The sheet column that names a seat number (never the degree column).
+String? revisionSeatColumn(RevisionSheetPreview? sheet, {String? degreeColumn}) {
+  for (final c in sheet?.columns ?? const <RevisionSheetColumn>[]) {
+    if (c.name != degreeColumn && looksLikeSeatNumber(c.name)) return c.name;
+  }
+  return null;
+}
+
 class RevisionTemplateChoice {
-  const RevisionTemplateChoice({required this.id, required this.name, required this.totalMax, required this.identifierSource, this.aspect = 1 / 1.414, this.identifierBox});
+  const RevisionTemplateChoice({required this.id, required this.name, required this.totalMax, required this.identifierSource, this.aspect = 1 / 1.414, this.identifierBox, this.strip, this.optionalFields = const {}});
   final int id;
   final String name;
   final double totalMax;
@@ -288,6 +385,12 @@ class RevisionTemplateChoice {
   final String identifierSource;
   final double aspect;
   final Rect? identifierBox;
+
+  /// The identifier is written on a printed line at an angle.
+  final MarkStrip? strip;
+
+  /// The marks the template lets stay empty.
+  final Set<String> optionalFields;
 
   /// A handwritten name: never links by itself.
   bool get nameOnly => identifierSource == 'name';
@@ -310,6 +413,14 @@ class RevisionSetup {
   RevisionMatch? match;
   double step = 0.5;
   RevisionStyles styles = const RevisionStyles();
+
+  /// The teacher chose what to match on themselves: the screen stops steering.
+  bool matchTouched = false;
+
+  bool get usesStrip => template?.strip != null;
+
+  /// The scale of the place the degrees are compared with, while there is no template yet (a sheet's may be unset).
+  double? get columnScale => source == RevisionSource.excel ? sheetMax : column?.max;
 
   bool get sourceReady => switch (source) {
         RevisionSource.gradebook => courseId != null && column != null,
@@ -420,23 +531,41 @@ String revisionColumnLabel(String key) => key.startsWith('sheet:') ? key.substri
 
 /// A row of the session with what [MarkRow] does not carry: its list and the name a handwritten paper suggests.
 class RevisionRow {
-  const RevisionRow({required this.row, required this.list, this.candidateId, this.candidateName});
+  const RevisionRow({required this.row, required this.list, this.candidateId, this.candidateName, this.candidates = const [], this.rosterReason, this.identifierCropUrl});
   final MarkRow row;
   final MarkList list;
   final int? candidateId;
   final String? candidateName;
 
+  /// The closest students, already in the order they are offered.
+  final List<RevisionCandidate> candidates;
+  final String? rosterReason;
+
+  /// The signed picture of the straightened number; null for a national id, a phone, an e-mail.
+  final String? identifierCropUrl;
+
   int get id => row.id;
   int? get pageId => row.pageId;
   bool get decided => row.decided;
 
+  /// Whose paper it is, is the one thing left for the person to say.
+  bool get needsStudent => !row.hasStudent && !row.decided;
+
+  /// What to offer: the reader's candidates, or the one a handwritten name suggests.
+  List<RevisionCandidate> get choices => candidates.isNotEmpty || candidateId == null || (candidateName ?? '').isEmpty ? candidates : [RevisionCandidate(id: candidateId!, name: candidateName!, fromName: true)];
+
   factory RevisionRow.fromJson(Map<String, dynamic> j) {
-    final cand = asMap(asMap(j['identifier'])['candidate']);
+    final ident = asMap(j['identifier']);
+    final cand = asMap(ident['candidate']);
+    final crop = '${ident['crop_url'] ?? ''}';
     return RevisionRow(
       row: MarkRow.fromJson(j),
       list: switch ('${j['list'] ?? ''}') { 'match' => MarkList.match, 'mismatch' => MarkList.mismatch, _ => MarkList.unreadable },
       candidateId: cand['id'] == null ? null : asInt(cand['id']),
       candidateName: cand['name']?.toString(),
+      candidates: orderRevisionCandidates(_candidates(ident['candidates'])),
+      rosterReason: asMap(ident['roster'])['reason']?.toString(),
+      identifierCropUrl: crop.isEmpty ? null : crop,
     );
   }
 }
