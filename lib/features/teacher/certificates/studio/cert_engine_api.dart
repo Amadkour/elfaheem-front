@@ -188,7 +188,7 @@ class CertEngineApi {
 
   /// The renderer's font catalog: the ONLY list the picker shows (CLAUDE.md).
   Future<List<CertFontInfo>> fonts() async {
-    final r = await api.get('/api/v1/exports/layout/fonts');
+    final r = await api.get('/api/v1/exports/layout/fonts', queryParams: const {'include': 'all'});
     final items = r is List ? r : (r is Map ? r['items'] : null);
     return [
       if (items is List)
