@@ -35,11 +35,12 @@ import '../../../../design/app_tokens.dart';
 import '../../../../design/export_layout/layout_canvas.dart';
 import '../../../../design/export_layout/layout_element_view.dart' show LayoutAssets;
 import '../../../../design/export_layout/layout_model.dart';
-import '../../../../design/studio/studio.dart' show StudioController;
+import '../../../../design/studio/studio.dart' show StudioController, StudioKeyboardScope;
 import '../../../admin/admin_common.dart' show t;
 import '../designer/certificate_designer_screen.dart' show CertificateDesignerScreen;
 import 'cert_engine_api.dart';
 import 'cert_engine_panels.dart';
+import 'cert_engine_photo_option.dart';
 import 'cert_engine_presets.dart';
 import 'cert_font_picker.dart';
 
@@ -561,6 +562,7 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
   }
 
   Widget? _extraFor(BuildContext context, LayoutElement el, StudioController<LayoutElement> ctl) {
+    if (certElementIsPhoto(el)) return certPhotoOption(el, ctl);
     if (el.kind != 'signature' || el.value == null) return null;
     return OutlinedButton.icon(
       key: const ValueKey('cert-sig-clean'),
@@ -759,14 +761,14 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
         onPopInvokedWithResult: (didPop, _) => unawaited(_onPopAttempt(didPop)),
         child: child!,
       ),
-      child: Scaffold(
+      child: StudioKeyboardScope(onSave: () { if (_dirty.value) unawaited(_save()); }, child: Scaffold(
         appBar: _appBar(context),
         body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           if (_converted) _banner(context),
           if (doc.languages.length > 1) _tabs(context),
           Expanded(child: _editors()),
         ]),
-      ),
+      )),
     );
   }
 

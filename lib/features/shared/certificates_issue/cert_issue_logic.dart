@@ -107,14 +107,18 @@ class IssueColumn {
 
 /// GET designs/{id}/columns → the columns, the design's languages and the limits.
 class IssueTemplate {
-  const IssueTemplate({required this.columns, required this.langs, this.maxRows = 5000, this.maxUploadBytes = 5242880});
+  const IssueTemplate({required this.columns, required this.langs, this.maxRows = 5000, this.maxUploadBytes = 5242880, this.photo = 'none'});
 
   factory IssueTemplate.fromJson(Map<String, dynamic> j) => IssueTemplate(
         columns: [for (final c in _maps(j['columns'])) IssueColumn.fromJson(c)],
         langs: _strings(j['langs']).isEmpty ? const ['ar'] : _strings(j['langs']),
         maxRows: _int(j['max_rows'], 5000),
         maxUploadBytes: _int(j['max_upload_bytes'], 5242880),
+        photo: _str(j['photo']) ?? 'none',
       );
+
+  /// Does the design hold a student photo: `required` · `optional` · `none` (D-386).
+  final String photo;
 
   final List<IssueColumn> columns;
   final List<String> langs;
@@ -219,7 +223,11 @@ class RecipientRow {
     this.student,
     this.candidates = const [],
     this.manual,
+    this.photoUrl,
   });
+
+  /// The photo uploaded for this certificate (a non-user, or nobody on file), sent as `photo_url`.
+  final String? photoUrl;
 
   /// Local id (stable across edits).
   final String uid;
@@ -249,6 +257,7 @@ class RecipientRow {
     bool clearStudent = false,
     List<StudentBrief>? candidates,
     bool? manual,
+    String? photoUrl,
   }) =>
       RecipientRow(
         uid: uid,
@@ -260,6 +269,7 @@ class RecipientRow {
         student: clearStudent ? null : (student ?? this.student),
         candidates: candidates ?? this.candidates,
         manual: manual ?? this.manual,
+        photoUrl: photoUrl ?? this.photoUrl,
       );
 }
 
@@ -385,6 +395,7 @@ class RecipientDraft {
       _rows.add(RecipientRow(
         uid: _uid(),
         source: RowSource.list,
+        photoUrl: _str(r['photo_url']),
         values: values,
         match: sid != null ? MatchState.matched : MatchState.unmatched,
         student: sid != null ? StudentBrief(id: sid, name: values['student_name'] ?? '') : null,
@@ -452,6 +463,12 @@ class RecipientDraft {
     final i = _index(uid);
     if (i < 0) return;
     _rows[i] = _rows[i].copyWith(match: MatchState.matched, student: s);
+  }
+
+  /// The photo uploaded for this person.
+  void setPhoto(String uid, String url) {
+    final i = _index(uid);
+    if (i >= 0) _rows[i] = _rows[i].copyWith(photoUrl: url);
   }
 
   /// Issue (or not) this unmatched name as a manual recipient.
@@ -572,7 +589,14 @@ class RecipientDraft {
       if (!forList) 'name': values['student_name'] ?? r.name,
       if (r.email.isNotEmpty) 'email': r.email,
       if (r.student != null) 'student_id': r.student!.id,
+      if (r.photoUrl != null) 'photo_url': r.photoUrl,
     };
+  }
+
+  /// The uids of [batchRows], in the same order (a `photo-status` answer indexes them).
+  List<String> batchUids() {
+    final dups = _duplicates();
+    return [for (final r in _rows) if (stateOf(r, dups) == RowState.ready) r.uid];
   }
 
   /// The ready rows as the batch's `rows` ({values, name, email?, student_id?}); the e-mail travels in `email`.
@@ -629,7 +653,7 @@ Map<String, dynamic> certBatchBody({
     'email': email,
     if (cons.isNotEmpty) 'constants': cons,
     if (ttl.isNotEmpty) 'title': ttl,
-    if (mode == IssueMode.standalone) 'rows': rows,
+    if (mode == IssueMode.standalone || rows.isNotEmpty) 'rows': rows,
   };
 }
 
@@ -642,6 +666,8 @@ Map<String, dynamic> certPreviewBody({
   Map<String, String>? values,
   Map<String, String>? constants,
   List<String>? langs,
+  String? photoUrl,
+  int? studentId,
 }) {
   final vals = {
     for (final e in (values ?? const <String, String>{}).entries)
@@ -656,6 +682,8 @@ Map<String, dynamic> certPreviewBody({
     if (vals.isNotEmpty) 'values': vals,
     if (cons.isNotEmpty) 'constants': cons,
     if (langs != null && langs.isNotEmpty) 'langs': langs,
+    'photo_url': ?photoUrl,
+    'student_id': ?studentId,
   };
 }
 
@@ -683,7 +711,7 @@ Map<String, dynamic> certListBody({required String name, int? orgId, int? design
 
 /// POST lists/{id}/people: one new person, issued at once when [issue].
 Map<String, dynamic> certPersonBody({required Map<String, String> values, String? email, int? studentId,
-    bool issue = false, int? designId, List<String>? langs, bool sendEmail = false}) {
+    bool issue = false, int? designId, List<String>? langs, bool sendEmail = false, String? photoUrl}) {
   final vals = {
     for (final e in values.entries)
       if (e.key != _emailKey && e.value.trim().isNotEmpty) e.key: e.value.trim(),
@@ -694,6 +722,7 @@ Map<String, dynamic> certPersonBody({required Map<String, String> values, String
     if (vals['student_name'] != null) 'name': vals['student_name'],
     if (mail.isNotEmpty) 'email': mail,
     'student_id': ?studentId,
+    'photo_url': ?photoUrl,
     'issue': issue,
     if (issue && designId != null) 'design_id': designId,
     if (issue && langs != null && langs.isNotEmpty) 'langs': langs,
@@ -703,7 +732,7 @@ Map<String, dynamic> certPersonBody({required Map<String, String> values, String
 
 /// POST issued/{id}/reissue: only what changed.
 Map<String, dynamic> certReissueBody({required Map<String, String> before, required Map<String, String> after,
-    String? email, String? emailBefore, bool sendEmail = false, String? reason}) {
+    String? email, String? emailBefore, bool sendEmail = false, String? reason, String? photoUrl}) {
   final changed = {
     for (final e in after.entries)
       if (e.key != _emailKey && (before[e.key] ?? '') != e.value.trim()) e.key: e.value.trim(),
@@ -715,6 +744,7 @@ Map<String, dynamic> certReissueBody({required Map<String, String> before, requi
     if (mail != null && mail != (emailBefore ?? '')) 'email': mail,
     'send_email': sendEmail,
     if ((reason ?? '').trim().isNotEmpty) 'reason': reason!.trim(),
+    'photo_url': ?photoUrl,
   };
 }
 
@@ -989,6 +1019,10 @@ String certLangLabel(String lang) => lang == 'ar' ? _t('العربية', 'Arabic
 
 /// The issuing routes' codes in the reader's language; unknown codes fall back to the server's own sentence
 /// (`message_en` in English) and then to [apiErrorText].
+String _photoCountText(int? n) => n == null || n <= 0
+    ? _t('بعض المستلمين يحتاجون إلى صورة قبل الإصدار', 'Some recipients still need a photo before issuing')
+    : _t('يحتاج $n من المستلمين إلى صورة قبل الإصدار', '$n recipient${n == 1 ? '' : 's'} still need a photo before issuing');
+
 String certIssueErrorText(Object error) {
   final e = ApiException.from(error);
   final d = apiErrorDetail(e);
@@ -1035,6 +1069,8 @@ String certIssueErrorText(Object error) {
     'too_many_lists' => _t('عدد القوائم المحفوظة كبير جدًا — احذف قائمة قديمة', 'Too many saved lists — delete an old one'),
     'design_required' => _t('اختر التصميم', 'Choose a design'),
     'certificate_not_found' => _t('لا توجد شهادة بهذا الرابط', 'No certificate matches this link'),
+    'photos_required' => _photoCountText(_intOrNull(d['count'])),
+    'bad_photo' => _t('هذا الملف ليس صورة صالحة', 'This file is not a readable photo'),
     _ => null,
   };
   if (text != null) return text;

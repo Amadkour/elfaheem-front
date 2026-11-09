@@ -219,6 +219,16 @@ abstract class StudioLockAdapter {
   void setLocked(Set<String> ids, bool locked);
 }
 
+/// Optional, next to [StudioAdapter]: groups the host stores with the design (Ctrl+G). A host without it keeps groups
+/// for the session only.
+abstract class StudioGroupAdapter {
+  /// item id → group id, for the items in a group.
+  Map<String, String> readGroups();
+
+  /// Sets the group of [ids] ([group] null removes them from a group). Called inside [StudioController.record].
+  void writeGroups(Set<String> ids, String? group);
+}
+
 /// Optional, next to [StudioAdapter]: the layers panel's extras. A host without it still gets the panel (select,
 /// reorder, lock when it is a [StudioLockAdapter]); the eye and the inline rename appear only when it says so.
 abstract class StudioLayersAdapter {

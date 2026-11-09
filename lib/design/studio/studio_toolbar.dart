@@ -12,12 +12,14 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../app_contrast.dart';
+import '../app_keyboard.dart' show AppKeyboardSupport;
 import '../app_kit.dart' show appText;
 import '../app_tokens.dart';
 import '../export/export_fonts.dart' show ExportFonts;
 import 'studio_controller.dart';
 import 'studio_layers.dart' show studioTr;
 import 'studio_model.dart';
+import 'studio_shortcuts.dart';
 
 class StudioToolbar extends StatefulWidget {
   const StudioToolbar({
@@ -148,12 +150,14 @@ class _StudioToolbarState extends State<StudioToolbar> {
                 StudioToolButton(
                   icon: Icons.undo_rounded,
                   label: translate('studio_undo'),
+                  shortcut: StudioCommand.undo,
                   showLabel: wide,
                   onPressed: ctl.canUndo ? ctl.undo : null,
                 ),
                 StudioToolButton(
                   icon: Icons.redo_rounded,
                   label: translate('studio_redo'),
+                  shortcut: StudioCommand.redo,
                   showLabel: wide,
                   onPressed: ctl.canRedo ? ctl.redo : null,
                 ),
@@ -161,17 +165,20 @@ class _StudioToolbarState extends State<StudioToolbar> {
                 StudioToolButton(
                   icon: Icons.remove_rounded,
                   label: translate('studio_zoom_out'),
+                  shortcut: StudioCommand.zoomOut,
                   onPressed: ctl.zoom > StudioController.minZoom + 1e-3 ? ctl.zoomOut : null,
                 ),
                 _ZoomMenu(controller: ctl),
                 StudioToolButton(
                   icon: Icons.add_rounded,
                   label: translate('studio_zoom_in'),
+                  shortcut: StudioCommand.zoomIn,
                   onPressed: ctl.zoom < StudioController.maxZoom - 1e-3 ? ctl.zoomIn : null,
                 ),
                 StudioToolButton(
                   icon: Icons.fit_screen_rounded,
                   label: translate('studio_fit'),
+                  shortcut: StudioCommand.zoomFit,
                   showLabel: wide,
                   active: ctl.fitted,
                   onPressed: ctl.fitPage,
@@ -189,12 +196,22 @@ class _StudioToolbarState extends State<StudioToolbar> {
                 StudioToolButton(
                   icon: Icons.delete_outline_rounded,
                   label: translate('studio_delete'),
+                  shortcut: StudioCommand.delete,
                   showLabel: wide,
                   danger: true,
                   onPressed: ctl.selection.any((id) => !(ctl.itemById(id)?.locked ?? true)) ? ctl.deleteSelection : null,
                 ),
                 if (trailing.isNotEmpty) const _Sep(),
                 ...trailing,
+                if (AppKeyboardSupport.enabled) ...[
+                  const _Sep(),
+                  StudioToolButton(
+                    icon: Icons.keyboard_outlined,
+                    label: studioTr('اختصارات لوحة المفاتيح', 'Keyboard shortcuts'),
+                    shortcut: StudioCommand.help,
+                    onPressed: () => showStudioShortcuts(context),
+                  ),
+                ],
               ]),
             );
           },
@@ -219,12 +236,16 @@ class StudioToolButton extends StatelessWidget {
     this.showLabel = false,
     this.active = false,
     this.danger = false,
+    this.shortcut,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback? onPressed;
   final bool showLabel, active, danger;
+
+  /// Shown in the tooltip on the web and desktop ("Undo (Ctrl+Z)").
+  final StudioCommand? shortcut;
 
   @override
   Widget build(BuildContext context) {
@@ -247,7 +268,8 @@ class StudioToolButton extends StatelessWidget {
         child: face,
       ),
     );
-    return showLabel ? button : Tooltip(message: label, child: button);
+    final tip = shortcut == null ? label : studioTip(label, shortcut!);
+    return showLabel && tip == label ? button : Tooltip(message: tip, child: button);
   }
 }
 

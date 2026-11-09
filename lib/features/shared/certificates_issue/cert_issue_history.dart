@@ -13,6 +13,8 @@ import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
+import '../../../core/api_client.dart';
+import '../../../core/api_error_text.dart';
 import '../../../core/live/event_wait.dart';
 import '../../../design/app_kit.dart';
 import '../../../design/app_notice.dart';
@@ -23,6 +25,7 @@ import '../../auth/auth_provider.dart';
 import 'cert_issue_actions.dart';
 import 'cert_issue_api.dart';
 import 'cert_issue_logic.dart';
+import 'cert_issue_photos.dart';
 import 'cert_issue_parts.dart';
 import 'cert_issue_word.dart';
 
@@ -455,6 +458,20 @@ class _CertBatchViewState extends State<CertBatchView> {
       showAppNotice('ci_reissued_done'.tr);
       await _loadItems();
     } catch (e) {
+      final x = ApiException.from(e);
+      if ((x.code ?? '${apiErrorDetail(x)['code'] ?? ''}') == 'photos_required' && mounted) {
+        final url = await certAskOnePhoto(context, _api, cert.recipientName);
+        if (url == null || !mounted) return;
+        try {
+          await _api.reissue(cert.id, certReissueBody(before: before, after: res.values, email: email,
+              emailBefore: cert.recipientEmail, sendEmail: res.sendEmail, reason: res.reason, photoUrl: url));
+          showAppNotice('ci_reissued_done'.tr);
+          await _loadItems();
+        } catch (e2) {
+          showAppNotice(certIssueErrorText(e2), error: true);
+        }
+        return;
+      }
       showAppNotice(certIssueErrorText(e), error: true);
     }
   }

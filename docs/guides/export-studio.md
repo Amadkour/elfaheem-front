@@ -53,3 +53,5 @@ designer, reachable from the studio's More › Classic designer and for everyone
 
 **Certificate templates (D-383, D-384)** — the collection is on the server, `../back/services/certificate_templates/` (`art.py` ornament, `designs.py` one painter + Arabic and English layouts per template). The gallery page is `lib/features/teacher/certificates/studio/cert_template_gallery.dart`; a new category key goes in `kCertTemplateCategories`. Use only fonts both renderers carry, keep optional values on their own line (`tests/org_v2/cert_templates.py` checks both).
 
+
+**Student photos on certificates (D-386)** — a design with a student photo needs one for every recipient before issuing (`GET .../columns` says `photo`). The issue flow's Photos step (`cert_issue_photos.dart`, logic in `cert_issue_photo_logic.dart`) is one upload per person through `showAppImageCropper`, or several matched by file name; the server enforces it with 422 `photos_required`. The element's optional setting is `cert_engine_photo_option.dart`.

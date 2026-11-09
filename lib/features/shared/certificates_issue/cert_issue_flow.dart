@@ -8,8 +8,10 @@
 //              (matched / several with the name → pick / not on the platform → manual recipient / duplicates /
 //              problems highlighted, inline edit or remove, "X ready, Y need attention"). Save the list, or open a
 //              saved one. Optional e-mail delivery adds an Email column.
-//   3 Preview  languages from the design, an optional title, the first recipient's certificate per language.
-//   4 Issue    the batch's progress (EventOrPoll: no live event exists for batches, so a gentle poll), then
+//   3 Photos   only when the design holds a student photo (D-386): who has none, upload one by one (shared cropper) or
+//              many at once matched by file name; the next steps stay blocked until everyone required has one.
+//   4 Preview  languages from the design, an optional title, the first recipient's certificate per language.
+//   5 Issue    the batch's progress (EventOrPoll: no live event exists for batches, so a gentle poll), then
 //              download the ZIP / merged PDF and open the issued list.
 //
 // Phones: one column, the step's actions in a bottom bar. Wide: the recipients step is input | review side by side.
@@ -35,6 +37,8 @@ import 'cert_issue_history.dart';
 import 'cert_issue_lists.dart';
 import 'cert_issue_logic.dart';
 import 'cert_issue_parts.dart';
+import 'cert_issue_photo_logic.dart';
+import 'cert_issue_photos.dart';
 
 Future<void> openCertIssueFlow(BuildContext context, {required int designId, String? designName, int? orgId}) =>
     Navigator.of(context).push(MaterialPageRoute<void>(
@@ -123,7 +127,25 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
   EventOrPoll? _watch;
   String? _downloading;
 
-  List<String> get _stepLabels => ['ci_step_how'.tr, 'ci_step_who'.tr, 'ci_step_preview'.tr, 'ci_step_issue'.tr];
+  // student photos (D-386): the step sits between Who and Preview, only when the design holds a photo
+  static const _photosStep = 4;
+  late final CertPhotoCollector _photos = CertPhotoCollector(api: _api, onPhoto: _onPhoto);
+  bool _photosLoading = false;
+  String? _photosError;
+
+  /// Course mode: the photos uploaded per student (sent as the batch's rows).
+  final Map<int, String> _coursePhotos = {};
+
+  bool get _hasPhotoStep => (_template?.photo ?? 'none') != 'none';
+  List<int> get _stepOrder => [0, 1, if (_hasPhotoStep) _photosStep, 2, 3];
+
+  List<String> get _stepLabels => [
+        'ci_step_how'.tr,
+        'ci_step_who'.tr,
+        if (_hasPhotoStep) (AppConfig.lang == 'ar' ? 'الصور' : 'Photos'),
+        'ci_step_preview'.tr,
+        'ci_step_issue'.tr,
+      ];
 
   @override
   void initState() {
@@ -139,6 +161,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
     _pasteCtrl.dispose();
     _searchCtrl.dispose();
     _titleCtrl.dispose();
+    _photos.dispose();
     for (final c in _constants.values) {
       c.dispose();
     }
@@ -447,6 +470,72 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
     }
   }
 
+  // ── student photos ─────────────────────────────────────────────────────────
+
+  void _onPhoto(String key, String url) {
+    if (key.startsWith('c')) {
+      _coursePhotos[int.parse(key.substring(1))] = url;
+    } else {
+      _draft.setPhoto(key, url);
+    }
+  }
+
+  List<Map<String, dynamic>> get _courseRows => [
+        for (final e in _coursePhotos.entries) {'student_id': e.key, 'photo_url': e.value, 'values': <String, String>{}},
+      ];
+
+  Future<void> _loadPhotos({bool advance = false}) async {
+    final course = _mode == IssueMode.course;
+    final uids = course ? const <String>[] : _draft.batchUids();
+    setState(() {
+      _photosLoading = true;
+      _photosError = null;
+    });
+    try {
+      final certificateId = course && _courseId != null ? await _courseCertificate(_courseId!) : null;
+      final st = await _api.photoStatus(certPhotoStatusBody(
+        designId: widget.designId,
+        mode: course ? IssueMode.course : IssueMode.standalone,
+        orgId: widget.orgId,
+        courseId: _courseId,
+        certificateId: certificateId,
+        replaceExisting: _replaceExisting,
+        langs: _langList,
+        rows: course ? _courseRows : _draft.batchRows(),
+      ));
+      if (!mounted) return;
+      final people = <IssuePhotoPerson>[];
+      final missing = <String>{};
+      for (final m in st.missing) {
+        final uid = course ? null : (m.index < uids.length ? uids[m.index] : null);
+        final key = course ? 'c${m.studentId}' : uid;
+        if (key == null) continue;
+        final row = uid == null ? null : _draft.byUid(uid);
+        people.add(row != null ? certPhotoPersonOfRow(row, _draft.columns) : IssuePhotoPerson(key: key, name: m.name, studentId: m.studentId));
+        missing.add(key);
+      }
+      // people who got a photo this session stay listed (Replace)
+      final uploaded = [
+        for (final e in _photos.people)
+          if (!missing.contains(e.key) && _photos.urls[e.key] != null && (course || _draft.byUid(e.key) != null)) e,
+      ];
+      _photos.setPeople([...people, ...uploaded], missing: {...missing, ...{for (final e in uploaded) e.key}}, photoMode: st.photo);
+      setState(() => _photosLoading = false);
+      if (advance && (st.photo == 'none' || missing.isEmpty)) _goPreview();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _photosError = certIssueErrorText(e);
+        _photosLoading = false;
+      });
+    }
+  }
+
+  void _goPreview() {
+    setState(() => _step = 2);
+    _loadPreview();
+  }
+
   // ── preview / issue ────────────────────────────────────────────────────────
 
   Map<String, String> get _constantValues => {for (final e in _constants.entries) e.key: e.value.text};
@@ -461,14 +550,17 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
     final langs = _langList;
     if (!langs.contains(_previewLang) && langs.isNotEmpty) _previewLang = langs.first;
     try {
+      final first = _mode == IssueMode.standalone ? _draft.firstReady : null;
       final images = await _api.preview(certPreviewBody(
         designId: widget.designId,
         mode: _mode ?? IssueMode.standalone,
         orgId: widget.orgId,
         courseId: _courseId,
-        values: _mode == IssueMode.standalone ? _draft.firstReady?.values : null,
+        values: first?.values,
         constants: _constantValues,
         langs: langs,
+        photoUrl: first?.photoUrl,
+        studentId: first?.student?.id,
       ));
       if (!mounted) return;
       setState(() {
@@ -501,7 +593,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
         email: course ? _courseEmail : _withEmail,
         constants: _constantValues,
         title: _titleCtrl.text,
-        rows: course ? const [] : _draft.batchRows(),
+        rows: course ? _courseRows : _draft.batchRows(),
       ));
       if (!mounted) return;
       setState(() {
@@ -573,6 +665,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
   bool get _canNext => switch (_step) {
         0 => _mode == IssueMode.standalone ? _template != null : (_mode == IssueMode.course && _courseId != null),
         1 => _draft.summary.ready > 0,
+        _photosStep => !_photosLoading && _photosError == null && !_photos.blocked,
         2 => !_issuing && _langs.isNotEmpty,
         _ => false,
       };
@@ -581,19 +674,39 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
     if (!_canNext) return;
     switch (_step) {
       case 0:
-        setState(() => _step = _mode == IssueMode.course ? 2 : 1);
-        if (_mode == IssueMode.course) _loadPreview();
+        if (_mode == IssueMode.course) {
+          _afterRecipients();
+        } else {
+          setState(() => _step = 1);
+        }
       case 1:
-        setState(() => _step = 2);
-        _loadPreview();
+        _afterRecipients();
+      case _photosStep:
+        _goPreview();
       case 2:
         _issue();
     }
   }
 
+  /// Who is settled: the photos step when the design holds a photo (skipped when everyone already has one), else the
+  /// preview.
+  void _afterRecipients() {
+    if (!_hasPhotoStep) return _goPreview();
+    setState(() => _step = _photosStep);
+    _loadPhotos(advance: true);
+  }
+
   void _back() {
     if (_step == 0 || _step == 3) return;
-    setState(() => _step = _step == 2 && _mode == IssueMode.course ? 0 : _step - 1);
+    setState(() {
+      if (_step == _photosStep) {
+        _step = _mode == IssueMode.course ? 0 : 1;
+      } else if (_step == 2) {
+        _step = _hasPhotoStep && _photos.people.isNotEmpty ? _photosStep : (_mode == IssueMode.course ? 0 : 1);
+      } else {
+        _step--;
+      }
+    });
   }
 
   // ── build ──────────────────────────────────────────────────────────────────
@@ -637,7 +750,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 900),
-                  child: IssueStepper(labels: _stepLabels, current: _step, onTap: _step == 3 ? null : _goTo),
+                  child: IssueStepper(labels: _stepLabels, current: _stepOrder.indexOf(_step).clamp(0, _stepOrder.length - 1), onTap: _step == 3 ? null : _goTo),
                 ),
               ),
             ),
@@ -650,8 +763,15 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
     );
   }
 
-  void _goTo(int i) {
+  void _goTo(int shown) {
+    final i = _stepOrder[shown];
     if (i == 1 && _mode == IssueMode.course) return;
+    if (i == _photosStep) {
+      setState(() => _step = i);
+      _loadPhotos();
+      return;
+    }
+    if (i == 2) return _goPreview();
     setState(() => _step = i);
   }
 
@@ -659,7 +779,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
     final s = _draft.summary;
     return IssueStepBar(
       onBack: _step > 0 ? _back : null,
-      summary: _step == 1 ? s.label : null,
+      summary: _step == 1 ? s.label : (_step == _photosStep && _photos.blocked ? (AppConfig.lang == 'ar' ? 'أكمل الصور للمتابعة' : 'Add the missing photos to continue') : null),
       nextLabel: switch (_step) {
         2 => _mode == IssueMode.course ? 'ci_issue_course'.tr : 'ci_issue_n'.tr.replaceAll('{n}', '${s.ready}'),
         _ => 'ci_next'.tr,
@@ -686,6 +806,10 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
     return switch (_step) {
       0 => _centered(_modeStep(context)),
       1 => _recipientsStep(context),
+      _photosStep => AnimatedBuilder(
+          animation: _photos,
+          builder: (context, _) => IssuePhotosBody(photos: _photos, loading: _photosLoading, error: _photosError, onRetry: _loadPhotos),
+        ),
       2 => _centered(_previewStep(context)),
       _ => _centered(_issueStep(context)),
     };
