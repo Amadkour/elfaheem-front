@@ -96,7 +96,6 @@ void main() {
           ChatRequestsRow(count: 120, onTap: () {}),
           const ChatOfflineStrip(),
           const ChatUnreadDivider(),
-          const ChatSectionLabel(label: longName),
           Align(alignment: AlignmentDirectional.centerEnd, child: ChatJumpToLatest(count: 120, onTap: () {})),
           ChatComposerNotice(state: ChatComposerState.requestSent, reason: longName),
         ]));
@@ -111,6 +110,31 @@ void main() {
           ChatBubble(message: ChatMessage(clientId: 'd', conversationId: 1, createdAt: now, senderId: 1, body: 'lost file', error: ChatMessage.lostFileError, sendState: ChatSendState.failed), mine: true, tick: ChatTick.failed, onRetry: () {}, onDiscard: () {}),
           ChatBubble(message: m(6, 'second of a run'), mine: false, runStart: false, runEnd: false),
         ]));
+  });
+
+  testWidgets('replies, deleted messages, links and long words at every width', (t) async {
+    const quote = ChatReplyRef(id: 9, body: 'The question was about the second exercise in the chapter on vectors, and I still do not get it', senderId: 2, senderName: longName);
+    await expectNoLayoutErrors(t, () => ListView(children: [
+          ChatBubble(message: m(7, 'Yes, see https://example.com/a/very/long/path/that/goes/on/and/on/and/on?with=params&more=params')..replyTo = quote, mine: true, tick: ChatTick.read, myId: 2),
+          ChatBubble(message: m(8, 'x' * 300), mine: false, myId: 1, pointerFirst: true, onReply: () {}, onActions: (_) {}),
+          ChatBubble(message: ChatMessage(id: 10, clientId: 'd1', conversationId: 1, createdAt: now, senderId: 2, deleted: true), mine: false),
+          ChatBubble(message: m(11, 'مرحبا hello 2026 مزيج')..replyTo = quote, mine: false, showSender: true, myId: 1, onQuoteTap: () {}),
+          ChatComposerBar(controller: TextEditingController(), focusNode: FocusNode(), onSend: () {}, onChanged: (_) {}, replyTo: quote, replyIsMine: false, onCancelReply: () {}),
+          const SizedBox(height: 320, child: ChatThreadSkeleton()),
+        ]));
+  });
+
+  test('links: found with their punctuation left out, Arabic around them is kept', () {
+    final parts = chatLinkify('شوف https://a.com/x، و www.b.org.');
+    expect(parts.where((p) => p.url != null).map((p) => p.url), ['https://a.com/x', 'https://www.b.org']);
+    expect(parts.map((p) => p.text).join(), 'شوف https://a.com/x، و www.b.org.');
+    expect(chatLinkify('no links here').single.url, isNull);
+  });
+
+  test('the bubble inks stay readable on any brand colour', () {
+    for (final bg in const [Color(0xFFF5C644), Color(0xFF123B8A), Colors.white, Color(0xFF16181D)]) {
+      expect(chatContrast(chatReadableOn(bg, const Color(0xFFF5C644)), bg), greaterThanOrEqualTo(4.5));
+    }
   });
 
   testWidgets('block sheet at every level', (t) async {
