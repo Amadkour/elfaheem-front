@@ -422,7 +422,12 @@ class _ChatNewMessageSheetState extends State<ChatNewMessageSheet> {
       final bounded = box.maxHeight.isFinite;
       final content = SizedBox(
         height: bounded ? math.min(560.0, math.max(0.0, box.maxHeight - 90)) : 480,
-        child: AnimatedSwitcher(duration: motion, child: KeyedSubtree(key: ValueKey(requesting?.user.id ?? 0), child: body)),
+        child: AnimatedSwitcher(
+          duration: motion,
+          // the default centres a child shorter than the box: a blank band above the search and the request form
+          layoutBuilder: (current, previous) => Stack(alignment: Alignment.topCenter, children: [...previous, ?current]),
+          child: KeyedSubtree(key: ValueKey(requesting?.user.id ?? 0), child: body),
+        ),
       );
       return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppSheetHeader('chat_new_message'.tr),
