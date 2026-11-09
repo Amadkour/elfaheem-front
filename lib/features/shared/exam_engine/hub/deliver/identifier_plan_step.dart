@@ -13,9 +13,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
-import '../../../../admin/admin_common.dart' show t;
+import '../../../../admin/admin_common.dart' show asInt, t;
 import '../../../../teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) '../../../../teacher/data_lab/data_lab_saver_web.dart' as saver;
 import '../../exam_paper_bands.dart' show kPaperMaxIdentifiers;
 import '../../paper/exam_setup.dart';
@@ -53,6 +54,7 @@ class _IdentifierPlanStepState extends State<IdentifierPlanStep> {
   List<PrintedIdSpec> _printed = const [];
   IdentifierChoice? _matching;
   IdentifierOption? _recommended;
+  bool _acting = false;
 
   bool get _off => AppConfig.disableList.contains(kExamIdentifiersFeatureKey);
 
@@ -60,6 +62,17 @@ class _IdentifierPlanStepState extends State<IdentifierPlanStep> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  /// One action at a time: each of these waits on the server, and a second tap would send the request or open the sheet twice.
+  Future<void> _once(Future<void> Function() action) async {
+    if (_acting) return;
+    _acting = true;
+    try {
+      await action();
+    } finally {
+      _acting = false;
+    }
   }
 
   void _valid(bool v) => WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -85,9 +98,10 @@ class _IdentifierPlanStepState extends State<IdentifierPlanStep> {
     final setup = ExamSetup.fromJson(results[0].map);
     final fields = [for (final f in (results[1].map['items'] as List?) ?? const []) if (f is Map) IdentityFieldDef.fromJson(Map<String, dynamic>.from(f))];
     final options = identifierOptions(fields, dataLabColumns: columns, dataLab: columns.isNotEmpty);
-    await _readCoverage(options);
-    if (!mounted) return;
     final saved = printedIdsOfSetup(results[0].map);
+    // choosing for the teacher compares every source; once chosen, only what is on the paper is read
+    await _readCoverage(options, only: setup.identifier == null ? null : {setup.identifier!.id, for (final p in saved) p.id});
+    if (!mounted) return;
     final rec = recommendedMatching(options, _coverage, current: setup.identifier);
     setState(() {
       _setup = setup;
@@ -117,14 +131,19 @@ class _IdentifierPlanStepState extends State<IdentifierPlanStep> {
     return null;
   }
 
-  Future<void> _readCoverage(List<IdentifierOption> options) async {
-    final wanted = [for (final o in options) if (o.choice.source != 'name') o];
+  Future<void> _readCoverage(List<IdentifierOption> options, {Set<String>? only}) async {
+    final wanted = [for (final o in options) if (o.choice.source != 'name' && (only == null || only.contains(o.choice.id))) o];
     final answers = await Future.wait([for (final o in wanted) _api.values(widget.examId, o.choice.source, o.choice.key)]);
     for (var i = 0; i < wanted.length; i++) {
       _coverage[wanted[i].choice.id] = answers[i].ok ? IdCoverage.fromJson(answers[i].map) : const IdCoverage(unreadable: true);
     }
     final total = _coverage.values.fold(0, (m, c) => c.total > m ? c.total : m);
     _coverage['name'] = IdCoverage(filled: total, total: total);
+  }
+
+  /// The coverage of something just put on the paper.
+  void _readIfNew(IdentifierChoice c) {
+    if (c.source != 'name' && !_coverage.containsKey(c.id)) _refreshOne(c);
   }
 
   Future<void> _refreshOne(IdentifierChoice c) async {
@@ -163,6 +182,7 @@ class _IdentifierPlanStepState extends State<IdentifierPlanStep> {
       return _notice(t('أربعة معرّفات على الأكثر على الورقة.', 'At most four identifiers on the paper.'));
     }
     setState(() => _printed = selected ? [for (final p in _printed) if (p.id != spec.id) p] : [..._printed, spec]);
+    if (!selected) _readIfNew(o.choice);
     _save();
   }
 
@@ -172,6 +192,7 @@ class _IdentifierPlanStepState extends State<IdentifierPlanStep> {
       _matching = o.choice;
       _printed = printedWithMatching(_printed, spec);
     });
+    _readIfNew(o.choice);
     _save();
   }
 
@@ -216,7 +237,9 @@ class _IdentifierPlanStepState extends State<IdentifierPlanStep> {
     final r = await _api.values(widget.examId, o.choice.source, o.choice.key);
     if (!mounted) return;
     if (!r.ok) return _notice(deliverErrorText(r), error: true);
-    final saved = await showAppSheet<bool>(context, (ctx) => _RosterSheet(examId: widget.examId, option: o, api: _api, rows: IdCoverage.fromJson(r.map).items));
+    final current = IdCoverage.fromJson(r.map);
+    if (current.masked) return _notice(t('قيم هذا المعرّف لا تُعدَّل من هنا.', 'The values of this identifier cannot be edited here.'), error: true);
+    final saved = await showAppSheet<bool>(context, (ctx) => _RosterSheet(examId: widget.examId, option: o, api: _api, rows: current.items));
     if (saved == true && mounted) await _refreshOne(o.choice);
   }
 
@@ -245,22 +268,25 @@ class _IdentifierPlanStepState extends State<IdentifierPlanStep> {
       saving: _saving,
       onToggle: _toggle,
       onMatch: _match,
-      onNew: _newIdentifier,
-      onHand: _editRoster,
-      onExcel: _openImport,
-      onAsk: _askStudents,
+      onNew: () => _once(_newIdentifier),
+      onHand: (o) => _once(() => _editRoster(o)),
+      onExcel: (o) => _once(() => _openImport(o)),
+      onAsk: (o) => _once(() => _askStudents(o)),
     );
   }
 }
 
-/// What sits on the paper, with sample values from the first student who has one.
+/// What sits on the paper, with sample values from the first student who has one. The server masks most sources, and a mask
+/// is not what prints: those lines draw a sample of the paper's real shape instead.
 List<(String, String)> plannedPaperLines(List<PrintedIdSpec> printed, Map<String, IdCoverage> coverage) => [
       for (final p in printed)
         if (p.source != 'name')
           (
             p.label,
             (() {
-              final row = coverage[p.id]?.items.where((x) => x.filled).toList() ?? const <IdValueRow>[];
+              final cov = coverage[p.id];
+              if (cov != null && cov.masked) return cov.filled > 0 ? maskedPaperSample(p.source) : '';
+              final row = cov == null ? const <IdValueRow>[] : cov.items.where((x) => x.filled).toList();
               return row.isEmpty ? '' : printedValuePreview(p.source, row.first.value);
             })(),
           ),
@@ -315,7 +341,7 @@ class IdentifierPlanBody extends StatelessWidget {
             coverage: coverage[o.choice.id],
             onToggle: () => onToggle(o),
             onMatch: () => onMatch(o),
-            onHand: fillable(o) ? () => onHand(o) : null,
+            onHand: fillable(o) && coverage[o.choice.id]?.masked != true ? () => onHand(o) : null,
             onExcel: fillable(o) ? () => onExcel(o) : null,
             onAsk: o.choice == matching && (o.collectable || fillable(o)) ? () => onAsk(o) : null,
           ),
@@ -406,7 +432,7 @@ class IdentifierSelectedTile extends StatelessWidget {
               const SizedBox(width: AppSpace.xs),
               Flexible(child: Text(coverageText(cov.filled, cov.total), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w700, c: tone))),
             ]),
-            if (missing > 0)
+            if (missing > 0 && cov.missingNames.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: AppSpace.xxs),
                 child: Text(t('ينقص: ${namesText(cov.missingNames)}', 'Missing: ${namesText(cov.missingNames)}'), style: appText(12, c: c.textMedium, h: 1.4)),
@@ -435,12 +461,11 @@ class IdentifierPaperPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    const ink = Color(0xFF1F2933), muted = Color(0xFF6B7280), rule = Color(0xFFB9C1CA);
     Widget cell(String label, String value) => Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 6),
           child: Text.rich(TextSpan(children: [
-            TextSpan(text: '$label: ', style: appText(11, c: muted)),
-            TextSpan(text: value.isEmpty ? '________' : value, style: appText(11, w: FontWeight.w700, c: ink)),
+            TextSpan(text: '$label: ', style: appText(11, c: PaperInk.muted)),
+            TextSpan(text: value.isEmpty ? '________' : value, style: appText(11, w: FontWeight.w700, c: PaperInk.text)),
           ]), maxLines: 1, overflow: TextOverflow.ellipsis),
         );
     final cells = <Widget>[cell(t('اسم الطالب', 'Student name'), name ?? t('أحمد محمود', 'Ahmed Mahmoud')), for (final (l, v) in lines) cell(l, v)];
@@ -448,17 +473,17 @@ class IdentifierPaperPreview extends StatelessWidget {
     for (var i = 0; i < cells.length; i += 2) {
       rows.add(TableRow(children: [cells[i], i + 1 < cells.length ? cells[i + 1] : const SizedBox.shrink()]));
     }
-    Widget bar(double end, double h) => Container(height: h, margin: EdgeInsetsDirectional.only(end: end), decoration: BoxDecoration(color: const Color(0xFFE1E5EA), borderRadius: BorderRadius.circular(3)));
+    Widget bar(double end, double h) => Container(height: h, margin: EdgeInsetsDirectional.only(end: end), decoration: BoxDecoration(color: PaperInk.placeholder, borderRadius: BorderRadius.circular(3)));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Text(t('كما سيظهر على الورقة', 'How it will look on the paper'), style: appText(12.5, w: FontWeight.w700, c: c.textMedium)),
       const SizedBox(height: AppSpace.xs),
       Container(
         padding: const EdgeInsets.all(AppSpace.sm),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.chip), boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 8, offset: Offset(0, 2))]),
+        decoration: BoxDecoration(color: PaperInk.sheet, borderRadius: BorderRadius.circular(AppRadius.chip), boxShadow: AppShadow.card(context)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           bar(90, 6),
           const SizedBox(height: AppSpace.xs),
-          Table(border: TableBorder.all(color: rule, width: .7), columnWidths: const {0: FlexColumnWidth(3), 1: FlexColumnWidth(2)}, children: rows),
+          Table(border: TableBorder.all(color: PaperInk.rule, width: .7), columnWidths: const {0: FlexColumnWidth(3), 1: FlexColumnWidth(2)}, children: rows),
           const SizedBox(height: AppSpace.xs),
           bar(0, 5),
           const SizedBox(height: 5),
@@ -709,7 +734,7 @@ class _ImportSheetState extends State<_ImportSheet> {
     if (!mounted) return;
     setState(() => _busy = null);
     if (!r.ok) return _notice(deliverErrorText(r), error: true);
-    showAppNotice(t('تم استيراد ${r.map['written'] ?? 0} قيمة.', 'Imported ${r.map['written'] ?? 0} values.'));
+    showAppNotice(countText(asInt(r.map['written']), ar1: 'تم استيراد قيمة واحدة.', ar2: 'تم استيراد قيمتين.', arFew: 'تم استيراد {n} قيم.', arMany: 'تم استيراد {n} قيمة.', en1: 'Imported 1 value.', en: 'Imported {n} values.', ar0: 'لم تُستورد أي قيمة.', en0: 'Nothing was imported.'));
     Navigator.of(context).pop(true);
   }
 
@@ -730,7 +755,7 @@ class _ImportSheetState extends State<_ImportSheet> {
         ImportPreviewCard(preview: p),
         const SizedBox(height: AppSpace.sm),
         AppPrimaryButton(
-            label: t('حفظ ${p.matched} قيمة', 'Save ${p.matched} values'), busy: _busy == 'commit', onPressed: _busy != null || p.matched == 0 || p.importKey.isEmpty ? null : _commit),
+            label: countText(p.matched, ar1: 'حفظ قيمة واحدة', ar2: 'حفظ قيمتين', arFew: 'حفظ {n} قيم', arMany: 'حفظ {n} قيمة', en1: 'Save 1 value', en: 'Save {n} values', ar0: 'لا توجد قيم للحفظ', en0: 'Nothing to save'), busy: _busy == 'commit', onPressed: _busy != null || p.matched == 0 || p.importKey.isEmpty ? null : _commit),
       ],
     ]);
   }

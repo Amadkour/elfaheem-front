@@ -1,8 +1,15 @@
 // The Exam Hub's list side (D-350): the `grading` flags, what a tap does, the smart header, the degrees import's
 // parsing, and every presentational piece under the layout harness.
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppButton;
 import 'package:flutter_education_app/features/shared/exam_engine/exam_all.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart' show EngineResult;
 import 'package:flutter_education_app/features/shared/exam_engine/hub/exam_hub_screen.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/hub_degrees_import.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/hub_degrees_import_sheet.dart';
@@ -181,6 +188,59 @@ void main() {
     expect(examHubTeachingRole('admin_assistant'), isFalse);
   });
 
+  testWidgets('a flow that replaced itself refreshes on the real return', (tester) async {
+    final nav = GlobalKey<NavigatorState>();
+    late BuildContext home;
+    await tester.pumpWidget(MaterialApp(navigatorKey: nav, home: Builder(builder: (c) {
+      home = c;
+      return const Text('home');
+    })));
+    var reloads = 0;
+    final pushed = nav.currentState!.push(MaterialPageRoute<void>(builder: (_) => const Text('wizard')));
+    await tester.pumpAndSettle();
+    nav.currentState!.pushReplacement(MaterialPageRoute<void>(builder: (_) => const Text('run')));
+    await tester.pumpAndSettle();
+    await pushed; // finished, with the teacher still away
+    whenBackOn(home, () => reloads++);
+    expect(reloads, 0);
+    nav.currentState!.pop();
+    await tester.pumpAndSettle();
+    expect(reloads, 1);
+  });
+
+  testWidgets('the full mark re-checks the rows, and only the newest answer counts', (tester) async {
+    AppConfig.lang = 'en';
+    final api = _HeldDegrees();
+    final theme = ThemeConfigProvider(api: ApiClient());
+    await tester.pumpWidget(ThemeConfigScope(provider: theme, child: MaterialApp(home: Scaffold(body: SingleChildScrollView(child: HubDegreesImportSheet(examId: 1, title: 'T', api: api, initialFileName: 'a.xlsx', initialBytes: Uint8List(1)))))));
+    await tester.pump();
+    expect(api.asked, [null]);
+    api.answer(0, matched: 5, max: 20);
+    await tester.pump();
+    expect(find.text('Save 5 degrees'), findsOneWidget);
+    AppButton save() => tester.widget<AppButton>(find.byKey(const ValueKey('exam.hub.degrees.save')));
+    expect(save().onPressed, isNotNull);
+
+    await tester.enterText(find.byType(TextField), '30');
+    await tester.pump();
+    expect(save().onPressed, isNull, reason: 'the rows on screen were checked against 20');
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(api.asked, [null, 30.0]);
+
+    await tester.enterText(find.byType(TextField), '40');
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(api.asked, [null, 30.0, 40.0]);
+    api.answer(1, matched: 9, max: 30); // late, about a mark no longer in the field
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Save 9 degrees'), findsNothing);
+    api.answer(2, matched: 7, max: 40);
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Save 7 degrees'), findsOneWidget);
+    expect(save().onPressed, isNotNull);
+  });
+
   group('degrees import', () {
     test('preview parsing', () {
       final p = DegreesPreview.fromJson({
@@ -269,4 +329,23 @@ void main() {
     });
     testWidgets('the whole screen', (t) => expectNoLayoutErrors(t, () => ExamHubScreen(loader: () async => _data()), scaffold: false));
   });
+}
+
+/// Every preview waits until the test answers it.
+class _HeldDegrees extends DegreesApi {
+  final asked = <double?>[];
+  final _held = <Completer<(DegreesPreview?, EngineResult)>>[];
+
+  @override
+  Future<(DegreesPreview?, EngineResult)> preview(int examId, {required String fileName, required Uint8List bytes, String? matchColumn, String? degreeColumn, double? maxScore}) {
+    asked.add(maxScore);
+    final c = Completer<(DegreesPreview?, EngineResult)>();
+    _held.add(c);
+    return c.future;
+  }
+
+  void answer(int i, {required int matched, required double max}) => _held[i].complete((
+        DegreesPreview(columns: const ['Name', 'Degree'], matchColumn: 'Name', degreeColumn: 'Degree', maxScore: max, rows: 9, matched: matched, importKey: 'k'),
+        EngineResult.ok(const {}),
+      ));
 }

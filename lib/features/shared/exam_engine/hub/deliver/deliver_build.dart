@@ -229,7 +229,7 @@ class StudentsSendResult {
   final bool cancelled;
 }
 
-/// Builds each student's own copy on this device and uploads them in rounds (a round holds at most 25 MB or 100 copies,
+/// Builds each student's own copy on this device and uploads them in rounds (a round holds at most [kDeliverRoundBytes] or 100 copies,
 /// and is uploaded before the next one is built, so a large class never sits in memory).
 Future<StudentsSendResult> sendPerStudentCopies(DeliverSource s, int examId, List<PrintPlanItem> students,
     {required bool word, String? message, required ExamVersionsApi api, required ExamDeliverApi deliver, required PaperBuildControl control, void Function(String stage)? onStage}) async {
@@ -267,7 +267,7 @@ Future<StudentsSendResult> sendPerStudentCopies(DeliverSource s, int examId, Lis
       final doc = copiesFor(s.base, PrintPlan([item]), s.versions, pagesOf: pagesOf).first;
       final Uint8List b = word ? examPaperDocx(doc, s.tpl) : (await examPaperPdfMany([doc], s.tpl, regular: s.regular, bold: s.bold)).bytes;
       if (b.length > 20 * 1024 * 1024) return StudentsSendResult(sent: sent, batches: batches, error: deliverCodeText('delivery_file_too_large'));
-      if (round.isNotEmpty && (bytes + b.length > 25 * 1024 * 1024 || round.length >= 100)) {
+      if (round.isNotEmpty && (bytes + b.length > kDeliverRoundBytes || round.length >= 100)) {
         final e = await flush();
         if (e != null) return StudentsSendResult(sent: sent, batches: batches, error: e);
       }

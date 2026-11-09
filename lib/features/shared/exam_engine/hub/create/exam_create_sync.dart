@@ -48,8 +48,13 @@ class ExamCreateSync {
   int _versionsMade = 0;
   bool _markersSet = false;
 
-  /// The draft exists and holds [p]: returns the error to show, or null.
-  Future<String?> ensure(ExamCreatePlan p) async {
+  Future<String?>? _ensuring;
+
+  /// The draft exists and holds [p]: returns the error to show, or null. Calls overlapping one in flight share it, because
+  /// until the first answers there is no exam id and each would create its own exam.
+  Future<String?> ensure(ExamCreatePlan p) => _ensuring ??= _ensure(p).whenComplete(() => _ensuring = null);
+
+  Future<String?> _ensure(ExamCreatePlan p) async {
     final q = p.exam;
     q.mode ??= QuickMode.online;
     if (q.orgId == null && q.courseId != null) q.orgId = (await api.resolveScope(q.courseId!)).orgId;

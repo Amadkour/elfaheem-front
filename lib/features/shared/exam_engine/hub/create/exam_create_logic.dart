@@ -15,6 +15,7 @@ import '../../exam_all.dart' show NewExamPlace;
 import '../../exam_authoring.dart' show fmtPoints;
 import '../../exam_quick.dart';
 import '../../paper/exam_setup.dart' show ObjectiveQuestion, OmrTemplateItem;
+import '../../paper/omr_counts.dart' show omrMinutesText;
 
 enum CreateStep { where, type, template, questions, publish, identify }
 
@@ -37,6 +38,11 @@ String questionsCountText(int n) =>
 
 String versionsCountText(int n) =>
     countText(n, ar1: 'نموذج واحد', ar2: 'نموذجان', arFew: '{n} نماذج', arMany: '{n} نموذجًا', en1: '1 version', en: '{n} versions');
+
+/// "5 marks" with Arabic's forms; a fraction takes the singular.
+String marksCountText(double v) => v == v.roundToDouble()
+    ? countText(v.toInt(), ar1: 'درجة واحدة', ar2: 'درجتان', arFew: '{n} درجات', arMany: '{n} درجة', en1: '1 mark', en: '{n} marks')
+    : t('${fmtPoints(v)} درجة', '${fmtPoints(v)} marks');
 
 /// A question a bubble sheet can carry.
 bool bubbleCanHold(String type) => ObjectiveQuestion.types.contains(type);
@@ -182,9 +188,9 @@ String? createStepValue(CreateStep s, ExamCreatePlan p) => switch (s) {
     };
 
 String? _questionsValue(ExamCreatePlan p) {
-  if (p.exam.isFile) return p.exam.hasFile ? '${t('ملف', 'File')} · ${fmtPoints(p.exam.filePoints)} ${t('درجة', 'marks')}' : null;
+  if (p.exam.isFile) return p.exam.hasFile ? '${t('ملف', 'File')} · ${marksCountText(p.exam.filePoints)}' : null;
   if (p.questionCount == 0) return null;
-  return '${questionsCountText(p.questionCount)} · ${fmtPoints(p.totalPoints)} ${t('درجة', 'marks')}';
+  return '${questionsCountText(p.questionCount)} · ${marksCountText(p.totalPoints)}';
 }
 
 String? _publishValue(ExamCreatePlan p) {
@@ -199,7 +205,7 @@ List<(String, String)> createEstimate(ExamCreatePlan p) => [
       if (p.questionCount > 0) (t('الأسئلة', 'Questions'), '${p.questionCount}'),
       if (p.totalPoints > 0) (t('الدرجة الكلية', 'Total marks'), fmtPoints(p.totalPoints)),
       if (p.isPaper && p.paperPlan == PaperPlan.versions && (p.questionCount > 0 || p.effectiveVersions > 1)) (t('النماذج', 'Versions'), '${p.effectiveVersions}'),
-      if (p.isElectronic) (t('المدة', 'Duration'), t('${p.exam.durationMinutes} دقيقة', '${p.exam.durationMinutes} min')),
+      if (p.isElectronic) (t('المدة', 'Duration'), omrMinutesText(p.exam.durationMinutes)),
     ];
 
 // ── what stands in the way ──────────────────────────────────────────────────────────────────────────────────────

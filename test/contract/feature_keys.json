@@ -157,6 +157,7 @@
  "exam.deliver_email",
  "exam.google_forms_import",
  "exam.grade_review",
+ "exam.hub",
  "exam.identifiers",
  "exam.mark_templates",
  "exam.omr",

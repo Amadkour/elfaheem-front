@@ -55,6 +55,7 @@ class _NativeCamera implements OmrCamera, OmrFineCamera {
   bool _canZoom = false;
   bool _canFocus = false;
   bool _reopening = false;
+  bool _disposed = false;
 
   rtc.MediaStreamTrack? get _track {
     final s = _stream;
@@ -74,12 +75,15 @@ class _NativeCamera implements OmrCamera, OmrFineCamera {
   @override
   Future<void> open({bool front = false}) async {
     await _permission();
+    if (_disposed) return;
     if (!_rendererReady) {
       await _renderer.initialize();
+      if (_disposed) return _renderer.dispose();
       _rendererReady = true;
     }
     _front = front;
     await _openLadder(front);
+    if (_disposed) return;
     if (_track == null) throw const OmrCameraException(OmrCameraIssue.noCamera);
     _renderer.srcObject = _stream;
     _zoom = 1;
@@ -91,12 +95,15 @@ class _NativeCamera implements OmrCamera, OmrFineCamera {
     for (;;) {
       final (w, h) = _plan.current;
       try {
-        _stream = await rtc.navigator.mediaDevices.getUserMedia({
+        final got = await rtc.navigator.mediaDevices.getUserMedia({
           'audio': false,
           'video': omrNativeVideoConstraints(front: front, width: w, height: h),
         });
+        if (_disposed) return await _release(got); // closed while waiting: nobody else will ever turn this one off
+        _stream = got;
         return;
       } catch (e) {
+        if (_disposed) return;
         final s = '$e'.toLowerCase();
         if (s.contains('permission') || s.contains('notallowed')) throw OmrCameraException(OmrCameraIssue.denied, '$e');
         if (_plan.canStepDown) {
@@ -107,6 +114,17 @@ class _NativeCamera implements OmrCamera, OmrFineCamera {
         throw OmrCameraException(OmrCameraIssue.failed, '$e');
       }
     }
+  }
+
+  Future<void> _release(rtc.MediaStream stream) async {
+    for (final t in stream.getTracks()) {
+      try {
+        await t.stop();
+      } catch (_) {}
+    }
+    try {
+      await stream.dispose();
+    } catch (_) {}
   }
 
   /// Torch and focus of a freshly opened track.
@@ -136,7 +154,7 @@ class _NativeCamera implements OmrCamera, OmrFineCamera {
 
   /// One rung down, in place: the renderer stays, so the preview only blinks.
   Future<void> _stepDown() async {
-    if (_reopening || !_plan.canStepDown) return;
+    if (_disposed || _reopening || !_plan.canStepDown) return;
     _reopening = true;
     final old = _stream;
     final hadTorch = _torch;
@@ -147,6 +165,7 @@ class _NativeCamera implements OmrCamera, OmrFineCamera {
       await old?.dispose();
       _plan.stepDown();
       await _openLadder(_front);
+      if (_disposed) return;
       _renderer.srcObject = _stream;
       _zoom = 1;
       await _afterOpen();
@@ -283,6 +302,7 @@ class _NativeCamera implements OmrCamera, OmrFineCamera {
 
   @override
   Future<void> dispose() async {
+    _disposed = true;
     try {
       if (_torch) await _track?.setTorch(false);
     } catch (_) {}

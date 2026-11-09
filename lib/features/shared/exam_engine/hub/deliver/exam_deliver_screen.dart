@@ -116,8 +116,13 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
         _rosterError = roster.error;
         _settleScope(s, rosterKnown: roster.error == null);
       });
-      final email = await _api.values(_id, 'email', null);
-      if (mounted) setState(() => _email = email.ok ? IdCoverage.fromJson(email.map) : const IdCoverage(unreadable: true));
+      // only who has an address: asked for when the email card can actually be used
+      if (roster.items.isEmpty || AppConfig.disableList.contains(kDeliverEmailFeatureKey)) {
+        if (mounted) setState(() => _email = null);
+      } else {
+        final email = await _api.values(_id, 'email', null);
+        if (mounted) setState(() => _email = email.ok ? IdCoverage.fromJson(email.map) : const IdCoverage(unreadable: true));
+      }
     } else {
       _settleScope(s, rosterKnown: true);
     }
@@ -303,7 +308,7 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
     if (s == null) return;
     final warn = earlyEmailWarning(s.view.exam.startsAt, DateTime.now().toUtc());
     final compose = await showAppSheet<EmailCompose>(
-        context, (_) => EmailComposeSheet(mode: EmailMode.students, earlyWarning: warn, count: _roster.length, noEmailNames: _email?.missingNames ?? const [], coverageKnown: _email != null && !_email!.unreadable));
+        context, (_) => EmailComposeSheet(mode: EmailMode.students, earlyWarning: warn, count: _roster.length, noEmailNames: _email?.missingNames ?? const [], coverageKnown: _email != null && !_email!.unreadable && _email!.namesKnown));
     if (compose == null || !mounted) return;
     final out = await _withProgress<StudentsSendResult>(t('جارٍ إنشاء النسخ ...', 'Building the copies ...'), (control, progress) {
       return sendPerStudentCopies(s, _id, _roster, word: compose.word, message: compose.message, api: _vApi, deliver: _api, control: control, onStage: (stage) {
@@ -317,7 +322,8 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
     } else if (out.cancelled) {
       showAppNotice(t('أُلغي بعد إرسال ${out.sent}.', 'Cancelled after sending ${out.sent}.'));
     } else {
-      showAppNotice(t('بدأ الإرسال إلى ${out.sent} طالب. ستظهر النتيجة بالأسفل.', 'Sending to ${out.sent} students has started. The result will appear below.'));
+      final who = countText(out.sent, ar1: 'طالب واحد', ar2: 'طالبين', arFew: '{n} طلاب', arMany: '{n} طالبًا', en1: '1 student', en: '{n} students');
+      showAppNotice(t('بدأ الإرسال إلى $who. ستظهر النتيجة بالأسفل.', 'Sending to $who has started. The result will appear below.'));
     }
     await _reloadDeliveries();
   }
@@ -333,6 +339,13 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
     final name = '${deliverFileStem(widget.title, t('الاختبار', 'exam'))}.${compose.word ? 'docx' : 'pdf'}';
     final r = await _api.sendWhole(_id, to: compose.to!, file: bytes, fileName: name, message: compose.message);
     if (!mounted) return;
+    if (deliverTooLarge(r)) {
+      final download = await appConfirm(context, message: deliverTooLargeText, confirmLabel: t('تنزيل الملف', 'Download the file'));
+      if (!download || !mounted) return;
+      final path = await saver.dlSaveBytes(bytes, name, compose.word ? _docxMime : _pdfMime);
+      showAppNotice(path == null ? t('جاهز', 'Ready') : '${t('حُفظ في', 'Saved to')} $path');
+      return;
+    }
     if (!r.ok) return _notice(deliverErrorText(r), error: true);
     showAppNotice(t('بدأ الإرسال. ستظهر النتيجة بالأسفل.', 'Sending has started. The result will appear below.'));
     await _reloadDeliveries();
@@ -397,7 +410,17 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
     final paper = s.isPaper;
     final showStudents = paper && _roster.isNotEmpty;
     final owed = paper ? deliverVersionsOwed(s.plan, s.versions.items.length) : null;
+    final noOneToName = paper && s.hasCourse && s.plan?.personal == true && _scopeSettled && _roster.isEmpty && _rosterError == null;
     return [
+      if (noOneToName)
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
+          child: AppBanner(
+              key: const ValueKey('deliver.plan.noStudents'),
+              icon: Icons.groups_outlined,
+              text: t('خططت لنسخة لكل طالب، لكن لا يوجد طلاب مسجلون في هذا المقرر بعد. ستظهر النسخ الشخصية هنا عند تسجيلهم، ويمكنك حتى ذلك الحين طباعة نسخة عامة.',
+                  'You planned a copy for each student, but no students are enrolled in this course yet. Personal copies appear here once they join; until then you can print a general copy.')),
+        ),
       if (owed != null)
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpace.sm),
@@ -495,7 +518,7 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
             canStudents: showStudents,
             studentCount: _roster.length,
             noEmailNames: _email?.missingNames ?? const [],
-            coverageKnown: _email != null && !_email!.unreadable,
+            coverageKnown: _email != null && !_email!.unreadable && _email!.namesKnown,
             earlyWarning: earlyEmailWarning(s.view.exam.startsAt, DateTime.now().toUtc()),
             deliveries: _deliveries,
             onStudents: _emailStudents,
@@ -679,9 +702,12 @@ class DeliverPrintCard extends StatelessWidget {
     final c = context.colors;
     final fileWord = word ? 'Word' : 'PDF';
     final label = switch (scope) {
-      DeliverScope.students => t('طباعة $studentCount نسخة في ملف $fileWord واحد', 'Print $studentCount copies in one $fileWord'),
+      DeliverScope.students => countText(studentCount,
+          ar1: 'طباعة نسخة واحدة في ملف $fileWord', ar2: 'طباعة نسختين في ملف $fileWord واحد', arFew: 'طباعة {n} نسخ في ملف $fileWord واحد', arMany: 'طباعة {n} نسخة في ملف $fileWord واحد',
+          en1: 'Print 1 copy in one $fileWord', en: 'Print {n} copies in one $fileWord'),
       DeliverScope.versions => versionCount > 1 ? t('طباعة كل النماذج في ملف $fileWord واحد', 'Print all versions in one $fileWord') : t('تنزيل ملف $fileWord', 'Download the $fileWord'),
-      DeliverScope.blank => t('طباعة $blank نسخة فارغة', 'Print $blank blank copies'),
+      DeliverScope.blank => countText(blank,
+          ar1: 'طباعة نسخة فارغة واحدة', ar2: 'طباعة نسختين فارغتين', arFew: 'طباعة {n} نسخ فارغة', arMany: 'طباعة {n} نسخة فارغة', en1: 'Print 1 blank copy', en: 'Print {n} blank copies'),
     };
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
@@ -824,6 +850,7 @@ class DeliveryRow extends StatelessWidget {
           AppStatusBadge(label: d.statusText, tone: tone, dense: true),
         ]),
         if (when.isNotEmpty || d.createdBy.isNotEmpty) Text([if (when.isNotEmpty) when, if (d.createdBy.isNotEmpty) d.createdBy].join(' · '), style: appText(11.5, c: c.textLight)),
+        if (d.failedText != null) Text(d.failedText!, key: const ValueKey('deliver.row.failed'), style: appText(11.5, c: appInk(context, c.danger))),
         if (d.noEmail.isNotEmpty) Text(t('بلا بريد: ${namesText([for (final x in d.noEmail) x.name])}', 'No email: ${namesText([for (final x in d.noEmail) x.name])}'), style: appText(11.5, c: c.warning)),
       ]),
     );
@@ -846,7 +873,10 @@ class BuildProgressDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Dialog(
+    // Back must not close it: the build would carry on with no Cancel, and the `finally` that closes it would pop the page instead
+    return PopScope(
+      canPop: false,
+      child: Dialog(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 380),
         child: Padding(
@@ -861,6 +891,7 @@ class BuildProgressDialog extends StatelessWidget {
             Align(alignment: AlignmentDirectional.centerEnd, child: TextButton(key: const ValueKey('deliver.cancel'), onPressed: onCancel, child: Text(t('إلغاء', 'Cancel')))),
           ]),
         ),
+      ),
       ),
     );
   }

@@ -26,6 +26,10 @@ import 'package:pdf/src/pdf/format/num.dart' show PdfNum;
 import 'package:pdf/src/pdf/obj/object_stream.dart' show PdfObjectStream;
 import 'package:pdf/widgets.dart' as pw;
 
+import 'package:flutter_education_app/design/app_tokens.dart' show AppElevation;
+
+import 'deliver_logic.dart' show PaperInk;
+
 /// One page drawn from the file, in PDF points. Call [dispose] when it is replaced.
 class ReplayedPage {
   ReplayedPage(this.width, this.height, this.picture, this.images);
@@ -712,7 +716,7 @@ class ReplayedPageView extends StatelessWidget {
   Widget build(BuildContext context) => AspectRatio(
         aspectRatio: page.width / page.height,
         child: DecoratedBox(
-          decoration: const BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Color(0x22000000), blurRadius: 12, offset: Offset(0, 3))]),
+          decoration: BoxDecoration(color: PaperInk.sheet, boxShadow: AppElevation.of(context, 2)),
           child: RepaintBoundary(child: CustomPaint(painter: _PagePainter(page))),
         ),
       );

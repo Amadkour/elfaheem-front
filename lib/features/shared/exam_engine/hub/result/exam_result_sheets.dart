@@ -5,6 +5,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../../../admin/admin_common.dart' show t;
@@ -184,7 +185,8 @@ class _DataLabSheetState extends State<_DataLabSheet> {
       return;
     }
     final written = (r.map['written'] as num?)?.toInt() ?? 0, skipped = (r.map['skipped'] as num?)?.toInt() ?? 0;
-    showAppNotice(skipped == 0 ? t('كُتبت $written درجة في «${p.label}»', '$written marks written to "${p.label}"') : t('كُتبت $written درجة في «${p.label}»، ولم تُكتب $skipped', '$written marks written to "${p.label}", $skipped not written'));
+    final done = countText(written, ar1: 'كُتبت درجة واحدة', ar2: 'كُتبت درجتان', arFew: 'كُتبت {n} درجات', arMany: 'كُتبت {n} درجة', en1: '1 mark written', en: '{n} marks written', ar0: 'لم تُكتب أي درجة', en0: 'No marks written');
+    showAppNotice(skipped == 0 ? t('$done في «${p.label}»', '$done to "${p.label}"') : t('$done في «${p.label}»، وتعذّرت كتابة $skipped', '$done to "${p.label}", $skipped not written'));
     Navigator.of(context).pop(true);
   }
 
@@ -219,7 +221,7 @@ class _DataLabSheetState extends State<_DataLabSheet> {
       else ...[
         AppPrimaryButton(
           key: const ValueKey('result.lab.apply'),
-          label: p.changes.isEmpty ? t('لا يوجد ما يُكتب', 'Nothing to write') : t('كتابة ${p.changes.length} درجة', 'Write ${p.changes.length} marks'),
+          label: p.changes.isEmpty ? t('لا يوجد ما يُكتب', 'Nothing to write') : countText(p.changes.length, ar1: 'كتابة درجة واحدة', ar2: 'كتابة درجتين', arFew: 'كتابة {n} درجات', arMany: 'كتابة {n} درجة', en1: 'Write 1 mark', en: 'Write {n} marks'),
           icon: Icons.check_rounded,
           busy: _busy,
           onPressed: _busy || p.changes.isEmpty ? null : _apply,

@@ -163,7 +163,7 @@ class _SheetReviewScreenState extends State<SheetReviewScreen> {
   }
 
   /// One read of the sheet; called when it opens and when its page turned final.
-  Future<void> _readSheet(int pageId) async {
+  Future<void> _readSheet(int pageId, {bool retryPhoto = true}) async {
     final r = await _api.sheet(widget.examId, pageId);
     if (!mounted) return;
     if (!r.ok) {
@@ -185,14 +185,20 @@ class _SheetReviewScreenState extends State<SheetReviewScreen> {
         _rows = rows;
       }
     });
-    if (v.ready) await _loadPhoto(v);
+    if (v.ready) await _loadPhoto(v, retry: retryPhoto);
   }
 
-  Future<void> _loadPhoto(SheetView v) async {
+  /// [retry]: a kept view's signed link expires after ten minutes, so one failure reads the sheet again for a fresh link.
+  Future<void> _loadPhoto(SheetView v, {bool retry = true}) async {
     // the boxes are measured on the server's image: it takes over from the local shot once, then stays cached
     if (_photos[v.pageId] != null && _serverPhoto.contains(v.pageId)) return;
     final bytes = await _scan.image(v.imageUrl);
-    if (!mounted || bytes == null) return;
+    if (!mounted) return;
+    if (bytes == null) {
+      if (!retry) return;
+      _views.remove(v.pageId);
+      return _readSheet(v.pageId, retryPhoto: false);
+    }
     _serverPhoto.add(v.pageId);
     setState(() => _remember(v.pageId, bytes));
   }

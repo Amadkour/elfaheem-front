@@ -103,7 +103,7 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
   /// Runs a pushed flow, then reads the list again: whatever it changed shows at once.
   Future<void> _flow(Future<void> Function() open) async {
     await open();
-    if (mounted) _load();
+    if (mounted) whenBackOn(context, _load);
   }
 
   Future<void> _newExam() {

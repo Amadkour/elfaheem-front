@@ -6,6 +6,8 @@
 // plain values (under the layout harness); the calls: `hub_degrees_import.dart`.
 library;
 
+import 'dart:async' show Timer;
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -25,12 +27,16 @@ Future<bool> openHubDegreesImport(BuildContext context, {required int examId, re
 }
 
 class HubDegreesImportSheet extends StatefulWidget {
-  const HubDegreesImportSheet({super.key, required this.examId, required this.title, this.api});
+  const HubDegreesImportSheet({super.key, required this.examId, required this.title, this.api, this.initialFileName, this.initialBytes});
   final int examId;
   final String title;
 
   /// Tests: replaces the real calls.
   final DegreesApi? api;
+
+  /// Tests: a file already chosen, past the system picker.
+  final String? initialFileName;
+  final Uint8List? initialBytes;
 
   @override
   State<HubDegreesImportSheet> createState() => _HubDegreesImportSheetState();
@@ -46,8 +52,28 @@ class _HubDegreesImportSheetState extends State<HubDegreesImportSheet> {
   String? _error;
   bool _reading = false, _saving = false, _downloading = false;
 
+  // The rows on screen were checked against [_evaluatedMax]. A mark being typed has not been asked about yet ([_maxPending]),
+  // and only the newest question ([_asked]) may answer, so the summary is always what Save will write.
+  double? _evaluatedMax;
+  bool _maxPending = false;
+  int _asked = 0;
+  Timer? _maxTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialBytes != null) {
+      _fileName = widget.initialFileName;
+      _bytes = widget.initialBytes;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _read();
+      });
+    }
+  }
+
   @override
   void dispose() {
+    _maxTimer?.cancel();
     _max.dispose();
     super.dispose();
   }
@@ -87,12 +113,16 @@ class _HubDegreesImportSheetState extends State<HubDegreesImportSheet> {
 
   /// Sends the file (again, when a column was changed) and shows what it holds.
   Future<void> _read({String? match, String? degree}) async {
+    _maxTimer?.cancel();
+    final ask = ++_asked;
+    final max = parseFullMark(_max.text);
     setState(() {
       _reading = true;
+      _maxPending = false;
       _error = null;
     });
-    final (p, r) = await _api.preview(widget.examId, fileName: _fileName!, bytes: _bytes!, matchColumn: match, degreeColumn: degree);
-    if (!mounted) return;
+    final (p, r) = await _api.preview(widget.examId, fileName: _fileName!, bytes: _bytes!, matchColumn: match, degreeColumn: degree, maxScore: max);
+    if (!mounted || ask != _asked) return;
     setState(() {
       _reading = false;
       if (p == null) {
@@ -100,15 +130,28 @@ class _HubDegreesImportSheetState extends State<HubDegreesImportSheet> {
         return;
       }
       _preview = p;
+      _evaluatedMax = p.maxScore ?? max;   // the server says which mark it used
       // the full mark the exam knows; a teacher's own change survives a column change
       if (_max.text.trim().isEmpty && p.maxScore != null) _max.text = fullMarkText(p.maxScore!);
     });
   }
 
+  /// The full mark changed: whatever was on its way was about another mark, and the rows are checked again once typing stops.
+  void _maxChanged() {
+    _maxTimer?.cancel();
+    final v = parseFullMark(_max.text);
+    _asked++;
+    setState(() {
+      _reading = false;
+      _maxPending = v != null && v != _evaluatedMax;
+    });
+    if (_maxPending) _maxTimer = Timer(const Duration(milliseconds: 400), () => _read(match: _preview?.matchColumn, degree: _preview?.degreeColumn));
+  }
+
   Future<void> _save() async {
     final p = _preview;
     final max = parseFullMark(_max.text);
-    if (p == null || !p.canSave || max == null) return;
+    if (p == null || !p.canSave || max == null || max != _evaluatedMax) return;
     setState(() {
       _saving = true;
       _error = null;
@@ -148,8 +191,9 @@ class _HubDegreesImportSheetState extends State<HubDegreesImportSheet> {
           maxController: _max,
           reading: _reading,
           saving: _saving,
+          evaluated: !_maxPending && parseFullMark(_max.text) == _evaluatedMax,
           onChangeFile: _pick,
-          onMaxChanged: () => setState(() {}),
+          onMaxChanged: _maxChanged,
           onMatchColumn: (v) => _read(match: v, degree: p.degreeColumn),
           onDegreeColumn: (v) => _read(match: p.matchColumn, degree: v),
           onSave: _save,
@@ -294,8 +338,11 @@ class HubDegreesPreviewBody extends StatelessWidget {
     required this.onSave,
     this.reading = false,
     this.saving = false,
+    this.evaluated = true,
   });
 
+  /// The rows shown were checked against the full mark in the field. False while it is being typed or asked about.
+  final bool evaluated;
   final String fileName;
   final DegreesPreview preview;
   final TextEditingController maxController;
@@ -376,7 +423,7 @@ class HubDegreesPreviewBody extends StatelessWidget {
           icon: Icons.check_rounded,
           expand: true,
           busy: saving,
-          onPressed: p.canSave && maxOk && !reading && !saving ? onSave : null),
+          onPressed: p.canSave && maxOk && evaluated && !reading && !saving ? onSave : null),
     ]);
   }
 }

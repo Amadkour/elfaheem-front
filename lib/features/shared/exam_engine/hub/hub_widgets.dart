@@ -19,6 +19,7 @@ import '../../../admin/admin_common.dart' show t;
 import '../exam_all.dart';
 import '../exam_all_screen.dart' show AllExamsFilterBar, allExamAttemptsText, allExamQuestionsText, allExamTone, allExamTypeIcon, allExamWhenText;
 import '../exam_authoring.dart' show examStatusLabel;
+import '../paper/omr_counts.dart' show omrMinutesText;
 import 'hub_logic.dart';
 
 /// From this width the page is a list beside the selected exam's details.
@@ -539,7 +540,7 @@ List<(String, String)> _factsOf(AllExam e, HubSurface s) {
     if (s == HubSurface.creation) ...[
       (t('الأسئلة', 'Questions'), '${e.questionCount}'),
       if (!e.draft) (t('المحاولات', 'Attempts'), '${e.attempts}'),
-      if (e.durationMinutes != null) (t('المدة', 'Duration'), t('${e.durationMinutes} دقيقة', '${e.durationMinutes} min')),
+      if (e.durationMinutes != null) (t('المدة', 'Duration'), omrMinutesText(e.durationMinutes!)),
       if (e.startsAt != null) (t('يبدأ', 'Starts'), AppTime.dateTime(e.startsAt!)),
     ],
     if (s != HubSurface.creation && g != null) ...[
@@ -764,6 +765,21 @@ class _FilterChips<T> extends StatelessWidget {
           ],
         ]),
       );
+}
+
+/// Runs [act] once the page of [context] is on top again. A flow that hands over with `pushReplacement` (the revision wizard
+/// to its run screen, the wizard's last page to the editor) completes its caller's `await` at that moment, not on the return.
+void whenBackOn(BuildContext context, VoidCallback act) {
+  final route = ModalRoute.of(context);
+  final above = route?.secondaryAnimation;
+  if (route == null || route.isCurrent || above == null) return act();
+  void listener(AnimationStatus s) {
+    if (s != AnimationStatus.dismissed) return;
+    above.removeStatusListener(listener);
+    if (context.mounted) act();
+  }
+
+  above.addStatusListener(listener);
 }
 
 class ExamHubBody extends StatelessWidget {

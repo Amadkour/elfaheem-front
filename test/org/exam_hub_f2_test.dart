@@ -244,6 +244,16 @@ void main() {
   });
 
   group('the one draft', () {
+    test('two saves at once make one exam', () async {
+      final (sync, a, _, _) = _server();
+      final p = _plan();
+      final both = await Future.wait([sync.ensure(p), sync.ensure(p)]);
+      expect(both, [null, null]);
+      expect(a.examsMade, 1);
+      expect(await sync.ensure(p), isNull, reason: 'the next save is a real one again');
+      expect(a.examsMade, 1);
+    });
+
     test('ensure twice with no change makes one exam and no further call', () async {
       final (sync, a, s, _) = _server();
       final p = _plan();

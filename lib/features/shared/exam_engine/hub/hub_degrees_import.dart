@@ -2,7 +2,7 @@
 // `hub_degrees_import_sheet.dart`.
 //
 //   GET  /api/v1/exam/exams/{id}/degrees/template    xlsx with the course's students and an empty degree column
-//   POST /api/v1/exam/exams/{id}/degrees/preview     multipart file, match_column?, degree_column?
+//   POST /api/v1/exam/exams/{id}/degrees/preview     multipart file, match_column?, degree_column?, max_score?
 //   POST /api/v1/exam/exams/{id}/degrees/commit      {import_key, max_score} → {written}
 library;
 
@@ -115,7 +115,7 @@ String degreesHeadline(DegreesPreview p) {
         ar1: 'الصف الوحيد جاهز للحفظ', ar2: 'الصفان جاهزان للحفظ', arFew: 'الصفوف الـ{n} جاهزة للحفظ', arMany: 'الصفوف الـ{n} جاهزة للحفظ',
         en1: 'The one row is ready to save', en: 'All {n} rows are ready to save');
   }
-  return t('${p.matched} من ${p.rows} صف جاهزة للحفظ', '${p.matched} of ${p.rows} rows are ready to save');
+  return t('جاهز للحفظ: ${p.matched} من ${p.rows}', '${p.matched} of ${p.rows} rows are ready to save');
 }
 
 String degreesSaveLabel(int n) => countText(n,
@@ -129,9 +129,9 @@ class DegreesApi {
   Future<Uint8List> template(int examId) => _api.getBytes('$_base/$examId/degrees/template');
 
   Future<(DegreesPreview?, EngineResult)> preview(int examId,
-      {required String fileName, required Uint8List bytes, String? matchColumn, String? degreeColumn}) async {
+      {required String fileName, required Uint8List bytes, String? matchColumn, String? degreeColumn, double? maxScore}) async {
     final r = await engineCall(() => _api.postMultipart('$_base/$examId/degrees/preview',
-        fields: {'match_column': ?matchColumn, 'degree_column': ?degreeColumn}, fileField: 'file', fileName: fileName, fileBytes: bytes));
+        fields: {'match_column': ?matchColumn, 'degree_column': ?degreeColumn, 'max_score': ?(maxScore == null ? null : fullMarkText(maxScore))}, fileField: 'file', fileName: fileName, fileBytes: bytes));
     return (r.ok ? DegreesPreview.fromJson(asMap(r.map)) : null, r);
   }
 

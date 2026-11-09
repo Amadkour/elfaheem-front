@@ -8,7 +8,6 @@ import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../../../admin/admin_common.dart' show t;
 import '../../exam_all.dart' show NewExamPlace;
-import '../../exam_authoring.dart' show fmtPoints;
 import '../../paper/exam_setup.dart' show OmrTemplateItem, versionsBubbleText;
 import '../../paper/exam_setup_wizard.dart' show SetupChoiceTile, SetupProgress;
 import 'exam_create_logic.dart';
@@ -672,7 +671,7 @@ class CreateImportedCard extends StatelessWidget {
       key: const ValueKey('create.imported'),
       icon: Icons.task_alt_rounded,
       color: c.success,
-      text: t('استوردنا ${questionsCountText(count)} بمجموع ${fmtPoints(points)} درجة.', 'Imported ${questionsCountText(count)}, ${fmtPoints(points)} marks in all.'),
+      text: t('استوردنا ${questionsCountText(count)}، والمجموع ${marksCountText(points)}.', 'Imported ${questionsCountText(count)}, ${marksCountText(points)} in all.'),
       action: onEditor == null ? null : TextButton(onPressed: onEditor, child: Text(t('راجعها', 'Review'))),
     );
   }

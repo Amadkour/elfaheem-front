@@ -260,6 +260,7 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
 
   /// The draft now matches the answers; false = the error is on the page.
   Future<bool> _syncDraft() async {
+    if (_busy) return false;
     setState(() {
       _busy = true;
       _error = null;
@@ -466,7 +467,7 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
   }
 
   Future<void> _openEditor() async {
-    if (!await _syncDraft() || !mounted) return;
+    if (_busy || !await _syncDraft() || !mounted) return;
     final q = _plan.exam;
     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamEditorScreen(examId: _sync.examId, courseId: q.courseId, orgId: q.orgId)));
     if (mounted) await _refreshImported();

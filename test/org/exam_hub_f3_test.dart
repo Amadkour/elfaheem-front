@@ -10,10 +10,13 @@ import 'package:dio/dio.dart' show FormData, MultipartFile;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_paper.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_bands.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_docx.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_pdf.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart' show EngineResult;
 import 'package:flutter_education_app/features/shared/exam_engine/exam_versions.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/deliver/deliver_logic.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/deliver/exam_deliver_screen.dart';
@@ -265,6 +268,66 @@ void main() {
       expect(deliverVersionsOwed(const DeliverPlan(personal: true), 0), isNull);
       expect(deliverVersionsOwed(const DeliverPlan(personal: false), 0), isNull);
       expect(deliverVersionsOwed(null, 0), isNull);
+    });
+
+    test('a masked source gives counts and who is missing, never a value to show', () {
+      final m = IdCoverage.fromJson({'filled': 1, 'total': 2, 'masked': true, 'items': [{'student_id': 1, 'name': 'Ali', 'value': '••••1234'}, {'student_id': 2, 'name': 'Sara', 'value': ''}]});
+      expect(m.masked, isTrue);
+      expect(m.missingNames, ['Sara']);
+      const spec = PrintedIdSpec(source: 'national_id', labelAr: 'قومي', labelEn: 'National ID');
+      expect(plannedPaperLines([spec], {spec.id: m}).single.$2, '••••1234', reason: 'the shape that prints, not the mask the server sent');
+      const academic = PrintedIdSpec(source: 'academic_id', labelAr: 'أكاديمي', labelEn: 'Academic ID');
+      final line = plannedPaperLines([academic], {academic.id: m}).single.$2;
+      expect(line, isNot(contains('•')), reason: 'an academic number prints whole');
+      expect(plannedPaperLines([academic], {academic.id: const IdCoverage(total: 3, masked: true)}).single.$2, '');
+      final real = IdCoverage.fromJson({'filled': 1, 'total': 1, 'items': [{'student_id': 1, 'name': 'Ali', 'value': '77'}]});
+      const seat = PrintedIdSpec(source: 'datalab', key: 'seat', labelAr: 'جلوس', labelEn: 'Seat');
+      expect(plannedPaperLines([seat], {seat.id: real}).single.$2, '77');
+    });
+
+    test('masking that blanks everything cannot claim who is missing', () {
+      final m = IdCoverage.fromJson({'filled': 2, 'total': 3, 'masked': true, 'items': [{'student_id': 1, 'name': 'A', 'value': ''}, {'student_id': 2, 'name': 'B', 'value': ''}, {'student_id': 3, 'name': 'C', 'value': ''}]});
+      expect(m.namesKnown, isFalse);
+      expect(m.missingNames, isEmpty);
+      expect(m.missingCount, 1);
+    });
+
+    test('a round fits under the nginx cap, and a 413 is said in words', () {
+      expect(kDeliverRoundBytes, lessThan(10 * 1024 * 1024));
+      final mb = 1024 * 1024;
+      expect(uploadBatches([5 * mb, 5 * mb, mb]), [1, 3]);
+      final nginx = EngineResult.fail(413, null, '<html>413 Request Entity Too Large</html>');
+      expect(deliverTooLarge(nginx), isTrue);
+      expect(deliverErrorText(nginx), deliverTooLargeText);
+      expect(deliverErrorText(nginx), isNot(contains('<html>')));
+    });
+
+    test('new delivery codes, and who could not be reached', () {
+      AppConfig.lang = 'en';
+      expect(deliverCodeText('delivery_total_too_large'), isNotEmpty);
+      expect(deliverCodeText('delivery_daily_limit', {'scope': 'org'}), contains('organization'));
+      expect(deliverCodeText('delivery_daily_limit', {'scope': 'global'}), contains('platform'));
+      final coded = EngineResult.fail(413, 'delivery_total_too_large', 'x');
+      expect(deliverTooLarge(coded), isTrue);
+      expect(deliverErrorText(coded), contains('26 MB'));
+      ExamDelivery row(List<Map<String, dynamic>> f) => ExamDelivery.fromJson({'id': 'x', 'mode': 'students', 'failed_names': f});
+      expect(row(const []).failedText, isNull);
+      expect(row(const [{'student_id': 1, 'name': 'Ali'}, {'student_id': 2, 'name': null}]).failedText, 'Could not reach: Ali, and 1 other');
+      expect(row(const [{'student_id': 2, 'name': null}, {'student_id': 3, 'name': null}]).failedText, 'Could not reach 2 students');
+    });
+
+    test('created_at without a zone is UTC', () {
+      final d = ExamDelivery.fromJson({'id': 'x', 'mode': 'whole', 'created_at': '2026-11-09T10:00:00'});
+      expect(d.createdAt, DateTime.utc(2026, 11, 9, 10));
+    });
+
+    testWidgets('Back does not close the progress dialog', (tester) async {
+      await tester.pumpWidget(ThemeConfigScope(provider: ThemeConfigProvider(api: ApiClient()), child: MaterialApp(home: Builder(builder: (context) => TextButton(onPressed: () => showDialog<void>(context: context, barrierDismissible: false, builder: (_) => BuildProgressDialog(progress: const BuildProgress(title: 'x'), onCancel: () {})), child: const Text('open'))))));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(BuildProgressDialog), findsOneWidget);
     });
 
     test('delivery rows', () {

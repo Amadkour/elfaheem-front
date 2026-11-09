@@ -4,6 +4,7 @@
 library;
 
 import 'dart:typed_data';
+import 'dart:ui' show Color;
 
 import 'package:dio/dio.dart' show MultipartFile;
 import 'package:flutter_education_app/config/app_config.dart';
@@ -11,12 +12,26 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/plural.dart';
 
 import '../../../../admin/admin_common.dart' show asInt, asMapList, t;
+import '../../exam_authoring.dart' show parseEngineUtc;
 import '../../exam_engine_api.dart' show EngineResult, engineCall;
 import '../../exam_paper_bands.dart' show PaperPrintedId, kPaperMaxIdentifiers;
 import '../../paper/exam_setup.dart';
 
 /// Kill switch of the email part of delivery.
 const kDeliverEmailFeatureKey = 'exam.deliver_email';
+
+/// A printed page is white with dark ink in every theme, dark mode included: these describe the paper, not the app, so
+/// they are the one place delivery writes colours by hand. Anything around the page uses `context.colors`.
+abstract final class PaperInk {
+  static const sheet = Color(0xFFFFFFFF);
+  static const text = Color(0xFF1F2933);
+  static const muted = Color(0xFF6B7280);
+  static const rule = Color(0xFFB9C1CA);
+  static const placeholder = Color(0xFFE1E5EA);
+}
+
+/// One upload round. Production nginx caps the exam API at 10 MB: 9 leaves room for the multipart framing.
+const kDeliverRoundBytes = 9 * 1024 * 1024;
 
 /// What one press of Print makes.
 enum DeliverScope { students, versions, blank }
@@ -87,21 +102,28 @@ class IdValueRow {
 
 /// `GET …/identifiers/values`, or why it could not be read.
 class IdCoverage {
-  const IdCoverage({this.items = const [], this.filled = 0, this.total = 0, this.unreadable = false});
+  const IdCoverage({this.items = const [], this.filled = 0, this.total = 0, this.unreadable = false, this.masked = false});
   final List<IdValueRow> items;
   final int filled, total;
+
+  /// The server shows real values only for the teacher's own Data Lab column. For every other source the [items] hold
+  /// masked values: the counts and who is missing are usable, the values are never shown, edited or sent.
+  final bool masked;
 
   /// The caller may not read this source's values: the coverage is unknown, which is not the same as empty.
   final bool unreadable;
 
   static IdCoverage fromJson(Map<String, dynamic> j) {
     final items = [for (final x in asMapList(j['items'])) IdValueRow(asInt(x['student_id']), '${x['name'] ?? ''}', '${x['value'] ?? ''}')];
-    return IdCoverage(items: items, filled: asInt(j['filled'], items.where((x) => x.filled).length), total: asInt(j['total'], items.length));
+    return IdCoverage(items: items, filled: asInt(j['filled'], items.where((x) => x.filled).length), total: asInt(j['total'], items.length), masked: j['masked'] == true);
   }
 
   bool get complete => !unreadable && total > 0 && filled >= total;
   int get missingCount => total - filled;
-  List<String> get missingNames => [for (final x in items) if (!x.filled) x.name];
+  List<String> get missingNames => namesKnown ? [for (final x in items) if (!x.filled) x.name] : const [];
+
+  /// Masking must leave an empty value empty for the rows to say who is missing; if not, only the count can be trusted.
+  bool get namesKnown => !masked || items.where((x) => !x.filled).length == missingCount;
 }
 
 /// "28 of 31 have a value".
@@ -152,6 +174,12 @@ List<PrintedIdSpec> printedWithMatching(List<PrintedIdSpec> printed, PrintedIdSp
   final out = <PrintedIdSpec>[matching, for (final p in printed) if (p.id != matching.id) p];
   return out.length > kPaperMaxIdentifiers ? out.sublist(0, kPaperMaxIdentifiers) : out;
 }
+
+/// The mini preview's sample for a source the server only shows masked: the shape the paper will really have, a made-up
+/// value like the sample name above it. National id, phone and email print their last four; everything else prints whole,
+/// so showing the mask there would promise a paper that never exists.
+String maskedPaperSample(String source) =>
+    const {'national_id', 'phone', 'email'}.contains(source) ? '••••1234' : t('قيمة الطالب', "The student's value");
 
 /// How [value] will look on the paper for that source: national id, phone and email are cut to the last four.
 String printedValuePreview(String source, String value) {
@@ -206,11 +234,14 @@ class DeliveryNoEmail {
 
 /// A row of `GET …/deliveries`.
 class ExamDelivery {
-  const ExamDelivery({required this.id, required this.mode, this.toMasked, this.recipients = 0, this.sent = 0, this.failed = 0, this.noEmail = const [], this.status = 'queued', this.createdBy = '', this.createdAt});
+  const ExamDelivery({required this.id, required this.mode, this.toMasked, this.recipients = 0, this.sent = 0, this.failed = 0, this.noEmail = const [], this.failedNames = const [], this.status = 'queued', this.createdBy = '', this.createdAt});
   final String id, mode, status, createdBy;
   final String? toMasked;
   final int recipients, sent, failed;
   final List<DeliveryNoEmail> noEmail;
+
+  /// Who it could not reach; a name is empty when the server no longer knows it.
+  final List<DeliveryNoEmail> failedNames;
   final DateTime? createdAt;
 
   bool get running => status == 'queued';
@@ -224,9 +255,10 @@ class ExamDelivery {
         sent: asInt(j['sent']),
         failed: asInt(j['failed']),
         noEmail: [for (final x in asMapList(j['no_email'])) DeliveryNoEmail(asInt(x['student_id']), '${x['name'] ?? ''}')],
+        failedNames: [for (final x in asMapList(j['failed_names'])) DeliveryNoEmail(asInt(x['student_id']), '${x['name'] ?? ''}')],
         status: '${j['status'] ?? 'queued'}',
         createdBy: '${j['created_by_name'] ?? ''}',
-        createdAt: DateTime.tryParse('${j['created_at'] ?? ''}'),
+        createdAt: parseEngineUtc(j['created_at']),
       );
 
   String get statusText => switch (status) {
@@ -236,6 +268,22 @@ class ExamDelivery {
         'failed' => t('تعذّر الإرسال', 'Failed'),
         _ => status,
       };
+
+  /// "Could not reach: Ali, Sara and 2 others"; null when nobody is listed.
+  String? get failedText {
+    if (failedNames.isEmpty) return null;
+    final names = [for (final x in failedNames) if (x.name.isNotEmpty) x.name];
+    final unnamed = failedNames.length - names.length;
+    if (names.isEmpty) {
+      return countText(unnamed,
+          ar1: 'تعذّر الوصول إلى طالب واحد', ar2: 'تعذّر الوصول إلى طالبين', arFew: 'تعذّر الوصول إلى {n} طلاب', arMany: 'تعذّر الوصول إلى {n} طالبًا',
+          en1: 'Could not reach 1 student', en: 'Could not reach {n} students');
+    }
+    final list = namesText(names);
+    if (unnamed == 0) return t('تعذّر الوصول إلى: $list', 'Could not reach: $list');
+    final others = countText(unnamed, ar1: 'طالب آخر', ar2: 'طالبين آخرين', arFew: '{n} طلاب آخرين', arMany: '{n} طالبًا آخر', en1: '1 other', en: '{n} others');
+    return t('تعذّر الوصول إلى: $list، و$others', 'Could not reach: $list, and $others');
+  }
 
   /// "Sent to 28 of 31 students · 3 have no email".
   String get summary {
@@ -262,7 +310,7 @@ String? earlyEmailWarning(DateTime? startsAtUtc, DateTime nowUtc) {
 }
 
 /// Splits file sizes into upload rounds of at most [maxBytes] and [maxFiles] each (end indexes, exclusive).
-List<int> uploadBatches(List<int> sizes, {int maxBytes = 25 * 1024 * 1024, int maxFiles = 100}) {
+List<int> uploadBatches(List<int> sizes, {int maxBytes = kDeliverRoundBytes, int maxFiles = 100}) {
   final out = <int>[];
   var bytes = 0, count = 0;
   for (var i = 0; i < sizes.length; i++) {
@@ -291,6 +339,10 @@ String deliverCodeText(String? code, [Map<String, dynamic> detail = const {}]) =
       'delivery_file_type' => t('يُرسل PDF أو Word فقط.', 'Only PDF or Word files can be sent.'),
       'delivery_file_name' => t('تعذّر ربط ملف بطالب. أعد المحاولة.', 'A file could not be matched to a student. Try again.'),
       'delivery_student_twice' => t('طالب ظهر مرتين في الإرسال. أعد المحاولة.', 'A student appeared twice. Try again.'),
+      'delivery_total_too_large' => t('مجموع حجم الملفات أكبر من 26 ميجابايت. أرسلها على دفعات أصغر.', 'The files together are larger than 26 MB. Send them in smaller rounds.'),
+      'delivery_daily_limit' => detail['scope'] == 'org'
+          ? t('بلغت مؤسستك حدها اليومي للإرسال إلى عناوين خارجية. حاول غدًا.', 'Your organization has reached its daily limit for outside addresses. Try again tomorrow.')
+          : t('بلغ الإرسال إلى العناوين الخارجية حده اليومي على المنصة. حاول غدًا.', 'The platform has reached its daily limit for outside addresses. Try again tomorrow.'),
       'delivery_too_many' => t('500 طالب على الأكثر في المرة الواحدة.', 'At most 500 students at a time.'),
       'student_not_in_course' => t('بعض الطلاب لم يعودوا في مقرر الاختبار. حدّث الصفحة وأعد المحاولة.', 'Some students are no longer in this course. Refresh and try again.'),
       'too_many_requests' => t('أرسلت إلى عناوين خارجية 3 مرات في الساعة الأخيرة. حاول بعد ساعة.', 'You have sent to outside addresses 3 times in the last hour. Try again in an hour.'),
@@ -311,7 +363,14 @@ String deliverCodeText(String? code, [Map<String, dynamic> detail = const {}]) =
       _ => setupCodeText(code, detail),
     };
 
+/// The request was refused for its size, by nginx (HTML, no code) or by the server.
+bool deliverTooLarge(EngineResult r) => r.status == 413;
+
+/// Said instead of whatever nginx's page held.
+String get deliverTooLargeText => t('هذا الملف أكبر من أن يُرسل بالبريد. نزّله وأرسله بطريقة أخرى.', 'This file is too large to email. Download it and send it another way.');
+
 String deliverErrorText(EngineResult r) {
+  if (deliverTooLarge(r) && r.code == null) return deliverTooLargeText;   // nginx's page: no envelope, so no code
   final mapped = deliverCodeText(r.code, r.detail);
   if (mapped.isNotEmpty) return mapped;
   final en = r.detail['message_en'];
