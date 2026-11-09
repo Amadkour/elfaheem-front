@@ -152,22 +152,51 @@ class ChatHub extends ChangeNotifier {
     }
     if (id != _myId) {
       // another account on this device: nothing of the last one may stay, least of all its outbox
+      _forgetAccount();
       _myId = id;
-      for (final t in _threads.values.toList()) {
-        t.dispose();
-      }
-      _threads.clear();
-      conversations.clear();
-      requests = const [];
-      requestCount = 0;
-      typing.clear();
-      selectedId = null;
-      drafts.clear();
-      _outbox.clear();
-      _counted.clear();
       _loadDrafts();
       _loadOutbox();
       notifyListeners();
+    }
+  }
+
+  void _forgetAccount() {
+    for (final t in _threads.values.toList()) {
+      t.dispose();
+    }
+    _threads.clear();
+    conversations.clear();
+    requests = const [];
+    requestCount = 0;
+    hasMore = false;
+    error = null;
+    typing.clear();
+    for (final t in _typingTimers.values) {
+      t.cancel();
+    }
+    _typingTimers.clear();
+    _deliveredTimer?.cancel();
+    _deliveredTimer = null;
+    _pendingDelivered.clear();
+    selectedId = null;
+    drafts.clear();
+    _outbox.clear();
+    _counted.clear();
+    _loadSeq++; // an answer still in flight belongs to the old account
+  }
+
+  /// Signing out: what was typed and not sent is plain text on this device, so it goes with the session.
+  Future<void> signedOut() async {
+    _forgetAccount();
+    _myId = null;
+    notifyListeners();
+    try {
+      final p = _prefs ??= await SharedPreferences.getInstance();
+      for (final k in p.getKeys().where((k) => k.startsWith('chat_outbox_') || k.startsWith('chat_drafts_')).toList()) {
+        await p.remove(k);
+      }
+    } catch (_) {
+      // nothing else to do: the keys stay until the next sign-out
     }
   }
 
@@ -544,6 +573,7 @@ class ChatHub extends ChangeNotifier {
   }
 
   void setDraft(int conv, String text) {
+    if (_myId == null) return; // signed out: a closing screen must not write its text back
     final t = text.trim();
     if (t.isEmpty) {
       if (drafts.remove(conv) == null) return;
@@ -575,7 +605,9 @@ class ChatHub extends ChangeNotifier {
     _prefs?.setString(_outboxKey, jsonEncode(_outbox.values.toList()));
   }
 
+  /// Refuses a message of an account that is no longer this device's.
   void outboxAdd(ChatMessage m) {
+    if (_myId == null || m.senderId != _myId) return;
     _outbox[m.clientId] = {
       'client_id': m.clientId,
       'conversation_id': m.conversationId,
@@ -631,10 +663,12 @@ class ChatHub extends ChangeNotifier {
   Future<void> flushOutbox() async {
     if (_flushing || _outbox.isEmpty) return;
     _flushing = true;
+    final owner = _myId;
     try {
       final items = _outbox.values.toList()..sort((a, b) => '${a['created_at']}'.compareTo('${b['created_at']}'));
       final kicked = <int>{};
       for (final m in items) {
+        if (_myId != owner) return; // the account changed under this loop: nothing more goes out under the new token
         final conv = int.tryParse('${m['conversation_id']}') ?? 0;
         final thread = _threads[conv];
         if (thread != null) {
@@ -651,13 +685,17 @@ class ChatHub extends ChangeNotifier {
             continue;
           }
           for (var i = ids.length; i < files.length; i++) {
-            ids.add((await api.upload(conv, files[i])).id);
+            final uploaded = await api.upload(conv, files[i]);
+            if (_myId != owner) return;
+            ids.add(uploaded.id);
             m['uploaded'] = ids;
             _saveOutbox();
           }
           await api.send(conv, clientId: clientId, body: m['body'] as String?, attachmentIds: ids);
+          if (_myId != owner) return;
           outboxRemove(clientId);
         } catch (e) {
+          if (_myId != owner) return;
           if (chatIsNetworkError(e)) break;
           _markOutboxFailed(clientId, ApiException.from(e).message);
         }
@@ -679,6 +717,12 @@ class ChatHub extends ChangeNotifier {
 
   @visibleForTesting
   Map<String, Map<String, dynamic>> get debugOutbox => _outbox;
+
+  @visibleForTesting
+  Future<void> outboxAddAndSettle(ChatMessage m) async {
+    _prefs ??= await SharedPreferences.getInstance();
+    outboxAdd(m);
+  }
 
   @visibleForTesting
   void debugResetForTest() {
@@ -748,7 +792,7 @@ class ChatThreadController extends ChangeNotifier {
     hub.registerThread(this);
     visible = true;
     await hub.ensureUser();
-    if (_disposed) return;
+    if (_gone) return;
     if (loaded) {
       unawaited(reloadHeader());
       _syncNewest();
@@ -757,6 +801,7 @@ class ChatThreadController extends ChangeNotifier {
       return;
     }
     await reloadHeader();
+    if (_disposed) return;
     final pending = hub.pendingFor(conversationId);
     try {
       final p = await _api.messages(conversationId);
@@ -775,10 +820,13 @@ class ChatThreadController extends ChangeNotifier {
     }
     loading = false;
     _notify();
+    if (_gone) return; // the screen closed during the load: what arrived is kept, nothing keeps running for it
     _markRead();
     resumeQueued();
     _startFallback();
   }
+
+  bool get _gone => _disposed || refs == 0;
 
   void _startFallback() {
     _fallback ??= EventOrPoll(
@@ -800,6 +848,9 @@ class ChatThreadController extends ChangeNotifier {
 
   @visibleForTesting
   void debugSynced(int? through) => _syncedThrough = through;
+
+  @visibleForTesting
+  bool get debugPolling => _fallback != null;
 
   int? get _newestStoredId => messages.where((m) => m.id != null).firstOrNull?.id;
 
@@ -1005,7 +1056,7 @@ class ChatThreadController extends ChangeNotifier {
     try {
       while (true) {
         final next = messages.where((m) => m.sendState == ChatSendState.sending).lastOrNull;
-        if (next == null) break;
+        if (next == null || _disposed || next.senderId != hub.myId) break;
         await _deliver(next);
       }
     } finally {
@@ -1023,15 +1074,20 @@ class ChatThreadController extends ChangeNotifier {
       }
       final ids = [...m.uploaded];
       for (var i = ids.length; i < m.local.length; i++) {
-        ids.add((await _api.upload(conversationId, m.local[i])).id);
+        final uploaded = await _api.upload(conversationId, m.local[i]);
+        if (_stale(m)) return;
+        ids.add(uploaded.id);
         m.uploaded = [...ids];
         hub.outboxAdd(m);
       }
+      if (_stale(m)) return;
       final sent = await _api.send(conversationId, clientId: m.clientId, body: m.body, attachmentIds: ids);
+      if (_stale(m)) return;
       hub.outboxRemove(m.clientId);
       messages = chatMergeMessages(messages, [sent]);
       _notify();
     } catch (e) {
+      if (_stale(m)) return;
       final x = ApiException.from(e);
       if (chatIsNetworkError(e)) {
         if (!AppConnectivity.instance.isOnline) {
@@ -1051,6 +1107,9 @@ class ChatThreadController extends ChangeNotifier {
       if (conversation != null && (x.code ?? '').startsWith('chat_')) reloadHeader();
     }
   }
+
+  /// This controller is gone or the account changed: this message must not go out under the token now in use.
+  bool _stale(ChatMessage m) => _disposed || m.senderId != hub.myId;
 
   bool _filesReadable(ChatMessage m) {
     for (var i = m.uploaded.length; i < m.local.length; i++) {

@@ -5,6 +5,8 @@
 // what test/chat/chat_new_message_layout_test.dart pumps.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -15,6 +17,21 @@ import 'chat_models.dart';
 import 'chat_page.dart' show chatErrorText;
 import 'chat_store.dart';
 import 'chat_widgets.dart' show ChatAvatar;
+
+/// One client id per composed text: pressing Send again after a lost answer is the same message on the server. Editing
+/// the words, or writing to someone else, is a new one.
+class ChatComposedId {
+  String? _key, _id;
+
+  String idFor(int peerId, String text) {
+    final key = '$peerId:$text';
+    if (key != _key) {
+      _key = key;
+      _id = chatNewClientId();
+    }
+    return _id!;
+  }
+}
 
 /// The line under a name: how we know each other, the course or organization, else the role.
 String chatPersonLine(ChatPersonRow r) {
@@ -291,6 +308,7 @@ class _ChatNewMessageSheetState extends State<ChatNewMessageSheet> {
   ChatPersonRow? _requesting;
   bool _sending = false;
   String? _sendError;
+  final _composedId = ChatComposedId();
 
   @override
   void initState() {
@@ -352,7 +370,7 @@ class _ChatNewMessageSheetState extends State<ChatNewMessageSheet> {
       _sendError = null;
     });
     try {
-      final conv = await ChatHub.instance.api.sendRequest(peerId: r.user.id, clientId: chatNewClientId(), body: text);
+      final conv = await ChatHub.instance.api.sendRequest(peerId: r.user.id, clientId: _composedId.idFor(r.user.id, text), body: text);
       if (!mounted) return;
       showAppNotice('chat_nm_request_done'.tr);
       Navigator.of(context).pop(ChatContact(user: r.user, conversationId: conv.id));
@@ -386,21 +404,29 @@ class _ChatNewMessageSheetState extends State<ChatNewMessageSheet> {
             padding: AppSheetContent.padding,
             child: ChatRequestComposer(person: requesting, controller: _message, busy: _sending, error: _sendError, onSend: _sendRequest, onBack: () => setState(() => _requesting = null)),
           )
-        : Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Padding(
+        : LayoutBuilder(builder: (context, box) {
+            final search = Padding(
               padding: EdgeInsets.fromLTRB(AppSheetContent.padding.left, 0, AppSheetContent.padding.left, AppSpace.xs),
               child: AppSearchField(hint: 'chat_nm_search_hint'.tr, autofocus: true, onChanged: _load, debounce: const Duration(milliseconds: 280)),
-            ),
-            Flexible(child: SingleChildScrollView(padding: AppSheetContent.padding, child: _list())),
-          ]);
+            );
+            // a keyboard on a short screen leaves little room: everything scrolls together then
+            if (box.maxHeight < 160) {
+              return SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [search, Padding(padding: AppSheetContent.padding, child: _list())]));
+            }
+            return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              search,
+              Flexible(child: SingleChildScrollView(padding: AppSheetContent.padding, child: _list())),
+            ]);
+          });
     return LayoutBuilder(builder: (context, box) {
       final bounded = box.maxHeight.isFinite;
+      final content = SizedBox(
+        height: bounded ? math.min(560.0, math.max(0.0, box.maxHeight - 90)) : 480,
+        child: AnimatedSwitcher(duration: motion, child: KeyedSubtree(key: ValueKey(requesting?.user.id ?? 0), child: body)),
+      );
       return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppSheetHeader('chat_new_message'.tr),
-        SizedBox(
-          height: bounded ? (box.maxHeight - 90).clamp(300.0, 560.0) : 480,
-          child: AnimatedSwitcher(duration: motion, child: KeyedSubtree(key: ValueKey(requesting?.user.id ?? 0), child: body)),
-        ),
+        if (bounded) Flexible(child: content) else content,
       ]);
     });
   }

@@ -28,10 +28,12 @@ class FakeServer extends ChatApi {
   int uploads = 0, nextId = 100, maxConcurrent = 0, _inFlight = 0;
   Object? failNext;
   Object? failUpload;
+  void Function()? onUpload, onSend, onMessages;
   List<ChatMessage> Function(int? after)? pageAfter;
 
   @override
   Future<ChatMessage> send(int id, {required String clientId, String? body, List<int> attachmentIds = const []}) async {
+    onSend?.call();
     _inFlight++;
     if (_inFlight > maxConcurrent) maxConcurrent = _inFlight;
     await Future<void>.delayed(Duration.zero);
@@ -54,6 +56,7 @@ class FakeServer extends ChatApi {
       throw fail;
     }
     uploads++;
+    onUpload?.call();
     return ChatAttachment(id: 500 + uploads, name: f.name, mime: 'application/pdf', ext: 'pdf');
   }
 
@@ -72,6 +75,7 @@ class FakeServer extends ChatApi {
   @override
   Future<ChatMessagePage> messages(int id, {int? before, int? after, int limit = 30}) async {
     afters.add(after);
+    onMessages?.call();
     return ChatMessagePage(pageAfter?.call(after) ?? const [], false);
   }
 }
@@ -215,6 +219,64 @@ void main() {
 
     test('a client id is unique across a burst', () {
       expect({for (var i = 0; i < 2000; i++) chatNewClientId()}.length, 2000);
+    });
+  });
+
+  group('accounts', () {
+    test('signing out wipes the outbox and drafts on the device, and the hub', () async {
+      await hub.ensureUser();
+      hub.setDraft(conv, 'a private draft');
+      await hub.outboxAddAndSettle(ChatMessage(clientId: 'z', conversationId: conv, body: 'unsent', senderId: me, createdAt: DateTime.utc(2026, 1, 1)));
+      hub.conversations.add(row(lastId: 1));
+      final t = hub.acquire(conv)..loaded = true;
+      final p = await SharedPreferences.getInstance();
+      expect(p.getKeys().where((k) => k.startsWith('chat_')), isNotEmpty);
+      await hub.signedOut();
+      expect(p.getKeys().where((k) => k.startsWith('chat_outbox_') || k.startsWith('chat_drafts_')), isEmpty);
+      expect(hub.conversations, isEmpty);
+      expect(hub.debugOutbox, isEmpty);
+      expect(hub.drafts, isEmpty);
+      expect(hub.myId, 0);
+      hub.setDraft(conv, 'closing screen writes this');
+      expect(p.getKeys().where((k) => k.startsWith('chat_drafts_')), isEmpty);
+      expect(identical(hub.acquire(conv), t), isFalse);
+    });
+
+    test('the outbox refuses a message of an account that is gone', () {
+      hub.debugSetMyId(9);
+      hub.outboxAdd(ChatMessage(clientId: 'old', conversationId: conv, body: 'x', senderId: me, createdAt: DateTime.utc(2026, 1, 1)));
+      expect(hub.debugOutbox, isEmpty);
+    });
+
+    test('the account changing during an upload stops the send', () async {
+      final t = opened();
+      api.onUpload = () => hub.debugSetMyId(9);
+      await t.send('secret', files: [ChatLocalFile(name: 'a.pdf', bytes: Uint8List(1), size: 1)]);
+      expect(api.sends, isEmpty);
+    });
+
+    test('the account changing during a flush stops it, the new one sends nothing of the old', () async {
+      for (final id in const ['a', 'b']) {
+        hub.outboxAdd(ChatMessage(clientId: id, conversationId: conv + 1, body: id, senderId: me, createdAt: DateTime.utc(2026, 1, 1)));
+      }
+      api.onSend = () => hub.debugSetMyId(9);
+      await hub.flushOutbox();
+      expect(api.sends.length, lessThanOrEqualTo(1));
+    });
+
+    test('a disposed controller sends no more', () async {
+      final t = opened();
+      api.onUpload = t.dispose;
+      await t.send('x', files: [ChatLocalFile(name: 'a.pdf', bytes: Uint8List(1), size: 1)]);
+      expect(api.sends, isEmpty);
+    });
+
+    test('closing the screen during the first load starts no poller', () async {
+      final t = hub.acquire(conv);
+      api.onMessages = () => hub.release(t);
+      await t.open();
+      expect(t.debugPolling, isFalse);
+      expect(t.visible, isFalse);
     });
   });
 

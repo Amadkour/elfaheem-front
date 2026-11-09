@@ -40,6 +40,22 @@ void main() {
     await expectNoLayoutErrors(tester, () => ChatPeopleView(people: const ChatPeople(), query: '', onPick: (_) {}));
   });
 
+  test('one client id per composed text', () {
+    final c = ChatComposedId();
+    final a = c.idFor(7, 'hello');
+    expect(c.idFor(7, 'hello'), a);
+    expect(c.idFor(7, 'hello there'), isNot(a));
+    final b = c.idFor(8, 'hello there');
+    expect(b, isNot(a));
+    expect(c.idFor(8, 'hello there'), b);
+  });
+
+  testWidgets('a short screen with the keyboard up: the sheet shrinks instead of overflowing', (tester) async {
+    for (final h in const [150.0, 240.0]) {
+      await expectNoLayoutErrors(tester, () => Align(alignment: Alignment.topCenter, child: SizedBox(height: h, child: const ChatNewMessageSheet())));
+    }
+  });
+
   testWidgets('the request composer', (tester) async {
     final controller = TextEditingController(text: 'Hello');
     await expectNoLayoutErrors(tester, () => ChatRequestComposer(person: row('request'), controller: controller, busy: false, error: 'Something failed', onSend: () {}, onBack: () {}));

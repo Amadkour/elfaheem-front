@@ -1,5 +1,6 @@
 library;
 
+import 'package:flutter_education_app/features/shared/chat/chat_store.dart' show ChatHub;
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_access.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1079,6 +1080,7 @@ class MyAuthProvider extends BaseProvider {
     _resetMfa();
     TeacherOnboardingToken.clear();
     MediaBytesCache.instance.clear(); // question images of the previous user's exams
+    await ChatHub.instance.signedOut(); // unsent messages and drafts are plain text on this device
     _currentUser = null;
     notifyListeners();
   }
