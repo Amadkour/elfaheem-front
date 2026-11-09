@@ -9,6 +9,7 @@
 // Server routes: FLUTTER_API_CHANGES.md (phase 3). Pure logic + tests: org_sharing.dart.
 library;
 
+import 'org_page_kit.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -289,7 +290,7 @@ class ShareFormBody extends StatelessWidget {
       ],
       if (maxController != null) ...[
         const SizedBox(height: 8),
-        AppField(controller: maxController!, label: t('الحد الأقصى للمؤسسات (اختياري)', 'Max organizations (optional)'), keyboard: TextInputType.number),
+        OrgNumberField(controller: maxController!, label: t('الحد الأقصى للمؤسسات (اختياري)', 'Max organizations (optional)'), gap: false),
       ],
       const SizedBox(height: 8),
       Row(children: [

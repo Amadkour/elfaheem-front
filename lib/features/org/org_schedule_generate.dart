@@ -22,6 +22,7 @@
 //   re-solves only the affected part, POST …/quick-actions/apply), proposals, last-resort advice (suggestions only)
 library;
 
+import 'package:flutter_education_app/design/app_mesh.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
@@ -765,15 +766,7 @@ class _GenerationLivePanelState extends State<GenerationLivePanel> with SingleTi
         child: body,
       );
     }
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(colors: [accent.withValues(alpha: 0.10), c.purple.withValues(alpha: 0.06)]),
-        border: Border.all(color: accent.withValues(alpha: 0.25)),
-      ),
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      child: body,
-    );
+    return Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: accent.withValues(alpha: 0.25))), child: AppMeshSurface(color: accent, style: AppMeshStyle.wash, radius: BorderRadius.circular(16), child: Padding(padding: const EdgeInsets.fromLTRB(14, 12, 14, 12), child: body)));
   }
 }
 

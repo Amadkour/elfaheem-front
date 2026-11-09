@@ -1,6 +1,7 @@
 // lib/features/org/org_common.dart — small shared pieces of the organization UI.
 library;
 
+import 'package:flutter_education_app/design/app_mesh.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -164,19 +165,7 @@ class OrgHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final base = orgColor(context, org);
     final logo = (org['logo_url'] ?? '').toString();
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 12, 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: [base, context.colors.heroEnd(base, 0.28)],
-        ),
-        boxShadow: [BoxShadow(color: base.withValues(alpha: 0.30), blurRadius: 18, offset: const Offset(0, 8))],
-      ),
-      child: Row(children: [
+    return Container(margin: const EdgeInsets.fromLTRB(16, 8, 16, 12), decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: base.withValues(alpha: 0.30), blurRadius: 18, offset: const Offset(0, 8))]), child: AppMeshSurface(color: base, radius: BorderRadius.circular(24), child: Padding(padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 12, 16), child: Row(children: [
         Container(
           width: 54,
           height: 54,
@@ -202,8 +191,7 @@ class OrgHero extends StatelessWidget {
           ]),
         ),
         if (trailing != null) trailing!,
-      ]),
-    );
+      ]))));
   }
 
   Widget _fallbackIcon(BuildContext context) => Icon(orgTypeIcons[org['type']] ?? Icons.domain_rounded, color: context.colors.onHero, size: 28);

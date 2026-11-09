@@ -240,7 +240,7 @@ class AdvCategoriesPage extends StatelessWidget {
   Widget build(BuildContext context) => OrgPushedPage(
         title: t('تصنيفات الإرشاد', 'Advising categories'),
         helpPageId: 'org.advising',
-        maxWidth: 1000,
+        maxWidth: 1440,
         child: _AdvCategoriesBody(orgId: orgId),
       );
 }

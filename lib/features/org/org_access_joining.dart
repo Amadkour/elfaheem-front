@@ -10,6 +10,7 @@
 //   openOrgJoin            push it (respects AppConfig.orgsEnabled)
 library;
 
+import 'org_page_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';

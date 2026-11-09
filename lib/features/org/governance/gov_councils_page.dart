@@ -422,7 +422,7 @@ class _GovCouncilsPageState extends State<GovCouncilsPage> {
     // a sub-page of the dashboard's Services section: the section's header (title · Refresh · switcher) is above it
     if (OrgPageRefresh.maybeOf(context, listen: false) != null) return body;
     // opened on its own (staff only): the dashboard's header, Back first
-    return OrgPushedPage(helpPageId: 'org.governance', title: t('المجالس', 'Councils'), maxWidth: 1000, child: body);
+    return OrgPushedPage(helpPageId: 'org.governance', title: t('المجالس', 'Councils'), child: body);
   }
 }
 

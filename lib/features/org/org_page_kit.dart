@@ -25,10 +25,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppChoiceChip, AppSheetHeader, showAppSheet;
+import 'package:flutter_education_app/design/app_kit.dart' show AppChoiceChip, AppField, AppNumberField, AppSheetHeader, showAppSheet;
 import 'package:flutter_education_app/design/app_tokens.dart';
 
-import '../admin/admin_common.dart' show SearchBox, t;
+import '../admin/admin_common.dart' show Field, SearchBox, t;
 
 /// The page's ONE primary action.
 class OrgPrimaryAction {
@@ -184,6 +184,42 @@ class _Toolbar extends StatelessWidget {
       if (moreBtn != null) ...[AppSpace.gapXs, moreBtn],
     ]);
   }
+}
+
+/// THE quantity field of an org form: [AppNumberField] (type, or the - / + buttons) in the slot of the older Field.
+/// [gap]: the 12 px under the field the older Field carried (false where the form spaces its own fields). In a
+/// two-up cell too narrow for two 48 px buttons (a phone) it stays a plain numeric field.
+class OrgNumberField extends StatelessWidget {
+  const OrgNumberField({
+    super.key,
+    required this.controller,
+    required this.label,
+    this.min = 0,
+    this.max,
+    this.decimals = 0,
+    this.gap = true,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final num? min, max;
+  final int decimals;
+  final bool gap;
+
+  /// Below this width the two step buttons would leave no room for the digits.
+  static const double steppersFrom = 200;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
+        final keyboard = TextInputType.numberWithOptions(decimal: decimals > 0);
+        if (box.maxWidth < steppersFrom) {
+          return gap
+              ? Field(controller: controller, label: label, keyboard: keyboard, ltr: true)
+              : AppField(controller: controller, label: label, keyboard: keyboard, ltr: true);
+        }
+        final field = AppNumberField(controller: controller, label: label, min: min, max: max, decimals: decimals);
+        return gap ? Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: field) : field;
+      });
 }
 
 /// The primary action as a filled button (wide toolbars).

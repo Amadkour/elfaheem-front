@@ -890,7 +890,7 @@ class _OrgMemberDashboardScreenState extends State<OrgMemberDashboardScreen> {
     // open one and the picker at once.
     return BasePage(
       useWebCard: true,
-      maxWith: 960,
+      width: AppWidth.content,
       child: Column(children: [
         ListenableBuilder(
           listenable: ctl,

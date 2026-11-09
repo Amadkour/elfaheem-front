@@ -55,7 +55,7 @@ String riskCodeText(String? code, String fallback) => switch (code) {
 
 /// Entry points: the org admin tiles call these (the page under the dashboard's own header).
 Route<void> orgFeedbackSettingsRoute(int orgId) => MaterialPageRoute(
-    builder: (_) => OrgPushedPage(title: t('ملاحظات الامتحانات', 'Exam feedback'), child: OrgFeedbackSettingsPage(orgId: orgId)));
+    builder: (_) => OrgPushedPage(title: t('ملاحظات الامتحانات', 'Exam feedback'), width: AppWidth.reading, child: OrgFeedbackSettingsPage(orgId: orgId)));
 Route<void> orgExamRiskRoute(int orgId) => MaterialPageRoute(
     builder: (_) => OrgPushedPage(title: t('مخاطر الامتحانات', 'Exam risk'), child: OrgExamRiskPage(orgId: orgId)));
 

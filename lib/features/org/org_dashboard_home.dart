@@ -114,12 +114,16 @@ class OrgHomeBody extends StatelessWidget {
     this.insights = const SizedBox.shrink(),
     this.insightsWeight = 0,
     this.setup,
+    this.onRefresh,
   });
 
   final OrgHomeData data;
 
-  /// The shared page header (null in tests that pump the body alone).
+  /// The shared page header, pinned above the scrolling body so it can collapse (null in tests that pump the body alone).
   final Widget? header;
+
+  /// Pull to refresh on the scrolling body; null = none.
+  final Future<void> Function()? onRefresh;
 
   /// The rows on screen (the optimistic queue's); null → the payload's.
   final List<OrgTask>? tasks;
@@ -170,9 +174,9 @@ class OrgHomeBody extends StatelessWidget {
           ],
         ];
     return LayoutBuilder(builder: (context, box) {
-      final top = <Widget>[?header, const SizedBox(height: AppSpace.xs), if (setup != null) Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs), child: setup!)];
+      final top = <Widget>[const SizedBox(height: AppSpace.xs), if (setup != null) Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs), child: setup!)];
       if (!homeIsWide(box.maxWidth)) {
-        return ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [...top, ...spaced(order, 0)]);
+        return _pinnedHeader(header, _pullable(onRefresh, ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [...top, ...spaced(order, 0)])));
       }
       final weights = {
         OrgHomeSection.attention: orgAttentionWeight(rows.take(5).length + alerts.length),
@@ -180,7 +184,7 @@ class OrgHomeBody extends StatelessWidget {
         OrgHomeSection.insights: insightsWeight,
       };
       final (start, end) = orgHomeColumns(order, weights);
-      return ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [
+      return _pinnedHeader(header, _pullable(onRefresh, ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [
         ...top,
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
@@ -189,10 +193,17 @@ class OrgHomeBody extends StatelessWidget {
             if (end.isNotEmpty) Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: spaced(end, 1))),
           ]),
         ),
-      ]);
+      ])));
     });
   }
 }
+
+/// The header above the scrolling [body] (it collapses with the scrolling and must not scroll away).
+Widget _pinnedHeader(Widget? header, Widget body) =>
+    header == null ? body : Column(children: [header, Expanded(child: body)]);
+
+Widget _pullable(Future<void> Function()? onRefresh, Widget list) =>
+    onRefresh == null ? list : AppRefresh(onRefresh: onRefresh, child: list);
 
 /// The loading shape: the header already knows the organization; the rest is a calm skeleton.
 class OrgHomeSkeleton extends StatelessWidget {
@@ -200,25 +211,32 @@ class OrgHomeSkeleton extends StatelessWidget {
   final Widget? header;
 
   @override
-  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [
-        ?header,
-        const SizedBox(height: AppSpace.xs),
-        const AppListSkeleton(items: 4),
-      ]);
+  Widget build(BuildContext context) => _pinnedHeader(
+      header,
+      ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: const [
+        SizedBox(height: AppSpace.xs),
+        AppListSkeleton(items: 4),
+      ]));
 }
 
 /// The failed first load: the header, a friendly line and Retry.
 class OrgHomeError extends StatelessWidget {
-  const OrgHomeError({super.key, this.header, required this.message, required this.onRetry});
+  const OrgHomeError({super.key, this.header, required this.message, required this.onRetry, this.onRefresh});
   final Widget? header;
   final String message;
   final VoidCallback onRetry;
 
+  /// Pull to refresh on the scrolling body; null = none.
+  final Future<void> Function()? onRefresh;
+
   @override
-  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [
-        ?header,
-        Padding(padding: const EdgeInsets.symmetric(vertical: AppSpace.lg), child: ErrorRetry(message: message, onRetry: onRetry)),
-      ]);
+  Widget build(BuildContext context) => _pinnedHeader(
+      header,
+      _pullable(
+          onRefresh,
+          ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [
+            Padding(padding: const EdgeInsets.symmetric(vertical: AppSpace.lg), child: ErrorRetry(message: message, onRetry: onRetry)),
+          ])));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -295,7 +313,7 @@ Future<void> orgPushPage(BuildContext context,
     OrgTabs? tabs,
     required String title,
     required Widget page,
-    double maxWidth = 1100}) async {
+    double? maxWidth}) async {
   final epoch = dash.attentionEpoch;
   await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => MultiProvider(
@@ -309,7 +327,7 @@ Future<void> orgPushPage(BuildContext context,
   dash.afterReturn(epoch);
 }
 
-Future<void> orgPush(BuildContext context, String title, Widget page, {double maxWidth = 1100}) {
+Future<void> orgPush(BuildContext context, String title, Widget page, {double? maxWidth}) {
   OrgTabs? tabs;
   try {
     tabs = context.read<OrgTabs>();
@@ -483,7 +501,6 @@ class _OrgHomePageState extends State<OrgHomePage> {
         Navigator.of(page).pop();
         if (home.mounted) _openTask(home, x);
       }),
-      maxWidth: 900,
     );
   }
 
@@ -498,10 +515,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
     Future<void> refresh() => dash.load(s);
     if (d == null) {
       if (dash.failed) {
-        return AppRefresh(
-          onRefresh: refresh,
-          child: OrgHomeError(header: header, message: dash.error ?? t('تعذّر تحميل لوحة المؤسسة', 'Could not load the dashboard'), onRetry: refresh),
-        );
+        return OrgHomeError(header: header, message: dash.error ?? t('تعذّر تحميل لوحة المؤسسة', 'Could not load the dashboard'), onRetry: refresh, onRefresh: refresh);
       }
       return OrgHomeSkeleton(header: header);
     }
@@ -510,11 +524,10 @@ class _OrgHomePageState extends State<OrgHomePage> {
     final q = dash.tasks;
     return ListenableBuilder(
       listenable: q,
-      builder: (context, _) => AppRefresh(
-        onRefresh: refresh,
-        child: OrgHomeBody(
+      builder: (context, _) => OrgHomeBody(
           data: d,
           header: header,
+          onRefresh: refresh,
           tasks: d.tasks == null ? null : q.items,
           tasksTotal: d.tasks == null ? null : q.total,
           isBusy: q.isBusy,
@@ -540,7 +553,6 @@ class _OrgHomePageState extends State<OrgHomePage> {
           insights: OrgInsightsSection(orgId: s.currentId, fallback: d.trends.isEmpty ? null : OrgTrendRow(trends: d.trends)),
           insightsWeight: kOrgInsightsWeight,
         ),
-      ),
     );
   }
 }

@@ -10,6 +10,7 @@
 //   files              orgPickAndUpload
 library;
 
+import 'package:flutter_education_app/design/app_mesh.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -259,18 +260,7 @@ class OrgActionCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(22),
         onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: c.divider),
-            gradient: LinearGradient(
-              begin: AlignmentDirectional.topStart,
-              end: AlignmentDirectional.bottomEnd,
-              colors: [col.withValues(alpha: 0.10), c.cardBg],
-            ),
-          ),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        child: Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(22), border: Border.all(color: c.divider)), child: AppMeshSurface(color: col, style: AppMeshStyle.wash, radius: BorderRadius.circular(22), child: Padding(padding: const EdgeInsets.all(14), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Stack(clipBehavior: Clip.none, children: [
               IconBadge(icon, col, size: 44),
               if (badge > 0)
@@ -296,8 +286,7 @@ class OrgActionCard extends StatelessWidget {
             ),
             if (trailing != null) ConstrainedBox(constraints: const BoxConstraints(maxWidth: 150), child: trailing) // a long pill ellipsizes
             else Icon(Icons.chevron_right_rounded, color: c.textLight),
-          ]),
-        ),
+          ])))),
       ),
     );
   }

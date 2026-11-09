@@ -78,7 +78,7 @@ class _OrgsUnavailablePageState extends State<OrgsUnavailablePage> {
                     height: 84,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: LinearGradient(colors: [c.primary.withValues(alpha: 0.18), c.primary.withValues(alpha: 0.06)]),
+                      color: c.primaryTint,
                     ),
                     child: Icon(Icons.domain_disabled_rounded, size: 40, color: c.primary),
                   ),

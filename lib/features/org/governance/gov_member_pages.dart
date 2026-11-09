@@ -564,7 +564,6 @@ class _GovMyItemsPageState extends State<GovMyItemsPage> {
       return OrgPushedPage(helpPageId: 'org.governance', 
         title: t('معاملاتي', 'My requests'),
         refresh: _refresh,
-        maxWidth: 900,
         primaryAction: submit == null ? null : OrgHeaderButton(icon: Icons.add_rounded, label: t('معاملة جديدة', 'New request'), onTap: submit),
         child: body,
       );

@@ -173,7 +173,7 @@ class AdvAlertsView extends StatelessWidget {
                   : t('حين يطابق أحد طلابك إحدى القواعد يظهر التنبيه هنا مع سببه.', 'When one of your students matches a rule, the alert shows here with its reason.'),
             );
     }
-    return AdvPageFrame(maxWidth: 880, children: [
+    return AdvPageFrame(maxWidth: 1440, children: [
       if (studentName != null)
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpace.xs),
@@ -230,7 +230,7 @@ class AdvAlertsView extends StatelessWidget {
         message: searching ? null : t('يُحسب موعد التخرج لكل طالب مع كل فحص.', 'Each student\'s graduation is projected with every check.'),
       );
     }
-    return AdvPageFrame(maxWidth: 880, children: [
+    return AdvPageFrame(maxWidth: 1440, children: [
       _GradFacets(page: p),
       for (final x in p.items) AdvGraduationRow(item: x, showAdvisor: manage, onTap: onOpenGrad == null ? null : () => onOpenGrad!(x)),
       if (p.pages > 1 && onGradPage != null) ...[
@@ -390,7 +390,7 @@ class AdvAlertsPage extends StatelessWidget {
         return OrgPushedPage(
           title: t('تنبيهات الإنذار المبكر', 'Early-warning alerts'),
           helpPageId: 'org.advising',
-          maxWidth: 960,
+          maxWidth: 1440,
           primaryAction: OrgHeaderButton(icon: Icons.tune_rounded, label: t('وصول التنبيهات', 'Alert delivery'), onTap: () => showAdvAlertPrefsSheet(context, api)),
           child: _AdvAlertsBody(orgId: orgId, manage: manage, since: since, memberId: memberId, studentName: studentName, tab: advAlertTabs.contains(tab) ? tab : 'alerts'),
         );
