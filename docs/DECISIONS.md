@@ -3651,3 +3651,7 @@ Correction decides from the exam itself, inside `correctionRouteOf`, so every ca
 The wizard records what it planned in `settings.paper_plan` and Deliver opens on it (personal copies or versions), switchable; versions are made on Finish, and a draft published from the list that never got there is offered them in Deliver. What is printed under a student's name is `settings.print_identifiers`, chosen per exam, and is separate from the identifier sheets are matched on (at most four; national id, phone and email cut to the last four digits).
 
 Deliver's preview replays the actual pages of the actual PDF with our own painter (`paper_page_replay.dart`) rather than the `printing` package, which adds two lock entries and loads pdf.js from a CDN at run time. Cost: one more renderer to keep in step with the paper builder, which a test covers.
+
+
+## D-380 .. D-382 — Certificate fonts (2026-11-09)
+Full text in `../back/docs/DECISIONS.md`. D-380: a font chosen on a certificate field is kept through save, reload, preview and the issued file (legacy keys resolve to their family, an unknown font is refused with its name, never swapped). D-381: the picker `cert_font_picker.dart`, the renderer's catalog (`GET /exports/layout/fonts`) as the only list, a font not bundled is loaded from the server. D-382: Reem Kufi and Aref Ruqaa stay out of the catalog (the PDF renderer cannot join them); a converted design names the replacement.

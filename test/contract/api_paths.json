@@ -348,6 +348,7 @@
   "GET /api/v1/exports/datasets/{key}/columns",
   "GET /api/v1/exports/layout/assets/{token}",
   "GET /api/v1/exports/layout/fonts",
+  "GET /api/v1/exports/layout/fonts/{font_id}/file",
   "GET /api/v1/exports/layout/runs/{rid:int}",
   "GET /api/v1/exports/layout/runs/{rid:int}/download",
   "GET /api/v1/exports/layout/starters",

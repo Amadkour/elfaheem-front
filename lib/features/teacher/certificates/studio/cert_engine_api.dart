@@ -9,12 +9,16 @@ import 'dart:typed_data';
 
 import '../../../../core/api_client.dart';
 import '../../../../design/export_layout/layout_model.dart';
+import 'cert_font_picker.dart' show CertFontInfo;
 
 /// `GET /certificate-designs/{id}/document`.
 class CertDocLoad {
-  const CertDocLoad({required this.document, required this.version, required this.converted});
+  const CertDocLoad({required this.document, required this.version, required this.converted, this.fontNotes = const []});
   final LayoutDocument document;
   final int version;
+
+  /// Fonts of a converted (legacy) design the renderer draws with another family: [{family, to_family, field}].
+  final List<Map<String, dynamic>> fontNotes;
 
   /// The server built the document from the legacy columns (nothing is saved yet).
   final bool converted;
@@ -97,10 +101,16 @@ class CertEngineApi {
 
   Future<CertDocLoad> load(int id) async {
     final r = _map(await api.get('$_base/$id/document'));
+    final notes = r['font_notes'];
     return CertDocLoad(
       document: LayoutDocument.fromJson(_map(r['document'])),
       version: (r['version'] as num?)?.toInt() ?? 0,
       converted: r['converted'] == true,
+      fontNotes: [
+        if (notes is List)
+          for (final n in notes)
+            if (n is Map) _map(n),
+      ],
     );
   }
 
@@ -166,6 +176,24 @@ class CertEngineApi {
     if (size == 'Letter') q.write('&page=letter');
     if (size == 'custom' && wMm != null && hMm != null) q.write('&page=custom&w_mm=$wMm&h_mm=$hMm');
     return _upload('$_base/background?$q', bytes);
+  }
+
+  /// The renderer's font catalog: the ONLY list the picker shows (CLAUDE.md).
+  Future<List<CertFontInfo>> fonts() async {
+    final r = await api.get('/api/v1/exports/layout/fonts');
+    final items = r is List ? r : (r is Map ? r['items'] : null);
+    return [
+      if (items is List)
+        for (final j in items) ?CertFontInfo.tryParse(j),
+    ];
+  }
+
+  /// One font's file as base64 (a font this app build does not bundle). [variant]: regular | bold | italic.
+  Future<String> fontFile(String id, {String variant = 'regular'}) async {
+    final r = _map(await api.get('/api/v1/exports/layout/fonts/$id/file', queryParams: {'variant': variant}));
+    final b = r['file_b64'];
+    if (b is! String || b.isEmpty) throw const ApiException(statusCode: 0, message: 'font unavailable');
+    return b;
   }
 
   Future<List<CertStarter>> starters() async {

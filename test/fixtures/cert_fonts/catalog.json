@@ -1,0 +1,215 @@
+{
+ "default": "tajawal",
+ "files": {
+  "amiri": {
+   "bold": "eb84bdc491cdb1a8d6b3d4a1fba9508759789836",
+   "regular": "a5f4fe8279d587ca8e65b01159c405788850c6d3"
+  },
+  "baskerville": {
+   "bold": "a181b3c19da18d52f6c0f41b7c34540f3fdc3f39",
+   "regular": "104e2dc48776980cf5f3babc01022b0573d09cfe"
+  },
+  "cairo": {
+   "bold": "cea9b5184311b687f0f24b465f9863948b016ce5",
+   "regular": "f33f8befd4e1b5fc0fc5dbb47f2c2e413b400752"
+  },
+  "cinzel": {
+   "regular": "85949e36cdc07e2c6d24a805b901701c298b8686"
+  },
+  "cormorant": {
+   "italic": "eb39b1b7b405c7e35042511f6609c02953358cac",
+   "regular": "dd18a201d21e916c93419b3f40e948f29b0b4b8f"
+  },
+  "eb_garamond": {
+   "regular": "43cc6354462d792c4db743dbfa91a5374880d4ce"
+  },
+  "el_messiri": {
+   "bold": "64d1b013f22965576d116036fe836542ac8bb5bd",
+   "regular": "f4fc4faf15e4db56bfc6954c071af86e5fd28407"
+  },
+  "great_vibes": {
+   "regular": "7904ee6600d331678424b639ca85dcfc36b5d12c"
+  },
+  "markazi": {
+   "bold": "de67cf9cd4a75c3e00e1652968668b4eaeb6b501",
+   "regular": "85bc0d544efe6895d42a065f900eff99c20873aa"
+  },
+  "noto_kufi": {
+   "bold": "b0dca58ebc57c5255afd36861f8d688a7d0178c8",
+   "regular": "788b89abfad821aa468001c6aa0be98d0a319568"
+  },
+  "pinyon_script": {
+   "regular": "bdb8dd38cc4cda3dc7816413620cf2d81561441a"
+  },
+  "playfair": {
+   "bold": "3434072b9fd9d439c1656552c609c9c1d7cc28e9",
+   "italic": "8c51ae632f9e126662ecc7147edcfd3f5b6317b3",
+   "regular": "8af59fb4b4f4d02028b683b897a47257e7a365d7"
+  },
+  "plex": {
+   "bold": "3d7fcb29ba45385d6b7c1a69729a95909d41ae11",
+   "regular": "0326c65c6b21647ce733fe9edd6719ef2341dec5"
+  },
+  "scheherazade": {
+   "bold": "02229f47fbad51a861379b024abb73676b3e2e11",
+   "regular": "9deea08a3a74349a8cf37532d34146105d59818a"
+  },
+  "tajawal": {
+   "bold": "3028c3b3afa120de0737802415314fe328655300",
+   "regular": "6231d7c967bf36a7891e3479e0fbb72d35badce2"
+  }
+ },
+ "generated_by": "scripts/contract/dump_cert_fonts.py (back 4b0c664)",
+ "items": [
+  {
+   "bold": true,
+   "family": "Tajawal",
+   "id": "tajawal",
+   "italic": false,
+   "scripts": [
+    "arabic",
+    "latin"
+   ]
+  },
+  {
+   "bold": true,
+   "family": "Cairo",
+   "id": "cairo",
+   "italic": false,
+   "scripts": [
+    "arabic",
+    "latin"
+   ]
+  },
+  {
+   "bold": true,
+   "family": "Amiri",
+   "id": "amiri",
+   "italic": false,
+   "scripts": [
+    "arabic",
+    "latin"
+   ]
+  },
+  {
+   "bold": true,
+   "family": "Markazi Text",
+   "id": "markazi",
+   "italic": false,
+   "scripts": [
+    "arabic",
+    "latin"
+   ]
+  },
+  {
+   "bold": true,
+   "family": "El Messiri",
+   "id": "el_messiri",
+   "italic": false,
+   "scripts": [
+    "arabic",
+    "latin"
+   ]
+  },
+  {
+   "bold": true,
+   "family": "Scheherazade New",
+   "id": "scheherazade",
+   "italic": false,
+   "scripts": [
+    "arabic",
+    "latin"
+   ]
+  },
+  {
+   "bold": true,
+   "family": "Noto Kufi Arabic",
+   "id": "noto_kufi",
+   "italic": false,
+   "scripts": [
+    "arabic",
+    "latin"
+   ]
+  },
+  {
+   "bold": true,
+   "family": "IBM Plex Sans Arabic",
+   "id": "plex",
+   "italic": false,
+   "scripts": [
+    "arabic",
+    "latin"
+   ]
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": true,
+   "family": "Playfair Display",
+   "id": "playfair",
+   "italic": true,
+   "scripts": [
+    "latin"
+   ]
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": true,
+   "family": "Libre Baskerville",
+   "id": "baskerville",
+   "italic": false,
+   "scripts": [
+    "latin"
+   ]
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": false,
+   "family": "EB Garamond",
+   "id": "eb_garamond",
+   "italic": false,
+   "scripts": [
+    "latin"
+   ]
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": false,
+   "family": "Cormorant Garamond",
+   "id": "cormorant",
+   "italic": true,
+   "scripts": [
+    "latin"
+   ]
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": false,
+   "family": "Cinzel",
+   "id": "cinzel",
+   "italic": false,
+   "scripts": [
+    "latin"
+   ]
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": false,
+   "family": "Great Vibes",
+   "id": "great_vibes",
+   "italic": false,
+   "scripts": [
+    "latin"
+   ]
+  },
+  {
+   "arabic_fallback": "amiri",
+   "bold": false,
+   "family": "Pinyon Script",
+   "id": "pinyon_script",
+   "italic": false,
+   "scripts": [
+    "latin"
+   ]
+  }
+ ]
+}
