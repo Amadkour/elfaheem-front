@@ -12,6 +12,7 @@
 library;
 
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
@@ -640,9 +641,12 @@ class CertFieldsPanel extends StatelessWidget {
 /// The Templates tab. ONE slot: the studio's ready-made designs as thumbnails, a tap replaces this language's design;
 /// the full gallery (colours, starters) opens from the button.
 class CertTemplatesSlot extends StatefulWidget {
-  const CertTemplatesSlot({super.key, required this.lang, required this.load, required this.onPick, required this.onBrowse});
+  const CertTemplatesSlot({super.key, required this.lang, required this.load, required this.onPick, required this.onBrowse, this.previewOf});
   final String lang;
   final Future<List<CertServerTemplate>> Function() load;
+
+  /// The real render of a template (the list carries names only); null while there is none to show.
+  final Future<Uint8List?> Function(String key, String lang)? previewOf;
   final ValueChanged<CertServerTemplate> onPick;
   final VoidCallback onBrowse;
 
@@ -683,7 +687,7 @@ class _CertTemplatesSlotState extends State<CertTemplatesSlot> {
               for (final tp in items)
                 Padding(
                   padding: const EdgeInsets.only(bottom: AppSpace.sm),
-                  child: _TemplateTile(template: tp, lang: widget.lang, onTap: () => widget.onPick(tp)),
+                  child: _TemplateTile(template: tp, lang: widget.lang, previewOf: widget.previewOf, onTap: () => widget.onPick(tp)),
                 ),
             ]);
           },
@@ -693,16 +697,38 @@ class _CertTemplatesSlotState extends State<CertTemplatesSlot> {
   }
 }
 
-class _TemplateTile extends StatelessWidget {
-  const _TemplateTile({required this.template, required this.lang, required this.onTap});
+class _TemplateTile extends StatefulWidget {
+  const _TemplateTile({required this.template, required this.lang, required this.onTap, this.previewOf});
   final CertServerTemplate template;
   final String lang;
   final VoidCallback onTap;
+  final Future<Uint8List?> Function(String key, String lang)? previewOf;
+
+  @override
+  State<_TemplateTile> createState() => _TemplateTileState();
+}
+
+class _TemplateTileState extends State<_TemplateTile> {
+  late Future<Uint8List?> _loaded = _load();
+
+  Future<Uint8List?> _load() async {
+    final own = widget.template.preview(widget.lang);
+    if (own != null) return own;
+    final of = widget.previewOf;
+    return of == null ? null : of(widget.template.key, widget.lang);
+  }
+
+  @override
+  void didUpdateWidget(_TemplateTile old) {
+    super.didUpdateWidget(old);
+    if (old.template.key != widget.template.key || old.lang != widget.lang) _loaded = _load();
+  }
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final preview = template.preview(lang);
+    final template = widget.template, lang = widget.lang, onTap = widget.onTap;
+    final blank = Icon(template.orientation == 'portrait' ? Icons.crop_portrait_rounded : Icons.crop_landscape_rounded, color: c.textLight);
     return Semantics(
       button: true,
       label: template.name(lang),
@@ -716,9 +742,15 @@ class _TemplateTile extends StatelessWidget {
             height: 128,
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll, border: Border.all(color: c.divider)),
-            child: preview == null
-                ? Icon(template.orientation == 'portrait' ? Icons.crop_portrait_rounded : Icons.crop_landscape_rounded, color: c.textLight)
-                : Image.memory(preview, fit: BoxFit.cover, gaplessPlayback: true, excludeFromSemantics: true, errorBuilder: (_, _, _) => Icon(Icons.broken_image_outlined, color: c.textLight)),
+            child: FutureBuilder<Uint8List?>(
+              future: _loaded,
+              builder: (context, snap) {
+                if (snap.connectionState != ConnectionState.done) return const AppShimmer(child: AppSkeletonBox(height: 128, radius: AppRadius.chip));
+                final preview = snap.data;
+                if (preview == null) return blank;
+                return Image.memory(preview, fit: BoxFit.cover, gaplessPlayback: true, excludeFromSemantics: true, errorBuilder: (_, _, _) => Icon(Icons.broken_image_outlined, color: c.textLight));
+              },
+            ),
           ),
           const SizedBox(height: AppSpace.xxs),
           Text(template.name(lang), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w500, c: c.textDark)),

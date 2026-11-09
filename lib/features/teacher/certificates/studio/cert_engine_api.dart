@@ -234,7 +234,7 @@ class CertEngineApi {
   /// it into a design is accepted); no design is created. [themeColor] is "#RRGGBB".
   Future<CertDocLoad> templateDocument(String key, {int? orgId, String? themeColor}) async {
     final r = _map(await api.post('$_base/templates/$key/document', body: {'org_id': orgId, 'theme_color': ?themeColor}));
-    return CertDocLoad(document: LayoutDocument.fromJson(_map(r['document'])), version: 0, converted: true);
+    return CertDocLoad(document: LayoutDocument.fromJson(_map(r['document'])), version: 0, converted: false);
   }
 
   /// A new, empty design (the legacy create call); its id.

@@ -21,7 +21,7 @@ import 'cert_engine_api.dart';
 import 'cert_engine_inspector.dart' show CertColorWell, CertInspectorSection;
 import 'cert_engine_presets.dart';
 
-export 'cert_template_gallery.dart' show CertGalleryPick, showCertGallery;
+export 'cert_template_gallery.dart' show CertGalleryPick, CertTemplatePreviewCache, showCertGallery;
 
 /// The theme colour as "#RRGGBB" (the legacy wizard's default).
 String certThemeHex(BuildContext context) => layoutHex(context.colors.primary);

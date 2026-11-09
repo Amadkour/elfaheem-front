@@ -124,6 +124,7 @@ class CertEngineStudio extends StatefulWidget {
 
 class _CertEngineStudioState extends State<CertEngineStudio> {
   late final CertEngineApi _api = widget.api ?? CertEngineApi();
+  late final CertTemplatePreviewCache _templatePreviews = CertTemplatePreviewCache(_api.templatePreview);
   late final CertEngineDrafts _drafts = widget.drafts ?? const CertEngineDrafts();
   late final CertImageLoader _loadImage = widget.imageLoader ?? _defaultImageLoader;
 
@@ -867,7 +868,7 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
     final variables = [for (final o in options) if (isVariable(built[o]!)) o];
     final elements = [for (final o in options) if (!images.contains(o) && !fields.contains(o) && !variables.contains(o)) o];
     return switch (tool) {
-      CertTool.templates => CertTemplatesSlot(key: ValueKey('templates-$_lang'), lang: _lang, load: _loadTemplates, onPick: (tp) => unawaited(_applyTemplate(tp)), onBrowse: () => unawaited(_pickStarter())),
+      CertTool.templates => CertTemplatesSlot(key: ValueKey('templates-$_lang'), lang: _lang, load: _loadTemplates, previewOf: (k, l) => _templatePreviews.load(k, l, 480, null), onPick: (tp) => unawaited(_applyTemplate(tp)), onBrowse: () => unawaited(_pickStarter())),
       CertTool.elements => CertAddGrid(options: elements, onAdd: h.add, hint: t('اضغط عنصرًا ليُضاف إلى الصفحة.', 'Tap an element to add it to the page.')),
       CertTool.fields => CertFieldsPanel(options: fields, custom: variables, onAdd: h.add, onNewVariable: () => unawaited(_newVariable())),
       CertTool.images => CertAddGrid(
