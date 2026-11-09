@@ -1137,23 +1137,22 @@ class _FilterSheetState extends State<_FilterSheet> {
           child: Row(
             children: [
               Expanded(
-                child: OutlinedButton(
+                child: AppButton.secondary(
+                  label: t('إعادة ضبط', 'Reset'),
+                  expand: true,
                   onPressed: () => setState(() {
                     _d.reset();
                     _min.clear();
                     _max.clear();
                   }),
-                  child: Text(t('إعادة ضبط', 'Reset')),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 flex: 2,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: c.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
+                child: AppButton.primary(
+                  label: t('تطبيق', 'Apply'),
+                  expand: true,
                   onPressed: () {
                     final lo = parseAmountLoose(_min.text);
                     final hi = parseAmountLoose(_max.text);
@@ -1166,8 +1165,6 @@ class _FilterSheetState extends State<_FilterSheet> {
                     p.applyFilters(widget.tab, _d);
                     Navigator.pop(context);
                   },
-                  child: Text(t('تطبيق', 'Apply'),
-                      style: TextStyle(color: c.onHero, fontFamily: AppFonts.family)),
                 ),
               ),
             ],
@@ -1391,21 +1388,21 @@ class _PaymentCardState extends State<_PaymentCard> {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
+                  child: AppButton.danger(
+                    label: t('رفض', 'Reject'),
+                    icon: Icons.close_rounded,
+                    dangerOutline: true,
+                    expand: true,
                     onPressed: widget.ctl!.busy ? null : widget.ctl!.reject,
-                    icon: const Icon(Icons.close_rounded, size: 18),
-                    label: Text(t('رفض', 'Reject')),
-                    style: OutlinedButton.styleFrom(foregroundColor: _red),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: ElevatedButton.icon(
+                  child: AppButton.primary(
+                    label: t('موافقة', 'Approve'),
+                    icon: Icons.check_rounded,
+                    expand: true,
                     onPressed: widget.ctl!.busy ? null : widget.ctl!.approve,
-                    icon: Icon(Icons.check_rounded, size: 18, color: c.onHero),
-                    label: Text(t('موافقة', 'Approve'),
-                        style: TextStyle(color: c.onHero, fontFamily: AppFonts.family)),
-                    style: ElevatedButton.styleFrom(backgroundColor: _green),
                   ),
                 ),
               ],
@@ -1417,7 +1414,9 @@ class _PaymentCardState extends State<_PaymentCard> {
             const SizedBox(height: 10),
             Align(
               alignment: AlignmentDirectional.centerStart,
-              child: OutlinedButton.icon(
+              child: AppButton.secondary(
+                label: t('استرداد', 'Refund'),
+                icon: Icons.undo_rounded,
                 onPressed: () async {
                   final fin = context.read<AdminFinanceProvider>();
                   final changed = await showRefundSheet(context,
@@ -1431,9 +1430,6 @@ class _PaymentCardState extends State<_PaymentCard> {
                     fin.load(fin.tab, silent: true);
                   }
                 },
-                icon: const Icon(Icons.undo_rounded, size: 18),
-                label: Text(t('استرداد', 'Refund')),
-                style: OutlinedButton.styleFrom(foregroundColor: _violet),
               ),
             ),
           ],

@@ -241,13 +241,15 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
                             style: AppType.meta(context)),
                         AppSpace.gapSm,
                         LayoutBuilder(builder: (context, box) {
-                          final amount = AppNumberField(
-                              controller: _amount,
-                              label: t('المبلغ (0 = مجاني)', 'Amount (0 = free)'),
-                              min: 0,
-                              decimals: 2,
-                              enabled: _canEdit,
-                              onChanged: (_) => setState(() {}));
+                          final amount = AbsorbPointer(
+                            absorbing: !_canEdit,
+                            child: AppField(
+                                controller: _amount,
+                                label: t('المبلغ (0 = مجاني)', 'Amount (0 = free)'),
+                                keyboard: const TextInputType.numberWithOptions(decimal: true),
+                                ltr: true,
+                                onChanged: (_) => setState(() {})),
+                          );
                           final currency = AbsorbPointer(
                             absorbing: !_canEdit,
                             child: AppPicker<String>(

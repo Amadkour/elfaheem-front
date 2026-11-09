@@ -5,6 +5,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_number_field.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart' show EntityKind;
@@ -367,10 +368,11 @@ class _SubTile extends StatelessWidget {
           const SizedBox(height: 12),
           Row(children: [
             Expanded(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(foregroundColor: c.danger),
-                icon: const Icon(Icons.close_rounded, size: 18),
-                label: Text('request_reject'.tr),
+              child: AppButton.danger(
+                label: 'request_reject'.tr,
+                icon: Icons.close_rounded,
+                dangerOutline: true,
+                expand: true,
                 onPressed: () async {
                   final reason = await askText(context,
                       title: 'rejection_reason_title'.tr, multiline: true);
@@ -380,11 +382,10 @@ class _SubTile extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: c.success),
-                icon: Icon(Icons.check_rounded, size: 18, color: c.onHero),
-                label: Text('admin_approve'.tr,
-                    style: TextStyle(color: c.onHero, fontFamily: AppFonts.family)),
+              child: AppButton.primary(
+                label: 'admin_approve'.tr,
+                icon: Icons.check_rounded,
+                expand: true,
                 onPressed: () async {
                   final ok = await confirm(context, message: 'admin_approve_this_subscription'.tr);
                   if (ok) await p.approve(s.id);

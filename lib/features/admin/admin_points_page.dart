@@ -16,7 +16,6 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
-import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_username.dart';
