@@ -41,6 +41,7 @@ import 'org_v3.dart' show orgCall, orgCodeText;
 import 'org_dashboard_home.dart' show orgPush;
 import 'org_dashboard_screen.dart' show OrgSub;
 import '../shared/exam_engine/parent_grade_visibility.dart' show kParentVisibilityKey, openParentGradeVisibility;
+import '../shared/exam_engine/hub/hub_entry.dart' show examHubTeachingRole, kExamHubFeatureKey;
 import 'org_chat_settings_tile.dart';
 import 'org_providers.dart';
 import 'org_terms_pages.dart' show OrgTermsAdminPage;
@@ -128,6 +129,8 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
           subtitle: t('التصدير المجدول والروابط المشتركة وسجل التصدير', 'Scheduled exports, shared links and the export log'),
           onTap: () => Navigator.pushNamed(context, '/exports', arguments: s.isOrgAdmin)),
     ];
+    // The Exam Hub (D-350), scoped to this organization: whoever manages its exams, and its teachers
+    final showExams = s.currentId != null && (s.isOrgAdmin || s.can('exams', 'view') || examHubTeachingRole(s.memberRole));
     // D-103 page anatomy: a slim profile row (the big hero pushed the settings below the fold on phones), then the
     // groups, the organization's own entries first — edit · join code · sub-organization (they left the Home) —
     // each with one plain line saying what it does. No second search box: the header's search is right above.
@@ -136,8 +139,16 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
       searchThreshold: 40,
       header: _ProfileRow(name: p.name, role: p.role, email: p.email, imageUrl: p.imageUrl),
       groups: [
-        if (widget.services.isNotEmpty)
+        if (widget.services.isNotEmpty || showExams)
           AppSettingsGroup(title: t('التواصل والخدمات', 'Communication & services'), icon: Icons.forum_rounded, children: [
+            if (showExams)
+              AppSettingsTile(
+                  icon: Icons.fact_check_rounded,
+                  featureKey: kExamHubFeatureKey,
+                  label: t('الاختبارات', 'Exams'),
+                  subtitle: t('أنشئ وصحّح وانشر النتائج من مكان واحد', 'Create, correct and publish results in one place'),
+                  keywords: 'exams correction results degrees اختبارات امتحانات تصحيح نتائج درجات',
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredExamHub(orgId: s.currentId, orgName: s.name)))),
             for (final x in widget.services) AppSettingsTile(icon: x.$3, label: x.$2, badge: badge(x.$1), onTap: () => open(x.$2, x.$4)),
           ]),
         AppSettingsGroup(title: t('المؤسسة', 'Organization'), icon: Icons.domain_rounded, children: [

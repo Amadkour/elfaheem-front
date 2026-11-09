@@ -50,6 +50,7 @@ import '../../features/parent/parent_org_view.dart' deferred as parent_org_view;
 import '../../features/teacher/analysis/exam/teacher_exam_hub_screen.dart' deferred as exam_hub;
 import '../../features/shared/exam_engine/paper/bubble/bubble_run_screen.dart' deferred as bubble_home;
 import '../../features/shared/exam_engine/exam_all_screen.dart' deferred as exam_all;
+import '../../features/shared/exam_engine/hub/exam_hub_screen.dart' deferred as exam_hub_screen;
 import '../../features/teacher/certificates/certificate_requests_screen.dart' deferred as cert_requests;
 import '../../features/teacher/certificates/designer/certificate_designs_screen.dart' deferred as cert_designs;
 import '../../features/teacher/courses/course_form_screen.dart' deferred as course_form;
@@ -382,6 +383,15 @@ Widget deferredBubbleHome({required int courseId, required String courseTitle, i
 
 /// "All exams" (D-300): every exam the person manages, across courses and organizations.
 Widget deferredAllExams() => DeferredPage(id: 'exam_all', load: exam_all.loadLibrary, builder: (_) => exam_all.AllExamsScreen());
+
+/// The Exam Hub (D-350). [orgId]: opened from an organization's dashboard, it shows that organization's exams only.
+Widget deferredExamHub({int? orgId, String? orgName, int initialTab = 0}) => DeferredPage(
+    id: 'exam_hub_screen',
+    load: exam_hub_screen.loadLibrary,
+    builder: (_) => exam_hub_screen.ExamHubScreen(orgId: orgId, orgName: orgName, initialTab: initialTab));
+
+/// Where "All exams" leads: the hub, or the older page while the hub's kill switch is on.
+Widget deferredExamsHome() => AppConfig.disableList.contains('exam.hub') ? deferredAllExams() : deferredExamHub();
 
 Widget deferredDataLab({required int courseId, required String courseTitle}) =>
     DeferredPage(id: 'data_lab', load: data_lab.loadLibrary, builder: (_) => data_lab.DataLabScreen(courseId: courseId, courseTitle: courseTitle));

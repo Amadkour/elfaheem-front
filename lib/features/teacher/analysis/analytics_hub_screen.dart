@@ -139,7 +139,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
   void _push(Widget screen) => Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
 
   /// Every exam across the courses (D-300).
-  void _openAllExams() => _push(deferredAllExams());
+  void _openAllExams() => _push(deferredExamsHome());
 
   TeacherCourse? _course(int? id) {
     for (final c in context.read<TeacherCoursesProvider>().allCourses) {

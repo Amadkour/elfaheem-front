@@ -28,6 +28,46 @@ String allExamTypeLabel(AllExamType k) => switch (k) {
       AllExamType.file => t('ملف امتحان', 'Exam file'),
     };
 
+/// The correction and results status of one exam (`grading` of the list, D-350). A server without it: null on [AllExam.grading].
+class ExamGrading {
+  const ExamGrading({
+    required this.ended,
+    required this.state,
+    this.papers = 0,
+    this.reviewOpen = 0,
+    this.answersOpen = 0,
+    this.submitted = 0,
+    this.hasDegrees = false,
+    this.degreesSource,
+    this.resultsPublished = false,
+    this.dataLabColumn,
+  });
+
+  factory ExamGrading.fromJson(Map<String, dynamic> m) => ExamGrading(
+        ended: m['ended'] == true,
+        state: '${m['state'] ?? 'not_applicable'}',
+        papers: asInt(m['papers']),
+        reviewOpen: asInt(m['review_open']),
+        answersOpen: asInt(m['answers_open']),
+        submitted: asInt(m['submitted']),
+        hasDegrees: m['has_degrees'] == true,
+        degreesSource: m['degrees_source']?.toString(),
+        resultsPublished: m['results_published'] == true,
+        dataLabColumn: m['data_lab_column']?.toString(),
+      );
+
+  final bool ended;
+
+  /// not_applicable · waiting · in_progress · corrected
+  final String state;
+  final int papers, reviewOpen, answersOpen, submitted;
+  final bool hasDegrees, resultsPublished;
+
+  /// exam · import · null
+  final String? degreesSource;
+  final String? dataLabColumn;
+}
+
 /// One exam of the list (an item of GET /exams/mine or GET /exams).
 class AllExam {
   AllExam(this.raw)
@@ -41,7 +81,8 @@ class AllExam {
         createdAt = parseEngineUtc(raw['created_at']),
         questionCount = asInt(raw['question_count']),
         attempts = asInt(asMap(raw['attempts'])['total']),
-        durationMinutes = raw['duration_minutes'] == null ? null : asInt(raw['duration_minutes']);
+        durationMinutes = raw['duration_minutes'] == null ? null : asInt(raw['duration_minutes']),
+        grading = raw['grading'] is Map ? ExamGrading.fromJson(asMap(raw['grading'])) : null;
 
   final Map<String, dynamic> raw;
   final int id;
@@ -50,6 +91,9 @@ class AllExam {
   final DateTime? startsAt, endsAt, createdAt;
   final int questionCount, attempts;
   final int? durationMinutes;
+
+  /// null = a server older than the Exam Hub: the hub then hides every flag.
+  final ExamGrading? grading;
 
   Map<String, dynamic> get _settings => asMap(raw['settings']);
 

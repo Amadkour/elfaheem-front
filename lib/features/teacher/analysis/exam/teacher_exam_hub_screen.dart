@@ -4,7 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
-import 'package:flutter_education_app/core/routing/deferred_screens.dart' show deferredAllExams, deferredBubbleHome;
+import 'package:flutter_education_app/core/routing/deferred_screens.dart' show deferredBubbleHome, deferredExamsHome;
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/features/student/analysis/exam/exam_ui.dart';
 import 'package:provider/provider.dart';
@@ -195,7 +195,7 @@ class _HubViewState extends State<_HubView>
                 key: const ValueKey('exam_hub.all_exams'),
                 icon: Icons.fact_check_rounded,
                 tooltip: AppConfig.lang == 'ar' ? 'كل الاختبارات' : 'All exams',
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => deferredAllExams())),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => deferredExamsHome())),
               ),
             ),
           ]),

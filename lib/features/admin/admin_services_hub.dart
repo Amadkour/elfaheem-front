@@ -20,6 +20,7 @@ import 'package:provider/provider.dart';
 import '../shared/attendance/admin_data_lab_page.dart';
 import '../shared/rag/rag_admin_console.dart' show RagAdminConsole;
 import 'models/ai_models_page.dart' show AiModelsPage;
+import 'package:flutter_education_app/core/routing/deferred_screens.dart' show deferredExamHub;
 import '../shared/exam_engine/paper/templates/omr_template_library.dart' show openOmrTemplateLibrary;
 import 'admin_admins_page.dart';
 import 'admin_auth_settings_page.dart';
@@ -491,6 +492,17 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           visible: isSuper,
           onTap: () => Navigator.of(context).push(MaterialPageRoute(
               settings: const RouteSettings(name: AiModelsPage.routeName), builder: (_) => const AiModelsPage())),
+        ),
+        // The Exam Hub (D-350): every exam, its correction and its results in one place
+        AdminService(
+          labelKey: 'svc_exam_hub',
+          descKey: 'svc_exam_hub_d',
+          label: t('الاختبارات', 'Exams'),
+          desc: t('إنشاء الاختبارات وتصحيحها ونتائجها من مكان واحد', 'Create exams, correct them and publish results in one place'),
+          icon: Icons.fact_check_rounded,
+          colors: AdminPalette.indigo,
+          featureKey: 'exam.hub',
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredExamHub())),
         ),
         // paper exams (D-155): the global library of bubble-sheet types, learned sheets, approvals
         AdminService(

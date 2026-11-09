@@ -12,6 +12,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/design/calendar_entry.dart';
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
+import 'package:flutter_education_app/core/app_mode.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/hub/hub_entry.dart';
 import 'package:flutter_education_app/features/shared/downloads/downloads_screen.dart';
 import 'package:flutter_education_app/design/app_settings.dart';
 import 'package:flutter_education_app/features/shared/profile/student_favorite_screen.dart';
@@ -76,6 +78,17 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _refresh(context);
     });
+    AppModeController.instance.addListener(_onOrgsChanged); // "teaches in an organization" arrives with the overview
+  }
+
+  void _onOrgsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    AppModeController.instance.removeListener(_onOrgsChanged);
+    super.dispose();
   }
 
   void _refresh(BuildContext context) {
@@ -171,6 +184,19 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           const CalendarEntryTile(),
+                          // The Exam Hub (D-350): teachers, and whoever teaches inside an organization; never students or parents
+                          if (context.read<MyAuthProvider>().isTeacher || examHubTeachesInAnyOrg(AppModeController.instance.liveEntries))
+                            ParentComponent(
+                              featureKey: kExamHubFeatureKey,
+                              child: AppSettingsTile(
+                                icon: Icons.fact_check_rounded,
+                                color: c.primary,
+                                label: t('الاختبارات', 'Exams'),
+                                subtitle: t('أنشئ وصحّح وانشر النتائج من مكان واحد', 'Create, correct and publish results in one place'),
+                                keywords: 'exams correction results degrees اختبارات امتحانات تصحيح نتائج درجات',
+                                onTap: () => _push(deferredExamHub()),
+                              ),
+                            ),
                           // Points wallet + the student live-meeting plan (live-rooms-spec §8 – §9)
                           ParentComponent(
                             featureKey: kPointsFeatureKey,
