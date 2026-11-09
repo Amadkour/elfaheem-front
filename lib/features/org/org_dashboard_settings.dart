@@ -21,6 +21,7 @@ import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
     show AppSettingsGroup, AppSettingsPage, AppSettingsTile, AppSwitch, appRoleLabel, showAppNotice;
 import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/calendar_entry.dart' show ChatEntryTile;
 import 'package:flutter_education_app/design/context_switcher.dart' show showContextSwitcherSheet;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/mfa_entry.dart' show MfaSettingsEntry;
@@ -153,6 +154,7 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
           ]),
         AppSettingsGroup(title: t('المؤسسة', 'Organization'), icon: Icons.domain_rounded, children: [
           if (s.isOrgAdmin) ...[
+            const ChatEntryTile(),
             if (s.currentId != null) OrgChatSettingsTile(orgId: s.currentId!),
             AppSettingsTile(
                 icon: Icons.edit_rounded,

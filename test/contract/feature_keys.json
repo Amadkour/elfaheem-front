@@ -70,6 +70,7 @@
  "chat.presence",
  "chat.push",
  "chat.report",
+ "chat.requests",
  "complaint_detail",
  "complaint_detail.info",
  "complaint_detail.replies",

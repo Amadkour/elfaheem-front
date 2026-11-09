@@ -370,6 +370,7 @@ class _ParentMorePageState extends State<_ParentMorePage> {
               onTap: () => _push(const ChangePasswordScreen()),
             ),
             const CalendarEntryTile(),
+            const ChatEntryTile(),
           ],
         ),
         AppSettingsGroup(

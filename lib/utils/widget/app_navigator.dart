@@ -201,7 +201,7 @@ class AppNavigator {
       case 'exam_identifiers': // a duplicate identifier → the exam's setup on its students step
         return _deferred('exam_setup_wizard', exam_setup_wizard.loadLibrary, () => exam_setup_wizard.openExamIdentifiersFromLink(nav, targetId));
       case 'chat': // a new message (push tap) or the Messages badge → that chat, or the list (D-330)
-        await _nav?.pushNamed('/chat', arguments: targetId);
+        await (topRouteObserver.currentRouteName == '/chat' ? _nav?.pushReplacementNamed('/chat', arguments: targetId) : _nav?.pushNamed('/chat', arguments: targetId)); // never two chat pages on top of each other
         return;
       case 'chat_reports': // an admin: the chat reports to review (D-330)
         await _nav?.pushNamed('/chat/reports');

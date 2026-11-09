@@ -6,12 +6,15 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'chat_models.dart';
 
 class ChatConversationPage {
-  const ChatConversationPage(this.items, this.hasMore, this.total, this.courses, this.roles);
+  const ChatConversationPage(this.items, this.hasMore, this.total, this.courses, this.roles, {this.requestCount = 0});
   final List<ChatConversation> items;
   final bool hasMore;
   final int total;
   final List<ChatCourse> courses;
   final List<String> roles;
+
+  /// Message requests waiting on me (`requests.count`, D-370); 0 on an older server.
+  final int requestCount;
 }
 
 class ChatMessagePage {
@@ -51,6 +54,7 @@ class ChatApi {
       (r['total'] as num?)?.toInt() ?? 0,
       [for (final x in (filters['courses'] as List? ?? const [])) ?ChatCourse.fromJson(x)],
       [for (final x in (filters['roles'] as List? ?? const [])) '$x'],
+      requestCount: r['requests'] is Map ? ((r['requests'] as Map)['count'] as num?)?.toInt() ?? 0 : 0,
     );
   }
 
@@ -115,6 +119,27 @@ class ChatApi {
     final r = _m(await _c.get('$_b/contacts', queryParams: {if (q.isNotEmpty) 'q': q}));
     return [for (final x in (r['items'] as List)) ChatContact.fromJson(_m(x))];
   }
+
+  /// The New message sheet (D-371): recent and suggested people, or anyone by name / @username.
+  Future<ChatPeople> people({String q = ''}) async => ChatPeople.fromJson(_m(await _c.get('$_b/people', queryParams: {if (q.isNotEmpty) 'q': q})));
+
+  /// The first message to someone (D-370): a held request, or simply the chat when the two already have a link. Returns the conversation to open.
+  Future<ChatConversation> sendRequest({required int peerId, required String clientId, required String body}) async {
+    final r = _m(await _c.post('$_b/requests', body: {'peer_id': peerId, 'client_id': clientId, 'body': body}));
+    return ChatConversation.fromJson(_m(r['conversation']));
+  }
+
+  /// The requests waiting on me: the rows with `last_message` the held message (D-370).
+  Future<(List<ChatConversation>, bool)> requests({int offset = 0, int limit = 40}) async {
+    final r = _m(await _c.get('$_b/requests', queryParams: {'offset': offset, 'limit': limit}));
+    return ([for (final x in (r['items'] as List)) ChatConversation.fromJson(_m(x))], r['has_more'] == true);
+  }
+
+  Future<ChatConversation> acceptRequest(int id) async => ChatConversation.fromJson(_m(await _c.post('$_b/requests/$id/accept')));
+
+  Future<void> declineRequest(int id) => _c.post('$_b/requests/$id/decline');
+
+  Future<void> blockRequest(int id) => _c.post('$_b/requests/$id/block');
 
   Future<List<ChatBlock>> blocks() async {
     final r = _m(await _c.get('$_b/blocks'));
