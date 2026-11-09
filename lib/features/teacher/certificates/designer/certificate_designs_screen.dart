@@ -12,6 +12,7 @@
 //   Navigator.push(context, MaterialPageRoute(
 //     builder: (_) => CertificateDesignsScreen(orgId: org.id)));
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:provider/provider.dart';
@@ -374,7 +375,7 @@ Future<void> showDesignAssignment(BuildContext context, int designId) async {
     picked.addAll(((d['course_ids'] as List?) ?? const []).map((e) => (e as num).toInt()));
   } catch (_) {}
   if (!context.mounted) return;
-  await showModalBottomSheet<void>(
+  await showAppModalSheet<void>(
     context: context,
     useSafeArea: true,
     isScrollControlled: true,

@@ -6,6 +6,7 @@
 // wrapper needed since it's always opened from within the provider scope.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:io' show File;
 
 import 'package:file_picker/file_picker.dart';
@@ -95,7 +96,7 @@ Future<void> showAddMaterialSheet(
       ),
     );
   } else {
-    await showModalBottomSheet(
+    await showAppModalSheet(
       useSafeArea: true,
       context: context,
       backgroundColor: Colors.transparent,

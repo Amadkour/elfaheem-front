@@ -1,5 +1,6 @@
  library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -1027,7 +1028,7 @@ class _ManagedRequirementRow extends StatelessWidget {
 
   void _showPicker(BuildContext context) {
     final c = context.colors;
-    showModalBottomSheet(
+    showAppModalSheet(
       useSafeArea: true,
       context: context,
       backgroundColor: c.cardBg,
@@ -1240,7 +1241,7 @@ class _ManagedCustomEntryRow extends StatelessWidget {
 
   void _showPicker(BuildContext context) {
     final c = context.colors;
-    showModalBottomSheet(
+    showAppModalSheet(
       useSafeArea: true,
       context: context,
       backgroundColor: c.cardBg,

@@ -7,6 +7,7 @@
 // (e.g. +201012345678), or '' while the number part is empty — so the code that
 // already reads the phone controller (register, OTP screen) works unchanged.
 // ─────────────────────────────────────────────────────────────────────────────
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../config/app_config.dart';
@@ -130,7 +131,7 @@ class _PhoneInputFieldState extends State<PhoneInputField> {
   }
 
   Future<void> _pickCountry() async {
-    final picked = await showModalBottomSheet<PhoneCountry>(
+    final picked = await showAppModalSheet<PhoneCountry>(
       useSafeArea: true,
       context: context,
       backgroundColor: Colors.transparent,

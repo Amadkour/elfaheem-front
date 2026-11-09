@@ -555,7 +555,7 @@ class _HubViewState extends State<_HubView>
         });
   }
 
-  void _showCreateSheet(BuildContext ctx) => showModalBottomSheet(
+  void _showCreateSheet(BuildContext ctx) => showAppModalSheet(
       useSafeArea: true,
     context: ctx,
     isScrollControlled: true,
@@ -575,7 +575,7 @@ class _HubViewState extends State<_HubView>
     if (!prov.sessionsLoaded) await prov.loadSessions();
     if (!mounted) return;
     // -1 = "no session" (detach); null = dismissed
-    final picked = await showModalBottomSheet<int>(
+    final picked = await showAppModalSheet<int>(
       useSafeArea: true,
       context: context,
       isScrollControlled: true,
@@ -606,7 +606,7 @@ class _HubViewState extends State<_HubView>
   ) {
     // Load questions if not already loaded
     prov.loadQuestions(exam.id);
-    showModalBottomSheet(
+    showAppModalSheet(
       useSafeArea: true,
       context: ctx,
       isScrollControlled: true,
@@ -619,7 +619,7 @@ class _HubViewState extends State<_HubView>
   }
 
   void _showAnswers(StudentExamResult r, ExamModel exam) =>
-      showModalBottomSheet(
+      showAppModalSheet(
       useSafeArea: true,
         context: context,
         isScrollControlled: true,
@@ -629,7 +629,7 @@ class _HubViewState extends State<_HubView>
 
   /// Attempts + random-paper rules of an existing exam.
   void _showRulesSheet(TeacherExamProvider prov, ExamModel exam) =>
-      showModalBottomSheet(
+      showAppModalSheet(
       useSafeArea: true,
         context: context,
         isScrollControlled: true,
@@ -1180,7 +1180,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
     TeacherExamProvider prov, {
     required int examId,
     required Question? existing,
-  }) => showModalBottomSheet(
+  }) => showAppModalSheet(
       useSafeArea: true,
     context: ctx,
     isScrollControlled: true,

@@ -375,7 +375,7 @@ Future<void> showAdminGlobalSearch(
       },
     );
   } else {
-    await showModalBottomSheet<void>(
+    await showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,

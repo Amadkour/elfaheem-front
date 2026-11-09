@@ -10,6 +10,7 @@
 //   • RTL-safe (start/end instead of left/right) and re-translates live
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -1332,7 +1333,7 @@ class _AddImageButton extends StatelessWidget {
 
   void _show(BuildContext context) {
     final c = context.colors;
-    showModalBottomSheet(
+    showAppModalSheet(
       useSafeArea: true,
       context: context,
       backgroundColor: c.cardBg,
@@ -1839,7 +1840,7 @@ class _ComplaintTargetPickerState extends State<ComplaintTargetPicker> {
       showAppNotice('complaint_about_none'.tr, error: true);
       return;
     }
-    final picked = await showModalBottomSheet<Map<String, dynamic>>(
+    final picked = await showAppModalSheet<Map<String, dynamic>>(
       context: context,
       useSafeArea: true,
       isScrollControlled: true,

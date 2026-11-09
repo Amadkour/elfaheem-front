@@ -2,6 +2,7 @@
 //
 // Private-course code sheet. Same look & keypad as the exam passcode sheet, but the code is checked
 // BY THE SERVER (POST /courses/{id}/unlock) — it is never sent to the phone. Returns true on success.
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -17,7 +18,7 @@ class CourseAccessSheet extends StatefulWidget {
   final String courseName;
 
   static Future<bool> show(BuildContext context, {required int courseId, required String courseName}) async {
-    final ok = await showModalBottomSheet<bool>(
+    final ok = await showAppModalSheet<bool>(
       useSafeArea: true,
       context: context,
       isScrollControlled: true,

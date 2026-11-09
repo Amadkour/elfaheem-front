@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:async';
 import 'dart:developer';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
@@ -641,7 +642,7 @@ class _FilterRow extends StatelessWidget {
 
   void _openCategorySheet(BuildContext context) {
     final c = context.colors;
-    showModalBottomSheet(
+    showAppModalSheet(
       useSafeArea: true,
       context: context,
       backgroundColor: c.cardBg,
@@ -1956,7 +1957,7 @@ class _ReplyInput extends StatelessWidget {
 
   void _showImagePicker(BuildContext context) {
     final c = context.colors;
-    showModalBottomSheet(
+    showAppModalSheet(
       useSafeArea: true,
       context: context,
       backgroundColor: c.cardBg,

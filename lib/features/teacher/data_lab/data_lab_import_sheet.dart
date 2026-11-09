@@ -13,6 +13,7 @@
 //  4. done        summary, the logins of the new accounts, lines that need a look.
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -453,7 +454,7 @@ class _ImportWizardState extends State<_ImportWizard> {
     final c = context.colors;
     final pv = _pv!;
     final cols = pv.existingColumns;
-    final picked = await showModalBottomSheet<String>(
+    final picked = await showAppModalSheet<String>(
       useSafeArea: true,
       context: context,
       isScrollControlled: true,

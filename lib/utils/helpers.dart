@@ -1,6 +1,7 @@
 /// Helper utility functions.
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import '../config/app_config.dart';
@@ -258,7 +259,7 @@ class Helpers {
     TeacherSessionItem? existing,
     bool? openLive,
   }) {
-    showModalBottomSheet(
+    showAppModalSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

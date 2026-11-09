@@ -1,3 +1,4 @@
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -76,7 +77,7 @@ class PasscodeSheet extends StatefulWidget {
     int pinLength = 6,
     IconData icon = Icons.lock_outline_rounded,
   }) async {
-    final ok = await showModalBottomSheet<bool>(
+    final ok = await showAppModalSheet<bool>(
       useSafeArea: true,
       context: context,
       isScrollControlled: true,

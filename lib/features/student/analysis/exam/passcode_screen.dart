@@ -1,3 +1,4 @@
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -32,7 +33,7 @@ class ExamPasscodeSheet extends StatefulWidget {
     required String correctPasscode,
     StudentExamProvider? provider,
   }) {
-    showModalBottomSheet(
+    showAppModalSheet(
       useSafeArea: true,
       context: context,
       isScrollControlled: true,

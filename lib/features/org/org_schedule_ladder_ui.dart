@@ -17,6 +17,7 @@
 //                                           line, blocked-by advice (opens the ladder), the decisions log, Accept all
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -1036,7 +1037,7 @@ class LadderVeil extends StatelessWidget {
 
 /// The run as a modal sheet: it cannot be dismissed while the run is open (back, barrier and drag are refused),
 /// shows the decision inline, and offers Close once the run ended.
-Future<void> showLadderOverlay(BuildContext context, OrgScheduleProvider p) => showModalBottomSheet<void>(
+Future<void> showLadderOverlay(BuildContext context, OrgScheduleProvider p) => showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,

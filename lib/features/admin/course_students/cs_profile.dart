@@ -575,7 +575,7 @@ Future<void> showCsProfileDrawer(BuildContext context, int studentId, {String? t
   final wide = MediaQuery.sizeOf(context).width >= kCsTableBreakpoint;
   final heading = title ?? t('ملف الطالب', 'Student profile');
   if (!wide) {
-    return showModalBottomSheet<void>(
+    return showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,

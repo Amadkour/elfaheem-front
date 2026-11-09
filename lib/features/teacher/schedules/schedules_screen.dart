@@ -1,5 +1,6 @@
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse, CourseSchedule;
@@ -23,7 +24,7 @@ import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 class TeacherSchedulesScreen extends StatefulWidget {
   final TeacherCourse course;
   const TeacherSchedulesScreen({super.key, required this.course});
-  static void openAddScheduleScreenSheet(BuildContext context,) => showModalBottomSheet(
+  static void openAddScheduleScreenSheet(BuildContext context,) => showAppModalSheet(
       useSafeArea: true,
     context: context,
     isScrollControlled: true,

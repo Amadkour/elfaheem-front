@@ -6,6 +6,7 @@
 ///   Teacher : [AttendanceTeacherButton]  -> bottom sheet with the rotating code + live present counter
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -64,7 +65,7 @@ Future<void> showStudentCheckInSheet(BuildContext context, {int? sessionId, int?
   try {
     host = context.read<RelayHostProvider>();
   } catch (_) {}
-  return showModalBottomSheet(
+  return showAppModalSheet(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -743,7 +744,7 @@ Future<void> showTeacherAttendanceSheet(BuildContext context, int sessionId, {St
     host = context.read<RelayHostProvider>();
   } catch (_) {}
   final ctl = TeacherAttendanceController.instance..prepare(sessionId, host, title: title);
-  return showModalBottomSheet(
+  return showAppModalSheet(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

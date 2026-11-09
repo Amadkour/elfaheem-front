@@ -11,6 +11,7 @@
 // And the sheet's own look (this device): where the class averages are shown, default font / size / alignment.
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -96,7 +97,7 @@ class _StyleSheetState extends State<_StyleSheet> {
   }
 
   Future<void> _editRule([int? index]) async {
-    final r = await showModalBottomSheet<DlRule>(
+    final r = await showAppModalSheet<DlRule>(
       useSafeArea: true,
       context: context,
       isScrollControlled: true,

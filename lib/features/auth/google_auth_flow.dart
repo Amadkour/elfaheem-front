@@ -11,6 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -961,7 +962,7 @@ Future<GoogleRoleChoice?> showGoogleRoleSheet(
       GoogleRoleChoice? initial,
       UsernameError? usernameError,
     }) {
-  return showModalBottomSheet<GoogleRoleChoice>(
+  return showAppModalSheet<GoogleRoleChoice>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

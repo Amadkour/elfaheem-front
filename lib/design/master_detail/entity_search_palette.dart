@@ -9,6 +9,7 @@
 // student, course, teacher or category (EntityNavigator: no panel is under a palette).
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -73,7 +74,7 @@ Future<void> showEntitySearch(BuildContext context) async {
       },
     );
   } else {
-    await showModalBottomSheet<void>(
+    await showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,

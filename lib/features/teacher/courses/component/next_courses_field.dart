@@ -7,6 +7,7 @@
 // removable chip.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
@@ -35,7 +36,7 @@ class NextCoursesField extends StatelessWidget {
   });
 
   Future<void> _openPicker(BuildContext context) async {
-    final choice = await showModalBottomSheet<Map<String, dynamic>>(
+    final choice = await showAppModalSheet<Map<String, dynamic>>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (_) => _NextCoursePickerSheet(options: availableOptions),

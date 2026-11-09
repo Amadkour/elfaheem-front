@@ -1,4 +1,5 @@
 // ── Image picking ──────────────────────────────────────────────────────────
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -153,7 +154,7 @@ class EditableImage extends StatelessWidget {
       );
 
   Future<void> _pickImage(BuildContext context,Future<void> Function(XFile file) onChange) async {
-    final source = await showModalBottomSheet<ImageSource>(
+    final source = await showAppModalSheet<ImageSource>(
       useSafeArea: true,
       context: context,
       backgroundColor: Colors.transparent,

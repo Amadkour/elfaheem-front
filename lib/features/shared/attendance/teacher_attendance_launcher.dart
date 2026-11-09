@@ -7,6 +7,7 @@
 /// present counter (default 0).
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -95,7 +96,7 @@ Future<void> showSessionPickerSheet(BuildContext context, List<LauncherSession> 
   final now = DateTime.now().toUtc();
   final inverted = launcherOrder(sessions, nowUtc: now); // today's, then upcoming soonest first, then past newest first
   final focusId = launcherFocusId(sessions, nowUtc: now); // on top, so the sheet opens on it
-  return showModalBottomSheet(
+  return showAppModalSheet(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

@@ -1,3 +1,4 @@
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'dart:typed_data';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
@@ -455,7 +456,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
       ...formProvider.form.schedules.map((s) => s.day),
       ...formProvider.pendingSchedules.map((s) => s.day),
     };
-    await showModalBottomSheet(
+    await showAppModalSheet(
       useSafeArea: true,
       context: context,
       isScrollControlled: true,

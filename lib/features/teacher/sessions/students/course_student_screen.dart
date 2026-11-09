@@ -17,6 +17,7 @@
 //   • One staggered fade/slide-in on first load; no per-hover motion spam.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/entities/entity_models.dart' show EntitySummary;
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
@@ -938,7 +939,7 @@ Future<CourseCertificate?> _pickCertificate(
     return null;
   }
   if (certs.length == 1) return certs.first;
-  return showModalBottomSheet<CourseCertificate>(
+  return showAppModalSheet<CourseCertificate>(
       useSafeArea: true,
     context: context,
     backgroundColor: Colors.transparent,

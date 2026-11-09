@@ -862,7 +862,7 @@ Future<void> _accountSheet(
 
 /// Runs [onDispose] when the sheet's widget is really removed from the tree —
 /// i.e. AFTER the closing animation. Disposing controllers in
-/// `showModalBottomSheet(...).whenComplete` is too early: the sheet is still
+/// `showAppModalSheet(...).whenComplete` is too early: the sheet is still
 /// drawing its TextFields while it slides away ("controller used after dispose").
 class _DisposeWith extends StatefulWidget {
   const _DisposeWith({required this.onDispose, required this.child});

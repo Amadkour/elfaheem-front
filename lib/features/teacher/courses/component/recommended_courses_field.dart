@@ -7,6 +7,7 @@
 // under the field.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
@@ -30,7 +31,7 @@ class RecommendedCoursesField extends StatelessWidget {
       options.where((o) => selectedIds.contains(o['id'])).toList();
 
   Future<void> _openPicker(BuildContext context) async {
-    await showModalBottomSheet(
+    await showAppModalSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

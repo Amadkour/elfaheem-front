@@ -1,3 +1,4 @@
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -52,7 +53,7 @@ Future<void> showSessionFormSheet(
       ),
     );
   } else {
-    await showModalBottomSheet(
+    await showAppModalSheet(
       useSafeArea: true,
       context: context,
       backgroundColor: Colors.transparent,

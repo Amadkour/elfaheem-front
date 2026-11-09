@@ -19,6 +19,7 @@
 //   • the attendance spotlight selects (type, session count) on its own.
 // ─────────────────────────────────────────────────────────────────────────
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:async' show unawaited;
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -198,7 +199,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
 
   void _openAddSheet() {
     final provider = _provider;
-    showModalBottomSheet(
+    showAppModalSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

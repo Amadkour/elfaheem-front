@@ -20,6 +20,7 @@
 // figures w600. Hairline borders, no heavy shadows, one accent per card, the 8 · 16 · 24 · 32 rhythm.
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -1339,7 +1340,7 @@ class CourseActionStrip extends StatelessWidget {
 
   static void _openMore(BuildContext context, List<CourseSpaceAction> rest) {
     final c = context.colors;
-    showModalBottomSheet<void>(
+    showAppModalSheet<void>(
       context: context,
       useRootNavigator: true,
       isScrollControlled: true,

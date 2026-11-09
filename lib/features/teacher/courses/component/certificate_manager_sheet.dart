@@ -13,6 +13,7 @@
 // with the same content stacked vertically.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -41,7 +42,7 @@ Future<void> showCertificateManagerSheet(
     }) {
   final isWide = MediaQuery.of(context).size.width > 760;
 
-  return showModalBottomSheet(
+  return showAppModalSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,

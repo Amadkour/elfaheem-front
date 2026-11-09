@@ -1,6 +1,7 @@
 // student_exam_quiz_screen.dart — Premium redesign (analytics style)
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNav;
@@ -143,7 +144,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
   }
 
   void _showQuestionGrid(BuildContext context, QuizSession s) {
-    showModalBottomSheet(
+    showAppModalSheet(
       useSafeArea: true,
       context: context,
       isScrollControlled: true,

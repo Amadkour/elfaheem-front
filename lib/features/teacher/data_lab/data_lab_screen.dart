@@ -18,6 +18,7 @@
 //       builder: (_) => DataLabScreen(courseId: course.id, courseTitle: title)));
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart' show GestureBinding, PointerDeviceKind, PointerScrollEvent;
@@ -1425,7 +1426,7 @@ class _IdentityCell extends StatelessWidget {
 
 /// Hold a student's name: history of the line · new login details (students only).
 Future<void> _rowActions(BuildContext context, DataLabProvider p, DlRow row) async {
-  final picked = await showModalBottomSheet<String>(
+  final picked = await showAppModalSheet<String>(
       useSafeArea: true,
     context: context,
     backgroundColor: Colors.transparent,
@@ -1490,7 +1491,7 @@ Future<void> _rowActions(BuildContext context, DataLabProvider p, DlRow row) asy
 }
 
 /// The login details of one student, to copy or share (WhatsApp, SMS …).
-Future<void> _showLoginDetails(BuildContext context, Map<String, dynamic> r, String course) => showModalBottomSheet<void>(
+Future<void> _showLoginDetails(BuildContext context, Map<String, dynamic> r, String course) => showAppModalSheet<void>(
       useSafeArea: true,
   context: context,
   backgroundColor: Colors.transparent,
@@ -1582,7 +1583,7 @@ Future<void> _showLoginDetails(BuildContext context, Map<String, dynamic> r, Str
 
 /// Which columns are pinned on the start side (student details and / or data columns) + reset of the widths.
 void showPinSheet(BuildContext context, DataLabProvider p) {
-  showModalBottomSheet<void>(
+  showAppModalSheet<void>(
       useSafeArea: true,
     context: context,
     isScrollControlled: true,
@@ -1832,7 +1833,7 @@ class _HeadCell extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 void showColumnSettings(BuildContext context, DataLabProvider p, DlColumn col) {
-  showModalBottomSheet<void>(
+  showAppModalSheet<void>(
       useSafeArea: true,
     context: context,
     isScrollControlled: true,
@@ -2400,7 +2401,7 @@ class _ValueCell extends StatelessWidget {
   }
 
   Future<void> _edit(BuildContext context, bool manual, dynamic current) async {
-    final res = await showModalBottomSheet<String>(
+    final res = await showAppModalSheet<String>(
       useSafeArea: true,
       context: context,
       isScrollControlled: true,

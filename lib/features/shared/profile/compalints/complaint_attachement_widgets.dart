@@ -16,6 +16,7 @@
 
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:io';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
@@ -391,7 +392,7 @@ class _ImageViewer extends StatelessWidget {
 
 void _showPdfSheet(BuildContext context, {required String? name, required String url, int? bytes}) {
   final c = context.colors;
-  showModalBottomSheet(
+  showAppModalSheet(
       useSafeArea: true,
     context: context,
     backgroundColor: c.cardBg,

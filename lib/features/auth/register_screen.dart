@@ -6,6 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
@@ -112,7 +113,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // ── Open terms bottom-sheet ───────────────────────────────────────────────
   Future<void> _openTerms() async {
     context.read<AboutTermsProvider>().clearSelection();
-    final accepted = await showModalBottomSheet<bool>(
+    final accepted = await showAppModalSheet<bool>(
       useSafeArea: true,
       context: context,
       isScrollControlled: true,

@@ -9,6 +9,7 @@
 // highlight rules, colour scale, averages band, alignment and the app theme.
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -318,7 +319,7 @@ class _Dest extends StatelessWidget {
 // File ready: Save / Download · Share · (desktop) Open · Show in folder
 // ─────────────────────────────────────────────────────────────────────────────
 
-Future<void> showFileReadySheet(BuildContext context, DlExportFile file) => showModalBottomSheet<void>(
+Future<void> showFileReadySheet(BuildContext context, DlExportFile file) => showAppModalSheet<void>(
       useSafeArea: true,
   context: context,
   isScrollControlled: true,

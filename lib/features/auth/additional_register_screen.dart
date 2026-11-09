@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/material.dart';
@@ -665,7 +666,7 @@ class _UploadButton extends StatelessWidget {
 
   void _showPicker(BuildContext context) {
     final c = context.colors;
-    showModalBottomSheet(
+    showAppModalSheet(
       useSafeArea: true,
       context: context,
       backgroundColor: c.cardBg,
@@ -996,7 +997,7 @@ class _CustomDocEntryRow extends StatelessWidget {
 
   void _showPicker(BuildContext context, {required String email}) {
     final c = context.colors;
-    showModalBottomSheet(
+    showAppModalSheet(
       useSafeArea: true,
       context: context,
       backgroundColor: c.cardBg,

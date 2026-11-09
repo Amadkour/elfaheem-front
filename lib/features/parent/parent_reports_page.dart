@@ -686,7 +686,7 @@ class _ChildReportCard extends StatelessWidget {
 
   void _scoreSheet(BuildContext context) {
     final comps = plList(_score['components']);
-    showModalBottomSheet(
+    showAppModalSheet(
       useSafeArea: true,
       context: context,
       showDragHandle: true,

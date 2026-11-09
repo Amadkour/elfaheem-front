@@ -14,6 +14,7 @@
 //
 // The SERVER stays the source of truth: a guest sends no token, so every write endpoint
 // (get_current_user) answers 401 by itself. Guest mode never needs a "write" permission.
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -112,7 +113,7 @@ class GuestGuard {
     if (_sheetOpen) return; // several taps / parallel 401s → one sheet
     _sheetOpen = true;
     try {
-      await showModalBottomSheet<void>(
+      await showAppModalSheet<void>(
       useSafeArea: true,
         context: context,
         useRootNavigator: true,
