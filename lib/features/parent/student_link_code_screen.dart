@@ -7,6 +7,7 @@
 library;
 
 import 'dart:async';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -61,6 +62,8 @@ class _BodyState extends State<_Body> {
     final left = p.secondsLeft;
 
     return BasePage(
+      useWebCard: true,
+      width: AppWidth.form,
       appBar: ScreenAppBar(title: 'pl_link_code_title'.tr),
       child: RefreshIndicator(
         onRefresh: p.load,

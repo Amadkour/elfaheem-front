@@ -7,6 +7,7 @@
 //   • finished courses get their certificate automatically (+ notification)
 
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppShimmer;
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter/material.dart';
@@ -79,7 +80,7 @@ class _View extends StatelessWidget {
 
     final centred = Align(
       alignment: Alignment.topCenter,
-      child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 760), child: body),
+      child: ConstrainedBox(constraints: BoxConstraints(maxWidth: AppWidth.reading.max), child: body),
     );
     if (embedded) return centred;
     return Scaffold(

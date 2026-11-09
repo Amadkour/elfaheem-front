@@ -6,6 +6,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
@@ -161,11 +162,7 @@ class _ChildCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.fromLTRB(16, 16, 12, 14),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: AlignmentDirectional.topStart,
-              end: AlignmentDirectional.bottomEnd,
-              colors: [c.primary.withValues(alpha: 0.10), Colors.transparent],
-            ),
+            gradient: AppGradients.wash(context),
           ),
           child: Row(children: [
             Container(

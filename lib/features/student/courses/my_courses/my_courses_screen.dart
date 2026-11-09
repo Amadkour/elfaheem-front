@@ -17,7 +17,7 @@ import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/features/org/org_member_pages.dart' show OrgCoursesScreen;
 import 'package:flutter_education_app/features/shared/course/course_scope.dart';
 import 'package:flutter_education_app/features/shared/course/course_scope_bar.dart';
-import 'package:flutter_education_app/design/home_kit.dart' show homeCardWidth, kHomeWideMax;
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 import 'package:flutter_education_app/core/entities/entity_models.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/master_detail/entity_detail_view.dart' show EntityPanelAction;
@@ -90,21 +90,19 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // a desktop window: the home's wide calm card (the grid gets four columns instead of a narrow strip)
-    return LayoutBuilder(
-      builder: (context, area) => BasePage(
-        key: const ValueKey('my_courses'),
-        appBar: ScreenAppBar(title: 'courses'.tr, showBack: !kIsWeb),
-        useWebCard: true,
-        maxWith: homeCardWidth(area.maxWidth),
-        child: SafeArea(
-          child: MasterDetailScaffold(
-            controller: _panel,
-            rootLabel: 'courses'.tr,
-            deepLinks: true,
-            actions: (ref, s) => _actions(context, ref, s),
-            list: MyCoursesBody(controller: _search, panel: _panel),
-          ),
+    // a desktop window: the wide page, the grid takes as many columns as fit and the panel opens beside it
+    return BasePage(
+      key: const ValueKey('my_courses'),
+      appBar: ScreenAppBar(title: 'courses'.tr, showBack: !kIsWeb),
+      useWebCard: true,
+      width: AppWidth.wide,
+      child: SafeArea(
+        child: MasterDetailScaffold(
+          controller: _panel,
+          rootLabel: 'courses'.tr,
+          deepLinks: true,
+          actions: (ref, s) => _actions(context, ref, s),
+          list: MyCoursesBody(controller: _search, panel: _panel),
         ),
       ),
     );
@@ -122,19 +120,13 @@ class MyCoursesBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: kHomeWideMax),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const _ScopeBar(),
-            _Toolbar(controller: controller),
-            Expanded(child: _CourseList(controller: controller, panel: panel)),
-          ],
-        ),
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _ScopeBar(),
+        _Toolbar(controller: controller),
+        Expanded(child: _CourseList(controller: controller, panel: panel)),
+      ],
     );
   }
 }
@@ -268,7 +260,7 @@ class _CourseList extends StatelessWidget {
                     onTap: (CourseModel c) => EntityNavigator.open(context, _refOf(c)),
                     isTeacher: false,
                     pageName: 'My-courses-profile-filtered',
-                    maxWidth: kHomeWideMax,
+                    maxWidth: AppWidth.wide.max,
                     badgeFor: mixed ? (c) => CourseOrgBadge(org: c.org) : null,
                   ),
                 ),

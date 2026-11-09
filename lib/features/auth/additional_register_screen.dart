@@ -5,6 +5,9 @@
 library;
 
 import 'package:flutter_education_app/design/app_side_sheet.dart';
+import 'package:flutter_education_app/design/app_number_field.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
+import 'package:flutter_education_app/design/app_back_button.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/material.dart';
@@ -145,13 +148,11 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ParentComponent(featureKey: 'additional_register.experience', child: IconTextField(
+                    ParentComponent(featureKey: 'additional_register.experience', child: AppNumberField(
                       controller: _yearCtrl,
                       label: 'experience'.tr,
-                      icon: Icons.schedule_rounded,
-                      keyboard: TextInputType.number,
-                      // validator: (v) =>
-                      // (v == null || v.isEmpty) ? 'field_required'.tr : null,
+                      min: 0,
+                      max: 80,
                     )),
                     const SizedBox(height: 16),
 
@@ -666,28 +667,15 @@ class _UploadButton extends StatelessWidget {
 
   void _showPicker(BuildContext context) {
     final c = context.colors;
-    showAppModalSheet(
-      useSafeArea: true,
-      context: context,
-      backgroundColor: c.cardBg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+    showAppSideSheet(
+      context,
+      withCloseBar: true,
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: c.divider,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
               // Gallery/camera don't make sense as separate concepts on
               // web — the browser file picker (below) already covers it.
               if (!kIsWeb)
@@ -954,9 +942,8 @@ class _CustomDocEntryRow extends StatelessWidget {
               child: Container(
                 height: 42,
                 decoration: BoxDecoration(
-                  gradient: entry.title.trim().isNotEmpty
-                      ? c.primaryGradient
-                      : LinearGradient(colors: [c.divider, c.divider]),
+                  color: entry.title.trim().isNotEmpty ? null : c.divider,
+                  gradient: entry.title.trim().isNotEmpty ? AppGradients.brand(context) : null,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Center(
@@ -997,28 +984,15 @@ class _CustomDocEntryRow extends StatelessWidget {
 
   void _showPicker(BuildContext context, {required String email}) {
     final c = context.colors;
-    showAppModalSheet(
-      useSafeArea: true,
-      context: context,
-      backgroundColor: c.cardBg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+    showAppSideSheet(
+      context,
+      withCloseBar: true,
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: c.divider,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
               // Gallery doesn't make sense as a separate concept on web —
               // the browser file picker (below) already covers it.
               if (!kIsWeb)
@@ -1161,7 +1135,7 @@ class _DocThumbnail extends StatelessWidget {
           backgroundColor: context.colors.heroShade,
           appBar: AppBar(
             backgroundColor: context.colors.heroShade,
-            iconTheme: IconThemeData(color: context.colors.onHero),
+            leading: const AppBackButton(onHero: true),
           ),
           body: Center(
             child: InteractiveViewer(

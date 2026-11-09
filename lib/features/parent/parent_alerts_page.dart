@@ -227,8 +227,8 @@ class _PrioChip extends StatelessWidget {
             border: Border.all(color: color.withAlpha(selected ? 255 : 70)),
           ),
           child: Column(children: [
-            Text('$count', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: selected ? Colors.white : color)),
-            Text(label, style: TextStyle(fontSize: 11.5, color: selected ? Colors.white : null), maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text('$count', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: selected ? context.colors.onHero : color)),
+            Text(label, style: TextStyle(fontSize: 11.5, color: selected ? context.colors.onHero : null), maxLines: 1, overflow: TextOverflow.ellipsis),
           ]),
         ),
       );

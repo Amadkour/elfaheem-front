@@ -144,11 +144,9 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
   }
 
   void _showQuestionGrid(BuildContext context, QuizSession s) {
-    showAppModalSheet(
-      useSafeArea: true,
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    showAppSideSheet(
+      context,
+      withCloseBar: true,
       builder: (_) => ChangeNotifierProvider.value(
         value: context.read<StudentExamProvider>(),
         child: _QuestionGridSheet(session: s),
@@ -825,27 +823,10 @@ class _QuestionGridSheet extends StatelessWidget {
 
     return Directionality(
       textDirection: Helpers.pageDirection,
-      child: Container(
+      child: SizedBox(
         height: MediaQuery.of(context).size.height * .6,
-        decoration: BoxDecoration(
-          color: c.cardBg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-          boxShadow: [
-            BoxShadow(
-                color: c.heroShade.withValues(alpha: .1), blurRadius: 24),
-          ],
-        ),
         child: Column(
           children: [
-            Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 4),
-              width: 44,
-              height: 4,
-              decoration: BoxDecoration(
-                color: c.divider,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
               child: Row(

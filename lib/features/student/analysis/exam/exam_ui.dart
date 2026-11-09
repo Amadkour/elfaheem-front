@@ -6,6 +6,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
+import 'package:flutter_education_app/design/app_back_button.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
@@ -147,11 +149,6 @@ class ExamHero extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: cs,
-        ),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
         boxShadow: [
           BoxShadow(
@@ -161,11 +158,17 @@ class ExamHero extends StatelessWidget {
           ),
         ],
       ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 22),
-          child: child,
+      child: RepaintBoundary(
+        child: AppMeshSurface(
+          color: colors == null ? null : cs.last,
+          radius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 22),
+              child: child,
+            ),
+          ),
         ),
       ),
     );
@@ -190,11 +193,7 @@ class ExamHeroBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(children: [
         if (showBack && Navigator.of(context).canPop()) ...[
-          GlassIcon(
-            icon: Icons.arrow_back_ios_rounded,
-            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-            onTap: () => Navigator.maybePop(context),
-          ),
+          const AppBackButton(onHero: true),
           const SizedBox(width: 12),
         ],
         Expanded(
@@ -432,7 +431,7 @@ class ExamBadge extends StatelessWidget {
         decoration: BoxDecoration(
           color: filled ? null : color.withValues(alpha: 0.10),
           gradient: filled
-              ? LinearGradient(colors: [color, color.withValues(alpha: 0.75)])
+              ? AppGradients.blend(context, color: color)
               : null,
           borderRadius: BorderRadius.circular(20),
           border: filled ? null : Border.all(color: color.withValues(alpha: 0.3)),
@@ -464,11 +463,7 @@ class IconTile extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: [color.withValues(alpha: 0.24), color.withValues(alpha: 0.08)],
-          ),
+          color: color.withValues(alpha: 0.14),
           borderRadius: BorderRadius.circular(size * 0.32),
         ),
         child: Icon(icon, color: color, size: size * 0.5),
@@ -579,20 +574,14 @@ class GradientButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final base = color ?? context.colors.primary;
     final disabled = onTap == null && !loading;
-    final cs = disabled
-        ? [context.colors.divider, context.colors.textLight]
-        : [color ?? context.colors.primaryDark, base];
     return GestureDetector(
       onTap: loading ? null : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         height: subtitle != null ? height + 10 : height,
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: cs,
-          ),
+          color: disabled ? context.colors.divider : null,
+          gradient: disabled ? null : (color == null ? AppGradients.brand(context) : AppGradients.blend(context, color: base)),
           borderRadius: BorderRadius.circular(18),
           boxShadow: disabled
               ? []
@@ -724,7 +713,7 @@ class ExamTabBar extends StatelessWidget {
         splashBorderRadius: BorderRadius.circular(12),
         indicator: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          gradient: LinearGradient(colors: [context.colors.primaryDark, c.primary]),
+          gradient: AppGradients.brand(context),
         ),
         labelColor: context.colors.onHero,
         unselectedLabelColor: c.textMedium,

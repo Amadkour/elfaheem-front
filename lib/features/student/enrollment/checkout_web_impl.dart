@@ -36,6 +36,8 @@
 
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:async';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_header.dart';
 import 'dart:js_interop';
 import 'dart:ui_web' as ui;
 
@@ -143,12 +145,12 @@ class IFrameCheckoutPageState extends State<IFrameCheckoutPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('complete_payment_title'.tr),
-        centerTitle: true,
+      appBar: AppHeader(
+        title: 'complete_payment_title'.tr,
         leading: IconButton(
-          icon: const Icon(Icons.close),
+          icon: Icon(Icons.close_rounded, color: context.colors.onHero),
           tooltip: 'cancel'.tr,
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           onPressed: () => Navigator.of(context).pop('cancelled'),
         ),
       ),

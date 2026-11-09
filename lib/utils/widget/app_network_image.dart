@@ -471,8 +471,8 @@ class ImageFallback extends StatelessWidget {
             )
           : context.colors.accentGradient,
     ),
-    child: const Center(
-      child: Icon(Icons.school_rounded, size: 22, color: Colors.white70),
+    child: Center(
+      child: Icon(Icons.school_rounded, size: 22, color: context.colors.onHeroMuted),
     ),
   );
 }

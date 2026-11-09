@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/text_field.dart';
 
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
@@ -18,7 +19,7 @@ class MySearchBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: TextField(
         controller: controller,
-        textDirection: TextDirection.rtl,
+        textDirection: pageDirection,
         style: TextStyle(
           fontFamily: AppFonts.family,
           fontSize: 14,
@@ -37,18 +38,9 @@ class MySearchBar extends StatelessWidget {
           fillColor: context.colors.cardBg,
           contentPadding:
           const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: context.colors.divider, width: 0.5),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: context.colors.divider, width: 0.5),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: context.colors.primary, width: 1),
-          ),
+          border: myFieldBorder(context),
+          enabledBorder: myFieldBorder(context),
+          focusedBorder: myFieldBorder(context, focused: true),
         ),
         onChanged: onChanged,
       ),

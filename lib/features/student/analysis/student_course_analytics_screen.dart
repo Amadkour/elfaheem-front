@@ -6,6 +6,8 @@
 //   My marks   what the teacher published from the Data Lab (with the class average), progress and saved flags
 // Open on a given tab with [initialTab] (0 overview · 1 attendance · 2 exams · 3 marks).
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_gradients.dart';
+import 'package:flutter_education_app/design/app_back_button.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -153,11 +155,6 @@ class _Hero extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [context.colors.primaryDark, context.colors.primary],
-        ),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
         boxShadow: [
           BoxShadow(
@@ -167,17 +164,15 @@ class _Hero extends StatelessWidget {
           ),
         ],
       ),
-      child: SafeArea(
+      child: AppMeshSurface(
+        radius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+        child: SafeArea(
         bottom: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 22),
           child: Column(children: [
             Row(children: [
-              _GlassIcon(
-                icon: Icons.arrow_back_ios_rounded,
-                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-                onTap: () => Navigator.pop(context),
-              ),
+              const AppBackButton(onHero: true),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -263,6 +258,7 @@ class _Hero extends StatelessWidget {
             ]),
           ]),
         ),
+      ),
       ),
     );
   }
@@ -442,8 +438,7 @@ class _TabsDelegate extends SliverPersistentHeaderDelegate {
             splashBorderRadius: BorderRadius.circular(12),
             indicator: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              gradient: LinearGradient(
-                  colors: [context.colors.primaryDark, primary]),
+              gradient: AppGradients.brand(context),
             ),
             labelColor: context.colors.onHero,
             unselectedLabelColor: inactive,
@@ -785,11 +780,7 @@ class _KpiCard extends StatelessWidget {
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: [color.withValues(alpha: 0.22), color.withValues(alpha: 0.08)],
-          ),
+          color: color.withValues(alpha: 0.14),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Icon(icon, color: color, size: 22),
@@ -1280,14 +1271,7 @@ class _ExamTile extends StatelessWidget {
         Container(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: AlignmentDirectional.topStart,
-              end: AlignmentDirectional.bottomEnd,
-              colors: [
-                color.withValues(alpha: 0.10),
-                color.withValues(alpha: 0.03)
-              ],
-            ),
+            color: color.withValues(alpha: 0.08),
             borderRadius:
             const BorderRadius.vertical(top: Radius.circular(18)),
           ),

@@ -8,6 +8,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -125,14 +126,8 @@ class _StudentExamResultScreenState extends State<StudentExamResultScreen>
             automaticallyImplyLeading: false,
             backgroundColor: _primary,
             flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [_primary, _secondary],
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
-                  ),
-                ),
+              background: AppMeshSurface(
+                color: _primary,
                 child: SafeArea(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -339,11 +334,7 @@ class _ResultBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [color.withValues(alpha: .10), color.withValues(alpha: .04)],
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-        ),
+        color: color.withValues(alpha: .08),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color.withValues(alpha: .3)),
       ),
@@ -353,11 +344,7 @@ class _ResultBanner extends StatelessWidget {
             width: 54,
             height: 54,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [color, color.withValues(alpha: .7)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              gradient: AppGradients.blend(context, color: color),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
@@ -403,9 +390,7 @@ class _ResultBanner extends StatelessWidget {
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [c.accent2, c.warning],
-                          ),
+                          gradient: AppGradients.blend(context, color: c.accent2),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
@@ -587,11 +572,7 @@ class _RetryButton extends StatelessWidget {
     child: Container(
       height: 56,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [context.colors.primaryLight, context.colors.purple],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: AppGradients.brand(context),
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
@@ -781,11 +762,7 @@ class _GradBtn extends StatelessWidget {
     child: Container(
       height: 56,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [c1, c2],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: AppGradients.blend(context, color: c1),
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(

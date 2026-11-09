@@ -3,6 +3,7 @@
 // Private-course code sheet. Same look & keypad as the exam passcode sheet, but the code is checked
 // BY THE SERVER (POST /courses/{id}/unlock) — it is never sent to the phone. Returns true on success.
 import 'package:flutter_education_app/design/app_side_sheet.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -18,12 +19,9 @@ class CourseAccessSheet extends StatefulWidget {
   final String courseName;
 
   static Future<bool> show(BuildContext context, {required int courseId, required String courseName}) async {
-    final ok = await showAppModalSheet<bool>(
-      useSafeArea: true,
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: context.colors.heroShade.withValues(alpha: 0.6),
+    final ok = await showAppSideSheet<bool>(
+      context,
+      withCloseBar: true,
       builder: (_) => CourseAccessSheet(courseId: courseId, courseName: courseName),
     );
     return ok == true;
@@ -37,7 +35,6 @@ class _CourseAccessSheetState extends State<CourseAccessSheet> with SingleTicker
   static const _len = 6;
   // Theme roles (the sheet follows the live theme, light or dark).
   ThemeConfigProvider get _c => context.colors;
-  Color get _surface => _c.cardBg;
   Color get _gold => _c.accent2;
   Color get _empty => _c.divider;
   Color get _red => _c.danger;
@@ -105,25 +102,18 @@ class _CourseAccessSheetState extends State<CourseAccessSheet> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
-    final w = MediaQuery.of(context).size.width;
-    return Container(
-      width: w > 500 ? 500 : w,
-      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.92),
-      decoration: BoxDecoration(color: _surface, borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
+    return SizedBox(
+      width: double.infinity,
       child: SafeArea(
         top: false,
         child: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(
-              margin: const EdgeInsets.only(top: 14, bottom: 14),
-              width: 40, height: 4,
-              decoration: BoxDecoration(color: _c.divider, borderRadius: BorderRadius.circular(2)),
-            ),
+            const SizedBox(height: 14),
             Container(
               width: 60, height: 60,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(colors: [_gold, _c.heroEnd(_gold, 0.45)]),
+                gradient: AppGradients.blend(context, color: _gold),
                 boxShadow: [BoxShadow(color: _gold.withValues(alpha: 0.35), blurRadius: 24, offset: const Offset(0, 8))],
               ),
               child: Icon(Icons.lock_outline_rounded, color: _c.onHero, size: 28),

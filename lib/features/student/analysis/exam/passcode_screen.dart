@@ -1,4 +1,5 @@
 import 'package:flutter_education_app/design/app_side_sheet.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -33,12 +34,9 @@ class ExamPasscodeSheet extends StatefulWidget {
     required String correctPasscode,
     StudentExamProvider? provider,
   }) {
-    showAppModalSheet(
-      useSafeArea: true,
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: context.colors.heroShade.withValues(alpha: 0.55),
+    showAppSideSheet(
+      context,
+      withCloseBar: true,
       builder: (_) => ExamPasscodeSheet(
         exam: exam,
         correctPasscode: correctPasscode,
@@ -130,25 +128,12 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
     final c = context.colors;
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
 
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: Container(
-        width: context.width > 500 ? 500 : context.width,
+    return SizedBox(
         height: context.height / 1.45,
-        decoration: BoxDecoration(
-          color: c.cardBg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          boxShadow: [
-            BoxShadow(
-                color: c.heroShade.withValues(alpha: .12), blurRadius: 24),
-          ],
-        ),
-        padding: EdgeInsets.only(bottom: bottomPadding),
-        child: SafeArea(
-          top: false,
+        child: Padding(
+          padding: EdgeInsets.only(bottom: bottomPadding),
           child: Column(
             children: [
-              _buildHandle(c),
               _buildHeader(c),
               const SizedBox(height: 18),
               Expanded(child: _buildDots(c)),
@@ -159,19 +144,8 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
             ],
           ),
         ),
-      ),
     );
   }
-
-  Widget _buildHandle(dynamic c) => Container(
-    margin: const EdgeInsets.only(top: 12, bottom: 4),
-    width: 44,
-    height: 4,
-    decoration: BoxDecoration(
-      color: c.divider,
-      borderRadius: BorderRadius.circular(2),
-    ),
-  );
 
   Widget _buildHeader(dynamic c) => Padding(
     padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
@@ -182,11 +156,7 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
           height: 68,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [context.colors.primaryDark, c.primary],
-              begin: Alignment.topRight,
-              end: Alignment.bottomLeft,
-            ),
+            gradient: AppGradients.brand(context),
             boxShadow: [
               BoxShadow(
                 color: c.primary.withValues(alpha: 0.35),
