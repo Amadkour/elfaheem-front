@@ -48,6 +48,17 @@ String apiErrorText(ApiException e) {
   switch (e.code) {
     case 'server_busy':                                    // 503 from the Exam Engine / RAG in-flight cap (D-038)
       return _t(ApiMessages.serverBusyAr, ApiMessages.serverBusyEn);
+    case 'image_too_large':                                // POST /me/images/remove-background
+      return _t('الصورة كبيرة جداً — اختر نسخة أصغر', 'This image is too large — choose a smaller copy');
+    case 'bad_image':
+      return _t('تعذّرت قراءة هذه الصورة — جرّب صورة أخرى', 'This image could not be read — try another one');
+    case 'no_subject':
+      return _t('لم نجد عنصراً واضحاً في الصورة — جرّب صورة أوضح', 'We couldn\'t find a clear subject — try a clearer photo');
+    case 'rate_limited':
+      return _t('أزلت خلفيات كثيرة للتو — انتظر قليلاً ثم حاول مجدداً', 'You\'ve removed many backgrounds just now — wait a moment and try again') +
+          _wait(apiRetryAfter(e));
+    case 'bg_model_unavailable':
+      return _t('إزالة الخلفية غير متاحة الآن — حاول لاحقاً', 'Background removal isn\'t available right now — try again later');
     case 'too_many_attempts':
       return _t('محاولات كثيرة — حاول مرة أخرى لاحقاً', 'Too many attempts — try again later') + _wait(apiRetryAfter(e));
     case 'otp_cooldown':
