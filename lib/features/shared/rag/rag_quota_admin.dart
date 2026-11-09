@@ -144,15 +144,11 @@ class _RagQuotaOverrideFormState extends State<RagQuotaOverrideForm> {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       _mode(t('عدد المستندات', 'Number of documents'), _d.docsMode, (m) => _d.docsMode = m),
       if (_d.docsMode == RagLimitMode.custom)
-        AppField(controller: _docs, label: t('أقصى عدد للمستندات', 'Most documents'), keyboard: TextInputType.number, ltr: true),
+        AppNumberField(controller: _docs, label: t('أقصى عدد للمستندات', 'Most documents'), min: 0, step: 10),
       const SizedBox(height: 10),
       _mode(t('مساحة التخزين', 'Storage'), _d.bytesMode, (m) => _d.bytesMode = m),
       if (_d.bytesMode == RagLimitMode.custom)
-        AppField(
-            controller: _mb,
-            label: t('أقصى مساحة (ميغابايت)', 'Most storage (MB)'),
-            keyboard: const TextInputType.numberWithOptions(decimal: true),
-            ltr: true),
+        AppNumberField(controller: _mb, label: t('أقصى مساحة (ميغابايت)', 'Most storage (MB)'), min: 0, step: 50, decimals: 2),
       if (_err != null) Padding(padding: const EdgeInsets.only(top: 8), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _err!)),
       const SizedBox(height: 12),
       AppPrimaryButton(label: t('حفظ', 'Save'), icon: Icons.check_rounded, busy: widget.busy, onPressed: widget.busy ? null : _save),

@@ -262,7 +262,7 @@ class ChatRequestComposer extends StatelessWidget {
     final first = person.user.name.split(' ').first;
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Row(children: [
-        IconButton(icon: Icon(Icons.arrow_back_rounded, color: c.textDark), tooltip: 'chat_back'.tr, onPressed: busy ? null : onBack),
+        IgnorePointer(ignoring: busy, child: AppBackButton(onPressed: onBack)),
         Expanded(child: Text('chat_nm_request_title'.tr, style: appText(16, w: FontWeight.w700, c: c.textDark))),
       ]),
       const SizedBox(height: AppSpace.xs),

@@ -471,7 +471,7 @@ class _RecordsPageState extends State<RecordsPage> {
       child: BasePage(
         key: const ValueKey('profile.records'),
         useWebCard: true,
-        width: AppWidth.content,
+        width: AppWidth.wide,
         appBar: ScreenAppBar(title: t('التسجيلات', 'Records'), actions: [
           AppRefreshAction(onRefresh: () => _tab == 1 ? _loadShared() : _load()),
         ]),

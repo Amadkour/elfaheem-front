@@ -147,14 +147,14 @@ class _RagExtraSettingsCardState extends State<RagExtraSettingsCard> {
             value: _s.ocrScanned,
             onChanged: (v) => setState(() => _s = _s.copyWith(ocrScanned: v))),
         const SizedBox(height: AppSpace.xs),
-        AppField(controller: _mb, label: t('أكبر حجم لملف مرفوع (ميغابايت)', 'Largest upload (MB)'), keyboard: TextInputType.number, ltr: true),
+        AppNumberField(controller: _mb, label: t('أكبر حجم لملف مرفوع (ميغابايت)', 'Largest upload (MB)'), min: 1, step: 5),
         const SizedBox(height: AppSpace.sm),
         AppSwitchTile(
             title: t('إعادة تدريب نموذج البحث تلقائياً', 'Retrain the search model automatically'),
             subtitle: t('يُدرَّب من التقييمات والإجابات الموثّقة حين تتجمّع إشارات جديدة كافية', 'Trained from feedback and verified answers once enough new signals have gathered'),
             value: _s.embedderAuto,
             onChanged: (v) => setState(() => _s = _s.copyWith(embedderAuto: v))),
-        AppField(controller: _min, label: t('أقل عدد إشارات جديدة قبل التدريب', 'New signals needed before training'), keyboard: TextInputType.number, ltr: true),
+        AppNumberField(controller: _min, label: t('أقل عدد إشارات جديدة قبل التدريب', 'New signals needed before training'), min: 0, step: 5),
         if (widget.onTrain != null) ...[
           const SizedBox(height: AppSpace.sm),
           Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [

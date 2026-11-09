@@ -36,6 +36,7 @@ import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_username.dart';
 import 'package:flutter_education_app/design/app_mentions.dart';
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
+import 'package:flutter_education_app/design/app_kit.dart' show AppSheetContent;
 
 class NewComplaintScreen extends StatefulWidget {
   const NewComplaintScreen({super.key, this.courseId, this.courseTitle, this.formOnly = false});
@@ -153,10 +154,10 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
       key: const ValueKey('new_complaint'),
       useWebCard: true,
       width: AppWidth.reading,
+      appBar: ScreenAppBar(title: widget.formOnly ? 'chub_new'.tr : 'complaints_and_support'.tr),
       child: SafeArea(
         child: Column(
           children: [
-            ScreenAppBar(title: widget.formOnly ? 'chub_new'.tr : 'complaints_and_support'.tr),
             if (!widget.formOnly) _TabBar(controller: _tabs, unreadCount: _unreadCount(p)),
             if (widget.formOnly) Expanded(child: _form(p)),
             if (!widget.formOnly)
@@ -542,7 +543,7 @@ class _FormTab extends StatelessWidget {
       child: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
+          constraints: BoxConstraints(maxWidth: AppWidth.form.max),
           child: Form(
             key: formKey,
             child: Column(
@@ -1336,23 +1337,10 @@ class _AddImageButton extends StatelessWidget {
     showAppModalSheet(
       useSafeArea: true,
       context: context,
-      backgroundColor: c.cardBg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(
-              width: 40,
-              height: 5,
-              margin: const EdgeInsets.only(bottom: 14),
-              decoration: BoxDecoration(
-                color: c.divider,
-                borderRadius: BorderRadius.circular(3),
-              ),
-            ),
             // The browser file picker already covers "gallery" on web.
             if (!kIsWeb)
               _option(context, Icons.photo_library_rounded, c.primaryGradient,
@@ -1844,24 +1832,17 @@ class _ComplaintTargetPickerState extends State<ComplaintTargetPicker> {
       context: context,
       useSafeArea: true,
       isScrollControlled: true,
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(_types.firstWhere((x) => x.$1 == type).$3.tr, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 16)),
-          const SizedBox(height: 8),
-          Flexible(child: ListView(shrinkWrap: true, children: [
-            for (final x in items!)
-              Material(
-                type: MaterialType.transparency,
-                child: ListTile(
-                  title: Text('${x['label']}', style: TextStyle(fontFamily: AppFonts.family)),
-                  subtitle: usernameFrom(x) == null ? null : AppUsernameLine(usernameFrom(x)),
-                  onTap: () => Navigator.pop(ctx, x),
-                ),
-              ),
-          ])),
-        ]),
-      ),
+      builder: (ctx) => AppSheetContent(title: _types.firstWhere((x) => x.$1 == type).$3.tr, children: [
+        for (final x in items!)
+          Material(
+            type: MaterialType.transparency,
+            child: ListTile(
+              title: Text('${x['label']}', style: TextStyle(fontFamily: AppFonts.family)),
+              subtitle: usernameFrom(x) == null ? null : AppUsernameLine(usernameFrom(x)),
+              onTap: () => Navigator.pop(ctx, x),
+            ),
+          ),
+      ]),
     );
     if (picked != null) widget.onChanged(type, (picked['id'] as num).toInt(), '${picked['label']}');
   }

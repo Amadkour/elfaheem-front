@@ -36,6 +36,8 @@ import '../private_flag.dart';
 import 'course_space.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
+import 'package:flutter_education_app/design/app_back_button.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppSheetContent;
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
@@ -251,11 +253,7 @@ class _TopBar extends StatelessWidget {
         return Row(
           children: [
             if (onBack != null)
-              CourseCoverButton(
-                icon: Icons.arrow_back_rounded,
-                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-                onTap: onBack!,
-              ),
+              AppBackButton(onHero: true, onPressed: onBack),
             Expanded(
               child: !hasGroup
                   ? const SizedBox.shrink()
@@ -421,49 +419,6 @@ class _CapsuleMenu extends StatelessWidget {
           ),
       ],
       child: SizedBox(width: 48, height: 48, child: Icon(Icons.more_vert_rounded, size: 20, color: c.onHero)),
-    );
-  }
-}
-
-/// A round frosted button over the cover (back …): a 40 px disc in a 48 px target, darkened glass so it reads on a
-/// light image too.
-class CourseCoverButton extends StatelessWidget {
-  const CourseCoverButton({super.key, required this.icon, required this.onTap, this.tooltip, this.color});
-
-  final IconData icon;
-  final VoidCallback onTap;
-  final String? tooltip;
-
-  /// Icon colour; null → the on-hero ink.
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Semantics(
-      button: true,
-      label: tooltip,
-      excludeSemantics: true,
-      child: Tooltip(
-        message: tooltip ?? '',
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onTap,
-            child: SizedBox(
-              width: 48,
-              height: 48,
-              child: Center(
-                child: _Glass(
-                  radius: BorderRadius.circular(22),
-                  child: SizedBox(width: 44, height: 44, child: Icon(icon, size: 20, color: color ?? c.onHero)),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -1339,36 +1294,20 @@ class CourseActionStrip extends StatelessWidget {
   }
 
   static void _openMore(BuildContext context, List<CourseSpaceAction> rest) {
-    final c = context.colors;
     showAppModalSheet<void>(
       context: context,
       useRootNavigator: true,
       isScrollControlled: true,
-      backgroundColor: c.cardBg,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
-      builder: (sheet) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
-                child: Text(_t('اختصارات الكورس', 'Course shortcuts'), style: _ts(14, FontWeight.w600, c.textDark)),
-              ),
-              for (final a in rest)
-                _ActionRow(
-                  action: a,
-                  onTap: () {
-                    Navigator.of(sheet).pop();
-                    a.onTap();
-                  },
-                ),
-            ],
+      builder: (sheet) => AppSheetContent(title: _t('اختصارات الكورس', 'Course shortcuts'), children: [
+        for (final a in rest)
+          _ActionRow(
+            action: a,
+            onTap: () {
+              Navigator.of(sheet).pop();
+              a.onTap();
+            },
           ),
-        ),
-      ),
+      ]),
     );
   }
 }

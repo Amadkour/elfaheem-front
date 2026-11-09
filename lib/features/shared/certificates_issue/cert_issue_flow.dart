@@ -717,13 +717,9 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
     final c = context.colors;
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(
-        centerTitle: false,
-        title: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text('ci_title'.tr, style: AppType.section(context)),
-          if ((widget.designName ?? '').isNotEmpty)
-            Text(widget.designName!, style: AppType.meta(context), maxLines: 1, overflow: TextOverflow.ellipsis),
-        ]),
+      appBar: AppHeader(
+        title: 'ci_title'.tr,
+        subtitle: widget.designName,
         actions: [
           IconButton(
             tooltip: 'ci_saved_lists'.tr,
@@ -739,7 +735,6 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
               builder: (_) => CertIssueHistoryPage(orgId: widget.orgId),
             )),
           ),
-          const SizedBox(width: AppSpace.xxs),
         ],
       ),
       body: ParentComponent(
@@ -750,7 +745,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
               padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xs),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 900),
+                  constraints: BoxConstraints(maxWidth: AppWidth.reading.max),
                   child: IssueStepper(labels: _stepLabels, current: _stepOrder.indexOf(_step).clamp(0, _stepOrder.length - 1), onTap: _step == 3 ? null : _goTo),
                 ),
               ),
@@ -819,7 +814,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
 
   Widget _centered(Widget child) => SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpace.md),
-        child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 760), child: child)),
+        child: Center(child: ConstrainedBox(constraints: BoxConstraints(maxWidth: AppWidth.reading.max), child: child)),
       );
 
   // step 1

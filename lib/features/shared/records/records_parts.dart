@@ -340,20 +340,35 @@ class RecordsLayout extends StatelessWidget {
         final g = groups[i - 1];
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
           RecordsGroupHeader(group: g),
-          for (final r in g.items) ...[
-            RecordTile(
-              item: r,
-              selecting: selecting,
-              selected: selected.contains(r.id),
-              highlighted: r.id == highlightId,
-              showImage: showImages,
-              onTap: onTap == null ? null : () => onTap!(r),
-              onLongPress: onLongPress == null ? null : () => onLongPress!(r),
-              onMore: onMore == null ? null : () => onMore!(r),
-              onRetry: onRetry == null ? null : () => onRetry!(r),
-            ),
-            const SizedBox(height: AppSpace.xs),
-          ],
+          // two recordings to a row while there is room
+          LayoutBuilder(builder: (context, box) {
+            Widget tile(RecordItem r) => RecordTile(
+                  item: r,
+                  selecting: selecting,
+                  selected: selected.contains(r.id),
+                  highlighted: r.id == highlightId,
+                  showImage: showImages,
+                  onTap: onTap == null ? null : () => onTap!(r),
+                  onLongPress: onLongPress == null ? null : () => onLongPress!(r),
+                  onMore: onMore == null ? null : () => onMore!(r),
+                  onRetry: onRetry == null ? null : () => onRetry!(r),
+                );
+            if (box.maxWidth < 900) {
+              return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                for (final r in g.items) ...[tile(r), const SizedBox(height: AppSpace.xs)],
+              ]);
+            }
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              for (var k = 0; k < g.items.length; k += 2) ...[
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(child: tile(g.items[k])),
+                  const SizedBox(width: AppSpace.xs),
+                  Expanded(child: k + 1 < g.items.length ? tile(g.items[k + 1]) : const SizedBox.shrink()),
+                ]),
+                const SizedBox(height: AppSpace.xs),
+              ],
+            ]);
+          }),
         ]);
       },
     );

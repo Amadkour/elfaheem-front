@@ -122,7 +122,7 @@ class _CertSavedListsPageState extends State<CertSavedListsPage> {
           separatorBuilder: (_, _) => const SizedBox(height: AppSpace.xs),
           itemBuilder: (context, i) => Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 760),
+              constraints: BoxConstraints(maxWidth: AppWidth.content.max),
               child: IssueSavedListTile(
                 list: _items[i],
                 onTap: () async {
@@ -140,11 +140,7 @@ class _CertSavedListsPageState extends State<CertSavedListsPage> {
     }
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(
-        centerTitle: false,
-        title: Text('ci_saved_lists'.tr, style: AppType.section(context)),
-        actions: [AppRefreshAction(onRefresh: _load)],
-      ),
+      appBar: AppHeader(title: 'ci_saved_lists'.tr, actions: [AppRefreshAction(onRefresh: _load)]),
       body: ParentComponent(featureKey: kCertIssueFeature, child: SafeArea(child: body)),
     );
   }
@@ -344,9 +340,8 @@ class _CertListDetailPageState extends State<CertListDetailPage> {
     final l = _list;
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(
-        centerTitle: false,
-        title: Text(l?.name ?? 'ci_saved_lists'.tr, style: AppType.section(context), maxLines: 1, overflow: TextOverflow.ellipsis),
+      appBar: AppHeader(
+        title: l?.name ?? 'ci_saved_lists'.tr,
         actions: [
           PopupMenuButton<String>(
             tooltip: 'ci_more'.tr,
@@ -434,7 +429,7 @@ class CertListBody extends StatelessWidget {
     final extra = loading && rows.isEmpty ? 1 : (error != null && rows.isEmpty ? 1 : (rows.isEmpty ? 1 : rows.length));
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 820),
+        constraints: BoxConstraints(maxWidth: AppWidth.content.max),
         child: ListView.builder(
           padding: const EdgeInsets.all(AppSpace.md),
           itemCount: 1 + extra,

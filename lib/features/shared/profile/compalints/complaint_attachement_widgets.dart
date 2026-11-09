@@ -395,17 +395,10 @@ void _showPdfSheet(BuildContext context, {required String? name, required String
   showAppModalSheet(
       useSafeArea: true,
     context: context,
-    backgroundColor: c.cardBg,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
     builder: (_) => SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Center(
-            child: Container(
-                width: 36, height: 4, margin: const EdgeInsets.only(bottom: 18),
-                decoration: BoxDecoration(color: c.divider, borderRadius: BorderRadius.circular(2))),
-          ),
           Row(children: [
             Container(
               width: 48,

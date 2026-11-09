@@ -168,13 +168,26 @@ class _NotifGroup extends StatelessWidget {
         // Group header (the page's single "Mark all read" sits above the groups, N12)
         Text(groupTitle, style: context.colors.h2),
         const SizedBox(height: 12),
-        // Notification tiles
-        ...notifs.map(
-              (n) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: NotificationTile(notif: n),
-          ),
-        ),
+        // Notification tiles: two to a row while the list has the room (the panel beside it takes that room back)
+        LayoutBuilder(builder: (context, box) {
+          if (box.maxWidth < 900) {
+            return Column(children: [
+              for (final n in notifs)
+                Padding(padding: const EdgeInsets.only(bottom: 12), child: NotificationTile(notif: n)),
+            ]);
+          }
+          return Column(children: [
+            for (var i = 0; i < notifs.length; i += 2)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(child: NotificationTile(notif: notifs[i])),
+                  const SizedBox(width: 12),
+                  Expanded(child: i + 1 < notifs.length ? NotificationTile(notif: notifs[i + 1]) : const SizedBox.shrink()),
+                ]),
+              ),
+          ]);
+        }),
       ],
     );
   }

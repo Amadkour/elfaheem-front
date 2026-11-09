@@ -75,7 +75,7 @@ class DisplaySettingsView extends StatelessWidget {
     // on web a font is a download.
     Widget w(Widget child, {double bottom = 8}) => Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
+            constraints: BoxConstraints(maxWidth: AppWidth.reading.max),
             child: Padding(padding: EdgeInsets.only(bottom: bottom), child: child),
           ),
         );

@@ -102,7 +102,7 @@ class _JourneyPageState extends State<JourneyPage> {
           children: [
             Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 760),
+                constraints: BoxConstraints(maxWidth: AppWidth.reading.max),
                 child: j != null
                     ? JourneyContent(
                         journey: j,

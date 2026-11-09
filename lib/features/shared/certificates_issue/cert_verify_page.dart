@@ -14,6 +14,7 @@ import '../../../core/api_client.dart';
 import 'cert_issue_api.dart';
 import 'cert_issue_logic.dart';
 import 'cert_issue_parts.dart';
+import 'package:flutter_education_app/design/app_header.dart';
 
 class CertVerifyPage extends StatefulWidget {
   const CertVerifyPage({super.key, required this.token, this.load});
@@ -70,11 +71,7 @@ class _CertVerifyPageState extends State<CertVerifyPage> {
     final c = context.colors;
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(
-        automaticallyImplyLeading: Navigator.of(context).canPop(),
-        centerTitle: false,
-        title: Text('ci_verify_bar'.tr, style: c.h4),
-      ),
+      appBar: AppHeader(title: 'ci_verify_bar'.tr, showBack: Navigator.of(context).canPop()),
       body: SafeArea(
         child: CertVerifyView(
           state: _state,

@@ -27,6 +27,7 @@ import '../../auth/login_screen.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen(
@@ -179,16 +180,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     final isWide = context.showSidebar;
 
     return BasePage(
-      child: SafeArea(
-        child: Column(
-          children: [
-            ScreenAppBar(helpPageId: 'account.change_password', title: 'change_password'.tr),
-            Expanded(
-              child: isWide ? _webLayout(p, c) : _mobileLayout(p, c),
-            ),
-          ],
-        ),
-      ),
+      appBar: ScreenAppBar(helpPageId: 'account.change_password', title: 'change_password'.tr),
+      child: SafeArea(child: isWide ? _webLayout(p, c) : _mobileLayout(p, c)),
     );
   }
 
@@ -213,7 +206,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               padding:
               const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
+                constraints: BoxConstraints(maxWidth: AppWidth.form.max),
                 child: w,
               ),
             ),

@@ -167,7 +167,7 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
     return BasePage(
       key: const ValueKey('rag.library'),
       useWebCard: true,
-      maxWith: 1000,
+      width: AppWidth.wide,
       appBar: ScreenAppBar(helpPageId: 'rag.library', title: widget.title ?? (widget.app ? t('مستندات التطبيق', 'App documents') : t('مكتبة المستندات', 'Documents library')), actions: [
         if (widget.app && lib?.manager == true)
           IconButton(tooltip: t('تحديث من صفحات التطبيق', 'Update from the app\'s pages'), icon: const Icon(Icons.sync_rounded), onPressed: _syncApp),
@@ -263,8 +263,8 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
           ? FloatingActionButton.extended(
               backgroundColor: c.primary,
               onPressed: _upload,
-              icon: const Icon(Icons.upload_file_rounded, color: Colors.white),
-              label: Text(t('رفع مستند', 'Upload'), style: const TextStyle(color: Colors.white)))
+              icon: Icon(Icons.upload_file_rounded, color: c.onHero),
+              label: Text(t('رفع مستند', 'Upload'), style: TextStyle(color: c.onHero)))
           : null,
     );
   }

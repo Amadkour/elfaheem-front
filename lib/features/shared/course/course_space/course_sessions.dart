@@ -30,6 +30,7 @@ import '../../../../core/display/app_fonts.dart';
 import '../../../../design/app_display.dart' show syncMotionLoop;
 import '../../../../utils/helpers.dart';
 import 'course_space.dart' show kCourseGutter;
+import 'package:flutter_education_app/design/app_gradients.dart';
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
@@ -616,11 +617,7 @@ class CourseSessionKindTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(size * 0.3),
             color: live ? null : tone.withValues(alpha: c.isDark ? 0.2 : (quiet ? 0.07 : 0.10)),
             gradient: live
-                ? LinearGradient(
-                    begin: AlignmentDirectional.topStart,
-                    end: AlignmentDirectional.bottomEnd,
-                    colors: [c.danger, Color.lerp(c.danger, c.heroShade, 0.25)!],
-                  )
+                ? AppGradients.blend(context, color: c.danger)
                 : null,
           ),
           child: Icon(icon, size: size * 0.48, color: live ? c.onHero : _ink(context, tone)),

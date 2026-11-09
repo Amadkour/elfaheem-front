@@ -259,23 +259,11 @@ class _GuestLoginSheet extends StatelessWidget {
         24,
         24 + MediaQuery.of(context).viewPadding.bottom,
       ),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
       child: SafeArea(
         top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 42,
-              height: 4,
-              decoration: BoxDecoration(
-                color: c.divider,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
             const SizedBox(height: 22),
             _GradientIcon(icon: Icons.lock_open_rounded, size: 64),
             const SizedBox(height: 16),

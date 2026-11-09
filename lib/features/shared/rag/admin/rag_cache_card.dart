@@ -214,9 +214,9 @@ class _RagCacheCardState extends State<RagCacheCard> {
             value: _semantic,
             onChanged: (v) => setState(() => _semantic = v)),
         const SizedBox(height: AppSpace.xs),
-        AppField(controller: _max, label: t('أقصى عدد إجابات (0 = بلا حد)', 'Max entries (0 = no limit)'), keyboard: TextInputType.number, ltr: true),
+        AppNumberField(controller: _max, label: t('أقصى عدد إجابات (0 = بلا حد)', 'Max entries (0 = no limit)'), min: 0, step: 100),
         const SizedBox(height: AppSpace.sm),
-        AppField(controller: _orgMax, label: t('أقصى عدد لكل مؤسسة (0 = بلا حد)', 'Max entries per organization (0 = no limit)'), keyboard: TextInputType.number, ltr: true),
+        AppNumberField(controller: _orgMax, label: t('أقصى عدد لكل مؤسسة (0 = بلا حد)', 'Max entries per organization (0 = no limit)'), min: 0, step: 100),
         if (s.maxAgeDays != null)
           Padding(
             padding: const EdgeInsetsDirectional.only(start: 4, top: 4),

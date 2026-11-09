@@ -948,7 +948,7 @@ class CalLiveNowCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.sm, AppSpace.sm),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppRadius.sheet - 4),
-              gradient: LinearGradient(colors: [c.danger, c.heroEnd(c.danger)], begin: AlignmentDirectional.topStart, end: AlignmentDirectional.bottomEnd),
+              gradient: AppGradients.blend(context, color: c.danger),
               boxShadow: [BoxShadow(color: c.danger.withValues(alpha: 0.26), blurRadius: 18, offset: const Offset(0, 8))],
             ),
             child: Row(children: [
@@ -1529,18 +1529,9 @@ class CalUpNextCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            gradient: LinearGradient(
-              colors: [base, c.heroEnd(base)],
-              begin: AlignmentDirectional.topStart,
-              end: AlignmentDirectional.bottomEnd,
-            ),
-            boxShadow: [BoxShadow(color: base.withValues(alpha: 0.28), blurRadius: 18, offset: const Offset(0, 8))],
-          ),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        child: DecoratedBox(decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), boxShadow: [BoxShadow(color: base.withValues(alpha: 0.28), blurRadius: 18, offset: const Offset(0, 8))]),
+          child: AppMeshSurface(color: base, radius: BorderRadius.circular(18),
+          child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               if (live) ...[const CalLiveDot(), const SizedBox(width: 6)],
               Expanded(
@@ -1561,8 +1552,7 @@ class CalUpNextCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: appText(12, c: c.onHeroMuted),
             ),
-          ]),
-        ),
+          ])))),
       ),
     );
   }

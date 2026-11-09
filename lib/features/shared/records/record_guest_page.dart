@@ -86,7 +86,7 @@ class _GuestRecordPageState extends State<GuestRecordPage> {
     return Scaffold(
       key: const ValueKey('records.guest'),
       backgroundColor: c.background,
-      appBar: AppBar(title: Text(t('تسجيل', 'Recording')), automaticallyImplyLeading: Navigator.of(context).canPop()),
+      appBar: AppHeader(title: t('تسجيل', 'Recording'), showBack: Navigator.of(context).canPop()),
       body: SafeArea(
         child: SingleChildScrollView(
           child: GuestRecordView(
