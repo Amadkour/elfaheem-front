@@ -77,6 +77,7 @@ class AppNumberField extends StatefulWidget {
     this.validator,
     this.textInputAction,
     this.focusNode,
+    this.autofocus = false,
   });
 
   final TextEditingController? controller;
@@ -100,6 +101,7 @@ class AppNumberField extends StatefulWidget {
   final FormFieldValidator<String>? validator;
   final TextInputAction? textInputAction;
   final FocusNode? focusNode;
+  final bool autofocus;
 
   @override
   State<AppNumberField> createState() => _AppNumberFieldState();
@@ -212,6 +214,7 @@ class _AppNumberFieldState extends State<AppNumberField> {
     final field = TextFormField(
       controller: _controller,
       focusNode: widget.focusNode,
+      autofocus: widget.autofocus,
       enabled: widget.enabled,
       validator: _validate,
       autovalidateMode: AutovalidateMode.disabled,
