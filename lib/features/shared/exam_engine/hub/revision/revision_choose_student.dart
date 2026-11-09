@@ -71,7 +71,7 @@ class _RevisionChooseStudentState extends State<RevisionChooseStudent> {
     final used = r.row.proposed;
     final wide = MediaQuery.sizeOf(context).width >= Breakpoints.desktop;
     final keys = <ShortcutActivator, VoidCallback>{
-      for (final (i, x) in choices.indexed) SingleActivator(LogicalKeyboardKey(LogicalKeyboardKey.digit1.keyId + i)): () => _pick(x),
+      for (final (i, x) in choices.indexed) SingleActivator(LogicalKeyboardKey(LogicalKeyboardKey.digit1.keyId + i), includeRepeats: false): () => _pick(x),
     };
     return CallbackShortcuts(
       bindings: keys,
@@ -95,7 +95,7 @@ class _RevisionChooseStudentState extends State<RevisionChooseStudent> {
           for (final (i, x) in choices.indexed)
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpace.xs),
-              child: _Choice(key: ValueKey('rv.choice.${x.id}'), candidate: x, top: i == 0 && !x.alreadyMatched, keyHint: wide ? '${i + 1}' : null, pending: widget.pendingId == x.id, onTap: widget.busy ? null : () => _pick(x)),
+              child: _Choice(key: ValueKey('rv.choice.${x.id}'), candidate: x, top: i == 0 && !x.alreadyMatched && r.rosterReason != 'already_matched', keyHint: wide ? '${i + 1}' : null, pending: widget.pendingId == x.id, onTap: widget.busy ? null : () => _pick(x)),
             ),
           if (choices.any((x) => x.fromName))
             Padding(
@@ -147,7 +147,7 @@ class _WrittenNumber extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
           child: Row(children: [
             Expanded(child: Text(t('الرقم المكتوب', 'The number as written'), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context))),
-            Text(value.isEmpty ? '—' : value, textDirection: TextDirection.ltr, style: AppType.bodyStrong(context)),
+            Flexible(child: Text(value.isEmpty ? '—' : value, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: AppType.bodyStrong(context))),
           ]),
         ),
       ]),

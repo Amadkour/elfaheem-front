@@ -599,7 +599,7 @@ class RevisionStripRead extends StatelessWidget {
         AppSpace.gapXs,
         Row(children: [
           Expanded(child: Text(t('قرأناه', 'We read'), style: AppType.row(context))),
-          Text(s.identifierMasked.isEmpty ? '—' : s.identifierMasked, key: const ValueKey('rv.sample.read'), textDirection: TextDirection.ltr, style: AppType.figure(context)),
+          Flexible(child: Text(s.identifierMasked.isEmpty ? '—' : s.identifierMasked, key: const ValueKey('rv.sample.read'), maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: AppType.figure(context))),
         ]),
         if (s.ruleFound == false) Text(t('لم نجد الخط المطبوع في هذه الصورة، فقرأنا المكان الذي حددته.', "We couldn't find the printed line in this photo, so we read the place you marked."), style: AppType.meta(context)),
         Divider(height: AppSpace.md, thickness: AppBorder.hairline, color: c.divider),
