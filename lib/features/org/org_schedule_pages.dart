@@ -6,6 +6,7 @@
 //                   student-group availability; per staff member: availability (days × periods)
 library;
 
+import 'package:flutter_education_app/design/app_back_button.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -1043,7 +1044,7 @@ class _StudioState extends State<_Studio> {
           padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
           child: Row(
             children: [
-              IconButton(tooltip: t('رجوع', 'Back'), onPressed: p.closeSchedule, icon: const Icon(Icons.arrow_back_rounded)),
+              AppBackButton(onPressed: p.closeSchedule),
               Expanded(
                 child: Text('${sch['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: c.h2.copyWith(fontSize: 16)),
               ),

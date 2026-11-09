@@ -17,6 +17,7 @@
 //                                           line, blocked-by advice (opens the ladder), the decisions log, Accept all
 library;
 
+import 'package:flutter_education_app/design/app_mesh.dart';
 import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:async';
 
@@ -957,15 +958,7 @@ class _LadderOverlayState extends State<LadderOverlay> {
         child: body,
       );
     }
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(colors: [accent.withValues(alpha: 0.10), c.purple.withValues(alpha: 0.06)]),
-        border: Border.all(color: accent.withValues(alpha: 0.25)),
-      ),
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      child: body,
-    );
+    return Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: accent.withValues(alpha: 0.25))), child: AppMeshSurface(color: accent, style: AppMeshStyle.wash, radius: BorderRadius.circular(16), child: Padding(padding: const EdgeInsets.fromLTRB(14, 12, 14, 12), child: body)));
   }
 }
 
@@ -1071,7 +1064,6 @@ class _LadderOverlaySheet extends StatelessWidget {
               clipBehavior: Clip.antiAlias,
               shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Container(width: 42, height: 5, margin: const EdgeInsets.only(top: 10), decoration: BoxDecoration(color: c.divider, borderRadius: BorderRadius.circular(3))),
                 Padding(
                   padding: const EdgeInsetsDirectional.fromSTEB(20, 12, 12, 4),
                   child: Row(children: [

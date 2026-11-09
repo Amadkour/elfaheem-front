@@ -16,6 +16,7 @@
 //   advOutreachOn             the kill switch `org.advising.outreach` (with the module's)
 library;
 
+import 'package:flutter_education_app/design/app_header.dart' show AppHeader;
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -1003,6 +1004,6 @@ class _AdvStudentMessagesPageState extends State<AdvStudentMessagesPage> {
     final title = t('رسائل الإرشاد', 'Advising messages');
     // a student opens it from the hub: the plain app bar; staff on the dashboard: the org header
     if (orgUsesDashboardHeader(context, widget.orgId)) return OrgPushedPage(title: title, maxWidth: 880, child: body);
-    return Scaffold(appBar: AppBar(title: Text(title)), body: body);
+    return Scaffold(appBar: AppHeader(title: title), body: body);
   }
 }

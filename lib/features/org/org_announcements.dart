@@ -626,12 +626,7 @@ class _AnnouncementCardState extends State<AnnouncementCard> {
                           ? c.primary.withValues(alpha: 0.45)
                           : c.divider,
                   width: unread || urgent ? 1.4 : 1),
-              gradient: unread
-                  ? LinearGradient(
-                      begin: AlignmentDirectional.topStart,
-                      end: AlignmentDirectional.bottomEnd,
-                      colors: [accent.withValues(alpha: 0.06), c.cardBg])
-                  : null,
+              color: unread ? accent.withValues(alpha: 0.06) : null,
             ),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               if (img.isNotEmpty && !widget.compact)

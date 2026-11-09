@@ -7,6 +7,7 @@
 //                        (a tab exists only when the service is switched on AND I have the right in that department)
 library;
 
+import 'package:flutter_education_app/design/app_mesh.dart';
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_buttons.dart' show AppButton;
@@ -622,15 +623,7 @@ class _OrgDepartmentHubState extends State<OrgDepartmentHub> {
               )
             : null,
         child: Column(children: [
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              gradient: LinearGradient(colors: [col, c.heroEnd(col, 0.25)]),
-              boxShadow: [BoxShadow(color: col.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))],
-            ),
-            child: Row(children: [
+          Container(margin: const EdgeInsets.fromLTRB(16, 8, 16, 4), decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: col.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))]), child: AppMeshSurface(color: col, radius: BorderRadius.circular(24), child: Padding(padding: const EdgeInsets.all(16), child: Row(children: [
               Container(
                 width: 52,
                 height: 52,
@@ -646,8 +639,7 @@ class _OrgDepartmentHubState extends State<OrgDepartmentHub> {
                         style: AppType.meta(context).copyWith(color: c.onHeroMuted)),
                 ]),
               ),
-            ]),
-          ),
+            ])))),
           TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,

@@ -7,6 +7,7 @@
 //   openOrgCourseGated    student taps an org course: open · archived (request the last version) · pending · granted
 library;
 
+import 'package:flutter_education_app/design/app_mesh.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -934,10 +935,7 @@ class _MyAcademicPathPageState extends State<MyAcademicPathPage> {
     return AppRefresh(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), gradient: LinearGradient(colors: [c.primary, c.primaryDark])),
-          child: Column(children: [
+        Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(24)), child: AppMeshSurface(radius: BorderRadius.circular(24), child: Padding(padding: const EdgeInsets.all(18), child: Column(children: [
             Row(children: [
               for (var i = 0; i < steps.length; i++) ...[
                 Expanded(child: Column(children: [
@@ -960,8 +958,7 @@ class _MyAcademicPathPageState extends State<MyAcademicPathPage> {
             const SizedBox(height: 6),
             Text(stage == 'graduated' ? t('مبروك التخرج 🎓', 'Congratulations, graduate 🎓') : t('أنجزت $pct% من متطلبات التخرج', '$pct% of graduation requirements done'),
                 style: TextStyle(fontFamily: AppFonts.family, color: c.onHero)),
-          ]),
-        ),
+          ])))),
         const SizedBox(height: 12),
         MyLevelCard(key: ValueKey('lvl_${widget.orgId}_$_loads'), orgId: widget.orgId),
         const SizedBox(height: 12),
