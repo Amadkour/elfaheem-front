@@ -4,7 +4,9 @@
 library;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_bidi.dart';
@@ -16,6 +18,12 @@ import 'chat_store.dart';
 
 const double kChatListWidth = 380;
 const double kChatBubbleMaxWidth = 560;
+
+/// The reading column of a thread on a wide screen: past this a conversation stops feeling like one.
+const double kChatColumnMaxWidth = 860;
+
+/// Keeps [child] in the reading column; its background may still span the pane.
+Widget chatColumn(Widget child) => Center(heightFactor: 1, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: kChatColumnMaxWidth), child: child));
 
 String chatLevelLabel(String level) => switch (level) {
       'course' => 'chat_level_course'.tr,
@@ -188,7 +196,13 @@ class ChatConversationTile extends StatelessWidget {
     final tick = mine && !conversation.isGroup
         ? chatTickFor(ChatMessage(id: last.id, clientId: '', conversationId: 0, createdAt: last.createdAt), peerReadId: conversation.peerReadId, peerDeliveredId: conversation.peerDeliveredId)
         : null;
-    final prefix = conversation.isGroup && last.senderName != null && !mine ? '${last.senderName!.split(' ').first}: ' : '';
+    final prefix = !conversation.isGroup
+        ? ''
+        : mine
+            ? '${'chat_you'.tr}: '
+            : last.senderName != null
+                ? '${last.senderName!.split(' ').first}: '
+                : '';
     final (IconData? kindIcon, String body) = switch (last.kind) {
       'image' => (Icons.photo_outlined, last.body.isNotEmpty ? last.body : 'chat_photo'.tr),
       'file' => (Icons.attach_file_rounded, last.body.isNotEmpty ? last.body : 'chat_file'.tr),
@@ -213,6 +227,7 @@ class ChatTickIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final (IconData icon, Color color, String label) = switch (tick) {
       ChatTick.sending => (Icons.schedule_rounded, muted, 'chat_tick_sending'.tr),
+      ChatTick.queued => (Icons.cloud_queue_rounded, muted, 'chat_tick_queued'.tr),
       ChatTick.failed => (Icons.error_outline_rounded, context.colors.danger, 'chat_tick_failed'.tr),
       ChatTick.sent => (Icons.check_rounded, muted, 'chat_tick_sent'.tr),
       ChatTick.delivered => (Icons.done_all_rounded, muted, 'chat_tick_delivered'.tr),
@@ -240,6 +255,109 @@ class ChatDateChip extends StatelessWidget {
   }
 }
 
+/// The thin "new messages" line above the first unread message.
+class ChatUnreadDivider extends StatelessWidget {
+  const ChatUnreadDivider({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final line = Expanded(child: Container(height: 1, color: chatInk(c).withValues(alpha: 0.28)));
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
+      child: Row(children: [
+        line,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+          child: Text('chat_new_messages'.tr, style: appText(11.5, w: FontWeight.w700, c: chatInk(c))),
+        ),
+        line,
+      ]),
+    );
+  }
+}
+
+/// Above a thread and an inbox while there is no connection: what happens to what is written meanwhile.
+class ChatOfflineStrip extends StatelessWidget {
+  const ChatOfflineStrip({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      color: c.warning.withValues(alpha: c.isDark ? 0.18 : 0.12),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
+      child: Row(children: [
+        Icon(Icons.cloud_off_rounded, size: AppIconSize.xs, color: c.warning),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(child: Text('chat_offline_strip'.tr, style: appText(12, w: FontWeight.w500, c: c.textDark))),
+      ]),
+    );
+  }
+}
+
+/// A section title in the inbox.
+class ChatSectionLabel extends StatelessWidget {
+  const ChatSectionLabel({super.key, required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.sm, AppSpace.xxs),
+      child: Text(label, style: appText(12, w: FontWeight.w700, c: c.textLight)),
+    );
+  }
+}
+
+/// The floating "back to the newest message" button, with what came in meanwhile.
+class ChatJumpToLatest extends StatelessWidget {
+  const ChatJumpToLatest({super.key, required this.count, required this.onTap});
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      button: true,
+      label: count > 0 ? '${'chat_jump_latest'.tr}, $count ${'chat_new'.tr}' : 'chat_jump_latest'.tr,
+      child: ExcludeSemantics(
+        child: Material(
+          color: c.cardBg,
+          shape: const CircleBorder(),
+          elevation: 3,
+          shadowColor: c.textDark.withValues(alpha: 0.3),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: SizedBox(
+              width: AppTouch.min,
+              height: AppTouch.min,
+              child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
+                Icon(Icons.keyboard_arrow_down_rounded, size: AppIconSize.lg, color: c.textMedium),
+                if (count > 0)
+                  PositionedDirectional(
+                    top: -AppSpace.xxs,
+                    end: -AppSpace.xxs,
+                    child: Container(
+                      constraints: const BoxConstraints(minWidth: 20),
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(AppRadius.hero)),
+                      alignment: Alignment.center,
+                      child: Text(count > 99 ? '99+' : '$count', style: appText(11, w: FontWeight.w700, c: c.onHero)),
+                    ),
+                  ),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 const _senderTones = <Color Function(ThemeConfigProvider c)>[_tone0, _tone1, _tone2, _tone3, _tone4];
 Color _tone0(ThemeConfigProvider c) => chatInk(c);
 Color _tone1(ThemeConfigProvider c) => c.accent2;
@@ -247,7 +365,8 @@ Color _tone2(ThemeConfigProvider c) => c.purple;
 Color _tone3(ThemeConfigProvider c) => c.success;
 Color _tone4(ThemeConfigProvider c) => c.warning;
 
-/// One message. [showSender] draws the name (groups, the first of a run); [tail] the pointed corner of the last of a run.
+/// One message. [showSender] draws the name (groups, the first of a run); [runStart] / [runEnd] say where it sits in a
+/// run from one person: the inner corners of a run are tight, so a run reads as one block.
 class ChatBubble extends StatelessWidget {
   const ChatBubble({
     super.key,
@@ -255,37 +374,39 @@ class ChatBubble extends StatelessWidget {
     required this.mine,
     this.tick,
     this.showSender = false,
-    this.tail = true,
+    this.runStart = true,
+    this.runEnd = true,
     this.maxWidth = kChatBubbleMaxWidth,
     this.imageOf,
     this.onOpenAttachment,
     this.onLongPress,
     this.onRetry,
+    this.onDiscard,
   });
 
   final ChatMessage message;
-  final bool mine, showSender, tail;
+  final bool mine, showSender, runStart, runEnd;
   final ChatTick? tick;
   final double maxWidth;
   final Future<String> Function(ChatAttachment a)? imageOf;
   final void Function(ChatAttachment a)? onOpenAttachment;
-  final VoidCallback? onLongPress, onRetry;
+  final VoidCallback? onLongPress, onRetry, onDiscard;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    const r = Radius.circular(AppRadius.card + 2);
-    const s = Radius.circular(5);
+    const big = Radius.circular(AppRadius.card + 2);
+    const tight = Radius.circular(AppRadius.chip - 2);
     final shape = BorderRadiusDirectional.only(
-      topStart: mine ? r : (tail ? s : r),
-      topEnd: mine ? (tail ? s : r) : r,
-      bottomStart: r,
-      bottomEnd: r,
+      topStart: mine ? big : (runStart ? big : tight),
+      bottomStart: mine ? big : (runEnd ? big : tight),
+      topEnd: mine ? (runStart ? big : tight) : big,
+      bottomEnd: mine ? (runEnd ? big : tight) : big,
     );
-    final bg = mine ? c.primary : c.cardBg;
-    final ink = mine ? c.onHero : c.textDark;
-    final inkSoft = mine ? c.onHeroMuted : c.textLight;
     final failed = message.sendState == ChatSendState.failed;
+    final bg = mine ? (failed ? c.danger.withValues(alpha: c.isDark ? 0.35 : 0.14) : c.primary) : c.cardBg;
+    final ink = mine && !failed ? c.onHero : c.textDark;
+    final inkSoft = mine && !failed ? c.onHeroMuted : c.textLight;
     final text = (message.body ?? '').trim();
     final hasFiles = message.attachments.isNotEmpty || message.local.isNotEmpty;
 
@@ -293,7 +414,7 @@ class ChatBubble extends StatelessWidget {
       Text(AppTime.time(message.createdAt), style: appText(10.5, w: FontWeight.w400, c: inkSoft)),
       if (mine && tick != null) ...[
         const SizedBox(width: 3),
-        ChatTickIcon(tick: tick!, size: 14, muted: inkSoft, read: c.onHero),
+        ChatTickIcon(tick: tick!, size: 14, muted: inkSoft, read: failed ? c.danger : c.onHero),
       ],
     ]);
 
@@ -318,8 +439,12 @@ class ChatBubble extends StatelessWidget {
         ),
       if (hasFiles) ...[
         for (final a in message.attachments.where((x) => x.image)) _ImagePart(attachment: a, resolve: imageOf, onTap: () => onOpenAttachment?.call(a)),
-        for (final a in message.attachments.where((x) => !x.image)) _FilePart(name: a.name, ext: a.ext, size: a.size, mine: mine, onTap: () => onOpenAttachment?.call(a)),
-        for (final f in message.local) _FilePart(name: f.name, ext: f.name.split('.').last, size: f.size, mine: mine),
+        for (final a in message.attachments.where((x) => !x.image)) _FilePart(name: a.name, ext: a.ext, size: a.size, mine: mine && !failed, onTap: () => onOpenAttachment?.call(a)),
+        for (final f in message.local)
+          if (f.isImage && f.bytes != null)
+            _LocalImagePart(bytes: f.bytes!, busy: message.sendState == ChatSendState.sending)
+          else
+            _FilePart(name: f.name, ext: f.name.split('.').last, size: f.size, mine: mine && !failed),
       ],
       if (text.isNotEmpty)
         Padding(
@@ -347,6 +472,7 @@ class ChatBubble extends StatelessWidget {
         decoration: BoxDecoration(
           color: bg,
           borderRadius: shape,
+          border: failed ? Border.all(color: c.danger.withValues(alpha: 0.5)) : null,
           boxShadow: mine ? null : c.cardShadow,
         ),
         padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.xs, AppSpace.sm, 6),
@@ -354,35 +480,91 @@ class ChatBubble extends StatelessWidget {
       ),
     );
 
+    final body = onRetry == null ? content : InkWell(borderRadius: BorderRadius.circular(AppRadius.card), onTap: onRetry, child: content);
+
     return Align(
       alignment: mine ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
       child: Padding(
-        padding: EdgeInsets.only(top: tail ? AppSpace.xs : 2),
+        padding: EdgeInsets.only(top: runStart ? AppSpace.sm : 2),
         child: Column(crossAxisAlignment: mine ? CrossAxisAlignment.end : CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          GestureDetector(onLongPress: onLongPress, child: content),
-          if (failed && onRetry != null)
+          GestureDetector(onLongPress: onLongPress, child: body),
+          if (message.sendState == ChatSendState.queued)
             Padding(
               padding: const EdgeInsets.only(top: 3),
-              child: InkWell(
-                onTap: onRetry,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.refresh_rounded, size: AppIconSize.xs, color: c.danger),
-                    const SizedBox(width: 3),
-                    Flexible(child: Text(message.error ?? 'chat_tap_retry'.tr, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w600, c: c.danger))),
-                  ]),
-                ),
-              ),
+              child: Text('chat_queued_note'.tr, style: appText(11, w: FontWeight.w500, c: c.textLight)),
             ),
+          if (failed && onRetry != null) _FailedActions(error: message.error, onRetry: onRetry!, onDiscard: onDiscard),
         ]),
       ),
     );
   }
 }
 
+class _FailedActions extends StatelessWidget {
+  const _FailedActions({this.error, required this.onRetry, this.onDiscard});
+  final String? error;
+  final VoidCallback onRetry;
+  final VoidCallback? onDiscard;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final lost = error == ChatMessage.lostFileError;
+    final words = lost ? 'chat_attachment_lost'.tr : (error ?? 'chat_not_sent'.tr);
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpace.xxs),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Flexible(child: Text(words, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w600, c: c.danger))),
+        if (!lost) ...[
+          const SizedBox(width: AppSpace.xxs),
+          TextButton.icon(
+            style: TextButton.styleFrom(minimumSize: const Size(0, AppTouch.min), padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs), foregroundColor: c.danger),
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded, size: AppIconSize.xs),
+            label: Text('chat_retry'.tr, style: appText(12, w: FontWeight.w700, c: c.danger)),
+          ),
+        ],
+        if (onDiscard != null)
+          IconButton(
+            tooltip: 'chat_delete_unsent'.tr,
+            constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+            padding: EdgeInsets.zero,
+            icon: Icon(Icons.delete_outline_rounded, size: AppIconSize.sm, color: c.textLight),
+            onPressed: onDiscard,
+          ),
+      ]),
+    );
+  }
+}
+
 /// The brand colour as readable ink on the current surface (a dark surface needs the lighter tone).
 Color chatInk(ThemeConfigProvider c) => c.isDark ? c.heroTint(c.primary, 0.55) : c.primary;
+
+/// A picked image still going out: its own bytes, dimmed while it uploads.
+class _LocalImagePart extends StatelessWidget {
+  const _LocalImagePart({required this.bytes, required this.busy});
+  final Uint8List bytes;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.card - 2),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 280),
+          child: Stack(alignment: Alignment.center, children: [
+            Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true, errorBuilder: (_, _, _) => ColoredBox(color: c.inputBg, child: const SizedBox(width: 120, height: 90))),
+            if (busy) Positioned.fill(child: ColoredBox(color: c.background.withValues(alpha: 0.35))),
+            if (busy) const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)),
+          ]),
+        ),
+      ),
+    );
+  }
+}
 
 class _ImagePart extends StatefulWidget {
   const _ImagePart({required this.attachment, this.resolve, this.onTap});
@@ -422,7 +604,13 @@ class _ImagePartState extends State<_ImagePart> {
                     future: _url,
                     builder: (_, s) => s.data == null
                         ? ColoredBox(color: c.inputBg, child: const AppSkeletonBox())
-                        : CachedNetworkImage(imageUrl: s.data!, fit: BoxFit.cover, placeholder: (_, _) => ColoredBox(color: c.inputBg)),
+                        : CachedNetworkImage(
+                            imageUrl: s.data!,
+                            cacheKey: 'chat-attachment-${a.id}', // the link is signed and short-lived; the picture is not
+                            fit: BoxFit.cover,
+                            placeholder: (_, _) => ColoredBox(color: c.inputBg),
+                            errorWidget: (_, _, _) => ColoredBox(color: c.inputBg, child: Icon(Icons.broken_image_outlined, color: c.textLight)),
+                          ),
                   ),
           ),
         ),
@@ -460,7 +648,7 @@ class _FilePart extends StatelessWidget {
                 height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(color: mine ? c.heroGlassBorder : c.primaryTint, borderRadius: BorderRadius.circular(AppRadius.chip)),
-                child: Text(ext.toUpperCase(), maxLines: 1, style: appText(10.5, w: FontWeight.w800, c: mine ? c.onHero : c.primary)),
+                child: Text(ext.toUpperCase(), maxLines: 1, style: appText(10.5, w: FontWeight.w800, c: mine ? c.onHero : chatInk(c))),
               ),
               const SizedBox(width: AppSpace.xs),
               Flexible(
@@ -537,9 +725,12 @@ class _ChatTypingBubbleState extends State<ChatTypingBubble> with SingleTickerPr
 
 /// The calm line that replaces the composer when messaging is off (the server said why).
 class ChatComposerNotice extends StatelessWidget {
-  const ChatComposerNotice({super.key, required this.state, this.onUnblock});
+  const ChatComposerNotice({super.key, required this.state, this.onUnblock, this.reason});
   final ChatComposerState state;
   final VoidCallback? onUnblock;
+
+  /// The server's own words, when it gave some.
+  final String? reason;
 
   @override
   Widget build(BuildContext context) {
@@ -549,6 +740,7 @@ class ChatComposerNotice extends StatelessWidget {
       ChatComposerState.youBlocked => (Icons.block_rounded, 'chat_state_you_blocked'.tr),
       ChatComposerState.closed => (Icons.lock_outline_rounded, 'chat_state_closed'.tr),
       ChatComposerState.disabled => (Icons.lock_outline_rounded, 'chat_state_disabled'.tr),
+      ChatComposerState.requestSent => (Icons.mark_email_read_outlined, reason ?? 'chat_state_request_sent'.tr),
       _ => (Icons.schedule_rounded, 'chat_state_ended'.tr),
     };
     return Container(
@@ -556,7 +748,7 @@ class ChatComposerNotice extends StatelessWidget {
       decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider.withValues(alpha: 0.5)))),
       child: SafeArea(
         top: false,
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        child: chatColumn(Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             Icon(icon, size: AppIconSize.md, color: c.textLight),
             const SizedBox(width: AppSpace.sm),
@@ -567,7 +759,7 @@ class ChatComposerNotice extends StatelessWidget {
               padding: const EdgeInsets.only(top: AppSpace.xs),
               child: Align(alignment: AlignmentDirectional.centerEnd, child: AppButton.tonal(label: 'chat_unblock'.tr, onPressed: onUnblock)),
             ),
-        ]),
+        ])),
       ),
     );
   }
@@ -575,9 +767,12 @@ class ChatComposerNotice extends StatelessWidget {
 
 /// A file waiting in the composer, with its remove button.
 class ChatPendingFileChip extends StatelessWidget {
-  const ChatPendingFileChip({super.key, required this.name, required this.onRemove});
+  const ChatPendingFileChip({super.key, required this.name, required this.onRemove, this.preview});
   final String name;
   final VoidCallback onRemove;
+
+  /// A picked image's bytes: the chip shows the picture.
+  final Uint8List? preview;
 
   @override
   Widget build(BuildContext context) {
@@ -587,7 +782,13 @@ class ChatPendingFileChip extends StatelessWidget {
       padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xxs, AppSpace.xxs, AppSpace.xxs),
       decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(AppRadius.hero)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.attach_file_rounded, size: AppIconSize.xs, color: c.primary),
+        if (preview != null)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.chip),
+            child: Image.memory(preview!, width: 40, height: 40, fit: BoxFit.cover, errorBuilder: (_, _, _) => Icon(Icons.image_outlined, size: AppIconSize.sm, color: c.primary)),
+          )
+        else
+          Icon(Icons.attach_file_rounded, size: AppIconSize.xs, color: c.primary),
         const SizedBox(width: AppSpace.xxs),
         Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: c.textDark))),
         const SizedBox(width: AppSpace.xxs),
@@ -636,3 +837,259 @@ class ChatFilterChip extends StatelessWidget {
 
 /// `true` when the app is showing Arabic.
 bool get chatIsAr => AppConfig.lang == 'ar';
+
+/// Enter sends on a keyboard-first device (the web on a computer, Windows, macOS, Linux); a phone's Enter is a new line.
+bool chatEnterSendsOn(TargetPlatform p) => p != TargetPlatform.android && p != TargetPlatform.iOS && p != TargetPlatform.fuchsia;
+
+bool get chatEnterSends => chatEnterSendsOn(defaultTargetPlatform);
+
+/// Pure: whether this key press is "send". Shift+Enter stays a new line; an IME still composing keeps its Enter.
+bool chatIsSendKey(KeyEvent e, {required bool enterSends, required bool shift, required bool composing}) {
+  if (e is! KeyDownEvent || !enterSends || shift || composing) return false;
+  return e.logicalKey == LogicalKeyboardKey.enter || e.logicalKey == LogicalKeyboardKey.numpadEnter;
+}
+
+/// The writing box of a chat, plain values only: grows to six lines, holds its focus, sends on Enter where that fits.
+class ChatComposerBar extends StatelessWidget {
+  const ChatComposerBar({
+    super.key,
+    required this.controller,
+    required this.focusNode,
+    required this.onSend,
+    required this.onChanged,
+    this.onAttach,
+    this.files = const [],
+    this.onRemoveFile,
+    this.enterSends = false,
+    this.maxLength = 4000,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final VoidCallback onSend;
+  final ValueChanged<String> onChanged;
+  final VoidCallback? onAttach;
+  final List<ChatLocalFile> files;
+  final void Function(int index)? onRemoveFile;
+  final bool enterSends;
+  final int maxLength;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final canSend = controller.text.trim().isNotEmpty || files.isNotEmpty;
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.xs),
+      decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider.withValues(alpha: 0.5)))),
+      child: SafeArea(
+        top: false,
+        child: chatColumn(Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (files.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
+              child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+                for (var i = 0; i < files.length; i++)
+                  ChatPendingFileChip(name: files[i].name, preview: files[i].isImage ? files[i].bytes : null, onRemove: () => onRemoveFile?.call(i)),
+              ]),
+            ),
+          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            if (onAttach != null) IconButton(tooltip: 'chat_attach'.tr, icon: Icon(Icons.attach_file_rounded, color: c.textMedium), onPressed: onAttach),
+            Expanded(
+              child: Focus(
+                skipTraversal: true,
+                canRequestFocus: false,
+                onKeyEvent: (node, ev) {
+                  final composing = controller.value.composing;
+                  final send = chatIsSendKey(ev, enterSends: enterSends, shift: HardwareKeyboard.instance.isShiftPressed, composing: composing.isValid && !composing.isCollapsed);
+                  if (!send) return KeyEventResult.ignored;
+                  onSend();
+                  return KeyEventResult.handled;
+                },
+                child: TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  autofocus: enterSends,
+                  minLines: 1,
+                  maxLines: 6,
+                  maxLength: maxLength,
+                  keyboardType: TextInputType.multiline,
+                  textInputAction: TextInputAction.newline,
+                  textDirection: controller.text.isEmpty ? null : contentDirection(controller.text),
+                  style: appText(14.5, w: FontWeight.w400, c: c.textDark),
+                  onChanged: onChanged,
+                  decoration: InputDecoration(
+                    hintText: 'chat_message_hint'.tr,
+                    counterText: '',
+                    filled: true,
+                    fillColor: c.inputBg,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 10),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide(color: c.primary.withValues(alpha: 0.45), width: 1.2)),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpace.xs),
+            ChatSendButton(enabled: canSend, onTap: onSend),
+          ]),
+        ])),
+      ),
+    );
+  }
+}
+
+class ChatSendButton extends StatelessWidget {
+  const ChatSendButton({super.key, required this.enabled, required this.onTap});
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      button: true,
+      label: 'chat_send'.tr,
+      enabled: enabled,
+      child: InkResponse(
+        onTap: enabled ? onTap : null,
+        radius: AppTouch.min / 2 + 4,
+        child: AnimatedContainer(
+          duration: AppMotion.of(context).fast,
+          width: AppTouch.min,
+          height: AppTouch.min,
+          decoration: BoxDecoration(shape: BoxShape.circle, gradient: enabled ? c.primaryGradient : null, color: enabled ? null : c.inputBg),
+          child: Icon(Icons.send_rounded, size: AppIconSize.md, color: enabled ? c.onHero : c.textLight),
+        ),
+      ),
+    );
+  }
+}
+
+/// One calm row above the inbox: "Message requests (n)".
+class ChatRequestsRow extends StatelessWidget {
+  const ChatRequestsRow({super.key, required this.count, required this.onTap});
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs, vertical: AppSpace.xxs),
+      child: Material(
+        color: c.primaryTint,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpace.sm),
+            child: Row(children: [
+              Icon(Icons.mark_email_unread_outlined, size: AppIconSize.md, color: chatInk(c)),
+              const SizedBox(width: AppSpace.sm),
+              Expanded(child: Text('chat_requests'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w600, c: c.textDark))),
+              Container(
+                constraints: const BoxConstraints(minWidth: 22),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(AppRadius.hero)),
+                alignment: Alignment.center,
+                child: Text(count > 99 ? '99+' : '$count', style: appText(11, w: FontWeight.w700, c: c.onHero)),
+              ),
+              const SizedBox(width: AppSpace.xxs),
+              Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.textLight),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One message request in its section: who, what they wrote, and the three answers.
+class ChatRequestCard extends StatelessWidget {
+  const ChatRequestCard({super.key, required this.conversation, this.onOpen, required this.onAccept, required this.onDecline, required this.onBlock, this.busy = false, this.now});
+  final ChatConversation conversation;
+  final VoidCallback? onOpen;
+  final VoidCallback onAccept, onDecline, onBlock;
+  final bool busy;
+  final DateTime? now;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final conv = conversation;
+    final body = conv.last?.body ?? '';
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.sm),
+      decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.card), boxShadow: c.cardShadow),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        InkWell(
+          onTap: onOpen,
+          borderRadius: BorderRadius.circular(AppRadius.chip),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            ChatAvatar(name: conv.title, url: conv.peer?.imageUrl, size: 44),
+            const SizedBox(width: AppSpace.sm),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Expanded(child: Text(conv.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w700, c: c.textDark))),
+                  const SizedBox(width: AppSpace.xs),
+                  Text(chatRowTime(conv.lastAt, now: now), style: appText(11.5, w: FontWeight.w400, c: c.textLight)),
+                ]),
+                if (body.isNotEmpty) ...[
+                  const SizedBox(height: AppSpace.xxs),
+                  Text(body, maxLines: 3, overflow: TextOverflow.ellipsis, textDirection: contentDirection(body), style: appText(13, w: FontWeight.w400, c: c.textMedium, h: 1.35)),
+                ],
+              ]),
+            ),
+          ]),
+        ),
+        const SizedBox(height: AppSpace.sm),
+        ChatRequestActions(onAccept: onAccept, onDecline: onDecline, onBlock: onBlock, busy: busy),
+      ]),
+    );
+  }
+}
+
+/// Accept is the answer the screen expects; Decline is quiet; Block is there, and last.
+class ChatRequestActions extends StatelessWidget {
+  const ChatRequestActions({super.key, required this.onAccept, required this.onDecline, required this.onBlock, this.busy = false});
+  final VoidCallback onAccept, onDecline, onBlock;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.end, crossAxisAlignment: WrapCrossAlignment.center, children: [
+      TextButton(onPressed: busy ? null : onBlock, child: Text('chat_block'.tr, style: appText(13, w: FontWeight.w600, c: c.danger))),
+      AppButton.tonal(label: 'chat_request_decline'.tr, onPressed: busy ? null : onDecline),
+      AppButton(label: 'chat_request_accept'.tr, onPressed: busy ? null : onAccept),
+    ]);
+  }
+}
+
+/// In a request I received, the composer's place: what this is and the three answers.
+class ChatRequestDecisionBar extends StatelessWidget {
+  const ChatRequestDecisionBar({super.key, required this.onAccept, required this.onDecline, required this.onBlock, this.busy = false, this.reason});
+  final VoidCallback onAccept, onDecline, onBlock;
+  final bool busy;
+  final String? reason;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.md),
+      decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider.withValues(alpha: 0.5)))),
+      child: SafeArea(
+        top: false,
+        child: chatColumn(Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+          Text(reason ?? 'chat_request_received_body'.tr, style: appText(13.5, w: FontWeight.w500, c: c.textMedium, h: 1.35)),
+          const SizedBox(height: AppSpace.sm),
+          ChatRequestActions(onAccept: onAccept, onDecline: onDecline, onBlock: onBlock, busy: busy),
+        ])),
+      ),
+    );
+  }
+}

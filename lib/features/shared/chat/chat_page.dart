@@ -1,4 +1,4 @@
-// lib/features/shared/chat/chat_page.dart — NextBrain Messages (D-330): the one chat design for every role.
+// lib/features/shared/chat/chat_page.dart — NextBrain Messages (D-330, D-375): the one chat design for every role.
 //
 //   ChatHomePage(initialConversationId:, startPeerId:…)  the list; from 860 px the list and the open chat side by side,
 //                                                        below that a chat opens as a pushed ChatThreadPage
@@ -12,14 +12,13 @@ import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/api_error_text.dart';
+import 'package:flutter_education_app/core/live/event_wait.dart';
+import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/core/plural.dart';
-import 'package:flutter_education_app/design/app_bidi.dart';
-import 'package:flutter_education_app/design/app_keyboard.dart' show EnterSubmits;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNav;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -50,17 +49,24 @@ class ChatHomePage extends StatefulWidget {
   State<ChatHomePage> createState() => _ChatHomePageState();
 }
 
-class _ChatHomePageState extends State<ChatHomePage> {
+class _ChatHomePageState extends State<ChatHomePage> with WidgetsBindingObserver {
   final ChatHub _hub = ChatHub.instance;
-  Timer? _presence;
+  late final EventOrPoll _presence = EventOrPoll(
+    poll: () async {
+      await _hub.api.presence(true).catchError((_) {});
+    },
+    every: const Duration(seconds: 45),
+    fallbackEvery: const Duration(seconds: 45),
+    names: const {},
+  );
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _hub.start();
     _hub.load();
-    _heartbeat();
-    _presence = Timer.periodic(const Duration(seconds: 45), (_) => _heartbeat());
+    _presence.start(pollNow: true);
     final peer = widget.startPeerId;
     if (peer != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _startWith(peer, widget.startCourseId, widget.startOrgId));
@@ -69,11 +75,20 @@ class _ChatHomePageState extends State<ChatHomePage> {
     }
   }
 
-  void _heartbeat() => _hub.api.presence(true).catchError((_) {});
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _presence.start(pollNow: true);
+    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+      _presence.stop();
+      _hub.api.presence(false).catchError((_) {});
+    }
+  }
 
   @override
   void dispose() {
-    _presence?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _presence.stop();
     _hub.api.presence(false).catchError((_) {});
     _hub.selectedId = null;
     super.dispose();
@@ -107,6 +122,14 @@ class _ChatHomePageState extends State<ChatHomePage> {
     }
   }
 
+  void _openRequests() {
+    _hub.loadRequests();
+    showAppSheet<void>(context, (sheet) => ChatRequestsSheet(hub: _hub, onOpen: (id) {
+      Navigator.of(sheet).pop();
+      _open(id);
+    }));
+  }
+
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
@@ -116,15 +139,26 @@ class _ChatHomePageState extends State<ChatHomePage> {
         child: ListenableBuilder(
           listenable: _hub,
           builder: (context, _) {
-            final list = ChatListView(hub: _hub, onOpen: _open, onNewChat: _newChat, onBack: Navigator.of(context).canPop() ? () => Navigator.of(context).maybePop() : null);
+            final list = ChatListView(
+              hub: _hub,
+              onOpen: _open,
+              onNewChat: _newChat,
+              onRequests: _openRequests,
+              onBack: Navigator.of(context).canPop() ? () => Navigator.of(context).maybePop() : null,
+            );
             if (!split) return list;
             return Row(children: [
               SizedBox(width: kChatListWidth, child: list),
               const VerticalDivider(width: 1),
               Expanded(
                 child: _hub.selectedId == null
-                    ? const _NoChatSelected()
-                    : ChatThreadView(key: ValueKey(_hub.selectedId), conversationId: _hub.selectedId!, showBack: false),
+                    ? _NoChatSelected(onNewChat: _newChat)
+                    : ChatThreadView(
+                        key: ValueKey(_hub.selectedId),
+                        conversationId: _hub.selectedId!,
+                        showBack: false,
+                        onLeave: () => setState(() => _hub.selectedId = null),
+                      ),
               ),
             ]);
           },
@@ -135,7 +169,8 @@ class _ChatHomePageState extends State<ChatHomePage> {
 }
 
 class _NoChatSelected extends StatelessWidget {
-  const _NoChatSelected();
+  const _NoChatSelected({required this.onNewChat});
+  final VoidCallback onNewChat;
 
   @override
   Widget build(BuildContext context) {
@@ -143,28 +178,38 @@ class _NoChatSelected extends StatelessWidget {
     return ColoredBox(
       color: c.background,
       child: Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 84,
-            height: 84,
-            decoration: BoxDecoration(color: c.primaryTint, shape: BoxShape.circle),
-            child: Icon(Icons.forum_rounded, size: AppIconSize.hero, color: c.primary),
-          ),
-          const SizedBox(height: AppSpace.md),
-          Text('chat_empty_detail_title'.tr, style: c.h3),
-          const SizedBox(height: AppSpace.xxs),
-          Text('chat_empty_detail_body'.tr, style: appText(13, c: c.textMedium), textAlign: TextAlign.center),
-        ]),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpace.lg),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(color: c.primaryTint, shape: BoxShape.circle),
+              child: Icon(Icons.forum_rounded, size: AppIconSize.hero, color: c.primary),
+            ),
+            const SizedBox(height: AppSpace.md),
+            Text('chat_empty_detail_title'.tr, style: c.h3, textAlign: TextAlign.center),
+            const SizedBox(height: AppSpace.xxs),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 360),
+              child: Text('chat_empty_detail_body'.tr, style: appText(13.5, c: c.textMedium, h: 1.4), textAlign: TextAlign.center),
+            ),
+            const SizedBox(height: AppSpace.md),
+            AppButton(label: 'chat_new_chat'.tr, icon: Icons.edit_outlined, onPressed: onNewChat),
+          ]),
+        ),
       ),
     );
   }
 }
 
+/// The inbox: requests first, then what needs the person, then everything else.
 class ChatListView extends StatelessWidget {
-  const ChatListView({super.key, required this.hub, required this.onOpen, required this.onNewChat, this.onBack});
+  const ChatListView({super.key, required this.hub, required this.onOpen, required this.onNewChat, this.onRequests, this.onBack});
   final ChatHub hub;
   final void Function(int id) onOpen;
   final VoidCallback onNewChat;
+  final VoidCallback? onRequests;
   final VoidCallback? onBack;
 
   @override
@@ -191,7 +236,7 @@ class ChatListView extends StatelessWidget {
               IconButton(tooltip: 'chat_back'.tr, icon: const Icon(Icons.arrow_back_rounded), onPressed: onBack),
               const SizedBox(width: AppSpace.xxs),
             ],
-            Expanded(child: Text('chat_title'.tr, style: c.h2.copyWith(fontWeight: FontWeight.w700))),
+            Expanded(child: Text('chat_title'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: c.h2.copyWith(fontWeight: FontWeight.w700))),
             if (showMoreMenu)
               IconButton(
                 tooltip: 'chat_blocked_people'.tr,
@@ -204,8 +249,12 @@ class ChatListView extends StatelessWidget {
             ),
           ]),
         ),
+        ValueListenableBuilder<bool>(
+          valueListenable: AppConnectivity.instance.online,
+          builder: (_, online, _) => online ? const SizedBox.shrink() : const ChatOfflineStrip(),
+        ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xs),
           child: AppSearchField(hint: 'chat_search_hint'.tr, dense: true, onChanged: (q) => hub.applyFilters(search: q)),
         ),
         SizedBox(
@@ -225,12 +274,12 @@ class ChatListView extends StatelessWidget {
   }
 
   Widget _rows(BuildContext context) {
-    if (hub.loading && hub.conversations.isEmpty) return const AppListSkeleton(items: 8);
+    if (hub.loading && hub.conversations.isEmpty && hub.requestCount == 0) return const AppListSkeleton(items: 8);
     if (hub.error != null && hub.conversations.isEmpty) {
       return AppEmpty(icon: Icons.cloud_off_rounded, title: hub.error!, actionLabel: 'chat_retry'.tr, onAction: () => hub.load());
     }
-    if (hub.conversations.isEmpty) {
-      final filtered = hub.filter != 'all' || hub.search.isNotEmpty || hub.role != null || hub.courseId != null;
+    final filtered = !hub.plainList;
+    if (hub.conversations.isEmpty && (filtered || hub.requestCount == 0)) {
       return AppEmpty(
         icon: filtered ? Icons.filter_alt_off_rounded : Icons.forum_outlined,
         title: filtered ? 'chat_none_filtered'.tr : 'chat_none_title'.tr,
@@ -239,19 +288,30 @@ class ChatListView extends StatelessWidget {
         onAction: filtered ? null : onNewChat,
       );
     }
+    final sections = chatInboxSections(hub.conversations, plain: hub.plainList);
+    final entries = <Object>[
+      if (hub.requestCount > 0 && !filtered) 'requests',
+      if (sections.attention.isNotEmpty) ...[const _Label('chat_section_new'), ...sections.attention],
+      if (sections.attention.isNotEmpty && sections.rest.isNotEmpty) const _Label('chat_section_earlier'),
+      ...sections.rest,
+    ];
     return AppRefresh(
       onRefresh: () => hub.load(silent: true),
       child: NotificationListener<ScrollNotification>(
         onNotification: (n) {
-          if (n.metrics.extentAfter < 300) hub.loadMore();
+          if (n.metrics.axis == Axis.vertical && n.metrics.extentAfter < 300) hub.loadMore();
           return false;
         },
         child: ListView.builder(
           padding: const EdgeInsets.fromLTRB(AppSpace.xs, AppSpace.xxs, AppSpace.xs, AppSpace.lg),
-          itemCount: hub.conversations.length,
+          itemCount: entries.length,
           itemBuilder: (context, i) {
-            final conv = hub.conversations[i];
+            final e = entries[i];
+            if (e == 'requests') return ChatRequestsRow(count: hub.requestCount, onTap: () => onRequests?.call());
+            if (e is _Label) return ChatSectionLabel(label: e.key.tr);
+            final conv = e as ChatConversation;
             return ChatConversationTile(
+              key: ValueKey('chat-row-${conv.id}'),
               conversation: conv,
               myId: hub.myId,
               selected: hub.selectedId == conv.id,
@@ -267,6 +327,68 @@ class ChatListView extends StatelessWidget {
   }
 }
 
+class _Label {
+  const _Label(this.key);
+  final String key;
+}
+
+/// The requests waiting on me: one card each, Accept · Decline · Block.
+class ChatRequestsSheet extends StatefulWidget {
+  const ChatRequestsSheet({super.key, required this.hub, required this.onOpen});
+  final ChatHub hub;
+  final void Function(int id) onOpen;
+
+  @override
+  State<ChatRequestsSheet> createState() => _ChatRequestsSheetState();
+}
+
+class _ChatRequestsSheetState extends State<ChatRequestsSheet> {
+  final Set<int> _busy = {};
+
+  Future<void> _act(int id, Future<void> Function() action) async {
+    setState(() => _busy.add(id));
+    try {
+      await action();
+    } catch (e) {
+      showAppNotice(chatErrorText(e), error: true);
+    }
+    if (mounted) setState(() => _busy.remove(id));
+  }
+
+  Future<void> _block(ChatConversation conv) async {
+    final ok = await appConfirm(context, message: '${'chat_request_block_confirm'.tr} ${conv.title}?', danger: true, confirmLabel: 'chat_block'.tr);
+    if (ok) _act(conv.id, () => widget.hub.blockRequest(conv.id));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: widget.hub,
+      builder: (context, _) {
+        final items = widget.hub.requests;
+        return AppSheetContent(title: 'chat_requests'.tr, children: [
+          if (widget.hub.requestsLoading && items.isEmpty) const AppListSkeleton(items: 3),
+          if (!widget.hub.requestsLoading && items.isEmpty) AppEmpty(icon: Icons.mark_email_read_outlined, title: 'chat_requests_none'.tr),
+          for (final r in items) ...[
+            ChatRequestCard(
+              conversation: r,
+              busy: _busy.contains(r.id),
+              onOpen: () => widget.onOpen(r.id),
+              onAccept: () => _act(r.id, () async {
+                final conv = await widget.hub.acceptRequest(r.id);
+                widget.onOpen(conv.id);
+              }),
+              onDecline: () => _act(r.id, () => widget.hub.declineRequest(r.id)),
+              onBlock: () => _block(r),
+            ),
+            const SizedBox(height: AppSpace.sm),
+          ],
+        ]);
+      },
+    );
+  }
+}
+
 class ChatThreadPage extends StatelessWidget {
   const ChatThreadPage({super.key, required this.conversationId});
   final int conversationId;
@@ -277,35 +399,58 @@ class ChatThreadPage extends StatelessWidget {
 
 /// One open chat: the header, the messages and the composer. A subtle dot wallpaper sits behind the messages.
 class ChatThreadView extends StatefulWidget {
-  const ChatThreadView({super.key, required this.conversationId, this.showBack = true, this.controller});
+  const ChatThreadView({super.key, required this.conversationId, this.showBack = true, this.controller, this.onLeave});
   final int conversationId;
   final bool showBack;
   final ChatThreadController? controller;
+
+  /// The chat is gone from here (a request declined): close it. Default: the page pops.
+  final VoidCallback? onLeave;
 
   @override
   State<ChatThreadView> createState() => _ChatThreadViewState();
 }
 
 class _ChatThreadViewState extends State<ChatThreadView> with WidgetsBindingObserver {
-  late final ChatThreadController _t = widget.controller ?? ChatThreadController(widget.conversationId);
+  late final ChatThreadController _t = widget.controller ?? ChatHub.instance.acquire(widget.conversationId);
+  late final bool _ownsController = widget.controller == null;
   final _scroll = ScrollController();
   final _text = TextEditingController();
   final _focus = FocusNode();
   final List<ChatLocalFile> _files = [];
+  final _centerKey = GlobalKey();
   Timer? _saveDraft;
-  bool _ownsController = false;
+  bool _draftTouched = false;
+  bool _deciding = false;
+
+  /// The list is at the newest message. Scrolled up, new messages must not move what is being read.
+  bool _atLatest = true;
+  String? _newestKey;
+
+  /// While set, this message stays the scroll list's fixed point: newer ones grow below it without moving anything.
+  String? _anchorKey;
+
+  ChatHub get _hub => _t.hub;
 
   @override
   void initState() {
     super.initState();
-    _ownsController = widget.controller == null;
     WidgetsBinding.instance.addObserver(this);
-    _text.text = ChatHub.instance.drafts[widget.conversationId] ?? '';
+    _text.text = _hub.drafts[widget.conversationId] ?? '';
+    _newestKey = _t.messages.firstOrNull?.clientId;
     _t.addListener(_onUpdate);
-    if (_ownsController) _t.open();
-    _scroll.addListener(() {
-      if (_scroll.position.extentAfter < 400) _t.loadOlder();
-    });
+    if (_ownsController) {
+      _t.open().then((_) => _applyDraft());
+    }
+    _scroll.addListener(_onScroll);
+  }
+
+  /// On a cold start the drafts were not read yet when the screen was built.
+  void _applyDraft() {
+    if (!mounted || _draftTouched || _text.text.isNotEmpty) return;
+    final d = _hub.drafts[widget.conversationId];
+    if (d == null || d.isEmpty) return;
+    setState(() => _text.text = d);
   }
 
   @override
@@ -317,9 +462,9 @@ class _ChatThreadViewState extends State<ChatThreadView> with WidgetsBindingObse
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _saveDraft?.cancel();
-    ChatHub.instance.setDraft(widget.conversationId, _text.text);
+    if (_draftTouched) _hub.setDraft(widget.conversationId, _text.text);
     _t.removeListener(_onUpdate);
-    if (_ownsController) _t.dispose();
+    if (_ownsController) _hub.release(_t);
     _scroll.dispose();
     _text.dispose();
     _focus.dispose();
@@ -327,25 +472,68 @@ class _ChatThreadViewState extends State<ChatThreadView> with WidgetsBindingObse
   }
 
   void _onUpdate() {
+    final newest = _t.messages.firstOrNull?.clientId;
+    if (newest != _newestKey) {
+      // scrolled up and something new arrived at the bottom: what was the bottom stays where it is
+      if (!_atLatest && _anchorKey == null && _newestKey != null) _anchorKey = _newestKey;
+      _newestKey = newest;
+    }
     if (mounted) setState(() {});
   }
 
+  void _onScroll() {
+    if (!_scroll.hasClients) return;
+    final pos = _scroll.position;
+    if (pos.extentAfter < 400) _t.loadOlder();
+    if (_anchorKey != null && pos.pixels <= pos.minScrollExtent + 2) _collapseAnchor();
+    final atLatest = pos.pixels <= pos.minScrollExtent + 120;
+    if (atLatest != _atLatest) {
+      _atLatest = atLatest;
+      _t.setAtLatest(atLatest);
+    }
+  }
+
+  void _collapseAnchor() {
+    setState(() => _anchorKey = null);
+    if (_scroll.hasClients) _scroll.jumpTo(0);
+  }
+
+  /// Back to the newest message: a jump after sending, a glide from the button.
+  void _toLatest({bool animate = false}) {
+    if (!_scroll.hasClients) return;
+    final duration = animate ? AppMotion.of(context).slow : Duration.zero;
+    if (_anchorKey != null && duration == Duration.zero) {
+      _collapseAnchor();
+    } else if (duration == Duration.zero) {
+      _scroll.jumpTo(0);
+    } else {
+      _scroll.animateTo(_scroll.position.minScrollExtent, duration: duration, curve: AppMotion.curve);
+    }
+    if (duration == Duration.zero && !_atLatest) {
+      _atLatest = true;
+      _t.setAtLatest(true);
+    }
+  }
+
   void _onChanged(String v) {
+    _draftTouched = true;
     setState(() {});
     _saveDraft?.cancel();
-    _saveDraft = Timer(const Duration(milliseconds: 450), () => ChatHub.instance.setDraft(widget.conversationId, _text.text));
+    _saveDraft = Timer(const Duration(milliseconds: 450), () => _hub.setDraft(widget.conversationId, _text.text));
     _t.typingChanged(v.trim().isNotEmpty);
   }
 
-  Future<void> _send() async {
+  void _send() {
     final text = _text.text;
     if (text.trim().isEmpty && _files.isEmpty) return;
     final files = List<ChatLocalFile>.from(_files);
+    _saveDraft?.cancel();
     _text.clear();
+    _draftTouched = false;
     setState(() => _files.clear());
-    ChatHub.instance.setDraft(widget.conversationId, '');
-    await _t.send(text, files: files);
-    if (_scroll.hasClients) _scroll.jumpTo(0);
+    _hub.setDraft(widget.conversationId, '');
+    _t.send(text, files: files);
+    _toLatest();
     _focus.requestFocus();
   }
 
@@ -354,17 +542,22 @@ class _ChatThreadViewState extends State<ChatThreadView> with WidgetsBindingObse
     if (picked.isEmpty) return;
     final add = <ChatLocalFile>[];
     for (final f in picked.take(10 - _files.length)) {
-      add.add(ChatLocalFile(name: f.name, bytes: kIsWeb ? await f.readAsBytes() : null, path: kIsWeb ? null : f.path, size: (await f.length()) ?? 0));
+      final size = (await f.length()) ?? 0;
+      final image = ChatLocalFile(name: f.name).isImage;
+      // bytes: always on the web; for a picture elsewhere too, so the composer and the bubble can show it (web-safe, no File)
+      final bytes = kIsWeb || (image && size < 8 * 1024 * 1024) ? await f.readAsBytes() : null;
+      add.add(ChatLocalFile(name: f.name, bytes: bytes, path: kIsWeb ? null : f.path, size: size));
     }
     if (mounted) setState(() => _files.addAll(add));
+    _focus.requestFocus();
   }
 
   final Map<int, Future<String>> _urls = {};
-  Future<String> _imageUrl(ChatAttachment a) => _urls[a.id] ??= ChatHub.instance.api.attachmentLink(a.id);
+  Future<String> _imageUrl(ChatAttachment a) => _urls[a.id] ??= _hub.api.attachmentLink(a.id);
 
   Future<void> _openAttachment(ChatAttachment a) async {
     try {
-      final url = await ChatHub.instance.api.attachmentLink(a.id, inline: a.image);
+      final url = await _hub.api.attachmentLink(a.id, inline: a.image);
       if (a.image && mounted) {
         showChatImage(context, url, a.name);
       } else {
@@ -380,6 +573,31 @@ class _ChatThreadViewState extends State<ChatThreadView> with WidgetsBindingObse
     if (conv != null) showChatInfoSheet(context, conv, onChanged: _t.reloadHeader);
   }
 
+  void _leave() {
+    final leave = widget.onLeave;
+    if (leave != null) {
+      leave();
+    } else {
+      Navigator.of(context).maybePop();
+    }
+  }
+
+  Future<void> _decide(Future<void> Function() action, {bool leave = false}) async {
+    setState(() => _deciding = true);
+    try {
+      await action();
+      if (leave && mounted) _leave();
+    } catch (e) {
+      showAppNotice(chatErrorText(e), error: true);
+    }
+    if (mounted) setState(() => _deciding = false);
+  }
+
+  Future<void> _blockRequest(ChatConversation conv) async {
+    final ok = await appConfirm(context, message: '${'chat_request_block_confirm'.tr} ${conv.title}?', danger: true, confirmLabel: 'chat_block'.tr);
+    if (ok) _decide(() => _hub.blockRequest(conv.id), leave: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -388,6 +606,10 @@ class _ChatThreadViewState extends State<ChatThreadView> with WidgetsBindingObse
       color: c.background,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         _ChatHeader(conversation: conv, typingName: _t.typingName, showBack: widget.showBack, onInfo: _showInfo),
+        ValueListenableBuilder<bool>(
+          valueListenable: AppConnectivity.instance.online,
+          builder: (_, online, _) => online ? const SizedBox.shrink() : const ChatOfflineStrip(),
+        ),
         Expanded(child: _body(c)),
         _composer(conv),
       ]),
@@ -416,148 +638,127 @@ class _ChatThreadViewState extends State<ChatThreadView> with WidgetsBindingObse
     final msgs = _t.messages;
     final conv = _t.conversation;
     final group = conv?.isGroup ?? false;
-    final myId = ChatHub.instance.myId;
+    final myId = _hub.myId;
+    final showTyping = _t.typingName != null && _atLatest;
+    // what the list draws, bottom to top: the typing dots, the messages, "loading older"
+    final items = <int>[if (showTyping) -1, for (var i = 0; i < msgs.length; i++) i, if (_t.loadingOlder) -2];
+    final anchorIdx = _anchorKey == null ? -1 : items.indexWhere((x) => x >= 0 && msgs[x].clientId == _anchorKey);
+    final below = anchorIdx > 0 ? items.sublist(0, anchorIdx) : const <int>[];
+    final above = anchorIdx > 0 ? items.sublist(anchorIdx) : items;
+
     return LayoutBuilder(builder: (context, box) {
-      final bubbleWidth = (box.maxWidth * 0.8).clamp(240.0, kChatBubbleMaxWidth);
-      return CustomPaint(
-        painter: _DotWallpaper(c.textLight.withValues(alpha: 0.05)),
-        child: ListView.builder(
-          controller: _scroll,
-          reverse: true,
-          padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.sm, AppSpace.sm),
-          itemCount: msgs.length + (_t.typingName != null ? 1 : 0) + (_t.loadingOlder ? 1 : 0),
-          itemBuilder: (context, i) {
-            if (_t.typingName != null && i == 0) return ChatTypingBubble(name: group ? _t.typingName : null);
-            final idx = i - (_t.typingName != null ? 1 : 0);
-            if (idx >= msgs.length) return const Padding(padding: EdgeInsets.all(AppSpace.md), child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
-            final m = msgs[idx];
-            final older = idx + 1 < msgs.length ? msgs[idx + 1] : null;
-            final newer = idx > 0 ? msgs[idx - 1] : null;
-            final startsRun = older == null || older.senderId != m.senderId || m.createdAt.difference(older.createdAt) > const Duration(minutes: 5) || !chatSameDay(older.createdAt, m.createdAt);
-            final endsRun = newer == null || newer.senderId != m.senderId || newer.createdAt.difference(m.createdAt) > const Duration(minutes: 5) || !chatSameDay(newer.createdAt, m.createdAt);
-            final mine = m.senderId == myId;
-            final showDate = older == null || !chatSameDay(older.createdAt, m.createdAt);
-            final bubble = ChatBubble(
-              message: m,
-              mine: mine,
-              tick: chatTickFor(m, peerReadId: group ? null : conv?.peerReadId, peerDeliveredId: group ? null : conv?.peerDeliveredId),
-              showSender: group && startsRun,
-              tail: endsRun,
-              maxWidth: bubbleWidth,
-              imageOf: _imageUrl,
-              onOpenAttachment: _openAttachment,
-              onLongPress: conv == null ? null : () => showChatMessageActions(context, conv, m, mine: mine),
-              onRetry: m.sendState == ChatSendState.failed ? () => _t.retry(m) : null,
-            );
-            final row = group && !mine
-                ? Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                    SizedBox(
-                      width: 34,
-                      child: endsRun ? Padding(padding: const EdgeInsetsDirectional.only(end: 6), child: AppAvatar(name: m.senderName ?? '', url: m.senderImage, size: 28)) : null,
-                    ),
-                    Expanded(child: bubble),
-                  ])
-                : bubble;
-            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              if (showDate) ChatDateChip(label: chatDayLabel(m.createdAt)),
-              row,
-            ]);
-          },
+      final column = box.maxWidth > kChatColumnMaxWidth ? kChatColumnMaxWidth : box.maxWidth;
+      final bubbleWidth = (column * 0.78).clamp(240.0, kChatBubbleMaxWidth);
+      Widget item(int code) {
+        if (code == -1) return ChatTypingBubble(name: group ? _t.typingName : null);
+        if (code == -2) return const Padding(padding: EdgeInsets.all(AppSpace.md), child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))));
+        final m = msgs[code];
+        final older = code + 1 < msgs.length ? msgs[code + 1] : null;
+        final newer = code > 0 ? msgs[code - 1] : null;
+        bool together(ChatMessage a, ChatMessage b) => a.senderId == b.senderId && b.createdAt.difference(a.createdAt) <= const Duration(minutes: 5) && chatSameDay(a.createdAt, b.createdAt);
+        final runStart = older == null || !together(older, m);
+        final runEnd = newer == null || !together(m, newer);
+        final mine = m.senderId == myId;
+        final showDate = older == null || !chatSameDay(older.createdAt, m.createdAt);
+        final failed = m.sendState == ChatSendState.failed;
+        final bubble = ChatBubble(
+          message: m,
+          mine: mine,
+          tick: chatTickFor(m, peerReadId: group ? null : conv?.peerReadId, peerDeliveredId: group ? null : conv?.peerDeliveredId),
+          showSender: group && runStart,
+          runStart: runStart,
+          runEnd: runEnd,
+          maxWidth: bubbleWidth,
+          imageOf: _imageUrl,
+          onOpenAttachment: _openAttachment,
+          onLongPress: conv == null || m.id == null ? null : () => showChatMessageActions(context, conv, m, mine: mine),
+          onRetry: failed ? () => _t.retry(m) : null,
+          onDiscard: failed ? () => _t.discard(m) : null,
+        );
+        final row = group && !mine
+            ? Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                SizedBox(
+                  width: 34,
+                  child: runEnd ? Padding(padding: const EdgeInsetsDirectional.only(end: 6), child: AppAvatar(name: m.senderName ?? '', url: m.senderImage, size: 28)) : null,
+                ),
+                Expanded(child: bubble),
+              ])
+            : bubble;
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (showDate) ChatDateChip(label: chatDayLabel(m.createdAt)),
+          if (_t.firstUnreadKey == m.clientId) const ChatUnreadDivider(),
+          row,
+        ]);
+      }
+
+      Widget sliver(List<int> rows, {bool closestFirst = false}) => SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (_, i) => chatColumn(item(closestFirst ? rows[rows.length - 1 - i] : rows[i])),
+              childCount: rows.length,
+            ),
+          );
+
+      return Stack(children: [
+        CustomPaint(
+          painter: _DotWallpaper(c.textLight.withValues(alpha: 0.05)),
+          child: CustomScrollView(
+            controller: _scroll,
+            reverse: true,
+            center: _centerKey,
+            slivers: [
+              // newer than the anchor: grows downwards from it, nothing above moves
+              if (below.isNotEmpty) sliver(below, closestFirst: true),
+              SliverPadding(key: _centerKey, padding: const EdgeInsets.all(AppSpace.sm), sliver: sliver(above)),
+            ],
+          ),
         ),
-      );
+        if (!_atLatest)
+          PositionedDirectional(
+            end: AppSpace.md,
+            bottom: AppSpace.sm,
+            child: ChatJumpToLatest(count: _t.newBelow, onTap: () => _toLatest(animate: true)),
+          ),
+      ]);
     });
+  }
+
+  String? _reasonOf(ChatConversation conv) {
+    final r = AppConfig.lang == 'ar' ? conv.composerReason : conv.composerReasonEn;
+    return r.isEmpty ? null : r;
   }
 
   Widget _composer(ChatConversation? conv) {
     if (conv == null) return const SizedBox.shrink();
     final state = conv.composer ?? ChatComposerState.open;
-    if (state != ChatComposerState.open) {
-      return ChatComposerNotice(state: state, onUnblock: state == ChatComposerState.youBlocked ? () => unblockFromThread(context, conv, () => _t.reloadHeader()) : null);
+    if (state == ChatComposerState.requestReceived) {
+      return ChatRequestDecisionBar(
+        busy: _deciding,
+        reason: _reasonOf(conv),
+        onAccept: () => _decide(() async {
+          await _hub.acceptRequest(conv.id);
+          await _t.reloadHeader();
+        }),
+        onDecline: () => _decide(() => _hub.declineRequest(conv.id), leave: true),
+        onBlock: () => _blockRequest(conv),
+      );
     }
-    final c = context.colors;
-    final canSend = _text.text.trim().isNotEmpty || _files.isNotEmpty;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(AppSpace.xs, AppSpace.xs, AppSpace.xs, AppSpace.xs),
-      decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider.withValues(alpha: 0.5)))),
-      child: SafeArea(
-        top: false,
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          if (_files.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpace.xs),
-              child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-                for (var i = 0; i < _files.length; i++) ChatPendingFileChip(name: _files[i].name, onRemove: () => setState(() => _files.removeAt(i))),
-              ]),
-            ),
-          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            if (conv.attachmentsOn)
-              IconButton(tooltip: 'chat_attach'.tr, icon: Icon(Icons.attach_file_rounded, color: c.textMedium), onPressed: _attach),
-            Expanded(
-              child: EnterSubmits.none(
-                child: Focus(
-                  onKeyEvent: (node, ev) {
-                    if (ev is KeyDownEvent && ev.logicalKey == LogicalKeyboardKey.enter && (kIsWeb || MediaQuery.sizeOf(context).width >= kChatSplitFrom) && !HardwareKeyboard.instance.isShiftPressed) {
-                      _send();
-                      return KeyEventResult.handled;
-                    }
-                    return KeyEventResult.ignored;
-                  },
-                  child: TextField(
-                    controller: _text,
-                    focusNode: _focus,
-                    minLines: 1,
-                    maxLines: 5,
-                    maxLength: 4000,
-                    keyboardType: TextInputType.multiline,
-                    textInputAction: TextInputAction.newline,
-                    textDirection: _text.text.isEmpty ? null : contentDirection(_text.text),
-                    style: appText(14.5, w: FontWeight.w400, c: c.textDark),
-                    onChanged: _onChanged,
-                    decoration: InputDecoration(
-                      hintText: 'chat_message_hint'.tr,
-                      counterText: '',
-                      filled: true,
-                      fillColor: c.inputBg,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 10),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide(color: c.primary.withValues(alpha: 0.45), width: 1.2)),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: AppSpace.xs),
-            _SendButton(enabled: canSend, onTap: _send),
-          ]),
-        ]),
-      ),
-    );
-  }
-}
-
-class _SendButton extends StatelessWidget {
-  const _SendButton({required this.enabled, required this.onTap});
-  final bool enabled;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Semantics(
-      button: true,
-      label: 'chat_send'.tr,
-      enabled: enabled,
-      child: InkResponse(
-        onTap: enabled ? onTap : null,
-        radius: 26,
-        child: AnimatedContainer(
-          duration: AppMotion.of(context).fast,
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(shape: BoxShape.circle, gradient: enabled ? c.primaryGradient : null, color: enabled ? null : c.inputBg),
-          child: Icon(Icons.send_rounded, size: AppIconSize.md, color: enabled ? c.onHero : c.textLight),
-        ),
+    if (state != ChatComposerState.open) {
+      return ChatComposerNotice(
+        state: state,
+        reason: _reasonOf(conv),
+        onUnblock: state == ChatComposerState.youBlocked ? () => unblockFromThread(context, conv, () => _t.reloadHeader()) : null,
+      );
+    }
+    return EnterSubmits.none(
+      child: ChatComposerBar(
+        controller: _text,
+        focusNode: _focus,
+        files: _files,
+        enterSends: chatEnterSends,
+        onChanged: _onChanged,
+        onSend: _send,
+        onAttach: conv.attachmentsOn ? _attach : null,
+        onRemoveFile: (i) => setState(() => _files.removeAt(i)),
       ),
     );
   }
@@ -580,6 +781,7 @@ class _ChatHeader extends StatelessWidget {
     } else if (conv != null) {
       final parts = <String>[
         if (!conv.isGroup && conv.online) 'chat_online'.tr,
+        if (conv.request?.pending ?? false) 'chat_request_badge'.tr,
         if (conv.isGroup && conv.memberCount != null) countText(conv.memberCount!, ar1: 'عضو واحد', ar2: 'عضوان', arFew: '{n} أعضاء', arMany: '{n} عضوًا', en1: '1 member', en: '{n} members'),
         if (!conv.isGroup && conv.child != null) '${'chat_parent_of'.tr} ${conv.child!.name.split(' ').first}',
         if (!conv.isGroup && conv.contextLine.isNotEmpty) conv.contextLine,

@@ -1,4 +1,6 @@
 // NextBrain Messages (D-330): no overflow from 320 px to desktop, Arabic and English, large text.
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/shared/chat/chat_api.dart';
@@ -73,6 +75,41 @@ void main() {
     await expectNoLayoutErrors(t, () => ListView(children: [
           Wrap(children: [ChatPendingFileChip(name: 'a very very long file name that should be cut.png', onRemove: () {})]),
           Wrap(children: [ChatFilterChip(label: longName, selected: true, onTap: () {})]),
+        ]));
+  });
+
+  testWidgets('composer with files, request bars, jump button, offline strip and dividers', (t) async {
+    final png = base64Decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
+    await expectNoLayoutErrors(t, () => ListView(children: [
+          ChatComposerBar(
+            controller: TextEditingController(text: 'a very long line of text in the composer ' * 12),
+            focusNode: FocusNode(),
+            onSend: () {},
+            onChanged: (_) {},
+            onAttach: () {},
+            enterSends: true,
+            files: [ChatLocalFile(name: 'a very very long photo name for the lecture.png', bytes: png), ChatLocalFile(name: 'report.pdf')],
+            onRemoveFile: (_) {},
+          ),
+          ChatRequestCard(conversation: conv(), onAccept: () {}, onDecline: () {}, onBlock: () {}, now: now),
+          ChatRequestDecisionBar(onAccept: () {}, onDecline: () {}, onBlock: () {}, reason: longName),
+          ChatRequestsRow(count: 120, onTap: () {}),
+          const ChatOfflineStrip(),
+          const ChatUnreadDivider(),
+          const ChatSectionLabel(label: longName),
+          Align(alignment: AlignmentDirectional.centerEnd, child: ChatJumpToLatest(count: 120, onTap: () {})),
+          ChatComposerNotice(state: ChatComposerState.requestSent, reason: longName),
+        ]));
+  });
+
+  testWidgets('bubbles: local files, queued, failed with an actions row', (t) async {
+    final png = base64Decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
+    await expectNoLayoutErrors(t, () => ListView(children: [
+          ChatBubble(message: ChatMessage(clientId: 'a', conversationId: 1, createdAt: now, senderId: 1, body: 'caption', local: [ChatLocalFile(name: 'p.png', bytes: png)], sendState: ChatSendState.sending), mine: true, tick: ChatTick.sending),
+          ChatBubble(message: ChatMessage(clientId: 'b', conversationId: 1, createdAt: now, senderId: 1, body: 'waiting for the network', sendState: ChatSendState.queued), mine: true, tick: ChatTick.queued),
+          ChatBubble(message: ChatMessage(clientId: 'c', conversationId: 1, createdAt: now, senderId: 1, body: 'refused', error: 'The server refused this message for a long reason that wraps', sendState: ChatSendState.failed), mine: true, tick: ChatTick.failed, onRetry: () {}, onDiscard: () {}),
+          ChatBubble(message: ChatMessage(clientId: 'd', conversationId: 1, createdAt: now, senderId: 1, body: 'lost file', error: ChatMessage.lostFileError, sendState: ChatSendState.failed), mine: true, tick: ChatTick.failed, onRetry: () {}, onDiscard: () {}),
+          ChatBubble(message: m(6, 'second of a run'), mine: false, runStart: false, runEnd: false),
         ]));
   });
 

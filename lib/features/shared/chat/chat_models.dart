@@ -4,6 +4,7 @@
 // ever sends {id, name, image_url, role} for a person.
 library;
 
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter_education_app/config/app_config.dart';
@@ -77,7 +78,7 @@ class ChatLastMessage {
 }
 
 /// What the composer may do (the server decides; `services/chat/rules.py`).
-enum ChatComposerState { open, blocked, youBlocked, closed, ended, disabled }
+enum ChatComposerState { open, blocked, youBlocked, closed, ended, disabled, requestSent, requestReceived }
 
 ChatComposerState chatComposerState(Object? raw) => switch ('$raw') {
       'open' => ChatComposerState.open,
@@ -85,6 +86,8 @@ ChatComposerState chatComposerState(Object? raw) => switch ('$raw') {
       'you_blocked' => ChatComposerState.youBlocked,
       'closed' => ChatComposerState.closed,
       'disabled' => ChatComposerState.disabled,
+      'request_sent' => ChatComposerState.requestSent,
+      'request_received' => ChatComposerState.requestReceived,
       _ => ChatComposerState.ended,
     };
 
@@ -113,7 +116,10 @@ class ChatConversation {
     this.canBlock = true,
     this.attachmentsOn = true,
     this.reportOn = true,
-  });
+    this.request,
+    this.composerReason = '',
+    this.composerReasonEn = '',
+  }) : loadedLastId = last?.id;
 
   final int id;
   final String kind;
@@ -131,6 +137,15 @@ class ChatConversation {
   ChatComposerState? composer;
   bool groupOpen, canManage, canBlock, attachmentsOn, reportOn;
   int? memberCount;
+
+  /// The newest message the server had counted when this row was loaded: an event at or below it is a replay.
+  final int? loadedLastId;
+
+  /// A message request (D-370); null for an ordinary chat.
+  ChatRequestInfo? request;
+
+  /// Why the composer is not open, in both languages (the server says it).
+  String composerReason, composerReasonEn;
 
   bool get isGroup => kind == 'course_group';
 
@@ -166,7 +181,24 @@ class ChatConversation {
       memberCount: _intOf(j['member_count']),
       attachmentsOn: j['attachments_on'] != false,
       reportOn: j['report_on'] != false,
+      request: ChatRequestInfo.fromJson(j['request']),
+      composerReason: composer is Map ? '${composer['reason'] ?? ''}' : '',
+      composerReasonEn: composer is Map ? '${composer['reason_en'] ?? ''}' : '',
     );
+  }
+}
+
+/// `request` on a conversation: who is waiting on whom.
+class ChatRequestInfo {
+  const ChatRequestInfo({required this.state, required this.mine});
+  final String state; // pending | accepted | declined
+  final bool mine; // I sent it
+
+  bool get pending => state == 'pending';
+
+  static ChatRequestInfo? fromJson(Object? j) {
+    if (j is! Map) return null;
+    return ChatRequestInfo(state: '${j['state'] ?? 'pending'}', mine: j['mine'] == true);
   }
 }
 
@@ -198,12 +230,17 @@ class ChatLocalFile {
   final String? path;
   final int size;
 
+  /// The file can still be read and sent: bytes in memory, or a path (a web page's bytes die with the page).
+  bool get readable => bytes != null || (path != null && path!.isNotEmpty);
+
+  bool get isImage => const {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'heic'}.contains(name.split('.').last.toLowerCase());
+
   Map<String, dynamic> toJson() => {'name': name, 'path': path, 'size': size};
 
   static ChatLocalFile fromJson(Map j) => ChatLocalFile(name: '${j['name'] ?? 'file'}', path: j['path'] as String?, size: _intOf(j['size']) ?? 0);
 }
 
-enum ChatSendState { sent, sending, failed }
+enum ChatSendState { sent, sending, queued, failed }
 
 class ChatMessage {
   ChatMessage({
@@ -218,11 +255,16 @@ class ChatMessage {
     this.senderIsTeacher = false,
     this.attachments = const [],
     this.local = const [],
+    this.uploaded = const [],
     required this.createdAt,
     this.deleted = false,
     this.sendState = ChatSendState.sent,
+    this.autoRetry = false,
     this.error,
   });
+
+  /// [error] of a message whose picked file is gone (a web page was reloaded): no retry can send it.
+  static const lostFileError = 'chat_attachment_lost';
 
   int? id;
   final String clientId;
@@ -234,9 +276,15 @@ class ChatMessage {
   final bool senderIsTeacher;
   List<ChatAttachment> attachments;
   List<ChatLocalFile> local;
+
+  /// Server ids of the [local] files already uploaded, so a retry never uploads one twice.
+  List<int> uploaded;
   DateTime createdAt;
   final bool deleted;
   ChatSendState sendState;
+
+  /// It failed only because the server was not reached: a reconnect retries it by itself.
+  bool autoRetry;
   String? error;
 
   bool get hasImages => attachments.any((a) => a.image);
@@ -336,7 +384,8 @@ class ChatReport {
 /// A contract note, used by both directions of a new message: a client id unique per send on this device.
 String chatNewClientId() {
   final now = DateTime.now().microsecondsSinceEpoch;
-  return 'c${now.toRadixString(36)}${(now ^ _seq++).toRadixString(36)}';
+  return 'c${now.toRadixString(36)}${(_seq++).toRadixString(36)}${_rand.nextInt(1 << 30).toRadixString(36)}';
 }
 
 int _seq = 0;
+final _rand = Random();

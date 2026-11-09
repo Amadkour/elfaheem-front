@@ -23831,6 +23831,82 @@
     "en": "Report reviewed",
     "ar": "تمت مراجعة البلاغ"
   },
+  "chat_you": {
+    "en": "You",
+    "ar": "أنت"
+  },
+  "chat_tick_queued": {
+    "en": "Waiting for connection",
+    "ar": "بانتظار الاتصال"
+  },
+  "chat_new_messages": {
+    "en": "New messages",
+    "ar": "رسائل جديدة"
+  },
+  "chat_offline_strip": {
+    "en": "You are offline. What you write is kept and sent when you are back.",
+    "ar": "لا يوجد اتصال. سنحتفظ بما تكتبه ونرسله عند عودة الاتصال."
+  },
+  "chat_jump_latest": {
+    "en": "Back to the latest message",
+    "ar": "إلى آخر رسالة"
+  },
+  "chat_queued_note": {
+    "en": "Will send when you are back online",
+    "ar": "ستُرسل عند عودة الاتصال"
+  },
+  "chat_not_sent": {
+    "en": "Not sent",
+    "ar": "لم تُرسل"
+  },
+  "chat_delete_unsent": {
+    "en": "Delete this message",
+    "ar": "حذف هذه الرسالة"
+  },
+  "chat_attachment_lost": {
+    "en": "The file was lost when the page reloaded. Delete this and attach it again.",
+    "ar": "تعذر العثور على الملف بعد إعادة تحميل الصفحة. احذف الرسالة وأرفقه من جديد."
+  },
+  "chat_section_new": {
+    "en": "New",
+    "ar": "جديدة"
+  },
+  "chat_section_earlier": {
+    "en": "Earlier",
+    "ar": "الأقدم"
+  },
+  "chat_requests": {
+    "en": "Message requests",
+    "ar": "طلبات المراسلة"
+  },
+  "chat_requests_none": {
+    "en": "No requests waiting",
+    "ar": "لا توجد طلبات حاليًا"
+  },
+  "chat_request_accept": {
+    "en": "Accept",
+    "ar": "قبول"
+  },
+  "chat_request_decline": {
+    "en": "Decline",
+    "ar": "رفض"
+  },
+  "chat_request_badge": {
+    "en": "Message request",
+    "ar": "طلب مراسلة"
+  },
+  "chat_request_block_confirm": {
+    "en": "Block",
+    "ar": "حظر"
+  },
+  "chat_request_received_body": {
+    "en": "This person is not in your courses. Accept to reply, or decline quietly. They are not told.",
+    "ar": "هذا الشخص ليس ضمن مقرراتك. اقبل لتتمكن من الرد، أو ارفض بهدوء دون أن يُبلَّغ بذلك."
+  },
+  "chat_state_request_sent": {
+    "en": "Your request was sent. You can write again when it is accepted.",
+    "ar": "أُرسل طلبك. يمكنك الكتابة مجددًا عند قبوله."
+  },
   "chat_course_group": {
     "en": "Course group",
     "ar": "مجموعة المقرر"

@@ -6,12 +6,15 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'chat_models.dart';
 
 class ChatConversationPage {
-  const ChatConversationPage(this.items, this.hasMore, this.total, this.courses, this.roles);
+  const ChatConversationPage(this.items, this.hasMore, this.total, this.courses, this.roles, {this.requestCount = 0});
   final List<ChatConversation> items;
   final bool hasMore;
   final int total;
   final List<ChatCourse> courses;
   final List<String> roles;
+
+  /// Message requests waiting on me (`requests.count`, D-370); 0 on an older server.
+  final int requestCount;
 }
 
 class ChatMessagePage {
@@ -51,8 +54,21 @@ class ChatApi {
       (r['total'] as num?)?.toInt() ?? 0,
       [for (final x in (filters['courses'] as List? ?? const [])) ?ChatCourse.fromJson(x)],
       [for (final x in (filters['roles'] as List? ?? const [])) '$x'],
+      requestCount: r['requests'] is Map ? ((r['requests'] as Map)['count'] as num?)?.toInt() ?? 0 : 0,
     );
   }
+
+  /// The message requests waiting on me (D-370).
+  Future<(List<ChatConversation>, bool)> requests({int offset = 0, int limit = 40}) async {
+    final r = _m(await _c.get('$_b/requests', queryParams: {'offset': offset, 'limit': limit}));
+    return ([for (final x in (r['items'] as List)) ChatConversation.fromJson(_m(x))], r['has_more'] == true);
+  }
+
+  Future<ChatConversation> acceptRequest(int id) async => ChatConversation.fromJson(_m(await _c.post('$_b/requests/$id/accept')));
+
+  Future<void> declineRequest(int id) => _c.post('$_b/requests/$id/decline');
+
+  Future<void> blockRequest(int id) => _c.post('$_b/requests/$id/block');
 
   Future<ChatConversation> thread(int id) async => ChatConversation.fromJson(_m(await _c.get('$_b/conversations/$id')));
 
