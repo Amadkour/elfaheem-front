@@ -282,7 +282,8 @@ Future<({Uint8List bytes, String name})?> pickQuestionImage(BuildContext context
   if (x == null || !context.mounted) return null;
   final bytes = await x.readAsBytes();
   if (!context.mounted) return null;
-  final out = await showAppImageCropper(context, bytes, shape: CropShape.wide);
+  // a question's figure is content: its lines and labels must stay exactly as they are
+  final out = await showAppImageCropper(context, bytes, shape: CropShape.wide, allowBackground: false);
   if (out == null) return null;
   if (identical(out, bytes)) return (bytes: bytes, name: x.name);
   final base = x.name.contains('.') ? x.name.substring(0, x.name.lastIndexOf('.')) : x.name;

@@ -326,7 +326,7 @@ Future<bool> showAdEditor(BuildContext context, {required String base, Map<Strin
               OutlinedButton.icon(
                 onPressed: () async {
                   final r = await orgPickAndUpload('/api/v1/ads/media', extensions: const ['png', 'jpg', 'jpeg', 'webp'],
-                      context: ctx, cropShape: CropShape.wide);
+                      context: ctx, cropShape: CropShape.wide, allowTransparent: false); // the server stores a JPEG
                   if (r != null) set(() => media.text = '${r['url']}');
                 },
                 icon: Icon(media.text.isEmpty ? Icons.add_photo_alternate_rounded : Icons.check_circle_rounded),

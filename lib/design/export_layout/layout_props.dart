@@ -484,10 +484,10 @@ Future<void> layoutPickElementImage(
     if (f == null) return;
     var bytes = await f.readAsBytes();
     if (!context.mounted) return;
-    final cropped = await showAppImageCropper(context, bytes);
+    final cropped = await cropImageWithName(context, bytes, f.name.isEmpty ? 'image.png' : f.name);
     if (cropped == null) return;
-    bytes = cropped;
-    final nm = f.name.isEmpty ? 'image.png' : f.name;
+    bytes = cropped.bytes;
+    final nm = cropped.name;
     final id = uploadFor != null ? await uploadFor(element, bytes, nm) : await upload(bytes, nm);
     if (id == null) return;
     LayoutAssets.put(id, bytes);

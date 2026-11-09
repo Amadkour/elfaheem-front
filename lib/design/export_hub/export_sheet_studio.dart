@@ -18,6 +18,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../features/org/org_providers.dart' show orgBase;
 import '../../features/shared/rag/app_assistant.dart' show AppAssistant;
+import '../app_image_cropper.dart';
 import '../app_kit.dart';
 import '../app_notice.dart';
 import '../app_tokens.dart';
@@ -79,9 +80,13 @@ class _ExportSheetStudioPageState extends State<ExportSheetStudioPage> {
   Future<void> _upload() async {
     final f = await FilePicker.pickFile(type: FileType.image);
     if (f == null || !mounted || widget.orgId == null) return;
-    final Uint8List bytes = await f.readAsBytes();
+    final raw = await f.readAsBytes();
+    if (!mounted) return;
+    final picked = await cropImageWithName(context, raw, f.name);
+    if (picked == null || !mounted) return;
+    final Uint8List bytes = picked.bytes;
     try {
-      final r = await ApiClient().postMultipart('$orgBase/orgs/${widget.orgId}/uploads', fields: const {}, fileField: 'file', fileName: f.name, fileBytes: bytes);
+      final r = await ApiClient().postMultipart('$orgBase/orgs/${widget.orgId}/uploads', fields: const {}, fileField: 'file', fileName: picked.name, fileBytes: bytes);
       final url = r is Map ? '${r['url'] ?? ''}' : '';
       if (url.isEmpty || !mounted) return;
       rememberExportImage(url, bytes);
@@ -94,9 +99,13 @@ class _ExportSheetStudioPageState extends State<ExportSheetStudioPage> {
   Future<String?> _uploadWatermark() async {
     final f = await FilePicker.pickFile(type: FileType.image);
     if (f == null || !mounted || widget.orgId == null) return null;
-    final Uint8List bytes = await f.readAsBytes();
+    final raw = await f.readAsBytes();
+    if (!mounted) return null;
+    final picked = await cropImageWithName(context, raw, f.name);
+    if (picked == null || !mounted) return null;
+    final Uint8List bytes = picked.bytes;
     try {
-      final r = await ApiClient().postMultipart('$orgBase/orgs/${widget.orgId}/uploads', fields: const {}, fileField: 'file', fileName: f.name, fileBytes: bytes);
+      final r = await ApiClient().postMultipart('$orgBase/orgs/${widget.orgId}/uploads', fields: const {}, fileField: 'file', fileName: picked.name, fileBytes: bytes);
       final url = r is Map ? '${r['url'] ?? ''}' : '';
       if (url.isNotEmpty) rememberExportImage(url, bytes);
       return url.isEmpty ? null : url;

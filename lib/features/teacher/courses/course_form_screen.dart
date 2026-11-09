@@ -1186,7 +1186,7 @@ class _EditCertificateTemplateCardState
     );
     if (file == null || !mounted) return;
 
-    final img = await cropImageWithName(context, await file.readAsBytes(), file.name);
+    final img = await cropImageWithName(context, await file.readAsBytes(), file.name, allowBackground: false); // a certificate page, not a photo
     if (img == null) return;
     final bytes = img.bytes;
     setState(() {

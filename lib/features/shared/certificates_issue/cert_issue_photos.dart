@@ -88,7 +88,7 @@ class CertPhotoCollector extends ChangeNotifier {
     try {
       final bytes = await picked.readAsBytes();
       if (!context.mounted) return;
-      final cropped = await showAppImageCropper(context, bytes, shape: CropShape.square, allowShapeChange: false);
+      final cropped = await showAppImageCropper(context, bytes, shape: CropShape.square, allowShapeChange: false, allowTransparent: false); // the server stores a JPEG
       if (cropped == null) return;
       uploading.add(p.key);
       notifyListeners();
@@ -280,7 +280,7 @@ Future<String?> certAskOnePhoto(BuildContext context, CertIssueApi api, String n
   try {
     final bytes = await picked.readAsBytes();
     if (!context.mounted) return null;
-    final cropped = await showAppImageCropper(context, bytes, shape: CropShape.square, allowShapeChange: false);
+    final cropped = await showAppImageCropper(context, bytes, shape: CropShape.square, allowShapeChange: false, allowTransparent: false); // the server stores a JPEG
     if (cropped == null) return null;
     return await api.uploadPhoto(cropped, picked.name);
   } catch (e) {

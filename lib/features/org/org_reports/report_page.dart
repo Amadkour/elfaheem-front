@@ -19,6 +19,7 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
+import '../../../design/app_image_cropper.dart';
 import '../../../design/app_kit.dart';
 import '../../admin/admin_common.dart';
 import '../../admin/admin_list.dart' show AdminAvatar;
@@ -498,6 +499,12 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
       if (clean == null) return toast(t('الصورة غير صالحة', 'Not a valid image'), error: true);
       bytes = clean;
       name = 'signature.png';
+    } else {
+      if (!mounted) return;
+      final picked = await cropImageWithName(context, bytes, name);
+      if (picked == null || !mounted) return;
+      bytes = picked.bytes;
+      name = picked.name;
     }
     final url = await _upload(bytes, name);
     if (url == null || !mounted) return;

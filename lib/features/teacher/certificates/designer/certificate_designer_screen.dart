@@ -51,12 +51,12 @@ import 'certificate_design_models.dart';
 import 'certificate_designer_provider.dart';
 
 /// Logo, signature, background and image fields: pick → app cropper (zoom, circle, size — or "use original").
-Future<Uint8List?> _pickImage(BuildContext context) async {
+Future<Uint8List?> _pickImage(BuildContext context, {bool allowBackground = true}) async {
   final f = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 2400);
   if (f == null) return null;
   final bytes = await f.readAsBytes();
   if (!context.mounted) return null;
-  return showAppImageCropper(context, bytes);
+  return showAppImageCropper(context, bytes, allowBackground: allowBackground);
 }
 
 void _failed(CertificateDesignerProvider p, [String key = 'certd_upload_failed']) =>
@@ -392,7 +392,7 @@ class _Wizard extends StatelessWidget {
     }
 
     Future<void> fromTemplate() async {
-      final bytes = await _pickImage(context);
+      final bytes = await _pickImage(context, allowBackground: false); // a whole certificate page
       if (bytes == null) return;
       final ok = await p.createFromTemplateImage(bytes, orgId: orgId);
       if (!ok && context.mounted) _failed(p, 'certificate_action_failed');
@@ -1018,8 +1018,8 @@ class _PagePanelState extends State<_PagePanel> {
     final edit = p.canEdit;
     final accent = ensureContrast(c.primary, [c.cardBg]);
 
-    Future<void> upload(Future<bool> Function(Uint8List b) send, [String failKey = 'certd_upload_failed']) async {
-      final b = await _pickImage(context);
+    Future<void> upload(Future<bool> Function(Uint8List b) send, [String failKey = 'certd_upload_failed', bool allowBackground = true]) async {
+      final b = await _pickImage(context, allowBackground: allowBackground);
       if (b == null) return;
       if (!await send(b) && context.mounted) _failed(p, failKey);
     }
@@ -1088,8 +1088,8 @@ class _PagePanelState extends State<_PagePanel> {
             english: en,
             state: en ? bgState : ((v.backgroundUrl ?? '').isEmpty ? CertInherit.none : CertInherit.own),
             enabled: edit,
-            onUpload: () => upload((b) => p.uploadBackground(l, b)),
-            onCustomize: () => upload((b) => p.uploadBackground(l, b)),
+            onUpload: () => upload((b) => p.uploadBackground(l, b), 'certd_upload_failed', false),
+            onCustomize: () => upload((b) => p.uploadBackground(l, b), 'certd_upload_failed', false),
             onRemove: () => p.setBackground(l, null),
             onReset: () => p.setBackground(l, null, inherit: true),
             more: [
