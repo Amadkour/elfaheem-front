@@ -33,6 +33,7 @@ import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_back_button.dart';
 import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_number_field.dart';
 
 class EditAccountScreen extends StatefulWidget {
   final bool isTeacher;
@@ -757,12 +758,7 @@ class _FormCard extends StatelessWidget {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    IconTextField(
-                      controller: experienceCtrl,
-                      label: 'experience'.tr,
-                      icon: Icons.schedule_rounded,
-                      keyboard: TextInputType.number,
-                    ),
+                    AppNumberField(controller: experienceCtrl, label: 'experience'.tr, min: 0),
                     const SizedBox(height: 14),
                     SectionLabel(label: 'specialization'.tr),
                     const SizedBox(height: 8),
@@ -1026,25 +1022,12 @@ class _ManagedRequirementRow extends StatelessWidget {
     showAppModalSheet(
       useSafeArea: true,
       context: context,
-      backgroundColor: c.cardBg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: c.divider,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
               // Gallery/camera don't make sense as separate concepts on
               // web — the browser file picker (below) already covers it.
               if (!kIsWeb)
@@ -1239,25 +1222,12 @@ class _ManagedCustomEntryRow extends StatelessWidget {
     showAppModalSheet(
       useSafeArea: true,
       context: context,
-      backgroundColor: c.cardBg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: c.divider,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
               // Gallery doesn't make sense as a separate concept on web —
               // the browser file picker (below) already covers it.
               if (!kIsWeb)

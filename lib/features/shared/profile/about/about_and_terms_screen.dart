@@ -198,12 +198,12 @@ class _TermsScreenState extends State<TermsScreen> {
       textDirection: Helpers.pageDirection,
       child: BasePage(
         key: ValueKey(widget.privacy ? 'terms.privacy' : 'terms'),
-        child: SafeArea(
-          child: Column(children: [
-            ScreenAppBar(title: title, actions: canAsk && doc != null ? [AskAboutPageAction(onTap: _ask)] : null),
-            Expanded(child: _body(p, canAsk)),
-          ]),
+        appBar: ScreenAppBar(
+          title: title,
+          showBack: Navigator.of(context).canPop(), // the public /terms and /privacy links open with nothing behind them
+          actions: canAsk && doc != null ? [AskAboutPageAction(onTap: _ask)] : null,
         ),
+        child: SafeArea(child: _body(p, canAsk)),
       ),
     );
   }
@@ -448,12 +448,8 @@ class _AboutScreenState extends State<AboutScreen> {
       textDirection: Helpers.pageDirection,
       child: BasePage(
         key: const ValueKey('about'),
-        child: SafeArea(
-          child: Column(children: [
-            ScreenAppBar(title: 'about_us'.tr),
-            Expanded(child: _body(p)),
-          ]),
-        ),
+        appBar: ScreenAppBar(title: 'about_us'.tr, showBack: Navigator.of(context).canPop()),
+        child: SafeArea(child: _body(p)),
       ),
     );
   }

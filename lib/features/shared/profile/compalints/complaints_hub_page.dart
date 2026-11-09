@@ -174,10 +174,10 @@ class _ComplaintsHubPageState extends State<ComplaintsHubPage> {
     return BasePage(
       key: const ValueKey('complaints'),
       useWebCard: true,
-      maxWith: 1000,
+      width: AppWidth.content,
+      appBar: ScreenAppBar(title: 'chub_title'.tr, actions: [AppRefreshAction(onRefresh: _ctl.refresh)]),
       child: SafeArea(
         child: Column(children: [
-          ScreenAppBar(title: 'chub_title'.tr, actions: [AppRefreshAction(onRefresh: _ctl.refresh)]),
           Expanded(
             child: ComplaintsHubView(
               segment: seg,

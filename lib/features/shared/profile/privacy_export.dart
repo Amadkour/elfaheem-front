@@ -362,7 +362,7 @@ class _DataExportPageState extends State<DataExportPage> {
     return BasePage(
       key: const ValueKey('profile.data_export'),
       useWebCard: true,
-      maxWith: 760,
+      width: AppWidth.reading,
       appBar: ScreenAppBar(title: t('تنزيل بياناتي', 'Download my data'), actions: [
         IconButton(tooltip: t('تحديث', 'Refresh'), icon: const Icon(Icons.refresh_rounded), onPressed: _load),
       ]),
