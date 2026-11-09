@@ -16,6 +16,7 @@ library;
 
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show immutable;
 import 'package:flutter/painting.dart';
 
 /// WCAG AA for normal-size text.
@@ -84,6 +85,59 @@ Color ensureContrast(Color fg, List<Color> surfaces,
     if (l == 0.0 || l == 1.0) break;
   }
   return best;
+}
+
+/// The colours mixed with a main colour (D-550). A shade of one hue reads as flat, so the mesh walks around the
+/// wheel: warm mains (red, orange, gold) walk toward pink and violet, cool mains (green, teal, blue, purple) toward
+/// blue and magenta. Each colour is moved until [ink] keeps [min] on it. Yellows never darken into olive: they turn
+/// to amber first, the way a painter shades yellow.
+@immutable
+class AppHarmony {
+  const AppHarmony(this.base, this.near, this.far, this.depth, this.spark);
+
+  final Color base;
+
+  /// About 35° away: the colour most of the gradient mixes with.
+  final Color near;
+
+  /// About 75° away: a second, clearly different hue.
+  final Color far;
+
+  /// A deep tone about 110° away, which gives the surface depth without going grey.
+  final Color depth;
+
+  /// The contrasting highlight.
+  final Color spark;
+
+  factory AppHarmony.of(Color main, Color ink, {double min = kWcagAaText, Color? spark, bool dark = false}) {
+    Color safe(Color x) => ensureContrast(_unmuddy(ensureContrast(_unmuddy(x), [ink], min: min)), [ink], min: min);
+    final h = HSLColor.fromColor(main);
+    if (h.saturation < 0.12) {
+      // a grey has no hue to walk: slate tones keep it calm and still not flat
+      Color slate(double hue, double l) => safe(HSLColor.fromAHSL(1, hue, 0.28, l).toColor());
+      return AppHarmony(safe(main), slate(215, 0.36), slate(250, 0.34), slate(235, dark ? 0.12 : 0.2), spark == null ? slate(190, 0.34) : safe(spark));
+    }
+    final warm = h.hue >= 330 || h.hue < 100;
+    final way = warm ? -1.0 : 1.0;
+    final s = h.saturation < 0.55 ? 0.55 : h.saturation;
+    Color turn(double degrees, double lightness) =>
+        safe(HSLColor.fromAHSL(1, (h.hue + way * degrees) % 360, s.clamp(0.0, 0.92), lightness).toColor());
+    final base = safe(main);
+    return AppHarmony(
+      base,
+      turn(36, 0.38),
+      turn(78, 0.38),
+      turn(112, dark ? 0.14 : 0.22),
+      safe(spark ?? HSLColor.fromAHSL(1, (h.hue + 150) % 360, 0.8, 0.42).toColor()),
+    );
+  }
+
+  /// A yellow or lime that is dark enough to carry light ink is olive. Amber keeps it looking like a colour.
+  static Color _unmuddy(Color c) {
+    final h = HSLColor.fromColor(c);
+    if (h.saturation < 0.25 || h.hue < 42 || h.hue > 82 || h.lightness > 0.6) return c;
+    return h.withHue(32 + (h.hue - 42) * 0.1).withSaturation(math.max(h.saturation, 0.82)).toColor();
+  }
 }
 
 /// The harmonious partner of [c]: a neighbouring hue a little cooler (green -> teal, blue -> violet, red -> amber).

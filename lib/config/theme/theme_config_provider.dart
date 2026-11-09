@@ -427,12 +427,19 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
         .toColor();
   }
 
-  // D-360: an uneven angled blend through the companion hue, not a plain fade. Every stop passes the ink check.
+  // D-550: a wide angled blend through three hues, not a plain fade. Every stop passes the ink check.
   LinearGradient _brand(List<Color> stops) => LinearGradient(
     begin: const AlignmentDirectional(-1, -0.7),
     end: const AlignmentDirectional(1, 0.5),
-    colors: [stops[0], stops[1], Color.lerp(stops[1], ensureContrast(companionOf(stops[1]), [onHero], min: _kBrandInk), 0.55)!, stops[1], stops[2]],
-    stops: const [0, 0.28, 0.52, 0.74, 1],
+    colors: () {
+      final h = AppHarmony.of(stops[1], onHero, min: _kBrandInk, dark: isDark);
+      return [
+        ensureContrast(Color.lerp(stops[1], h.far, 0.75)!, [onHero], min: _kBrandInk),
+        stops[1],
+        ensureContrast(Color.lerp(stops[1], h.near, 0.9)!, [onHero], min: _kBrandInk),
+      ];
+    }(),
+    stops: const [0, 0.5, 1],
   );
 
   /// A glass sheen over a brand fill: a soft top light that fades out above a centred label (it never sits under

@@ -26,6 +26,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 
 import 'app_kit.dart';
+import 'app_shell_nav.dart' show ShellChrome;
 import 'app_tokens.dart';
 
 /// "Updated just now" / "Updated 3 min ago" / "Updated 2 h ago" / "Updated 12 Oct 2026 · 09:30".
@@ -99,12 +100,16 @@ class AppPageHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final folded = ShellChrome.ownsHeaderOf(context);
     return LayoutBuilder(builder: (context, box) {
       final wide = box.maxWidth >= wideFrom;
       const inset = EdgeInsets.symmetric(horizontal: AppSpace.md);
       final hasCrumbs = breadcrumbs != null && breadcrumbs!.isNotEmpty;
       return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        AppHeaderCollapse(
+        if (folded)
+          ?_foldedRow(context)
+        else
+          AppHeaderCollapse(
           builder: (context, collapse, _) => RepaintBoundary(
             child: AppMeshSurface(
               drift: collapse,
@@ -157,6 +162,32 @@ class AppPageHeader extends StatelessWidget {
     });
   }
 
+  /// Under the shell's bar the title is already above: what remains is the page's own actions, on the surface.
+  Widget? _foldedRow(BuildContext context) {
+    final c = context.colors;
+    final hasUpdated = updatedAt != null;
+    if (primaryAction == null && actions.isEmpty && onRefresh == null && !hasUpdated) return null;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxs),
+      child: Row(children: [
+        Expanded(
+          child: hasUpdated
+              ? DefaultTextStyle.merge(style: TextStyle(color: c.textLight), child: _UpdatedText(at: updatedAt!, onSurface: true))
+              : const SizedBox.shrink(),
+        ),
+        if (onRefresh != null)
+          IconButton(
+            tooltip: 'refresh'.tr,
+            constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+            onPressed: onRefresh,
+            icon: Icon(Icons.refresh_rounded, size: AppIconSize.lg, color: c.textMedium),
+          ),
+        ...actions,
+        if (primaryAction != null) ...[AppSpace.gapXs, primaryAction!],
+      ]),
+    );
+  }
+
   Widget _titleRow(BuildContext context, bool wide, double collapse) {
     final c = context.colors;
     final refresh = onRefresh == null
@@ -186,8 +217,9 @@ class AppPageHeader extends StatelessWidget {
         AppSpace.gapSm,
         ?refresh,
         if (actions.isNotEmpty) AppHeaderTray(child: Row(mainAxisSize: MainAxisSize.min, children: actions)),
-        const AppFocusToggle(onHero: true),
         if (primaryAction != null) ...[AppSpace.gapXs, AppHeaderTray(child: primaryAction!)],
+        AppSpace.gapXs,
+        const AppFocusToggle(onHero: true),
       ] else ...[
         ?refresh,
         if (actions.isNotEmpty) _MoreButton(actions: actions),
@@ -282,8 +314,9 @@ class _MoreButton extends StatelessWidget {
 
 /// "Updated 2 min ago", re-drawn once a minute (only this text).
 class _UpdatedText extends StatefulWidget {
-  const _UpdatedText({required this.at});
+  const _UpdatedText({required this.at, this.onSurface = false});
   final DateTime at;
+  final bool onSurface;
 
   @override
   State<_UpdatedText> createState() => _UpdatedTextState();
@@ -312,7 +345,7 @@ class _UpdatedTextState extends State<_UpdatedText> {
         key: const ValueKey('app.header.updated'),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: AppType.meta(context).copyWith(color: context.colors.onHeroMuted),
+        style: AppType.meta(context).copyWith(color: widget.onSurface ? context.colors.textLight : context.colors.onHeroMuted),
       );
 }
 

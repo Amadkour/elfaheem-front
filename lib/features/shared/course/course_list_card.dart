@@ -32,6 +32,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_charts.dart' show appCompactNumber;
 import 'package:flutter_education_app/design/app_kit.dart' show appText, AppShimmer, AppSkeletonBox;
+import 'package:flutter_education_app/design/app_mesh.dart' show AppMeshSurface;
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
@@ -69,6 +70,25 @@ String courseHoursLabel(num h) => 'course_list_hours'.tr.replaceAll('{n}', h.rou
 
 /// One course in a list. [corner] is the heart (student) or the ⋮ menu (teacher); [chip] the type / status chip;
 /// [metaLead] leads the meta line (the organization badge of a mixed list); [footer] is the role's last line.
+/// The cover of a course with no picture: the app's gradient, a different shape per course.
+class CourseCoverArt extends StatelessWidget {
+  const CourseCoverArt({super.key, required this.seed, this.width, this.height, this.iconSize = 34});
+
+  final int seed;
+  final double? width, height;
+  final double iconSize;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: width ?? double.infinity,
+        height: height,
+        child: AppMeshSurface(
+          seed: seed,
+          child: Center(child: Icon(Icons.auto_stories_rounded, size: iconSize, color: context.colors.onHero.withValues(alpha: 0.55))),
+        ),
+      );
+}
+
 class CourseListCard extends StatelessWidget {
   const CourseListCard({
     super.key,
@@ -176,7 +196,7 @@ class CourseListCard extends StatelessWidget {
 
   Widget _picture({double? width, double? height}) => ParentComponent(
         featureKey: 'course_card.thumbnail',
-        child: AppNetworkImage(
+        child: imageUrl.trim().isEmpty ? CourseCoverArt(seed: title.hashCode, width: width, height: height) : AppNetworkImage(
           url: imageUrl,
           width: width ?? double.infinity,
           height: height,

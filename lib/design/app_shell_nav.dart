@@ -349,6 +349,35 @@ class ShellScope extends InheritedWidget {
   bool updateShouldNotify(ShellScope old) => !identical(tabs, old.tabs);
 }
 
+/// What a wide or rail shell tells the page headers inside it (D-551): ONE bar per screen.
+/// While the shell's top bar is showing, a tab's first page must not draw a second gradient and title under it.
+/// A page pushed inside the tab draws its own header, and the shell hides its bar and lends [tools].
+class ShellChrome extends InheritedWidget {
+  const ShellChrome({super.key, required this.barShown, required this.tools, required super.child});
+
+  /// The shell draws a top bar on this tab's first page.
+  final bool barShown;
+
+  /// The app-wide actions (calendar, messages, assistant, bell) for a pushed page's own header.
+  final WidgetBuilder? tools;
+
+  static ShellChrome? _of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<ShellChrome>();
+
+  /// True when this page's header would repeat the shell's bar: it is a tab's first page under the bar.
+  static bool ownsHeaderOf(BuildContext context) {
+    final s = _of(context);
+    if (s == null || !s.barShown) return false;
+    final route = ModalRoute.of(context);
+    return route == null || route.isFirst;
+  }
+
+  /// The app-wide actions a pushed page's header should carry, or null.
+  static WidgetBuilder? toolsOf(BuildContext context) => _of(context)?.tools;
+
+  @override
+  bool updateShouldNotify(ShellChrome old) => barShown != old.barShown || tools != old.tools;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Registry
 // ─────────────────────────────────────────────────────────────────────────────

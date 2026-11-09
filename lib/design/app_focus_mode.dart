@@ -3,8 +3,8 @@
 // While on, the role shell hides its sidebar / rail and top bar and every header stays compact, so the page gets the
 // whole window. The choice is remembered on this device. Phones have no side chrome, so the toggle hides itself there.
 //
-//   AppFocusToggle(onHero: true)     the enter / leave icon (headers and the shell's top bar carry it already)
-//   AppFocusExitPill()               the labelled way out the shell floats while focus mode is on
+//   AppFocusToggle(onHero: true)     the enter / leave button: ALWAYS the last button at the end of the header (D-551)
+//   AppFocusExitButton()             the labelled way out, in the same corner, on the slim bar focus mode leaves
 library;
 
 import 'package:flutter/material.dart';
@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app_responsive.dart';
 import 'app_shell_nav.dart' show ShellScope;
 import 'app_tokens.dart';
+import 'chrome_button.dart';
 
 class AppFocusMode extends ValueNotifier<bool> {
   AppFocusMode._() : super(false);
@@ -70,47 +71,44 @@ class AppFocusToggle extends StatelessWidget {
     if (!AppFocusMode.availableAt(MediaQuery.sizeOf(context).width) || ShellScope.maybeOf(context) == null) {
       return const SizedBox.shrink();
     }
-    final c = context.colors;
     return ValueListenableBuilder<bool>(
       valueListenable: AppFocusMode.instance,
-      builder: (context, on, _) => IconButton(
-        tooltip: (on ? 'ds_focus_exit' : 'ds_focus_enter').tr,
-        constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
-        onPressed: AppFocusMode.instance.toggle,
-        icon: Icon(on ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
-            size: AppIconSize.lg, color: onHero ? c.onHero : c.textMedium),
-      ),
+      builder: (context, on, _) {
+        final button = ChromeIconButton(
+          icon: on ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
+          label: (on ? 'ds_focus_exit' : 'ds_focus_enter').tr,
+          onTap: AppFocusMode.instance.toggle,
+        );
+        return onHero ? ChromeBar(child: button) : button;
+      },
     );
   }
 }
 
-/// The floating, labelled way out of focus mode.
-class AppFocusExitPill extends StatelessWidget {
-  const AppFocusExitPill({super.key});
+/// The labelled way out of focus mode, on the shell's slim bar, in the corner where focus mode was entered.
+class AppFocusExitButton extends StatelessWidget {
+  const AppFocusExitButton({super.key});
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final radius = BorderRadius.circular(AppRadius.sheet);
-    return DecoratedBox(
-      decoration: BoxDecoration(borderRadius: radius, boxShadow: AppElevation.of(context, 3)),
-      child: Material(
-        key: const ValueKey('app.focus.exit'),
-        color: c.cardBg,
-        shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: c.divider, width: AppBorder.hairline)),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: AppFocusMode.instance.toggle,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: AppTouch.min),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.fullscreen_exit_rounded, size: AppIconSize.md, color: c.primary),
-                const SizedBox(width: AppSpace.xs),
-                Text('ds_focus_exit'.tr, maxLines: 1, style: AppType.label(context).copyWith(color: c.textDark)),
-              ]),
-            ),
+    final radius = BorderRadius.circular(AppRadius.chip + 4);
+    return Material(
+      key: const ValueKey('app.focus.exit'),
+      color: c.heroGlass,
+      shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: c.heroGlassBorder)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: AppFocusMode.instance.toggle,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 40),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.fullscreen_exit_rounded, size: AppIconSize.md, color: c.onHero),
+              const SizedBox(width: AppSpace.xs),
+              Text('ds_focus_exit'.tr, maxLines: 1, style: AppType.label(context).copyWith(color: c.onHero)),
+            ]),
           ),
         ),
       ),

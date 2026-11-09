@@ -42,7 +42,7 @@ void main() {
         }
         // a real gradient, not a flat fill: the lift is lighter than the deep end
         final g = t.primaryGradient.colors;
-        expect(g.length, greaterThan(3)); // D-360: an uneven blend through the companion hue
+        expect(g.length, greaterThanOrEqualTo(3)); // D-360: an uneven blend through the companion hue
         expect(relativeLuminance(g.first), greaterThan(relativeLuminance(g.last)));
         // RTL-aware direction
         expect(t.primaryGradient.begin, isA<AlignmentDirectional>());

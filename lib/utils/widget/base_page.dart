@@ -124,7 +124,7 @@ class BasePage extends StatelessWidget {
               Positioned.fill(
                 child: CustomPaint(
                   painter: ElearningPatternPainter(
-                    color: context.colors.primaryLight.withValues(alpha: 0.2),
+                    color: context.colors.primaryLight.withValues(alpha: 0.07),
                     width: cardWidth,
                   ),
                 ),

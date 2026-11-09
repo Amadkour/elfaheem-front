@@ -20,7 +20,10 @@ import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'app_back_button.dart';
 import 'app_focus_mode.dart';
 import 'app_mesh.dart';
+import 'app_responsive.dart';
+import 'app_shell_nav.dart' show ShellChrome;
 import 'app_tokens.dart';
+import 'chrome_button.dart';
 
 /// Drives a header's collapse from the enclosing Scaffold's scrolling: [builder] gets 0 (open) … 1 (compact).
 /// Stays compact while focus mode is on.
@@ -173,8 +176,8 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   final int seed;
 
   static const double compactHeight = 56;
-  static const double openHeight = 88;
-  static const double openHeightWithSubtitle = 104;
+  static const double openHeight = 72;
+  static const double openHeightWithSubtitle = 84;
 
   /// The upper limit a Scaffold gives its app bar: the header draws itself shorter than this and the body follows.
   /// It covers text scale 1.3 (the header scales its own heights).
@@ -184,6 +187,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    if (!compact && ShellChrome.ownsHeaderOf(context)) return _foldedIntoShell(context);
     final top = MediaQuery.paddingOf(context).top;
     final scale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.6);
     final sub = subtitle;
@@ -246,6 +250,24 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   }
 }
 
+/// A tab's first page under the shell's bar: the title is already up there, so only tabs and actions remain.
+extension on AppHeader {
+  Widget _foldedIntoShell(BuildContext context) {
+    final c = context.colors;
+    final tabs = bottom;
+    if (tabs == null && actions.isEmpty && leading == null) return const SizedBox.shrink();
+    return DecoratedBox(
+      decoration: BoxDecoration(color: c.cardBg, border: Border(bottom: BorderSide(color: c.divider, width: AppBorder.hairline))),
+      child: Row(children: [
+        ?leading,
+        Expanded(child: tabs == null ? const SizedBox(height: AppTouch.min) : SizedBox(height: tabs.preferredSize.height, child: tabs)),
+        ...actions,
+        const SizedBox(width: AppSpace.xs),
+      ]),
+    );
+  }
+}
+
 class _TitleBlock extends StatelessWidget {
   const _TitleBlock({required this.title, required this.subtitle, required this.style, required this.collapse});
 
@@ -291,7 +313,7 @@ class _TitleBlock extends StatelessWidget {
   }
 }
 
-/// The actions' tray, then the focus toggle.
+/// In this order at the end of every header: the page's actions, the app-wide actions, the focus toggle last.
 class _Tools extends StatelessWidget {
   const _Tools({required this.actions});
 
@@ -299,11 +321,15 @@ class _Tools extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final global = MediaQuery.sizeOf(context).width >= Breakpoints.desktop ? ShellChrome.toolsOf(context) : null;
     return Row(mainAxisSize: MainAxisSize.min, children: [
-      if (actions.isNotEmpty)
+      if (actions.isNotEmpty) ...[
         AppHeaderTray(child: Row(mainAxisSize: MainAxisSize.min, children: actions)),
+        const SizedBox(width: AppSpace.xs),
+      ],
+      if (global != null) ChromeBar(child: global(context)),
       const AppFocusToggle(onHero: true),
-      const SizedBox(width: AppSpace.xxs),
+      const SizedBox(width: AppSpace.xs),
     ]);
   }
 }
