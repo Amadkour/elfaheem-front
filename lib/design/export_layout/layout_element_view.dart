@@ -294,7 +294,6 @@ class LayoutElementView extends StatelessWidget {
 
   Widget _image(BuildContext context, Color color) {
     final e = element;
-    final bytes = LayoutAssets.of(e.value);
     final fit = switch (e.fit) {
       'cover' => BoxFit.cover,
       'fill' => BoxFit.fill,
@@ -303,17 +302,24 @@ class LayoutElementView extends StatelessWidget {
     final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 1;
     // decode at the size it is drawn at (a 12 MP photo in a 40 px box would otherwise cost tens of MB)
     final cacheW = (e.w * scale * dpr).round().clamp(16, 2048);
-    Widget picture = bytes != null
-        ? Image.memory(bytes, fit: fit, gaplessPlayback: true, cacheWidth: cacheW)
-        : Container(
-            color: const Color(0x0F101828),
-            child: FittedBox(
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Icon(e.kind == 'signature' ? Icons.draw_rounded : Icons.image_outlined, color: const Color(0xFF98A2B3)),
-              ),
-            ),
-          );
+    // an image can arrive after the canvas built (fetched in the background): it must replace the placeholder then
+    Widget picture = ValueListenableBuilder<int>(
+      valueListenable: LayoutAssets.version,
+      builder: (context, _, _) {
+        final bytes = LayoutAssets.of(e.value);
+        return bytes != null
+            ? Image.memory(bytes, fit: fit, gaplessPlayback: true, cacheWidth: cacheW)
+            : Container(
+                color: const Color(0x0F101828),
+                child: FittedBox(
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(e.kind == 'signature' ? Icons.draw_rounded : Icons.image_outlined, color: const Color(0xFF98A2B3)),
+                  ),
+                ),
+              );
+      },
+    );
     picture = layoutShapeClip(e.shape, picture);
     if (e.kind != 'signature') return picture;
     final small = _style(color).copyWith(fontSize: ((e.style.size ?? pageFontSize) * .9 * kPtMm * scale).clamp(1.0, 200.0));
