@@ -60,11 +60,11 @@ class PlScoreRing extends StatelessWidget {
         child: Stack(alignment: Alignment.center, children: [
           CustomPaint(
             size: Size.square(size),
-            painter: _RingPainter(value.toDouble().clamp(0, 100) / 100, color, light ? Colors.white24 : color.withAlpha(35)),
+            painter: _RingPainter(value.toDouble().clamp(0, 100) / 100, color, light ? context.colors.heroGlass : color.withAlpha(35)),
           ),
           Column(mainAxisSize: MainAxisSize.min, children: [
             Text('${value.round()}',
-                style: TextStyle(fontSize: size * 0.30, fontWeight: FontWeight.w900, color: light ? Colors.white : color)),
+                style: TextStyle(fontSize: size * 0.30, fontWeight: FontWeight.w900, color: light ? context.colors.onHero : color)),
             Text('/100', style: TextStyle(fontSize: size * 0.12, color: light ? context.colors.onHeroMuted : context.colors.textLight)),
           ]),
         ]),

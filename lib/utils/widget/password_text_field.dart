@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/text_field.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 
 import '../../config/theme/theme_config_provider.dart';
 import '../validators.dart';
@@ -22,13 +24,9 @@ class MyPasswordTextField extends StatelessWidget {
     BuildContext context,
   ) {
     return Material(
-      shadowColor: Color.fromRGBO(0, 0, 0, 0.25),
-      color: context.colors.inputBg,
-      borderRadius: BorderRadius.circular(10),
-      elevation: 4,
-      clipBehavior: Clip.antiAliasWithSaveLayer,
+      type: MaterialType.transparency,
       child: TextFormField(
-        textDirection: TextDirection.rtl,
+        textDirection: pageDirection,
         controller: controller,
         textInputAction: TextInputAction.next,
         obscureText: obscurePassword,
@@ -38,8 +36,9 @@ class MyPasswordTextField extends StatelessWidget {
             fontSize: 15,
             color: context.colors.textDark),
         decoration: InputDecoration(
-          hintTextDirection: TextDirection.rtl,
+          hintTextDirection: pageDirection,
           floatingLabelBehavior: FloatingLabelBehavior.never,
+          filled: true,
           fillColor: context.colors.inputBg,
           hint: Text(
             label,
@@ -47,18 +46,20 @@ class MyPasswordTextField extends StatelessWidget {
                 fontFamily: AppFonts.family,
                 fontWeight: FontWeight.w600,
                 color:  context.colors.textDark),
-            textDirection: TextDirection.rtl,
+            textDirection: pageDirection,
           ),
           suffixIcon: IconButton(
+            tooltip: AppConfig.lang == 'ar' ? 'إظهار أو إخفاء كلمة المرور' : 'Show or hide the password',
             icon: Icon(
               obscurePassword ? Icons.visibility : Icons.visibility_off,
             ),
             onPressed: onPressed,
           ),
-          border: OutlineInputBorder(
-            borderSide: BorderSide.none,
-            borderRadius: BorderRadius.circular(12),
-          ),
+          border: myFieldBorder(context),
+          enabledBorder: myFieldBorder(context),
+          focusedBorder: myFieldBorder(context, focused: true),
+          errorBorder: myFieldBorder(context, error: true),
+          focusedErrorBorder: myFieldBorder(context, focused: true, error: true),
         ),
         validator: Validators.validatePassword,
       ),

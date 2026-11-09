@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/config/app_config.dart' as Helpers;
@@ -68,11 +69,7 @@ class _OverviewView extends StatelessWidget {
                         width:  double.infinity,
                         height: 220,
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [context.colors.primaryLight, context.colors.primaryLight],
-                            begin:  Alignment.topLeft,
-                            end:    Alignment.bottomRight,
-                          ),
+                          gradient: AppGradients.brand(context),
                           borderRadius:
                               BorderRadius.circular(context.colors.radiusLarge),
                           boxShadow: context.colors.primaryShadow,

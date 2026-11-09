@@ -15,6 +15,7 @@
 // The form scrolls (keyboard-aware, dismissed by a drag), safe areas are respected and every target is 48 dp.
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_back_button.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -327,12 +328,7 @@ class AuthBackButton extends StatelessWidget {
   final bool onHero;
 
   @override
-  Widget build(BuildContext context) => _RoundButton(
-        onHero: onHero,
-        tooltip: AppConfig.lang == 'ar' ? 'رجوع' : 'Back',
-        onTap: () => Navigator.of(context).maybePop(),
-        child: Icon(Icons.arrow_back_rounded, size: 20, color: onHero ? context.colors.onHero : context.colors.textDark),
-      );
+  Widget build(BuildContext context) => AppBackButton(onHero: onHero);
 }
 
 /// 48 dp hit area around a 40 dp visual circle (or pill when [child] is wider).

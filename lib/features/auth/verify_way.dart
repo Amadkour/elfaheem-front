@@ -9,6 +9,7 @@
 //   VerifyWayStatusPill  "waiting for your confirmation" indicator
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter/services.dart';
 
 import '../../config/app_config.dart';
@@ -138,11 +139,7 @@ class _BrandBadge extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         gradient: selected
-            ? LinearGradient(
-                begin: AlignmentDirectional.topStart,
-                end: AlignmentDirectional.bottomEnd,
-                colors: [way.brand, way.brandDark],
-              )
+            ? AppGradients.blend(context, color: way.brand)
             : null,
         color: selected ? null : way.brand.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(size * 0.31),
@@ -567,7 +564,7 @@ class _SwitchItem extends StatelessWidget {
       curve: Curves.easeOutCubic,
       height: 66,
       decoration: BoxDecoration(
-        gradient: selected ? LinearGradient(colors: [way.brand, way.brandDark]) : null,
+        gradient: selected ? AppGradients.blend(context, color: way.brand) : null,
         borderRadius: BorderRadius.circular(16),
         boxShadow: selected
             ? [
@@ -640,11 +637,7 @@ class VerifyWayButton extends StatelessWidget {
     final radius = BorderRadius.circular(context.colors.radiusMedium);
     return DecoratedBox(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: [way.brand, way.brandDark],
-        ),
+        gradient: AppGradients.blend(context, color: way.brand),
         borderRadius: radius,
         boxShadow: [
           BoxShadow(
@@ -782,11 +775,7 @@ class _VerifyWayHeroState extends State<VerifyWayHero>
             width: widget.size,
             height: widget.size,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: AlignmentDirectional.topStart,
-                end: AlignmentDirectional.bottomEnd,
-                colors: [way.brand, way.brandDark],
-              ),
+              gradient: AppGradients.blend(context, color: way.brand),
               borderRadius: BorderRadius.circular(widget.size * 0.32),
               boxShadow: [
                 BoxShadow(

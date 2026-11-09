@@ -16,6 +16,8 @@
 // Uses the dashboard's StudentAnalyticsProvider when there is one (so the dashboard's refresh button refreshes what
 // you see), otherwise creates its own.
 import 'package:flutter_education_app/design/app_charts.dart' show appChartPalette;
+import 'package:flutter_education_app/design/app_gradients.dart';
+import 'package:flutter_education_app/design/app_header.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -439,17 +441,12 @@ class _AllCoursesPageState extends State<_AllCoursesPage> {
   @override
   Widget build(BuildContext context) {
     final prov = context.watch<StudentAnalyticsProvider>();
-    final c = context.colors;
     final list = prov.filtered;
-    return Scaffold(
-      backgroundColor: c.background,
-      appBar: AppBar(
-        backgroundColor: c.background,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        title: Text(anTr('an2_all_courses_title', 'All courses'), style: anText(17, w: FontWeight.w800, c: c.textDark)),
-      ),
-      body: AppRefresh(
+    return BasePage(
+      useWebCard: true,
+      width: AppWidth.content,
+      appBar: AppHeader(title: anTr('an2_all_courses_title', 'All courses')),
+      child: AppRefresh(
         onRefresh: prov.loadCourses,
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
@@ -643,11 +640,7 @@ class _CourseCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.fromLTRB(16, 14, 14, 10),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: AlignmentDirectional.topStart,
-              end: AlignmentDirectional.bottomEnd,
-              colors: [c.primary.withValues(alpha: 0.07), Colors.transparent],
-            ),
+            gradient: AppGradients.wash(context),
           ),
           child: Row(children: [
             ClipRRect(

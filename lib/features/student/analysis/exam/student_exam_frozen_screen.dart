@@ -1,4 +1,5 @@
 import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/design/app_header.dart';
 import 'dart:async';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/material.dart';
@@ -74,19 +75,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
       key: const ValueKey('exam_frozen'),
       useWebCard: true,
       width: AppWidth.reading,
-      appBar: AppBar(
-        backgroundColor: _accent,
-        foregroundColor: context.colors.onHero,
-        leading: IconButton(
-          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: widget.onBack,
-        ),
-        title: Text(e.name,
-            style: TextStyle(
-                fontFamily: AppFonts.display, fontWeight: FontWeight.w700),
-            overflow: TextOverflow.ellipsis),
-      ),
+      appBar: AppHeader(title: e.name, onBack: widget.onBack, color: _accent),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(children: [
@@ -206,7 +195,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: widget.onBack,
-              icon: Icon(Icons.arrow_back_ios_new_rounded,
+              icon: Icon(Icons.arrow_back_rounded,
                   size: 16, color: context.colors.onHero),
               label: Text(tx('exam_back_to_exams'),
                   style: TextStyle(

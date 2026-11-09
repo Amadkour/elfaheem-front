@@ -1,5 +1,7 @@
 // ── Image picking ──────────────────────────────────────────────────────────
 import 'package:flutter_education_app/design/app_side_sheet.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppSheetContent;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -49,7 +51,7 @@ class EditableImage extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape:isCircle? BoxShape.circle : BoxShape.rectangle,
                   borderRadius:isCircle?null: BorderRadius.all(Radius.circular(20)),
-                  border: Border.all(color: Colors.white, width: 3),
+                  border: Border.all(color: context.colors.cardBg, width: 3),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.2),
@@ -83,7 +85,7 @@ class EditableImage extends StatelessWidget {
                   gradient: context.colors.primaryGradient,
                   shape:isCircle? BoxShape.circle : BoxShape.rectangle,
                   borderRadius:isCircle?null: BorderRadius.all(Radius.circular(10)),
-                  border: Border.all(color: Colors.white, width: 2),
+                  border: Border.all(color: context.colors.cardBg, width: 2),
                   boxShadow: [
                     BoxShadow(
                       color: context.colors.primary.withValues(alpha: 0.4),
@@ -154,12 +156,7 @@ class EditableImage extends StatelessWidget {
       );
 
   Future<void> _pickImage(BuildContext context,Future<void> Function(XFile file) onChange) async {
-    final source = await showAppModalSheet<ImageSource>(
-      useSafeArea: true,
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _ImageSourceSheet(),
-    );
+    final source = await showAppSideSheet<ImageSource>(context, builder: (_) => _ImageSourceSheet());
     if (source == null) return;
 
     final xFile = await ImagePicker().pickImage(
@@ -185,53 +182,26 @@ class EditableImage extends StatelessWidget {
 
 class _ImageSourceSheet extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.all(16),
-        // Material, not a coloured Container: the ListTiles paint their ink on it (Flutter reports
-        // "ListTile background color or ink splashes may be invisible" under a coloured box).
-        child: Material(
-          color: context.colors.cardBg,
-          borderRadius: BorderRadius.circular(20),
-          clipBehavior: Clip.antiAlias,
-          child: SingleChildScrollView(
-            child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.black12,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text('اختر مصدر الصورة',
-                style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: AppFonts.display,
-                    color: context.colors.textDark)),
-            const SizedBox(height: 16),
-            _SheetTile(
-              icon: Icons.photo_library_rounded,
-              label: 'من المعرض',
-              color: context.colors.primary,
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-            _SheetTile(
-              icon: Icons.camera_alt_rounded,
-              label: 'الكاميرا',
-              color: context.colors.success,
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-            const SizedBox(height: 16),
-          ],
+  Widget build(BuildContext context) {
+    final ar = AppConfig.lang == 'ar';
+    return AppSheetContent(
+      title: ar ? 'اختر مصدر الصورة' : 'Choose an image source',
+      children: [
+        _SheetTile(
+          icon: Icons.photo_library_rounded,
+          label: ar ? 'من المعرض' : 'From the gallery',
+          color: context.colors.primary,
+          onTap: () => Navigator.pop(context, ImageSource.gallery),
         ),
-          ),
+        _SheetTile(
+          icon: Icons.camera_alt_rounded,
+          label: ar ? 'الكاميرا' : 'Camera',
+          color: context.colors.success,
+          onTap: () => Navigator.pop(context, ImageSource.camera),
         ),
-      );
+      ],
+    );
+  }
 }
 
 class _SheetTile extends StatelessWidget {

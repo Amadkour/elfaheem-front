@@ -113,11 +113,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // ── Open terms bottom-sheet ───────────────────────────────────────────────
   Future<void> _openTerms() async {
     context.read<AboutTermsProvider>().clearSelection();
-    final accepted = await showAppModalSheet<bool>(
-      useSafeArea: true,
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    final accepted = await showAppSideSheet<bool>(
+      context,
+      withCloseBar: false, // the sheet's own header carries the close button
       builder: (_) => ChangeNotifierProvider.value(
         value: context.read<AboutTermsProvider>(),
         child: const _TermsBottomSheet(),
@@ -724,24 +722,10 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
 
     return Directionality(
       textDirection: pageDirection,
-      child: Container(
+      child: SizedBox(
         height: screenH * 0.88,
-        decoration: BoxDecoration(
-          color: c.cardBg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
         child: Column(
           children: [
-            // ── Drag handle ─────────────────────────────────────────────
-            const SizedBox(height: 12),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: c.divider,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
             const SizedBox(height: 16),
 
             // ── Header ──────────────────────────────────────────────────

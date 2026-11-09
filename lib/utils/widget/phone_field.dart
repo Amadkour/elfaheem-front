@@ -8,6 +8,7 @@
 // already reads the phone controller (register, OTP screen) works unchanged.
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:flutter_education_app/design/app_side_sheet.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../config/app_config.dart';
@@ -131,10 +132,8 @@ class _PhoneInputFieldState extends State<PhoneInputField> {
   }
 
   Future<void> _pickCountry() async {
-    final picked = await showAppModalSheet<PhoneCountry>(
-      useSafeArea: true,
-      context: context,
-      backgroundColor: Colors.transparent,
+    final picked = await showAppSideSheet<PhoneCountry>(
+      context,
       builder: (_) => _CountrySheet(
         countries: widget.countries,
         selected: _country,
@@ -233,54 +232,19 @@ class _CountrySheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Directionality(
       textDirection:
           AppConfig.lang == 'ar' ? TextDirection.rtl : TextDirection.ltr,
-      child: Container(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          12,
-          20,
-          20 + MediaQuery.of(context).padding.bottom,
-        ),
-        decoration: BoxDecoration(
-          color: c.cardBg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: SingleChildScrollView(child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: c.divider,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
+      child: AppSheetContent(
+        title: AppConfig.lang == 'ar' ? 'اختر الدولة' : 'Select country',
+        children: [
+          for (final k in countries)
+            _CountryTile(
+              country: k,
+              selected: k == selected,
+              onTap: () => Navigator.pop(context, k),
             ),
-            const SizedBox(height: 16),
-            Text(
-              AppConfig.lang == 'ar' ? 'اختر الدولة' : 'Select country',
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: c.textDark,
-              ),
-            ),
-            const SizedBox(height: 12),
-            for (final k in countries)
-              _CountryTile(
-                country: k,
-                selected: k == selected,
-                onTap: () => Navigator.pop(context, k),
-              ),
-          ],
-        )),
+        ],
       ),
     );
   }

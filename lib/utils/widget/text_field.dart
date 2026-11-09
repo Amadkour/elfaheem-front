@@ -1,8 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 
 import '../../config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+
+/// The outline of the older text fields, in the kit's look (a calm hairline, the brand on focus).
+OutlineInputBorder myFieldBorder(BuildContext context, {bool focused = false, bool error = false}) {
+  final c = context.colors;
+  return OutlineInputBorder(
+    borderRadius: BorderRadius.circular(AppRadius.card),
+    borderSide: BorderSide(
+      color: error ? c.danger : (focused ? c.primary : c.divider),
+      width: focused ? AppBorder.strong : AppBorder.hairline,
+    ),
+  );
+}
 
 class MyTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -22,11 +35,7 @@ class MyTextField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      shadowColor: const Color.fromRGBO(0, 0, 0, 0.25),
-      color: context.colors.inputBg,
-      borderRadius: BorderRadius.circular(10),
-      elevation: 4,
-      clipBehavior: Clip.antiAliasWithSaveLayer,
+      type: MaterialType.transparency,
       child: TextFormField(
         textDirection: pageDirection,
         validator: validator,
@@ -43,8 +52,8 @@ class MyTextField extends StatelessWidget {
         decoration: InputDecoration(
           hintTextDirection: pageDirection,
           floatingLabelBehavior: FloatingLabelBehavior.never,
+          filled: true,
           fillColor: context.colors.inputBg,
-
           alignLabelWithHint: true,
           hint: Text(
             label,
@@ -53,9 +62,13 @@ class MyTextField extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               color: context.colors.textDark,
             ),
-            textDirection: TextDirection.rtl,
+            textDirection: pageDirection,
           ),
-          border: const OutlineInputBorder(borderSide: BorderSide.none),
+          border: myFieldBorder(context),
+          enabledBorder: myFieldBorder(context),
+          focusedBorder: myFieldBorder(context, focused: true),
+          errorBorder: myFieldBorder(context, error: true),
+          focusedErrorBorder: myFieldBorder(context, focused: true, error: true),
         ),
       ),
     );

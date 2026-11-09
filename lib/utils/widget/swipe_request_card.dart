@@ -15,6 +15,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -226,21 +227,17 @@ class _SwipeBackground extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 28),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            begin: begin,
-            end: end,
-            colors: [color, color.withValues(alpha: 0.55)],
-          ),
+          gradient: AppGradients.blend(context, color: color),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: Colors.white, size: 34),
+            Icon(icon, color: context.colors.onHero, size: 34),
             const SizedBox(height: 4),
             Text(
               label,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: context.colors.onHero,
                 fontWeight: FontWeight.w800,
                 fontSize: 13,
               ),
@@ -292,9 +289,7 @@ class RequestCardShell extends StatelessWidget {
               Container(
                 height: 4,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [accent, accent.withValues(alpha: 0.3)],
-                  ),
+                  gradient: AppGradients.blend(context, color: accent),
                 ),
               ),
               Padding(padding: const EdgeInsets.all(16), child: child),
@@ -325,15 +320,11 @@ class RequestAvatar extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [c.primary, c.primary.withValues(alpha: 0.6)],
-        ),
+        gradient: AppGradients.brand(context),
       ),
       child: Text(
         initial,
-        style: c.h3.copyWith(color: Colors.white, fontSize: 18),
+        style: c.h3.copyWith(color: c.onHero, fontSize: 18),
       ),
     );
   }
@@ -712,13 +703,13 @@ void showRequestSnack(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         content: Row(
           children: [
-            Icon(icon, color: Colors.white, size: 20),
+            Icon(icon, color: messenger.context.colors.onHero, size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: messenger.context.colors.onHero,
                   fontWeight: FontWeight.w700,
                 ),
               ),

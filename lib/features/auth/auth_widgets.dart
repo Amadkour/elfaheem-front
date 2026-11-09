@@ -23,6 +23,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'dart:ui' show lerpDouble;
+import 'package:flutter_education_app/design/app_gradients.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1084,11 +1085,7 @@ class _AuthButtonState extends State<AuthButton> {
     final base = tone ?? authDeepen(c.primary, (bg) => authContrast(c.onHero, bg) >= 4.7);
     final LinearGradient fill = tone == null
         ? (_pressed ? c.primaryGradientPressed : c.primaryGradient)
-        : LinearGradient(
-            begin: AlignmentDirectional.centerStart,
-            end: AlignmentDirectional.centerEnd,
-            colors: [base, c.heroEnd(base, 0.22)],
-          );
+        : AppGradients.blend(context, color: base);
     final fg = lit ? c.onHero : c.textLight;
     const radius = 16.0;
 
@@ -1549,7 +1546,7 @@ class ProgressBar extends StatelessWidget {
               margin: EdgeInsetsDirectional.only(end: i < totalSteps - 1 ? 6 : 0),
               height: 6,
               decoration: BoxDecoration(
-                gradient: done ? LinearGradient(colors: [c.primary, c.heroTint(c.primary, 0.25)]) : null,
+                gradient: done ? AppGradients.brand(context) : null,
                 color: done ? null : c.divider.withValues(alpha: c.isDark ? 0.9 : 0.7),
                 borderRadius: BorderRadius.circular(3),
               ),

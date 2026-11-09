@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
@@ -693,7 +694,7 @@ class _DistributionBar extends StatelessWidget {
                     child: Container(
                       height: 6,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors:[AppTheme.primary,Colors.white]),
+                        gradient: AppGradients.blend(context),
 
                         borderRadius: BorderRadius.circular(4),
                       ),
