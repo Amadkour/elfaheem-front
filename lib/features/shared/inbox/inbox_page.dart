@@ -444,7 +444,7 @@ class _InboxPageState extends State<InboxPage> {
         final unread = _unread(context);
         return BasePage(
           useWebCard: true,
-          maxWith: 820,
+          width: AppWidth.wide,
           appBar: ScreenAppBar(helpPageId: 'inbox', 
             title: widget.title ?? 'inbox_title'.tr,
             actions: [AppRefreshAction(onRefresh: () => _refresh(tab))],

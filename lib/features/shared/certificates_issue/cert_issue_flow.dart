@@ -717,13 +717,9 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
     final c = context.colors;
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(
-        centerTitle: false,
-        title: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text('ci_title'.tr, style: AppType.section(context)),
-          if ((widget.designName ?? '').isNotEmpty)
-            Text(widget.designName!, style: AppType.meta(context), maxLines: 1, overflow: TextOverflow.ellipsis),
-        ]),
+      appBar: AppHeader(
+        title: 'ci_title'.tr,
+        subtitle: widget.designName,
         actions: [
           IconButton(
             tooltip: 'ci_saved_lists'.tr,
@@ -739,7 +735,6 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
               builder: (_) => CertIssueHistoryPage(orgId: widget.orgId),
             )),
           ),
-          const SizedBox(width: AppSpace.xxs),
         ],
       ),
       body: ParentComponent(

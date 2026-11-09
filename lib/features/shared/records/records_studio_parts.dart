@@ -195,13 +195,7 @@ class StudioTopBar extends StatelessWidget implements PreferredSizeWidget {
         decoration: BoxDecoration(border: Border(bottom: BorderSide(color: bay.line))),
         padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs, end: AppSpace.md),
         child: Row(children: [
-          IconButton(
-            key: const ValueKey('studio.back'),
-            tooltip: t('رجوع', 'Back'),
-            constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
-            icon: Icon(Icons.arrow_back_rounded, color: bay.ink, size: AppIconSize.md),
-            onPressed: () => Navigator.of(context).maybePop(),
-          ),
+          const AppBackButton(key: ValueKey('studio.back'), onHero: true),
           const SizedBox(width: AppSpace.xxs),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [

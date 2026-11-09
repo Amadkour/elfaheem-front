@@ -36,6 +36,7 @@ import '../private_flag.dart';
 import 'course_space.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
+import 'package:flutter_education_app/design/app_back_button.dart';
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
@@ -251,11 +252,7 @@ class _TopBar extends StatelessWidget {
         return Row(
           children: [
             if (onBack != null)
-              CourseCoverButton(
-                icon: Icons.arrow_back_rounded,
-                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-                onTap: onBack!,
-              ),
+              AppBackButton(onHero: true, onPressed: onBack),
             Expanded(
               child: !hasGroup
                   ? const SizedBox.shrink()

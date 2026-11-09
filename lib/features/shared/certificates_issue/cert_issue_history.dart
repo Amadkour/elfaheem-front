@@ -117,11 +117,7 @@ class _CertIssueHistoryPageState extends State<CertIssueHistoryPage> {
     final c = context.colors;
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(
-        centerTitle: false,
-        title: Text('ci_history'.tr, style: AppType.section(context)),
-        actions: [AppRefreshAction(onRefresh: _load)],
-      ),
+      appBar: AppHeader(title: 'ci_history'.tr, actions: [AppRefreshAction(onRefresh: _load)]),
       body: ParentComponent(
         featureKey: kCertIssueFeature,
         child: SafeArea(
@@ -249,10 +245,7 @@ class CertBatchPage extends StatelessWidget {
     final c = context.colors;
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(
-        centerTitle: false,
-        title: Text(initial?.title ?? 'ci_batch'.tr, style: AppType.section(context), maxLines: 1, overflow: TextOverflow.ellipsis),
-      ),
+      appBar: AppHeader(title: initial?.title ?? 'ci_batch'.tr),
       body: SafeArea(child: CertBatchView(batchId: batchId, initial: initial, api: api, onChanged: onChanged)),
     );
   }

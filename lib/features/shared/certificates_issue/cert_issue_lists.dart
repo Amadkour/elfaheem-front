@@ -140,11 +140,7 @@ class _CertSavedListsPageState extends State<CertSavedListsPage> {
     }
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(
-        centerTitle: false,
-        title: Text('ci_saved_lists'.tr, style: AppType.section(context)),
-        actions: [AppRefreshAction(onRefresh: _load)],
-      ),
+      appBar: AppHeader(title: 'ci_saved_lists'.tr, actions: [AppRefreshAction(onRefresh: _load)]),
       body: ParentComponent(featureKey: kCertIssueFeature, child: SafeArea(child: body)),
     );
   }
@@ -344,9 +340,8 @@ class _CertListDetailPageState extends State<CertListDetailPage> {
     final l = _list;
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppBar(
-        centerTitle: false,
-        title: Text(l?.name ?? 'ci_saved_lists'.tr, style: AppType.section(context), maxLines: 1, overflow: TextOverflow.ellipsis),
+      appBar: AppHeader(
+        title: l?.name ?? 'ci_saved_lists'.tr,
         actions: [
           PopupMenuButton<String>(
             tooltip: 'ci_more'.tr,

@@ -325,7 +325,7 @@ class _CollectPageState extends State<_CollectPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_t('صور الطلاب', 'Student photos'))),
+      appBar: AppHeader(title: _t('صور الطلاب', 'Student photos')),
       body: AnimatedBuilder(
         animation: _photos,
         builder: (context, _) => Column(children: [

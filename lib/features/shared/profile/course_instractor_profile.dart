@@ -25,6 +25,7 @@ import '../../teacher/home/home_screen.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'instructor_courses_section.dart';
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
+import 'package:flutter_education_app/design/app_back_button.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SCREEN
@@ -1188,7 +1189,8 @@ class _DocImagePreview extends StatelessWidget {
           backgroundColor: context.colors.heroShade,
           appBar: AppBar(
             backgroundColor: context.colors.heroShade,
-            iconTheme: IconThemeData(color: context.colors.onHero),
+            automaticallyImplyLeading: false,
+            leading: const AppBackButton(onHero: true),
           ),
           body: Center(
             child: InteractiveViewer(
