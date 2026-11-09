@@ -15,7 +15,7 @@ import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/primary_button.dart';
 import 'teacher_payout_provider.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart' show AppGradientSurface, AppListSkeleton, AppNumberField;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class TeacherPayoutsScreen extends StatelessWidget {
@@ -224,12 +224,9 @@ class _BalanceCard extends StatelessWidget {
         ],
       ),
     );
-    return Container(
+    return AppGradientSurface(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [c.primary, c.primaryDark]),
-        borderRadius: BorderRadius.circular(20),
-      ),
+      radius: 20,
       child: Column(
         children: [
           Text(
@@ -518,13 +515,14 @@ Future<void> _requestSheet(BuildContext context, TeacherPayoutProvider p) {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Field(
+                      AppNumberField(
                         controller: amount,
                         label: 'admin_amount'.tr,
-                        keyboard: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
+                        min: 0,
+                        step: 50,
+                        decimals: 2,
                       ),
+                      const SizedBox(height: 12),
                       ChoiceRow<int?>(
                         label: 'admin_to_account'.tr,
                         options: {

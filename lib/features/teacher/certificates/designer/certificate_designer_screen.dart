@@ -218,35 +218,37 @@ class _DesignerViewState extends State<_DesignerView> {
       },
       child: Scaffold(
         backgroundColor: c.background,
-        appBar: AppBar(
+        appBar: PreferredSize(
+          preferredSize: Size.fromHeight(AppHeader.openHeightWithSubtitle * 1.6 + 2),
           // the design's name in either script whatever the UI language (an Arabic name in the English UI drew only
           // its punctuation: the Latin UI font has no Arabic glyphs); no name → the page's title
-          title: Text(hasDesign && p.design!.name.trim().isNotEmpty ? p.design!.name : 'cert_designer_title'.tr,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppType.section(context).copyWith(fontFamilyFallback: AppFonts.fallback)),
-          centerTitle: false,
-          actions: [
-            if (hasDesign) ...[
-              _AppBarAction(
-                icon: Icons.visibility_outlined,
-                label: 'certd_preview'.tr,
-                onPressed: working ? null : _showPreview,
+          child: DefaultTextStyle.merge(
+            style: TextStyle(fontFamilyFallback: AppFonts.fallback),
+            child: AppHeader(
+              title: hasDesign && p.design!.name.trim().isNotEmpty ? p.design!.name : 'cert_designer_title'.tr,
+              actions: [
+                if (hasDesign) ...[
+                  _AppBarAction(
+                    icon: Icons.visibility_outlined,
+                    label: 'certd_preview'.tr,
+                    onPressed: working ? null : _showPreview,
+                  ),
+                  const SizedBox(width: AppSpace.xxs),
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(end: AppSpace.xxs),
+                    child: _SaveButton(
+                      dirty: p.dirty,
+                      saving: p.saving,
+                      onPressed: (p.design!.canEdit && !working) ? _save : null,
+                    ),
+                  ),
+                ],
+              ],
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(2),
+                child: SizedBox(height: 2, child: working ? const LinearProgressIndicator(minHeight: 2) : null),
               ),
-              const SizedBox(width: AppSpace.xxs),
-              Padding(
-                padding: const EdgeInsetsDirectional.only(end: AppSpace.sm),
-                child: _SaveButton(
-                  dirty: p.dirty,
-                  saving: p.saving,
-                  onPressed: (p.design!.canEdit && !working) ? _save : null,
-                ),
-              ),
-            ],
-          ],
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(2),
-            child: SizedBox(height: 2, child: working ? const LinearProgressIndicator(minHeight: 2) : null),
+            ),
           ),
         ),
         body: SafeArea(

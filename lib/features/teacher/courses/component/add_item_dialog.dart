@@ -19,7 +19,7 @@ Future<void> addItemDialog(
   final result = await showDialog<String>(
     context: context,
     builder: (BuildContext dialogContext) => Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: Directionality.of(context),
       child: AlertDialog(
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(context.colors.radiusMedium)),
@@ -29,7 +29,7 @@ Future<void> addItemDialog(
         content: TextField(
           controller: ctrl,
           autofocus: true,
-          textDirection: TextDirection.rtl,
+          textDirection: Directionality.of(context),
           style: TextStyle(fontFamily: AppFonts.display),
           decoration: InputDecoration(
             hintText: hint,

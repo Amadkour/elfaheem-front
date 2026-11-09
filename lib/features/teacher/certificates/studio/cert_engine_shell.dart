@@ -326,7 +326,7 @@ class CertTopBar extends StatelessWidget {
       child: compact
           ? LayoutBuilder(
               builder: (context, box) => Row(children: [
-                IconButton(tooltip: t('رجوع', 'Back'), onPressed: onBack, icon: const Icon(Icons.arrow_back_rounded)),
+                AppBackButton(onPressed: onBack),
                 Expanded(child: nameBlock),
                 StudioToolButton(key: const ValueKey('cert-preview'), icon: Icons.visibility_outlined, label: t('معاينة', 'Preview'), onPressed: onPreview),
                 more,
@@ -338,7 +338,7 @@ class CertTopBar extends StatelessWidget {
               final roomy = box.maxWidth >= 1040;
               final hasZoom = roomy && ctl != null;
               return Row(children: [
-                IconButton(tooltip: t('رجوع', 'Back'), onPressed: onBack, icon: const Icon(Icons.arrow_back_rounded)),
+                AppBackButton(onPressed: onBack),
                 const SizedBox(width: AppSpace.xxs),
                 Expanded(child: Align(alignment: AlignmentDirectional.centerStart, child: nameBlock)),
                 if (ctl != null) ...[

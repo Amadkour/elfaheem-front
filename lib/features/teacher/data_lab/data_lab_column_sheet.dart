@@ -16,6 +16,7 @@ import 'data_lab_formula.dart';
 import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppNumberField;
 
 /// Translation with a friendly English fallback while a key is not in the language files yet.
 String _tr(String key, String fallback) => dlTr(key, fallback);
@@ -318,7 +319,7 @@ class _ColumnEditorState extends State<_ColumnEditor> {
                   ]),
                 ),
               if (_type == 'number')
-                DlField(controller: _max, label: 'dl_max_value'.tr, keyboard: const TextInputType.numberWithOptions(decimal: true)),
+                AppNumberField(controller: _max, label: 'dl_max_value'.tr, min: 0, decimals: 2),
               if (_type == 'text' && (_isNew || _col!.isCustom))
                 DlField(controller: _options, label: 'dl_options'.tr, hint: 'dl_options_hint'.tr),
             ],
@@ -546,10 +547,11 @@ class _ColumnEditorState extends State<_ColumnEditor> {
       ),
       const SizedBox(height: 12),
       if (!pv.isText)
-        DlField(
+        AppNumberField(
           controller: _max,
           label: _tr('dl_formula_max', 'Full mark (the end of the progress bar)'),
-          keyboard: const TextInputType.numberWithOptions(decimal: true),
+          min: 0,
+          decimals: 2,
         ),
     ];
   }

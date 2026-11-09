@@ -31,11 +31,8 @@ class RecommendedCoursesField extends StatelessWidget {
       options.where((o) => selectedIds.contains(o['id'])).toList();
 
   Future<void> _openPicker(BuildContext context) async {
-    await showAppModalSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      useSafeArea: true,
+    await showAppSideSheet<void>(
+      context,
       builder: (_) => _RecommendedCoursesPicker(
         options: options,
         selectedIds: selectedIds,
@@ -168,16 +165,7 @@ class _RecommendedCoursesPickerState extends State<_RecommendedCoursesPicker> {
 
   @override
   Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.6,
-      maxChildSize: 0.9,
-      minChildSize: 0.4,
-      builder: (_, scrollController) => Container(
-        decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
+    return Column(
           children: [
             Padding(
               padding: const EdgeInsetsDirectional.fromSTEB(20, 16, 12, 8),
@@ -203,7 +191,6 @@ class _RecommendedCoursesPickerState extends State<_RecommendedCoursesPicker> {
             Divider(height: 1, color: context.colors.divider),
             Expanded(
               child: ListView.builder(
-                controller: scrollController,
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 itemCount: widget.options.length,
                 itemBuilder: (_, i) {
@@ -232,8 +219,6 @@ class _RecommendedCoursesPickerState extends State<_RecommendedCoursesPicker> {
               ),
             ),
           ],
-        ),
-      ),
-    );
+        );
   }
 }
