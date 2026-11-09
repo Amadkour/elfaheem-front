@@ -940,6 +940,8 @@
   "POST /api/v1/certificate-issuing/lists",
   "POST /api/v1/certificate-issuing/lists/{list_id:int}/issue",
   "POST /api/v1/certificate-issuing/lists/{list_id:int}/people",
+  "POST /api/v1/certificate-issuing/photo-status",
+  "POST /api/v1/certificate-issuing/photos",
   "POST /api/v1/certificate-issuing/preview",
   "POST /api/v1/certificate-requests/{request_id:int}/approve",
   "POST /api/v1/certificate-requests/{request_id:int}/reject",

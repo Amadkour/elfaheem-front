@@ -35,7 +35,7 @@ import 'layout_props.dart';
 /// The width of the docked properties panel beside the canvas.
 const double kLayoutDockWidth = 340;
 
-class LayoutElementsAdapter implements StudioAdapter<LayoutElement>, StudioLockAdapter, StudioLayersAdapter, StudioRotateAdapter {
+class LayoutElementsAdapter implements StudioAdapter<LayoutElement>, StudioLockAdapter, StudioLayersAdapter, StudioRotateAdapter, StudioGroupAdapter {
   LayoutElementsAdapter(this.elements, {required this.newId});
 
   /// The design's own list (mutated in place).
@@ -137,6 +137,24 @@ class LayoutElementsAdapter implements StudioAdapter<LayoutElement>, StudioLockA
   StudioItem<LayoutElement> cloneItem(StudioItem<LayoutElement> item) {
     final id = newId();
     return item.copyWith(id: id, payload: item.payload.copy(id: id), visible: true);
+  }
+
+  @override
+  Map<String, String> readGroups() => {
+        for (final e in elements)
+          if (e.extra['group'] is String) e.id: e.extra['group'] as String,
+      };
+
+  @override
+  void writeGroups(Set<String> ids, String? group) {
+    for (final e in elements) {
+      if (!ids.contains(e.id)) continue;
+      if (group == null) {
+        e.extra.remove('group');
+      } else {
+        e.extra['group'] = group;
+      }
+    }
   }
 
   @override

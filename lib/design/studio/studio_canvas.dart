@@ -37,9 +37,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
-import '../app_keyboard.dart' show AppKeyboard;
+import '../app_keyboard.dart' show AppKeyboard, AppKeyboardSupport;
 import '../app_tokens.dart';
 import 'studio_controller.dart';
+import 'studio_shortcuts.dart';
+import 'studio_layers.dart' show studioTr;
 import 'studio_model.dart';
 
 /// Draws one item's content in its box (the canvas sizes and positions the box; fill it). Read
@@ -218,13 +220,29 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
     super.initState();
     widget.controller.addListener(_syncEditor);
     _holdBrowserMenu(widget.contextMenu);
+    StudioKeyboard.attach(_keyHost);
+    if (AppKeyboardSupport.enabled) {
+      // the keys work from the moment the studio opens: the canvas takes the focus unless a control already has it
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final f = FocusManager.instance.primaryFocus;
+        if (mounted && (f == null || f is FocusScopeNode)) _focus.requestFocus();
+      });
+    }
   }
+
+  late final StudioKeyHost _keyHost = StudioKeyHost(
+    controller: widget.controller,
+    contextOf: () => context,
+    focusOf: () => _focus,
+    isMounted: () => mounted,
+  );
 
   @override
   void dispose() {
     widget.controller.removeListener(_syncEditor);
     _holdBrowserMenu(false);
     _closeEditor(notify: false);
+    StudioKeyboard.detach(_keyHost);
     _ownFocus?.dispose();
     _marquee.dispose();
     _cursor.dispose();
@@ -450,15 +468,17 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
           item(_Cmd.duplicate, Icons.control_point_duplicate_rounded, 'studio_duplicate', keys: '${mod}D'),
           item(_Cmd.delete, Icons.delete_outline_rounded, 'studio_delete', enabled: editable, keys: 'Del', danger: true),
           const PopupMenuDivider(),
-          item(_Cmd.forward, Icons.flip_to_front_rounded, 'studio_bring_forward'),
-          item(_Cmd.backward, Icons.flip_to_back_rounded, 'studio_send_backward'),
-          item(_Cmd.front, Icons.vertical_align_top_rounded, 'studio_bring_front'),
-          item(_Cmd.back, Icons.vertical_align_bottom_rounded, 'studio_send_back'),
+          item(_Cmd.forward, Icons.flip_to_front_rounded, 'studio_bring_forward', keys: studioShortcutHint(StudioCommand.bringForward)),
+          item(_Cmd.backward, Icons.flip_to_back_rounded, 'studio_send_backward', keys: studioShortcutHint(StudioCommand.sendBackward)),
+          item(_Cmd.front, Icons.vertical_align_top_rounded, 'studio_bring_front', keys: studioShortcutHint(StudioCommand.bringToFront)),
+          item(_Cmd.back, Icons.vertical_align_bottom_rounded, 'studio_send_back', keys: studioShortcutHint(StudioCommand.sendToBack)),
           if (_ctl.canLock) ...[
             const PopupMenuDivider(),
             locked
                 ? item(_Cmd.lock, Icons.lock_open_rounded, 'studio_unlock')
                 : item(_Cmd.lock, Icons.lock_outline_rounded, 'studio_lock'),
+          if (_ctl.canGroup) PopupMenuItem<_Cmd>(value: _Cmd.group, child: Text(studioTip(studioTr('تجميع', 'Group'), StudioCommand.group))),
+          if (_ctl.canUngroup) PopupMenuItem<_Cmd>(value: _Cmd.ungroup, child: Text(studioTip(studioTr('فك التجميع', 'Ungroup'), StudioCommand.ungroup))),
           ],
         ],
       ],
@@ -490,6 +510,10 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
         _ctl.bringToFront();
       case _Cmd.back:
         _ctl.sendToBack();
+      case _Cmd.group:
+        _ctl.group();
+      case _Cmd.ungroup:
+        _ctl.ungroup();
       case _Cmd.lock:
         _ctl.toggleLock();
     }
@@ -772,6 +796,7 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
   void _onPointerDown(PointerDownEvent e) {
     _setKind(e.kind);
     _down = e.localPosition;
+    StudioKeyboard.touch(_keyHost);
     if (!_focus.hasFocus) _focus.requestFocus();
   }
 
@@ -919,6 +944,8 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
 
   KeyEventResult _onKey(FocusNode node, KeyEvent e) {
     if (e is KeyUpEvent || _editingText()) return KeyEventResult.ignored;
+    // the keyboard layer already ran this key press (studio_shortcuts.dart); repeats and phones arrive here only
+    if (StudioKeyboard.handled(e)) return KeyEventResult.handled;
     final k = HardwareKeyboard.instance;
     final mod = k.isControlPressed || k.isMetaPressed;
     final shift = k.isShiftPressed;
@@ -1576,4 +1603,4 @@ class _RulerPainter extends CustomPainter {
 }
 
 /// The context menu's commands.
-enum _Cmd { editText, cut, copy, paste, duplicate, delete, forward, backward, front, back, lock }
+enum _Cmd { editText, cut, copy, paste, duplicate, delete, forward, backward, front, back, lock, group, ungroup }

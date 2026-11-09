@@ -21,6 +21,7 @@
 //   studio_toolbar.dart      StudioToolbar(controller, leading, trailing) · StudioToolButton
 //   studio_props.dart        property-panel primitives (section, font, stepper, weight, colour, align, border,
 //                            opacity)
+//   studio_shortcuts.dart    the web / desktop keyboard (StudioKeyboard, StudioKeyboardScope(onSave:), the "?" sheet, D-385)
 //   studio_small_screen.dart StudioSmallScreenNotice · StudioSmallScreenGate
 //
 // ── The host adapter contract ────────────────────────────────────────────────────────────────────────────────
@@ -59,5 +60,6 @@ export 'studio_dock.dart';
 export 'studio_layers.dart';
 export 'studio_model.dart';
 export 'studio_props.dart';
+export 'studio_shortcuts.dart';
 export 'studio_small_screen.dart';
 export 'studio_toolbar.dart';

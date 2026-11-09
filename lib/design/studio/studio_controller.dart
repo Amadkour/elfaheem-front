@@ -36,6 +36,7 @@ class StudioController<P> extends ChangeNotifier {
         _snap = snapEnabled,
         _clock = clock ?? DateTime.now {
     _items = adapter.readItems();
+    _readGroups();
   }
 
   final StudioAdapter<P> adapter;
@@ -107,6 +108,7 @@ class StudioController<P> extends ChangeNotifier {
   /// selection whose item is gone.
   void refresh() {
     _items = adapter.readItems();
+    _readGroups();
     _selection.removeWhere((id) => itemById(id) == null);
     if (_editing != null && itemById(_editing!) == null) _editing = null;
     notifyListeners();
@@ -123,15 +125,97 @@ class StudioController<P> extends ChangeNotifier {
   void select(String? id, {bool additive = false}) {
     if (id == null) return clearSelection();
     if (itemById(id) == null) return;
+    final members = _groupMembers(id);
     if (additive) {
-      if (!_selection.remove(id)) _selection.add(id);
+      if (_selection.containsAll(members)) {
+        _selection.removeAll(members);
+      } else {
+        _selection.addAll(members);
+      }
     } else {
-      if (_selection.length == 1 && _selection.first == id) return;
+      if (_selection.length == members.length && _selection.containsAll(members)) return;
       _selection
         ..clear()
-        ..add(id);
+        ..addAll(members);
     }
     notifyListeners();
+  }
+
+  // ── Groups (Ctrl+G): selecting one member selects the group; the layers panel can still pick one ───────────
+  final Map<String, String> _groups = {};
+
+  void _readGroups() {
+    final Object a = adapter;
+    if (a is StudioGroupAdapter) {
+      _groups
+        ..clear()
+        ..addAll(a.readGroups());
+    }
+    _groups.removeWhere((id, _) => itemById(id) == null);
+    final counts = <String, int>{};
+    for (final g in _groups.values) {
+      counts[g] = (counts[g] ?? 0) + 1;
+    }
+    _groups.removeWhere((_, g) => (counts[g] ?? 0) < 2); // a group of one is no group
+  }
+
+  /// The group of item [id], or null.
+  String? groupOf(String id) => _groups[id];
+
+  Set<String> _groupMembers(String id) {
+    final g = _groups[id];
+    if (g == null) return {id};
+    return {for (final e in _groups.entries) if (e.value == g && itemById(e.key)?.visible == true) e.key, id};
+  }
+
+  bool get canGroup => _editable.length >= 2;
+  bool get canUngroup => _selection.any(_groups.containsKey);
+
+  /// The editable selected items become one group (one undo step).
+  void group() {
+    final ids = {for (final i in _editable) i.id};
+    if (ids.length < 2) return;
+    _writeGroups(ids, 'g${_clock().microsecondsSinceEpoch.toRadixString(36)}');
+  }
+
+  /// The selected groups are dissolved (one undo step).
+  void ungroup() {
+    final groups = {for (final id in _selection) ?_groups[id]};
+    if (groups.isEmpty) return;
+    _writeGroups({for (final e in _groups.entries) if (groups.contains(e.value)) e.key}, null);
+  }
+
+  void _writeGroups(Set<String> ids, String? group) {
+    final Object a = adapter;
+    if (a is StudioGroupAdapter) {
+      record(group == null ? 'ungroup' : 'group', () => a.writeGroups(ids, group));
+    } else {
+      for (final id in ids) {
+        if (group == null) {
+          _groups.remove(id);
+        } else {
+          _groups[id] = group;
+        }
+      }
+      notifyListeners();
+    }
+  }
+
+  /// Copies keep their originals' grouping among themselves, never with the originals.
+  void _regroupCopies(List<StudioItem<P>> copies) {
+    final Object a = adapter;
+    final current = a is StudioGroupAdapter ? a.readGroups() : Map<String, String>.of(_groups);
+    final fresh = <String, String>{};
+    for (final c in copies) {
+      final old = current[c.id];
+      if (old == null || itemById(c.id) == null) continue;
+      final g = fresh.putIfAbsent(old, () => 'g${_clock().microsecondsSinceEpoch.toRadixString(36)}${fresh.length}');
+      if (a is StudioGroupAdapter) {
+        a.writeGroups({c.id}, g);
+      } else {
+        _groups[c.id] = g;
+      }
+    }
   }
 
   void selectAll() {
@@ -674,7 +758,10 @@ class StudioController<P> extends ChangeNotifier {
       if (clampToPage) r = r.shift(Offset(_clampShift(r.left, r.right, _page.width), _clampShift(r.top, r.bottom, _page.height)));
       copies.add(c.copyWith(rect: r, locked: false));
     }
-    record('duplicate', () => adapter.addItems(copies));
+    record('duplicate', () {
+      adapter.addItems(copies);
+      _regroupCopies(copies);
+    });
     // an adapter may add fewer copies than asked (a limit on the number of items): select the ones that exist
     _selection
       ..clear()
@@ -734,7 +821,10 @@ class StudioController<P> extends ChangeNotifier {
     final copies = [
       for (final i in _clipboard) adapter.cloneItem(i).copyWith(rect: i.rect.shift(d), locked: false, visible: true),
     ];
-    record('paste', () => adapter.addItems(copies));
+    record('paste', () {
+      adapter.addItems(copies);
+      _regroupCopies(copies);
+    });
     _selection
       ..clear()
       ..addAll([for (final c in copies) if (itemById(c.id) != null) c.id]);

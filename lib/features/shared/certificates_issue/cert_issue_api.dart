@@ -11,6 +11,7 @@ import 'dart:typed_data';
 import '../../../core/api_client.dart';
 import 'package:flutter_education_app/features/shared/course/course_scope.dart' show modeCourseScopeQuery;
 import 'cert_issue_logic.dart';
+import 'cert_issue_photo_logic.dart';
 
 /// A course the issuer may pick in "Link to a course".
 class IssueCourse {
@@ -90,6 +91,18 @@ class CertIssueApi {
         if (e.value is String && (e.value as String).isNotEmpty) e.key: base64Decode(e.value as String),
     };
   }
+
+  // ── recipient photos (D-386) ──────────────────────────────────────────────
+
+  /// One person's photo → its URL, to send as `photo_url`.
+  Future<String> uploadPhoto(Uint8List bytes, String fileName) async {
+    final r = _m(await _api.postFiles('$_b/photos', field: 'file', files: [(fileName, bytes)]));
+    return '${r['url'] ?? ''}';
+  }
+
+  /// Who still needs a photo before these recipients can be issued.
+  Future<IssuePhotoStatus> photoStatus(Map<String, dynamic> body) async =>
+      IssuePhotoStatus.fromJson(_m(await _api.post('$_b/photo-status', body: body)));
 
   // ── batches ───────────────────────────────────────────────────────────────
 

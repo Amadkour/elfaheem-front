@@ -48,3 +48,5 @@ designer, reachable from the studio's More › Classic designer and for everyone
 `certificates.engine` is disabled. Tests: `test/export/layout_computed_test.dart`, `studio_controller_test.dart`,
 `test/ui/layout_computed_builder_layout_test.dart`, `studio_layers_test.dart`, `layout_element_view_test.dart`,
 `test/org/cert_engine_studio_test.dart`, `test/ui/cert_engine_studio_layout_test.dart`.
+
+**Student photos on certificates (D-386)** — a design with a student photo needs one for every recipient before issuing (`GET .../columns` says `photo`). The issue flow's Photos step (`cert_issue_photos.dart`, logic in `cert_issue_photo_logic.dart`) is one upload per person through `showAppImageCropper`, or several matched by file name; the server enforces it with 422 `photos_required`. The element's optional setting is `cert_engine_photo_option.dart`.

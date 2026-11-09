@@ -14,11 +14,14 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../../../design/app_kit.dart';
 import '../../../design/app_notice.dart';
 import '../../../design/app_tokens.dart';
+import '../../../core/api_client.dart';
+import '../../../core/api_error_text.dart';
 import '../../../utils/widget/parent_component.dart';
 import 'cert_issue_actions.dart';
 import 'cert_issue_api.dart';
 import 'cert_issue_history.dart';
 import 'cert_issue_logic.dart';
+import 'cert_issue_photos.dart';
 import 'cert_issue_parts.dart';
 
 /// The flow's "Open a saved list": the lists in a sheet; the tapped one (without its rows) or null.
@@ -232,12 +235,26 @@ class _CertListDetailPageState extends State<CertListDetailPage> {
     setState(() => _busy = true);
     try {
       final issue = canIssue && res.issueNow;
+      String? photo;
+      if (issue) {
+        final tpl = await _api.columns(_designId!, orgId: _list?.orgId);
+        if (!mounted) return;
+        if (tpl.photo == 'required') {
+          photo = await certAskOnePhoto(context, _api, res.values['student_name'] ?? '');
+          if (!mounted) return;
+          if (photo == null) {
+            setState(() => _busy = false);
+            return;
+          }
+        }
+      }
       final r = await _api.addPerson(widget.listId, certPersonBody(
         values: res.values,
         issue: issue,
         designId: _designId,
         langs: widget.langs,
         sendEmail: res.sendEmail,
+        photoUrl: photo,
       ));
       if (!mounted) return;
       showAppNotice(issue ? 'ci_person_issued'.tr : 'ci_person_added'.tr);
@@ -259,9 +276,34 @@ class _CertListDetailPageState extends State<CertListDetailPage> {
       final b = await _api.issueList(widget.listId, designId: widget.designId, langs: widget.langs);
       if (mounted) _openBatch(b);
     } catch (e) {
-      showAppNotice(certIssueErrorText(e), error: true);
+      final x = ApiException.from(e);
+      final d = apiErrorDetail(x);
+      if ((x.code ?? '${d['code'] ?? ''}') == 'photos_required' && d['missing'] is List && mounted) {
+        await _fillPhotos([for (final m in d['missing'] as List) if (m is Map) m.cast<String, dynamic>()]);
+      } else {
+        showAppNotice(certIssueErrorText(e), error: true);
+      }
     }
     if (mounted) setState(() => _busy = false);
+  }
+
+  /// The server named who lacks a photo: collect them, write them into the list, then issue again.
+  Future<void> _fillPhotos(List<Map<String, dynamic>> missing) async {
+    final photos = await certCollectPhotos(context, _api, missing);
+    if (photos == null || !mounted) return;
+    try {
+      final rows = [...?_list?.rows];
+      for (final e in photos.entries) {
+        if (e.key >= 0 && e.key < rows.length) rows[e.key] = {...rows[e.key], 'photo_url': e.value};
+      }
+      final l = await _api.updateList(widget.listId, {'rows': rows});
+      if (!mounted) return;
+      setState(() => _list = l);
+      final b = await _api.issueList(widget.listId, designId: widget.designId, langs: widget.langs);
+      if (mounted) _openBatch(b);
+    } catch (e) {
+      showAppNotice(certIssueErrorText(e), error: true);
+    }
   }
 
   Future<void> _rename() async {
