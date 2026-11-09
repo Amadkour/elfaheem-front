@@ -47,6 +47,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../admin/admin_common.dart' show asMap, asStr, t;
 import 'rag_chat_screen.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 
 /// Kill-switch id (admin "Features" page / theme disable list).
 const appAssistantFeatureKey = 'rag.app_assistant';
@@ -929,27 +930,29 @@ class AppAssistantHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final sub = orgName == null || orgName!.isEmpty ? null : t('يجيب عن التطبيق وعن $orgName', 'About the app and $orgName');
-    return Material(
-      color: c.primary,
+    return AppMeshSurface(
+      child: Material(
+      type: MaterialType.transparency,
       child: Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(14, 6, 4, 6),
         child: Row(children: [
-          const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 22),
+          Icon(Icons.auto_awesome_rounded, color: c.onHero, size: 22),
           const SizedBox(width: 10),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               Text(t('مساعد التطبيق', 'App assistant'),
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
-              if (sub != null) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withValues(alpha: .85), fontSize: 11.5)),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.onHero, fontWeight: FontWeight.w700, fontSize: 15)),
+              if (sub != null) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.onHeroMuted, fontSize: 11.5)),
             ]),
           ),
           if (onNewChat != null)
-            IconButton(tooltip: 'rag_new_chat'.tr, visualDensity: VisualDensity.compact, onPressed: onNewChat, icon: const Icon(Icons.add_comment_outlined, color: Colors.white, size: 20)),
+            IconButton(tooltip: 'rag_new_chat'.tr, onPressed: onNewChat, icon: Icon(Icons.add_comment_outlined, color: c.onHero, size: 20)),
           if (onChats != null)
-            IconButton(tooltip: 'rag_chats'.tr, visualDensity: VisualDensity.compact, onPressed: onChats, icon: const Icon(Icons.history_rounded, color: Colors.white, size: 20)),
-          IconButton(tooltip: t('ملء الشاشة', 'Full screen'), visualDensity: VisualDensity.compact, onPressed: onExpand, icon: const Icon(Icons.open_in_full_rounded, color: Colors.white, size: 20)),
-          IconButton(tooltip: t('إغلاق', 'Close'), onPressed: onClose, icon: const Icon(Icons.close_rounded, color: Colors.white)),
+            IconButton(tooltip: 'rag_chats'.tr, onPressed: onChats, icon: Icon(Icons.history_rounded, color: c.onHero, size: 20)),
+          IconButton(tooltip: t('ملء الشاشة', 'Full screen'), onPressed: onExpand, icon: Icon(Icons.open_in_full_rounded, color: c.onHero, size: 20)),
+          IconButton(tooltip: t('إغلاق', 'Close'), onPressed: onClose, icon: Icon(Icons.close_rounded, color: c.onHero)),
         ]),
+      ),
       ),
     );
   }

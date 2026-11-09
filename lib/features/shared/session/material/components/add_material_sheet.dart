@@ -22,6 +22,7 @@ import '../../../../../utils/helpers.dart';
 import '../../../../teacher/sessions/sessions_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 // Screens at/above this width get the centered "card" treatment instead of a
 // full-width bottom sheet — covers desktop web and tablets in landscape.
@@ -382,34 +383,20 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final radius = widget.isWide
-        ? context.colors.radiusXL
-        : context.colors.radiusXL;
 
     return PopScope(
       canPop: !_saving,
       child: Container(
-        margin: widget.isWide
-            ? EdgeInsets.zero
-            : const EdgeInsets.fromLTRB(12, 0, 12, 12),
         constraints: widget.isWide
             ? const BoxConstraints(maxHeight: 640)
             : null,
-        decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          borderRadius: widget.isWide
-              ? BorderRadius.circular(radius)
-              : BorderRadius.circular(radius),
-          boxShadow: widget.isWide
-              ? [
-            BoxShadow(
-              color: context.colors.heroShade.withValues(alpha: 0.25),
-              blurRadius: 32,
-              offset: const Offset(0, 12),
-            ),
-          ]
-              : null,
-        ),
+        decoration: widget.isWide
+            ? BoxDecoration(
+                color: context.colors.cardBg,
+                borderRadius: BorderRadius.circular(context.colors.radiusXL),
+                boxShadow: AppElevation.of(context, 4),
+              )
+            : null,
         child: Directionality(
           textDirection: Helpers.pageDirection,
           child: Padding(
@@ -423,7 +410,6 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (!widget.isWide) _DragHandle(),
                   _Header(isWide: widget.isWide, saving: _saving),
                   const SizedBox(height: 18),
 
@@ -526,27 +512,6 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Drag handle (bottom-sheet only)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _DragHandle extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: 40,
-        height: 4,
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: context.colors.textLight.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(4),
         ),
       ),
     );

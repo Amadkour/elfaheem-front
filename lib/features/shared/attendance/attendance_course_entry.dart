@@ -30,6 +30,7 @@ import 'teacher_attendance_launcher.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 import 'package:flutter_education_app/design/app_shine.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Shared premium surface (gradient + shimmer + optional pulse)
@@ -96,11 +97,7 @@ class _PremiumSurfaceState extends State<_PremiumSurface> with SingleTickerProvi
               width: double.infinity,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  begin: AlignmentDirectional.centerStart,
-                  end: AlignmentDirectional.centerEnd,
-                  colors: [widget.from, widget.to],
-                ),
+                gradient: AppGradients.blend(context, color: widget.from),
                 boxShadow: [
                   BoxShadow(
                     color: widget.to.withValues(alpha: 0.30 + 0.22 * pulse),
@@ -371,7 +368,7 @@ class _WebLocationRequestCardState extends State<_WebLocationRequestCard> {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
         decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [context.colors.warning, context.colors.heroEnd(context.colors.warning)]),
+          gradient: AppGradients.blend(context, color: context.colors.warning),
           borderRadius: BorderRadius.circular(18),
           boxShadow: [BoxShadow(color: context.colors.warning.withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 6))],
         ),

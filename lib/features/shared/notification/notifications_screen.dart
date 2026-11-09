@@ -180,13 +180,11 @@ class _NotifGroup extends StatelessWidget {
             for (var i = 0; i < notifs.length; i += 2)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: IntrinsicHeight(
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    Expanded(child: NotificationTile(notif: notifs[i])),
-                    const SizedBox(width: 12),
-                    Expanded(child: i + 1 < notifs.length ? NotificationTile(notif: notifs[i + 1]) : const SizedBox.shrink()),
-                  ]),
-                ),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(child: NotificationTile(notif: notifs[i])),
+                  const SizedBox(width: 12),
+                  Expanded(child: i + 1 < notifs.length ? NotificationTile(notif: notifs[i + 1]) : const SizedBox.shrink()),
+                ]),
               ),
           ]);
         }),

@@ -16,6 +16,7 @@ import 'package:flutter_education_app/core/app_time.dart';
 import 'attendance_strings.dart';
 import 'attendance_widgets.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppSheetHeader;
 
 /// Plain data so this file does not depend on the teacher model classes.
 class LauncherSession {
@@ -106,21 +107,8 @@ Future<void> showSessionPickerSheet(BuildContext context, List<LauncherSession> 
       initialChildSize: 0.6,
       maxChildSize: 0.92,
       minChildSize: 0.35,
-      builder: (_, scroll) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(sheetCtx).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(children: [
-          Container(
-              width: 42,
-              height: 4,
-              margin: const EdgeInsets.only(top: 12, bottom: 12),
-              decoration: BoxDecoration(
-                  color: context.colors.textLight.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(2))),
-          Text(attT('att_launch_title'),
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 17, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
+      builder: (_, scroll) => Column(children: [
+          AppSheetHeader(attT('att_launch_title')),
           Expanded(
             child: inverted.isEmpty
                 ? Center(
@@ -176,7 +164,6 @@ Future<void> showSessionPickerSheet(BuildContext context, List<LauncherSession> 
                   ),
           ),
         ]),
-      ),
     ),
   );
 }

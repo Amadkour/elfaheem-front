@@ -12,6 +12,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../../teacher/data_lab/data_lab_models.dart';
 import 'analytics_summary.dart' show anIsolate;
+import 'package:flutter_education_app/design/app_gradients.dart';
 
 String get anFont => AppFonts.display;
 
@@ -226,11 +227,7 @@ class AnBar extends StatelessWidget {
 BoxDecoration anHeroDecoration(BuildContext context, {bool roundAll = false}) {
   final c = context.colors;
   return BoxDecoration(
-    gradient: LinearGradient(
-      colors: [c.primaryDark, c.primary],
-      begin: AlignmentDirectional.topStart,
-      end: AlignmentDirectional.bottomEnd,
-    ),
+    gradient: AppGradients.blend(context),
     borderRadius: roundAll ? BorderRadius.circular(c.radiusLarge) : const BorderRadius.vertical(bottom: Radius.circular(32)),
     boxShadow: c.primaryShadow,
   );

@@ -1120,12 +1120,11 @@ class ShareLinkBody extends StatelessWidget {
         onChanged: busy ? null : onCanPublishChanged,
       ),
       const SizedBox(height: 6),
-      AppField(
+      AppNumberField(
         controller: maxGuestsController,
         label: t('الحد الأقصى للزوار', 'Max guests'),
         hint: t('اتركه فارغاً بلا حد', 'Leave empty for no limit'),
-        keyboard: TextInputType.number,
-        ltr: true,
+        min: 1,
       ),
       AppField(
         key: const ValueKey('share_link.pin'),

@@ -40,6 +40,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
+import 'package:flutter_education_app/design/app_gradients.dart';
+import 'package:flutter_education_app/design/app_number_field.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Material grid
@@ -727,11 +729,7 @@ class SessionMaterialGrid extends StatelessWidget {
               const SizedBox(height: 12),
               SessionField(ctrl: descCtrl, label: 'description_optional'.tr),
               const SizedBox(height: 12),
-              SessionField(
-                ctrl: orderCtrl,
-                label: 'order_label'.tr, // add key: "الترتيب" / "Order"
-                keyboardType: TextInputType.number,
-              ),
+              AppNumberField(controller: orderCtrl, label: 'order_label'.tr, min: 0),
               if (m.type == SessionMaterialType.link) ...[
                 const SizedBox(height: 12),
                 SessionField(ctrl: urlCtrl, label: 'url_label'.tr),
@@ -1048,11 +1046,7 @@ class MaterialIconWidget extends StatelessWidget {
           height: size,
           decoration: BoxDecoration(
             gradient: isCompleted
-                ? LinearGradient(
-                    colors: [context.colors.success, context.colors.success],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
+                ? AppGradients.blend(context, color: context.colors.success)
                 : null,
             color: isCompleted
                 ? null
@@ -1167,9 +1161,7 @@ class MaterialCompletedBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [context.colors.success, context.colors.success],
-        ),
+        gradient: AppGradients.blend(context, color: context.colors.success),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(

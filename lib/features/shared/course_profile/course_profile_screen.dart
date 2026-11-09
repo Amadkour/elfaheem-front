@@ -98,7 +98,7 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
     final ar = AppConfig.lang == 'ar';
     return BasePage(
       useWebCard: true,
-      maxWith: 1100,
+      width: AppWidth.wide,
       appBar: ScreenAppBar(helpPageId: 'course', 
         title: p == null ? t('ملف المقرر', 'Course profile') : p.name(ar),
         actions: [
@@ -356,18 +356,9 @@ class CpHeader extends StatelessWidget {
           ]),
         );
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(c.radiusLarge),
-        gradient: LinearGradient(
-          colors: p.pastVersion ? [c.textMedium, c.textDark] : [c.primary, c.primaryDark],
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-        ),
-        boxShadow: c.primaryShadow,
-      ),
-      child: LayoutBuilder(builder: (context, box) {
+    return DecoratedBox(decoration: BoxDecoration(borderRadius: BorderRadius.circular(c.radiusLarge), boxShadow: c.primaryShadow),
+      child: AppMeshSurface(color: p.pastVersion ? c.textMedium : null, radius: BorderRadius.circular(c.radiusLarge),
+      child: Padding(padding: const EdgeInsets.all(18), child: LayoutBuilder(builder: (context, box) {
         final roomy = box.maxWidth >= 640;
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Wrap(spacing: 6, runSpacing: 6, children: [
@@ -397,8 +388,7 @@ class CpHeader extends StatelessWidget {
             ]),
           ],
         ]);
-      }),
-    );
+      }))));
   }
 }
 

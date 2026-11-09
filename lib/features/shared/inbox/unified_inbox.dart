@@ -1032,7 +1032,7 @@ Future<bool> openInboxItem(BuildContext context, InboxItem x) async {
       await nav.push(MaterialPageRoute(
           builder: (_) => BasePage(
               useWebCard: true,
-              maxWith: 760,
+              width: AppWidth.reading,
               appBar: ScreenAppBar(title: 'inbox_kind_department_choice'.tr),
               child: deferredMyAcademicPath(asInt(a['org_id'])))));
       return true;

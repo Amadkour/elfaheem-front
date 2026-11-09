@@ -1136,14 +1136,13 @@ class _RagPlatformSettingsFormState extends State<RagPlatformSettingsForm> {
         IconButton.outlined(onPressed: s.maxCitations < 8 ? () => setState(() => _s = _s.copyWith(maxCitations: s.maxCitations + 1)) : null, icon: const Icon(Icons.add_rounded, size: 18)),
       ]),
       const SizedBox(height: 8),
-      AppField(
+      AppNumberField(
           controller: _retention,
           label: t('مدة الاحتفاظ بالمحادثات (أيام)', 'Keep chats for (days)'),
-          keyboard: TextInputType.number,
-          ltr: true,
+          min: 0,
+          max: RagAdminSettings.maxRetentionDays,
           onChanged: (v) {
-            final n = int.tryParse(v.trim());
-            if (n != null) _s = _s.copyWith(conversationRetentionDays: n.clamp(0, RagAdminSettings.maxRetentionDays));
+            if (v != null) _s = _s.copyWith(conversationRetentionDays: v.toInt().clamp(0, RagAdminSettings.maxRetentionDays));
           }),
       Padding(
         padding: const EdgeInsetsDirectional.only(start: 4, top: 4),

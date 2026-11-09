@@ -949,7 +949,7 @@ class _CloudDrivesPageState extends State<CloudDrivesPage> {
   Widget build(BuildContext context) => BasePage(
         key: const ValueKey('profile.cloud_drives'),
         useWebCard: true,
-        maxWith: 760,
+        width: AppWidth.reading,
         appBar: ScreenAppBar(title: t('السحابات المتصلة', 'Connected drives'), actions: [
           IconButton(tooltip: t('تحديث', 'Refresh'), icon: const Icon(Icons.refresh_rounded), onPressed: _load),
         ]),

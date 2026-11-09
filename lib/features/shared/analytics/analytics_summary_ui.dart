@@ -219,7 +219,7 @@ class AnSummaryLayout extends StatelessWidget {
       return Align(
         alignment: AlignmentDirectional.topCenter,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200),
+          constraints: BoxConstraints(maxWidth: AppWidth.wide.max),
           child: Padding(
             padding: EdgeInsets.fromLTRB(pad, 16, pad, 40),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [

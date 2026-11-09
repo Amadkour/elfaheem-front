@@ -419,16 +419,12 @@ class _TopupFormState extends State<TopupForm> {
       padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + MediaQuery.viewInsetsOf(context).bottom),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         AppSheetHeader(t('شراء نقاط', 'Buy points')),
-        TextField(
+        AppNumberField(
           controller: _points,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.allow(RegExp('[0-9٠-٩]'))],
+          label: t('عدد النقاط', 'Points'),
+          hint: t('أقل عدد ${w.topupMin}', 'At least ${w.topupMin}'),
+          min: w.topupMin,
           onChanged: (_) => setState(() => _error = null),
-          decoration: InputDecoration(
-            labelText: t('عدد النقاط', 'Points'),
-            helperText: t('أقل عدد ${w.topupMin}', 'At least ${w.topupMin}'),
-            prefixIcon: const Icon(Icons.stars_rounded),
-          ),
         ),
         const SizedBox(height: 8),
         AppBanner(
