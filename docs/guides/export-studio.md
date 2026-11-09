@@ -48,3 +48,6 @@ designer, reachable from the studio's More › Classic designer and for everyone
 `certificates.engine` is disabled. Tests: `test/export/layout_computed_test.dart`, `studio_controller_test.dart`,
 `test/ui/layout_computed_builder_layout_test.dart`, `studio_layers_test.dart`, `layout_element_view_test.dart`,
 `test/org/cert_engine_studio_test.dart`, `test/ui/cert_engine_studio_layout_test.dart`.
+
+**Certificate templates (D-383, D-384)** — the collection is on the server, `../back/services/certificate_templates/` (`art.py` ornament, `designs.py` one painter + Arabic and English layouts per template). The gallery page is `lib/features/teacher/certificates/studio/cert_template_gallery.dart`; a new category key goes in `kCertTemplateCategories`. Use only fonts both renderers carry, keep optional values on their own line (`tests/org_v2/cert_templates.py` checks both).
+

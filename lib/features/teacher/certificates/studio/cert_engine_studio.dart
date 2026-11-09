@@ -136,6 +136,9 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
   List<CertStarter>? _starters;
   List<CertServerTemplate>? _templates;
 
+  /// The document of the template just picked (both languages), for the other language's page.
+  LayoutDocument? _pickedTemplate;
+
   /// Read by the title / save button only.
   final _dirty = ValueNotifier<bool>(false);
   final _saving = ValueNotifier<bool>(false);
@@ -404,9 +407,10 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
   /// A server template's [lang] page, adopted into THIS design (like a starter): the server hands the template over as
   /// a document and stores no design, so the studio keeps its design id and version. Null when it failed (the error
   /// is shown).
-  Future<LayoutDesign?> _designFromTemplate(CertServerTemplate tp, String colorHex, String lang) async {
+  Future<LayoutDesign?> _designFromTemplate(CertServerTemplate tp, String? colorHex, String lang) async {
     try {
       final r = await _api.templateDocument(tp.key, orgId: widget.orgId, themeColor: colorHex);
+      _pickedTemplate = r.document;
       final own = r.document.designs[lang];
       if (own != null) return own;
       final other = r.document.designs.values.isEmpty ? null : r.document.designs.values.first;
@@ -423,6 +427,7 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
     final templates = await _loadTemplates();
     if (!mounted || (starters.isEmpty && templates.isEmpty)) return null;
     final pick = await showCertGallery(context, starters: starters, templates: templates, lang: lang);
+    _pickedTemplate = null;
     if (pick == null || !mounted) return null;
     if (pick.starter != null) return _designFromStarter(pick.starter!, lang);
     return _designFromTemplate(pick.template!, pick.colorHex, lang);
@@ -443,7 +448,14 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
     }
     final made = await _pickDesign(_lang);
     if (made == null || !mounted) return;
-    setState(() => certAdoptDesign(_design, made));
+    setState(() {
+      certAdoptDesign(_design, made);
+      // a template is designed in both languages: the other language gets its own page too, when it is still empty
+      final other = _lang == 'ar' ? 'en' : 'ar';
+      final sibling = _pickedTemplate?.designs[other];
+      final target = doc.designs[other];
+      if (sibling != null && target != null && target.row.elements.isEmpty && doc.languages.contains(other)) certAdoptDesign(target, sibling);
+    });
     _touch();
     unawaited(_prefetchImages());
   }

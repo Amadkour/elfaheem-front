@@ -3651,3 +3651,8 @@ Correction decides from the exam itself, inside `correctionRouteOf`, so every ca
 The wizard records what it planned in `settings.paper_plan` and Deliver opens on it (personal copies or versions), switchable; versions are made on Finish, and a draft published from the list that never got there is offered them in Deliver. What is printed under a student's name is `settings.print_identifiers`, chosen per exam, and is separate from the identifier sheets are matched on (at most four; national id, phone and email cut to the last four digits).
 
 Deliver's preview replays the actual pages of the actual PDF with our own painter (`paper_page_replay.dart`) rather than the `printing` package, which adds two lock entries and loads pdf.js from a CDN at run time. Cost: one more renderer to keep in step with the paper builder, which a test covers.
+
+## D-384 — The certificate template gallery · 2026-11-09 · accepted
+
+The server's template collection (back D-383) opens as a full page, `studio/cert_template_gallery.dart`: real thumbnails per card (four at a time, skeleton, session cache), category filter, Arabic / English toggle, one tap to use. A larger preview offers another colour; by default a template keeps its own colours. A template fills the other language's page too when that page is empty, never overwriting work.
+
