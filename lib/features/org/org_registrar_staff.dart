@@ -12,6 +12,7 @@
 //   Graduation   candidates (degree audit) · at-risk students
 library;
 
+import 'org_page_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -288,7 +289,7 @@ class _TermsTabState extends State<_TermsTab> with _Loads {
             if (s['room_capacity'] != null)
               AppBanner(icon: Icons.meeting_room_rounded, text: t('سعة القاعة ${s['room_capacity']}', 'Room capacity ${s['room_capacity']}')),
             const SizedBox(height: 8),
-            AppField(controller: ctrl, label: t('السعة', 'Capacity'), keyboard: TextInputType.number, ltr: true),
+            OrgNumberField(controller: ctrl, label: t('السعة', 'Capacity'), gap: false),
             const SizedBox(height: 12),
             AppPrimaryButton(label: t('حفظ', 'Save'), onPressed: () => Navigator.pop(ctx, true)),
           ]),
@@ -544,18 +545,18 @@ class _CourseSheetState extends State<_CourseSheet> {
           onChanged: (v) => setState(() => _kind = v ?? _kind),
         ),
         const SizedBox(height: 10),
-        AppField(controller: _credits, label: t('الساعات المعتمدة', 'Credit hours'), keyboard: TextInputType.number, ltr: true),
+        OrgNumberField(controller: _credits, label: t('الساعات المعتمدة', 'Credit hours'), gap: false),
         const SizedBox(height: 10),
         Row(children: [
-          if (_kind != 'lab') Expanded(child: AppField(controller: _lec, label: t('محاضرة/أسبوع', 'Lecture h/wk'), keyboard: TextInputType.number, ltr: true)),
+          if (_kind != 'lab') Expanded(child: OrgNumberField(controller: _lec, label: t('محاضرة/أسبوع', 'Lecture h/wk'), gap: false)),
           if (_kind != 'lab' && _kind != 'theory') const SizedBox(width: 8),
-          if (_kind != 'theory') Expanded(child: AppField(controller: _lab, label: t('معمل/أسبوع', 'Lab h/wk'), keyboard: TextInputType.number, ltr: true)),
+          if (_kind != 'theory') Expanded(child: OrgNumberField(controller: _lab, label: t('معمل/أسبوع', 'Lab h/wk'), gap: false)),
         ]),
         const SizedBox(height: 10),
         Row(children: [
-          Expanded(child: AppField(controller: _tut, label: t('تمارين/أسبوع', 'Tutorial h/wk'), keyboard: TextInputType.number, ltr: true)),
+          Expanded(child: OrgNumberField(controller: _tut, label: t('تمارين/أسبوع', 'Tutorial h/wk'), gap: false)),
           const SizedBox(width: 8),
-          Expanded(child: AppField(controller: _exp, label: t('العدد المتوقع', 'Expected students'), keyboard: TextInputType.number, ltr: true)),
+          Expanded(child: OrgNumberField(controller: _exp, label: t('العدد المتوقع', 'Expected students'), gap: false)),
         ]),
         const SizedBox(height: 10),
         Text(t('يُطرح في', 'Offered in'), style: appText(13, c: c.textMedium)),
@@ -774,7 +775,7 @@ class _ProgramSheetState extends State<_ProgramSheet> {
             const SizedBox(height: 8),
             AppField(controller: en, label: t('الاسم بالإنجليزية', 'English name')),
             const SizedBox(height: 8),
-            AppField(controller: min, label: t('الحد الأدنى للساعات', 'Minimum credits'), keyboard: TextInputType.number, ltr: true),
+            OrgNumberField(controller: min, label: t('الحد الأدنى للساعات', 'Minimum credits'), gap: false),
             const SizedBox(height: 12),
             AppPrimaryButton(label: t('إضافة', 'Add'), onPressed: () => Navigator.pop(ctx, true)),
           ]),
@@ -810,8 +811,7 @@ class _ProgramSheetState extends State<_ProgramSheet> {
           ),
         if (_system == 'traditional') ...[
           const SizedBox(height: 10),
-          AppField(controller: _carry, label: t('أقصى عدد مقررات متخلفة مع النقل (فارغ = اللائحة)', 'Max carry-over courses to still be promoted (empty = rules)'),
-              keyboard: TextInputType.number, ltr: true),
+          OrgNumberField(controller: _carry, label: t('أقصى عدد مقررات متخلفة مع النقل (فارغ = اللائحة)', 'Max carry-over courses to still be promoted (empty = rules)'), gap: false),
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 8, children: [
             AppPill(icon: Icons.trending_up_rounded, label: t('ترحيل الطلاب للفرقة التالية', 'Promote students'), onTap: _promote),
@@ -822,7 +822,7 @@ class _ProgramSheetState extends State<_ProgramSheet> {
         Row(children: [
           Expanded(child: AppField(controller: _total, label: t('ساعات التخرج', 'Graduation credits'), keyboard: TextInputType.number, ltr: true, onChanged: (_) => setState(() {}))),
           const SizedBox(width: 8),
-          Expanded(child: AppField(controller: _gpa, label: t('أدنى معدل للتخرج', 'Minimum CGPA'), keyboard: const TextInputType.numberWithOptions(decimal: true), ltr: true)),
+          Expanded(child: OrgNumberField(controller: _gpa, label: t('أدنى معدل للتخرج', 'Minimum CGPA'), decimals: 2, gap: false)),
         ]),
         const SizedBox(height: 10),
         AppField(controller: _entry, label: t('يبدأ القسم من المستوى (مفتاح)', 'Department starts at level (key)'), ltr: true),
@@ -943,8 +943,7 @@ class _StaffTabState extends State<_StaffTab> with _Loads {
                 child: AppBanner(icon: Icons.science_rounded, text: t('هذه الدرجة تُسند لها السكاشن والمعامل فقط', 'This rank is given labs / sections only')),
               ),
             const SizedBox(height: 8),
-            AppField(controller: cap, label: t('الحد الأسبوعي (فترات) — فارغ = حسب الدرجة', 'Weekly cap (periods) — empty = by rank'),
-                keyboard: TextInputType.number, ltr: true),
+            OrgNumberField(controller: cap, label: t('الحد الأسبوعي (فترات) — فارغ = حسب الدرجة', 'Weekly cap (periods) — empty = by rank'), gap: false),
             const SizedBox(height: 12),
             AppPrimaryButton(label: t('حفظ', 'Save'), onPressed: () => Navigator.pop(ctx, true)),
           ]),
@@ -1037,9 +1036,9 @@ class _RulesTabState extends State<_RulesTab> with _Loads {
             AppSectionTitle(t('تقدير', 'Letter grade')),
             AppField(controller: letter, label: t('الحرف', 'Letter'), ltr: true),
             const SizedBox(height: 8),
-            AppField(controller: min, label: t('من نسبة %', 'From percent'), keyboard: TextInputType.number, ltr: true),
+            OrgNumberField(controller: min, label: t('من نسبة %', 'From percent'), gap: false),
             const SizedBox(height: 8),
-            AppField(controller: pts, label: t('النقاط', 'Points'), keyboard: const TextInputType.numberWithOptions(decimal: true), ltr: true),
+            OrgNumberField(controller: pts, label: t('النقاط', 'Points'), decimals: 2, gap: false),
             AppSwitchTile(title: t('أدنى تقدير للنجاح', 'Lowest passing letter'), value: pass, onChanged: (v) => set(() => pass = v)),
             const SizedBox(height: 12),
             AppPrimaryButton(label: t('تم', 'Done'), onPressed: () => Navigator.pop(ctx, 'save')),

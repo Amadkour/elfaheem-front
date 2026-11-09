@@ -501,7 +501,6 @@ class _OrgHomePageState extends State<OrgHomePage> {
         Navigator.of(page).pop();
         if (home.mounted) _openTask(home, x);
       }),
-      maxWidth: 900,
     );
   }
 

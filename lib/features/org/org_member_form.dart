@@ -8,6 +8,7 @@
 // Trusted academic data (year / level, cohort, academic department) is written here by staff only.
 library;
 
+import 'org_page_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_buttons.dart' show AppButton;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -237,7 +238,7 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
               const SizedBox(height: 10),
             ],
             if (!student) ...[
-              Field(controller: exp, label: t('سنوات الخبرة (اختياري)', 'Years of experience (optional)'), keyboard: TextInputType.number, ltr: true),
+              OrgNumberField(controller: exp, label: t('سنوات الخبرة (اختياري)', 'Years of experience (optional)')),
               if (edit == null) ...[
                 OrgPickField<int>(
                   label: t('إدارة خدمية (فريق) — اختياري', 'Service department (team) — optional'),

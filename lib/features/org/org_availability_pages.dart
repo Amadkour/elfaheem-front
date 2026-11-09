@@ -5,6 +5,7 @@
 //   AvailabilityRequestScreen    teachers / assistants: a FROZEN screen (can't be dismissed) until they submit
 library;
 
+import 'org_page_kit.dart';
 import 'package:flutter_education_app/design/app_mesh.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_hscroll.dart';
@@ -41,7 +42,6 @@ Future<void> openAvailabilityRequests(BuildContext context) {
               builder: (ctx) => orgStudioPage(
                 ctx,
                 title: t('طلبات المواعيد المتاحة', 'Availability requests'),
-                maxWidth: 900,
                 child: const OrgAvailabilityRequestsPage(),
               ),
             ),
@@ -106,9 +106,9 @@ class _OrgAvailabilityRequestsPageState extends State<OrgAvailabilityRequestsPag
               ]),
               const SizedBox(height: 10),
               Row(children: [
-                Expanded(child: Field(controller: minC, label: t('أقل عدد فترات', 'Minimum periods'), keyboard: TextInputType.number, ltr: true)),
+                Expanded(child: OrgNumberField(controller: minC, label: t('أقل عدد فترات', 'Minimum periods'))),
                 const SizedBox(width: 10),
-                Expanded(child: Field(controller: maxC, label: t('أقصى عدد (اختياري)', 'Maximum (optional)'), keyboard: TextInputType.number, ltr: true)),
+                Expanded(child: OrgNumberField(controller: maxC, label: t('أقصى عدد (اختياري)', 'Maximum (optional)'))),
               ]),
               ListTile(
                 contentPadding: EdgeInsets.zero,

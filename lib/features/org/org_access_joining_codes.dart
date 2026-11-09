@@ -162,7 +162,7 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
                     value: oneTime,
                     onChanged: (v) => set(() => oneTime = v)),
               if (!oneTime)
-                Field(controller: maxC, label: t('أقصى عدد استخدامات (فارغ = بلا حد)', 'Maximum uses (empty = unlimited)'), keyboard: TextInputType.number, ltr: true),
+                OrgNumberField(controller: maxC, label: t('أقصى عدد استخدامات (فارغ = بلا حد)', 'Maximum uses (empty = unlimited)')),
               if (err != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: AppBanner(icon: Icons.error_outline_rounded, text: err!, color: c.danger)),
               AppButton.primary(
                 busy: busy,

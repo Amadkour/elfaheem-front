@@ -10,6 +10,7 @@
 //   showEnrollBlock     the friendly "why can't I join this course" sheet (department / course prerequisites)
 library;
 
+import 'org_page_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -196,7 +197,7 @@ class _RuleSheetState extends State<_RuleSheet> {
             onChanged: () => setState(() {}),
           ),
           if (_courses.length > 1)
-            Field(controller: _min, label: t('يكفي اجتياز عدد منها (فارغ = كلها)', 'Enough to pass this many (empty = all)'), keyboard: TextInputType.number, ltr: true),
+            OrgNumberField(controller: _min, label: t('يكفي اجتياز عدد منها (فارغ = كلها)', 'Enough to pass this many (empty = all)')),
         ] else ...[
           if (_type == 'level_courses') ...[
             Text(t('أي مستوى؟', 'Which level?'), style: orgText(context, size: 12.5, w: FontWeight.w800, color: c.textMedium)),
@@ -212,7 +213,7 @@ class _RuleSheetState extends State<_RuleSheet> {
               onChanged: (v) => setState(() => _summer = v),
             ),
           ],
-          Field(controller: _num, label: _numLabel, keyboard: const TextInputType.numberWithOptions(decimal: true), ltr: true),
+          OrgNumberField(controller: _num, label: _numLabel, decimals: 2),
           if (_type == 'min_average')
             Text(t('يُحسب من أفضل نتيجة للطالب في كل امتحان بمقررات المؤسسة.', 'Computed from the student\'s best result in each exam of the organization\'s courses.'),
                 style: orgText(context, size: 11.5, color: c.textLight)),

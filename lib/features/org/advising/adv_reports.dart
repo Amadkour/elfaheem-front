@@ -285,7 +285,7 @@ class AdvReportsPage extends StatelessWidget {
   Widget build(BuildContext context) => OrgPushedPage(
         title: t('التقارير والتصدير', 'Reports and exports'),
         helpPageId: 'org.advising',
-        maxWidth: 1240,
+        maxWidth: 1440,
         child: _ReportsBody(orgId: orgId, manage: manage, filter: filter, terms: terms),
       );
 }
@@ -468,7 +468,7 @@ class _ReportsBodyState extends State<_ReportsBody> {
     return OrgPageBody(
       child: LayoutBuilder(builder: (context, box) {
         final wide = box.maxWidth >= 1000;
-        return AdvPageFrame(maxWidth: 1240, children: [
+        return AdvPageFrame(maxWidth: 1440, children: [
           compliance,
           const SizedBox(height: AppSpace.md),
           if (wide)

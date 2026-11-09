@@ -194,7 +194,7 @@ class AdvRequestsPage extends StatelessWidget {
         title: t('الطلبات والإحالات', 'Requests and referrals'),
         subtitle: studentName,
         helpPageId: 'org.advising',
-        maxWidth: 1000,
+        maxWidth: 1440,
         child: _AdvRequestsBody(orgId: orgId, manage: manage, memberId: memberId, studentName: studentName, queue: queue),
       );
 }
