@@ -3,7 +3,9 @@
 // AttentionBadge(tabKey: AttentionTabs.orgAcademics, orgId: 12, child: …)
 //   draws the count of open items of that tab (AttentionService) on its child and rebuilds by itself.
 //   Tapping the bubble: one item → opens its deep link; several → a sheet listing them, each opens its link.
-//   The child keeps its own taps (a tab still switches tab).
+//   The child keeps its own taps (a tab still switches tab). The bubble is the danger count pill of the kit
+//   (it means "waiting on you"), popping once when its number changes (AppBump, D-581), with a hit area a little
+//   wider than the pill itself.
 //
 // openAttentionItem(context, item)        opens one item's deep link (also usable from any list)
 // showAttentionItems(context, tabKey, …)  the list sheet
@@ -35,6 +37,12 @@ class AttentionBadge extends StatelessWidget {
   /// Called for items that have no deep link of their own (e.g. "open this tab").
   final VoidCallback? onOpen;
 
+  /// How far the pill hangs over the child's top-end corner.
+  static const double _overhang = 6;
+
+  /// The invisible margin around the pill that also takes the tap (the pill is 20 px; the fringe makes 36).
+  static const double _fringe = AppSpace.xs;
+
   @override
   Widget build(BuildContext context) {
     final svc = AttentionService.instance;
@@ -46,21 +54,18 @@ class AttentionBadge extends StatelessWidget {
         return Stack(clipBehavior: Clip.none, children: [
           child,
           PositionedDirectional(
-            top: -6,
-            end: -6,
+            top: -(_overhang + _fringe),
+            end: -(_overhang + _fringe),
             child: Semantics(
               button: true,
               label: _tx('$n عنصر يحتاج انتباهك', '$n items need your attention'),
+              excludeSemantics: true,
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () => showAttentionItems(context, tabKey, orgId: orgId, onOpen: onOpen),
-                child: Container(
-                  constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                  padding: const EdgeInsets.symmetric(horizontal: 5),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(color: context.colors.danger, borderRadius: BorderRadius.circular(10)),
-                  child: Text(n > 99 ? '99+' : '$n',
-                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700, height: 1.1)),
+                child: Padding(
+                  padding: const EdgeInsets.all(_fringe),
+                  child: AppCountBadge(count: n),
                 ),
               ),
             ),
@@ -84,28 +89,39 @@ Future<void> showAttentionItems(BuildContext context, String tabKey, {int? orgId
     return SafeArea(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * .75),
-        child: ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 16), children: [
-          AppSectionTitle(_tx('يحتاج انتباهك', 'Needs your attention')),
-          for (final x in items)
-            AppCard(
-              margin: const EdgeInsets.only(bottom: 8),
-              onTap: () => Navigator.pop(ctx, x),
-              child: Row(children: [
-                Icon(x.isSuggestion ? Icons.auto_fix_high_rounded : Icons.notification_important_rounded,
-                    color: x.severity == 'danger' ? c.danger : (x.severity == 'warning' ? c.warning : c.primary)),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(_tx(x.titleAr, x.titleEn), style: appText(14, w: FontWeight.w700), maxLines: 2, overflow: TextOverflow.ellipsis),
-                    if ((x.subtitle ?? '').isNotEmpty)
-                      Text(x.subtitle!, style: appText(12, c: c.textMedium), maxLines: 2, overflow: TextOverflow.ellipsis),
-                  ]),
-                ),
-                if (x.count > 1) ...[const SizedBox(width: 8), AppBadgePill('${x.count}', color: c.danger)],
-                const Icon(Icons.chevron_right_rounded),
-              ]),
-            ),
-        ]),
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md),
+          children: [
+            AppSectionTitle(_tx('يحتاج انتباهك', 'Needs your attention')),
+            for (final x in items)
+              AppCard(
+                margin: const EdgeInsets.only(bottom: AppSpace.xs),
+                onTap: () => Navigator.pop(ctx, x),
+                child: Row(children: [
+                  Icon(
+                    x.isSuggestion ? Icons.auto_fix_high_rounded : Icons.notification_important_rounded,
+                    size: AppIconSize.lg,
+                    color: x.severity == 'danger' ? c.danger : (x.severity == 'warning' ? c.warning : c.primary),
+                  ),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(_tx(x.titleAr, x.titleEn),
+                          style: AppType.row(ctx).copyWith(fontWeight: FontWeight.w600),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis),
+                      if ((x.subtitle ?? '').isNotEmpty)
+                        Text(x.subtitle!, style: AppType.meta(ctx), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    ]),
+                  ),
+                  if (x.count > 1) ...[const SizedBox(width: AppSpace.xs), AppCountBadge(count: x.count)],
+                  const SizedBox(width: AppSpace.xxs),
+                  Icon(Icons.chevron_right_rounded, size: AppIconSize.lg, color: c.textLight),
+                ]),
+              ),
+          ],
+        ),
       ),
     );
   });

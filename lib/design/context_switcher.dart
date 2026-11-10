@@ -155,7 +155,8 @@ class ContextExitButton extends StatelessWidget {
 }
 
 /// The pill: a round mark (icon in [tone]) · an optional small [caption] over the [label] · a count · the
-/// "choose" chevron. At least 48 px tall; one tap runs [onTap].
+/// "choose" chevron. Paper with a warm hairline — the organization's colour lives in the mark alone, never in the
+/// pill's edge. At least 48 px tall; one tap runs [onTap].
 class ContextPill extends StatelessWidget {
   const ContextPill({
     super.key,
@@ -201,17 +202,19 @@ class ContextPill extends StatelessWidget {
           message: label,
           excludeFromSemantics: true,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+            constraints: const BoxConstraints(minHeight: AppTouch.min, minWidth: AppTouch.min),
             child: Material(
               color: c.cardBg,
-              shape: StadiumBorder(side: BorderSide(color: tone.withValues(alpha: 0.35))),
+              shape: StadiumBorder(side: BorderSide(color: c.divider, width: AppBorder.hairline)),
               child: InkWell(
                 key: inkKey,
                 customBorder: const StadiumBorder(),
+                hoverColor: c.inputBg,
+                focusColor: c.inputBg,
                 onTap: onTap,
                 child: Padding(
                   padding: EdgeInsetsDirectional.fromSTEB(
-                      AppSpace.xxs + 2, AppSpace.xxs + 2, markOnly ? AppSpace.xxs + 2 : AppSpace.sm, AppSpace.xxs + 2),
+                      AppSpace.xs, AppSpace.xs, markOnly ? AppSpace.xs : AppSpace.sm, AppSpace.xs),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -228,7 +231,7 @@ class ContextPill extends StatelessWidget {
                                   caption!,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: AppType.overline(context).copyWith(fontWeight: FontWeight.w500),
+                                  style: AppType.meta(context).copyWith(color: c.textLight),
                                 ),
                               Text(
                                 label,
@@ -241,9 +244,9 @@ class ContextPill extends StatelessWidget {
                           ),
                         ),
                       ],
-                      if (badge > 0) ...[AppSpace.gapXs, _Count(badge, color: c.danger)],
-                      const SizedBox(width: AppSpace.xxs / 2),
-                      Icon(Icons.unfold_more_rounded, size: 18, color: c.textMedium),
+                      if (badge > 0) ...[AppSpace.gapXs, AppCountBadge(count: badge)],
+                      const SizedBox(width: AppSpace.xxs),
+                      Icon(Icons.unfold_more_rounded, size: AppIconSize.md, color: c.textMedium),
                     ],
                   ),
                 ),
@@ -310,7 +313,10 @@ class _ContextSwitcherState extends State<ContextSwitcher> {
         );
 
         if (!inOrg || !widget.allowPersonal || widget.compact) return pill;
-        // Inside an organization: the way back is always one visible tap.
+        // Inside an organization: the way back is always one visible tap — an emerald-tinted pill (the block's
+        // tint with its text-safe ink), the one action beside the paper pill.
+        final emerald = AppBlockColors.of(context, AppBlockTone.emerald);
+        final exitInk = emerald.accentInk(c.primary);
         return LayoutBuilder(
           builder: (context, box) {
             final narrow = box.maxWidth < 400; // phones: the exit button keeps only its icon (tooltip says it all)
@@ -322,8 +328,11 @@ class _ContextSwitcherState extends State<ContextSwitcher> {
                 Tooltip(
                   message: 'ctx_exit'.tr,
                   child: Material(
-                    color: c.primaryTint,
-                    shape: const StadiumBorder(),
+                    color: emerald.surface,
+                    shape: StadiumBorder(
+                        side: emerald.border == null
+                            ? BorderSide.none
+                            : BorderSide(color: emerald.border!, width: AppBorder.hairline)),
                     child: InkWell(
                       key: const ValueKey('ctx.exit'),
                       customBorder: const StadiumBorder(),
@@ -336,13 +345,13 @@ class _ContextSwitcherState extends State<ContextSwitcher> {
                             mainAxisSize: MainAxisSize.min,
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(DirIcons.logout, size: 18, color: c.primary, textDirection: TextDirection.ltr),
+                              Icon(DirIcons.logout, size: AppIconSize.md, color: exitInk, textDirection: TextDirection.ltr),
                               if (!narrow) ...[
                                 AppSpace.gapXs,
                                 Text(
                                   'ctx_personal'.tr,
                                   maxLines: 1,
-                                  style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.primary),
+                                  style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: exitInk),
                                 ),
                               ],
                             ],
@@ -393,7 +402,7 @@ Future<void> showContextSwitcherSheet(
         int idOf(Map<String, dynamic> e) => asInt(asMap(e['organization'])['id']);
         final others = [for (final e in ctl.liveEntries) if (!managedIds.contains(idOf(e))) e];
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -411,7 +420,7 @@ Future<void> showContextSwitcherSheet(
                 ),
               if (allowPersonal)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.only(bottom: AppSpace.md),
                   child: AppActionCard(
                     key: const ValueKey('ctx.sheet.personal'),
                     icon: Icons.person_rounded,
@@ -425,26 +434,24 @@ Future<void> showContextSwitcherSheet(
                     },
                   ),
                 ),
+              // the editorial rhythm inside a sheet: more room above the heading than below it
               Padding(
-                padding: const EdgeInsetsDirectional.only(start: 4, bottom: 8),
-                child: Text(
-                  'ctx_organizations'.tr,
-                  style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600),
-                ),
+                padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs, top: AppSpace.xs, bottom: AppSpace.sm),
+                child: Text('ctx_organizations'.tr, style: AppType.section(ctx)),
               ),
               if (ctl.entries.isEmpty && managed.isEmpty && !ctl.refreshFailed)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(bottom: AppSpace.xs),
                   child: Text(
                     'ctx_no_orgs'.tr,
                     key: const ValueKey('ctx.sheet.empty'),
-                    style: AppType.label(ctx),
+                    style: AppType.body(ctx),
                   ),
                 ),
               // inside the dashboard: the organizations I manage / work in, switched in place
               for (final o in managed)
                 Padding(
-                  padding: EdgeInsetsDirectional.only(start: 16.0 * asInt(o['depth']).clamp(0, 4), bottom: 8),
+                  padding: EdgeInsetsDirectional.only(start: AppSpace.md * asInt(o['depth']).clamp(0, 4), bottom: AppSpace.xs),
                   child: AppActionCard(
                     key: ValueKey('ctx.sheet.org.${asInt(o['id'])}'),
                     icon: orgTypeIcons[o['type']] ?? Icons.account_balance_rounded,
@@ -460,7 +467,7 @@ Future<void> showContextSwitcherSheet(
                 ),
               for (final e in others)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(bottom: AppSpace.xs),
                   child: AppActionCard(
                     key: ValueKey('ctx.sheet.org.${idOf(e)}'),
                     icon: orgTypeIcons[asMap(e['organization'])['type']] ?? Icons.account_balance_rounded,
@@ -479,7 +486,7 @@ Future<void> showContextSwitcherSheet(
               for (final e in notOpenEntries(ctl.entries, ctl.liveEntries))
                 if (!managedIds.contains(idOf(e)))
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.only(bottom: AppSpace.xs),
                     child: Opacity(
                       opacity: 0.7,
                       child: AppActionCard(
@@ -493,7 +500,7 @@ Future<void> showContextSwitcherSheet(
                     ),
                   ),
               Padding(
-                padding: const EdgeInsets.only(top: 6),
+                padding: const EdgeInsets.only(top: AppSpace.xs),
                 child: AppActionCard(
                   key: const ValueKey('ctx.sheet.join'),
                   icon: Icons.group_add_rounded,
@@ -511,7 +518,7 @@ Future<void> showContextSwitcherSheet(
               ),
               if (onCreateOrg != null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.only(top: AppSpace.xs),
                   child: AppActionCard(
                     key: const ValueKey('ctx.sheet.create'),
                     icon: Icons.add_business_rounded,
@@ -592,36 +599,27 @@ class _ContextMark extends StatelessWidget {
   final Color tone;
   final String? logoUrl;
 
+  /// The mark's diameter: the icon size [AppIconSize.xl]; with the pill's 8 px padding it reaches the 48 px target.
+  static const double size = AppIconSize.xl;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    // a dark organization colour on the dark card is barely visible: lift it towards the text colour there
-    final ink = c.isDark ? Color.lerp(tone, c.textDark, 0.45)! : tone;
+    // the organization's colour as text-safe ink on the mark's own tint (dark on light, lifted in dark mode)
+    final tint = tone.withValues(alpha: c.isDark ? 0.24 : 0.14);
+    final ink = c.blockAccentInk(tone, Color.alphaBlend(tint, c.cardBg));
     return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(color: tone.withValues(alpha: c.isDark ? 0.24 : 0.14), shape: BoxShape.circle),
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: tint, shape: BoxShape.circle),
       clipBehavior: Clip.antiAlias,
       child: logoUrl == null || logoUrl!.isEmpty
-          ? Icon(icon, size: 17, color: ink)
+          ? Icon(icon, size: AppIconSize.md, color: ink)
           : Image.network(logoUrl!,
-              width: 32, height: 32, fit: BoxFit.cover, errorBuilder: (_, _, _) => Icon(icon, size: 17, color: ink)),
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Icon(icon, size: AppIconSize.md, color: ink)),
     );
   }
-}
-
-class _Count extends StatelessWidget {
-  const _Count(this.n, {required this.color});
-  final int n;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs + 2, vertical: 1),
-    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(AppRadius.pill)),
-    child: Text(
-      n > 99 ? '99+' : '$n',
-      style: AppType.overline(context).copyWith(color: context.colors.button.color, letterSpacing: 0),
-    ),
-  );
 }

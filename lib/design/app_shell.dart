@@ -15,17 +15,21 @@
 //       rail / sidebar, every tab keeps its own back stack, a tap on the current tab goes back to its root, the
 //       system back pops the tab first (then goes to the home tab), and a [ShellFullScreen] page hides the chrome.
 //       The tab stack is one GlobalKey'd subtree, so a rotation that changes the shell kind keeps every stack.
-//   DashboardItem(icon, selectedIcon, label, onRefresh, screen, {badge, attentionKeys, attentionOrgId})
+//   DashboardItem(icon, selectedIcon, label, onRefresh, screen, {badge, badgeTone, attentionKeys, attentionOrgId})
 //       one tab. `label` is a translation key (or an already translated text — a missing key falls back to
 //       itself). The count on the tab = `badge` (what the attention feed does not carry, set by the dashboard)
 //       + the live count of `attentionKeys` (GET /me/attention, AttentionTabs), drawn by [ShellBadge] at the
-//       LEAF: an attention tick repaints the badge, never the shell.
+//       LEAF: an attention tick repaints the badge, never the shell. `badgeTone` says what the count means
+//       ([ShellBadgeTone]: attention = danger, reward = gold).
 //   UserChipButton · NotificationIcon · CalendarIcon
 //       the sidebar's user chip and the top bar's icons (the home headers use them too).
 //
-// Colours come from context.colors only: onHero / onHeroFaint / heroGlass / heroDivider over the sidebar
-// gradient and the primary top bar, cardShadow / bottomNavShadow for the shadows.
-// Layout test: test/ui/app_shell_layout_test.dart.
+// The look (Warm Editorial Blocks, .interface-design/system.md): the page is the warm canvas; the sidebar and the
+// rail are a PAPER column (`cardBg`) set off by one warm hairline, the way a magazine's margin sits beside the
+// page — no gradient, no dark slab competing with the page's hero block; the selected tab is an emerald pill with
+// on-hero ink; the top bar is the canvas itself with the tab's title in the editorial face and the chrome buttons
+// as paper squares; the phone's bottom bar is paper with a hairline, the open tab an emerald pill under its label.
+// Colours come from context.colors only. Layout test: test/ui/app_shell_layout_test.dart.
 library;
 
 import 'package:flutter/material.dart';
@@ -44,8 +48,7 @@ import '../features/shared/profile/update_account_widget.dart';
 import '../utils/widget/app_navigator.dart' show AppNavigator;
 import '../utils/widget/app_network_image.dart';
 import '../utils/widget/base_page.dart';
-import 'app_focus_mode.dart';
-import 'app_mesh.dart';
+import 'app_focus_mode.dart' show AppFocusMode, AppFocusToggle;
 import 'app_motion_kit.dart';
 import 'app_tokens.dart';
 import 'app_responsive.dart';
@@ -54,11 +57,15 @@ import 'calendar_entry.dart';
 import '../features/shared/rag/app_assistant.dart' show AppAssistant, appAssistantFeatureKey;
 import 'chrome_button.dart';
 import 'app_settings.dart' show appRoleLabel;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import '../core/display/app_fonts.dart' show AppFonts;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Model
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// What a tab's count means, and so its colour (system.md §2): [attention] — things waiting on the person — is the
+/// danger red; [reward] — what they earned (a new badge, points) — is the gold tint. Gold is never an alarm.
+enum ShellBadgeTone { attention, reward }
 
 class DashboardItem {
   DashboardItem(
@@ -68,6 +75,7 @@ class DashboardItem {
     this.onRefresh,
     this.screen, {
     this.badge = 0,
+    this.badgeTone = ShellBadgeTone.attention,
     this.attentionKeys = const [],
     this.attentionOrgId,
   });
@@ -79,6 +87,9 @@ class DashboardItem {
 
   /// Count the attention feed does not carry (0 = none). Set by the dashboard from its own provider.
   int badge;
+
+  /// The meaning of the count, which picks its colour.
+  final ShellBadgeTone badgeTone;
 
   /// AttentionTabs keys whose live counts are added to [badge] (drawn at the leaf, see [ShellBadge]).
   final List<String> attentionKeys;
@@ -123,6 +134,65 @@ class ShellBadge extends StatelessWidget {
 }
 
 String _badgeText(int n) => n > 99 ? '99+' : '$n';
+
+/// The shell's own measures, the few the tokens do not name.
+abstract final class _ShellMetrics {
+  /// The sidebar's brand mark and the user chip's avatar.
+  static const double mark = 36;
+
+  /// The rail (NavigationRail.minWidth); its end hairline makes the 67 px of side chrome the pages are told about.
+  static const double railW = 66;
+
+  /// The top bar of the wide / rail shells: a touch target with the bar's own breathing room.
+  static const double barH = AppTouch.min + AppSpace.lg;
+
+  /// The slim bar focus mode leaves.
+  static const double focusBarH = AppTouch.primary;
+
+  /// The emerald pill under the open tab's icon on the phone bar (the Material 3 indicator measure) and, narrower,
+  /// on the rail, where each tab is a [railCellH] tall cell.
+  static const double pillW = 56;
+  static const double pillH = 32;
+  static const double railPillW = 48;
+  static const double railCellH = AppTouch.min + AppSpace.xs;
+}
+
+/// A tab's count as a small pill in the colour of its meaning. On the open (emerald) tab it turns to glass, so a red
+/// count never sits on green; [ring] (the surface under it) separates a pill that overlaps an icon.
+class _CountPill extends StatelessWidget {
+  const _CountPill(this.n, {required this.tone, this.onSelected = false, this.ring});
+
+  final int n;
+  final ShellBadgeTone tone;
+  final bool onSelected;
+  final Color? ring;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final (Color fill, Color ink) = onSelected
+        ? (c.heroGlass, c.onHero)
+        : switch (tone) {
+            ShellBadgeTone.attention => (c.danger, c.onHero),
+            ShellBadgeTone.reward => (c.blockGold, c.blockAccentInk(c.accent2, c.blockGold)),
+          };
+    return Container(
+      constraints: const BoxConstraints(minWidth: AppIconSize.md, minHeight: AppIconSize.md),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs + 2),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: fill,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: ring == null ? null : Border.all(color: ring!, width: AppBorder.focus),
+      ),
+      child: Text(
+        _badgeText(n),
+        maxLines: 1,
+        style: AppType.overline(context).copyWith(color: ink, height: 1.1, letterSpacing: 0),
+      ),
+    );
+  }
+}
 
 /// The tab bodies of a shell: an IndexedStack whose children stay placeholders until their tab is first shown
 /// (D-077). A visited tab is remembered by its label, so it stays built when tabs before it come or go (an older
@@ -340,7 +410,7 @@ class _AppShellState extends State<AppShell> {
         ? 0
         : switch (kind) {
             AppShellKind.wide => Breakpoints.sidebarW,
-            AppShellKind.rail => 67, // NavigationRail minWidth 66 + its divider
+            AppShellKind.rail => _ShellMetrics.railW + AppBorder.hairline,
             AppShellKind.mobile => 0,
           };
     final Widget shell = full
@@ -396,26 +466,41 @@ class _FocusFold extends StatelessWidget {
       );
 }
 
-/// The page area, a sheet laid on the shell's one continuous gradient (D-551).
-class _ContentPanel extends StatelessWidget {
-  const _ContentPanel({required this.focus, required this.child});
-
-  /// True in focus mode and when the page draws its own header across the top (showTopBar: false, D-570): no
-  /// rounded corner then, which would leave a thin arc where the sidebar meets that header.
-  final bool focus;
-  final Widget child;
+/// The labelled way out of focus mode, on the slim bar it leaves, in the corner where it was entered: a paper
+/// pill with a hairline (the canvas bar has no hero colour for a glass button to sit on).
+class _FocusExitPill extends StatelessWidget {
+  const _FocusExitPill();
 
   @override
   Widget build(BuildContext context) {
-    final body = ColoredBox(color: context.colors.background, child: child);
-    if (focus) return body;
-    return ClipRRect(
-      borderRadius: const BorderRadiusDirectional.only(topStart: Radius.circular(AppRadius.sheet)).resolve(Directionality.of(context)),
+    final c = context.colors;
+    return Material(
+      key: const ValueKey('app.focus.exit'),
+      color: c.cardBg,
+      shape: StadiumBorder(side: BorderSide(color: c.divider, width: AppBorder.hairline)),
       clipBehavior: Clip.antiAlias,
-      child: body,
+      child: InkWell(
+        onTap: AppFocusMode.instance.toggle,
+        customBorder: const StadiumBorder(),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: AppTouch.min),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.fullscreen_exit_rounded, size: AppIconSize.md, color: c.textDark),
+              const SizedBox(width: AppSpace.xs),
+              Text('ds_focus_exit'.tr, maxLines: 1, style: AppType.label(context).copyWith(color: c.textDark)),
+            ]),
+          ),
+        ),
+      ),
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WIDE LAYOUT (>= Breakpoints.desktop) — paper sidebar + canvas top bar
+// ─────────────────────────────────────────────────────────────────────────────
 
 class WideShell extends StatelessWidget {
   final int currentIndex;
@@ -445,97 +530,16 @@ class WideShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final user = context.watch<MyAuthProvider>().currentUser;
     final current = currentIndex.clamp(0, dashboardItems.length - 1);
     final barShown = showTopBar && !(ShellScope.maybeOf(context)?.activeCanPop ?? false);
     return BasePage(
-      child: RepaintBoundary(child: AppMeshSurface(seed: 3, child: Row(
+      child: Row(
         children: [
-          // ── Sidebar ──────────────────────────────────────────────────────
-          _FocusFold(focus: focus, child: SizedBox(
-            width: Breakpoints.sidebarW,
-            child: Stack(
-              children: [
-                Column(
-                  children: [
-                    const SizedBox(height: 32),
-                    // Logo row: ONE app name, the one the super admin sets ("About us").
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: c.primary.withValues(alpha: 0.3),
-                              borderRadius: BorderRadius.circular(13),
-                            ),
-                            child: Icon(Icons.school_rounded, color: c.onHero, size: 22),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  AppIdentity.instance.name.isNotEmpty ? AppIdentity.instance.name : 'NextBrain',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontFamily: AppFonts.display,
-                                    color: c.onHero,
-                                    fontWeight: FontWeight.normal,
-                                    fontSize: 17,
-                                  ),
-                                ),
-                                Text(
-                                  AppIdentity.instance.tagline.isNotEmpty
-                                      ? AppIdentity.instance.tagline
-                                      : 'app_tagline'.tr,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(fontFamily: AppFonts.family, color: c.onHeroFaint, fontSize: 10),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                    Divider(height: 1, color: c.heroDivider),
-                    const SizedBox(height: 10),
-                    // Nav items
-                    Expanded(
-                      child: Semantics(
-                        container: true,
-                        explicitChildNodes: true,
-                        label: 'shell_navigation'.tr,
-                        child: ListView(
-                        padding: EdgeInsets.zero,
-                        children: [
-                          for (int i = 0; i < dashboardItems.length; i++)
-                            _SidebarTile(
-                              item: dashboardItems[i],
-                              selected: current == i,
-                              onTap: () => onTap(i),
-                            ),
-                        ],
-                      ),
-                      ),
-                    ),
-                    Divider(height: 1, color: c.heroDivider),
-                    const SizedBox(height: 14),
-                    if (user != null) UserChipButton(user: user, showLabel: true),
-                  ],
-                ),
-              ],
-            ),
-          )),
-
-          // ── Main content ──────────────────────────────────────────────────
+          _FocusFold(
+            focus: focus,
+            child: _Sidebar(items: dashboardItems, current: current, onTap: onTap, user: user),
+          ),
           Expanded(
             child: Column(
               children: [
@@ -552,19 +556,119 @@ class WideShell extends StatelessWidget {
                   child: MediaQuery.removePadding(
                     context: context,
                     removeTop: barShown,
-                    child: _ContentPanel(focus: focus || !showTopBar, child: body ?? LazyTabStack(index: current, items: dashboardItems)),
+                    child: body ?? LazyTabStack(index: current, items: dashboardItems),
                   ),
                 ),
               ],
             ),
           ),
         ],
-      ))),
+      ),
     );
   }
 }
 
-/// The signed-in user at the bottom of the sidebar / rail — opens the account editor.
+/// The paper column: the wordmark, the tabs, the signed-in person. One warm hairline on its end side.
+class _Sidebar extends StatelessWidget {
+  const _Sidebar({required this.items, required this.current, required this.onTap, required this.user});
+
+  final List<DashboardItem> items;
+  final int current;
+  final ValueChanged<int> onTap;
+  final UserModel? user;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      width: Breakpoints.sidebarW,
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        border: BorderDirectional(end: BorderSide(color: c.divider, width: AppBorder.hairline)),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: AppSpace.lg),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: AppSpace.md),
+            child: _Wordmark(),
+          ),
+          const SizedBox(height: AppSpace.lg),
+          Expanded(
+            child: Semantics(
+              container: true,
+              explicitChildNodes: true,
+              label: 'shell_navigation'.tr,
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+                children: [
+                  for (int i = 0; i < items.length; i++)
+                    _SidebarTile(item: items[i], selected: current == i, onTap: () => onTap(i)),
+                ],
+              ),
+            ),
+          ),
+          Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+          if (user != null) UserChipButton(user: user!, showLabel: true),
+        ],
+      ),
+    );
+  }
+}
+
+/// The brand mark: a small emerald tile with the school glyph.
+class _AppMark extends StatelessWidget {
+  const _AppMark();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      width: _ShellMetrics.mark,
+      height: _ShellMetrics.mark,
+      decoration: BoxDecoration(color: c.primary, borderRadius: AppRadius.chipAll),
+      child: Icon(Icons.school_rounded, color: c.onHero, size: AppIconSize.md),
+    );
+  }
+}
+
+/// ONE app name, the one the super admin sets ("About us"), in the editorial face, with its tagline under it.
+class _Wordmark extends StatelessWidget {
+  const _Wordmark();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Row(
+      children: [
+        const _AppMark(),
+        const SizedBox(width: AppSpace.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                AppIdentity.instance.name.isNotEmpty ? AppIdentity.instance.name : 'NextBrain',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.section(context),
+              ),
+              Text(
+                AppIdentity.instance.tagline.isNotEmpty ? AppIdentity.instance.tagline : 'app_tagline'.tr,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.meta(context).copyWith(color: c.textLight),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The signed-in user at the bottom of the sidebar / rail — opens the account editor. A quiet row on paper; on a
+/// hero band ([ChromeBar]) the avatar turns to glass like the chrome buttons beside it.
 class UserChipButton extends StatelessWidget {
   final UserModel user;
   final bool showLabel;
@@ -577,86 +681,76 @@ class UserChipButton extends StatelessWidget {
     final name = user.name;
     final initial = name.isNotEmpty ? name[0] : '؟';
     final image = user.imageUrl;
+    final onBar = ChromeBar.of(context);
+    final avatar = Container(
+      width: _ShellMetrics.mark,
+      height: _ShellMetrics.mark,
+      decoration: BoxDecoration(
+        color: onBar ? c.heroGlass : c.primary,
+        shape: BoxShape.circle,
+        border: onBar ? Border.all(color: c.heroGlassBorder, width: AppBorder.hairline) : null,
+      ),
+      clipBehavior: Clip.antiAlias,
+      alignment: Alignment.center,
+      child: image != null && image.isNotEmpty
+          ? AppNetworkImage(url: image, enableFullscreen: false, heroTag: 'user_logo-dashboard')
+          // a name is in whichever language the person typed it: the other language's font draws it too
+          : Text(initial,
+              style: AppType.row(context)
+                  .copyWith(color: c.onHero, fontWeight: FontWeight.w600, fontFamilyFallback: AppFonts.fallback)),
+    );
     return Padding(
-      padding: showLabel ? const EdgeInsets.fromLTRB(14, 0, 14, 10) : const EdgeInsets.only(bottom: 10),
+      padding: showLabel
+          ? const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.xs, AppSpace.sm, AppSpace.sm)
+          : const EdgeInsets.symmetric(vertical: AppSpace.xs),
       child: Semantics(
         button: true,
         label: name,
-        child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () => AppShellNav.navigatorFor(context).push(MaterialPageRoute(builder: (_) => EditAccountScreen())),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          // light mode: a solid primary chip — the server's sidebar gradient may fade to near-white at the bottom,
-          // where on-hero ink over the glass fell below 4.5:1 (name and role unreadable)
-          decoration: BoxDecoration(
-            color: c.isDark ? c.heroGlass : c.primary.withValues(alpha: 0.94),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Row(
-            mainAxisSize: showLabel ? MainAxisSize.max : MainAxisSize.min,
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(gradient: c.accentGradient, shape: BoxShape.circle),
-                alignment: Alignment.center,
-                child: image != null && image.isNotEmpty
-                    ? Container(
-                        width: 35,
-                        height: 35,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: c.primary.withValues(alpha: 0.1),
-                          border: Border.all(color: c.primary, width: 2.5),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: AppRadius.controlAll,
+            hoverColor: onBar ? c.heroGlass : c.inputBg,
+            focusColor: onBar ? c.heroGlass : c.inputBg,
+            onTap: () => AppShellNav.navigatorFor(context).push(MaterialPageRoute(builder: (_) => EditAccountScreen())),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouch.min, minWidth: AppTouch.min),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: showLabel ? AppSpace.xs : AppSpace.xxs, vertical: AppSpace.xxs),
+                child: Row(
+                  mainAxisSize: showLabel ? MainAxisSize.max : MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    avatar,
+                    if (showLabel) ...[
+                      const SizedBox(width: AppSpace.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppType.row(context)
+                                  .copyWith(color: onBar ? c.onHero : c.textDark, fontFamilyFallback: AppFonts.fallback),
+                            ),
+                            Text(
+                              appRoleLabel(user.role),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppType.meta(context).copyWith(color: onBar ? c.onHeroMuted : c.textLight),
+                            ),
+                          ],
                         ),
-                        child: ClipOval(
-                          child: AppNetworkImage(url: image, enableFullscreen: false, heroTag: 'user_logo-dashboard'),
-                        ),
-                      )
-                    : Text(
-                        initial,
-                        style: TextStyle(
-                          color: c.onHero,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: AppFonts.display,
-                        ),
-                      ),
-              ),
-              if (showLabel) ...[
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        // the sidebar is the hero surface in both themes: on-hero ink (primaryLight w100 was
-                        // low-contrast blue on it)
-                        style: TextStyle(
-                          color: c.onHero,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          fontFamily: AppFonts.family,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        appRoleLabel(user.role),
-                        maxLines: 1,
-                        style: TextStyle(color: c.onHeroMuted, fontSize: 11, fontFamily: AppFonts.family),
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                  ),
+                  ],
                 ),
-              ],
-            ],
+              ),
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -664,6 +758,7 @@ class UserChipButton extends StatelessWidget {
 
 // ── Sidebar tile ──────────────────────────────────────────────────────────────
 
+/// One tab of the sidebar: a 48 px row; the open one is an emerald pill with on-hero ink.
 class _SidebarTile extends StatelessWidget {
   final DashboardItem item;
   final bool selected;
@@ -674,9 +769,10 @@ class _SidebarTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final ink = selected ? c.onHero : c.textDark;
     // a real button for screen readers and the keyboard (H12): focusable, Enter / Space, selected state read out
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs / 2),
       child: Semantics(
         button: true,
         selected: selected,
@@ -684,77 +780,46 @@ class _SidebarTile extends StatelessWidget {
           type: MaterialType.transparency,
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(12),
-            focusColor: c.heroGlass,
-            hoverColor: c.heroGlass.withValues(alpha: 0.08),
-            child: _tile(c),
+            customBorder: const StadiumBorder(),
+            hoverColor: c.inputBg,
+            focusColor: c.inputBg,
+            child: AnimatedContainer(
+              duration: AppMotion.of(context).fast,
+              curve: AppMotion.curve,
+              constraints: const BoxConstraints(minHeight: AppTouch.min),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+              decoration: BoxDecoration(
+                color: selected ? c.primary : Colors.transparent,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+              ),
+              child: Row(
+                children: [
+                  Icon(selected ? item.selectedIcon : item.icon, color: selected ? c.onHero : c.textMedium, size: AppIconSize.md),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Text(
+                      item.label.tr,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.row(context).copyWith(color: ink, fontWeight: selected ? FontWeight.w600 : FontWeight.w500),
+                    ),
+                  ),
+                  ShellBadge(
+                    item: item,
+                    builder: (context, n) => n <= 0
+                        ? const SizedBox.shrink()
+                        : Padding(
+                            padding: const EdgeInsetsDirectional.only(start: AppSpace.xs),
+                            child: _CountPill(n, tone: item.badgeTone, onSelected: selected),
+                          ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
     );
-  }
-
-  Widget _tile(ThemeConfigProvider c) {
-    return AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-        // selected: a warm accent2 wash on the light (brand) sidebar; the brand gradient pill on the dark one (D-136)
-        decoration: BoxDecoration(
-          // (no colour under the gradient: a transparent paint colour would fade the shader to nothing)
-          color: selected && c.isDark ? null : (selected ? c.accent2.withValues(alpha: 0.2) : Colors.transparent),
-          gradient: selected && c.isDark ? c.primaryGradient : null,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: selected && !c.isDark ? c.primary.withValues(alpha: 0.3) : Colors.transparent),
-          boxShadow: selected && c.isDark ? c.primaryButtonShadow : null,
-        ),
-        child: Row(
-          children: [
-            if (selected)
-              Container(
-                width: 3,
-                height: 20,
-                decoration: BoxDecoration(color: c.accent, borderRadius: BorderRadius.circular(2)),
-                margin: const EdgeInsetsDirectional.only(end: 10),
-              ),
-            Icon(selected ? item.selectedIcon : item.icon, color: selected ? c.onHero : c.onHeroMuted, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                item.label.tr,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: AppFonts.display,
-                  color: selected ? c.onHero : c.onHeroMuted,
-                  fontWeight: selected ? FontWeight.w500 : FontWeight.normal,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-            ShellBadge(
-              item: item,
-              builder: (context, n) => n <= 0
-                  ? const SizedBox.shrink()
-                  : Padding(
-                      padding: const EdgeInsetsDirectional.only(start: 10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(20)),
-                        child: Text(
-                          _badgeText(n),
-                          style: TextStyle(
-                            color: c.onHero,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: AppFonts.display,
-                          ),
-                        ),
-                      ),
-                    ),
-            ),
-          ],
-        ),
-      );
   }
 }
 
@@ -774,6 +839,8 @@ String? shellHelpPageId(BuildContext context, String tabKey, bool first) {
 
 // ── Top bar (wide + rail) ─────────────────────────────────────────────────────
 
+/// The canvas bar over a tab's first page: the tab's title in the editorial face at the start, the chrome buttons
+/// (paper squares) at the end. No fill and no hairline — it is the page's own head, not a band.
 class _TopBar extends StatelessWidget {
   final String title;
   final int unread;
@@ -787,49 +854,46 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Semantics(
       container: true,
       explicitChildNodes: true,
       label: 'shell_top_bar'.tr,
       child: SizedBox(
-        height: focus ? 56 : 68,
+        height: focus ? _ShellMetrics.focusBarH : _ShellMetrics.barH,
         child: Padding(
           padding: const EdgeInsetsDirectional.only(start: AppSpace.lg, end: AppSpace.md),
-          child: ChromeBar(
-            child: LayoutBuilder(builder: (context, box) => Row(
-              children: [
-                Expanded(
-                  child: Semantics(
-                    header: true,
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: c.h2.copyWith(color: c.onHero, fontWeight: FontWeight.w600),
-                    ),
+          child: LayoutBuilder(builder: (context, box) => Row(
+            children: [
+              Expanded(
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppType.pageTitle(context),
                   ),
                 ),
-                const SizedBox(width: AppSpace.xs),
-                // the buttons keep their size and sit at the end; only a squeezed shell scales them down
-                ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: box.maxWidth * 0.72),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: AlignmentDirectional.centerEnd,
-                    child: focus
-                        ? const AppFocusExitButton()
-                        : Row(mainAxisSize: MainAxisSize.min, children: [
-                            if (onRefresh != null) _ChromeRefresh(onRefresh: onRefresh!),
-                            _GlobalTools(unread: unread),
-                            if (helpPageId != null) HelpInfoButton(pageId: helpPageId!),
-                            const AppFocusToggle(onHero: true),
-                          ]),
-                  ),
+              ),
+              const SizedBox(width: AppSpace.xs),
+              // the buttons keep their size and sit at the end; only a squeezed shell scales them down
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: box.maxWidth * 0.72),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: focus
+                      ? const _FocusExitPill()
+                      : Row(mainAxisSize: MainAxisSize.min, children: [
+                          if (onRefresh != null) _ChromeRefresh(onRefresh: onRefresh!),
+                          _GlobalTools(unread: unread),
+                          if (helpPageId != null) HelpInfoButton(pageId: helpPageId!),
+                          const AppFocusToggle(),
+                        ]),
                 ),
-              ],
-            )),
-          ),
+              ),
+            ],
+          )),
         ),
       ),
     );
@@ -856,7 +920,7 @@ class _GlobalTools extends StatelessWidget {
       ]);
 }
 
-/// Refresh, the same glass square as its neighbours; the icon turns into a spinner while it runs.
+/// Refresh, the same paper square as its neighbours; the icon turns into a spinner while it runs.
 class _ChromeRefresh extends StatefulWidget {
   const _ChromeRefresh({required this.onRefresh});
 
@@ -914,7 +978,7 @@ class NotificationIcon extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RAIL LAYOUT (Breakpoints.mobile … desktop) — NavigationRail + top bar
+// RAIL LAYOUT (Breakpoints.mobile … desktop) — paper rail + canvas top bar
 // ─────────────────────────────────────────────────────────────────────────────
 
 class RailShell extends StatelessWidget {
@@ -950,39 +1014,41 @@ class RailShell extends StatelessWidget {
     final current = currentIndex.clamp(0, dashboardItems.length - 1);
     final barShown = showTopBar && !(ShellScope.maybeOf(context)?.activeCanPop ?? false);
     return BasePage(
-      child: RepaintBoundary(child: AppMeshSurface(seed: 3, child: Row(
+      child: Row(
         children: [
-          _FocusFold(focus: focus, child: SizedBox(
-            child: Column(
-              children: [
-                Expanded(
-                  child: NavigationRail(
-                    backgroundColor: Colors.transparent,
-                    selectedIndex: current,
-                    onDestinationSelected: onTap,
-                    minWidth: 66,
-                    labelType: NavigationRailLabelType.none,
-                    indicatorColor: c.primary.withValues(alpha: 0.35),
-                    selectedIconTheme: IconThemeData(color: c.onHero, size: 23),
-                    unselectedIconTheme: IconThemeData(color: c.onHeroFaint, size: 22),
-                    leading: Padding(
-                      padding: const EdgeInsets.only(top: 24, bottom: 12),
-                      child: Icon(Icons.school_rounded, color: c.accent2, size: 26),
-                    ),
-                    destinations: [
-                      for (final item in dashboardItems)
-                        NavigationRailDestination(
-                          icon: _RailIcon(item: item, icon: item.icon),
-                          selectedIcon: _RailIcon(item: item, icon: item.selectedIcon),
-                          label: Text(item.label.tr),
-                        ),
-                    ],
+          _FocusFold(
+            focus: focus,
+            child: Container(
+              width: _ShellMetrics.railW + AppBorder.hairline,
+              decoration: BoxDecoration(
+                color: c.cardBg,
+                border: BorderDirectional(end: BorderSide(color: c.divider, width: AppBorder.hairline)),
+              ),
+              child: Column(
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: AppSpace.lg, bottom: AppSpace.sm),
+                    child: _AppMark(),
                   ),
-                ),
-                if (user != null) UserChipButton(user: user, showLabel: false),
-              ],
+                  Expanded(
+                    child: Semantics(
+                      container: true,
+                      explicitChildNodes: true,
+                      label: 'shell_navigation'.tr,
+                      child: ListView(
+                        padding: EdgeInsets.zero,
+                        children: [
+                          for (int i = 0; i < dashboardItems.length; i++)
+                            _RailTile(item: dashboardItems[i], selected: current == i, onTap: () => onTap(i)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (user != null) UserChipButton(user: user, showLabel: false),
+                ],
+              ),
             ),
-          )),
+          ),
           Expanded(
             child: Column(
               children: [
@@ -999,37 +1065,105 @@ class RailShell extends StatelessWidget {
                   child: MediaQuery.removePadding(
                     context: context,
                     removeTop: barShown,
-                    child: _ContentPanel(focus: focus || !showTopBar, child: body ?? LazyTabStack(index: current, items: dashboardItems)),
+                    child: body ?? LazyTabStack(index: current, items: dashboardItems),
                   ),
                 ),
               ],
             ),
           ),
         ],
-      ))),
+      ),
     );
   }
 }
 
-class _RailIcon extends StatelessWidget {
-  const _RailIcon({required this.item, required this.icon});
+/// One rail tab: an icon-only cell (the label is its tooltip and its screen-reader name) with the pill of the open
+/// tab, a hand-drawn rail so the pill, the count and the 48 px target match the phone bar exactly.
+class _RailTile extends StatelessWidget {
+  const _RailTile({required this.item, required this.selected, required this.onTap});
 
   final DashboardItem item;
-  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => ShellBadge(
-        item: item,
-        builder: (context, n) => Badge(
-          isLabelVisible: n > 0,
-          label: Text(_badgeText(n)),
-          child: Icon(icon),
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Tooltip(
+      message: item.label.tr,
+      excludeFromSemantics: true,
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: item.label.tr,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: AppRadius.controlAll,
+            hoverColor: c.inputBg,
+            focusColor: c.inputBg,
+            child: SizedBox(
+              width: _ShellMetrics.railW,
+              height: _ShellMetrics.railCellH,
+              child: Center(child: _TabIconPill(item: item, active: selected, width: _ShellMetrics.railPillW)),
+            ),
+          ),
         ),
-      );
+      ),
+    );
+  }
+}
+
+/// The icon of a rail / phone tab on its pill — emerald with on-hero ink when the tab is open, bare otherwise — and
+/// its count on the top-end corner, ringed with the surface under it so it reads over the icon.
+class _TabIconPill extends StatelessWidget {
+  const _TabIconPill({required this.item, required this.active, required this.width});
+
+  final DashboardItem item;
+  final bool active;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return ShellBadge(
+      item: item,
+      builder: (context, n) => Stack(
+        clipBehavior: Clip.none,
+        children: [
+          AnimatedContainer(
+            duration: AppMotion.of(context).fast,
+            curve: AppMotion.curve,
+            width: width,
+            height: _ShellMetrics.pillH,
+            decoration: BoxDecoration(
+              color: active ? c.primary : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+            ),
+            child: Center(
+              child: Icon(
+                active ? item.selectedIcon : item.icon,
+                size: AppIconSize.lg,
+                color: active ? c.onHero : c.textMedium,
+              ),
+            ),
+          ),
+          // over the icon's top-end quarter, the Material badge offset, so the glyph stays readable under it
+          if (n > 0)
+            PositionedDirectional(
+              top: -(AppSpace.xxs + 2),
+              end: -AppSpace.xxs,
+              child: _CountPill(n, tone: item.badgeTone, ring: active ? c.primary : c.cardBg),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MOBILE LAYOUT (< Breakpoints.mobile) — bottom bar
+// MOBILE LAYOUT (< Breakpoints.mobile) — paper bottom bar
 // ─────────────────────────────────────────────────────────────────────────────
 
 class MobileShell extends StatelessWidget {
@@ -1058,6 +1192,7 @@ class MobileShell extends StatelessWidget {
   }
 }
 
+/// Paper with one hairline on top; no shadow — the bar is a surface the page scrolls under, not something afloat.
 class _BottomNav extends StatelessWidget {
   final int index;
   final ValueChanged<int> onSelect;
@@ -1071,12 +1206,11 @@ class _BottomNav extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: c.cardBg,
-        border: Border(top: BorderSide(color: c.divider, width: 0.5)),
-        boxShadow: c.bottomNavShadow,
+        border: Border(top: BorderSide(color: c.divider, width: AppBorder.hairline)),
       ),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xs),
           child: Row(
             children: [
               for (var i = 0; i < dashboardItems.length; i++)
@@ -1089,6 +1223,8 @@ class _BottomNav extends StatelessWidget {
   }
 }
 
+/// One phone tab: the icon on an emerald pill when open, its label under it. The label always shows; the open
+/// tab's is heavier and in the primary ink. The whole column is the target (≥ 48 px).
 class _BottomTab extends StatelessWidget {
   const _BottomTab({required this.item, required this.active, required this.onTap});
 
@@ -1098,53 +1234,29 @@ class _BottomTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Semantics(
       button: true,
       selected: active,
       child: GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            width: 42,
-            height: 30,
-            decoration: BoxDecoration(
-              // the brand gradient (D-136); the server's accent gradient faded to cream under a white icon
-              gradient: active ? c.primaryGradient : null,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: active
-                  ? [BoxShadow(color: c.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))]
-                  : null,
-            ),
-            child: ShellBadge(
-              item: item,
-              builder: (context, n) => Badge(
-                isLabelVisible: n > 0,
-                label: Text(_badgeText(n)),
-                child: Center(
-                  child: Icon(active ? item.selectedIcon : item.icon, size: 20, color: active ? c.onHero : c.textLight),
-                ),
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: AppTouch.min),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _TabIconPill(item: item, active: active, width: _ShellMetrics.pillW),
+              const SizedBox(height: AppSpace.xxs),
+              Text(
+                item.label.tr,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: BottomNavMetrics.labelStyle(context, active: active),
               ),
-            ),
+            ],
           ),
-          const SizedBox(height: 3),
-          Text(
-            item.label.tr,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-              color: active ? c.primary : c.textLight,
-              fontFamily: AppFonts.display,
-            ),
-          ),
-        ],
-      ),
+        ),
       ),
     );
   }
@@ -1154,9 +1266,24 @@ class _BottomTab extends StatelessWidget {
 class BottomNavMetrics {
   BottomNavMetrics._();
 
-  /// 8 + 30 (icon well) + 3 + the label line + 8, plus the home-indicator inset.
+  /// The size and line of a tab's label (the overline role, tracking off: spaced Arabic loses its joins).
+  static const double _labelSize = 11;
+  static const double _labelLine = 1.3;
+
+  static TextStyle labelStyle(BuildContext context, {required bool active}) {
+    final c = context.colors;
+    return AppType.overline(context).copyWith(
+      fontSize: _labelSize,
+      height: _labelLine,
+      letterSpacing: 0,
+      fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+      color: active ? c.primary : c.textMedium,
+    );
+  }
+
+  /// 8 + 32 (the icon pill) + 4 + the label line + 8, plus the home-indicator inset.
   static double heightFor(BuildContext context) {
-    final label = MediaQuery.textScalerOf(context).scale(10) * 1.5;
-    return 8 + 30 + 3 + label + 8 + MediaQuery.paddingOf(context).bottom;
+    final label = MediaQuery.textScalerOf(context).scale(_labelSize) * _labelLine;
+    return AppSpace.xs + _ShellMetrics.pillH + AppSpace.xxs + label + AppSpace.xs + MediaQuery.paddingOf(context).bottom;
   }
 }

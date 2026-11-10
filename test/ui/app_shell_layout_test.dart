@@ -161,6 +161,41 @@ void main() {
     expect(find.bySemanticsLabel(RegExp('my_calendar')), findsOneWidget);
     handle.dispose();
   });
+
+  testWidgets('editorial shell: 48 px tabs on the bar, the rail and the sidebar; a reward count renders', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    final tabs = [
+      ...items(),
+      DashboardItem(Icons.star_outline_rounded, Icons.star_rounded, 'points', null, const Text('points'),
+          badge: 4, badgeTone: ShellBadgeTone.reward),
+    ];
+
+    tester.view.physicalSize = const Size(320, 640);
+    await tester.pumpWidget(layoutHost(host(MobileShell(currentIndex: 0, onTap: (_) {}, dashboardItems: tabs)), scaffold: false));
+    await tester.pump();
+    for (final label in ['my_courses', 'points']) {
+      final tab = find.ancestor(of: find.text(label.tr), matching: find.byType(ConstrainedBox)).first;
+      expect(tester.getSize(tab).height, greaterThanOrEqualTo(48), reason: 'bottom tab "$label" is a 48 px target');
+      expect(tester.getSize(tab).width, greaterThanOrEqualTo(48));
+    }
+    expect(find.text('4'), findsOneWidget, reason: 'the reward (gold) count renders');
+    expect(BottomNavMetrics.heightFor(tester.element(find.byType(MobileShell))), greaterThanOrEqualTo(48));
+
+    tester.view.physicalSize = const Size(800, 600);
+    await tester.pumpWidget(layoutHost(host(RailShell(currentIndex: 1, onTap: (_) {}, dashboardItems: tabs, unreadCount: 0)), scaffold: false));
+    await tester.pump();
+    final rail = tester.getSize(find.ancestor(of: find.byIcon(Icons.star_outline_rounded), matching: find.byType(InkWell)).first);
+    expect(rail.height, greaterThanOrEqualTo(48));
+    expect(rail.width, greaterThanOrEqualTo(48));
+
+    tester.view.physicalSize = const Size(1400, 900);
+    await tester.pumpWidget(layoutHost(host(WideShell(currentIndex: 1, onTap: (_) {}, dashboardItems: tabs, unreadCount: 0)), scaffold: false));
+    await tester.pump();
+    final tile = find.ancestor(of: find.text('points'.tr), matching: find.byType(AnimatedContainer)).first;
+    expect(tester.getSize(tile).height, greaterThanOrEqualTo(48), reason: 'a sidebar tab is a 48 px row');
+    await tester.pumpWidget(const SizedBox());
+  });
 }
 
 class _Probe extends StatefulWidget {
