@@ -91,6 +91,7 @@ class BubbleResultPanel extends StatelessWidget {
     required this.onIdBox,
     required this.onRotate,
     required this.onDirection,
+    required this.onOrder,
     required this.onBlockOptions,
     required this.onUndo,
     required this.onRetake,
@@ -108,7 +109,7 @@ class BubbleResultPanel extends StatelessWidget {
   final ValueChanged<BubbleTapMode?> onMode;
   final void Function(Offset fraction) onTapSheet;
   final void Function(Rect fractions) onIdBox;
-  final VoidCallback onRotate, onDirection, onUndo, onRetake, onConfirm;
+  final VoidCallback onRotate, onDirection, onOrder, onUndo, onRetake, onConfirm;
   final void Function(BubbleBlock block, int options) onBlockOptions;
   final TextEditingController name;
   final BubbleBlock? selectedBlock;
@@ -155,6 +156,7 @@ class BubbleResultPanel extends StatelessWidget {
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         AppButton.secondary(label: t('تدوير', 'Rotate'), icon: Icons.rotate_90_degrees_cw_rounded, onPressed: busy ? null : onRotate),
         AppButton.secondary(label: data.isRtl ? t('الترقيم: من اليمين', 'Numbering: right to left') : t('الترقيم: من اليسار', 'Numbering: left to right'), icon: Icons.swap_horiz_rounded, onPressed: busy ? null : onDirection),
+        AppButton.secondary(label: data.isAcross ? t('الترتيب: صفًا بعد صف', 'Order: across the rows') : t('الترتيب: عمودًا بعد عمود', 'Order: down each column'), icon: Icons.format_list_numbered_rounded, onPressed: busy ? null : onOrder),
         if (data.rounds > 1) AppButton.ghost(label: t('تراجع', 'Undo'), icon: Icons.undo_rounded, onPressed: busy ? null : onUndo),
       ]),
       const SizedBox(height: AppSpace.sm),
