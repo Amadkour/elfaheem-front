@@ -576,8 +576,12 @@ class OrgPageHeader extends StatelessWidget {
                   Expanded(child: below == null ? ClipRect(child: titleBlock) : titleBlock),
                   if (action != null && !actionBelow) ...[
                     AppSpace.gapSm,
-                    // a button that fills its height would grow to the whole header
-                    ConstrainedBox(constraints: const BoxConstraints(maxHeight: AppTouch.min + AppSpace.xs), child: action),
+                    // on its card-coloured tray (a tonal button alone has no readable fill on the gradient), the tray tight
+                    // around it and no taller than a touch target: a button that fills its height grew to the whole header
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: AppTouch.min),
+                      child: AppHeaderTray(child: primaryAction!),
+                    ),
                   ],
                   AppSpace.gapSm,
                   wideTools!,
