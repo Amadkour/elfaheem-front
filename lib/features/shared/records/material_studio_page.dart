@@ -26,6 +26,7 @@ import 'material_studio_parts.dart';
 import 'records_api.dart';
 import 'records_share.dart' show RecordPlayerPage;
 import 'records_studio.dart';
+import 'studio_download_io.dart' if (dart.library.js_interop) 'studio_download_web.dart' as saver;
 
 /// May this person see the Studio entries at all (the kill switch; the server checks who may edit).
 bool get materialStudioOn => !AppConfig.disableList.contains(kMaterialsStudioFeatureKey);
@@ -38,11 +39,20 @@ final materialStudioRevision = ValueNotifier<int>(0);
 Future<bool> openMaterialStudio(BuildContext? context,
     {required int sessionId, required int materialId, MaterialStudioApi? api, NavigatorState? navigator, bool replaceTop = false}) async {
   if (!materialStudioOn) return false;
-  final nav = navigator ?? Navigator.of(context!);
+  final nav = navigator ?? Navigator.of(context!, rootNavigator: true); // full screen: an editor needs the room the shell's bars take
   final route = MaterialPageRoute<bool>(
     settings: const RouteSettings(name: '/materials/studio'),
     builder: (_) => MaterialStudioPage(sessionId: sessionId, materialId: materialId, api: api),
   );
+  // a nested navigator (the role shell's): the player goes and the Studio opens over the whole app on the root one,
+  // both from NavigatorStates (never a context the pop takes away); Back then lands on the course page
+  final root = Navigator.maybeOf(nav.context, rootNavigator: true) ?? nav;
+  if (replaceTop && !identical(root, nav)) {
+    nav.pop();
+    final changed = await root.push<bool>(route);
+    materialStudioRevision.value++;
+    return changed == true;
+  }
   final changed = await (replaceTop ? nav.pushReplacement<bool, Object?>(route) : nav.push<bool>(route));
   materialStudioRevision.value++;
   return changed == true;
@@ -132,6 +142,19 @@ Future<MaterialDraft?> runMaterialDraftAction(BuildContext context, MaterialDraf
         return null;
       case MaterialDraftAction.retry:
         return await api.retry(d.id);
+      case MaterialDraftAction.cancel:
+        if (!await appConfirm(context,
+            message: t('إيقاف حفظ «${d.item.title}»؟ يمكنك تشغيله من جديد لاحقاً.', 'Stop saving “${d.item.title}”? You can run it again later.'),
+            danger: true,
+            confirmLabel: t('إيقاف', 'Stop'))) {
+          return null;
+        }
+        return await api.cancel(d.id);
+      case MaterialDraftAction.download:
+        final dl = await api.downloadDraft(d.id);
+        showAppNotice(t('يُنزّل «${dl.fileName}»…', 'Downloading “${dl.fileName}”…'));
+        await saver.studioSaveUrl(dl.url, dl.fileName);
+        return null;
       case MaterialDraftAction.restore:
         final r = await api.restore(d.id);
         published?.call();

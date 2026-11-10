@@ -1,31 +1,30 @@
-// lib/features/shared/records/records_studio_parts.dart — the Studio (D-312, the edit bay D-320): the record editor's
-// plain-values widgets. No API, no player, no provider, so test/ui/records_studio_layout_test.dart pumps them with the
-// layout harness on every size, language and a 1.3 text scale. The page (records_studio.dart) owns the player, the job
-// and the keyboard.
+// lib/features/shared/records/records_studio_parts.dart — the Studio (D-312, the edit bay D-320, premium D-590 …
+// D-597): the record editor's plain-values widgets. No API, no player, no provider, so
+// test/ui/records_studio_layout_test.dart pumps them with the layout harness on every size, language and a 1.3 text
+// scale. The page (records_studio.dart) owns the player, the project, the job and the keyboard. The timeline is
+// studio_timeline.dart, the overlays on the picture studio_stage.dart, the Edit / Text / Picture / History panels
+// studio_panels.dart.
 //
 //   StudioBay             the edit bay's colours: dark in BOTH themes (top bar, rail, stage, transport, timeline), all
-//                         derived from the server theme; the inspector beside it follows the theme
-//   StudioTool            Trim · Cut a part · Split · Speed · Quality · Cover · Merge (label, icon, one-line description)
-//   StudioTopBar          the slim dark bar: back, "Studio", the record's name, its facts
-//   StudioTransport       current / total, −5 s · play / pause · +5 s, the preview speed, the timeline's zoom
-//   StudioTimeline        the filmstrip (the server's frame sprite, or a film track while it is not there), a ruler, the
-//                         playhead, a clip frame with in / out handles (trim: what stays, cut: what goes), the split
-//                         marker, a time bubble while dragging, a zoom ×1 – ×16 that follows the playhead. Time runs
-//                         left → right in every language, like every media timeline (and the player's chrome).
-//   StudioToolRail        the tools on wide screens: an icon rail
+//                         derived from the server theme; the inspector beside it follows the theme. The canvas around
+//                         the picture can be dark, grey or light (D-597: judge a text against more than one surround)
+//   StudioTool            two groups: the edit (Edit · Text · Picture · History — one project, one render) and the
+//                         output (Quality · Two files · Merge · Cover)
+//   StudioTopBar          the slim dark bar: back, "Studio", the record's name, autosave, canvas, Download original
+//   StudioTransport       exact time (hundredths) / total, frame step · −5 s · play · +5 s, preview speed, zoom slider
+//   StudioToolRail        the tools on wide screens: an icon rail in two groups
 //   StudioToolBar         the tools on phones: a bottom strip
-//   StudioToolPanel       the chosen tool's controls (set in / out at the playhead, split here, speed, quality and
-//                         size, cover, merge)
-//   StudioSummary         what comes out ("New length 12:40", the two parts of a split, the merge's total) or why not
-//   StudioSaveArea        the name, Keep / Replace the original (`form`) · Undo and the one primary button (`actions`)
-//   StudioJobCard         a saved edit's job, inline: stage · progress · ready (Play) · failed (Retry)
+//   StudioToolPanel       Quality and size · Cover · Merge (the edit tools' panels: studio_panels.dart)
+//   StudioSummary         what comes out ("New length 12:40", the merge's total) or why not
+//   StudioSaveArea        the name, Keep / Replace the original (`form`) · Undo / Redo and the one primary button
+//   StudioJobCard         a saved edit's job, inline: the stages, % and time left, Cancel · ready (Play, Download,
+//                         Continue editing) · failed / stopped (Retry)
 //   RecordStudioLayout    all of it: wide = rail · stage over transport and timeline · inspector; phones = the stage,
 //                         transport and timeline pinned, the inspector as a sheet under them, the tool strip at the foot
 library;
 
 import 'dart:math' as math;
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -54,6 +53,13 @@ class StudioBay {
   }
 
   Color get deck => c.heroShade;
+
+  /// The canvas around the picture for [shade] (D-597).
+  Color canvas(StudioCanvas shade) => switch (shade) {
+        StudioCanvas.dark => floor,
+        StudioCanvas.grey => Color.lerp(floor, c.onHero, 0.32)!,
+        StudioCanvas.light => Color.lerp(floor, c.onHero, 0.86)!,
+      };
   Color get raised => Color.alphaBlend(c.onHero.withValues(alpha: 0.08), deck);
   Color get line => c.onHero.withValues(alpha: 0.11);
   Color get ink => c.onHero;
@@ -76,111 +82,129 @@ class StudioBay {
   }
 }
 
+/// The canvas around the picture.
+enum StudioCanvas {
+  dark,
+  grey,
+  light;
+
+  String get label => switch (this) {
+        StudioCanvas.dark => t('خلفية داكنة', 'Dark canvas'),
+        StudioCanvas.grey => t('خلفية رمادية', 'Grey canvas'),
+        StudioCanvas.light => t('خلفية فاتحة', 'Light canvas'),
+      };
+}
+
 TextStyle _tabular(TextStyle s) => s.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
 
 /// Wide enough for the rail · stage · inspector layout (also a phone held sideways: a stack would leave no stage).
 bool studioIsWide(Size size) => size.width >= studioWideMin || (size.width >= 640 && size.width / math.max(1, size.height) >= 1.5);
-
-/// What the stage says while the playhead stands in a part the edit removes (null: it stays).
-String? studioStageNote(StudioTool tool, {required double position, required double start, required double end, required double duration}) {
-  const eps = 0.05;
-  final removed = switch (tool) {
-    StudioTool.trim => position < start - eps || position > end + eps,
-    StudioTool.cut => (start > eps || end < duration - eps) && position > start + eps && position < end - eps,
-    _ => false,
-  };
-  return removed ? t('هذا الجزء سيُحذف', 'This part will be removed') : null;
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tools
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum StudioTool {
-  trim,
-  cut,
-  split,
-  speed,
+  edit,
+  text,
+  image,
+  history,
   quality,
-  cover,
-  merge;
+  split,
+  merge,
+  cover;
 
-  /// The edit this tool sends (cover and merge have their own calls).
+  /// The edit tools share one project and one render; the output tools make something else of it.
+  bool get isEditing => index <= StudioTool.history.index;
+
+  /// What the Save of this tool sends (cover saves at once; merge has its own call).
   RecordOp? get op => switch (this) {
-        StudioTool.trim => RecordOp.trim,
-        StudioTool.cut => RecordOp.cut,
+        StudioTool.edit || StudioTool.text || StudioTool.image || StudioTool.history || StudioTool.quality => RecordOp.project,
         StudioTool.split => RecordOp.split,
-        StudioTool.speed => RecordOp.speed,
-        StudioTool.quality => RecordOp.quality,
         StudioTool.merge => RecordOp.merge,
         StudioTool.cover => null,
       };
 
   String get label => switch (this) {
-        StudioTool.trim => t('قص', 'Trim'),
-        StudioTool.cut => t('حذف جزء', 'Cut a part'),
-        StudioTool.split => t('تقسيم', 'Split'),
-        StudioTool.speed => t('السرعة', 'Speed'),
+        StudioTool.edit => t('تحرير', 'Edit'),
+        StudioTool.text => t('نص', 'Text'),
+        StudioTool.image => t('صورة', 'Picture'),
+        StudioTool.history => t('السجل', 'History'),
         StudioTool.quality => t('الجودة والحجم', 'Quality and size'),
+        StudioTool.split => t('ملفّان', 'Two files'),
         StudioTool.cover => t('الغلاف', 'Cover'),
         StudioTool.merge => t('دمج', 'Merge'),
       };
 
   /// The rail's and the strip's word: one short word each.
   String get short => switch (this) {
-        StudioTool.cut => t('حذف', 'Cut'),
         StudioTool.quality => t('الجودة', 'Quality'),
         _ => label,
       };
 
   String get description => switch (this) {
-        StudioTool.trim => t('احتفظ بالجزء المحدد فقط واحذف ما قبله وما بعده.', 'Keep only the selected part; what is before and after it goes.'),
-        StudioTool.cut => t('احذف الجزء المحدد من المنتصف ويُوصل ما قبله بما بعده.', 'Remove the selected part; what is before and after it is joined.'),
-        StudioTool.split => t('قسّم التسجيل عند العلامة إلى تسجيلين منفصلين.', 'Split the recording at the marker into two recordings.'),
-        StudioTool.speed => t('سرّع التسجيل أو أبطئه؛ تبقى الأصوات بطبقتها الطبيعية.', 'Speed it up or slow it down; voices keep their natural pitch.'),
+        StudioTool.edit => t('قسّم عند المؤشر، احذف جزءاً أو فترة محددة، اسحب طرفي الجزء لقصّه، وغيّر سرعة أي جزء. كل خطوة تُحفظ في السجل.',
+            'Split at the playhead, remove a part or a marked period, drag a part’s edges to trim it, change any part’s speed. Every step goes into the history.'),
+        StudioTool.text => t('أضف نصاً في أي وقت: الخط واللون والخلفية، ثم اسحبه على الصورة وحدّد ظهوره واختفاءه.',
+            'Add a text at any moment: font, colour and background, then drag it on the picture and choose how it comes in and out.'),
+        StudioTool.image => t('أضف شعاراً أو صورة فوق الفيديو، غيّر حجمها وشفافيتها وحركتها.',
+            'Put a logo or a picture over the video; change its size, opacity and animation.'),
+        StudioTool.history => t('كل ما فعلته بالترتيب. اضغط أي خطوة للعودة إليها؛ تبقى الخطوات التالية حتى تبدأ تعديلاً جديداً.',
+            'Everything you did, in order. Tap any step to go back to it; the later steps stay until you make a new change.'),
+        StudioTool.split => t('احفظ التعديل فيديوين منفصلين يُقسمان عند المؤشر.', 'Save the edit as two separate videos, split at the playhead.'),
         StudioTool.quality => t('غيّر دقة الفيديو وجودته لتكبير الملف أو تصغيره؛ يبقى الأصل كما هو.', 'Change the resolution and quality to make the file larger or smaller; the original stays as it is.'),
         StudioTool.cover => t('الصورة التي تظهر في المكتبة وعند المشاركة، وتنتقل إلى التعديلات.', 'The picture shown in the library and when shared; edits keep it.'),
-        StudioTool.merge => t('أضف تسجيلات أخرى بعد هذا التسجيل لتصبح ملفاً واحداً.', 'Add other recordings after this one to make a single file.'),
+        StudioTool.merge => t('أضف تسجيلات أخرى بعد هذا التسجيل لتصبح ملفاً واحداً (من الأصول، دون تعديلات المشروع).',
+            'Add other recordings after this one to make a single file (from the originals, without the project’s edits).'),
       };
 
   IconData get icon => switch (this) {
-        StudioTool.trim => Icons.content_cut_rounded,
-        StudioTool.cut => Icons.remove_circle_outline_rounded,
+        StudioTool.edit => Icons.content_cut_rounded,
+        StudioTool.text => Icons.title_rounded,
+        StudioTool.image => Icons.add_photo_alternate_outlined,
+        StudioTool.history => Icons.history_rounded,
         StudioTool.split => Icons.call_split_rounded,
-        StudioTool.speed => Icons.speed_rounded,
         StudioTool.quality => Icons.high_quality_rounded,
         StudioTool.cover => Icons.image_outlined,
         StudioTool.merge => Icons.merge_rounded,
       };
-
-  bool get ranged => this == StudioTool.trim || this == StudioTool.cut;
 }
 
 /// The preview speeds of the transport (what the player plays at; not an edit).
 const studioPreviewSpeeds = <double>[1, 1.25, 1.5, 2, 0.75];
 
-/// The timeline's zoom levels.
-const studioZooms = <double>[1, 2, 4, 8, 16];
-
-/// The edit the Studio would send for [tool] with these values (null for cover / merge).
-RecordEdit? studioEdit(StudioTool tool,
-    {required double start, required double end, required double at, required double speed, int? height, StudioQualityLevel? level}) {
-  final op = tool.op;
-  if (op == null || op == RecordOp.merge) return null;
-  return RecordEdit(op: op, start: start, end: end, at: at, speed: speed, height: height, level: level);
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Top bar
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Where the autosave stands.
+enum StudioSaveState { idle, saving, saved, failed }
+
 class StudioTopBar extends StatelessWidget implements PreferredSizeWidget {
-  const StudioTopBar({super.key, required this.title, this.facts = const []});
+  const StudioTopBar({
+    super.key,
+    required this.title,
+    this.facts = const [],
+    this.saveState = StudioSaveState.idle,
+    this.canvas = StudioCanvas.dark,
+    this.onCanvas,
+    this.onDownload,
+    this.downloading,
+  });
 
   final String title;
 
   /// The record's length · size · place, on wide windows.
   final List<String> facts;
+  final StudioSaveState saveState;
+  final StudioCanvas canvas;
+  final VoidCallback? onCanvas;
+
+  /// Download the original (null: not offered).
+  final VoidCallback? onDownload;
+
+  /// A download in progress (0–1; null: none).
+  final double? downloading;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -188,12 +212,19 @@ class StudioTopBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final bay = StudioBay.of(context);
+    final wide = MediaQuery.sizeOf(context).width >= 720;
+    final (IconData saveIcon, String saveText, Color saveTone) = switch (saveState) {
+      StudioSaveState.saving => (Icons.cloud_sync_outlined, t('يحفظ…', 'Saving…'), bay.muted),
+      StudioSaveState.saved => (Icons.cloud_done_outlined, t('حُفظ العمل', 'Work saved'), bay.muted),
+      StudioSaveState.failed => (Icons.cloud_off_outlined, t('لم يُحفظ — سيُعاد', 'Not saved — retrying'), bay.cut),
+      StudioSaveState.idle => (Icons.cloud_outlined, '', bay.faint),
+    };
     return Material(
       color: bay.deck,
       child: Container(
         height: kToolbarHeight,
         decoration: BoxDecoration(border: Border(bottom: BorderSide(color: bay.line))),
-        padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs, end: AppSpace.md),
+        padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs, end: AppSpace.xs),
         child: Row(children: [
           const AppBackButton(key: ValueKey('studio.back'), onHero: true),
           const SizedBox(width: AppSpace.xxs),
@@ -211,11 +242,58 @@ class StudioTopBar extends StatelessWidget implements PreferredSizeWidget {
                   style: appText(14.5, w: FontWeight.w600, c: bay.ink, h: 1.25)),
             ]),
           ),
-          if (facts.isNotEmpty && MediaQuery.sizeOf(context).width >= 720) ...[
+          if (facts.isNotEmpty && MediaQuery.sizeOf(context).width >= 1100) ...[
             const SizedBox(width: AppSpace.md),
-            Text(facts.join('  ·  '),
-                textDirection: TextDirection.ltr, maxLines: 1, style: _tabular(appText(12, c: bay.faint))),
+            Text(facts.join('  ·  '), textDirection: TextDirection.ltr, maxLines: 1, style: _tabular(appText(12, c: bay.faint))),
           ],
+          if (saveState != StudioSaveState.idle)
+            Tooltip(
+              message: saveText,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(saveIcon, size: AppIconSize.sm, color: saveTone, key: const ValueKey('studio.autosave')),
+                  if (wide) ...[
+                    const SizedBox(width: AppSpace.xxs),
+                    Text(saveText, maxLines: 1, textScaler: TextScaler.noScaling, style: appText(11.5, c: saveTone)),
+                  ],
+                ]),
+              ),
+            ),
+          if (onCanvas != null)
+            IconButton(
+              key: const ValueKey('studio.canvas'),
+              tooltip: '${canvas.label} — ${t('غيّر', 'change')}',
+              constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+              onPressed: onCanvas,
+              icon: Icon(
+                  switch (canvas) {
+                    StudioCanvas.dark => Icons.dark_mode_outlined,
+                    StudioCanvas.grey => Icons.contrast_rounded,
+                    StudioCanvas.light => Icons.light_mode_outlined,
+                  },
+                  color: bay.muted),
+            ),
+          if (onDownload != null)
+            downloading != null
+                ? SizedBox(
+                    width: AppTouch.min,
+                    height: AppTouch.min,
+                    child: Center(
+                      child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2.4, value: downloading! > 0 ? downloading : null, color: bay.accent),
+                      ),
+                    ),
+                  )
+                : IconButton(
+                    key: const ValueKey('studio.download_original'),
+                    tooltip: t('تنزيل الأصل', 'Download the original'),
+                    constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+                    onPressed: onDownload,
+                    icon: Icon(Icons.download_rounded, color: bay.ink),
+                  ),
         ]),
       ),
     );
@@ -280,6 +358,7 @@ class StudioTransport extends StatelessWidget {
     this.previewSpeed = 1,
     this.enabled = true,
     this.zoom = 1,
+    this.maxZoom = 16,
     this.onPlayPause,
     this.onSkip,
     this.onPreviewSpeed,
@@ -292,56 +371,54 @@ class StudioTransport extends StatelessWidget {
   final double previewSpeed;
   final bool enabled;
 
-  /// The timeline's zoom (the controls live here so the timeline keeps the whole height).
+  /// The timeline's zoom (1 = the whole video fits) and the most it goes.
   final double zoom;
+  final double maxZoom;
   final VoidCallback? onPlayPause;
 
-  /// −5 / +5 seconds.
+  /// Seconds to move: ±5, or ±1/30 (one frame).
   final ValueChanged<double>? onSkip;
 
   /// The next preview speed was asked for.
   final VoidCallback? onPreviewSpeed;
   final ValueChanged<double>? onZoom;
 
+  static const frame = 1 / 30;
+
   @override
   Widget build(BuildContext context) {
     final bay = StudioBay.of(context);
-    Widget skip(double by, IconData icon, String tip) => IconButton(
-          key: ValueKey('studio.skip.${by > 0 ? 'fwd' : 'back'}'),
+    Widget skip(double by, IconData icon, String tip, String key) => IconButton(
+          key: ValueKey('studio.skip.$key'),
           tooltip: tip,
           constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
           icon: Icon(icon, color: enabled ? bay.ink : bay.faint),
           onPressed: enabled ? () => onSkip?.call(by) : null,
         );
-    final controls = Row(mainAxisSize: MainAxisSize.min, children: [
-      skip(-5, Icons.replay_5_rounded, t('رجوع 5 ثوانٍ (J)', 'Back 5 s (J)')),
-      Tooltip(
-        message: playing ? t('إيقاف مؤقت (مسافة)', 'Pause (Space)') : t('تشغيل (مسافة)', 'Play (Space)'),
-        child: Semantics(
-          button: true,
-          label: playing ? t('إيقاف مؤقت', 'Pause') : t('تشغيل', 'Play'),
-          child: InkResponse(
-            key: const ValueKey('studio.play'),
-            onTap: enabled ? onPlayPause : null,
-            radius: 30,
-            child: SizedBox(
-              width: AppTouch.primary,
-              height: AppTouch.primary,
-              child: Center(
-                child: Container(
-                  width: AppTouch.min,
-                  height: AppTouch.min,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: enabled ? bay.ink : bay.raised),
-                  child: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded, color: enabled ? bay.deck : bay.faint, size: 28),
-                ),
+    final play = Tooltip(
+      message: playing ? t('إيقاف مؤقت (مسافة)', 'Pause (Space)') : t('تشغيل (مسافة)', 'Play (Space)'),
+      child: Semantics(
+        button: true,
+        label: playing ? t('إيقاف مؤقت', 'Pause') : t('تشغيل', 'Play'),
+        child: InkResponse(
+          key: const ValueKey('studio.play'),
+          onTap: enabled ? onPlayPause : null,
+          radius: 30,
+          child: SizedBox(
+            width: AppTouch.primary,
+            height: AppTouch.primary,
+            child: Center(
+              child: Container(
+                width: AppTouch.min,
+                height: AppTouch.min,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: enabled ? bay.ink : bay.raised),
+                child: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded, color: enabled ? bay.deck : bay.faint, size: 28),
               ),
             ),
           ),
         ),
       ),
-      skip(5, Icons.forward_5_rounded, t('تقديم 5 ثوانٍ (L)', 'Forward 5 s (L)')),
-    ]);
-    final zi = studioZooms.indexOf(zoom);
+    );
     final speed = _BayChip(
       key: const ValueKey('studio.preview_speed'),
       label: speedLabel(previewSpeed),
@@ -349,24 +426,17 @@ class StudioTransport extends StatelessWidget {
       lit: previewSpeed != 1,
       onTap: enabled ? onPreviewSpeed : null,
     );
-    Widget zoomBtn(IconData icon, String tip, double? to, String key) => IconButton(
-          key: ValueKey('studio.zoom.$key'),
-          tooltip: tip,
-          constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
-          icon: Icon(icon, size: AppIconSize.md, color: to == null ? bay.faint : bay.ink),
-          onPressed: to == null ? null : () => onZoom!(to),
-        );
     return Directionality(
       // LTR like the timeline: back on the left, forward on the right in every language
       textDirection: TextDirection.ltr,
       child: LayoutBuilder(builder: (context, box) {
-        final compact = box.maxWidth < 560;
+        final compact = box.maxWidth < 620;
         final time = FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
           child: Text.rich(
             TextSpan(children: [
-              TextSpan(text: mmss(position), style: _tabular(appText(compact ? 14 : 16, w: FontWeight.w700, c: bay.ink))),
+              TextSpan(text: studioTimecodeShort(position), style: _tabular(appText(compact ? 14 : 16, w: FontWeight.w700, c: bay.ink))),
               TextSpan(text: compact ? '\n${mmss(duration)}' : '  /  ${mmss(duration)}', style: _tabular(appText(compact ? 11.5 : 13, c: bay.faint))),
             ]),
             key: const ValueKey('studio.time'),
@@ -374,43 +444,69 @@ class StudioTransport extends StatelessWidget {
             textScaler: TextScaler.noScaling,
           ),
         );
-        final List<Widget> zoomParts;
-        if (onZoom == null) {
-          zoomParts = const [];
-        } else if (compact) {
-          // one chip on a phone: ×1 → ×2 → … → ×16 → ×1
-          zoomParts = [
-            _BayChip(
-              key: const ValueKey('studio.zoom.level'),
-              label: '×${zoom.toInt()}',
-              icon: Icons.zoom_in_rounded,
-              tip: t('تكبير الخط الزمني', 'Timeline zoom'),
-              lit: zoom > 1,
-              onTap: () => onZoom!(studioZooms[(zi + 1) % studioZooms.length]),
+        final zoomable = onZoom != null && maxZoom > 1.01;
+        Widget zoomBtn(IconData icon, String tip, double to, String key) => IconButton(
+              key: ValueKey('studio.zoom.$key'),
+              tooltip: tip,
+              constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+              icon: Icon(icon, size: AppIconSize.md, color: bay.ink),
+              onPressed: () => onZoom!(to.clamp(1.0, maxZoom)),
+            );
+        // the slider runs on a log scale: every step doubles or halves the zoom
+        final logMax = math.log(maxZoom);
+        final zoomSlider = SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: 3,
+            activeTrackColor: bay.accent,
+            inactiveTrackColor: bay.line,
+            thumbColor: bay.ink,
+            overlayColor: bay.accent.withValues(alpha: 0.16),
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+          ),
+          child: Semantics(
+            label: t('تكبير الخط الزمني', 'Timeline zoom'),
+            child: Slider(
+              key: const ValueKey('studio.zoom.slider'),
+              value: (math.log(zoom.clamp(1.0, maxZoom)) / math.max(1e-6, logMax)).clamp(0.0, 1.0),
+              onChanged: (v) => onZoom!(math.exp(v * logMax)),
             ),
-          ];
-        } else {
-          zoomParts = [
-            zoomBtn(Icons.zoom_out_rounded, t('تصغير', 'Zoom out'), zi > 0 ? studioZooms[zi - 1] : null, 'out'),
-            SizedBox(
-              width: 32,
-              child: Text('×${zoom.toInt()}',
-                  key: const ValueKey('studio.zoom.level'),
-                  textAlign: TextAlign.center,
-                  textScaler: TextScaler.noScaling,
-                  style: _tabular(appText(12, w: FontWeight.w700, c: bay.muted))),
-            ),
-            zoomBtn(Icons.zoom_in_rounded, t('تكبير', 'Zoom in'), zi >= 0 && zi < studioZooms.length - 1 ? studioZooms[zi + 1] : null, 'in'),
-          ];
-        }
+          ),
+        );
         if (compact) {
-          return Row(children: [Expanded(child: time), controls, speed, ...zoomParts]);
+          return Row(children: [
+            Expanded(child: time),
+            skip(-5, Icons.replay_5_rounded, t('رجوع 5 ثوانٍ (J)', 'Back 5 s (J)'), 'back'),
+            play,
+            skip(5, Icons.forward_5_rounded, t('تقديم 5 ثوانٍ (L)', 'Forward 5 s (L)'), 'fwd'),
+            speed,
+            if (zoomable)
+              _BayChip(
+                key: const ValueKey('studio.zoom.level'),
+                label: '×${zoom < 10 ? zoom.toStringAsFixed(zoom < 2 ? 1 : 0) : zoom.round()}',
+                icon: Icons.zoom_in_rounded,
+                tip: t('تكبير الخط الزمني', 'Timeline zoom'),
+                lit: zoom > 1.05,
+                onTap: () => onZoom!(zoom * 2 > maxZoom + 0.01 ? 1 : zoom * 2),
+              ),
+          ]);
         }
         return Row(children: [
           Expanded(child: Align(alignment: Alignment.centerLeft, child: time)),
-          controls,
+          skip(-StudioTransport.frame, Icons.keyboard_arrow_left_rounded, t('إطار للخلف (←)', 'One frame back (←)'), 'frame_back'),
+          skip(-5, Icons.replay_5_rounded, t('رجوع 5 ثوانٍ (J)', 'Back 5 s (J)'), 'back'),
+          play,
+          skip(5, Icons.forward_5_rounded, t('تقديم 5 ثوانٍ (L)', 'Forward 5 s (L)'), 'fwd'),
+          skip(StudioTransport.frame, Icons.keyboard_arrow_right_rounded, t('إطار للأمام (→)', 'One frame forward (→)'), 'frame_fwd'),
           Expanded(
-            child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [speed, const SizedBox(width: AppSpace.xs), ...zoomParts]),
+            child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+              speed,
+              if (zoomable) ...[
+                const SizedBox(width: AppSpace.xxs),
+                zoomBtn(Icons.zoom_out_rounded, t('تصغير', 'Zoom out'), zoom / 2, 'out'),
+                Flexible(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 140), child: zoomSlider)),
+                zoomBtn(Icons.zoom_in_rounded, t('تكبير (Ctrl + العجلة)', 'Zoom in (Ctrl + wheel)'), zoom * 2, 'in'),
+              ],
+            ]),
           ),
         ]);
       }),
@@ -418,469 +514,21 @@ class StudioTransport extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Timeline
-// ─────────────────────────────────────────────────────────────────────────────
-
-enum _Grip { start, end, at, head, pan }
+/// The transport's time: "01:23.4" (tenths) under an hour, "1:01:23" from there.
+String studioTimecodeShort(double seconds) {
+  final s = seconds.isFinite && seconds > 0 ? seconds : 0.0;
+  if (s >= 3600) return mmss(s);
+  final tenth = ((s - s.floor()) * 10).floor().clamp(0, 9);
+  return '${mmss(s)}.$tenth';
+}
 
 /// The ruler's step (seconds) so labels stand at least [minGap] px apart.
 double studioRulerStep(double pxPerSecond, {double minGap = 72}) {
-  const steps = <double>[1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200];
+  const steps = <double>[0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200];
   for (final s in steps) {
     if (s * pxPerSecond >= minGap) return s;
   }
   return steps.last;
-}
-
-class StudioTimeline extends StatefulWidget {
-  const StudioTimeline({
-    super.key,
-    required this.duration,
-    required this.position,
-    required this.tool,
-    this.start = 0,
-    this.end = 0,
-    this.at = 0,
-    this.zoom = 1,
-    this.frames,
-    this.framesPending = false,
-    this.enabled = true,
-    this.onSeek,
-    this.onRange,
-    this.onAt,
-  });
-
-  final double duration;
-  final double position;
-  final StudioTool tool;
-  final double start;
-  final double end;
-  final double at;
-  final double zoom;
-
-  /// The filmstrip sprite (null: the film track).
-  final ImageProvider? frames;
-
-  /// The sprite is being made (a soft shimmer on the track).
-  final bool framesPending;
-  final bool enabled;
-  final ValueChanged<double>? onSeek;
-  final void Function(double start, double end)? onRange;
-  final ValueChanged<double>? onAt;
-
-  @override
-  State<StudioTimeline> createState() => _StudioTimelineState();
-}
-
-class _StudioTimelineState extends State<StudioTimeline> {
-  final _scroll = ScrollController();
-  _Grip? _grip;
-  double _viewport = 0;
-
-  static const _rulerH = 24.0;
-  static const _bandH = 62.0;
-  static const _footH = 8.0;
-
-  /// The clip frame's handles stand outside what they mark, so the track leaves this much at both ends: a handle at
-  /// 0:00 or at the very end stays on screen and can be grabbed.
-  static const _pad = 14.0;
-  static const _grab = 24.0; // half of the 48 px touch target
-
-  @override
-  void dispose() {
-    _scroll.dispose();
-    super.dispose();
-  }
-
-  @override
-  void didUpdateWidget(covariant StudioTimeline old) {
-    super.didUpdateWidget(old);
-    if (old.zoom != widget.zoom || (old.position - widget.position).abs() > 0.01) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _follow(center: old.zoom != widget.zoom));
-    }
-  }
-
-  double get _content => _viewport * widget.zoom;
-
-  double get _track => math.max(1, _content - 2 * _pad);
-
-  double _x(double s) => _pad + (widget.duration <= 0 ? 0 : (s / widget.duration).clamp(0.0, 1.0) * _track);
-
-  double _time(double x) => widget.duration <= 0 ? 0 : ((x - _pad) / _track).clamp(0.0, 1.0) * widget.duration;
-
-  /// Keeps the playhead in view (centred after a zoom change).
-  void _follow({bool center = false}) {
-    if (!mounted || !_scroll.hasClients || widget.zoom <= 1 || _grip != null) return;
-    final x = _x(widget.position);
-    final off = _scroll.offset, max = _scroll.position.maxScrollExtent;
-    double? to;
-    if (center) {
-      to = x - _viewport / 2;
-    } else if (x < off + 16 || x > off + _viewport - 16) {
-      to = x - _viewport * 0.25;
-    }
-    if (to != null) _scroll.jumpTo(to.clamp(0.0, max));
-  }
-
-  void _start(double localX) {
-    final w = widget;
-    final x = localX;
-    // the playhead comes last: on a tie the handle wins (both stand at 0:00 when the Studio opens)
-    final cands = <_Grip, double>{
-      if (w.tool.ranged) _Grip.start: (_x(w.start) - x).abs(),
-      if (w.tool.ranged) _Grip.end: (_x(w.end) - x).abs(),
-      if (w.tool == StudioTool.split) _Grip.at: (_x(w.at) - x).abs(),
-      _Grip.head: (_x(w.position) - x).abs(),
-    };
-    final near = cands.entries.where((e) => e.value <= _grab).toList()..sort((a, b) => a.value.compareTo(b.value));
-    setState(() => _grip = near.isNotEmpty ? near.first.key : (w.zoom > 1 ? _Grip.pan : _Grip.head));
-    if (_grip == _Grip.head) w.onSeek?.call(_time(x));
-  }
-
-  void _move(double localX, double dx) {
-    final w = widget;
-    final s = _time(localX);
-    switch (_grip) {
-      case _Grip.start:
-        w.onRange?.call(s.clamp(0, math.max(0, w.end - recordMinPart)).toDouble(), w.end);
-      case _Grip.end:
-        w.onRange?.call(w.start, s.clamp(math.min(w.duration, w.start + recordMinPart), w.duration).toDouble());
-      case _Grip.at:
-        w.onAt?.call(s.clamp(recordMinPart, math.max(recordMinPart, w.duration - recordMinPart)).toDouble());
-      case _Grip.head:
-        w.onSeek?.call(s);
-      case _Grip.pan:
-        if (_scroll.hasClients) _scroll.jumpTo((_scroll.offset - dx).clamp(0.0, _scroll.position.maxScrollExtent));
-      case null:
-        break;
-    }
-  }
-
-  void _endDrag() {
-    if (_grip != null) setState(() => _grip = null);
-  }
-
-  void _wheel(PointerSignalEvent e) {
-    if (e is! PointerScrollEvent || !_scroll.hasClients) return;
-    final d = e.scrollDelta.dx.abs() > e.scrollDelta.dy.abs() ? e.scrollDelta.dx : e.scrollDelta.dy;
-    _scroll.jumpTo((_scroll.offset + d).clamp(0.0, _scroll.position.maxScrollExtent));
-  }
-
-  /// The exact time of what is being dragged (the bubble over it).
-  double? get _bubble => switch (_grip) {
-        _Grip.start => widget.start,
-        _Grip.end => widget.end,
-        _Grip.at => widget.at,
-        _Grip.head => widget.position,
-        _ => null,
-      };
-
-  @override
-  Widget build(BuildContext context) {
-    final bay = StudioBay.of(context);
-    final w = widget;
-    return Directionality(
-      // media time runs left → right in every language (D-312), like the player's own seek bar
-      textDirection: TextDirection.ltr,
-      child: LayoutBuilder(builder: (context, box) {
-        _viewport = box.maxWidth.isFinite ? box.maxWidth : 320;
-        final content = _content;
-        return Semantics(
-          label: t('الخط الزمني', 'Timeline'),
-          value: '${mmss(w.position)} / ${mmss(w.duration)}',
-          child: Listener(
-            onPointerSignal: _wheel,
-            child: SingleChildScrollView(
-              controller: _scroll,
-              scrollDirection: Axis.horizontal,
-              physics: const NeverScrollableScrollPhysics(),
-              child: GestureDetector(
-                key: const ValueKey('studio.timeline'),
-                behavior: HitTestBehavior.opaque,
-                onTapDown: w.enabled ? (d) => w.onSeek?.call(_time(d.localPosition.dx)) : null,
-                onHorizontalDragStart: w.enabled ? (d) => _start(d.localPosition.dx) : null,
-                onHorizontalDragUpdate: w.enabled ? (d) => _move(d.localPosition.dx, d.delta.dx) : null,
-                onHorizontalDragEnd: (_) => _endDrag(),
-                onHorizontalDragCancel: _endDrag,
-                child: SizedBox(
-                  width: content,
-                  height: _rulerH + _bandH + _footH,
-                  child: Stack(children: [
-                    Positioned(
-                      left: _pad,
-                      right: _pad,
-                      top: _rulerH,
-                      height: _bandH,
-                      child: _Band(frames: w.frames, pending: w.framesPending),
-                    ),
-                    Positioned.fill(
-                      child: CustomPaint(
-                        painter: _StudioPainter(
-                          duration: w.duration,
-                          position: w.position,
-                          tool: w.tool,
-                          start: w.start,
-                          end: w.end,
-                          at: w.at,
-                          rulerH: _rulerH,
-                          bandH: _bandH,
-                          pad: _pad,
-                          step: studioRulerStep(_track / math.max(1, w.duration)),
-                          bubble: _bubble,
-                          tick: bay.c.onHero.withValues(alpha: 0.22),
-                          line: bay.line,
-                          keep: bay.accent,
-                          cut: bay.cut,
-                          head: bay.ink,
-                          shade: bay.floor,
-                          deck: bay.deck,
-                          font: _tabular(appText(10, w: FontWeight.w500, c: bay.faint)),
-                          pillFont: _tabular(appText(10.5, w: FontWeight.w700, c: bay.ink)),
-                          bubbleFont: _tabular(appText(11, w: FontWeight.w700, c: bay.deck)),
-                        ),
-                      ),
-                    ),
-                  ]),
-                ),
-              ),
-            ),
-          ),
-        );
-      }),
-    );
-  }
-}
-
-/// The filmstrip band: the sprite stretched over the whole length (each tile = its slice of time), or a film track
-/// with a soft shimmer while the server makes it.
-class _Band extends StatelessWidget {
-  const _Band({this.frames, this.pending = false});
-  final ImageProvider? frames;
-  final bool pending;
-
-  @override
-  Widget build(BuildContext context) {
-    final bay = StudioBay.of(context);
-    final track = CustomPaint(painter: _FilmTrackPainter(fill: bay.raised, line: bay.line), child: const SizedBox.expand());
-    final img = frames;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.chip),
-      child: img == null
-          ? (pending ? AppShimmer(child: track) : track)
-          : Image(
-              image: img,
-              fit: BoxFit.fill,
-              gaplessPlayback: true,
-              filterQuality: FilterQuality.medium,
-              errorBuilder: (_, _, _) => track,
-              frameBuilder: (_, child, frame, sync) => frame == null && !sync ? track : child,
-            ),
-    );
-  }
-}
-
-/// A strip of empty film cells: what an audio file, or a recording without frames yet, shows.
-class _FilmTrackPainter extends CustomPainter {
-  _FilmTrackPainter({required this.fill, required this.line});
-  final Color fill, line;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = fill);
-    final p = Paint()
-      ..color = line
-      ..strokeWidth = 1;
-    for (double x = 72; x < size.width; x += 72) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), p);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _FilmTrackPainter o) => o.fill != fill || o.line != line;
-}
-
-class _StudioPainter extends CustomPainter {
-  _StudioPainter({
-    required this.duration,
-    required this.position,
-    required this.tool,
-    required this.start,
-    required this.end,
-    required this.at,
-    required this.rulerH,
-    required this.bandH,
-    required this.pad,
-    required this.step,
-    required this.bubble,
-    required this.tick,
-    required this.line,
-    required this.keep,
-    required this.cut,
-    required this.head,
-    required this.shade,
-    required this.deck,
-    required this.font,
-    required this.pillFont,
-    required this.bubbleFont,
-  });
-
-  final double duration, position, start, end, at, rulerH, bandH, pad, step;
-  final double? bubble;
-  final StudioTool tool;
-  final Color tick, line, keep, cut, head, shade, deck;
-  final TextStyle font, pillFont, bubbleFont;
-
-  double _x(double s, Size size) => pad + (duration <= 0 ? 0 : (s / duration).clamp(0.0, 1.0) * (size.width - 2 * pad));
-
-  TextPainter _text(String s, TextStyle style) => TextPainter(text: TextSpan(text: s, style: style), textDirection: TextDirection.ltr)..layout();
-
-  /// A small label on a dark pill, centred on [cx].
-  void _pill(Canvas canvas, String s, double cx, double cy) {
-    final tp = _text(s, pillFont);
-    final w = tp.width + 12, h = tp.height + 3;
-    final r = RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy), width: w, height: h), Radius.circular(h / 2));
-    canvas.drawRRect(r, Paint()..color = deck.withValues(alpha: 0.82));
-    tp.paint(canvas, Offset(cx - tp.width / 2, cy - tp.height / 2));
-  }
-
-  /// The clip frame: a band around [a]..[b] whose thick ends are the handles.
-  void _frame(Canvas canvas, double a, double b, double top, double bottom, Color col) {
-    final outer = RRect.fromRectAndRadius(Rect.fromLTRB(a - pad, top - 2, b + pad, bottom + 2), const Radius.circular(9));
-    final inner = Rect.fromLTRB(a, top + 1, b, bottom - 1);
-    canvas.drawPath(
-        Path()
-          ..fillType = PathFillType.evenOdd
-          ..addRRect(outer)
-          ..addRect(inner),
-        Paint()..color = col);
-    final g = Paint()
-      ..color = deck
-      ..strokeWidth = 2.2
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
-    final my = (top + bottom) / 2;
-    canvas.drawPath(
-        Path()
-          ..moveTo(a - pad / 2 + 2, my - 7)
-          ..lineTo(a - pad / 2 - 2, my)
-          ..lineTo(a - pad / 2 + 2, my + 7),
-        g);
-    canvas.drawPath(
-        Path()
-          ..moveTo(b + pad / 2 - 2, my - 7)
-          ..lineTo(b + pad / 2 + 2, my)
-          ..lineTo(b + pad / 2 - 2, my + 7),
-        g);
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final top = rulerH, bottom = rulerH + bandH;
-    final l = pad, r = size.width - pad;
-    // ruler: ticks + labels every `step`, half ticks between
-    if (duration > 0) {
-      final p = Paint()
-        ..color = tick
-        ..strokeWidth = 1;
-      for (double s = 0; s <= duration + 0.001; s += step / 2) {
-        final x = _x(s, size);
-        final major = (s / step - (s / step).roundToDouble()).abs() < 0.001;
-        canvas.drawLine(Offset(x, rulerH - (major ? 9 : 5)), Offset(x, rulerH - 4), p);
-        if (major && x < r - 28) _text(mmss(s), font).paint(canvas, Offset(x + 4, 2));
-      }
-    }
-    final band = RRect.fromRectAndRadius(Rect.fromLTRB(l, top, r, bottom), const Radius.circular(AppRadius.chip));
-    canvas.drawRRect(
-        band,
-        Paint()
-          ..color = line
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1);
-    switch (tool) {
-      case StudioTool.trim:
-        final a = _x(start, size), b = _x(end, size);
-        canvas.save();
-        canvas.clipRRect(band);
-        final dim = Paint()..color = shade.withValues(alpha: 0.72);
-        canvas.drawRect(Rect.fromLTRB(l, top, a, bottom), dim);
-        canvas.drawRect(Rect.fromLTRB(b, top, r, bottom), dim);
-        canvas.restore();
-        _frame(canvas, a, b, top, bottom, keep);
-        if (b - a > 72) _pill(canvas, mmss(end - start), (a + b) / 2, bottom - 12);
-      case StudioTool.cut:
-        final a = _x(start, size), b = _x(end, size);
-        final x = Rect.fromLTRB(a, top, b, bottom);
-        canvas.save();
-        canvas.clipRect(x);
-        canvas.drawRect(x, Paint()..color = shade.withValues(alpha: 0.55));
-        final stripe = Paint()
-          ..color = cut.withValues(alpha: 0.42)
-          ..strokeWidth = 2;
-        for (double i = a - bandH; i < b; i += 10) {
-          canvas.drawLine(Offset(i, bottom), Offset(i + bandH, top), stripe);
-        }
-        canvas.restore();
-        _frame(canvas, a, b, top, bottom, cut);
-        if (b - a > 72) _pill(canvas, '−${mmss(end - start)}', (a + b) / 2, bottom - 12);
-      case StudioTool.split:
-        final x = _x(at, size);
-        canvas.drawRRect(
-            RRect.fromRectAndRadius(Rect.fromLTRB(l, bottom + 3, math.max(l, x - 2), bottom + 6), const Radius.circular(2)), Paint()..color = keep);
-        canvas.drawRRect(
-            RRect.fromRectAndRadius(Rect.fromLTRB(math.min(r, x + 2), bottom + 3, r, bottom + 6), const Radius.circular(2)), Paint()..color = tick);
-        canvas.drawLine(
-            Offset(x, top - 4),
-            Offset(x, bottom + 2),
-            Paint()
-              ..color = keep
-              ..strokeWidth = 3);
-        canvas.drawCircle(Offset(x, top - 3), 6, Paint()..color = keep);
-        if (x - l > 36) _pill(canvas, '1', (l + x) / 2, bottom - 12);
-        if (r - x > 36) _pill(canvas, '2', (x + r) / 2, bottom - 12);
-      case StudioTool.speed:
-      case StudioTool.quality:
-      case StudioTool.cover:
-      case StudioTool.merge:
-        break;
-    }
-    // playhead: a dark halo keeps it visible on bright frames
-    final hx = _x(position, size);
-    canvas.drawLine(
-        Offset(hx, 6),
-        Offset(hx, bottom + 5),
-        Paint()
-          ..color = deck.withValues(alpha: 0.55)
-          ..strokeWidth = 4);
-    canvas.drawLine(
-        Offset(hx, 6),
-        Offset(hx, bottom + 5),
-        Paint()
-          ..color = head
-          ..strokeWidth = 2
-          ..strokeCap = StrokeCap.round);
-    final cap = Path()
-      ..addRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(hx, 6), width: 13, height: 9), const Radius.circular(3)))
-      ..moveTo(hx - 6, 9)
-      ..lineTo(hx + 6, 9)
-      ..lineTo(hx, 15)
-      ..close();
-    canvas.drawPath(cap, Paint()..color = head);
-    // the exact time of what is being dragged
-    if (bubble != null) {
-      final tp = _text(mmss(bubble!), bubbleFont);
-      final w = tp.width + 14, h = tp.height + 5;
-      final cx = _x(bubble!, size).clamp(w / 2 + 1, math.max(w / 2 + 1, size.width - w / 2 - 1)).toDouble();
-      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - w / 2, 0, w, h), Radius.circular(h / 2)), Paint()..color = head);
-      tp.paint(canvas, Offset(cx - tp.width / 2, 2.5));
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _StudioPainter o) =>
-      o.duration != duration || o.position != position || o.tool != tool || o.start != start || o.end != end ||
-      o.at != at || o.step != step || o.keep != keep || o.head != head || o.tick != tick || o.bubble != bubble;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -907,7 +555,12 @@ class StudioToolRail extends StatelessWidget {
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(vertical: AppSpace.sm, horizontal: AppSpace.xs),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-          for (final x in tools)
+          for (final (i, x) in tools.indexed) ...[
+            if (i > 0 && tools[i - 1].isEditing && !x.isEditing)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpace.xs, horizontal: AppSpace.sm),
+                child: Divider(height: 1, thickness: 1, color: bay.line),
+              ),
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpace.xxs),
               child: Tooltip(
@@ -960,6 +613,7 @@ class StudioToolRail extends StatelessWidget {
                 ),
               ),
             ),
+          ],
         ]),
       ),
     );
@@ -1126,42 +780,6 @@ class _Choices extends StatelessWidget {
       );
 }
 
-/// A big time with its caption; [lit] is the one that says the result.
-class _Readout extends StatelessWidget {
-  const _Readout({super.key, required this.label, required this.value, this.lit = false});
-
-  final String label;
-  final String value;
-  final bool lit;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xs),
-      decoration: BoxDecoration(
-        color: lit ? c.primaryTint : c.inputBg,
-        borderRadius: AppRadius.chipAll,
-      ),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text(label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: appText(11, c: c.textMedium, h: 1.3)),
-        const SizedBox(height: 2),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(value,
-              textDirection: TextDirection.ltr,
-              maxLines: 1,
-              style: _tabular(appText(16, w: FontWeight.w700, c: c.textDark, h: 1.2))),
-        ),
-      ]),
-    );
-  }
-}
-
 /// Now against the new file's ceiling: the bar is the ceiling, the tick is today's size.
 class _SizeMeter extends StatelessWidget {
   const _SizeMeter({required this.now, required this.next});
@@ -1206,19 +824,11 @@ class StudioToolPanel extends StatelessWidget {
     required this.tool,
     required this.item,
     required this.duration,
-    required this.position,
-    this.start = 0,
-    this.end = 0,
-    this.at = 0,
-    this.speed = 1.5,
     this.height,
     this.level = StudioQualityLevel.balanced,
     this.merge = const [],
     this.enabled = true,
     this.showImages = true,
-    this.onRange,
-    this.onAt,
-    this.onSpeed,
     this.onQuality,
     this.onPickCover,
     this.onRemoveCover,
@@ -1227,12 +837,9 @@ class StudioToolPanel extends StatelessWidget {
 
   final StudioTool tool;
   final RecordItem item;
+
+  /// The edit's output length (the size estimate).
   final double duration;
-  final double position;
-  final double start;
-  final double end;
-  final double at;
-  final double speed;
 
   /// Quality and size: the output's short side (null: as it is) and its level.
   final int? height;
@@ -1240,9 +847,6 @@ class StudioToolPanel extends StatelessWidget {
   final List<StudioMergePick> merge;
   final bool enabled;
   final bool showImages;
-  final void Function(double start, double end)? onRange;
-  final ValueChanged<double>? onAt;
-  final ValueChanged<double>? onSpeed;
   final void Function(int? height, StudioQualityLevel level)? onQuality;
   final VoidCallback? onPickCover;
   final VoidCallback? onRemoveCover;
@@ -1263,83 +867,14 @@ class StudioToolPanel extends StatelessWidget {
           expand: true,
           onPressed: enabled ? onTap : null,
         );
-    // In / out stand left and right like the handles they mirror, in Arabic too (time runs left → right).
-    Widget timeRow(List<Widget> cells) => Directionality(
-          textDirection: TextDirection.ltr,
-          child: Row(children: [
-            for (final (i, w) in cells.indexed) ...[
-              if (i > 0) const SizedBox(width: AppSpace.xs),
-              Expanded(child: w),
-            ],
-          ]),
-        );
     final List<Widget> body;
     switch (tool) {
-      case StudioTool.trim:
-      case StudioTool.cut:
-        final inLabel = tool == StudioTool.trim ? t('البداية', 'Start') : t('من', 'From');
-        final outLabel = tool == StudioTool.trim ? t('النهاية', 'End') : t('إلى', 'To');
-        body = [
-          timeRow([
-            _Readout(key: const ValueKey('studio.in'), label: inLabel, value: mmss(start)),
-            _Readout(key: const ValueKey('studio.out'), label: outLabel, value: mmss(end)),
-            _Readout(
-                key: const ValueKey('studio.span'),
-                label: tool == StudioTool.trim ? t('المحفوظ', 'Kept') : t('المحذوف', 'Removed'),
-                value: mmss(math.max(0, end - start)),
-                lit: true),
-          ]),
-          const SizedBox(height: AppSpace.sm),
-          timeRow([
-            here('set_in', t('$inLabel هنا', '$inLabel here'), Icons.first_page_rounded, t('$inLabel عند المؤشر (I)', '$inLabel at the playhead (I)'),
-                onRange == null ? null : () => onRange!(position.clamp(0, math.max(0, end - recordMinPart)).toDouble(), end)),
-            here('set_out', t('$outLabel هنا', '$outLabel here'), Icons.last_page_rounded, t('$outLabel عند المؤشر (O)', '$outLabel at the playhead (O)'),
-                onRange == null ? null : () => onRange!(start, position.clamp(math.min(duration, start + recordMinPart), duration).toDouble())),
-          ]),
-        ];
+      case StudioTool.edit:
+      case StudioTool.text:
+      case StudioTool.image:
+      case StudioTool.history:
       case StudioTool.split:
-        final first = duration <= 0 ? 0.5 : (at / duration).clamp(0.02, 0.98);
-        body = [
-          timeRow([
-            _Readout(key: const ValueKey('studio.part1'), label: t('الجزء الأول', 'Part 1'), value: mmss(at)),
-            _Readout(key: const ValueKey('studio.part2'), label: t('الجزء الثاني', 'Part 2'), value: mmss(math.max(0, duration - at))),
-          ]),
-          const SizedBox(height: AppSpace.xs),
-          Directionality(
-            textDirection: TextDirection.ltr,
-            child: Row(children: [
-              Expanded(
-                flex: (first * 1000).round(),
-                child: Container(height: 6, decoration: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(3))),
-              ),
-              const SizedBox(width: 3),
-              Expanded(
-                flex: ((1 - first) * 1000).round(),
-                child: Container(height: 6, decoration: BoxDecoration(color: c.divider, borderRadius: BorderRadius.circular(3))),
-              ),
-            ]),
-          ),
-          const SizedBox(height: AppSpace.sm),
-          here('split_here', t('قسّم عند المؤشر', 'Split at the playhead'), Icons.call_split_rounded, t('قسّم هنا (S)', 'Split here (S)'),
-              onAt == null ? null : () => onAt!(position)),
-        ];
-      case StudioTool.speed:
-        body = [
-          Directionality(
-            textDirection: TextDirection.ltr,
-            child: _Choices(children: [
-              for (final s in recordSpeeds)
-                _Choice(
-                  key: ValueKey('studio.speed.$s'),
-                  label: speedLabel(s),
-                  selected: speed == s,
-                  onTap: enabled ? () => onSpeed?.call(s) : null,
-                ),
-            ]),
-          ),
-          const SizedBox(height: AppSpace.sm),
-          note(t('المعاينة تعمل الآن بهذه السرعة.', 'The preview plays at this speed now.')),
-        ];
+        body = const [];
       case StudioTool.quality:
         final sourceHeight = item.quality.maxHeight;
         final ceiling = studioQualityCeilingBytes(duration, height: height, level: level, sourceHeight: sourceHeight);
@@ -1560,9 +1095,18 @@ class StudioSaveArea extends StatelessWidget {
     this.draft = false,
     this.onReplace,
     this.onUndo,
+    this.onRedo,
+    this.canRedo = false,
     this.onReset,
     this.onSave,
+    this.saveLabel,
   });
+
+  final VoidCallback? onRedo;
+  final bool canRedo;
+
+  /// The primary button's words (null: by [draft] / [replace]).
+  final String? saveLabel;
 
   /// A session material (D-315): the result is a DRAFT students don't see until it is published — no keep /
   /// replace choice here (that is the publish step), "Save as draft".
@@ -1664,6 +1208,13 @@ class _StudioSaveActions extends StatelessWidget {
         onPressed: can ? a.onUndo : null,
       ),
       IconButton(
+        key: const ValueKey('studio.redo'),
+        tooltip: t('إعادة (Ctrl+Shift+Z)', 'Redo (Ctrl+Shift+Z)'),
+        constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+        icon: Icon(Icons.redo_rounded, color: a.canRedo && !a.busy ? c.textDark : c.textLight),
+        onPressed: a.canRedo && !a.busy ? a.onRedo : null,
+      ),
+      IconButton(
         key: const ValueKey('studio.reset'),
         tooltip: t('من جديد', 'Start over'),
         constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
@@ -1674,11 +1225,11 @@ class _StudioSaveActions extends StatelessWidget {
       Expanded(
         child: AppButton.primary(
           key: const ValueKey('studio.save'),
-          label: a.draft
+          label: a.saveLabel ?? (a.draft
               ? t('حفظ كمسودة', 'Save as draft')
               : a.replace
                   ? t('حفظ واستبدال', 'Save and replace')
-                  : t('حفظ كتسجيل جديد', 'Save as new'),
+                  : t('حفظ كتسجيل جديد', 'Save as new')),
           icon: Icons.save_alt_rounded,
           busy: a.busy,
           expand: true,
@@ -1690,16 +1241,43 @@ class _StudioSaveActions extends StatelessWidget {
   }
 }
 
-/// A saved edit, inline: what it is doing, its progress, then Play (ready) or Retry (failed).
+/// A job's stages in order (the strip over its bar).
+const studioJobStages = <String>['queued', 'downloading', 'processing', 'uploading'];
+
+String studioStageLabel(String stage) => switch (stage) {
+      'queued' => t('في الدور', 'Queued'),
+      'downloading' => t('جلب', 'Fetch'),
+      'processing' => t('تعديل', 'Edit'),
+      'uploading' => t('حفظ', 'Save'),
+      _ => stage,
+    };
+
+/// "About 3 min left" (null: not known yet).
+String? studioEtaText(Duration? eta) {
+  if (eta == null) return null;
+  final s = eta.inSeconds;
+  if (s < 10) return t('ثوانٍ قليلة متبقية', 'A few seconds left');
+  if (s < 60) return t('أقل من دقيقة', 'Under a minute left');
+  final m = (s / 60).ceil();
+  return t('نحو $m د متبقية', 'About $m min left');
+}
+
+/// A saved edit, inline: its stages, % and time left, Cancel; then Play · Download · Continue (ready) or Retry
+/// (failed / stopped).
 class StudioJobCard extends StatelessWidget {
   const StudioJobCard({
     super.key,
     required this.items,
     this.onPlay,
     this.onRetry,
+    this.onCancel,
+    this.onDownload,
+    this.onContinue,
     this.onAgain,
     this.onLibrary,
     this.actionsFor,
+    this.eta = const {},
+    this.downloading = const {},
     this.drafts = false,
     this.libraryLabel,
   });
@@ -1707,9 +1285,20 @@ class StudioJobCard extends StatelessWidget {
   final List<RecordItem> items;
   final ValueChanged<RecordItem>? onPlay;
   final ValueChanged<RecordItem>? onRetry;
+  final ValueChanged<RecordItem>? onCancel;
+  final ValueChanged<RecordItem>? onDownload;
+
+  /// Open its project again (a finished project job).
+  final ValueChanged<RecordItem>? onContinue;
 
   /// A finished item's own buttons next to Play (a material draft: Publish, Discard — D-315).
   final Widget? Function(RecordItem r)? actionsFor;
+
+  /// Time left per item id.
+  final Map<int, Duration?> eta;
+
+  /// A download running per item id (0–1).
+  final Map<int, double> downloading;
 
   /// The items are drafts (a session material): "Draft ready — publish it" instead of "Ready in Records".
   final bool drafts;
@@ -1721,13 +1310,38 @@ class StudioJobCard extends StatelessWidget {
   final VoidCallback? onAgain;
   final VoidCallback? onLibrary;
 
+  Widget _stages(BuildContext context, RecordItem r) {
+    final c = context.colors;
+    final at = math.max(0, studioJobStages.indexOf(r.status == 'uploading' ? 'uploading' : (r.stage ?? 'queued')));
+    return Row(children: [
+      for (final (i, s) in studioJobStages.indexed)
+        Expanded(
+          child: Row(children: [
+            Icon(i < at ? Icons.check_circle_rounded : (i == at ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded),
+                size: 14, color: i <= at ? (c.isDark ? c.textDark : c.primary) : c.textLight),
+            const SizedBox(width: 3),
+            Flexible(
+              child: Text(studioStageLabel(s),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: appText(11, w: i == at ? FontWeight.w700 : FontWeight.w500, c: i == at ? c.textDark : c.textMedium)),
+            ),
+            if (i < studioJobStages.length - 1)
+              Expanded(child: Container(height: 2, margin: const EdgeInsets.symmetric(horizontal: 3), color: i < at ? c.primary.withValues(alpha: c.isDark ? 0.7 : 0.5) : c.divider)),
+          ]),
+        ),
+    ]);
+  }
+
   Widget _row(BuildContext context, RecordItem r) {
     final c = context.colors;
     final (IconData icon, Color tone) = r.isFailed
-        ? (Icons.error_outline_rounded, c.danger)
+        ? (r.cancelled ? Icons.stop_circle_outlined : Icons.error_outline_rounded, r.cancelled ? c.textMedium : c.danger)
         : r.isDone
             ? (Icons.check_rounded, c.success)
             : (Icons.movie_filter_rounded, c.isDark ? c.textDark : c.primary);
+    final dl = downloading[r.id];
+    final etaText = studioEtaText(eta[r.id]);
     return Container(
       padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll),
@@ -1738,43 +1352,75 @@ class StudioJobCard extends StatelessWidget {
           Expanded(
             child: Text(r.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w600, c: c.textDark)),
           ),
-          if (r.inProgress && r.progress != null)
-            Text('${r.progress}%', style: _tabular(appText(12.5, w: FontWeight.w700, c: c.textDark))),
+          if (r.inProgress && r.progress != null) ...[
+            const SizedBox(width: AppSpace.xs),
+            Text('${r.progress}%', key: ValueKey('studio.job.pct.${r.id}'), style: _tabular(appText(13, w: FontWeight.w700, c: c.textDark))),
+          ],
         ]),
         if (r.inProgress) ...[
           const SizedBox(height: AppSpace.xs),
+          _stages(context, r),
+          const SizedBox(height: AppSpace.xs),
           ClipRRect(
             borderRadius: BorderRadius.circular(3),
-            child: LinearProgressIndicator(
-              value: r.progress == null ? null : (r.progress! / 100).clamp(0.0, 1.0),
-              minHeight: 6,
-              color: c.isDark ? c.textDark : c.primary,
-              backgroundColor: c.divider,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(end: r.progress == null ? 0 : (r.progress! / 100).clamp(0.0, 1.0)),
+              duration: AppMotion.of(context).slow,
+              builder: (_, v, _) => LinearProgressIndicator(
+                value: r.progress == null ? null : v,
+                minHeight: 6,
+                color: c.isDark ? c.textDark : c.primary,
+                backgroundColor: c.divider,
+              ),
             ),
           ),
           const SizedBox(height: AppSpace.xxs),
-          Text(recordStatusLabel(r), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textMedium)),
+          Row(children: [
+            Expanded(
+              child: Text([recordStatusLabel(r), ?etaText].join(' · '),
+                  maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textMedium, h: 1.3)),
+            ),
+            if (onCancel != null)
+              TextButton.icon(
+                key: ValueKey('studio.job.cancel.${r.id}'),
+                onPressed: () => onCancel!(r),
+                style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min), foregroundColor: c.danger),
+                icon: const Icon(Icons.stop_rounded, size: AppIconSize.sm),
+                label: Text(t('إيقاف', 'Stop')),
+              ),
+          ]),
         ] else if (r.isFailed) ...[
           const SizedBox(height: AppSpace.xxs),
-          Text(r.error ?? t('تعذّر إكمال العمل', 'The work could not finish'), style: appText(12, c: c.danger, h: 1.35)),
-          if (onRetry != null && r.retryMode != 'auto') ...[
+          Text(r.cancelled ? t('أوقفت هذا التعديل. يمكنك إعادته متى شئت.', 'You stopped this edit. You can run it again any time.') : (r.error ?? t('تعذّر إكمال العمل', 'The work could not finish')),
+              style: appText(12, c: r.cancelled ? c.textMedium : c.danger, h: 1.35)),
+          if ((onRetry != null && r.retryMode != 'auto') || actionsFor != null) ...[
             const SizedBox(height: AppSpace.xs),
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: AppPill(
-                  key: ValueKey('studio.job.retry.${r.id}'),
-                  icon: Icons.refresh_rounded,
-                  label: t('إعادة المحاولة', 'Retry'),
-                  color: c.warning,
-                  onTap: () => onRetry!(r)),
-            ),
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
+              if (onRetry != null && r.retryMode != 'auto')
+                AppPill(
+                    key: ValueKey('studio.job.retry.${r.id}'),
+                    icon: Icons.refresh_rounded,
+                    label: r.cancelled ? t('تشغيل من جديد', 'Run again') : t('إعادة المحاولة', 'Retry'),
+                    color: c.warning,
+                    onTap: () => onRetry!(r)),
+              ?actionsFor?.call(r),
+            ]),
           ],
-        ] else if (r.isDone && (onPlay != null || actionsFor != null)) ...[
+        ] else if (r.isDone) ...[
           const SizedBox(height: AppSpace.xs),
           Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
             if (onPlay != null)
               AppPill(key: ValueKey('studio.job.play.${r.id}'), icon: Icons.play_arrow_rounded, label: t('تشغيل', 'Play'),
                   color: c.success, onTap: () => onPlay!(r)),
+            if (onDownload != null)
+              AppPill(
+                  key: ValueKey('studio.job.download.${r.id}'),
+                  icon: dl != null ? Icons.downloading_rounded : Icons.download_rounded,
+                  label: dl != null ? (dl > 0 ? '${(dl * 100).round()}%' : t('يُنزّل…', 'Downloading…')) : t('تنزيل', 'Download'),
+                  onTap: dl != null ? null : () => onDownload!(r)),
+            if (onContinue != null && r.hasProject)
+              AppPill(key: ValueKey('studio.job.continue.${r.id}'), icon: Icons.edit_note_rounded, label: t('متابعة التعديل', 'Continue editing'),
+                  onTap: () => onContinue!(r)),
             ?actionsFor?.call(r),
           ]),
         ],
@@ -1787,11 +1433,12 @@ class StudioJobCard extends StatelessWidget {
     final c = context.colors;
     final done = items.isNotEmpty && items.every((r) => r.isDone);
     final failed = !done && items.isNotEmpty && !items.any((r) => r.inProgress) && items.any((r) => r.isFailed);
-    final tone = done ? c.success : (failed ? c.danger : (c.isDark ? c.textDark : c.primary));
+    final stopped = failed && items.every((r) => !r.isFailed || r.cancelled);
+    final tone = done ? c.success : (failed ? (stopped ? c.textMedium : c.danger) : (c.isDark ? c.textDark : c.primary));
     final String head = done
         ? (drafts ? t('المسودة جاهزة', 'The draft is ready') : t('جاهز في «التسجيلات»', 'Ready in Records'))
         : failed
-            ? t('تعذّر إكمال العمل', 'The work could not finish')
+            ? (stopped ? t('أوقفت الحفظ', 'You stopped the save') : t('تعذّر إكمال العمل', 'The work could not finish'))
             : t('يجري الحفظ', 'Saving');
     final String? sub = done
         ? (drafts ? t('شغّلها ثم انشرها', 'Play it, then publish it') : null)
@@ -1811,7 +1458,7 @@ class StudioJobCard extends StatelessWidget {
             height: 36,
             decoration: BoxDecoration(shape: BoxShape.circle, color: tone.withValues(alpha: 0.14)),
             child: done || failed
-                ? Icon(done ? Icons.check_circle_rounded : Icons.error_outline_rounded, color: tone, size: AppIconSize.md)
+                ? Icon(done ? Icons.check_circle_rounded : (stopped ? Icons.stop_circle_outlined : Icons.error_outline_rounded), color: tone, size: AppIconSize.md)
                 : Padding(
                     padding: const EdgeInsets.all(AppSpace.xs + 1),
                     child: CircularProgressIndicator(strokeWidth: 2.2, color: tone),
@@ -1835,7 +1482,7 @@ class StudioJobCard extends StatelessWidget {
             Expanded(
               child: AppButton(
                 key: const ValueKey('studio.job.again'),
-                label: t('تعديل آخر', 'Another edit'),
+                label: t('تعديل', 'Edit'),
                 icon: Icons.edit_rounded,
                 variant: AppButtonVariant.secondary,
                 size: AppButtonSize.md,
@@ -1899,19 +1546,19 @@ class StudioPlayMark extends StatelessWidget {
 }
 
 class _Stage extends StatelessWidget {
-  const _Stage({required this.preview, this.note, this.rounded = false});
+  const _Stage({required this.preview, this.note, this.rounded = false, this.aspect = 16 / 9});
   final Widget preview;
   final String? note;
   final bool rounded;
+  final double aspect;
 
   @override
   Widget build(BuildContext context) {
     final bay = StudioBay.of(context);
-    final motion = AppMotion.of(context);
     final radius = BorderRadius.circular(rounded ? AppRadius.card : 0);
     return Center(
       child: AspectRatio(
-        aspectRatio: 16 / 9,
+        aspectRatio: aspect,
         child: DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: radius,
@@ -1925,9 +1572,7 @@ class _Stage extends StatelessWidget {
               color: bay.deck,
               child: Stack(fit: StackFit.expand, children: [
                 preview,
-                IgnorePointer(
-                  child: AnimatedContainer(duration: motion.fast, color: note == null ? bay.floor.withValues(alpha: 0) : bay.floor.withValues(alpha: 0.55)),
-                ),
+
                 if (note != null)
                   PositionedDirectional(
                     top: AppSpace.sm,
@@ -1939,7 +1584,7 @@ class _Stage extends StatelessWidget {
                         child: Container(
                           key: const ValueKey('studio.stage_note'),
                           padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs + 1),
-                          decoration: BoxDecoration(color: bay.cut.withValues(alpha: 0.92), borderRadius: BorderRadius.circular(14)),
+                          decoration: BoxDecoration(color: bay.ink.withValues(alpha: 0.92), borderRadius: BorderRadius.circular(14)),
                           child: Text(note!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: bay.deck)),
                         ),
                       ),
@@ -1970,7 +1615,14 @@ class RecordStudioLayout extends StatelessWidget {
     this.footer,
     this.stageNote,
     this.tools = StudioTool.values,
+    this.canvas = StudioCanvas.dark,
+    this.aspect = 16 / 9,
   });
+
+  final StudioCanvas canvas;
+
+  /// The picture's width / height (the stage keeps it).
+  final double aspect;
 
   /// The source's tools (StudioSource.tools).
   final List<StudioTool> tools;
@@ -1994,7 +1646,7 @@ class RecordStudioLayout extends StatelessWidget {
   /// Under the inspector's content (the keyboard hint on the web).
   final Widget? footer;
 
-  /// Said on the stage while the playhead is in a part the edit removes.
+  /// Said on the stage (what is being dragged: "Start 01:23.45").
   final String? stageNote;
 
   /// The inspector's scrolling content, on phones and wide screens alike. A running or finished job takes it over: the
@@ -2046,10 +1698,10 @@ class RecordStudioLayout extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 Expanded(
                   child: ColoredBox(
-                    color: bay.floor,
+                    color: bay.canvas(canvas),
                     child: Padding(
                       padding: const EdgeInsets.all(AppSpace.lg),
-                      child: _Stage(preview: preview, note: stageNote, rounded: true),
+                      child: _Stage(preview: preview, note: stageNote, rounded: true, aspect: aspect),
                     ),
                   ),
                 ),
@@ -2088,7 +1740,7 @@ class RecordStudioLayout extends StatelessWidget {
       // Phones: the picture and the timeline stay in view while the inspector scrolls under them. The on-screen
       // keyboard folds the bay away (Offstage, so the player and the typed name keep their state): the field needs the room.
       final keyboard = View.of(context).viewInsets.bottom > 0;
-      final stageH = math.min(w * 9 / 16, h * (h < 600 ? 0.26 : 0.32));
+      final stageH = math.min(w / aspect.clamp(0.5, 3.0), h * (h < 600 ? 0.24 : 0.30));
       return Material(
         color: bay.deck,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -2097,7 +1749,7 @@ class RecordStudioLayout extends StatelessWidget {
             maintainState: true,
             maintainAnimation: true,
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-              SizedBox(height: stageH, child: ColoredBox(color: bay.floor, child: _Stage(preview: preview, note: stageNote))),
+              SizedBox(height: stageH, child: ColoredBox(color: bay.canvas(canvas), child: _Stage(preview: preview, note: stageNote, aspect: aspect))),
               Padding(
                 padding: const EdgeInsets.fromLTRB(AppSpace.xs, AppSpace.xxs, AppSpace.xs, AppSpace.xs),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
@@ -2160,11 +1812,14 @@ class StudioKeysHint extends StatelessWidget {
       padding: const EdgeInsets.only(top: AppSpace.lg),
       child: Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xs, children: [
         key(t('مسافة', 'Space'), t('تشغيل / إيقاف', 'Play / pause')),
-        key('J · L', t('±5 ثوانٍ', '±5 s')),
-        key('K', t('إيقاف', 'Pause')),
-        key('I · O', t('البداية / النهاية', 'Start / end')),
-        key('S', t('تقسيم هنا', 'Split here')),
+        key('J · K · L', t('رجوع · إيقاف · تقديم', 'Back · pause · forward')),
+        key('← →', t('إطار (Shift: ثانية)', 'A frame (Shift: a second)')),
+        key('I · O', t('علامة البداية / النهاية', 'Mark in / out')),
+        key('S', t('تقسيم عند المؤشر', 'Split at the playhead')),
+        key('Del', t('حذف المحدد', 'Delete the selection')),
         key('Ctrl+Z', t('تراجع', 'Undo')),
+        key('Ctrl+Shift+Z', t('إعادة', 'Redo')),
+        key('Ctrl + ${t('العجلة', 'wheel')}', t('تكبير الخط الزمني', 'Zoom the timeline')),
       ]),
     );
   }

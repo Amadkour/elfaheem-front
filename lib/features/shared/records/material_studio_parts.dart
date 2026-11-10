@@ -16,7 +16,7 @@ import '../../admin/admin_common.dart' show t;
 import 'material_studio_api.dart';
 import 'records_api.dart' show mmss;
 
-enum MaterialDraftAction { play, publish, discard, retry, restore, confirm }
+enum MaterialDraftAction { play, publish, discard, retry, restore, confirm, download, cancel }
 
 class MaterialDraftTile extends StatelessWidget {
   const MaterialDraftTile({super.key, required this.draft, this.busy = false, this.onAction});
@@ -74,11 +74,16 @@ class MaterialDraftTile extends StatelessWidget {
               backgroundColor: c.primary.withValues(alpha: 0.12),
             ),
           ),
+          const SizedBox(height: AppSpace.xs),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+            pill(MaterialDraftAction.cancel, Icons.stop_rounded, t('إيقاف', 'Stop'), color: c.danger),
+          ]),
         ],
         if (!r.inProgress) ...[
           const SizedBox(height: AppSpace.xs),
           Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             if (r.canPlay) pill(MaterialDraftAction.play, Icons.play_arrow_rounded, t('تشغيل', 'Play'), color: c.success),
+            if (r.isDone && r.canPlay) pill(MaterialDraftAction.download, Icons.download_rounded, t('تنزيل', 'Download')),
             if (d.canPublish) pill(MaterialDraftAction.publish, Icons.publish_rounded, t('نشر', 'Publish')),
             if (r.isFailed) pill(MaterialDraftAction.retry, Icons.refresh_rounded, t('إعادة المحاولة', 'Retry'), color: c.warning),
             if (d.pendingReplace) ...[
