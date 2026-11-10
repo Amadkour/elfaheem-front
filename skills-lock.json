@@ -1,77 +1,233 @@
 {
-  "version": 1,
+  "version": 2,
   "skills": {
+    "animate": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/animate/SKILL.md",
+      "computedHash": "60613e9badee4110074d32e1f5d8bf63b720961c2acb9eefe962cd0e591e2e58"
+    },
+    "animate-expo": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/animate-expo/SKILL.md",
+      "computedHash": "3cbc0a9466a1404de98bec73eb6789257556e632f82c58319308a64ff42a5771"
+    },
+    "animation-performance": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/animation-performance/SKILL.md",
+      "computedHash": "cbd338b7c961d1a2f2f61a30905adf1db94206595e8da593fef1b44265d5d08f"
+    },
+    "animation-vocabulary": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/animation-vocabulary/SKILL.md",
+      "computedHash": "1c50a737b755ff021f5216c7b89af3734ba0f9a908d0b540d3e9979f52fef3e2"
+    },
+    "apple-design": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/apple-design/SKILL.md",
+      "computedHash": "118d450c2d6ca54fee5f56cf8883fa3231bc2d917bb8f5a3f87488162c55fac9"
+    },
+    "ask-sonner": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/ask-sonner/SKILL.md",
+      "computedHash": "3d53f948bd8b19993b70d66929f70fa5ddb44bca6018e2c29f9cec6c8bf2b9cf"
+    },
+    "break-ui": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/break-ui/SKILL.md",
+      "computedHash": "accfc40025b4cc57475bebdcef52153a1598beec2794d6f11dec5cbbd79481c9"
+    },
+    "choreograph": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/choreograph/SKILL.md",
+      "computedHash": "2d76cff124bbbd01c46007e3ee6c971962288ca2daaf11e5d8455ece6c73e7fe"
+    },
+    "design-taste-frontend": {
+      "source": "Leonxlnx/taste-skill",
+      "sourceType": "github",
+      "skillPath": "skills/taste-skill/SKILL.md",
+      "computedHash": "b10eab0a9684cd09cf34c31ef04a3bf530a5f4404422f9c520d42372d670c7fc"
+    },
+    "emil-design-eng": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/emil-design-eng/SKILL.md",
+      "computedHash": "55735a70a886326ee8ba1dd4d1ee040e4e9503a536891467e4ed7e114a69b0dd"
+    },
     "extension-to-functions-codebase": {
       "source": "firebase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/extension-to-functions-codebase/SKILL.md",
-      "computedHash": "1b0b4150895374330ff51a6f0d99663eda4d266730802eec85882443aeca9539"
+      "computedHash": "df057f54e6c75f87a374e497def00376e3664db14509b6430c1a45b34ca4a29c"
+    },
+    "find-animation-opportunities": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/find-animation-opportunities/SKILL.md",
+      "computedHash": "6912a27a684feba9dd220349940d8a44e0d7b720cab71042f268a7ed93bf4bab"
     },
     "firebase-ai-logic-basics": {
       "source": "firebase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/firebase-ai-logic-basics/SKILL.md",
-      "computedHash": "bab9220a5f6c214310adb2aa8ed267463719574209d9e0429426d168d43f27a5"
+      "computedHash": "e3c79f47a830192884be5377263f9bd6104f1ca03641969df436fb52c3edaa92"
     },
     "firebase-app-hosting-basics": {
       "source": "firebase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/firebase-app-hosting-basics/SKILL.md",
-      "computedHash": "052ef64fe35efdf02b7e0dc121abc09b1514e8b228454ab2002af31448c0a212"
+      "computedHash": "70ec235a97055b6df140924f2c05f983fb36ec99f16594dd6c89c3c87de3c4dc"
     },
     "firebase-auth-basics": {
       "source": "firebase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/firebase-auth-basics/SKILL.md",
-      "computedHash": "c2eead02bc534bd12d7d3bc8f7d99e10dc44ab13f416d1c5293df38ecc2f6848"
+      "computedHash": "332057d4c8082e965a09a6bd096034f95e78266d7b1b49fe6d0cc6321f65c750"
     },
     "firebase-basics": {
       "source": "firebase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/firebase-basics/SKILL.md",
-      "computedHash": "c0e06c4f5be407fcf74c9b76c91a4f87cac653a07c639904f82424fc4dbbe864"
+      "computedHash": "a3195f544d92cda802ab7e702d148ff2e7996edc1d2a11770f574607f98eb7a5"
     },
     "firebase-crashlytics": {
       "source": "firebase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/firebase-crashlytics/SKILL.md",
-      "computedHash": "15c3cca501773a8e29ea852b6d3a2e5dcc9d43d1e69a0d85a6b0eae82c6ac2cc"
+      "computedHash": "6f7e234a77b80e1b7a37e32f41952bc5662a95d2be10f0fac3f4308d9d6b865b"
     },
     "firebase-data-connect": {
       "source": "firebase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/firebase-data-connect-basics/SKILL.md",
-      "computedHash": "72a5f0c53909db6a7bd9237e74eccfff0d469bbe6df5126e25f019627fa0583c"
+      "computedHash": "d342fa9613625fe32eea297b5f9857f4bd661a3c4e1339bfdb4dd334efa4e78c"
     },
     "firebase-firestore": {
       "source": "firebase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/firebase-firestore/SKILL.md",
-      "computedHash": "090565389f17369f9c97cbe8d76c4ac7f0b93254c52fbc2f1d10f8234ad63500"
+      "computedHash": "ef3255ab178fd5e8a3685e866f304852d2531a8b2390dbc85af5bffc2af0cae6"
     },
     "firebase-hosting-basics": {
       "source": "firebase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/firebase-hosting-basics/SKILL.md",
-      "computedHash": "3df1714a23bde9fbce5c0e6fb7ce4502a0a88e5fbcf2e1ad341deb1b9e648e67"
+      "computedHash": "18d184dc5765332bea9d6aec5e4f27eabc93686e40c9b88600bb734d5a7cdaa7"
     },
     "firebase-remote-config-basics": {
       "source": "firebase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/firebase-remote-config-basics/SKILL.md",
-      "computedHash": "4a6e2f5ce701c81ac75c138f2fbae0f9ec9159b5c67c825ee173dfe6147da9ee"
+      "computedHash": "857db40ac0bf4baa65844f27311f05d22e6953c500c8961b2b7016c629c6816a"
     },
     "firebase-security-rules-auditor": {
       "source": "firebase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/firebase-security-rules-auditor/SKILL.md",
-      "computedHash": "be877f6c7aaf460791dd6103a08906734036c26bd7c686cfdb8b60e4b2f65742"
+      "computedHash": "f48bd0a5db7d36753f7893d548f7b89980fe34e453266e10e6908d40c6cecd24"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "83485963700bcf11d5bf78118facb301676b69d918fee2e45a95e7f1a2840f6c"
+    },
+    "gestures": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/gestures/SKILL.md",
+      "computedHash": "f3f78df0c0b320e9129e543106ce3b6ccd0cfb681b57ff38daaec7379993fe1a"
+    },
+    "impeccable": {
+      "source": "pbakaus/impeccable",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/impeccable/SKILL.md",
+      "computedHash": "86e265bf3df79c65215f7244d71892ca278370d56dec47a8cc15e8373db3f714"
+    },
+    "improve-animations": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/improve-animations/SKILL.md",
+      "computedHash": "197db8a2e4a2f009ad5aeef57fb9aafbec83f9023bfff269a4bf5ede1106584a"
+    },
+    "interface-design": {
+      "source": "Dammyjay93/interface-design",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/interface-design/SKILL.md",
+      "computedHash": "1491bb966a2c289550e0d6eb25c19b0570ead479240f6b2ba5766d94599ea744"
+    },
+    "migrate-radix-to-base": {
+      "source": "shadcn-ui/ui",
+      "sourceType": "github",
+      "skillPath": "skills/migrate-radix-to-base/SKILL.md",
+      "computedHash": "7644de21e9aa533904def58c30f809ae6574c3cabc6396ab8b03dee751e8ffbe"
+    },
+    "mobile-native": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/mobile-native/SKILL.md",
+      "computedHash": "2141766c0a370128cbee3dc004d3f254a411e54f8352e154e73b040e52070e38"
+    },
+    "pick-ui-library": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/pick-ui-library/SKILL.md",
+      "computedHash": "c5d418c22e298c1c85856dc838190ec366782c0b476752dfae71d32ae8342cd5"
+    },
+    "prototype": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/prototype/SKILL.md",
+      "computedHash": "c9b2890f9c5f4cff4e05d097549dd633c3f17db3c7378b5b7baa823c9f220bf2"
+    },
+    "remove-animations": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/remove-animations/SKILL.md",
+      "computedHash": "f6eec22d000b9d9779b7f1b1734f930d37d37ead204f36f1b4b097cd47f9f16d"
+    },
+    "review-animations": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/review-animations/SKILL.md",
+      "computedHash": "7d23a794b6cb0191a68485b87d546adc9bb5ea93aa4168b299e2fefeea940790"
+    },
+    "shadcn": {
+      "source": "shadcn-ui/ui",
+      "sourceType": "github",
+      "skillPath": "skills/shadcn/SKILL.md",
+      "computedHash": "388962d16c7a4f13aaeee0d8f128e50a87df8553d42ef7988c39c0e1c74a40e8"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web-design-guidelines/SKILL.md",
+      "computedHash": "4f68ae07187fb0d1fb78c88b503d089da4cf5a9d9625d1f2e425b1590bf96d92"
+    },
+    "webapp-testing": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/webapp-testing/SKILL.md",
+      "computedHash": "48cd9a742a59250edec6db89cf081ef5465f365e2133f6d6c5e29c380b754b7d"
+    },
+    "write-swift": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/write-swift/SKILL.md",
+      "computedHash": "aba96f69500a765c53e6230e036aacaf1e98f81d5eefd1a15d10d6706dd27b97"
     },
     "xcode-project-setup": {
       "source": "firebase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/xcode-project-setup/SKILL.md",
-      "computedHash": "673e1c3a078c3a77c4ae706ddc731c9efc5d151b82097ef52f10c575e4cdc1c1"
+      "computedHash": "2d1cc4c78368d16b9440c4ab1e65d2a9f66f7719d0407531b4ddc59751902fdb"
     }
   }
 }

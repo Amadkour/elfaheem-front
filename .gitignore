@@ -94,3 +94,10 @@ screenshots/
 
 # D-146 build runner: its local settings (token, key path) — never committed
 tools/runner/runner.env
+
+# Local agent state and third-party agent skills (reinstall from skills-lock.json: npx skills experimental_install)
+.claude/
+.agents/skills/*
+!.agents/skills/extension-to-functions-codebase/
+!.agents/skills/firebase-*/
+!.agents/skills/xcode-project-setup/
