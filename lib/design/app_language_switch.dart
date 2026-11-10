@@ -2,8 +2,10 @@
 //
 //   AppLanguageSegmented(current:, onChanged:)
 //       plain values: a pill track with the two languages ("عربي" · "EN", the login toggle's labels) and a sliding
-//       primary thumb under the current one. Each segment is a 48 dp tall hit area around the 38 dp track, a
-//       button with a selected state for screen readers; the slide is skipped under Reduce motion.
+//       emerald thumb under the current one. The track is the input surface with a warm hairline, the thumb the
+//       primary with the kit's faint lift (it is the one thing in the row that moves). Each segment is a 48 dp tall
+//       hit area around the 38 dp track, a button with a selected state for screen readers; the slide takes the
+//       kit's base motion and is skipped under Reduce motion.
 //   AppLanguageTile(color:)
 //       the settings row every role's Settings / More / Profile page shows (kill switch `profile.change_language`):
 //       icon · "Language" · the segmented switch. Switching goes through LangProvider (saved, notified) and then
@@ -20,9 +22,8 @@ import 'package:provider/provider.dart';
 import '../config/app_config.dart' show AppConfig, LangProvider, Trans;
 import '../config/theme/theme_config_provider.dart';
 import '../core/display/app_fonts.dart';
-import 'app_charts.dart' show appInk;
-import 'app_kit.dart' show appText;
 import 'app_settings.dart';
+import 'app_tokens.dart';
 
 /// Marks every element in the app as dirty so the whole UI is rebuilt and every `'key'.tr` / `t(ar, en)` /
 /// `pageDirection` is evaluated again with the new language — including `const` widgets, widgets that do not watch
@@ -52,22 +53,23 @@ class AppLanguageSegmented extends StatelessWidget {
   final String current;
   final ValueChanged<String> onChanged;
 
-  static const _segment = 56.0;
-  static const _track = 38.0;
-  static const _hit = 48.0;
+  /// One language's segment, the track under both and the hit area around the track.
+  static const double segment = 56;
+  static const double track = 38;
+  static const double hit = AppTouch.min;
+
+  /// The thumb's inset inside the track.
+  static const double _inset = 3;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final reduce = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    final dur = reduce ? Duration.zero : const Duration(milliseconds: 220);
+    final motion = AppMotion.of(context);
     // the thumb's position follows the reading direction: Arabic is the first segment
     const langs = ['ar', 'en'];
     final index = current == 'en' ? 1 : 0;
-    final thumbInk = c.onHero;
-    final idleInk = appInk(context, c.textMedium);
 
-    Widget segment(String lang) {
+    Widget segmentOf(String lang) {
       final selected = lang == current;
       final label = lang == 'ar' ? 'عربي' : 'EN';
       return Semantics(
@@ -79,14 +81,19 @@ class AppLanguageSegmented extends StatelessWidget {
           behavior: HitTestBehavior.opaque,
           onTap: selected ? null : () => onChanged(lang),
           child: SizedBox(
-            width: _segment,
-            height: _hit,
+            width: segment,
+            height: hit,
             child: Center(
               child: AnimatedDefaultTextStyle(
-                duration: dur,
+                duration: motion.base,
+                curve: AppMotion.curve,
                 // "عربي" inside English UI: the other language's font draws it
-                style: appText(13, w: FontWeight.w700, c: selected ? thumbInk : idleInk, h: 1.1)
-                    .copyWith(fontFamilyFallback: AppFonts.fallback),
+                style: AppType.label(context).copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: selected ? c.onHero : c.textMedium,
+                  height: 1.1,
+                  fontFamilyFallback: AppFonts.fallback,
+                ),
                 child: Text(label, textDirection: lang == 'ar' ? TextDirection.rtl : TextDirection.ltr),
               ),
             ),
@@ -96,49 +103,43 @@ class AppLanguageSegmented extends StatelessWidget {
     }
 
     return SizedBox(
-      width: _segment * 2 + 6,
-      height: _hit,
+      width: segment * 2 + _inset * 2,
+      height: hit,
       child: Stack(
         alignment: Alignment.center,
         children: [
           // the track
           Container(
-            height: _track,
+            height: track,
             decoration: BoxDecoration(
               color: c.inputBg,
-              borderRadius: BorderRadius.circular(_track / 2),
-              border: Border.all(color: c.divider),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              border: Border.all(color: c.divider, width: AppBorder.hairline),
             ),
           ),
           // the thumb under the current language
           Positioned.fill(
             child: Padding(
-              padding: const EdgeInsets.all(3),
+              padding: const EdgeInsets.all(_inset),
               child: AnimatedAlign(
-                duration: dur,
-                curve: Curves.easeOutCubic,
+                duration: motion.base,
+                curve: AppMotion.curve,
                 alignment: index == 0 ? AlignmentDirectional.centerStart : AlignmentDirectional.centerEnd,
                 child: Container(
-                  width: _segment,
-                  height: _track - 6,
+                  width: segment,
+                  height: track - _inset * 2,
                   decoration: BoxDecoration(
                     color: c.primary,
-                    borderRadius: BorderRadius.circular((_track - 6) / 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: c.primary.withValues(alpha: c.isDark ? 0.30 : 0.24),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    boxShadow: AppElevation.of(context, 1),
                   ),
                 ),
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 3),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [for (final l in langs) segment(l)]),
+            padding: const EdgeInsets.symmetric(horizontal: _inset),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [for (final l in langs) segmentOf(l)]),
           ),
         ],
       ),
@@ -150,7 +151,7 @@ class AppLanguageSegmented extends StatelessWidget {
 class AppLanguageTile extends StatelessWidget implements AppSettingsSearchable {
   const AppLanguageTile({super.key, this.color});
 
-  /// Icon colour; default primaryLight.
+  /// Icon colour; default the primary.
   final Color? color;
 
   @override
@@ -162,7 +163,7 @@ class AppLanguageTile extends StatelessWidget implements AppSettingsSearchable {
     return AppSettingsTile(
       featureKey: 'profile.change_language',
       icon: Icons.translate_rounded,
-      color: color ?? context.colors.primaryLight,
+      color: color ?? context.colors.primary,
       label: 'app_language'.tr,
       keywords: 'language arabic english لغة عربي انجليزي',
       trailing: AppLanguageSegmented(

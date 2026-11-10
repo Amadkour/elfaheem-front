@@ -53,15 +53,15 @@ theme's `display*` / `headline*` / `titleLarge` (app bar, dialog titles) follow.
 
 The brand gradient is ONE family — `primary_light → primary → primary_dark`, derived from the live primary so every
 preset keeps working; no hue turn at either end, no gold glow (D-622) — and every stop keeps white ink at WCAG AA.
-The mesh (`AppMeshSurface`, the shell's sidebar) is the same family with soft lights of
+The mesh (`AppMeshSurface`) is the same family with soft lights of
 that one hue, never a second colour. It is a **touch**:
 
-- ✓ the active sidebar item, key chart series, a hero surface a screen still asks for (`AppGradientSurface`)
+- ✓ key chart series, a hero surface a screen still asks for (`AppGradientSurface`)
 - ✗ a role home's greeting / welcome hero: that is a tinted **block** (`HomeHeader` = `AppBlock(hero: true)`, peach
   for students and parents, sky for instructors, admins and organizations, charcoal ink, the name in `AppType.display`)
 - ✗ not the page headers any more (D-614): `AppHeader` / `AppPageHeader` sit on the canvas with a 2 px SOLID primary
   `AppHeaderStrip`, and the selected pill tab is solid primary; the primary button is solid emerald (§3a) and the ONE
-  highlighted KPI is a block (D-612)
+  highlighted KPI is a block (D-612); the shell's sidebar is paper with a solid emerald pill on the open tab
 - ✗ never behind body text, forms, lists or tables · never two gradient fills side by side · never the legacy
   accent / teal / gold gradient getters in new UI
 
@@ -108,8 +108,22 @@ charcoal ink — no blue, no mint.
 | loading / error / empty | `AppStateView<T>(loading:, error:, data:, builder:)` · `AppLoadingState(shape:)` · `AppErrorState(onRetry:)` · `AppEmpty(icon:, title:, message:, actionLabel:, onAction:, tone:)` — a drawn plate (`AppStatePlate`, CustomPaint in the theme's colours, never stock art or emoji), an editorial headline (`AppType.section`), one line of direction and ONE action · `AppListSkeleton` / `AppSkeletonBox` (warm bones) | `app_states.dart`, `app_kit.dart` |
 | error text | `appErrorMessage(e)` (the server's message, never `'$e'`) | `app_states.dart` |
 | settings page | `AppSettingsPage(header:, groups:, footer:)` + `AppSettingsGroup(title:, icon:, children:, danger:)` (an editorial group heading — `AppType.section` in ink, a quiet glyph — with 32 above it over a paper card: card surface, warm hairline, hairline dividers, no shadow) / `AppSettingsTile(icon:, label:, subtitle:, color:, badge:, trailing:, onTap:)` (48 px rows, a faint icon well) · `AppSettingsHeader` (the profile hero: the page's one tinted block, peach) | `app_settings.dart` |
-| role dashboard | `AppShell(items: [DashboardItem(…)])` | `app_shell.dart` |
+| role dashboard | `AppShell(items: [DashboardItem(…, badgeTone: ShellBadgeTone.reward)])` | `app_shell.dart` |
+| where am I | `ContextSwitcher()` · `ContextPill(icon:, tone:, label:, onTap:)` · `showContextSwitcherSheet` | `context_switcher.dart` |
+| attention count | `AttentionBadge(tabKey: AttentionTabs.x, child: …)` (tappable, opens the items) | `attention_badge.dart` |
+| language | `AppLanguageTile()` · `AppLanguageSegmented(current:, onChanged:)` | `app_language_switch.dart` |
 | table export | `showAppExportSheet(context, AppTableExport(…))` | `app_table_export.dart` |
+
+**The role shell** (`app_shell.dart`, D-062) wears the editorial theme like this: the page is the warm canvas; the
+sidebar (wide) and the rail (tablet) are a PAPER column (`cardBg`) set off by one warm hairline — never a gradient
+and never a dark slab that would compete with the page's hero block; the open tab is an emerald pill (`primary`,
+on-hero ink) at 48 px; the top bar is the canvas itself with the tab's title in `AppType.pageTitle` and the chrome
+buttons as paper squares (`ChromeIconButton` outside a `ChromeBar`); the phone's bottom bar is paper with a hairline,
+the open tab an emerald 56 × 32 pill under its label, no shadow. A tab's count is a small pill in the colour of its
+meaning (`ShellBadgeTone.attention` = danger, `reward` = the gold tint with gold ink); on the open tab it turns to
+glass so red never sits on green; it pops once when the number changes (`AppBump`). The context pill is paper with a
+hairline (the organization's colour lives in its mark only), its "Personal" exit an emerald-tinted pill; the language
+switch is a track in `inputBg` with an emerald thumb.
 
 ### 3a. Controls — the field and button language (system.md §4)
 

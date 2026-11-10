@@ -93,7 +93,8 @@ class CalendarEntryTile extends StatelessWidget implements AppSettingsSearchable
   Widget build(BuildContext context) => AppSettingsTile(
         featureKey: calendarEntryFeatureKey,
         icon: Icons.event_rounded,
-        color: context.colors.accent2,
+        // the primary, like the Messages row above it: gold is reserved for streaks and achievements (system.md §2)
+        color: context.colors.primary,
         label: 'my_calendar'.tr,
         onTap: () => openMyCalendar(context),
       );
