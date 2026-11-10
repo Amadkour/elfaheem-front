@@ -84,6 +84,21 @@ class BubbleStepResult {
   }
 }
 
+/// One numbered question as the engine ordered it (D-500): the app draws it, it never re-derives the numbering.
+class BubbleQuestionMark {
+  const BubbleQuestionMark({required this.n, required this.block, required this.cells, required this.labels});
+  final int n, block;
+  final List<List<double>> cells;
+  final List<String> labels;
+
+  factory BubbleQuestionMark.fromJson(Map<String, dynamic> m) => BubbleQuestionMark(
+        n: asInt(m['n']),
+        block: asInt(m['block']),
+        cells: [for (final p in (m['cells'] is List ? m['cells'] as List : const [])) if (p is List && p.length == 2) [(p[0] as num).toDouble(), (p[1] as num).toDouble()]],
+        labels: [for (final l in (m['labels'] is List ? m['labels'] as List : const [])) '$l'],
+      );
+}
+
 /// A region of the sheet with something to confirm.
 class BubbleUnsure {
   const BubbleUnsure({required this.code, required this.ar, required this.en, this.box});
@@ -110,6 +125,10 @@ class BubbleImport {
     required this.templateId,
     this.imageW = 1240,
     this.imageH = 1754,
+    this.onePhoto = false,
+    this.issues = const [],
+    this.marks = const [],
+    this.direction = 'ltr',
   });
 
   final int id;
@@ -125,6 +144,24 @@ class BubbleImport {
   final List<Map<String, dynamic>> understood;
   final int? templateId;
   final int imageW, imageH;
+
+  /// Made from one picture (D-500), not the older four.
+  final bool onePhoto;
+
+  /// How to get a better picture (the sheet is cut off, too dark...).
+  final List<BubbleIssue> issues;
+  final List<BubbleQuestionMark> marks;
+  final String direction;
+
+  bool get isRtl => direction == 'rtl';
+
+  /// "4", or "4–5" on a sheet whose questions differ.
+  String get optionsText {
+    final counts = {for (final q in marks) q.cells.length};
+    if (counts.length < 2) return '$options';
+    final s = counts.toList()..sort();
+    return '${s.first}–${s.last}';
+  }
 
   bool get allPictures => nextStep == null;
   bool get detected => layout != null;
@@ -174,6 +211,10 @@ class BubbleImport {
       templateId: j['template_id'] is int ? j['template_id'] as int : null,
       imageW: asInt(image['w'], 1240),
       imageH: asInt(image['h'], 1754),
+      onePhoto: j['one_photo'] == true,
+      issues: bubbleIssues(j['issues']),
+      marks: [for (final q in (j['questions'] is List ? j['questions'] as List : const [])) if (q is Map<String, dynamic>) BubbleQuestionMark.fromJson(q)],
+      direction: '${asMap(j['numbering'])['direction'] ?? 'ltr'}',
     );
   }
 }
@@ -203,7 +244,22 @@ class BubbleBlock {
 }
 
 /// What a tap on the sheet means.
-enum BubbleTapMode { wrongRegion, missingQuestion, extraBubble, setIdentifier, setVersion }
+enum BubbleTapMode {
+  wrongRegion,
+  missingQuestion,
+  extraBubble,
+  setIdentifier,
+  setVersion,
+  addBubble,
+  fixOptions,
+  dragId;
+
+  /// What the one-photo result offers.
+  static const quickFixes = [fixOptions, missingQuestion, extraBubble, addBubble, dragId, setIdentifier, wrongRegion];
+
+  /// What the older four-picture review offers.
+  static const legacy = [wrongRegion, missingQuestion, extraBubble, setIdentifier, setVersion];
+}
 
 extension BubbleTapModeWire on BubbleTapMode {
   String get wire => switch (this) {
@@ -212,6 +268,21 @@ extension BubbleTapModeWire on BubbleTapMode {
         BubbleTapMode.extraBubble => 'extra_bubble',
         BubbleTapMode.setIdentifier => 'set_role',
         BubbleTapMode.setVersion => 'set_role',
+        BubbleTapMode.addBubble => 'add_bubble',
+        BubbleTapMode.fixOptions => '',
+        BubbleTapMode.dragId => '',
+      };
+
+  /// What to do next, shown under the tools.
+  String get hint => switch (this) {
+        BubbleTapMode.wrongRegion => t('انقر على منطقة ليست أسئلة', 'Tap a region that is not questions'),
+        BubbleTapMode.missingQuestion => t('انقر حيث يوجد السؤال الناقص', 'Tap where the missing question is'),
+        BubbleTapMode.extraBubble => t('انقر على الفقاعة الزائدة', 'Tap the extra bubble'),
+        BubbleTapMode.setIdentifier => t('انقر على منطقة رقم الطالب', 'Tap the student ID area'),
+        BubbleTapMode.setVersion => t('انقر على صف النموذج', 'Tap the version row'),
+        BubbleTapMode.addBubble => t('انقر حيث توجد الفقاعة الناقصة', 'Tap where the missing bubble is'),
+        BubbleTapMode.fixOptions => t('انقر على مجموعة أسئلة، ثم غيّر العدد', 'Tap a group of questions, then change the count'),
+        BubbleTapMode.dragId => t('اسحب مربعًا حول منطقة رقم الطالب', 'Drag a box around the student ID area'),
       };
   String get label => switch (this) {
         BubbleTapMode.wrongRegion => t('منطقة خاطئة', 'Wrong region'),
@@ -219,6 +290,9 @@ extension BubbleTapModeWire on BubbleTapMode {
         BubbleTapMode.extraBubble => t('فقاعة زائدة', 'Extra bubble'),
         BubbleTapMode.setIdentifier => t('هذه منطقة الرقم', 'This is the ID area'),
         BubbleTapMode.setVersion => t('صف النموذج', 'Version row'),
+        BubbleTapMode.addBubble => t('فقاعة ناقصة', 'Missing bubble'),
+        BubbleTapMode.fixOptions => t('عدد الاختيارات', 'Number of choices'),
+        BubbleTapMode.dragId => t('اسحب منطقة الرقم', 'Drag the ID box'),
       };
 }
 
@@ -460,6 +534,12 @@ class BubbleApi {
   Future<EngineResult> deleteImport(int id) => engineCall(() => _api.delete('$_b/omr/sheet-imports/$id'));
   Future<EngineResult> sendStep(int id, BubbleStep step, (String, Uint8List) file) =>
       engineCall(() => _api.postFiles('$_b/omr/sheet-imports/$id/steps/${step.wire}', files: [file], field: 'image'));
+  /// D-500: one picture of the sheet, detected at once.
+  Future<EngineResult> sendSheet(int id, (String, Uint8List) file) => engineCall(() => _api.postFiles('$_b/omr/sheet-imports/$id/sheet', files: [file], field: 'image'));
+
+  /// A one-tap fix on the result: `set` (rotate, direction, id_box, block_options) and / or taps.
+  Future<EngineResult> quickFix(int id, {List<BubbleTap> taps = const [], Map<String, dynamic>? set}) =>
+      engineCall(() => _api.post('$_b/omr/sheet-imports/$id/feedback', body: {'taps': [for (final x in taps) x.toJson()], if (set != null) 'set': set}));
   Future<EngineResult> detect(int id) => engineCall(() => _api.post('$_b/omr/sheet-imports/$id/detect'));
   Future<EngineResult> feedback(int id, {List<BubbleTap> taps = const [], String? note, String? shape}) => engineCall(() => _api.post('$_b/omr/sheet-imports/$id/feedback', body: {
         if (taps.isNotEmpty) 'taps': [for (final x in taps) x.toJson()],

@@ -36,8 +36,7 @@ import '../../exam_quick_screen.dart' show QuickAdvancedPanel, QuickFilePanel, Q
 import '../../exam_results_screen.dart';
 import '../../paper/exam_setup.dart';
 import '../../paper/exam_setup_wizard.dart' show TemplateStepBody;
-import '../../paper/templates/omr_template_learn.dart' show openOmrTemplateLearn;
-import '../../paper/templates/own_sheet.dart' show openOwnSheet;
+import '../../paper/bubble/bubble_import_screen.dart' show openBubbleSheetFinder;
 import '../deliver/exam_deliver_screen.dart' show openExamDeliver;
 import '../deliver/identifier_plan_step.dart' show IdentifierPlanStep;
 import 'exam_create_logic.dart';
@@ -382,14 +381,8 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
     });
   }
 
-  Future<void> _learnTemplate() async {
-    final known = {for (final x in _templates ?? const <OmrTemplateItem>[]) x.id, for (final x in _pending) x.id};
-    final saved = await openOmrTemplateLearn(context);
-    if (mounted) await _loadTemplates(before: saved == true ? known : null);
-  }
-
   Future<void> _ownSheet() async {
-    final made = await openOwnSheet(context, orgId: _plan.exam.orgId);
+    final made = await openBubbleSheetFinder(context, orgId: _plan.exam.orgId);
     if (!mounted || made == null) return;
     setState(() {
       _plan.template = made;
@@ -666,7 +659,7 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
           _plan.normalize();
         }),
         onRetry: _loadTemplates,
-        onLearn: _learnTemplate,
+        onLearn: null,
         onOwnSheet: _ownSheet,
         onPaperOnly: _useNormal,
       ),
