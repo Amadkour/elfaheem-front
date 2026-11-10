@@ -54,7 +54,7 @@ import 'org_dashboard_screen.dart' show OrgTabs;
 import 'org_dashboard_settings.dart' show showJoinCode, showOrgForm, showOrgSwitcher;
 import 'org_department_dashboard.dart' show openDepartmentDashboard;
 import 'org_join_pages.dart' show OrgJoinInboxPage;
-import 'org_page_header.dart' show OrgPageHeader, OrgPageRefresh, OrgPushedPage;
+import 'org_page_header.dart' show OrgPageFrame, OrgPageHeader, OrgPageRefresh, OrgPushedPage;
 import 'org_providers.dart';
 import 'org_schedule_autopilot.dart' show TermNeed, TermTimetableCard;
 import 'org_ui.dart';
@@ -200,7 +200,7 @@ class OrgHomeBody extends StatelessWidget {
 
 /// The header above the scrolling [body] (it collapses with the scrolling and must not scroll away).
 Widget _pinnedHeader(Widget? header, Widget body) =>
-    header == null ? body : Column(children: [header, Expanded(child: body)]);
+    header == null ? body : OrgPageFrame(header: header, body: body);
 
 Widget _pullable(Future<void> Function()? onRefresh, Widget list) =>
     onRefresh == null ? list : AppRefresh(onRefresh: onRefresh, child: list);
