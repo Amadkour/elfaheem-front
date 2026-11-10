@@ -16,9 +16,9 @@ class RemoteConfigService {
   RemoteConfigService._();
   static final RemoteConfigService instance = RemoteConfigService._();
 
-  /// Null until [init] ran (a slow start-up can time that step out): the getters below then answer the defaults.
-  /// A `late` field here threw from the app root's first build and left a grey screen.
-  FirebaseRemoteConfig? _config;
+  /// Null until [init] got this far: Firebase may be slow or blocked and its start-up step is cut off by a time limit,
+  /// and the app's first frame still reads [appName] (D-570: that frame used to throw, leaving a blank page).
+  FirebaseRemoteConfig? _rc;
 
   // ── Defaults — used before fetch or when offline ──────────────────────────
 
@@ -32,7 +32,7 @@ class RemoteConfigService {
 
   Future<void> init() async {
     final rc = FirebaseRemoteConfig.instance;
-    _config = rc;
+    _rc = rc;
 
     await rc.setConfigSettings(RemoteConfigSettings(
       // In production use a longer interval (e.g. 1 hour = 3600 seconds).
@@ -65,11 +65,14 @@ class RemoteConfigService {
   // ── Getters ───────────────────────────────────────────────────────────────
 
   /// The app's display name — replaces the hardcoded "NextBrain" string.
-  String get appName => _config?.getString('app_name') ?? _defaults['app_name'] as String;
+  String get appName {
+    final name = _rc?.getString('app_name') ?? '';
+    return name.isNotEmpty ? name : _defaults['app_name'] as String;
+  }
 
   /// When true, show a maintenance screen or banner to users.
-  bool get maintenanceMode => _config?.getBool('maintenance_mode') ?? false;
+  bool get maintenanceMode => _rc?.getBool('maintenance_mode') ?? false;
 
   /// Minimum version number allowed — compare against your current version.
-  int get forceUpdateVersion => _config?.getInt('force_update_version') ?? 0;
+  int get forceUpdateVersion => _rc?.getInt('force_update_version') ?? 0;
 }

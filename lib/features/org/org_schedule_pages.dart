@@ -45,6 +45,7 @@ import 'org_schedule_versions.dart' show calendarDate, clockOf, periodRange, sta
 import 'package:flutter_education_app/core/app_time.dart';
 import 'org_v3.dart';
 import 'org_page_header.dart' show OrgPageRefresh;
+import 'org_page_kit.dart' show OrgFab, OrgPrimaryAction;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class OrgSchedulePage extends StatelessWidget {
@@ -113,7 +114,8 @@ class _ScheduleView extends StatelessWidget {
             child: TabBar(
               dividerColor: Colors.transparent,
               indicatorSize: TabBarIndicatorSize.tab,
-              indicator: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(14)),
+              // the brand gradient (its ink keeps AA): a raw light primary under white text was unreadable
+              indicator: BoxDecoration(gradient: c.primaryGradient, borderRadius: BorderRadius.circular(14)),
               labelColor: c.onHero,
               unselectedLabelColor: c.textMedium,
               labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 13),
@@ -798,14 +800,12 @@ class _TimetablesTab extends StatelessWidget {
           PositionedDirectional(
             bottom: 16,
             end: 16,
-            child: FloatingActionButton.extended(
-              heroTag: 'org_add_schedule',
-              backgroundColor: c.primary,
-              onPressed: () => _wizard(context, p),
-              icon: Icon(Icons.add_rounded, color: c.onHero),
-              label: Text(
-                t('جدول جديد', 'New timetable'),
-                style: TextStyle(fontFamily: AppFonts.family, color: c.onHero),
+            child: OrgFab(
+              action: OrgPrimaryAction(
+                id: 'add_schedule',
+                icon: Icons.add_rounded,
+                label: t('جدول جديد', 'New timetable'),
+                onTap: () => _wizard(context, p),
               ),
             ),
           ),

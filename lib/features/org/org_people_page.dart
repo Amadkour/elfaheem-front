@@ -190,6 +190,7 @@ class _MembersView extends StatelessWidget {
             : p.status == 'active'
                 ? t('لا يوجد أعضاء بعد — أضف أول عضو أو استورد قائمة من Excel', 'No members yet — add the first one or import a list from Excel')
                 : t('لا أحد بهذه الحالة', 'Nobody with this status'),
+        minTileWidth: 520,
         itemBuilder: (ctx, row) => _MemberTile(row: row, module: module, entityKind: entityKind),
       ),
     );

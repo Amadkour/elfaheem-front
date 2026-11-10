@@ -317,7 +317,9 @@ class AppSettingsHeader extends StatelessWidget {
           const Positioned.fill(child: RepaintBoundary(child: AppMeshSurface(seed: 9))),
           PositionedDirectional(top: -40, end: -30, child: bubble(150, 0.08)),
           PositionedDirectional(bottom: -50, start: -20, child: bubble(130, 0.06)),
-          Padding(
+          SizedBox(
+            width: double.infinity, // a Stack child sizes to itself: without this the block sat left of the card's centre
+            child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 26, 20, 22),
             child: Column(children: [
               GestureDetector(
@@ -351,6 +353,7 @@ class AppSettingsHeader extends StatelessWidget {
                   ParentComponent(featureKey: 'auth.username', child: glass(Icons.person_pin_rounded, '@$username', ltr: true)),
               ]),
             ]),
+          ),
           ),
         ]),
       ),

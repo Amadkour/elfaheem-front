@@ -510,13 +510,9 @@ class _OrgTabState extends State<_OrgTab> {
           );
     return OrgPageRefreshScope(
       controller: _refresh,
-      child: BasePage(
-        useWebCard: true,
-        width: AppWidth.wide,
-        child: widget.header
-            ? Column(children: [OrgPageHeader(title: widget.title, helpPageId: widget.helpPageId), Expanded(child: body)])
-            : body,
-      ),
+      child: widget.header
+          ? OrgPageFrame(header: OrgPageHeader(title: widget.title, helpPageId: widget.helpPageId), body: body)
+          : (s.currentId == null ? BasePage(child: body) : body),
     );
   }
 }
