@@ -106,7 +106,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       expect(find.byType(AppLoadingState), findsOneWidget);
       await tester.pumpWidget(layoutHost(AppStateView<String>(loading: true, data: 'DATA', builder: (_, d) => Text(d))));
+      // the skeleton crossfades out (D-582, 260 ms)
       await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 300));
       expect(find.byType(AppLoadingState), findsNothing);
       expect(find.text('DATA'), findsOneWidget);
     });

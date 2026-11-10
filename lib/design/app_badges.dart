@@ -13,6 +13,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../config/theme/theme_config_provider.dart';
+import 'app_motion_kit.dart';
 import 'app_tokens.dart';
 
 enum AppTone { neutral, info, success, warning, danger, brand }
@@ -136,7 +137,10 @@ class AppCountBadge extends StatelessWidget {
         : Semantics(
             label: semanticLabel ?? appCountText(count),
             excludeSemantics: true,
-            child: Container(
+            // a count that changes pops once (D-581)
+            child: AppBump(
+              trigger: count,
+              child: Container(
               constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
               padding: const EdgeInsetsDirectional.symmetric(horizontal: 6),
               alignment: AlignmentDirectional.center,
@@ -150,6 +154,7 @@ class AppCountBadge extends StatelessWidget {
                 maxLines: 1,
                 style: AppType.overline(context).copyWith(color: c.onHero, height: 1.1),
               ),
+            ),
             ),
           );
     if (child == null) return bubble;

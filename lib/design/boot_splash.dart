@@ -43,6 +43,7 @@ import 'package:flutter_education_app/config/storage_service.dart' show StorageS
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import '../core/display/display_settings.dart';
+import 'app_motion_kit.dart' show appAnimationsOffForAll;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Facts the splash shows (set by the bootstrap, read by the widget)
@@ -305,7 +306,8 @@ abstract final class SplashArt {
   /// MaterialApp, where there is no MediaQuery.
   static bool get reduceMotion =>
       WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.disableAnimations ||
-      DisplaySettings.instance.prefs.reduceMotion; // the app's own "Reduce motion" (loaded right after storage)
+      DisplaySettings.instance.prefs.reduceMotion || // the app's own "Reduce motion" (loaded right after storage)
+      appAnimationsOffForAll; // the Super Admin's switch for every account (cached disable list)
 
   static Future<void> preload() async {
     if (image != null) return; // retry after a fatal start: keep the decoded art (no second, leaked copy)

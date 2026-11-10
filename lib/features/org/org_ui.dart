@@ -26,6 +26,7 @@ import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'dart:typed_data';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Colours, icons, labels
@@ -177,7 +178,9 @@ class OrgStatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final col = color ?? c.primary;
-    return Material(
+    return AppPressScale(
+      enabled: onTap != null,
+      child: Material(
       color: c.cardBg,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
@@ -194,7 +197,7 @@ class OrgStatTile extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('${value ?? 0}',
+                AppCountUp('${value ?? 0}', memoryKey: 'orgstat:$label',
                     style: TextStyle(fontFamily: AppFonts.display, fontSize: 21, fontWeight: FontWeight.w800, color: c.textDark)),
                 // two lines: one cut "Live even…" / "مهام فش…" on every 3-up strip (docs/polish/visual-review.md)
                 Text(label, maxLines: 2, overflow: TextOverflow.ellipsis,
@@ -204,6 +207,7 @@ class OrgStatTile extends StatelessWidget {
           ]),
         ),
       ),
+    ),
     );
   }
 }
@@ -353,11 +357,15 @@ class OrgEmpty extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(28),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 92,
-            height: 92,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: c.primary.withValues(alpha: 0.10)),
-            child: Icon(icon, size: 42, color: c.primary),
+          // the art settles in once (D-582)
+          AppPopIn(
+            from: 0.86,
+            child: Container(
+              width: 92,
+              height: 92,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: c.primary.withValues(alpha: 0.10)),
+              child: Icon(icon, size: 42, color: c.primary),
+            ),
           ),
           const SizedBox(height: 14),
           Text(title, textAlign: TextAlign.center, style: orgText(context, size: 15.5, w: FontWeight.w800)),
@@ -389,7 +397,9 @@ class OrgAsync extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => AppSkeletonSwitch(loading: loading, child: _body());
+
+  Widget _body() {
     if (loading) return const AppListSkeleton(items: 3);
     if (failed) {
       return SizedBox(height: 280, child: ErrorRetry(message: t('تعذّر التحميل، تحقق من الاتصال', 'Could not load — check your connection'), onRetry: onRetry));

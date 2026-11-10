@@ -40,6 +40,7 @@ library;
 
 import 'chrome_button.dart';
 import 'package:flutter_education_app/design/app_mesh.dart';
+import 'app_motion_kit.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -90,24 +91,15 @@ Color homeOnHero(BuildContext context) => context.colors.button.color ?? context
 //  Motion
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// The one entrance motion of a home: fade in + rise 12px, staggered by [index] (capped), played once.
+/// The one entrance motion of a home: fade in + rise 12px, staggered by [index] (capped), played once per route
+/// (a refresh or a revisit never replays it): [AppReveal].
 class HomeEntrance extends StatelessWidget {
   const HomeEntrance({super.key, required this.index, required this.child});
   final int index;
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    if (MediaQuery.maybeDisableAnimationsOf(context) == true) return child;
-    final ms = 380 + math.min(index, 6) * 70;
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: ms),
-      curve: Interval(math.min(index, 6) * 70 / ms, 1, curve: Curves.easeOutCubic),
-      builder: (_, v, c) => Opacity(opacity: v, child: Transform.translate(offset: Offset(0, 12 * (1 - v)), child: c)),
-      child: child,
-    );
-  }
+  Widget build(BuildContext context) => AppReveal(index: index, group: 'home', cap: 12, child: child);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -445,7 +437,12 @@ class HomeHeroCard extends StatelessWidget {
     final r = BorderRadius.circular(c.radiusXL);
     return Padding(
       padding: margin ?? const EdgeInsets.symmetric(horizontal: 20),
-      child: DecoratedBox(
+      // depth (D-583): a gentle tilt toward the mouse with a soft glare, a press depth on touch; the ring floats
+      child: AppTilt(
+        radius: c.radiusXL,
+        maxTilt: 2.5,
+        glare: true,
+        child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: gradient ?? c.heroGradient,
           borderRadius: r,
@@ -465,12 +462,15 @@ class HomeHeroCard extends StatelessWidget {
                 PositionedDirectional(
                   end: -60,
                   top: -70,
-                  child: Container(
-                    width: 200,
-                    height: 200,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: homeOnHero(context).withValues(alpha: 0.10), width: 26),
+                  child: AppTiltLayer(
+                    depth: 2.5,
+                    child: Container(
+                      width: 200,
+                      height: 200,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: homeOnHero(context).withValues(alpha: 0.10), width: 26),
+                      ),
                     ),
                   ),
                 ),
@@ -479,6 +479,7 @@ class HomeHeroCard extends StatelessWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }
@@ -1090,7 +1091,7 @@ class HomeHeroFigure extends StatelessWidget {
       FittedBox(
           fit: BoxFit.scaleDown,
           alignment: AlignmentDirectional.centerStart,
-          child: Text(value, maxLines: 1, style: appText(24, w: FontWeight.w600, c: on, h: 1.1))),
+          child: AppCountUp(value, memoryKey: 'hero:$label', style: appText(24, w: FontWeight.w600, c: on, h: 1.1))),
       const SizedBox(height: 2),
       // two lines: "Earnings this month" was cut to "Earnings thi…" on a phone
       Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, c: on.withValues(alpha: 0.85), h: 1.25)),
@@ -1208,7 +1209,7 @@ class _StatRow extends StatelessWidget {
                 child: Text(s.label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w500, c: c.textDark, h: 1.3)),
               ),
               const SizedBox(width: 8),
-              Text(value, maxLines: 1, style: appText(15, w: FontWeight.w600, c: ink).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+              AppCountUp(value, memoryKey: 'stat:${s.label}', style: appText(15, w: FontWeight.w600, c: ink).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
               if (s.onTap != null) ...[
                 const SizedBox(width: 2),
                 Icon(Icons.chevron_right_rounded, size: 18, color: c.textLight),
@@ -1249,7 +1250,7 @@ class _StatPill extends StatelessWidget {
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(s.icon, size: 16, color: ink),
                 const SizedBox(width: 8),
-                Text(value, maxLines: 1, style: appText(14, w: FontWeight.w600, c: ink).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+                AppCountUp(value, memoryKey: 'stat:${s.label}', style: appText(14, w: FontWeight.w600, c: ink).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
                 const SizedBox(width: 6),
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 220),

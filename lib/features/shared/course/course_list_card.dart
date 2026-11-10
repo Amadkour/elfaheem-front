@@ -35,6 +35,7 @@ import 'package:flutter_education_app/design/app_kit.dart' show appText, AppShim
 import 'package:flutter_education_app/design/app_mesh.dart' show AppMeshSurface;
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
 
 enum CourseCardShape { row, tile }
 
@@ -124,14 +125,19 @@ class CourseListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final radius = BorderRadius.circular(16);
-    return Material(
-      color: c.cardBg,
-      shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: c.divider)),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: radius,
-        child: shape == CourseCardShape.row ? _row(context) : _tile(context),
+    // depth (D-583): tilts toward the mouse, presses in on touch; the cover shifts inside it
+    return AppTilt(
+      radius: 16,
+      maxTilt: 3,
+      child: Material(
+        color: c.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: c.divider)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: radius,
+          child: shape == CourseCardShape.row ? _row(context) : _tile(context),
+        ),
       ),
     );
   }
@@ -243,7 +249,7 @@ class CourseListCard extends StatelessWidget {
     final cover = AspectRatio(
       aspectRatio: 16 / 9,
       child: Stack(children: [
-        Positioned.fill(child: _picture()),
+        Positioned.fill(child: ClipRect(child: AppTiltLayer(depth: 1.2, overscan: true, child: _picture()))),
         if (chip != null) PositionedDirectional(start: 12, top: 12, child: chip!),
         if (corner != null) PositionedDirectional(end: 8, top: 8, child: _CornerBackdrop(child: corner!)),
       ]),
@@ -478,11 +484,14 @@ class CourseProgressFooter extends StatelessWidget {
           Expanded(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(2),
-              child: LinearProgressIndicator(
+              child: AppFill(
                 value: p / 100,
-                minHeight: 4,
-                backgroundColor: c.divider,
-                valueColor: AlwaysStoppedAnimation(done ? c.success : coursePrimaryInk(context)),
+                builder: (_, v) => LinearProgressIndicator(
+                  value: v,
+                  minHeight: 4,
+                  backgroundColor: c.divider,
+                  valueColor: AlwaysStoppedAnimation(done ? c.success : coursePrimaryInk(context)),
+                ),
               ),
             ),
           ),
@@ -588,7 +597,7 @@ class CourseCardSliver extends StatelessWidget {
       return SliverList.separated(
         itemCount: count,
         separatorBuilder: (_, _) => const SizedBox(height: 8),
-        itemBuilder: (context, i) => itemBuilder(context, i, shape),
+        itemBuilder: (context, i) => AppReveal(index: i, group: 'courses', child: itemBuilder(context, i, shape)),
       );
     }
     // rows sized by their tiles (no fixed cell height: a one-line title left a blank band above the footer), start
@@ -604,7 +613,10 @@ class CourseCardSliver extends StatelessWidget {
           columns: cols,
           gap: gap,
           textDirection: Directionality.of(context),
-          children: [for (var i = r * cols; i < math.min(count, (r + 1) * cols); i++) itemBuilder(context, i, shape)],
+          children: [
+            for (var i = r * cols; i < math.min(count, (r + 1) * cols); i++)
+              AppReveal(index: i, group: 'courses', child: itemBuilder(context, i, shape)),
+          ],
         ),
       ),
     );
