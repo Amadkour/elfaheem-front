@@ -4,8 +4,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_badges.dart';
+import 'package:flutter_education_app/design/app_blocks.dart';
 import 'package:flutter_education_app/design/app_kpi.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppTilt;
 import 'package:flutter_education_app/design/app_page_header.dart';
 import 'package:flutter_education_app/design/app_bidi.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -75,6 +77,7 @@ void main() {
           const AppKpiCard(label: 'Absences', value: '48', icon: Icons.event_busy_rounded, delta: -0.045, deltaGoodWhenUp: false),
           const AppKpiCard(label: 'Loading', value: '0', loading: true),
           AppKpiCard(label: _longAr, value: '98.6%', delta: 0, deltaLabel: _longAr, spark: const [1, 2, 3], onTap: () {}),
+          const AppKpiCard(label: 'Streak', value: '7', highlight: true, tone: AppBlockTone.gold, delta: 0.5, footnote: _longAr),
         ]),
         const SizedBox(height: 16),
         const AppKpiGrid(maxColumns: 2, children: [AppKpiCard(label: 'One', value: '1'), AppKpiCard(label: 'Two', value: '2'), AppKpiCard(label: 'Three', value: '3')]),
@@ -95,12 +98,26 @@ void main() {
       expect(find.text(ltrIsolate('+12%')), findsOneWidget);
       expect(find.text(ltrIsolate('-8%')), findsNWidgets(2) ,reason: '-8.0 rounds to 8 under the one-decimal rule');
       final ctx = tester.element(find.text(ltrIsolate('+12%')));
-      final c = ctx.colors;
       Color fgOf(Finder chip) => tester.widget<Text>(find.descendant(of: chip, matching: find.byType(Text))).style!.color!;
-      expect(fgOf(find.byKey(const ValueKey('kpi.delta.good')).first), c.success);
+      // the ink is the tone itself where it reads on its tint, else the tone darkened until it does (hue kept)
+      expect(fgOf(find.byKey(const ValueKey('kpi.delta.good')).first), appToneInk(ctx, AppTone.success));
       final bad = find.byKey(const ValueKey('kpi.delta.bad'));
       expect(bad, findsOneWidget);
-      expect(fgOf(bad), c.danger);
+      expect(fgOf(bad), appToneInk(ctx, AppTone.danger));
+    });
+
+    testWidgets('the highlight card is a block in its tone; the others are paper', (tester) async {
+      await tester.pumpWidget(layoutHost(const SingleChildScrollView(
+        child: Column(children: [
+          AppKpiCard(label: 'Key', value: '1', highlight: true),
+          AppKpiCard(label: 'Gold', value: '7', highlight: true, tone: AppBlockTone.gold),
+          AppKpiCard(label: 'Paper', value: '2'),
+        ]),
+      )));
+      await tester.pump(const Duration(milliseconds: 100));
+      final blocks = tester.widgetList<AppBlock>(find.byType(AppBlock)).toList();
+      expect(blocks.map((b) => b.tone), [AppBlockTone.peach, AppBlockTone.gold]);
+      expect(find.byType(AppTilt), findsNWidgets(2), reason: 'only the key figures lean; paper cards stay flat');
     });
 
     testWidgets('semantics read "label: value"', (tester) async {

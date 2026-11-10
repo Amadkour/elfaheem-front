@@ -1,13 +1,16 @@
 // lib/design/app_kpi.dart
 //
-// The stat card of the dashboards and the grid that lays them out.
+// The stat card of the dashboards and the grid that lays them out (Warm Editorial, system.md §4 – §6).
 //
 //   AppKpiCard(label: 'Students', value: '1,240', icon: Icons.people_alt_rounded, delta: 0.12, spark: [...])
-//   AppKpiCard(…, highlight: true)     the ONE key KPI of a page: brand gradient surface, on-hero ink
+//   AppKpiCard(…, highlight: true)     the ONE key KPI of a page: a tinted block (peach by default, `tone:` picks
+//                                      another), the figure rolls (AppOdometer) and the block leans a little under
+//                                      the pointer (AppTilt.subtle)
 //   AppKpiCard(…, loading: true)       skeleton of the same size
-//   AppKpiGrid(children: [...])        1 column under 360 px, 2 on phones, 3 - 4 wide; equal heights per row
+//   AppKpiGrid(children: [...])        1 column under 300 px, 2 on phones, 3 - 4 wide; equal heights per row
 //
-// `delta` is a fraction (0.12 = +12 %); `deltaGoodWhenUp: false` flips the colours for "lower is better" figures
+// The other cards are paper: the card surface on a warm hairline, no shadow (depth is tone first, D-612). `delta`
+// is a fraction (0.12 = +12 %); `deltaGoodWhenUp: false` flips the colours for "lower is better" figures
 // (absences, overdue). The whole card is one tappable (when `onTap` is given) read as "label: value".
 library;
 
@@ -17,9 +20,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
+import 'app_badges.dart';
 import 'app_bidi.dart';
-import 'app_gradients.dart';
-import 'app_kit.dart';
+import 'app_blocks.dart';
+import 'app_charts.dart';
+import 'app_kit.dart' show AppShimmer, AppSkeletonBox;
 import 'app_motion_kit.dart';
 import 'app_responsive.dart';
 import 'app_tokens.dart';
@@ -46,6 +51,7 @@ class AppKpiCard extends StatelessWidget {
     this.footnote,
     this.onTap,
     this.highlight = false,
+    this.tone,
     this.loading = false,
   });
 
@@ -65,7 +71,18 @@ class AppKpiCard extends StatelessWidget {
 
   /// The ONE key KPI of the page.
   final bool highlight;
+
+  /// The block tone of a [highlight] card (default peach, the learning / progress tone). Gold and emerald carry
+  /// meaning (system.md §2): gold for a streak or a top score, emerald for something completed.
+  final AppBlockTone? tone;
   final bool loading;
+
+  /// The sparkline's height inside the card.
+  static const double _sparkHeight = 36;
+
+  /// The skeleton's bones: the figure line and the meta line under it.
+  static const double _boneFigureWidth = 96, _boneFigureHeight = 28;
+  static const double _boneMetaWidth = 120, _boneMetaHeight = 14;
 
   @override
   Widget build(BuildContext context) {
@@ -73,25 +90,24 @@ class AppKpiCard extends StatelessWidget {
     return AppSkeletonSwitch(loading: loading, child: loading ? _skeleton(context) : _card(context));
   }
 
-  Widget _card(BuildContext context) {
+  Widget _content(BuildContext context, {required Color ink, required Color muted, required Color surface, required Color accent}) {
     final c = context.colors;
-    final ink = highlight ? c.onHero : c.textDark;
-    final muted = highlight ? c.onHeroMuted : c.textMedium;
     final d = delta;
-    final content = Column(
+    final iconBox = AppTouch.min - AppSpace.xs;
+    return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           if (icon != null)
             Container(
-              width: AppTouch.min - AppSpace.xs,
-              height: AppTouch.min - AppSpace.xs,
+              width: iconBox,
+              height: iconBox,
               decoration: BoxDecoration(
-                color: highlight ? c.heroGlass : c.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(AppRadius.chip),
+                color: highlight ? Color.lerp(surface, ink, 0.07) : appTintOn(context, c.primary),
+                borderRadius: AppRadius.chipAll,
               ),
-              child: Icon(icon, size: AppIconSize.lg, color: highlight ? c.onHero : c.primary),
+              child: Icon(icon, size: AppIconSize.lg, color: accent),
             ),
           if (icon != null) AppSpace.gapSm,
           Expanded(
@@ -105,13 +121,15 @@ class AppKpiCard extends StatelessWidget {
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: AlignmentDirectional.centerStart,
-          // counts up the first time, glides on a change (D-581)
-          child: AppCountUp(value, memoryKey: 'kpi:$label', style: AppType.figureLarge(context).copyWith(color: ink)),
+          child: highlight
+              // the key figure of the page rolls (D-620); the others count up once and glide on a change (D-581)
+              ? AppOdometer(value, memoryKey: 'kpi:$label', style: AppType.figureLarge(context).copyWith(color: ink))
+              : AppCountUp(value, memoryKey: 'kpi:$label', style: AppType.figureLarge(context).copyWith(color: ink)),
         ),
         if (d != null) ...[
           const SizedBox(height: AppSpace.xs),
           Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
-            _DeltaChip(delta: d, goodWhenUp: deltaGoodWhenUp, onHero: highlight),
+            _DeltaChip(delta: d, goodWhenUp: deltaGoodWhenUp, surface: surface),
             Text(deltaLabel ?? 'ds_vs_previous'.tr, style: AppType.meta(context).copyWith(color: muted)),
           ]),
         ],
@@ -121,27 +139,36 @@ class AppKpiCard extends StatelessWidget {
         ],
         if (spark != null && spark!.length > 1) ...[
           const SizedBox(height: AppSpace.sm),
-          AppSparkline(spark!, color: highlight ? c.onHero : c.primary, height: 36, label: label),
+          AppSparkline(spark!, color: accent, surface: surface, height: _sparkHeight, label: label),
         ],
       ],
     );
+  }
 
+  Widget _card(BuildContext context) {
+    final c = context.colors;
     final semantic = '$label: $value';
     if (highlight) {
+      final blockTone = tone ?? AppBlockTone.peach;
+      final phone = MediaQuery.sizeOf(context).width < AppWidth.phoneMax;
       return Semantics(
         container: true,
         button: onTap != null,
         label: semantic,
         excludeSemantics: true,
         onTap: onTap,
-        // the one key figure of a page: depth with a soft glare (D-583)
-        child: AppTilt(
+        // the one key figure of a page leans a little under the pointer; touch gets press depth only (D-620)
+        child: AppTilt.subtle(
           radius: AppRadius.block,
-          glare: true,
-          child: _tapWrap(
-            context,
-            radius: AppRadius.block,
-            child: AppGradientSurface(padding: AppSpace.card, radius: AppRadius.block, child: content),
+          child: AppBlock(
+            tone: blockTone,
+            padding: phone ? AppSpace.card : AppSpace.block,
+            onTap: onTap,
+            child: Builder(builder: (context) {
+              final b = AppBlock.colorsOf(context);
+              return _content(context,
+                  ink: b.ink, muted: b.muted, surface: b.surface, accent: b.accentInk(c.primary));
+            }),
           ),
         ),
       );
@@ -152,44 +179,34 @@ class AppKpiCard extends StatelessWidget {
       label: semantic,
       excludeSemantics: true,
       onTap: onTap,
-      child: AppTilt(
-        radius: AppRadius.card,
-        maxTilt: 3,
-        child: _tapWrap(
-        context,
-        radius: AppRadius.card,
-        child: Container(
-          width: double.infinity,
-          padding: AppSpace.card,
-          decoration: BoxDecoration(
-            color: c.cardBg,
+      // a tappable card presses in (D-582); a resting card is tone + hairline, no shadow (D-612)
+      child: AppPressScale(
+        enabled: onTap != null,
+        child: Material(
+          color: c.cardBg,
+          shape: RoundedRectangleBorder(
             borderRadius: AppRadius.cardAll,
-            border: Border.all(color: c.divider, width: AppBorder.hairline),
-            boxShadow: AppElevation.of(context, 1),
+            side: BorderSide(color: c.divider, width: AppBorder.hairline),
           ),
-          child: content,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: AppSpace.card,
+              child: SizedBox(
+                width: double.infinity,
+                child: _content(context, ink: c.textDark, muted: c.textMedium, surface: c.cardBg, accent: c.primary),
+              ),
+            ),
+          ),
         ),
-      ),
       ),
     );
   }
 
-  /// The ink ripple sits on top of the card (a Stack, so it also shows over the gradient).
-  Widget _tapWrap(BuildContext context, {required double radius, required Widget child}) {
-    if (onTap == null) return child;
-    return Stack(fit: StackFit.passthrough, children: [
-      child,
-      Positioned.fill(
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(borderRadius: BorderRadius.circular(radius), onTap: onTap),
-        ),
-      ),
-    ]);
-  }
-
   Widget _skeleton(BuildContext context) {
     final c = context.colors;
+    const iconBox = AppTouch.min - AppSpace.xs;
     return Semantics(
       label: 'ds_loading'.tr,
       container: true,
@@ -205,14 +222,14 @@ class AppKpiCard extends StatelessWidget {
           ),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              const AppSkeletonBox(width: AppTouch.min - AppSpace.xs, height: AppTouch.min - AppSpace.xs, radius: AppRadius.chip),
+              const AppSkeletonBox(width: iconBox, height: iconBox, radius: AppRadius.chip),
               AppSpace.gapSm,
-              const Expanded(child: AppSkeletonBox(height: 12)),
+              const Expanded(child: AppSkeletonBox(height: AppSpace.sm)),
             ]),
             const SizedBox(height: AppSpace.sm),
-            const AppSkeletonBox(width: 96, height: 28),
+            const AppSkeletonBox(width: _boneFigureWidth, height: _boneFigureHeight),
             const SizedBox(height: AppSpace.xs),
-            const AppSkeletonBox(width: 120, height: 14),
+            const AppSkeletonBox(width: _boneMetaWidth, height: _boneMetaHeight),
           ]),
         ),
       ),
@@ -221,11 +238,13 @@ class AppKpiCard extends StatelessWidget {
 }
 
 class _DeltaChip extends StatelessWidget {
-  const _DeltaChip({required this.delta, required this.goodWhenUp, required this.onHero});
+  const _DeltaChip({required this.delta, required this.goodWhenUp, required this.surface});
 
   final double delta;
   final bool goodWhenUp;
-  final bool onHero;
+
+  /// What the chip sits on (the card or the block), so its ink reaches AA on its own tint there.
+  final Color surface;
 
   @override
   Widget build(BuildContext context) {
@@ -233,12 +252,12 @@ class _DeltaChip extends StatelessWidget {
     final flat = delta == 0;
     final good = (delta > 0) == goodWhenUp;
     final tone = flat ? c.textMedium : (good ? c.success : c.danger);
-    final fg = onHero ? c.onHero : tone;
-    final bg = onHero ? c.heroGlass : tone.withValues(alpha: 0.12);
+    final bg = appTintOn(context, tone, surface: surface);
+    final fg = flat ? c.textDark : appInkOn(context, tone, bg);
     return Container(
       key: ValueKey(flat ? 'kpi.delta.flat' : (good ? 'kpi.delta.good' : 'kpi.delta.bad')),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadius.chip)),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadius.pill)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         if (!flat) Icon(delta > 0 ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, size: AppIconSize.xs, color: fg),
         if (!flat) const SizedBox(width: AppSpace.xxs),
@@ -248,7 +267,7 @@ class _DeltaChip extends StatelessWidget {
   }
 }
 
-/// A responsive grid of [AppKpiCard]s (or any tiles): 1 column under 360 px, 2 on phones, 3 from tablet width,
+/// A responsive grid of [AppKpiCard]s (or any tiles): 1 column under 300 px, 2 on phones, 3 from tablet width,
 /// 4 from desktop width (never more than [maxColumns]). The cards of a row share the row's height.
 class AppKpiGrid extends StatelessWidget {
   const AppKpiGrid({super.key, required this.children, this.maxColumns = 4});
@@ -283,6 +302,7 @@ class AppKpiGrid extends StatelessWidget {
               for (var i = 0; i < cols; i++) ...[
                 if (i > 0) AppSpace.gapSm,
                 Expanded(
+                  // the grid is the page's one orchestrated entrance: the first tiles rise once (D-580)
                   child: r * cols + i < children.length
                       ? AppReveal(index: r * cols + i, group: 'kpi', child: children[r * cols + i])
                       : const SizedBox.shrink(),

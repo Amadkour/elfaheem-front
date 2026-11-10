@@ -22,8 +22,11 @@
 //   page header      → AppHeader (Scaffold / BasePage appBar: gradient, collapses by itself) · AppBackButton
 //   big intro card   → AppHero(+ AppHeroStat)        section title → AppSectionTitle
 //   any number       → AppNumberField(controller:, label:, min:, max:, step:)   gradient → AppGradients / AppMeshSurface
-//   content block    → AppCard / AppActionCard        numbers       → AppStatTile in an AppGrid
-//   nothing yet      → AppEmpty                        loading       → AppListSkeleton (not a spinner)
+//   content block    → AppCard (paper: tone + warm hairline, radius 16, no shadow) · AppActionCard (icon, title,
+//                      one sentence, a count) — a tinted container for one subject is AppBlock (radius 24)
+//   numbers          → AppStatTile in an AppGrid (paper) · the page's ONE key figure → AppKpiCard(highlight: true)
+//   nothing yet      → AppEmpty (a drawn plate, an editorial headline, one action; app_states.dart)
+//   loading          → AppListSkeleton / AppSkeletonBox in an AppShimmer (warm bones, never a spinner)
 //   tip / warning    → AppBanner                       quick actions → AppPill
 //   form             → AppField / AppPicker / AppSwitchRow / AppPrimaryButton
 //   on/off toggle    → AppSwitch / AppSwitchTile (the ONLY switch look in the app — never Switch/SwitchListTile)
@@ -50,9 +53,11 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
+import 'app_badges.dart';
 import 'app_buttons.dart' show appKeyboardFocus;
 import 'app_contrast.dart' show ensureContrast;
 import 'app_inputs.dart';
+import 'app_motion_kit.dart';
 import 'app_search_field.dart';
 import 'app_tokens.dart';
 import '../features/admin/admin_common.dart' as admin;
@@ -99,7 +104,6 @@ export '../features/org/org_ui.dart'
         fileSizeLabel;
 
 // ── Data Lab language ───────────────────────────────────────────────────────
-typedef AppCard = dl.DlCard;
 typedef AppHero = dl.DlHero;
 typedef AppHeroStat = dl.DlHeroStat;
 typedef AppPill = dl.DlActionPill;
@@ -114,7 +118,6 @@ typedef AppPrimaryButton = dl.DlPrimaryButton;
 typedef AppChoiceChip = dl.DlChoiceChip;
 typedef AppStatChip = dl.DlStatChip;
 typedef AppShimmer = dl.DlShimmer;
-typedef AppSkeletonBox = dl.DlSkeletonBox;
 typedef AppBanner = dl.DlBanner;
 
 /// One text style helper for the whole app (same as the Data Lab's).
@@ -124,9 +127,6 @@ TextStyle appText(double size, {FontWeight w = FontWeight.w500, Color? c, double
 Color appScoreColor(BuildContext context, double? v) => dl.dlScoreColor(context, v);
 
 // ── Organization kit (role-neutral names) ──────────────────────────────────
-typedef AppEmpty = org.OrgEmpty;
-typedef AppStatTile = org.OrgStatTile;
-typedef AppActionCard = org.OrgActionCard;
 typedef AppGrid = org.OrgGrid;
 typedef AppBadgePill = org.OrgPill;
 typedef AppInfoRow = org.OrgInfoRow;
@@ -181,7 +181,197 @@ class AppSheetContent extends StatelessWidget {
   }
 }
 
-// ── New: list skeleton (premium loading for any list / feed / grid page) ───
+// ── Cards (Warm Editorial, system.md §4: paper on a warm hairline, radius 16, no resting shadow) ───────────────
+
+/// The paper card: the card surface on a warm hairline (depth is tone first, D-612 — a resting card casts no
+/// shadow), corner radius `card`. A tappable card presses in (D-582) and ripples.
+class AppCard extends StatelessWidget {
+  const AppCard({
+    super.key,
+    required this.child,
+    this.padding = AppSpace.card,
+    this.margin,
+    this.onTap,
+    this.onLongPress,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry? margin;
+  final VoidCallback? onTap;
+
+  /// A long press (e.g. starts a selection); null: none.
+  final VoidCallback? onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tappable = onTap != null || onLongPress != null;
+    final body = Padding(padding: padding, child: child);
+    return AppPressScale(
+      enabled: tappable,
+      child: Padding(
+        padding: margin ?? EdgeInsets.zero,
+        child: Material(
+          color: c.cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: AppRadius.cardAll,
+            side: BorderSide(color: c.divider, width: AppBorder.hairline),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: tappable ? InkWell(onTap: onTap, onLongPress: onLongPress, child: body) : body,
+        ),
+      ),
+    );
+  }
+}
+
+/// A tappable card that leads somewhere: a tinted icon, a title, one human sentence, a count. The icon's tint
+/// carries the colour (never a wash over the card), the chevron mirrors by itself.
+class AppActionCard extends StatelessWidget {
+  const AppActionCard({
+    super.key,
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.color,
+    this.badge = 0,
+    this.onTap,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+
+  /// The icon's tone (the primary by default).
+  final Color? color;
+
+  /// A count over the icon (0 = none).
+  final int badge;
+  final VoidCallback? onTap;
+
+  /// Replaces the chevron (a pill, a switch); at most 150 px wide.
+  final Widget? trailing;
+
+  static const double _iconBox = AppTouch.min - AppSpace.xxs;
+  static const double _trailingMax = 150;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final col = color ?? c.primary;
+    final tint = appTintOn(context, col);
+    final iconBox = Container(
+      width: _iconBox,
+      height: _iconBox,
+      decoration: BoxDecoration(color: tint, borderRadius: AppRadius.chipAll),
+      child: Icon(icon, size: AppIconSize.lg, color: appInkOn(context, col, tint)),
+    );
+    return AppCard(
+      onTap: onTap,
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        AppCountBadge(count: badge, child: iconBox),
+        AppSpace.gapSm,
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+            if (subtitle != null && subtitle!.isNotEmpty) ...[
+              const SizedBox(height: AppSpace.xxs / 2),
+              Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+            ],
+          ]),
+        ),
+        if (trailing != null)
+          ConstrainedBox(constraints: const BoxConstraints(maxWidth: _trailingMax), child: trailing) // a long pill ellipsizes
+        else
+          Icon(Icons.chevron_right_rounded, color: c.textLight),
+      ]),
+    );
+  }
+}
+
+/// A small counter tile on paper (two per row on phones, a strip on wide screens): a tinted icon, the figure
+/// (counts up once, D-581) and a two-line label. The page's one key figure is an [AppKpiCard] with `highlight`.
+class AppStatTile extends StatelessWidget {
+  const AppStatTile({super.key, required this.icon, required this.label, required this.value, this.color, this.onTap});
+
+  final IconData icon;
+  final String label;
+
+  /// A number or an already formatted string.
+  final dynamic value;
+
+  /// The icon's tone (the primary by default).
+  final Color? color;
+  final VoidCallback? onTap;
+
+  static const double _iconBox = AppIconSize.hero;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final col = color ?? c.primary;
+    final tint = appTintOn(context, col);
+    final text = '${value ?? 0}';
+    return Semantics(
+      container: true,
+      button: onTap != null,
+      label: '$label: $text',
+      excludeSemantics: true,
+      child: AppCard(
+        onTap: onTap,
+        padding: const EdgeInsets.all(AppSpace.sm + 2),
+        child: Row(children: [
+          Container(
+            width: _iconBox,
+            height: _iconBox,
+            decoration: BoxDecoration(color: tint, borderRadius: AppRadius.chipAll),
+            child: Icon(icon, size: AppIconSize.md + 2, color: appInkOn(context, col, tint)),
+          ),
+          AppSpace.gapSm,
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: AppCountUp(text, memoryKey: 'stat:$label', style: AppType.figureLarge(context)),
+              ),
+              const SizedBox(height: AppSpace.xxs / 2),
+              // two lines: one cut "Live even…" / "مهام فش…" on every 3-up strip (docs/polish/visual-review.md)
+              Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+// ── Skeletons (warm bones; the page does not jump when data arrives) ───────
+
+/// One bone of a skeleton: a rounded bar in a warm tone (the input surface pulled toward the hairline), pulsed by
+/// the [AppShimmer] around it.
+class AppSkeletonBox extends StatelessWidget {
+  const AppSkeletonBox({super.key, this.width, this.height = 12, this.radius = AppSpace.xs});
+
+  final double? width;
+  final double height, radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Color.lerp(c.inputBg, c.divider, 0.55),
+        borderRadius: BorderRadius.circular(radius),
+      ),
+    );
+  }
+}
+
 /// The calm shape of a list while it loads — the page does not jump when data arrives. Shrink-wrapped, so it also
 /// works inside another scroll view (a chat's ListView) where the height is unbounded.
 class AppListSkeleton extends StatelessWidget {
@@ -190,30 +380,36 @@ class AppListSkeleton extends StatelessWidget {
   final bool withAvatar;
   final EdgeInsetsGeometry? padding;
 
+  static const double _avatar = AppTouch.min - AppSpace.xxs;
+  static const double _boneTitle = 12, _boneMeta = 10;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return dl.DlShimmer(
+    return AppShimmer(
       child: ListView.separated(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        padding: padding ?? const EdgeInsets.fromLTRB(16, 14, 16, 0),
+        padding: padding ?? const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
         itemCount: items,
-        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        separatorBuilder: (_, _) => const SizedBox(height: AppSpace.sm),
         itemBuilder: (_, i) => Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(AppSpace.sm + 2),
           decoration: BoxDecoration(
             color: c.cardBg,
-            borderRadius: BorderRadius.circular(c.radiusLarge - 4),
-            border: Border.all(color: c.divider),
+            borderRadius: AppRadius.cardAll,
+            border: Border.all(color: c.divider, width: AppBorder.hairline),
           ),
           child: Row(children: [
-            if (withAvatar) ...[const dl.DlSkeletonBox(width: 44, height: 44, radius: 14), const SizedBox(width: 12)],
+            if (withAvatar) ...[
+              const AppSkeletonBox(width: _avatar, height: _avatar, radius: AppRadius.chip),
+              AppSpace.gapSm,
+            ],
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                dl.DlSkeletonBox(width: 120.0 + (i * 37) % 90, height: 12),
-                const SizedBox(height: 8),
-                dl.DlSkeletonBox(width: 70.0 + (i * 23) % 60, height: 10),
+                AppSkeletonBox(width: 120.0 + (i * 37) % 90, height: _boneTitle),
+                const SizedBox(height: AppSpace.xs),
+                AppSkeletonBox(width: 70.0 + (i * 23) % 60, height: _boneMeta),
               ]),
             ),
           ]),
