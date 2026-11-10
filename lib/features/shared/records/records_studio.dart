@@ -1473,7 +1473,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
               drafts: _src.drafts,
               libraryLabel: widget.libraryLabel,
             ),
-      footer: kIsWeb || studioIsWide(MediaQuery.sizeOf(context)) ? const StudioKeysHint() : null,
+      footer: studioIsWide(MediaQuery.sizeOf(context)) ? const StudioKeysHint() : null, // keys: a desktop's, not a phone browser's
       stageNote: _stageNote,
     );
     return PopScope(

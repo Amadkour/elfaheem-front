@@ -39,7 +39,7 @@ final materialStudioRevision = ValueNotifier<int>(0);
 Future<bool> openMaterialStudio(BuildContext? context,
     {required int sessionId, required int materialId, MaterialStudioApi? api, NavigatorState? navigator, bool replaceTop = false}) async {
   if (!materialStudioOn) return false;
-  final nav = navigator ?? Navigator.of(context!);
+  final nav = navigator ?? Navigator.of(context!, rootNavigator: true); // full screen: an editor needs the room the shell's bars take
   final route = MaterialPageRoute<bool>(
     settings: const RouteSettings(name: '/materials/studio'),
     builder: (_) => MaterialStudioPage(sessionId: sessionId, materialId: materialId, api: api),
