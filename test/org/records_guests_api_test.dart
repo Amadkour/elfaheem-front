@@ -129,7 +129,7 @@ void main() {
     test('the material source: no Cover, drafts, its own event kinds', () {
       final s = MaterialStudioSource(sessionId: 3, materialId: 11);
       expect(s.tools.contains(StudioTool.cover), isFalse);
-      expect(s.tools.first, StudioTool.trim);
+      expect(s.tools.first, StudioTool.edit); // D-590: trim / cut / speed are one Edit tool on one project
       expect(s.drafts, isTrue);
       expect(s.jobEventKind, 'material_edit');
       expect(s.framesEventKind, 'material_frames');
