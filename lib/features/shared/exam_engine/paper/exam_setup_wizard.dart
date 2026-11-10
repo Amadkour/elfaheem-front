@@ -37,7 +37,8 @@ import '../exam_authoring_screen.dart' show pickEngineDateTime;
 import '../exam_versions_sheet.dart' show openExamVersions;
 import 'exam_setup.dart';
 import 'omr_counts.dart';
-import 'templates/own_sheet.dart' show kOwnSheetFeatureKey, openOwnSheet;
+import 'bubble/bubble_import_screen.dart' show openBubbleSheetFinder;
+import 'templates/own_sheet.dart' show kOwnSheetFeatureKey;
 
 /// Opens the wizard; true when it was finished (or the choice of Online was saved).
 Future<bool?> openExamSetupWizard(BuildContext context,
@@ -596,14 +597,9 @@ class _ExamSetupWizardState extends State<ExamSetupWizard> {
             identifierLabel: _identifierLabel,
             onPick: (x) => setState(() => _templateId = x.id),
             onRetry: _loadTemplates,
-            onLearn: widget.onLearnTemplate == null
-                ? null
-                : () async {
-                    await widget.onLearnTemplate!();
-                    if (mounted) _loadTemplates();
-                  },
+            onLearn: null,
             onOwnSheet: () async {
-              final made = await openOwnSheet(context, orgId: _orgId);
+              final made = await openBubbleSheetFinder(context, orgId: _orgId);
               if (!mounted || made == null) return;
               setState(() => _templateId = made.id);
               await _loadTemplates();
@@ -1339,9 +1335,9 @@ class TemplateStepBody extends StatelessWidget {
               child: SetupChoiceTile(
                 key: const ValueKey('setup.template.own'),
                 icon: Icons.document_scanner_outlined,
-                title: t('استخدم ورقتك الخاصة', 'Use your own sheet'),
-                subtitle: t('أي ورقة تظليل، أو جدول يكتب فيه الطالب رقم إجابته — صوّرها ونتعرف عليها',
-                    'Any bubble sheet, or a table where students write their answer — photograph it and we work it out'),
+                title: t('أضف ورقتك الخاصة بصورة واحدة', 'Add your own sheet from one photo'),
+                subtitle: t('أي ورقة تظليل، بدون علامات في الأركان — نجد الأسئلة والاختيارات ورقم الطالب بأنفسنا',
+                    'Any bubble sheet, no corner marks needed: we find the questions, choices and student ID ourselves'),
                 selected: false,
                 onTap: onOwnSheet!,
               ),
