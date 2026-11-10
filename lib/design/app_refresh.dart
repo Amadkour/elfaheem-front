@@ -1,14 +1,16 @@
 // lib/design/app_refresh.dart — pull-to-refresh, ONE way for every list screen.
 //
 //   AppRefresh(onRefresh: provider.load, child: ListView(...))
-//       the Material RefreshIndicator in the theme's colours. Every scrollable inside accepts the pull even when
-//       its content is shorter than the screen (the scroll physics get an AlwaysScrollableScrollPhysics parent).
+//       the Material RefreshIndicator in the theme's colours (emerald on paper). Every scrollable inside accepts the
+//       pull even when its content is shorter than the screen (the scroll physics get an AlwaysScrollableScrollPhysics
+//       parent).
 //   AppRefresh(scrollable: false, child: Column(...))
 //       the child has no scroll view of its own: it is laid out inside one that fills the viewport
 //       (`fill: true` gives it exactly the viewport height — for a child with an Expanded inside).
 //   AppRefreshAction(onRefresh: provider.load)
-//       the small refresh IconButton for an app bar: mouse users cannot pull, so it shows on web and desktop
-//       (`always: true` shows it everywhere — for a section embedded in someone else's scroll view).
+//       the small refresh IconButton for an app bar (ink on whatever it sits on, a 48 px target): mouse users
+//       cannot pull, so it shows on web and desktop (`always: true` shows it everywhere — for a section embedded in
+//       someone else's scroll view). While it runs, the icon gives way to a small spinner.
 //
 // Layout test: test/ui/app_refresh_layout_test.dart.
 library;
@@ -18,6 +20,7 @@ import 'package:flutter/material.dart';
 
 import '../config/app_config.dart';
 import '../config/theme/theme_config_provider.dart';
+import 'app_tokens.dart';
 
 class AppRefresh extends StatelessWidget {
   const AppRefresh({
@@ -54,6 +57,7 @@ class AppRefresh extends StatelessWidget {
     return RefreshIndicator(
       color: c.primary,
       backgroundColor: c.cardBg,
+      strokeWidth: AppBorder.focus,
       edgeOffset: edgeOffset,
       onRefresh: onRefresh,
       child: ScrollConfiguration(behavior: base.copyWith(physics: physics), child: body),
@@ -63,10 +67,12 @@ class AppRefresh extends StatelessWidget {
 
 /// The app-bar refresh button for platforms without a touch pull (web, desktop); [always] shows it everywhere.
 class AppRefreshAction extends StatefulWidget {
-  const AppRefreshAction({super.key, required this.onRefresh, this.always = false, this.color, this.size = 22});
+  const AppRefreshAction({super.key, required this.onRefresh, this.always = false, this.color, this.size = AppIconSize.lg});
 
   final Future<void> Function() onRefresh;
   final bool always;
+
+  /// The icon's ink; the medium ink by default (the chrome's), [onHero] on a hero surface.
   final Color? color;
   final double size;
 
@@ -94,17 +100,23 @@ class _AppRefreshActionState extends State<AppRefreshAction> {
   Widget build(BuildContext context) {
     if (!widget.always && !AppRefreshAction.wanted) return const SizedBox.shrink();
     final c = context.colors;
-    final color = widget.color ?? c.textDark;
+    final color = widget.color ?? c.textMedium;
     return IconButton(
       tooltip: 'refresh'.tr,
+      constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
       onPressed: _busy ? null : _run,
-      icon: _busy
-          ? SizedBox(
-              width: widget.size - 6,
-              height: widget.size - 6,
-              child: CircularProgressIndicator(strokeWidth: 2, color: c.primary),
-            )
-          : Icon(Icons.refresh_rounded, size: widget.size, color: color),
+      icon: AnimatedSwitcher(
+        duration: AppMotion.of(context).fast,
+        switchInCurve: AppMotion.curve,
+        switchOutCurve: AppMotion.curve,
+        child: _busy
+            ? SizedBox.square(
+                key: const ValueKey('app.refresh.busy'),
+                dimension: AppIconSize.sm,
+                child: CircularProgressIndicator(strokeWidth: AppBorder.focus, color: c.primary),
+              )
+            : Icon(Icons.refresh_rounded, key: const ValueKey('app.refresh.icon'), size: widget.size, color: color),
+      ),
     );
   }
 }

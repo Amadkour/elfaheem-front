@@ -53,14 +53,15 @@ theme's `display*` / `headline*` / `titleLarge` (app bar, dialog titles) follow.
 
 The brand gradient is ONE family — `primary_light → primary → primary_dark`, derived from the live primary so every
 preset keeps working; no hue turn at either end, no gold glow (D-622) — and every stop keeps white ink at WCAG AA.
-The mesh (`AppMeshSurface`, the page header's band and the shell's sidebar) is the same family with soft lights of
+The mesh (`AppMeshSurface`, the shell's sidebar) is the same family with soft lights of
 that one hue, never a second colour. It is a **touch**:
 
-- ✓ page / section headers (`AppHeader`'s band, `AppPageHeader`'s accent strip), the ONE primary button of a
-  screen, the selected tab or pill, the active sidebar item, key chart series, ONE highlighted KPI
-  (`AppGradientSurface`)
+- ✓ the active sidebar item, key chart series, a hero surface a screen still asks for (`AppGradientSurface`)
 - ✗ a role home's greeting / welcome hero: that is a tinted **block** (`HomeHeader` = `AppBlock(hero: true)`, peach
   for students and parents, sky for instructors, admins and organizations, charcoal ink, the name in `AppType.display`)
+- ✗ not the page headers any more (D-614): `AppHeader` / `AppPageHeader` sit on the canvas with a 2 px SOLID primary
+  `AppHeaderStrip`, and the selected pill tab is solid primary; the primary button is solid emerald (§3a) and the ONE
+  highlighted KPI is a block (D-612)
 - ✗ never behind body text, forms, lists or tables · never two gradient fills side by side · never the legacy
   accent / teal / gold gradient getters in new UI
 
@@ -80,8 +81,11 @@ charcoal ink — no blue, no mint.
 
 | Need | Use | File |
 |---|---|---|
-| page header | `AppPageHeader(title:, subtitle:, icon:, primaryAction:, actions:, search:, onRefresh:, updatedAt:, bottom:)` | `app_page_header.dart` |
-| section | `AppSection(title:, trailing:, child:)` | `app_page_header.dart` |
+| page header (D-614) | `AppPageHeader(title:, subtitle:, icon:, primaryAction:, actions:, search:, onRefresh:, updatedAt:, bottom:)` — an editorial masthead on the canvas: `AppHeaderStrip` (2 px primary) · title in `AppType.pageTitle` in ink, 24 above / 16 below (8 / 8 collapsed) · back and chrome as paper chips · the ONE primary action bare, secondary actions on an `AppHeaderTray` · `AppHeaderRule` under it (underline tabs close it themselves) | `app_page_header.dart` |
+| app bar | `AppHeader(title:, subtitle:, actions:, bottom:, color:, compact:)` — the same masthead as a `Scaffold.appBar`, collapsing with the body's scroll; `color:` is the strip's colour; a `leading:` sits on the canvas, so draw it in ink or as a `ChromePlate` | `app_header.dart` |
+| section | `AppSection(title:, subtitle:, trailing:, child:, spaceAbove:)` — brings its own `AppSpace.sectionHead` rhythm (32 above the heading, 12 under it): put NO gap before it; `spaceAbove: false` for the first section of a surface with its own top padding | `app_page_header.dart` |
+| chrome chip | `ChromePlate(onTap:, child:)` (40 px paper plate in a 48 px target, glass inside a `ChromeBar` or with `onHero: true`, press depth) · `ChromeIconButton(icon:, label:, onTap:, badge:, busy:)` · `AppBackButton(onPressed:, onHero:)` | `chrome_button.dart`, `app_back_button.dart` |
+| refresh | `AppRefresh(onRefresh:, child:)` (pull, emerald on paper) · `AppRefreshAction(onRefresh:, always:)` (the 48 px icon button for mouse platforms; a spinner while it runs) | `app_refresh.dart` |
 | buttons | `AppButton.primary / secondary / tonal / ghost / danger(label:, onPressed:, icon:, busy:)` · `AppIconButton(icon:, tooltip:, badge:)` · `AppButtonRow(primary:, secondary:)` — see §3a | `app_buttons.dart` |
 | text input | `AppField(controller:, label:, hint:, icon:, helper:, errorText:)` · `AppEmailField` / `AppPasswordField` / `AppPhoneField` / `AppUrlField` · `AppFieldLabel` + `appFieldDecoration` for a raw `TextFormField` — see §3a | `app_inputs.dart` |
 | search | `AppSearchField(onChanged:)` (350 ms debounce, clear, Esc; found by Ctrl+K and "/") | `app_search_field.dart` |
@@ -94,7 +98,7 @@ charcoal ink — no blue, no mint.
 | home hero (D-622) | `HomeHeader(name:, subtitle:, actions:, shellActions:, contextSwitcher:, tone:)` · `HomeHeroCard(child:, tone:)` with `HomeHeroTag` / `HomeDayRibbon` / `HomeHeroFigure` in the block's ink (`homeOnHero`) | `home_kit.dart` |
 | KPI | `AppKpiCard(label:, value:, icon:, delta:, spark:, highlight:, tone:)` in an `AppKpiGrid` — the ONE `highlight` is an `AppBlock` (peach by default; `tone:` gold for a streak / top score, emerald for something completed) whose figure rolls (`AppOdometer`) and leans under the pointer (`AppTilt.subtle`); the others are paper and count up once · `AppStatTile(icon:, label:, value:)` (paper, two per row on phones) · `AppTrendTile` | `app_kpi.dart`, `app_kit.dart`, `app_charts.dart` |
 | status | `AppStatusBadge(label:, tone: AppTone.success)` (a full pill on an opaque tint, the label flexes; `success` = emerald, `gold` = achievements / top marks only) · `AppCountBadge(count:)` · `AppBadgePill` · `appTintOn(context, tone)` / `appInkOn(context, tone, tint)` for a tone as text on its own tint (AA, hue kept) | `app_badges.dart` |
-| tabs | `AppTabs(items:, index:, onChanged:)` (pill, gradient selection) · `AppUnderlineTabs` (page sections) | `app_tabs.dart` |
+| tabs | `AppTabs(items:, index:, onChanged:, expand:)` (a pill track on the input surface; the chosen pill solid primary with the on-hero ink, never the gradient's teal) · `AppUnderlineTabs` (page sections: labels in ink, a 2 px ink rule under the chosen one); arrow keys move the selection, the track shows the focus ring | `app_tabs.dart` |
 | drawer | `showAppDrawer(context, title:, builder:, actions:)` — end-side panel on wide, sheet on phones | `app_overlays.dart` |
 | dialog / confirm | `showAppDialog(context, title:, body:, actions:)` · `appConfirm(context, message:, danger:)` | `app_overlays.dart`, `app_kit.dart` |
 | bottom sheet | `showAppSheet(context, (_) => AppSheetContent(title:, children:))` | `app_kit.dart` |
@@ -103,7 +107,7 @@ charcoal ink — no blue, no mint.
 | charts | `AppBarChart` · `AppDonut` · `AppSparkline(values, surface:)` · `AppTrendTile` · `AppLegend` — `appChartPalette` is emerald · peach · sky · gold · purple from the live theme, snapped into the lightness band; every chart draws in once (`AppDrawIn`) | `app_charts.dart` |
 | loading / error / empty | `AppStateView<T>(loading:, error:, data:, builder:)` · `AppLoadingState(shape:)` · `AppErrorState(onRetry:)` · `AppEmpty(icon:, title:, message:, actionLabel:, onAction:, tone:)` — a drawn plate (`AppStatePlate`, CustomPaint in the theme's colours, never stock art or emoji), an editorial headline (`AppType.section`), one line of direction and ONE action · `AppListSkeleton` / `AppSkeletonBox` (warm bones) | `app_states.dart`, `app_kit.dart` |
 | error text | `appErrorMessage(e)` (the server's message, never `'$e'`) | `app_states.dart` |
-| settings page | `AppSettingsPage` + `AppSettingsGroup` / `AppSettingsTile` | `app_settings.dart` |
+| settings page | `AppSettingsPage(header:, groups:, footer:)` + `AppSettingsGroup(title:, icon:, children:, danger:)` (an editorial group heading — `AppType.section` in ink, a quiet glyph — with 32 above it over a paper card: card surface, warm hairline, hairline dividers, no shadow) / `AppSettingsTile(icon:, label:, subtitle:, color:, badge:, trailing:, onTap:)` (48 px rows, a faint icon well) · `AppSettingsHeader` (the profile hero: the page's one tinted block, peach) | `app_settings.dart` |
 | role dashboard | `AppShell(items: [DashboardItem(…)])` | `app_shell.dart` |
 | table export | `showAppExportSheet(context, AppTableExport(…))` | `app_table_export.dart` |
 

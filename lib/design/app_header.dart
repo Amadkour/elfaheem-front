@@ -1,9 +1,13 @@
-// lib/design/app_header.dart — THE page header (D-360): one gradient, one back button, one collapse.
+// lib/design/app_header.dart — THE page header (D-360, D-612): one surface, one back button, one collapse.
 //
 //   BasePage(
 //     appBar: AppHeader(title: 'Students', subtitle: 'All departments', actions: [IconButton(…)], bottom: TabBar(…)),
 //     child: ListView(…),
 //   )
+//
+// An editorial masthead on the canvas: a thin emerald strip on top (the one touch of colour; [color] changes it), the
+// title in the editorial page-title face in ink, the back button and the chrome as paper chips, a warm hairline
+// under it all. No gradient: the Warm Editorial brief keeps colour for blocks and the primary action.
 //
 // The page needs no slivers: a Scaffold reports its body's scrolling to whatever sits inside it, so AppHeader shrinks
 // when the page scrolls down and grows when it scrolls up, on any scrollable. A page too short to scroll stays open.
@@ -19,11 +23,9 @@ import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 import 'app_back_button.dart';
 import 'app_focus_mode.dart';
-import 'app_mesh.dart';
 import 'app_responsive.dart';
 import 'app_shell_nav.dart' show ShellChrome;
 import 'app_tokens.dart';
-import 'chrome_button.dart';
 
 /// Drives a header's collapse from the enclosing Scaffold's scrolling: [builder] gets 0 (open) … 1 (compact).
 /// Stays compact while focus mode is on.
@@ -86,7 +88,7 @@ class _AppHeaderCollapseState extends State<AppHeaderCollapse> with SingleTicker
     if (!animate || d == Duration.zero) {
       _c.value = to;
     } else {
-      _c.animateTo(to, duration: d, curve: Curves.easeOutCubic);
+      _c.animateTo(to, duration: d, curve: AppMotion.curve);
     }
   }
 
@@ -136,6 +138,40 @@ class _AppHeaderCollapseState extends State<AppHeaderCollapse> with SingleTicker
   Widget build(BuildContext context) => widget.builder(context, _c, widget.child);
 }
 
+/// The thin brand line on top of a header: solid primary (emerald), never the gradient's teal sweep. [color] is a
+/// page's own accent (an exam's colour).
+class AppHeaderStrip extends StatelessWidget {
+  const AppHeaderStrip({super.key, this.color});
+
+  final Color? color;
+
+  /// Kept thin: a rule, not a band.
+  static const double height = 2;
+
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+        child: SizedBox(
+          height: height,
+          width: double.infinity,
+          child: ColoredBox(color: color ?? context.colors.primary),
+        ),
+      );
+}
+
+/// The warm hairline that closes a header.
+class AppHeaderRule extends StatelessWidget {
+  const AppHeaderRule({super.key});
+
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+        child: SizedBox(
+          height: AppBorder.hairline,
+          width: double.infinity,
+          child: ColoredBox(color: context.colors.divider),
+        ),
+      );
+}
+
 /// The unified header. Goes in `BasePage.appBar` / `Scaffold.appBar`.
 class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   const AppHeader({
@@ -162,17 +198,19 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   final bool showBack;
   final VoidCallback? onBack;
 
-  /// Replaces the back button (a close icon, a menu).
+  /// Replaces the back button (a close icon, a menu). It sits on the canvas: draw it in ink, or as a [ChromePlate].
   final Widget? leading;
 
-  /// Icon buttons or text buttons. They sit on a card-coloured tray, so their own ink stays readable on the gradient.
+  /// Icon buttons or text buttons. They sit on a paper tray at the end of the title row.
   final List<Widget> actions;
 
   /// Tabs under the title row; they never collapse.
   final PreferredSizeWidget? bottom;
 
-  /// The main colour (the brand primary by default).
+  /// The accent strip's colour (the brand primary by default).
   final Color? color;
+
+  /// Kept for existing callers: the header no longer draws a gradient, so the seed changes nothing.
   final int seed;
 
   static const double compactHeight = 56;
@@ -195,20 +233,19 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
     final open = (hasSub ? openHeightWithSubtitle : openHeight) * scale;
     final shutHeight = compactHeight * (1 + (scale - 1) * 0.5);
     // the fallback: a title in the other script (a design or course name) still draws in full
-    final titleOpen = AppType.headline(context).copyWith(color: c.onHero, fontFamilyFallback: AppFonts.fallback);
-    final titleCompact = AppType.section(context).copyWith(color: c.onHero, fontFamilyFallback: AppFonts.fallback);
+    final titleOpen = AppType.pageTitle(context).copyWith(fontFamilyFallback: AppFonts.fallback);
+    final titleCompact = AppType.section(context).copyWith(fontFamilyFallback: AppFonts.fallback);
     final tabs = bottom;
     Widget paint(BuildContext context, Animation<double> collapse) => RepaintBoundary(
         child: Semantics(
           container: true,
           explicitChildNodes: true,
-          child: AppMeshSurface(
-            color: color,
-            seed: seed,
-            drift: collapse,
+          child: Material(
+            color: c.background,
             child: Padding(
               padding: EdgeInsets.only(top: top),
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                AppHeaderStrip(color: color),
                 AnimatedBuilder(
                   animation: collapse,
                   builder: (context, _) {
@@ -221,7 +258,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                           if (leading != null)
                             leading!
                           else if (showBack)
-                            AppBackButton(onHero: true, onPressed: onBack)
+                            AppBackButton(onPressed: onBack)
                           else
                             const SizedBox(width: AppSpace.sm),
                           const SizedBox(width: AppSpace.xxs),
@@ -240,6 +277,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                   },
                 ),
                 if (tabs != null) _HeaderTabs(child: tabs),
+                const AppHeaderRule(),
               ]),
             ),
           ),
@@ -256,13 +294,20 @@ extension on AppHeader {
     final c = context.colors;
     final tabs = bottom;
     if (tabs == null && actions.isEmpty && leading == null) return const SizedBox.shrink();
-    return DecoratedBox(
-      decoration: BoxDecoration(color: c.cardBg, border: Border(bottom: BorderSide(color: c.divider, width: AppBorder.hairline))),
-      child: Row(children: [
-        ?leading,
-        Expanded(child: tabs == null ? const SizedBox(height: AppTouch.min) : SizedBox(height: tabs.preferredSize.height, child: tabs)),
-        ...actions,
-        const SizedBox(width: AppSpace.xs),
+    return Material(
+      color: c.background,
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          ?leading,
+          Expanded(
+            child: tabs == null
+                ? const SizedBox(height: AppTouch.min)
+                : SizedBox(height: tabs.preferredSize.height, child: _HeaderTabs(child: tabs)),
+          ),
+          ...actions,
+          const SizedBox(width: AppSpace.xs),
+        ]),
+        const AppHeaderRule(),
       ]),
     );
   }
@@ -278,7 +323,6 @@ class _TitleBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final sub = subtitle;
     // the subtitle is gone by the middle of the collapse, so it never crowds the shrinking title
     final subShare = (1 - collapse * 2).clamp(0.0, 1.0);
@@ -301,8 +345,7 @@ class _TitleBlock extends StatelessWidget {
                   opacity: subShare,
                   child: Padding(
                     padding: const EdgeInsets.only(top: AppSpace.xxs),
-                    child: Text(sub,
-                        maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.onHeroMuted)),
+                    child: Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
                   ),
                 ),
               ),
@@ -327,14 +370,16 @@ class _Tools extends StatelessWidget {
         AppHeaderTray(child: Row(mainAxisSize: MainAxisSize.min, children: actions)),
         const SizedBox(width: AppSpace.xs),
       ],
-      if (global != null) ChromeBar(child: global(context)),
-      const AppFocusToggle(onHero: true),
+      // the app-wide tools (calendar, messages, assistant, bell) draw as paper chips on the canvas, like the rest
+      if (global != null) global(context),
+      const AppFocusToggle(),
       const SizedBox(width: AppSpace.xs),
     ]);
   }
 }
 
-/// The card-coloured tray that holds a header's actions: any action's own colours stay readable on the gradient.
+/// The paper tray that holds a header's actions: the card surface with a warm hairline, so the icon buttons inside
+/// read as one group of chips, whatever their own colours.
 class AppHeaderTray extends StatelessWidget {
   const AppHeaderTray({super.key, required this.child});
 
@@ -346,14 +391,17 @@ class AppHeaderTray extends StatelessWidget {
     return Material(
       color: c.cardBg,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card)),
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.controlAll,
+        side: BorderSide(color: c.divider, width: AppBorder.hairline),
+      ),
       clipBehavior: Clip.antiAlias,
       child: child,
     );
   }
 }
 
-/// Tabs drawn on the gradient, in the on-hero ink.
+/// Tabs under the title: labels in ink, the chosen one under a 2 px ink rule (the underline tabs of the kit).
 class _HeaderTabs extends StatelessWidget {
   const _HeaderTabs({required this.child});
 
@@ -366,10 +414,12 @@ class _HeaderTabs extends StatelessWidget {
     return Theme(
       data: theme.copyWith(
         tabBarTheme: theme.tabBarTheme.copyWith(
-          labelColor: c.onHero,
-          unselectedLabelColor: c.onHeroMuted,
-          indicatorColor: c.onHero,
+          labelColor: c.textDark,
+          unselectedLabelColor: c.textMedium,
+          indicatorColor: c.textDark,
+          indicatorSize: TabBarIndicatorSize.label,
           dividerColor: Colors.transparent,
+          overlayColor: WidgetStatePropertyAll(c.textDark.withValues(alpha: 0.06)),
         ),
       ),
       child: SizedBox(height: child.preferredSize.height, child: child),
