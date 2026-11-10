@@ -97,13 +97,13 @@ class AppHarmony {
 
   final Color base;
 
-  /// About 35° away: the colour most of the gradient mixes with.
+  /// About 25° away: the colour most of the gradient mixes with (close, so the main colour still leads).
   final Color near;
 
-  /// About 75° away: a second, clearly different hue.
+  /// About 55° away: a second, clearly different hue.
   final Color far;
 
-  /// A deep tone about 110° away, which gives the surface depth without going grey.
+  /// A deep tone about 90° away, which gives the surface depth without going grey.
   final Color depth;
 
   /// The contrasting highlight.
@@ -125,9 +125,9 @@ class AppHarmony {
     final base = safe(main);
     return AppHarmony(
       base,
-      turn(36, 0.38),
-      turn(78, 0.38),
-      turn(112, dark ? 0.14 : 0.22),
+      turn(26, 0.38),
+      turn(56, 0.36),
+      turn(88, dark ? 0.14 : 0.22),
       safe(spark ?? HSLColor.fromAHSL(1, (h.hue + 150) % 360, 0.8, 0.42).toColor()),
     );
   }

@@ -434,9 +434,9 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     colors: () {
       final h = AppHarmony.of(stops[1], onHero, min: _kBrandInk, dark: isDark);
       return [
-        ensureContrast(Color.lerp(stops[1], h.far, 0.75)!, [onHero], min: _kBrandInk),
         stops[1],
-        ensureContrast(Color.lerp(stops[1], h.near, 0.9)!, [onHero], min: _kBrandInk),
+        ensureContrast(Color.lerp(stops[1], h.near, 0.7)!, [onHero], min: _kBrandInk),
+        ensureContrast(Color.lerp(stops[1], h.far, 0.6)!, [onHero], min: _kBrandInk),
       ];
     }(),
     stops: const [0, 0.5, 1],

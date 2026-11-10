@@ -96,9 +96,9 @@ abstract final class AppMesh {
       begin: AlignmentDirectional(-1, tilt),
       end: AlignmentDirectional(1, -tilt * 0.7),
       colors: [
-        ensureContrast(Color.lerp(h.base, h.far, 0.75)!, [c.onHero], min: _inkContrast),
         h.base,
-        ensureContrast(Color.lerp(h.base, h.near, 0.9)!, [c.onHero], min: _inkContrast),
+        ensureContrast(Color.lerp(h.base, h.near, 0.7)!, [c.onHero], min: _inkContrast),
+        ensureContrast(Color.lerp(h.base, h.far, 0.6)!, [c.onHero], min: _inkContrast),
       ],
       stops: const [0, 0.5, 1],
     );
@@ -122,9 +122,9 @@ abstract final class AppMesh {
     return AppMeshSpec._(
       wash ? null : h.base,
       [
-        AppMeshBlob(blob(h.near, Offset(between(0.7, 1.05), between(-0.2, 0.3)), between(0.8, 1.05), 1), -0.10, -0.16),
-        AppMeshBlob(blob(h.far, Offset(between(0.42, 0.72), between(0.75, 1.2)), between(0.55, 0.75), 0.78), 0.08, -0.22),
-        AppMeshBlob(blob(h.depth, Offset(between(-0.1, 0.22), between(0.8, 1.25)), between(0.55, 0.78), 0.62), 0.12, -0.10),
+        AppMeshBlob(blob(h.near, Offset(between(0.7, 1.05), between(-0.2, 0.3)), between(0.6, 0.85), 0.8), -0.10, -0.16),
+        AppMeshBlob(blob(h.far, Offset(between(0.42, 0.72), between(0.75, 1.2)), between(0.45, 0.65), 0.55), 0.08, -0.22),
+        AppMeshBlob(blob(h.depth, Offset(between(-0.1, 0.22), between(0.8, 1.25)), between(0.45, 0.65), 0.45), 0.12, -0.10),
         AppMeshBlob(blob(h.spark, Offset(between(0.82, 1.08), between(0.72, 1.1)), between(0.28, 0.42), 0.8), -0.06, -0.26),
         AppMeshBlob(blob(Color.lerp(h.base, h.near, 0.5)!, Offset(between(0.2, 0.5), between(-0.3, 0.05)), between(0.45, 0.65), 0.7), 0.14, -0.08),
       ],
