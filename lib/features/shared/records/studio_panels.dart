@@ -296,7 +296,7 @@ class StudioEditPanel extends StatelessWidget {
         textDirection: TextDirection.ltr,
         child: LayoutBuilder(builder: (context, box) {
           // one row of six when it fits (a 48 px target each), else two rows of three
-          final perRow = box.maxWidth >= 6 * 48 + 5 * 6 ? 6 : 3;
+          final perRow = box.maxWidth >= 6 * 62 + 5 * 6 ? 6 : 3;
           final rows = <Widget>[];
           for (var i = 0; i < studioClipSpeeds.length; i += perRow) {
             rows.add(Padding(

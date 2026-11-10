@@ -44,6 +44,15 @@ Future<bool> openMaterialStudio(BuildContext? context,
     settings: const RouteSettings(name: '/materials/studio'),
     builder: (_) => MaterialStudioPage(sessionId: sessionId, materialId: materialId, api: api),
   );
+  // a nested navigator (the role shell's): the player goes and the Studio opens over the whole app on the root one,
+  // both from NavigatorStates (never a context the pop takes away); Back then lands on the course page
+  final root = Navigator.maybeOf(nav.context, rootNavigator: true) ?? nav;
+  if (replaceTop && !identical(root, nav)) {
+    nav.pop();
+    final changed = await root.push<bool>(route);
+    materialStudioRevision.value++;
+    return changed == true;
+  }
   final changed = await (replaceTop ? nav.pushReplacement<bool, Object?>(route) : nav.push<bool>(route));
   materialStudioRevision.value++;
   return changed == true;
