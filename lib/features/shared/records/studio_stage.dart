@@ -12,8 +12,8 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
-import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../admin/admin_common.dart' show t;
 import 'studio_project.dart';
@@ -267,7 +267,12 @@ class _StudioOverlayLayerState extends State<StudioOverlayLayer> {
                   final gx = (c.dx - fw / 2).abs() < fw * 0.015, gy = (c.dy - fh / 2).abs() < fh * 0.015;
                   if (gx) c = Offset(fw / 2, c.dy);
                   if (gy) c = Offset(c.dx, fh / 2);
-                  if (gx != _guideX || gy != _guideY) setState(() => (_guideX, _guideY) = (gx, gy));
+                  if (gx != _guideX || gy != _guideY) {
+                    setState(() {
+                      _guideX = gx;
+                      _guideY = gy;
+                    });
+                  }
                   w.onMove?.call(o.id, (c.dx / fw).clamp(0.0, 1.0), (c.dy / fh).clamp(0.0, 1.0));
                 },
           onPanEnd: !w.editing

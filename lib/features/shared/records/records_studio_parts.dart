@@ -780,42 +780,6 @@ class _Choices extends StatelessWidget {
       );
 }
 
-/// A big time with its caption; [lit] is the one that says the result.
-class _Readout extends StatelessWidget {
-  const _Readout({super.key, required this.label, required this.value, this.lit = false});
-
-  final String label;
-  final String value;
-  final bool lit;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xs),
-      decoration: BoxDecoration(
-        color: lit ? c.primaryTint : c.inputBg,
-        borderRadius: AppRadius.chipAll,
-      ),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text(label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: appText(11, c: c.textMedium, h: 1.3)),
-        const SizedBox(height: 2),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(value,
-              textDirection: TextDirection.ltr,
-              maxLines: 1,
-              style: _tabular(appText(16, w: FontWeight.w700, c: c.textDark, h: 1.2))),
-        ),
-      ]),
-    );
-  }
-}
-
 /// Now against the new file's ceiling: the bar is the ceiling, the tick is today's size.
 class _SizeMeter extends StatelessWidget {
   const _SizeMeter({required this.now, required this.next});
@@ -865,9 +829,6 @@ class StudioToolPanel extends StatelessWidget {
     this.merge = const [],
     this.enabled = true,
     this.showImages = true,
-    this.onRange,
-    this.onAt,
-    this.onSpeed,
     this.onQuality,
     this.onPickCover,
     this.onRemoveCover,
@@ -1353,19 +1314,22 @@ class StudioJobCard extends StatelessWidget {
     final c = context.colors;
     final at = math.max(0, studioJobStages.indexOf(r.status == 'uploading' ? 'uploading' : (r.stage ?? 'queued')));
     return Row(children: [
-      for (final (i, s) in studioJobStages.indexed) ...[
-        if (i > 0)
-          Expanded(
-            child: Container(height: 2, margin: const EdgeInsets.symmetric(horizontal: 3), color: i <= at ? c.primary.withValues(alpha: c.isDark ? 0.7 : 0.5) : c.divider),
-          ),
-        Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(i < at ? Icons.check_circle_rounded : (i == at ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded),
-              size: 14, color: i <= at ? (c.isDark ? c.textDark : c.primary) : c.textLight),
-          const SizedBox(width: 3),
-          Text(studioStageLabel(s),
-              style: appText(11, w: i == at ? FontWeight.w700 : FontWeight.w500, c: i == at ? c.textDark : c.textMedium)),
-        ]),
-      ],
+      for (final (i, s) in studioJobStages.indexed)
+        Expanded(
+          child: Row(children: [
+            Icon(i < at ? Icons.check_circle_rounded : (i == at ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded),
+                size: 14, color: i <= at ? (c.isDark ? c.textDark : c.primary) : c.textLight),
+            const SizedBox(width: 3),
+            Flexible(
+              child: Text(studioStageLabel(s),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: appText(11, w: i == at ? FontWeight.w700 : FontWeight.w500, c: i == at ? c.textDark : c.textMedium)),
+            ),
+            if (i < studioJobStages.length - 1)
+              Expanded(child: Container(height: 2, margin: const EdgeInsets.symmetric(horizontal: 3), color: i < at ? c.primary.withValues(alpha: c.isDark ? 0.7 : 0.5) : c.divider)),
+          ]),
+        ),
     ]);
   }
 
@@ -1377,7 +1341,7 @@ class StudioJobCard extends StatelessWidget {
             ? (Icons.check_rounded, c.success)
             : (Icons.movie_filter_rounded, c.isDark ? c.textDark : c.primary);
     final dl = downloading[r.id];
-    final eta = studioEtaText(eta[r.id]);
+    final etaText = studioEtaText(eta[r.id]);
     return Container(
       padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll),
@@ -1411,7 +1375,7 @@ class StudioJobCard extends StatelessWidget {
           const SizedBox(height: AppSpace.xxs),
           Row(children: [
             Expanded(
-              child: Text([recordStatusLabel(r), ?eta].join(' · '),
+              child: Text([recordStatusLabel(r), ?etaText].join(' · '),
                   maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textMedium, h: 1.3)),
             ),
             if (onCancel != null)

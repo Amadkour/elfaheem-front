@@ -16,7 +16,6 @@
 library;
 
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/gestures.dart';
@@ -391,7 +390,7 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
         w.onTrim?.call(i, false, src);
       case StudioGrip.overlay:
         final len = _gripB - _gripA;
-        var a = (_gripA + dt).clamp(0.0, math.max(0.0, _dur - len));
+        var a = (_gripA + dt).clamp(0.0, math.max(0.0, _dur - len)).toDouble();
         final sa = _snapped(a, except: _gripOverlay);
         if (_snapAt != null) {
           a = sa;

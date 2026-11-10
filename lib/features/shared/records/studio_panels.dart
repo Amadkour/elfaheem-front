@@ -9,6 +9,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
@@ -460,10 +461,13 @@ class _StudioOverlayPanelState extends State<StudioOverlayPanel> {
                   Icon(o.isText ? Icons.title_rounded : Icons.image_outlined, size: AppIconSize.md, color: c.textMedium),
                 const SizedBox(width: AppSpace.xs),
                 Expanded(child: Text(o.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w600, c: c.textDark))),
-                if (widget.edit.overlayOut(o) case final s?)
-                  Text('${studioTimecode(s.$1)} – ${studioTimecode(s.$2)}', textDirection: TextDirection.ltr, style: _tab(appText(11.5, c: c.textMedium)))
-                else
-                  Text(t('في جزء محذوف', 'In a removed part'), style: appText(11.5, c: c.warning)),
+                const SizedBox(width: AppSpace.xs),
+                Flexible(
+                  child: widget.edit.overlayOut(o) != null
+                      ? Text('${mmssShort(widget.edit.overlayOut(o)!.$1)} – ${mmssShort(widget.edit.overlayOut(o)!.$2)}',
+                          maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: _tab(appText(11.5, c: c.textMedium)))
+                      : Text(t('في جزء محذوف', 'In a removed part'), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.warning)),
+                ),
               ]),
             ),
           ),

@@ -210,7 +210,7 @@ void main() {
             ),
           ),
           scale: 1));
-      await t.pumpAndSettle();
+      await t.pump(const Duration(seconds: 1));
       expect(find.text('64%'), findsOneWidget);
       expect(find.textContaining('About 3 min left'), findsOneWidget);
       await t.tap(find.byKey(const ValueKey('studio.job.cancel.9')));

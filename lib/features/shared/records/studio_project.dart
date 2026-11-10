@@ -725,7 +725,7 @@ Map<String, dynamic> studioRenderParams(StudioEdit e,
     'overlays': overlays,
     if (e.height != null) 'height': e.height,
     if (e.level != null) 'level': e.level!.wire,
-    if (history != null) 'history': history,
+    'history': ?history,
     if ((title ?? '').trim().isNotEmpty) 'title': title!.trim(),
   };
 }

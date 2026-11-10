@@ -21,7 +21,6 @@ library;
 
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:dio/dio.dart';
@@ -29,7 +28,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
@@ -356,7 +355,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
   /// The playhead to OUTPUT second [out] (and the player to that frame).
   void _seek(double out) {
     final e = _edit;
-    final to = out.clamp(0.0, math.max(0.0, e.duration));
+    final to = out.clamp(0.0, math.max(0.0, e.duration)).toDouble();
     final h = e.hit(to);
     setState(() {
       _pos = to;
@@ -663,7 +662,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       showAppNotice(t('حتى $studioMaxOverlays نصاً وصورة', 'Up to $studioMaxOverlays texts and pictures'), error: true);
       return;
     }
-    final a = _pos.clamp(0.0, math.max(0.0, e.duration - 0.5));
+    final a = _pos.clamp(0.0, math.max(0.0, e.duration - 0.5)).toDouble();
     final b = math.min(e.duration, a + 5);
     StudioOverlay o;
     if (kind == StudioOverlayKind.text) {
