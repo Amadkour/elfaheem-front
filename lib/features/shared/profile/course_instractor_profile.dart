@@ -252,7 +252,7 @@ class _WideLayout extends StatelessWidget {
         // Right scrollable column
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(12, 0, 24, 40),
+            padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 24, 40),
             child: FadeTransition(
               opacity: fadeIn,
               child: SlideTransition(

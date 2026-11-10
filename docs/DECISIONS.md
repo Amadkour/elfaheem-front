@@ -3733,3 +3733,23 @@ Full text in `../back/docs/DECISIONS.md`. D-410: the catalog grows to 40 more OF
 **What "real" proves.** Numbers carry no checksum and certificates no signature, so "real" means a matching record exists in NextBrain's database and nothing more: it cannot tell that the words on a paper or PDF were not edited around a real number. The page says so and asks the reader to compare the name and details. The only integrity check is the number's shape and alphabet.
 
 **Consequences.** `valid` is now false for an expired certificate, so an app older than this reads an expired one as "revoked" (no certificate has an expiry until an issuer sets one). `course.id` left the public answer. The expiry is not printed on the certificate unless the design has a column for it. Lists issued from the saved-lists page have no expiry control in the app yet; the API takes it.
+
+## D-560 .. D-562 — Student / parent / teacher pages under the one shell chrome (premium round 2, sweep 1) · 2026-11-10 · accepted
+
+**D-560 — A `useWebCard` page runs the full height and shows the pattern only in a real margin.** Under the shell's
+sheet (D-551) the old card kept a 12 px margin top and bottom, so every scrolling page stopped short of the window's
+edge and its content was cut by an invisible line, and the page pattern showed as a thin noisy strip beside a card of
+the same colour. `BasePage(useWebCard: true)` now draws the body edge to edge in height, at its width role, and paints
+the pattern only when each side margin is at least 64 px (a 1920 window around a 1440 page).
+
+**D-561 — One title per screen on a tab's first page.** The analytics pages' own 28 px title (`AnPageHeader`) repeated
+the shell bar's title right under it: under the bar only its sentence ("How your learning is going") stays, a little
+larger. The parent tabs drew the calendar and messages again under the bar: only on phones now (the bar carries them
+from the rail up). Analytics (student, course) take the `wide` role like the teacher's, the course lists' filter keeps
+whole labels (its own row below 900 px, up to 520 px beside the search), and the home's "Join your university" card
+and its error banner sit on the same 20 px inset as the sections above them instead of 20 px wider (student) or a
+narrow 860 px column (teacher).
+
+**D-562 — A late Firebase never leaves a grey screen.** `RemoteConfigService` read a `late` field that is set only
+once Firebase has started; when start-up timed that step out (a slow device or network) the app root's first build
+threw and the web app stayed grey. The getters now answer the defaults until it is ready.

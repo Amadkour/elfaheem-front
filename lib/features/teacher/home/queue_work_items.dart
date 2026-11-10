@@ -546,7 +546,7 @@ class ScheduleSessionCard extends StatelessWidget {
                         Expanded(
                           flex: 8,
                           child: Padding(
-                            padding: const EdgeInsets.fromLTRB(14, 15, 10, 10),
+                            padding: const EdgeInsetsDirectional.fromSTEB(14, 15, 10, 10),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
@@ -731,7 +731,7 @@ class _CountdownBar extends StatelessWidget {
           ...List.generate(3, (i) {
             final lit = display.inMinutes < (30 - i * 10);
             return Container(
-              margin: const EdgeInsets.only(left: 4),
+              margin: const EdgeInsetsDirectional.only(start: 4),
               width: 6,
               height: 6,
               decoration: BoxDecoration(

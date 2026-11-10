@@ -407,7 +407,7 @@ class HomeSectionTitle extends StatelessWidget {
       );
     }
     return Padding(
-      padding: padding ?? const EdgeInsets.fromLTRB(20, 0, 12, 10),
+      padding: padding ?? const EdgeInsetsDirectional.fromSTEB(20, 0, 12, 10), // the start side follows the language (an Arabic title sat 8 px past the cards' edge)
       // The title takes every pixel the action leaves (a Flexible + Spacer pair split the row in halves: the title
       // was cut at half the width and the action floated mid-row instead of sitting at the end).
       child: LayoutBuilder(builder: (context, box) => Row(children: [
@@ -1735,7 +1735,7 @@ class _HomeSectionState extends State<HomeSection> {
                     : w.subtitle,
             actionLabel: folded && !w.empty ? null : w.actionLabel,
             onAction: folded && !w.empty ? null : w.onAction,
-            padding: w.titlePadding ?? const EdgeInsets.fromLTRB(20, 0, 12, 4),
+            padding: w.titlePadding ?? const EdgeInsetsDirectional.fromSTEB(20, 0, 12, 4),
             collapsed: folded,
             quiet: quiet,
             onToggle: w.foldable ? () => HomeFolds.instance.toggle(w.id, empty: w.empty) : null,

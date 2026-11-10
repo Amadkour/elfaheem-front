@@ -294,7 +294,7 @@ class _AlertCard extends StatelessWidget {
                   Container(width: 5, color: col),
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 12, 4, 8),
+                      padding: const EdgeInsetsDirectional.fromSTEB(12, 12, 4, 8),
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Row(children: [
                           Container(

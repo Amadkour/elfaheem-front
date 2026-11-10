@@ -638,7 +638,7 @@ class _CourseCard extends StatelessWidget {
       onTap: () => onOpen(0),
       child: Column(children: [
         Container(
-          padding: const EdgeInsets.fromLTRB(16, 14, 14, 10),
+          padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 14, 10),
           decoration: BoxDecoration(
             gradient: AppGradients.wash(context),
           ),
