@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_buttons.dart';
+import 'package:flutter_education_app/design/app_inputs.dart' show AppField;
 import 'package:flutter_education_app/design/app_search_field.dart';
 import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/features/admin/admin_data_lab_page.dart';
@@ -46,7 +47,9 @@ void main() {
   AppButton primary(WidgetTester tester) =>
       tester.widgetList<AppButton>(find.byType(AppButton)).firstWhere((b) => b.variant == AppButtonVariant.primary);
 
-  Finder field(String label) => find.byWidgetPredicate((w) => w is TextField && w.decoration?.labelText == label);
+  // an AppField draws its label ABOVE the well (app_inputs.dart), so the TextField is found through its AppField
+  Finder field(String label) => find.descendant(
+      of: find.ancestor(of: find.text(label), matching: find.byType(AppField)), matching: find.byType(TextField));
 
   testWidgets('Platform settings: an invalid fee shows an error and blocks Save; a valid one saves', (tester) async {
     await open(tester, const AdminPlatformSettingsPage());

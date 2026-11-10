@@ -50,6 +50,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
+import 'app_buttons.dart' show appKeyboardFocus;
+import 'app_contrast.dart' show ensureContrast;
+import 'app_inputs.dart';
+import 'app_search_field.dart';
 import 'app_tokens.dart';
 import '../features/admin/admin_common.dart' as admin;
 import '../features/org/org_ui.dart' as org;
@@ -63,6 +67,7 @@ export 'app_gradients.dart';
 export 'app_buttons.dart';
 export 'app_badges.dart';
 export 'app_tabs.dart';
+export 'app_inputs.dart';
 export 'app_search_field.dart';
 export 'app_pagination.dart';
 export 'app_data_table.dart';
@@ -104,7 +109,8 @@ typedef AppAvatar = dl.DlAvatar;
 typedef AppTag = dl.DlTag;
 typedef AppSectionTitle = dl.DlSectionTitle;
 typedef AppPrimaryButton = dl.DlPrimaryButton;
-typedef AppField = dl.DlField;
+// AppField is the kit's own text field now (app_inputs.dart, exported above): the same constructor as the Data
+// Lab's DlField, in the Warm Editorial field language (label above, warm well, the 2 px ring).
 typedef AppChoiceChip = dl.DlChoiceChip;
 typedef AppStatChip = dl.DlStatChip;
 typedef AppShimmer = dl.DlShimmer;
@@ -126,7 +132,8 @@ typedef AppBadgePill = org.OrgPill;
 typedef AppInfoRow = org.OrgInfoRow;
 typedef AppAsync = org.OrgAsync;
 typedef AppSwitchRow = org.OrgSwitchRow;
-typedef AppPicker<T> = org.OrgPickField<T>;
+// AppPicker is the kit's own "choose one" field now (below): the same constructor as the org kit's OrgPickField,
+// drawn like AppField and AppDropdown.
 typedef AppAudiencePicker = org.OrgAudiencePicker;
 
 // ── Sheets, confirmations, toasts ──────────────────────────────────────────
@@ -216,10 +223,210 @@ class AppListSkeleton extends StatelessWidget {
   }
 }
 
-// ── Dropdown: ONE look for every "choose one" field in the app ─────────────
+
+// ── Choose one: AppDropdown · AppPicker share ONE sheet and ONE well ────────
+/// One row of a pick sheet.
+class _PickOption<T> {
+  const _PickOption(this.value, this.child, this.text, {this.enabled = true});
+  final T? value;
+  final Widget child;
+  final String text;
+  final bool enabled;
+}
+
+class _Pick<T> {
+  const _Pick(this.value);
+  final T? value;
+}
+
+/// The sheet behind [AppDropdown] and [AppPicker]: the title, a search box once the list is long, 48 px rows with a
+/// check on the current one, the kit's radius and type.
+Future<_Pick<T>?> _showPickSheet<T>(
+  BuildContext context, {
+  required String title,
+  required List<_PickOption<T>> options,
+  required T? current,
+}) {
+  var query = '';
+  return showAppSheet<_Pick<T>>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+        final c = ctx.colors;
+        final shown = options.where((o) => query.isEmpty || o.text.toLowerCase().contains(query.toLowerCase())).toList();
+        final rows = <Widget>[
+          for (final o in shown)
+            _PickRow(
+              selected: o.value == current,
+              enabled: o.enabled,
+              onTap: () => Navigator.pop(ctx, _Pick<T>(o.value)),
+              child: o.child,
+            ),
+          if (shown.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(AppSpace.lg),
+              child: Text(admin.t('لا نتائج', 'No results'),
+                  textAlign: TextAlign.center, style: AppType.body(ctx).copyWith(color: c.textMedium)),
+            ),
+        ];
+        return AppSheetContent(
+          title: title,
+          children: [
+            if (options.length > 8)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                child: AppSearchField(
+                  hint: admin.t('ابحث', 'Search'),
+                  debounce: const Duration(milliseconds: 120),
+                  onChanged: (q) => set(() => query = q),
+                ),
+              ),
+            ...rows,
+          ],
+        );
+      }));
+}
+
+class _PickRow extends StatelessWidget {
+  const _PickRow({required this.selected, required this.enabled, required this.onTap, required this.child});
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ink = selected ? ensureContrast(c.primary, [Color.alphaBlend(c.primaryTint, c.cardBg)]) : c.textDark;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.xxs),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          borderRadius: AppRadius.controlAll,
+          child: Opacity(
+            opacity: enabled ? 1 : 0.45,
+            child: Container(
+              constraints: const BoxConstraints(minHeight: AppTouch.min),
+              padding: const EdgeInsetsDirectional.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+              decoration: BoxDecoration(color: selected ? c.primaryTint : null, borderRadius: AppRadius.controlAll),
+              child: Row(children: [
+                Expanded(
+                  child: DefaultTextStyle.merge(
+                    style: (selected ? AppType.bodyStrong(context) : AppType.row(context)).copyWith(color: ink),
+                    child: child,
+                  ),
+                ),
+                if (selected) ...[
+                  const SizedBox(width: AppSpace.sm),
+                  Icon(Icons.check_circle_rounded, size: AppIconSize.md, color: ink),
+                ],
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The well of a "choose one" field: the kit's decoration, the value in the field's text style, a chevron at the
+/// end, the 2 px ring while the well has keyboard focus. The label (when there is one) sits above it.
+class _PickWell extends StatefulWidget {
+  const _PickWell({
+    required this.label,
+    required this.decoration,
+    required this.isEmpty,
+    required this.enabled,
+    required this.onTap,
+    required this.child,
+    this.bottomGap = 0,
+  });
+
+  final String? label;
+  final InputDecoration decoration;
+  final bool isEmpty;
+  final bool enabled;
+  final VoidCallback onTap;
+  final Widget child;
+  final double bottomGap;
+
+  @override
+  State<_PickWell> createState() => _PickWellState();
+}
+
+class _PickWellState extends State<_PickWell> {
+  bool _focus = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final well = Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        borderRadius: AppRadius.controlAll,
+        onTap: widget.enabled ? widget.onTap : null,
+        onFocusChange: (v) => setState(() => _focus = v),
+        splashFactory: NoSplash.splashFactory,
+        highlightColor: Colors.transparent,
+        hoverColor: Colors.transparent,
+        focusColor: Colors.transparent,
+        mouseCursor: widget.enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        child: InputDecorator(
+          decoration: widget.decoration,
+          isEmpty: widget.isEmpty,
+          isFocused: _focus && appKeyboardFocus(),
+          child: DefaultTextStyle.merge(
+            style: appFieldTextStyle(context),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            child: widget.child,
+          ),
+        ),
+      ),
+    );
+    final label = widget.label;
+    return Padding(
+      padding: EdgeInsets.only(bottom: widget.bottomGap),
+      child: Semantics(
+        container: true,
+        button: true,
+        enabled: widget.enabled,
+        label: label,
+        child: label == null
+            ? well
+            : Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                AppFieldLabel(label),
+                well,
+              ]),
+      ),
+    );
+  }
+}
+
+/// The kit's decoration for a pick well, keeping what a caller's own [InputDecoration] said about the hint, helper,
+/// error, prefix, density and padding — never its label (drawn above) or its borders (the kit's).
+InputDecoration _pickDecoration(BuildContext context, InputDecoration? given, {required bool enabled}) {
+  final c = context.colors;
+  final deco = appFieldDecoration(
+    context,
+    hint: given?.hintText,
+    helper: given?.helperText,
+    errorText: given?.errorText,
+    dense: given?.isDense ?? false,
+    enabled: enabled,
+    suffix: Icon(Icons.expand_more_rounded, size: AppIconSize.lg, color: enabled ? c.textMedium : c.textLight),
+  );
+  return deco.copyWith(
+    prefixIcon: given?.prefixIcon,
+    prefix: given?.prefix,
+    prefixText: given?.prefixText,
+    contentPadding: given?.contentPadding,
+    counterText: given?.counterText,
+  );
+}
+
 /// Drop-in replacement for DropdownButtonFormField / DropdownButton (same `items`, `onChanged`, `decoration`,
-/// `initialValue` / `value`, `hint`): looks like every other field (input theme), opens a bottom sheet with
-/// the items (search when the list is long), a check on the current one, safe-area and RTL/LTR aware.
+/// `initialValue` / `value`, `hint`): looks like every other field (the kit's well; a `labelText` in the decoration is
+/// drawn ABOVE the well), opens a bottom sheet with the items (search when the list is long), a check on the current
+/// one, safe-area and RTL/LTR aware.
 class AppDropdown<T> extends StatefulWidget {
   const AppDropdown({
     super.key,
@@ -261,45 +468,12 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
   Future<void> _open() async {
     final items = widget.items ?? const [];
     final label = widget.decoration?.labelText ?? widget.decoration?.hintText ?? '';
-    var query = '';
-    final picked = await showAppSheet<_Pick<T>>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
-          final c = ctx.colors;
-          final shown = items
-              .where((i) => query.isEmpty || _plain(i.child).toLowerCase().contains(query.toLowerCase()))
-              .toList();
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              if (label.isNotEmpty) AppSheetHeader(label),
-              if (items.length > 8)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: TextField(
-                    onChanged: (q) => set(() => query = q),
-                    decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), isDense: true),
-                  ),
-                ),
-              Flexible(
-                child: ListView(shrinkWrap: true, children: [
-                  for (final i in shown)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Material(type: MaterialType.transparency, child: ListTile(
-                        enabled: i.enabled,
-                        onTap: () => Navigator.pop(ctx, _Pick<T>(i.value)),
-                        title: DefaultTextStyle.merge(
-                          style: appText(14, w: i.value == _value ? FontWeight.w800 : FontWeight.w500, c: c.textDark),
-                          child: i.child,
-                        ),
-                        trailing: i.value == _value ? Icon(Icons.check_circle_rounded, color: c.primary) : null,
-                        tileColor: i.value == _value ? c.primary.withValues(alpha: 0.07) : null,
-                      )),
-                    ),
-                ]),
-              ),
-            ]),
-          );
-        }));
+    final picked = await _showPickSheet<T>(
+      context,
+      title: label,
+      options: [for (final i in items) _PickOption<T>(i.value, i.child, _plain(i.child), enabled: i.enabled)],
+      current: _value,
+    );
     if (picked == null || !mounted) return;
     setState(() => _value = picked.value);
     widget.onChanged?.call(picked.value);
@@ -307,32 +481,79 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final items = widget.items ?? const [];
     final sel = items.where((i) => i.value == _value).toList();
     final enabled = widget.enabled && widget.onChanged != null && items.isNotEmpty;
-    final deco = (widget.decoration ?? const InputDecoration()).copyWith(
-      suffixIcon: Icon(Icons.expand_more_rounded, color: c.textLight),
+    return _PickWell(
+      label: widget.decoration?.labelText,
+      decoration: _pickDecoration(context, widget.decoration, enabled: enabled),
+      isEmpty: sel.isEmpty && widget.hint == null,
       enabled: enabled,
-    );
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: enabled ? _open : null,
-      child: InputDecorator(
-        decoration: deco,
-        isEmpty: sel.isEmpty && widget.hint == null,
-        child: DefaultTextStyle.merge(
-          style: appText(14, w: FontWeight.w600, c: c.textDark),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          child: sel.isNotEmpty ? sel.first.child : (widget.hint ?? const SizedBox.shrink()),
-        ),
-      ),
+      onTap: _open,
+      child: sel.isNotEmpty ? sel.first.child : (widget.hint ?? const SizedBox.shrink()),
     );
   }
 }
 
-class _Pick<T> {
-  const _Pick(this.value);
+/// A "choose one" field over a `value → text` map: the label above the well, a tap opens the pick sheet (search for
+/// long lists), a "None" row when [allowNone], a check on the current value. The same on phones, tablets and web.
+/// (The org kit's `OrgPickField` with the kit's look; 12 px under it like every field.)
+class AppPicker<T> extends StatelessWidget {
+  const AppPicker({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+    this.allowNone = false,
+    this.noneLabel,
+    this.icon,
+    this.enabled = true,
+    this.hint,
+  });
+
+  final String label;
   final T? value;
+  final Map<T, String> options; // value → shown text (insertion order is kept)
+  final ValueChanged<T?> onChanged;
+  final bool allowNone;
+  final String? noneLabel;
+  final IconData? icon;
+  final bool enabled;
+
+  /// Shown in the well while nothing is chosen.
+  final String? hint;
+
+  String get _none => noneLabel ?? admin.t('بدون', 'None');
+
+  Future<void> _open(BuildContext context) async {
+    final picked = await _showPickSheet<T>(
+      context,
+      title: label,
+      options: [
+        if (allowNone) _PickOption<T>(null, Text(_none), _none),
+        for (final e in options.entries) _PickOption<T>(e.key, Text(e.value), e.value),
+      ],
+      current: value,
+    );
+    if (picked != null) onChanged(picked.value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = value == null ? (allowNone ? _none : '') : (options[value] ?? '');
+    return _PickWell(
+      label: label,
+      bottomGap: AppSpace.sm,
+      decoration: _pickDecoration(
+        context,
+        InputDecoration(hintText: hint, prefixIcon: icon == null ? null : Icon(icon, size: AppIconSize.md)),
+        enabled: enabled,
+      ),
+      isEmpty: text.isEmpty,
+      enabled: enabled,
+      onTap: () => _open(context),
+      child: Text(text),
+    );
+  }
 }

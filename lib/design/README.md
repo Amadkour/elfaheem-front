@@ -71,10 +71,10 @@ AppGradients.chart(context)                               // a bar / area fill
 |---|---|---|
 | page header | `AppPageHeader(title:, subtitle:, icon:, primaryAction:, actions:, search:, onRefresh:, updatedAt:, bottom:)` | `app_page_header.dart` |
 | section | `AppSection(title:, trailing:, child:)` | `app_page_header.dart` |
-| buttons | `AppButton.primary / secondary / tonal / ghost / danger(label:, onPressed:, icon:, busy:)` · `AppIconButton(icon:, tooltip:, badge:)` · `AppButtonRow(primary:, secondary:)` | `app_buttons.dart` |
-| text input | `AppField` · `AppEmailField` / `AppPasswordField` / `AppPhoneField` / `AppUrlField` | `app_kit.dart`, `app_inputs.dart` |
+| buttons | `AppButton.primary / secondary / tonal / ghost / danger(label:, onPressed:, icon:, busy:)` · `AppIconButton(icon:, tooltip:, badge:)` · `AppButtonRow(primary:, secondary:)` — see §3a | `app_buttons.dart` |
+| text input | `AppField(controller:, label:, hint:, icon:, helper:, errorText:)` · `AppEmailField` / `AppPasswordField` / `AppPhoneField` / `AppUrlField` · `AppFieldLabel` + `appFieldDecoration` for a raw `TextFormField` — see §3a | `app_inputs.dart` |
 | search | `AppSearchField(onChanged:)` (350 ms debounce, clear, Esc; found by Ctrl+K and "/") | `app_search_field.dart` |
-| select | `AppDropdown<T>` · `AppPicker<T>` | `app_kit.dart` |
+| select | `AppDropdown<T>(decoration: InputDecoration(labelText:), items:, value:, onChanged:)` · `AppPicker<T>(label:, value:, options:, onChanged:)` — one pick sheet | `app_kit.dart` |
 | on/off | `AppSwitch` · `AppSwitchTile` (never `Switch`) | `app_switch.dart` |
 | table | `AppDataTable<T>(columns:, rows:, state:, onSearch:, filters:, sortKey:, onSort:, pagination:, rowActions:)` — a real table on wide screens, cards on phones | `app_data_table.dart` |
 | pagination | `AppPagination(page:, pageCount:, onPage:, total:, pageSize:)` | `app_pagination.dart` |
@@ -94,6 +94,35 @@ AppGradients.chart(context)                               // a bar / area fill
 | settings page | `AppSettingsPage` + `AppSettingsGroup` / `AppSettingsTile` | `app_settings.dart` |
 | role dashboard | `AppShell(items: [DashboardItem(…)])` | `app_shell.dart` |
 | table export | `showAppExportSheet(context, AppTableExport(…))` | `app_table_export.dart` |
+
+### 3a. Controls — the field and button language (system.md §4)
+
+Buttons (`app_buttons.dart`): 48 high (`sm` 40 with a 48 hit area, `lg` 56 for a phone's hero action), radius 14,
+24 px padding, the label at 15 · 600, icon 20. `primary` is the SOLID emerald (never a blue, never a decorative
+gradient, no shadow), `secondary` paper with an ink hairline, `tonal` the emerald tint with emerald ink, `ghost` text
+only, `danger` the danger fill (`dangerOutline:` paper + danger hairline). A press scales to 0.97 (`AppPressScale`),
+keyboard focus draws `appFocusRing` — a crisp 2 px ring OUTSIDE the control with a canvas gap — and `busy:` keeps the
+width (the spinner sits over the label). A disabled filled button is a flat neutral well; the others fade to 45 %.
+The theme styles raw Material buttons the same way, `FilledButton.tonal` included (emerald tint, emerald ink).
+
+Fields (`app_inputs.dart`): the label ABOVE the well (`AppFieldLabel`, 13 · 500, `required:` adds the mark), the
+well = `appFieldDecoration` (warm `inputBg` fill, radius 14, hairline at rest, the 2 px ring on focus, danger hairline
+on error, 48 px prefix / suffix boxes), helper and error UNDER the well, the typed text in `appFieldTextStyle` (15).
+Every kit field — `AppField`, the identity fields, `AppNumberField`, `AppSearchField`, `AppDropdown` (its
+`labelText` is drawn above), `AppPicker` — draws from these three, so a form is one row of wells; a raw
+`TextFormField` joins by using them too. The older `MyTextField` / `MyPasswordTextField` / `MySearchBar` /
+`PrimaryButton` wear the same look (their one `label` stays the placeholder because their screens draw the label).
+
+```dart
+AppField(controller: _name, label: 'name_label'.tr, hint: 'name_hint'.tr, icon: Icons.person_rounded, required: true)
+AppDropdown<int>(decoration: InputDecoration(labelText: 'grade'.tr), items: items, value: grade, onChanged: setGrade)
+AppSwitchTile(title: 'reminders'.tr, subtitle: 'ten_minutes_before'.tr, icon: Icons.notifications_active_rounded, value: on, onChanged: setOn)
+AppButtonRow(primary: AppButton.primary(label: 'send'.tr, busy: sending, onPressed: send), secondary: [AppButton.ghost(label: 'cancel'.tr, onPressed: close)])
+```
+
+Switches: the solid emerald track when on, the hairline tone off, a paper knob with a check; a 48 × 48 target, Space /
+Enter toggle it, `AppSwitchTile` is the one Tab stop of its row. Visual review: `flutter test
+test/visual/kit_controls_golden_test.dart --update-goldens` renders every control and state.
 
 ## 4. Examples
 

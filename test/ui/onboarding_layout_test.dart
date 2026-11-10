@@ -68,6 +68,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
     }
     expect(find.textContaining('12'), findsWidgets);
+    // the dropdowns above draw their labels above the well, so the mode chips sit below the 600 px test view
+    await tester.ensureVisible(find.byType(ChoiceChip).at(1));
     await tester.tap(find.byType(ChoiceChip).at(1));
     await tester.pump(const Duration(milliseconds: 400));
     await tester.ensureVisible(find.byType(PrimaryButton));
