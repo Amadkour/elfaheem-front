@@ -73,6 +73,7 @@ export 'app_page_header.dart';
 export 'app_header.dart';
 export 'app_back_button.dart';
 export 'app_side_sheet.dart';
+export 'app_depth.dart';
 export 'app_focus_mode.dart';
 export 'app_number_field.dart';
 export 'app_notice.dart' show showAppNotice;
