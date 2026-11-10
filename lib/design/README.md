@@ -76,18 +76,18 @@ AppGradients.chart(context)                               // a bar / area fill
 | search | `AppSearchField(onChanged:)` (350 ms debounce, clear, Esc; found by Ctrl+K and "/") | `app_search_field.dart` |
 | select | `AppDropdown<T>` · `AppPicker<T>` | `app_kit.dart` |
 | on/off | `AppSwitch` · `AppSwitchTile` (never `Switch`) | `app_switch.dart` |
-| table | `AppDataTable<T>(columns:, rows:, state:, onSearch:, filters:, sortKey:, onSort:, pagination:, rowActions:)` — a real table on wide screens, cards on phones | `app_data_table.dart` |
-| pagination | `AppPagination(page:, pageCount:, onPage:, total:, pageSize:)` | `app_pagination.dart` |
+| table | `AppDataTable<T>(columns:, rows:, state:, onSearch:, filters:, sortKey:, onSort:, pagination:, rowActions:)` — on wide screens one paper surface: the header in the label role, rows parted by warm hairlines, the input tone under the pointer, the primary tint on a selected row; on phones every row is its own paper card on the canvas (D-612) | `app_data_table.dart` |
+| pagination | `AppPagination(page:, pageCount:, onPage:, total:, pageSize:)` — pills: the current page filled with the primary, previous / next outlined | `app_pagination.dart` |
 | card | `AppCard` · `AppActionCard` | `app_kit.dart` |
 | block (D-613) | `AppBlock(tone: AppBlockTone.peach / sky / gold / emerald / paper, child:, hero:, onTap:)` · `AppBlockTone.forKey(id)` · `AppBlock.colorsOf(context)` (ink, muted, faint, `accentInk(c)`) | `app_blocks.dart` |
 | KPI | `AppKpiCard(label:, value:, icon:, delta:, spark:, highlight:)` in an `AppKpiGrid` · `AppStatTile` · `AppTrendTile` | `app_kpi.dart`, `app_charts.dart` |
 | status | `AppStatusBadge(label:, tone: AppTone.success)` · `AppCountBadge(count:)` · `AppBadgePill` | `app_badges.dart` |
 | tabs | `AppTabs(items:, index:, onChanged:)` (pill, gradient selection) · `AppUnderlineTabs` (page sections) | `app_tabs.dart` |
-| drawer | `showAppDrawer(context, title:, builder:, actions:)` — end-side panel on wide, sheet on phones | `app_overlays.dart` |
-| dialog / confirm | `showAppDialog(context, title:, body:, actions:)` · `appConfirm(context, message:, danger:)` | `app_overlays.dart`, `app_kit.dart` |
-| bottom sheet | `showAppSheet(context, (_) => AppSheetContent(title:, children:))` | `app_kit.dart` |
+| drawer | `showAppDrawer(context, title:, builder:, actions:)` — a floating paper panel (radius 28, editorial headline, the warm scrim) that slides in from the end edge on wide windows, a sheet on phones | `app_overlays.dart` |
+| dialog / confirm | `showAppDialog(context, title:, body:, actions:, icon:, danger:)` · `appConfirm(context, message:, danger:, confirmLabel:)` — paper, radius 28, the warm scrim, `AppPopIn`; the dialog has an editorial headline beside a tinted mark, the confirm a centred mark, the message and Cancel · Confirm | `app_overlays.dart`, `app_kit.dart` |
+| bottom sheet | `showAppSheet(context, (_) => AppSheetContent(title:, children:))` — radius 28, a drag handle on phones, `AppSheetHeader` (editorial page title, close button); `showAppModalSheet(context:, builder:)` takes `showModalBottomSheet`'s arguments and keeps the kit's corners, scrim (`appScrimColor`) and motion | `app_kit.dart`, `app_side_sheet.dart` |
 | unsaved changes | `AppUnsavedGuard(dirty: _dirty, child: …)` | `app_overlays.dart` |
-| toast | `showAppNotice(text, error:)` (never a SnackBar) | `app_notice.dart` |
+| toast | `showAppNotice(text, error:, actionLabel:, onAction:)` (never a SnackBar) — ink on paper with an emerald / danger mark; slides down from the top edge and leaves the same way; a drag up or a flick dismisses it | `app_notice.dart` |
 | charts | `AppBarChart` · `AppDonut` · `AppSparkline` · `AppTrendTile` · `AppLegend` | `app_charts.dart` |
 | loading / error / empty | `AppStateView<T>(loading:, error:, data:, builder:)` · `AppLoadingState(shape:)` · `AppErrorState(onRetry:)` · `AppEmpty` · `AppListSkeleton` | `app_states.dart`, `app_kit.dart` |
 | error text | `appErrorMessage(e)` (the server's message, never `'$e'`) | `app_states.dart` |
@@ -179,7 +179,9 @@ sheets; never ease-in on UI. One orchestrated entrance per screen, not a fade-up
 | quiz answer / flashcard | `AppFlip3D(front:, back:, flipped:)` | spring, turns toward the reading end, the reader hears the visible face; crossfade under Reduce motion |
 | lesson / accordion | `AppExpandCard(header:, child:, expanded:, onExpandedChanged:)` | 48 px header button with expanded state, Enter / Space |
 | feedback panel | `AppSlideIn(visible:, child:, from: AppSlideFrom.bottom)` | 260 ms in, 180 ms out; put it where it may overlap |
-| sheet | `showAppSheet` | 280 ms in / 200 ms out (`AppEase.sheet`), drag catches it mid-way, fling dismisses |
+| sheet | `showAppSheet` | 280 ms in / 200 ms out (`AppEase.sheet`), drag catches it mid-way, fling dismisses; the drawer and the side panel slide the same 280 / 200 on `AppEase.out` |
+| dialog / confirm | `showAppDialog` · `appConfirm` | the panel settles from 96 % (`AppPopIn`, 240 ms) while the route fades the warm scrim |
+| toast | `showAppNotice` | 260 ms down from the top edge on `AppEase.out`, 180 ms back up; a drag follows the finger 1:1 (friction below rest) and a flick or half its height dismisses it |
 
 ```dart
 AppFlip3D(flipped: _revealed, front: _QuestionCard(q), back: _AnswerCard(q))

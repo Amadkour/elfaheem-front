@@ -5,6 +5,10 @@
 // a "1-20 of 345" summary. Controlled: the page owns [page] (1-based); every tap calls [onPage]. Chevrons mirror in
 // Arabic by themselves, so they are never picked by language. Never overflows: the parts wrap and the controls
 // scale down.
+//
+// Look (D-612): the pages are pills — the current one filled with the primary (selection, system.md §2) in on-hero
+// ink, the others ink on paper with a hover tint; previous / next are outlined pills with a warm hairline. The bar
+// sits under a hairline with the summary in the meta role.
 library;
 
 import 'package:flutter/material.dart';
@@ -13,7 +17,6 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 
 import 'app_bidi.dart';
-import 'app_gradients.dart';
 import 'app_kit.dart' show AppDropdown;
 import 'app_responsive.dart';
 import 'app_tokens.dart';
@@ -46,6 +49,9 @@ class AppPagination extends StatelessWidget {
   final ValueChanged<int>? onPageSize;
 
   static const defaultPageSizes = <int>[20, 50, 100];
+
+  /// The rows-per-page dropdown's width: three digits and the chevron.
+  static const double _sizeFieldWidth = 104;
 
   /// The choices drawn, or null for no rows-per-page control.
   List<int>? get sizeChoices {
@@ -97,15 +103,17 @@ class AppPagination extends StatelessWidget {
           tooltip: 'ds_prev_page'.tr,
           onTap: cur > 1 ? () => onPage(cur - 1) : null,
         ),
-        if (wide)
+        if (wide) ...[
+          AppSpace.gapXs,
           for (final p in windowOf(cur, count))
             p == null
                 ? SizedBox(
                     width: AppSpace.lg, child: Text('…', textAlign: TextAlign.center, style: AppType.body(context)))
-                : _PageButton(number: p, selected: p == cur, onTap: () => onPage(p))
-        else
+                : _PageButton(number: p, selected: p == cur, onTap: () => onPage(p)),
+          AppSpace.gapXs,
+        ] else
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
             child: Text('${'ds_page'.tr} $cur ${'ds_of'.tr} $count', style: AppType.row(context)),
           ),
         _NavButton(
@@ -120,9 +128,9 @@ class AppPagination extends StatelessWidget {
         if (sizes != null)
           Row(mainAxisSize: MainAxisSize.min, children: [
             Flexible(child: Text('ds_rows_per_page'.tr, style: AppType.meta(context), overflow: TextOverflow.ellipsis)),
-            const SizedBox(width: AppSpace.xs),
+            AppSpace.gapXs,
             SizedBox(
-              width: 104,
+              width: _sizeFieldWidth,
               child: AppDropdown<int>(
                 value: sizes.contains(pageSize) ? pageSize : null,
                 items: [for (final s in sizes) DropdownMenuItem(value: s, child: Text('$s'))],
@@ -183,6 +191,7 @@ class AppPagination extends StatelessWidget {
   }
 }
 
+/// Previous / next: an outlined pill (a warm hairline) with the chevron, 48 px, muted when there is no page that way.
 class _NavButton extends StatelessWidget {
   const _NavButton({required this.icon, required this.tooltip, required this.onTap});
   final IconData icon;
@@ -195,42 +204,63 @@ class _NavButton extends StatelessWidget {
     return IconButton(
       tooltip: tooltip,
       constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+      style: IconButton.styleFrom(
+        shape: StadiumBorder(side: BorderSide(color: c.divider, width: AppBorder.hairline)),
+        foregroundColor: c.textDark,
+        disabledForegroundColor: c.textLight,
+        hoverColor: c.inputBg,
+      ),
       onPressed: onTap,
       // chevron_left / right mirror in RTL by themselves
-      icon: Icon(icon, size: AppIconSize.lg, color: onTap == null ? c.textLight : c.textDark),
+      icon: Icon(icon, size: AppIconSize.lg),
     );
   }
 }
 
+/// One page number as a pill: the current page filled with the primary and on-hero ink, the others ink on paper
+/// with the input tone under the pointer. The pill is 36 high inside a 48 px target.
 class _PageButton extends StatelessWidget {
   const _PageButton({required this.number, required this.selected, required this.onTap});
   final int number;
   final bool selected;
   final VoidCallback onTap;
 
+  static const double _pill = AppTouch.min - AppSpace.sm;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final motion = AppMotion.of(context);
     return Semantics(
       button: true,
       selected: selected,
       label: '${'ds_page'.tr} $number',
       excludeSemantics: true,
-      child: InkWell(
-        borderRadius: AppRadius.chipAll,
-        onTap: selected ? null : onTap,
-        child: Container(
-          constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
-          alignment: Alignment.center,
-          child: Container(
-            constraints: const BoxConstraints(minWidth: AppTouch.min - AppSpace.sm, minHeight: AppTouch.min - AppSpace.sm),
-            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              gradient: selected ? AppGradients.brand(context) : null,
-              borderRadius: AppRadius.chipAll,
+      child: SizedBox(
+        height: AppTouch.min,
+        child: Center(
+          child: Material(
+            color: selected ? c.primary : Colors.transparent,
+            shape: const StadiumBorder(),
+            clipBehavior: Clip.antiAlias,
+            animationDuration: motion.fast,
+            child: InkWell(
+              onTap: selected ? null : onTap,
+              hoverColor: c.inputBg,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: _pill, minHeight: _pill),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+                  child: Center(
+                    child: Text('$number',
+                        style: AppType.row(context).copyWith(
+                          color: selected ? c.onHero : c.textDark,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        )),
+                  ),
+                ),
+              ),
             ),
-            child: Text('$number', style: AppType.row(context).copyWith(color: selected ? c.onHero : c.textDark)),
           ),
         ),
       ),

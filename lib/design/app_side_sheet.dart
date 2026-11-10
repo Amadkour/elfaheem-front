@@ -1,11 +1,14 @@
-// lib/design/app_side_sheet.dart — THE modal sheet of the app (D-360).
+// lib/design/app_side_sheet.dart — THE modal sheet of the app (D-360, restyled for the editorial theme D-612).
 //
-// From Breakpoints.mobile up it is a floating panel that slides in from the END side (left in Arabic) over a scrim.
-// Below that it is a rounded sheet from the bottom that survives the keyboard.
+// From Breakpoints.mobile up it is a floating paper panel that slides in from the END side (left in Arabic) over
+// the warm scrim. Below that it is a paper sheet from the bottom (radius 28, a drag handle) that survives the
+// keyboard.
 //
 //   showAppSheet(context, (ctx) => AppSheetContent(title: …, children: […]))   the normal way (app_kit.dart)
 //   showAppModalSheet(context: context, builder: …)                            the same arguments as
 //       showModalBottomSheet, for a builder that draws its own content
+//   appScrimColor(context)                                                     the scrim of every overlay: the
+//       theme's warm shadow tone, never a neutral black
 //
 // A sheet opens on the nearest Navigator, as showModalBottomSheet did, so providers scoped to a shell tab stay
 // readable from inside it. Close it with `Navigator.pop(ctx, value)`.
@@ -32,6 +35,13 @@ bool appSheetIsSide(BuildContext context) => MediaQuery.sizeOf(context).width >=
 double appSideSheetWidth(double screen, {double preferred = 520}) =>
     preferred.clamp(320.0, (screen - AppSpace.xxl).clamp(320.0, double.infinity)).toDouble();
 
+/// The scrim under every sheet, drawer and dialog (system.md §4): the theme's warm shadow tone (`card_shadow_color`,
+/// charcoal) at 42 %, 64 % in dark mode — never a neutral black over the warm canvas.
+Color appScrimColor(BuildContext context) {
+  final c = context.colors;
+  return c.shadowTone.withValues(alpha: c.isDark ? 0.64 : 0.42);
+}
+
 /// Opens [builder]'s content as a side panel on wide windows and a bottom sheet on phones.
 Future<T?> showAppSideSheet<T>(
   BuildContext context, {
@@ -53,7 +63,7 @@ Future<T?> showAppSideSheet<T>(
     routeSettings: routeSettings,
     barrierDismissible: dismissible,
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-    barrierColor: Colors.black.withValues(alpha: context.colors.isDark ? 0.6 : 0.4),
+    barrierColor: appScrimColor(context),
     transitionDuration: motion.off ? Duration.zero : _sideIn,
     pageBuilder: (ctx, _, _) => AppSideSheetFrame(width: width, withCloseBar: withCloseBar, builder: builder),
     transitionBuilder: (ctx, anim, _, child) {
@@ -147,8 +157,35 @@ class _CloseBar extends StatelessWidget {
           child: IconButton(
             tooltip: 'close'.tr,
             constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+            style: IconButton.styleFrom(backgroundColor: context.colors.inputBg),
             onPressed: () => Navigator.of(context).maybePop(),
-            icon: Icon(Icons.close_rounded, size: AppIconSize.lg, color: context.colors.textMedium),
+            icon: Icon(Icons.close_rounded, size: AppIconSize.md, color: context.colors.textMedium),
+          ),
+        ),
+      );
+}
+
+/// The phone sheet's grab bar: a short pill in muted ink, centred under the sheet's top edge. Pointer only (the
+/// header's close button and the scrim are the accessible ways out), so it stays out of the semantics tree.
+class AppSheetDragHandle extends StatelessWidget {
+  const AppSheetDragHandle({super.key});
+
+  static const double width = AppSpace.xl + AppSpace.xxs;
+  static const double height = AppSpace.xxs;
+
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+        child: Padding(
+          padding: const EdgeInsets.only(top: AppSpace.sm, bottom: AppSpace.xxs),
+          child: SizedBox(
+            width: width,
+            height: height,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: context.colors.textLight.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+              ),
+            ),
           ),
         ),
       );
@@ -170,6 +207,7 @@ Future<T?> _showPhoneSheet<T>(
     useRootNavigator: useRootNavigator,
     routeSettings: routeSettings,
     sheetAnimationStyle: appSheetAnimationStyle(context),
+    barrierColor: appScrimColor(context),
     backgroundColor: Colors.transparent,
     elevation: 0,
     builder: (ctx) => Padding(
@@ -188,14 +226,13 @@ Future<T?> _showPhoneSheet<T>(
             color: ctx.colors.cardBg,
             surfaceTintColor: Colors.transparent,
             clipBehavior: Clip.antiAlias,
-            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet))),
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.sheetTop,
+              // the warm scrim carries the depth; dark mode adds the hairline a floating surface wears there
+              side: AppElevation.border(ctx, 4)?.top ?? BorderSide.none,
+            ),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Container(
-                width: AppSpace.xxl - AppSpace.xxs,
-                height: AppSpace.xxs,
-                margin: const EdgeInsets.only(top: AppSpace.sm),
-                decoration: BoxDecoration(color: ctx.colors.divider, borderRadius: BorderRadius.circular(AppSpace.xxs)),
-              ),
+              const AppSheetDragHandle(),
               // The sheet is already lifted above the keyboard, so the content sees no view insets
               // (content that padded itself by viewInsets again got squeezed twice and overflowed).
               Flexible(
@@ -218,7 +255,8 @@ AnimationStyle appSheetAnimationStyle(BuildContext context) =>
     AppMotion.of(context).off ? AnimationStyle.noAnimation : AppEase.sheet;
 
 /// [showModalBottomSheet]'s arguments, drawn as the app's sheet. On phones it IS a modal bottom sheet (the builder's
-/// own look is kept), on wide windows the side panel with a close button.
+/// own look is kept; the sheet's corners, scrim and motion are the kit's unless the caller passes its own), on wide
+/// windows the side panel with a close button.
 Future<T?> showAppModalSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
@@ -255,8 +293,9 @@ Future<T?> showAppModalSheet<T>({
     useSafeArea: useSafeArea,
     useRootNavigator: useRootNavigator,
     showDragHandle: showDragHandle,
+    sheetAnimationStyle: appSheetAnimationStyle(context),
     backgroundColor: backgroundColor,
-    barrierColor: barrierColor,
+    barrierColor: barrierColor ?? appScrimColor(context),
     elevation: elevation,
     shape: shape ?? const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet))),
     clipBehavior: clipBehavior,
