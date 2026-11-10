@@ -8,6 +8,10 @@
 // `int.tryParse(controller.text)` keeps working in the caller.
 //
 // Only for real quantities. A phone number, a code or an ID is text and keeps a text field.
+//
+// The look is the kit's field language (app_inputs.dart): the label above, the well with tabular figures centred
+// between two 48 px tonal step buttons (emerald tint, emerald ink; a neutral well when they can go no further), the
+// error under the well, the 2 px ring on keyboard focus of the well or of a button.
 library;
 
 import 'dart:async';
@@ -17,6 +21,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
+import 'app_buttons.dart' show appFocusRing, appKeyboardFocus;
+import 'app_charts.dart' show appInk;
+import 'app_contrast.dart' show ensureContrast;
+import 'app_inputs.dart' show AppFieldLabel, appFieldDecoration, appFieldTextStyle;
+import 'app_motion_kit.dart' show AppEase, AppPressScale;
 import 'app_tokens.dart';
 
 /// The text for [v] with at most [decimals] places and no trailing zeros.
@@ -209,11 +218,7 @@ class _AppNumberFieldState extends State<AppNumberField> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final negative = widget.min == null || widget.min! < 0;
-    final radius = BorderRadius.circular(AppRadius.chip + 4);
-    OutlineInputBorder border(Color color, [double w = AppBorder.hairline]) =>
-        OutlineInputBorder(borderRadius: radius, borderSide: BorderSide(color: color, width: w));
     final label = widget.label;
     final field = TextFormField(
       controller: _controller,
@@ -226,35 +231,29 @@ class _AppNumberFieldState extends State<AppNumberField> {
       textInputAction: widget.textInputAction,
       textAlign: TextAlign.center,
       textDirection: TextDirection.ltr,
-      style: AppType.bodyStrong(context).copyWith(color: c.textDark),
+      style: appFieldTextStyle(context).copyWith(
+        fontWeight: FontWeight.w600,
+        fontFeatures: const [FontFeature.tabularFigures()],
+      ),
       inputFormatters: [AppNumberFormatter(decimals: widget.decimals, negative: negative)],
       onChanged: (_) => widget.onChanged?.call(_value),
       onFieldSubmitted: widget.onSubmitted,
-      decoration: InputDecoration(
-        hintText: widget.hint,
-        isDense: true,
-        filled: true,
-        fillColor: c.inputBg,
+      decoration: appFieldDecoration(
+        context,
+        hint: widget.hint,
+        helper: widget.helper,
         errorText: _error,
-        helperText: widget.helper,
-        helperMaxLines: 2,
-        errorMaxLines: 2,
-        contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.sm + 2),
-        border: border(c.divider),
-        enabledBorder: border(c.divider),
-        focusedBorder: border(c.primary, AppBorder.focus),
-        errorBorder: border(c.danger),
-        focusedErrorBorder: border(c.danger, AppBorder.focus),
+        enabled: widget.enabled,
+      ).copyWith(
+        // the digits are centred: no side room beyond the well's own
+        contentPadding: const EdgeInsetsDirectional.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.sm + 1),
       ),
     );
     return Semantics(
       container: true,
       label: label,
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        if (label != null) ...[
-          Text(label, style: AppType.label(context).copyWith(color: c.textMedium)),
-          const SizedBox(height: AppSpace.xxs + 2),
-        ],
+        if (label != null) AppFieldLabel(label, required: widget.required),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _StepButton(
             icon: Icons.remove_rounded,
@@ -281,7 +280,7 @@ class _AppNumberFieldState extends State<AppNumberField> {
   }
 }
 
-class _StepButton extends StatelessWidget {
+class _StepButton extends StatefulWidget {
   const _StepButton({
     required this.icon,
     required this.semantic,
@@ -299,29 +298,61 @@ class _StepButton extends StatelessWidget {
   final VoidCallback onRelease;
 
   @override
+  State<_StepButton> createState() => _StepButtonState();
+}
+
+class _StepButtonState extends State<_StepButton> {
+  bool _focus = false;
+  bool _hover = false;
+
+  @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final radius = BorderRadius.circular(AppRadius.chip + 4);
+    final enabled = widget.enabled;
+    final ink = ensureContrast(appInk(context, c.primary), [Color.alphaBlend(c.primaryTint, c.cardBg)]);
+    final motion = AppMotion.of(context);
     return Semantics(
       button: true,
       enabled: enabled,
-      label: semantic,
+      label: widget.semantic,
       excludeSemantics: true,
-      onTap: enabled ? onStep : null,
+      onTap: enabled ? widget.onStep : null,
       child: Listener(
-        onPointerDown: enabled ? (_) => onHold() : null,
-        onPointerUp: (_) => onRelease(),
-        onPointerCancel: (_) => onRelease(),
+        onPointerDown: enabled ? (_) => widget.onHold() : null,
+        onPointerUp: (_) => widget.onRelease(),
+        onPointerCancel: (_) => widget.onRelease(),
         child: Material(
-          color: enabled ? c.primary.withValues(alpha: 0.12) : c.inputBg,
-          shape: RoundedRectangleBorder(borderRadius: radius),
-          clipBehavior: Clip.antiAlias,
+          type: MaterialType.transparency,
           child: InkWell(
-            onTap: enabled ? onStep : null,
-            child: SizedBox(
-              width: AppTouch.min,
-              height: AppTouch.min,
-              child: Icon(icon, size: AppIconSize.md, color: enabled ? c.primary : c.textLight),
+            onTap: enabled ? widget.onStep : null,
+            onHover: (v) => setState(() => _hover = v),
+            onFocusChange: (v) => setState(() => _focus = v),
+            borderRadius: AppRadius.controlAll,
+            splashFactory: NoSplash.splashFactory,
+            highlightColor: Colors.transparent,
+            hoverColor: Colors.transparent,
+            focusColor: Colors.transparent,
+            mouseCursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+            child: AppPressScale(
+              scale: 0.94,
+              enabled: enabled,
+              child: AnimatedContainer(
+                duration: motion.fast,
+                curve: AppEase.out,
+                width: AppTouch.min,
+                height: AppTouch.min,
+                decoration: BoxDecoration(
+                  color: !enabled
+                      ? c.inputBg
+                      : _hover
+                          ? Color.lerp(c.primaryTint, c.primary, 0.08)
+                          : c.primaryTint,
+                  borderRadius: AppRadius.controlAll,
+                  border: enabled ? null : Border.all(color: c.divider, width: AppBorder.hairline),
+                  boxShadow: _focus && enabled && appKeyboardFocus() ? appFocusRing(context) : null,
+                ),
+                child: Icon(widget.icon, size: AppIconSize.md, color: enabled ? ink : c.textLight),
+              ),
             ),
           ),
         ),

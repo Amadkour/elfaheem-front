@@ -3,7 +3,8 @@
 // THE search box of the design system: a search icon at the start, a clear (x) button while it holds text, a debounced
 // [onChanged] (clearing fires it at once with ''), Esc clears. It is a plain TextField with `TextInputAction.search`
 // and a search icon, which is what AppKeyboardSupport looks for: Ctrl+K and "/" focus it without any wiring.
-// The fill comes from the input theme (no colour here).
+// It wears the kit's well (appFieldDecoration: warm fill, radius 14, the 2 px ring on focus); the search icon takes
+// the focus ink while the person types.
 library;
 
 import 'dart:async';
@@ -13,6 +14,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
+import 'app_inputs.dart' show appFieldDecoration, appFieldTextStyle;
+import 'app_motion_kit.dart' show AppEase;
 import 'app_tokens.dart';
 
 class AppSearchField extends StatefulWidget {
@@ -102,6 +105,7 @@ class _AppSearchFieldState extends State<AppSearchField> {
     final hint = widget.hint ?? (ar ? 'بحث' : 'Search');
     final clearLabel = ar ? 'مسح' : 'Clear';
     final h = widget.dense ? 40.0 : AppTouch.min;
+    final motion = AppMotion.of(context);
     return Focus(
       canRequestFocus: false,
       skipTraversal: true,
@@ -124,22 +128,29 @@ class _AppSearchFieldState extends State<AppSearchField> {
             widget.onChanged(v);
             widget.onSubmitted?.call(v);
           },
-          style: AppType.row(context),
-          decoration: InputDecoration(
-            hintText: hint,
-            isDense: widget.dense,
-            contentPadding: EdgeInsetsDirectional.symmetric(
-                horizontal: AppSpace.sm, vertical: widget.dense ? AppSpace.xs : AppSpace.sm + AppSpace.xxs),
-            prefixIcon: Icon(Icons.search_rounded, size: AppIconSize.md, color: c.textMedium),
+          style: appFieldTextStyle(context),
+          decoration: appFieldDecoration(
+            context,
+            hint: hint,
+            icon: Icons.search_rounded,
+            dense: widget.dense,
+            // the clear button fades in with the first character (and keeps the well's end from jumping)
+            suffix: AnimatedSwitcher(
+              duration: motion.fast,
+              switchInCurve: AppEase.out,
+              switchOutCurve: AppEase.out,
+              child: _hasText
+                  ? IconButton(
+                      key: const ValueKey(1),
+                      tooltip: clearLabel,
+                      icon: Icon(Icons.close_rounded, size: AppIconSize.md, color: c.textMedium),
+                      onPressed: _clear,
+                    )
+                  : const SizedBox(key: ValueKey(0), width: AppSpace.md),
+            ),
+          ).copyWith(
             prefixIconConstraints: BoxConstraints(minWidth: h, minHeight: h),
-            suffixIcon: _hasText
-                ? IconButton(
-                    tooltip: clearLabel,
-                    icon: Icon(Icons.close_rounded, size: AppIconSize.md, color: c.textMedium),
-                    onPressed: _clear,
-                  )
-                : null,
-            suffixIconConstraints: BoxConstraints(minWidth: h, minHeight: h),
+            suffixIconConstraints: BoxConstraints(minWidth: AppSpace.md, minHeight: h),
           ),
         ),
       ),

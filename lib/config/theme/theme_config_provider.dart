@@ -922,6 +922,10 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       end: const Alignment(0, -0.38),
       colors: [heroInk.withValues(alpha: dark ? 0.12 : 0.2), heroInk.withValues(alpha: 0)],
     );
+    // FilledButton.tonal shares the one FilledButtonTheme with FilledButton, so the theme's `backgroundColor: p`
+    // would force the primary fill (and white ink) on it too. Its own M3 default (secondaryContainer) tells it
+    // apart; it gets the kit's tonal look instead: the emerald tint with emerald ink (system.md §4).
+    final tonalFill = Color.alphaBlend(chipTint, dark ? card : bg);
     Widget brandFill(BuildContext context, Set<WidgetState> states, Widget? child) {
       if (states.contains(WidgetState.disabled)) return child ?? const SizedBox.shrink();
       return Builder(builder: (context) {
@@ -930,6 +934,22 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
         final m = context.findAncestorWidgetOfExactType<Material>();
         if (m == null || m.color != p) return child ?? const SizedBox.shrink();
         final shape = m.shape;
+        final button = context.findAncestorWidgetOfExactType<FilledButton>();
+        final tonal = button != null &&
+            button.defaultStyleOf(context).backgroundColor?.resolve(const {}) == scheme.secondaryContainer;
+        if (tonal) {
+          final lit = states.contains(WidgetState.pressed) || states.contains(WidgetState.hovered);
+          return Ink(
+            decoration: ShapeDecoration(
+              shape: shape is OutlinedBorder ? shape.copyWith(side: BorderSide.none) : (shape ?? const RoundedRectangleBorder()),
+              color: lit ? Color.lerp(tonalFill, pOnChip, 0.08) : tonalFill,
+            ),
+            child: DefaultTextStyle.merge(
+              style: TextStyle(color: pOnChip),
+              child: IconTheme.merge(data: IconThemeData(color: pOnChip), child: child ?? const SizedBox.shrink()),
+            ),
+          );
+        }
         return Ink(
           decoration: ShapeDecoration(
             shape: shape is OutlinedBorder ? shape.copyWith(side: BorderSide.none) : (shape ?? const RoundedRectangleBorder()),

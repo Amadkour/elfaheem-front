@@ -1,10 +1,17 @@
+// lib/utils/widget/password_text_field.dart
+//
+// The older password field (change password): the kit's well with a show / hide button in a 48 px target. The
+// screens that use it draw their own label above, so its [label] is the placeholder. New screens use
+// AppPasswordField.
+library;
+
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/utils/widget/text_field.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/design/app_inputs.dart' show appFieldDecoration, appFieldTextStyle;
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 import '../../config/theme/theme_config_provider.dart';
 import '../validators.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class MyPasswordTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -23,6 +30,7 @@ class MyPasswordTextField extends StatelessWidget {
   Widget build(
     BuildContext context,
   ) {
+    final c = context.colors;
     return Material(
       type: MaterialType.transparency,
       child: TextFormField(
@@ -30,37 +38,23 @@ class MyPasswordTextField extends StatelessWidget {
         controller: controller,
         textInputAction: TextInputAction.next,
         obscureText: obscurePassword,
-        style:  TextStyle(
-            fontFamily: AppFonts.family,
-            fontWeight: FontWeight.w500,
-            fontSize: 15,
-            color: context.colors.textDark),
-        decoration: InputDecoration(
-          hintTextDirection: pageDirection,
-          floatingLabelBehavior: FloatingLabelBehavior.never,
-          filled: true,
-          fillColor: context.colors.inputBg,
-          hint: Text(
-            label,
-            style:  TextStyle(
-                fontFamily: AppFonts.family,
-                fontWeight: FontWeight.w600,
-                color:  context.colors.textDark),
-            textDirection: pageDirection,
-          ),
-          suffixIcon: IconButton(
+        autocorrect: false,
+        enableSuggestions: false,
+        style: appFieldTextStyle(context),
+        decoration: appFieldDecoration(
+          context,
+          hint: label,
+          icon: Icons.lock_outline_rounded,
+          suffix: IconButton(
             tooltip: AppConfig.lang == 'ar' ? 'إظهار أو إخفاء كلمة المرور' : 'Show or hide the password',
             icon: Icon(
-              obscurePassword ? Icons.visibility : Icons.visibility_off,
+              obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+              size: AppIconSize.md,
+              color: c.textLight,
             ),
             onPressed: onPressed,
           ),
-          border: myFieldBorder(context),
-          enabledBorder: myFieldBorder(context),
-          focusedBorder: myFieldBorder(context, focused: true),
-          errorBorder: myFieldBorder(context, error: true),
-          focusedErrorBorder: myFieldBorder(context, focused: true, error: true),
-        ),
+        ).copyWith(hintTextDirection: pageDirection, floatingLabelBehavior: FloatingLabelBehavior.never),
         validator: Validators.validatePassword,
       ),
     );
