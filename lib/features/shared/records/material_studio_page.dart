@@ -26,6 +26,7 @@ import 'material_studio_parts.dart';
 import 'records_api.dart';
 import 'records_share.dart' show RecordPlayerPage;
 import 'records_studio.dart';
+import 'studio_download_io.dart' if (dart.library.js_interop) 'studio_download_web.dart' as saver;
 
 /// May this person see the Studio entries at all (the kill switch; the server checks who may edit).
 bool get materialStudioOn => !AppConfig.disableList.contains(kMaterialsStudioFeatureKey);
@@ -132,6 +133,19 @@ Future<MaterialDraft?> runMaterialDraftAction(BuildContext context, MaterialDraf
         return null;
       case MaterialDraftAction.retry:
         return await api.retry(d.id);
+      case MaterialDraftAction.cancel:
+        if (!await appConfirm(context,
+            message: t('إيقاف حفظ «${d.item.title}»؟ يمكنك تشغيله من جديد لاحقاً.', 'Stop saving “${d.item.title}”? You can run it again later.'),
+            danger: true,
+            confirmLabel: t('إيقاف', 'Stop'))) {
+          return null;
+        }
+        return await api.cancel(d.id);
+      case MaterialDraftAction.download:
+        final dl = await api.downloadDraft(d.id);
+        showAppNotice(t('يُنزّل «${dl.fileName}»…', 'Downloading “${dl.fileName}”…'));
+        await saver.studioSaveUrl(dl.url, dl.fileName);
+        return null;
       case MaterialDraftAction.restore:
         final r = await api.restore(d.id);
         published?.call();

@@ -9,6 +9,9 @@
 //   GET    /api/v1/sessions/{sid}/studio/drafts                   → [MaterialDraft] (drafts + replaces to confirm)
 //   GET    /api/v1/studio/drafts/{did}  · POST …/retry · …/play · …/publish {mode: new|replace} · …/restore ·
 //          …/confirm · DELETE /api/v1/studio/drafts/{did}
+//   Premium Studio (D-590 … D-597): POST …/studio/render {clips, overlays, height?, level?, history?, title?} → [draft]
+//          GET|PUT …/studio/project {doc} (autosave) · POST …/studio/download · GET /studio/drafts/{did}/project ·
+//          POST /studio/drafts/{did}/cancel · …/download · POST /studio/assets · /studio/assets/links
 //
 // An edit is a DRAFT students never see (not a session material) until it is published: as a new material after
 // the original, or into the original's place (its id, progress and views kept; the old file kept until "Delete the
@@ -153,6 +156,13 @@ String materialStudioErrorText(Object e) {
     'material_nothing_to_restore' => t('لا يوجد ملف قديم', 'There is no old file'),
     'course_archived' => t('المقرر مؤرشف — المحتوى للقراءة فقط', 'The course is archived — read only'),
     'feature_disabled' => t('الاستوديو متوقف حالياً', 'The Studio is switched off right now'),
+    'material_not_downloadable' => t('هذا الفيديو بصيغة بث ولا يمكن تنزيله كملف', 'This video is a stream and cannot be saved as a file'),
+    'bad_project' => t('في التعديل ما لا يمكن تنفيذه — راجع الأجزاء', 'Something in the edit cannot be made — check the parts'),
+    'bad_overlay' => t('نص أو صورة غير صالحة في التعديل', 'A text or picture in the edit is not valid'),
+    'not_running' => t('هذا التعديل لا يعمل الآن', 'This edit is not running'),
+    'project_too_large' => t('سجل التعديلات كبير جداً', 'The edit history is too large'),
+    'bad_image' => t('هذا الملف ليس صورة', 'That file is not a picture'),
+    'image_too_large' => t('الصورة أكبر من 8 ميغابايت', 'The picture is larger than 8 MB'),
     _ => ex.statusCode == 403 ? t('لا يمكنك تعديل هذه المادة', "You can't edit this material") : recordsErrorText(e),
   };
 }
@@ -171,11 +181,53 @@ abstract class MaterialStudioApi {
   Future<MaterialDraft?> restore(int draftId);
   Future<MaterialDraft?> confirm(int draftId);
   Future<bool> discard(int draftId);
+  Future<List<MaterialDraft>> render(int sessionId, int materialId, Map<String, dynamic> params);
+  Future<Map<String, dynamic>?> loadProject(int sessionId, int materialId);
+  Future<void> saveProject(int sessionId, int materialId, Map<String, dynamic>? doc);
+  Future<Map<String, dynamic>?> draftProject(int draftId);
+  Future<MaterialDraft?> cancel(int draftId);
+  Future<StudioDownload> downloadSource(int sessionId, int materialId);
+  Future<StudioDownload> downloadDraft(int draftId);
+  ApiClient get client;
 }
 
 class RemoteMaterialStudioApi implements MaterialStudioApi {
   RemoteMaterialStudioApi([ApiClient? api]) : _api = api ?? ApiClient();
   final ApiClient _api;
+
+  @override
+  ApiClient get client => _api;
+
+  @override
+  Future<List<MaterialDraft>> render(int sessionId, int materialId, Map<String, dynamic> params) async =>
+      materialDraftsFrom(await _api.post('${_m(sessionId, materialId)}/render', body: params..remove('delete_source')));
+
+  @override
+  Future<Map<String, dynamic>?> loadProject(int sessionId, int materialId) async {
+    final d = asMap(await _api.get('${_m(sessionId, materialId)}/project'))['doc'];
+    return d is Map ? asMap(d) : null;
+  }
+
+  @override
+  Future<void> saveProject(int sessionId, int materialId, Map<String, dynamic>? doc) async =>
+      _api.put('${_m(sessionId, materialId)}/project', body: {'doc': doc});
+
+  @override
+  Future<Map<String, dynamic>?> draftProject(int draftId) async {
+    final p = asMap(await _api.get('$_d/$draftId/project'))['project'];
+    return p is Map ? asMap(p) : null;
+  }
+
+  @override
+  Future<MaterialDraft?> cancel(int draftId) async => MaterialDraft.fromJson(asMap(await _api.post('$_d/$draftId/cancel')));
+
+  @override
+  Future<StudioDownload> downloadSource(int sessionId, int materialId) async =>
+      StudioDownload.fromJson(asMap(await _api.post('${_m(sessionId, materialId)}/download')), base: _api.baseUrl);
+
+  @override
+  Future<StudioDownload> downloadDraft(int draftId) async =>
+      StudioDownload.fromJson(asMap(await _api.post('$_d/$draftId/download')), base: _api.baseUrl);
 
   String _m(int sid, int mid) => '/api/v1/sessions/$sid/materials/$mid/studio';
   static const _d = '/api/v1/studio/drafts';
@@ -237,7 +289,7 @@ class RemoteMaterialStudioApi implements MaterialStudioApi {
 
 /// The Studio's source for a material: edits become drafts ([latest] keeps the latest of each, for the job card's
 /// Publish).
-class MaterialStudioSource implements StudioSource {
+class MaterialStudioSource with StudioAssetCalls implements StudioSource {
   MaterialStudioSource({required this.sessionId, required this.materialId, MaterialStudioApi? api})
       : api = api ?? RemoteMaterialStudioApi();
 
@@ -253,7 +305,18 @@ class MaterialStudioSource implements StudioSource {
   RecordItem? _one(MaterialDraft? d) => d == null ? null : _keep([d]).first;
 
   @override
-  List<StudioTool> get tools => const [StudioTool.trim, StudioTool.cut, StudioTool.split, StudioTool.speed, StudioTool.quality, StudioTool.merge];
+  ApiClient get assetClient => api.client;
+
+  @override
+  List<StudioTool> get tools => const [
+        StudioTool.edit,
+        StudioTool.text,
+        StudioTool.image,
+        StudioTool.history,
+        StudioTool.quality,
+        StudioTool.split,
+        StudioTool.merge,
+      ];
   @override
   bool get drafts => true;
   @override
@@ -278,4 +341,19 @@ class MaterialStudioSource implements StudioSource {
   Future<RecordItem?> setCover(int sourceId, Uint8List bytes, {String fileName = 'cover.jpg'}) async => null;
   @override
   Future<RecordItem?> clearCover(int sourceId) async => null;
+
+  @override
+  Future<List<RecordItem>> render(int sourceId, Map<String, dynamic> params) async => _keep(await api.render(sessionId, sourceId, params));
+  @override
+  Future<Map<String, dynamic>?> loadProject(int sourceId) => api.loadProject(sessionId, sourceId);
+  @override
+  Future<void> saveProject(int sourceId, Map<String, dynamic>? doc) => api.saveProject(sessionId, sourceId, doc);
+  @override
+  Future<Map<String, dynamic>?> jobProject(int jobId) => api.draftProject(jobId);
+  @override
+  Future<RecordItem?> cancel(int jobId) async => _one(await api.cancel(jobId));
+  @override
+  Future<StudioDownload> download(int sourceId) => api.downloadSource(sessionId, sourceId);
+  @override
+  Future<StudioDownload> downloadJob(int jobId) => api.downloadDraft(jobId);
 }

@@ -13,6 +13,9 @@
 //
 // A share link is https://nextbrain.site/s/record/<token> (core/share/app_links.dart, D-307). Tests:
 // test/org/records_share_api_test.dart.
+import 'dart:convert' show base64Decode;
+import 'dart:typed_data';
+
 import '../../../core/api_client.dart';
 import '../../admin/admin_common.dart' show t, asMap, asMapList, asInt;
 import '../live/meeting_recording.dart' show RecordingQuality, parseRecordingTime;
@@ -221,7 +224,7 @@ List<SharedRecord> sharedRecordsFrom(dynamic json) {
 
 /// The Studio's filmstrip: ONE image of [count] frames in a row (each [tileW] × [tileH]).
 class RecordFrames {
-  const RecordFrames({required this.status, this.url, this.count = 0, this.tileW = 160, this.tileH = 90});
+  const RecordFrames({required this.status, this.url, this.count = 0, this.tileW = 160, this.tileH = 90, this.waveform});
 
   /// ready · pending (a server job runs; `job_updated{kind: record_frames}` says when) · unavailable
   final String status;
@@ -231,6 +234,9 @@ class RecordFrames {
   final int count;
   final int tileW;
   final int tileH;
+
+  /// The audio's peaks over the whole source, 0–255 (D-590; null: none — an older server, no audio).
+  final Uint8List? waveform;
 
   bool get ready => status == 'ready' && url != null && count > 0;
   bool get pending => status == 'pending';
@@ -245,12 +251,22 @@ class RecordFrames {
       count: asInt(j['count']),
       tileW: asInt(j['tile_w'], 160),
       tileH: asInt(j['tile_h'], 90),
+      waveform: _wave(j['waveform']),
     );
   }
 }
 
-/// How many frames the Studio asks for (the server takes 8–40).
-const recordFramesCount = 24;
+/// How many frames the Studio asks for (the server takes 8–120 since D-590; 8–40 before).
+const recordFramesCount = 60;
+
+Uint8List? _wave(dynamic v) {
+  if (v is! String || v.isEmpty) return null;
+  try {
+    return base64Decode(v);
+  } catch (_) {
+    return null;
+  }
+}
 
 abstract class RecordShareApi {
   Future<RecordShare> share(int id);

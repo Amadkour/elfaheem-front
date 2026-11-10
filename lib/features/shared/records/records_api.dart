@@ -41,7 +41,8 @@ enum RecordOp {
   cut('cut'),
   speed('speed'),
   quality('quality'),
-  merge('merge');
+  merge('merge'),
+  project('project');
 
   const RecordOp(this.wire);
   final String wire;
@@ -61,6 +62,7 @@ enum RecordOp {
         RecordOp.speed => t('السرعة', 'Speed'),
         RecordOp.quality => t('الجودة والحجم', 'Quality and size'),
         RecordOp.merge => t('دمج', 'Merge'),
+        RecordOp.project => t('تعديل', 'Edit'),
       };
 
   /// The line under an edited item: what was done to its source.
@@ -71,6 +73,7 @@ enum RecordOp {
         RecordOp.speed => t('سرعة معدّلة', 'Speed changed'),
         RecordOp.quality => t('جودة معدّلة', 'Quality changed'),
         RecordOp.merge => t('مدمج', 'Merged'),
+        RecordOp.project => t('معدّل في الاستوديو', 'Edited in the Studio'),
       };
 }
 
@@ -107,6 +110,9 @@ class RecordItem {
     this.meetingAt,
     this.canEdit = false,
     this.canPlay = false,
+    this.hasProject = false,
+    this.cancelled = false,
+    this.updatedAt,
   });
 
   final int id;
@@ -142,6 +148,15 @@ class RecordItem {
   final DateTime? meetingAt;
   final bool canEdit;
   final bool canPlay;
+
+  /// Rendered from a Studio project (D-590): it can be opened again to continue its edit.
+  final bool hasProject;
+
+  /// Failed because the person stopped it (D-594).
+  final bool cancelled;
+
+  /// The job's last heartbeat (the ETA reads its pace).
+  final DateTime? updatedAt;
 
   bool get isEdit => kind == 'edit';
   bool get isAudio => quality.audioOnly;
@@ -197,6 +212,9 @@ class RecordItem {
       meetingAt: parseRecordingTime(m['starts_at']),
       canEdit: j['can_edit'] == true,
       canPlay: j['can_play'] == true,
+      hasProject: j['has_project'] == true,
+      cancelled: j['cancelled'] == true,
+      updatedAt: parseRecordingTime(j['updated_at']),
     );
   }
 }
@@ -292,13 +310,14 @@ String speedLabel(double s) => '×${s == s.roundToDouble() ? s.toInt() : s}';
 String recordStatusLabel(RecordItem r) => switch (r.status) {
       'recording' => t('يسجّل الآن', 'Recording'),
       'assembling' => switch (r.stage) {
+          'queued' => t('في الانتظار — يبدأ قريباً', 'Waiting its turn'),
           'downloading' => t('يجلب الملف', 'Fetching the file'),
           'processing' => t('يجري التعديل', 'Editing'),
           _ => r.isEdit ? t('يجري التعديل', 'Editing') : t('يجمع التسجيل', 'Assembling'),
         },
       'uploading' => t('يحفظ في السحابة', 'Saving to the drive'),
       'done' => t('جاهز', 'Ready'),
-      'failed' => r.retryMode == 'auto' ? t('ستُعاد المحاولة', 'Retrying soon') : t('فشل', 'Failed'),
+      'failed' => r.cancelled ? t('أوقفته', 'Stopped') : (r.retryMode == 'auto' ? t('ستُعاد المحاولة', 'Retrying soon') : t('فشل', 'Failed')),
       _ => r.status,
     };
 
@@ -434,6 +453,7 @@ String? editProblem(RecordEdit e, double duration) {
     case RecordOp.quality:
       return null;
     case RecordOp.merge:
+    case RecordOp.project:
       return null;
   }
 }
@@ -454,6 +474,7 @@ List<double> editResultDurations(RecordEdit e, double duration) {
     case RecordOp.quality:
       return [duration];
     case RecordOp.merge:
+    case RecordOp.project:
       return [duration];
   }
 }
