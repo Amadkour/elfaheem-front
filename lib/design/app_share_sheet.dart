@@ -6,7 +6,11 @@
 //
 // Hidden by the kill switch `share.links` (the caller wraps its button in ParentComponent(featureKey: kShareLinksKey);
 // [shareAppLink] does nothing while it is off). The body is the plain-values [AppShareSheetBody], laid out by
-// test/ui/app_share_sheet_layout_test.dart.
+// test/ui/share_options_layout_test.dart and test/ui/design/kit_overlays_editorial_test.dart.
+//
+// Look (D-612): what is shared sits beside its icon in a tinted square (the section role, two meta lines); the link
+// is an input-toned field with the control radius that copies on tap; Copy is the one primary action; the QR code
+// keeps a pure white quiet zone inside a paper frame (phone cameras need the contrast).
 library;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -137,51 +141,61 @@ class AppShareSheetBody extends StatelessWidget {
   final VoidCallback? onShare;
   final bool showQr, copied;
 
+  /// The QR code's side: large enough for a phone camera across a table.
+  static const double qrSize = 200;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final ink = appInk(context, c.primary);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Row(children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.card)),
-          child: Icon(icon, color: ink, size: AppIconSize.lg),
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SizedBox(
+          width: AppTouch.min,
+          height: AppTouch.min,
+          child: DecoratedBox(
+            decoration: BoxDecoration(color: c.primaryTint, borderRadius: AppRadius.controlAll),
+            child: Icon(icon, color: ink, size: AppIconSize.lg),
+          ),
         ),
-        const SizedBox(width: AppSpace.sm),
+        AppSpace.gapSm,
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            if (kind != null) Text(kind!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.overline(context).copyWith(color: ink)),
             Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+            if (kind != null && kind!.isNotEmpty)
+              Text(kind!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
             if (subtitle != null && subtitle!.isNotEmpty)
               Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
           ]),
         ),
       ]),
-      const SizedBox(height: AppSpace.md),
+      AppSpace.gapMd,
       // links read left-to-right inside an Arabic page too
       Directionality(
         textDirection: TextDirection.ltr,
         child: Material(
           color: c.inputBg,
-          borderRadius: BorderRadius.circular(AppRadius.card),
+          shape: RoundedRectangleBorder(
+            borderRadius: AppRadius.controlAll,
+            side: BorderSide(color: c.divider, width: AppBorder.hairline),
+          ),
+          clipBehavior: Clip.antiAlias,
           child: InkWell(
             key: const ValueKey('share.url'),
-            borderRadius: BorderRadius.circular(AppRadius.card),
             onTap: onCopy,
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: AppTouch.min),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
                 child: Row(children: [
-                  Icon(Icons.link_rounded, size: AppIconSize.md, color: ink),
-                  const SizedBox(width: AppSpace.xs),
+                  Icon(Icons.link_rounded, size: AppIconSize.md, color: c.textMedium),
+                  AppSpace.gapXs,
                   Expanded(
-                    child: SelectableText(url, maxLines: 2, style: AppType.row(context).copyWith(color: c.textDark)),
+                    child: SelectableText(url, maxLines: 2, style: AppType.row(context)),
                   ),
-                  const SizedBox(width: AppSpace.xs),
-                  Icon(copied ? Icons.check_rounded : Icons.copy_rounded, size: AppIconSize.md, color: copied ? c.success : c.textMedium),
+                  AppSpace.gapXs,
+                  Icon(copied ? Icons.check_rounded : Icons.copy_rounded,
+                      size: AppIconSize.md, color: copied ? c.success : c.textMedium),
                 ]),
               ),
             ),
@@ -189,10 +203,10 @@ class AppShareSheetBody extends StatelessWidget {
         ),
       ),
       if (hint != null) ...[
-        const SizedBox(height: AppSpace.xs),
+        AppSpace.gapXs,
         Text(hint!, style: AppType.meta(context)),
       ],
-      const SizedBox(height: AppSpace.md),
+      AppSpace.gapMd,
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         AppButton.primary(
           key: const ValueKey('share.copy'),
@@ -215,17 +229,23 @@ class AppShareSheetBody extends StatelessWidget {
         ),
       ]),
       if (showQr) ...[
-        const SizedBox(height: AppSpace.md),
+        AppSpace.gapMd,
         Center(
-          child: Container(
+          child: DecoratedBox(
             key: const ValueKey('share.qr_image'),
-            padding: const EdgeInsets.all(AppSpace.sm),
             // the quiet zone stays pure white in both themes: phone scanners need the contrast
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.card)),
-            child: QrImageView(data: url, version: QrVersions.auto, size: 200, backgroundColor: Colors.white),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: AppRadius.cardAll,
+              border: Border.all(color: c.divider, width: AppBorder.hairline),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpace.sm),
+              child: QrImageView(data: url, version: QrVersions.auto, size: qrSize, backgroundColor: Colors.white),
+            ),
           ),
         ),
-        const SizedBox(height: AppSpace.xs),
+        AppSpace.gapXs,
         Text(t('امسحه بكاميرا الهاتف لفتح الرابط', 'Scan it with a phone camera to open the link'),
             textAlign: TextAlign.center, style: AppType.meta(context)),
       ],

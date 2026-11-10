@@ -51,14 +51,16 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'app_badges.dart';
-import 'app_buttons.dart' show appKeyboardFocus;
+import 'app_buttons.dart';
 import 'app_contrast.dart' show ensureContrast;
 import 'app_inputs.dart';
 import 'app_motion_kit.dart';
 import 'app_search_field.dart';
+import 'app_side_sheet.dart' show appScrimColor;
 import 'app_tokens.dart';
 import '../features/admin/admin_common.dart' as admin;
 import '../features/org/org_ui.dart' as org;
@@ -140,12 +142,162 @@ typedef AppAudiencePicker = org.OrgAudiencePicker;
 Future<T?> showAppSheet<T>(BuildContext context, Widget Function(BuildContext) builder) =>
     admin.showAdminSheet<T>(context, builder);
 
-Future<bool> appConfirm(BuildContext context, {required String message, bool danger = false, String? confirmLabel}) =>
-    admin.confirm(context, message: message, danger: danger, confirmLabel: confirmLabel);
+/// "Are you sure?" with one message. The paper dialog (radius 28, the warm scrim, `AppPopIn`, D-612) with a tinted
+/// mark on top, the message centred in the body role, and two equal buttons: Cancel, then Confirm — the danger fill
+/// when [danger]. Resolves true only on Confirm.
+Future<bool> appConfirm(BuildContext context, {required String message, bool danger = false, String? confirmLabel}) async {
+  final r = await showDialog<bool>(
+    context: context,
+    barrierColor: appScrimColor(context),
+    builder: (ctx) => Directionality(
+      textDirection: admin.dir,
+      child: AppConfirmDialog(message: message, danger: danger, confirmLabel: confirmLabel),
+    ),
+  );
+  return r ?? false;
+}
 
 void appToast(String message, {bool error = false}) => admin.toast(message, error: error);
 
-typedef AppSheetHeader = admin.SheetHeader;
+/// The confirm dialog's panel from plain values (public so a layout test can pump it). Pops `true` / `false`.
+class AppConfirmDialog extends StatelessWidget {
+  const AppConfirmDialog({super.key, required this.message, this.danger = false, this.confirmLabel});
+
+  final String message;
+  final bool danger;
+  final String? confirmLabel;
+
+  /// The widest a question gets: two buttons side by side and a short measure.
+  static const double maxWidth = 440;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tint = danger ? c.danger : (c.isDark ? c.primaryLight : c.primary);
+    final badge = danger ? c.dangerTint : c.primaryTint;
+    final confirm = confirmLabel ?? 'confirm'.tr;
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.all(AppSpace.md),
+      child: AppPopIn(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: maxWidth),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.sheet),
+              boxShadow: AppElevation.of(context, 4),
+            ),
+            child: Material(
+              color: c.cardBg,
+              surfaceTintColor: Colors.transparent,
+              clipBehavior: Clip.antiAlias,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.sheet),
+                side: AppElevation.border(context, 4)?.top ?? BorderSide.none,
+              ),
+              child: Semantics(
+                scopesRoute: true,
+                explicitChildNodes: true,
+                namesRoute: true,
+                label: message,
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpace.lg),
+                  child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Center(
+                      child: SizedBox(
+                        width: AppTouch.min,
+                        height: AppTouch.min,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(color: badge, borderRadius: AppRadius.controlAll),
+                          child: Icon(
+                            danger ? Icons.warning_amber_rounded : Icons.help_outline_rounded,
+                            size: AppIconSize.lg,
+                            color: tint,
+                          ),
+                        ),
+                      ),
+                    ),
+                    AppSpace.gapMd,
+                    // long messages / big text scale / 320 px: scroll inside the dialog instead of overflowing
+                    Flexible(
+                      child: SingleChildScrollView(
+                        child: Text(message,
+                            textAlign: TextAlign.center,
+                            style: AppType.body(context).copyWith(color: c.textDark, height: 1.5)),
+                      ),
+                    ),
+                    AppSpace.gapLg,
+                    Row(children: [
+                      Expanded(
+                        child: AppButton.secondary(
+                          key: const ValueKey('app.confirm.cancel'),
+                          label: 'exam_cancel'.tr,
+                          expand: true,
+                          onPressed: () => Navigator.pop(context, false),
+                        ),
+                      ),
+                      AppSpace.gapSm,
+                      Expanded(
+                        child: danger
+                            ? AppButton.danger(
+                                key: const ValueKey('app.confirm.ok'),
+                                label: confirm,
+                                expand: true,
+                                onPressed: () => Navigator.pop(context, true),
+                              )
+                            : AppButton.primary(
+                                key: const ValueKey('app.confirm.ok'),
+                                label: confirm,
+                                expand: true,
+                                onPressed: () => Navigator.pop(context, true),
+                              ),
+                      ),
+                    ]),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A sheet's header: the title in the editorial page-title role, an optional [trailing] widget (a Reset button) and
+/// the close button in a tinted circle. The title's start inset (20) is the inset [AppSheetContent] gives the body.
+class AppSheetHeader extends StatelessWidget {
+  const AppSheetHeader(this.title, {super.key, this.trailing});
+
+  final String title;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md + AppSpace.xxs, AppSpace.md, AppSpace.sm, AppSpace.xs),
+      child: Row(children: [
+        Expanded(
+          child: Semantics(
+            header: true,
+            child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context)),
+          ),
+        ),
+        ?trailing,
+        AppSpace.gapXs,
+        IconButton(
+          tooltip: 'close'.tr,
+          constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+          style: IconButton.styleFrom(backgroundColor: c.inputBg),
+          onPressed: () => Navigator.pop(context),
+          icon: Icon(Icons.close_rounded, color: c.textMedium, size: AppIconSize.md),
+        ),
+      ]),
+    );
+  }
+}
 
 /// A sheet's whole content: its [AppSheetHeader] and a body with the kit's side padding (in line with the header's
 /// title) that scrolls when it is taller than the sheet. `showAppSheet` draws no padding of its own — a body put

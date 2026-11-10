@@ -12,7 +12,10 @@
 //   states    loading = skeleton rows, error = inline block with Retry, empty = [empty] or the default block
 //   selection checkbox column / card checkbox + a bulk bar ("N selected" + [bulkActions]) while anything is selected
 //
-// It sits on cardBg with the card radius and a hairline border: no gradient behind a table (app_gradients.dart).
+// Look (D-612): on a wide table ONE paper surface (cardBg, the card radius, a warm hairline) holds the toolbar, the
+// header in the label role and the rows, parted by hairlines; the input tone marks the row under the pointer, the
+// primary tint a selected or open row. On a phone every row is its own paper card on the canvas, the toolbar and the
+// bulk bar sit above them, the states inside a card of their own. No gradient behind a table (app_gradients.dart).
 // Embedding: `shrinkWrap: false` (default) fills the height it is given and scrolls its own rows (give it a bounded
 // height, e.g. inside an Expanded); `shrinkWrap: true` lays out every row so it can live in a ListView. The header
 // row sits outside the rows' scroll view, so it stays put while the rows scroll.
@@ -439,16 +442,9 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
   Widget build(BuildContext context) {
     final c = context.colors;
     _shown = (widget.columnMenu || widget.tableId != null) ? _layout.apply(widget.columns) : widget.columns;
-    return Material(
-      color: c.cardBg,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: AppRadius.cardAll,
-        side: BorderSide(color: c.divider, width: AppBorder.hairline),
-      ),
-      child: _TableDensityScope(
-        compact: _compact,
-        child: LayoutBuilder(builder: (context, box) {
+    return _TableDensityScope(
+      compact: _compact,
+      child: LayoutBuilder(builder: (context, box) {
         final phone = box.maxWidth < Breakpoints.mobile;
         _tableWidth = box.maxWidth;
         _wide = [for (final x in _shown) if (x.hideBelow == null || box.maxWidth >= x.hideBelow!) x];
@@ -456,27 +452,52 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
         final ready = widget.state == AppTableState.ready;
         final empty = ready && widget.rows.isEmpty;
         final fit = widget.shrinkWrap;
-        return Column(
+        final body = switch (widget.state) {
+          AppTableState.loading => _loading(context, phone),
+          AppTableState.error => phone ? _paper(context, _error(context)) : _error(context),
+          AppTableState.ready => empty
+              ? (phone ? _paper(context, _emptyBlock(context)) : _emptyBlock(context))
+              : _rowsList(context, phone, fit),
+        };
+        final column = Column(
           mainAxisSize: fit ? MainAxisSize.min : MainAxisSize.max,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (_hasToolbar) _toolbar(context, phone),
-            if (ready && widget.selectable && _sel.isNotEmpty) _bulkBar(context),
+            if (ready && widget.selectable && _sel.isNotEmpty) _bulkBar(context, phone),
             if (ready && !empty && !phone) _headerRow(context),
-            _fill(
-              fit,
-              switch (widget.state) {
-                AppTableState.loading => _loading(context, phone),
-                AppTableState.error => _error(context),
-                AppTableState.ready => empty ? _emptyBlock(context) : _rowsList(context, phone, fit),
-              },
-              scrolls: !(ready && !empty),
-            ),
+            _fill(fit, body, scrolls: !(ready && !empty)),
             if (widget.pagination != null && widget.state != AppTableState.error) widget.pagination!,
           ],
         );
+        // phones: every row is its own paper card on the canvas (D-612), nothing drawn around them; wide: ONE
+        // paper surface with a warm hairline, the rows separated by hairlines inside it
+        if (phone) return column;
+        return Material(
+          color: c.cardBg,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: AppRadius.cardAll,
+            side: BorderSide(color: c.divider, width: AppBorder.hairline),
+          ),
+          child: column,
+        );
       }),
+    );
+  }
+
+  /// A paper card (the card radius, a warm hairline) around a block that stands alone on a phone: a state, a
+  /// skeleton row.
+  Widget _paper(BuildContext context, Widget child) {
+    final c = context.colors;
+    return Material(
+      color: c.cardBg,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.cardAll,
+        side: BorderSide(color: c.divider, width: AppBorder.hairline),
       ),
+      child: child,
     );
   }
 
@@ -522,10 +543,13 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
   Widget _toolbar(BuildContext context, bool phone) {
     final c = context.colors;
     final filters = widget.filters ?? const <AppTableFilter>[];
+    // on a phone the toolbar sits on the canvas above the cards (no edge, no inset); inside the wide table it is
+    // the first band of the paper, closed by a hairline
     return DecoratedBox(
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.divider, width: AppBorder.hairline))),
+      decoration: BoxDecoration(
+          border: phone ? null : Border(bottom: BorderSide(color: c.divider, width: AppBorder.hairline))),
       child: Padding(
-        padding: const EdgeInsets.all(AppSpace.sm),
+        padding: phone ? const EdgeInsets.only(bottom: AppSpace.xs) : const EdgeInsets.all(AppSpace.sm),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
           if (widget.onSearch != null || widget.toolbarTrailing != null || widget.columnMenu || _showDensity)
             Wrap(
@@ -649,13 +673,18 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
 
   // ── bulk bar ──────────────────────────────────────────────────────────────
 
-  Widget _bulkBar(BuildContext context) {
+  Widget _bulkBar(BuildContext context, bool phone) {
     final c = context.colors;
     final ar = AppConfig.lang == 'ar';
     final n = _sel.length;
     final all = widget.rows.isNotEmpty && widget.rows.every((r) => _sel.contains(_id(r)));
-    return ColoredBox(
+    // a band of the wide table; its own rounded tinted bar above the cards on a phone
+    return Padding(
+      padding: phone ? const EdgeInsets.only(bottom: AppSpace.xs) : EdgeInsets.zero,
+      child: Material(
       color: c.primaryTint,
+      shape: phone ? RoundedRectangleBorder(borderRadius: AppRadius.cardAll) : const RoundedRectangleBorder(),
+      clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
         child: Wrap(
@@ -684,6 +713,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
             ...?widget.bulkActions?.call({..._sel}),
           ],
         ),
+      ),
       ),
     );
   }
@@ -834,10 +864,14 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
     final c = context.colors;
     final rows = widget.rows;
     Widget one(int i) => phone ? _card(context, rows[i]) : _wideRow(context, rows[i]);
+    // phone cards stand apart by a gap; wide rows share one paper and are parted by hairlines
+    Widget gap() => phone
+        ? AppSpace.gapXs
+        : Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider);
     if (fit) {
       return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         for (var i = 0; i < rows.length; i++) ...[
-          if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+          if (i > 0) gap(),
           one(i),
         ],
       ]);
@@ -846,10 +880,10 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
     final list = ListView.separated(
       // a numbered table starts each page at its top
       key: widget.pagination == null ? null : ValueKey('app_table_page_${widget.pagination!.page}'),
-      padding: EdgeInsets.zero,
+      padding: phone ? const EdgeInsets.only(bottom: AppSpace.xs) : EdgeInsets.zero,
       itemCount: rows.length + (footer ? 1 : 0),
-      separatorBuilder: (_, _) => Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
-      itemBuilder: (_, i) => i < rows.length ? one(i) : _loadMoreFooter(),
+      separatorBuilder: (_, _) => gap(),
+      itemBuilder: (_, i) => i < rows.length ? one(i) : (phone ? _paper(context, _loadMoreFooter()) : _loadMoreFooter()),
     );
     if (widget.onLoadMore == null) return list;
     return NotificationListener<Notification>(
@@ -1029,6 +1063,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
     final v = _compact ? AppSpace.xs : AppSpace.sm;
     return _RowShell(
       bodyKey: AppDataTable.rowKey(_id(row)),
+      card: true,
       selected: selected,
       current: _isCurrent(row),
       onTap: widget.onRowTap == null ? null : () => widget.onRowTap!(row),
@@ -1133,8 +1168,9 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           if (!phone) _headerRow(context),
           for (var i = 0; i < 6; i++) ...[
-            if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
-            row(i),
+            if (i > 0)
+              if (phone) AppSpace.gapXs else Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+            if (phone) _paper(context, row(i)) else row(i),
           ],
         ]),
       ),
@@ -1247,14 +1283,17 @@ class _ResizeHandleState extends State<_ResizeHandle> {
   }
 }
 
-/// One row's surface: hover (web / desktop) and selection tint, ink on tap, [minHeight] minimum (48 by default).
-/// [current] = the open row: the selected fill plus a start-side accent bar (the hover tint is lighter and has no
-/// bar). [onHover] fires once per mouse / stylus enter, never for touch.
+/// One row's surface: hover (web / desktop, the input tone) and selection tint (the primary tint), ink on tap,
+/// [minHeight] minimum (48 by default). [current] = the open row: the selected fill plus a start-side accent bar
+/// (the hover tint is lighter and has no bar). [onHover] fires once per mouse / stylus enter, never for touch.
+/// [card]: a phone row, drawn as its own paper card (the card radius, a warm hairline) instead of a band of the
+/// table.
 class _RowShell extends StatefulWidget {
   const _RowShell({
     required this.child,
     required this.selected,
     this.current = false,
+    this.card = false,
     this.minHeight = AppTouch.min,
     this.bodyKey,
     this.onTap,
@@ -1264,6 +1303,7 @@ class _RowShell extends StatefulWidget {
   final Widget child;
   final bool selected;
   final bool current;
+  final bool card;
   final double minHeight;
 
   /// Keys the row's body (not the shell: two rows with the same id must not collide as siblings).
@@ -1282,9 +1322,43 @@ class _RowShellState extends State<_RowShell> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final rest = widget.card ? c.cardBg : Colors.transparent;
     final tint = widget.selected || widget.current
         ? c.primaryTint
-        : (_hover && widget.onTap != null ? c.primary.withValues(alpha: 0.06) : Colors.transparent);
+        : (_hover && widget.onTap != null ? c.inputBg : rest);
+    Widget inner = InkWell(
+      onTap: widget.onTap,
+      onLongPress: widget.onLongPress,
+      child: ConstrainedBox(
+        key: widget.bodyKey,
+        constraints: BoxConstraints(minHeight: widget.minHeight),
+        child: widget.child,
+      ),
+    );
+    if (widget.current) {
+      // the bar sits inside the surface, so a card's rounded corners clip it
+      inner = Stack(children: [
+        inner,
+        PositionedDirectional(
+          start: 0,
+          top: 0,
+          bottom: 0,
+          child: IgnorePointer(
+            child: SizedBox(
+              key: const ValueKey('app_table_current_bar'),
+              width: AppSpace.xxs,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: c.isDark ? c.primaryLight : c.primary,
+                  borderRadius: const BorderRadiusDirectional.horizontal(end: Radius.circular(AppSpace.xxs))
+                      .resolve(Directionality.of(context)),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ]);
+    }
     Widget shell = MouseRegion(
       onEnter: (e) {
         setState(() => _hover = true);
@@ -1295,43 +1369,17 @@ class _RowShellState extends State<_RowShell> {
       child: Material(
         color: tint,
         animationDuration: AppMotion.of(context).fast,
-        child: InkWell(
-          onTap: widget.onTap,
-          onLongPress: widget.onLongPress,
-          child: ConstrainedBox(
-            key: widget.bodyKey,
-            constraints: BoxConstraints(minHeight: widget.minHeight),
-            child: widget.child,
-          ),
-        ),
+        shape: widget.card
+            ? RoundedRectangleBorder(
+                borderRadius: AppRadius.cardAll,
+                side: BorderSide(color: c.divider, width: AppBorder.hairline),
+              )
+            : null,
+        clipBehavior: widget.card || widget.current ? Clip.antiAlias : Clip.none,
+        child: inner,
       ),
     );
-    if (widget.current) {
-      shell = Semantics(
-        selected: true,
-        child: Stack(children: [
-          shell,
-          PositionedDirectional(
-            start: 0,
-            top: 0,
-            bottom: 0,
-            child: IgnorePointer(
-              child: SizedBox(
-                key: const ValueKey('app_table_current_bar'),
-                width: AppSpace.xxs,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: c.isDark ? c.primaryLight : c.primary,
-                    borderRadius: const BorderRadiusDirectional.horizontal(end: Radius.circular(AppSpace.xxs))
-                        .resolve(Directionality.of(context)),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ]),
-      );
-    }
+    if (widget.current) shell = Semantics(selected: true, child: shell);
     return shell;
   }
 }
