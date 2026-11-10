@@ -146,7 +146,8 @@ class CourseListCard extends StatelessWidget {
   Widget _meta(BuildContext context) {
     final c = context.colors;
     final style = appText(12.5, w: FontWeight.w400, c: c.textMedium, h: 1.4);
-    final text = meta.where((m) => m.trim().isNotEmpty).join('  ·  ');
+    // each part in its own direction: an English teacher name beside an Arabic count read "12 Dr. Mona Adel · جلسة"
+    final text = meta.where((m) => m.trim().isNotEmpty).map(bidiIsolate).join('  ·  ');
     return Row(children: [
       if (isPrivate)
         ParentComponent(
@@ -968,6 +969,9 @@ class CourseListToolbar extends StatelessWidget {
     );
   }
 }
+
+/// [s] as a directional isolate (FSI … PDI): a run in the other script keeps its own order inside a joined line.
+String bidiIsolate(String s) => '${String.fromCharCode(0x2068)}$s${String.fromCharCode(0x2069)}';
 
 /// True when the kill switch [key] is off (the screen leaves that part out).
 bool courseFeatureOff(String key) => AppConfig.disableList.contains(key);
