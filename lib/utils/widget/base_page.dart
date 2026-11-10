@@ -88,8 +88,11 @@ class BasePage extends StatelessWidget {
         ),
       );
     }
+    // A card page's header lies across the whole page, on top, like every other page's header (D-575): inside the card it
+    // was a second floating gradient box on the doodle background.
+    final headerOutside = useWebCard && appBar != null && context.width >= AppWidth.phoneMax;
     Widget w = Scaffold(
-      appBar: appBar,
+      appBar: headerOutside ? null : appBar,
       backgroundColor:bg,
       floatingActionButton: _buildFab(), // was: floatingActionButton
       bottomNavigationBar:
@@ -110,6 +113,7 @@ class BasePage extends StatelessWidget {
         textDirection: Helpers.pageDirection,
         child: Scaffold(
           backgroundColor: bg,
+          appBar: headerOutside ? appBar : null,
           // NOTE: no footer here — `w` below already carries it via its own
           // bottomNavigationBar, and `w` is what actually renders in this
           // branch (nested inside the centered card).
