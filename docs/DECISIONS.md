@@ -3733,3 +3733,22 @@ Full text in `../back/docs/DECISIONS.md`. D-410: the catalog grows to 40 more OF
 **What "real" proves.** Numbers carry no checksum and certificates no signature, so "real" means a matching record exists in NextBrain's database and nothing more: it cannot tell that the words on a paper or PDF were not edited around a real number. The page says so and asks the reader to compare the name and details. The only integrity check is the number's shape and alphabet.
 
 **Consequences.** `valid` is now false for an expired certificate, so an app older than this reads an expired one as "revoked" (no certificate has an expiry until an issuer sets one). `course.id` left the public answer. The expiry is not printed on the certificate unless the design has a column for it. Lists issued from the saved-lists page have no expiry control in the app yet; the API takes it.
+
+## D-510 — Background removal on the device, no model and no server (supersedes D-390)
+
+**Context.** The owner asked for a free tool without models; D-390's model was never deployed and its weights' dataset forbids commercial use.
+**Decision.** `lib/design/image_background_engine.dart` (plain Dart, unit-tested on synthetic pictures) does it all on the device; the server route, service, hub role, model entry and throttle scope are gone (back `docs/DECISIONS.md`, D-510). The kill switch `image.background` stays. Because nothing is sent any more, the tool is no longer hidden for guests or "view as"; the kill switch alone hides it.
+
+## D-511 — The Background tab is the mode
+
+The tool has its own tab on phone AND desktop (desktop used to stack it under the crop controls), because a tap on the picture has a different meaning there: on Adjust it only drags, on Background it picks. The first visit reads the picture and shows the result at once (transparent, or white where `allowTransparent` is false); the Original tile goes back. The panel order is hint with undo / redo / start over, tool, sliders, then the replacement tiles.
+
+## D-512 — What the border says, and what a tap means
+
+Border colours are clustered in Lab, with the upper part weighted most: a colour must have a share of itself in the upper half, so a shirt along the bottom edge is not background (a floor or a table is not either; one tap removes it). If the clusters explain less than 35 % of the border the picture is left whole and the person is told to tap. A flood accepts a pixel within the colour's tolerance, or within a wider reach when it is close to its neighbour (gradients, vignettes). A tap on what is kept removes that connected colour; a tap on something removed brings it back. "Also inside shapes" also takes the colour where it is not connected, and turns on by itself for flat graphics (logos), never for photos, where it would take the whites of the eyes.
+
+**What real photos added.** On a plain background (the border's main colour varies little) the background enclosed by the subject also goes, such as the gap between an arm and the body: only connected areas that match the colour tightly and cover at least 0.15 % of the picture, so the white of an eye stays. Two guards keep a wrong guess from eating the picture: a border whose main colour varies a lot (a mottled studio backdrop, an old photo) is not guessed at all, and on a border that is not perfectly plain, an automatic result that keeps under 18 % is tried again with a tighter range, twice; if it is still under, the picture is left whole and the hint asks the person to tap what should go.
+
+## D-513 — One small mask, any resolution
+
+The mask is made at 640 px on the long side and is never remade at a larger size; the outline becomes a narrow band where each pixel is explained as a mix of the local background and subject colours, which gives alpha and the pixel's true colour (no fringe of the old background). The colours on each side come from beyond the edge's own blur. The screen shows 1400 px; the file is rendered from the same mask at up to 2400 px when the person presses Use photo, so what was seen is what the file gets. Generators that yield often run on an isolate on a phone and in 10 ms slices on the web, one job at a time, changes folded into the next run.

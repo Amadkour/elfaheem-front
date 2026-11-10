@@ -1,124 +1,406 @@
 // lib/design/app_image_background.dart
 //
-// The Background tool of the app cropper (app_image_cropper.dart): remove a photo's background or put a colour or an
-// organic gradient behind the subject.
+// The Background tool of the app cropper (app_image_cropper.dart): remove a picture's background, then leave it
+// transparent or put a colour or an organic gradient behind the subject.
 //
-// One server call per image gives a cut-out (PNG with alpha) that stays in memory. Everything after it is local: the
-// cut-out is layered over the chosen [ImageBackdrop] in the widget tree, so the cropper's own capture produces the
-// final PNG, zoom, rotation and shape included. The checkerboard that shows transparency is drawn OUTSIDE the
-// captured area and never reaches the file.
+// Everything runs on the device with no model and no server call (D-510): the pure logic is
+// image_background_engine.dart, this file decodes the picture, keeps the person's steps and shows the result. The first
+// look at the tool removes what the border says is background; then a tap on the picture removes that colour, a tap on
+// something removed brings it back, and two brushes cover the rest. Heavy work runs on an isolate on a phone and in
+// small time slices on the web (no isolates there). The result is layered over the chosen [ImageBackdrop] in the
+// widget tree, so the cropper's own capture produces the final PNG, zoom, rotation and shape included; the checkerboard
+// that shows transparency is drawn OUTSIDE the captured area and never reaches the file.
 //
-// The tool is hidden for guests, for "view as" (the server refuses writes there) and by the kill switch
-// `image.background`; see [imageBackgroundAvailable].
+// The tool is hidden by the kill switch `image.background`; see [imageBackgroundAvailable].
 library;
 
-import 'dart:convert';
-import 'dart:typed_data';
+import 'dart:async';
 import 'dart:ui' as ui;
 
-import 'package:dio/dio.dart' show CancelToken;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
-import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 
 import 'app_buttons.dart';
 import 'app_contrast.dart';
 import 'app_display.dart' show syncMotionLoop;
 import 'app_kit.dart' show appText;
 import 'app_mesh.dart';
+import 'app_switch.dart';
 import 'app_tokens.dart';
-import 'studio/studio_props.dart' show studioHex, studioParseHex;
+import 'image_background_engine.dart';
+import 'studio/studio_props.dart' show studioHex;
 
 const String kImageBackgroundFeature = 'image.background';
 
-/// A signed-in person who may write, with the tool switched on.
-bool imageBackgroundAvailable() =>
-    !AppConfig.disableList.contains(kImageBackgroundFeature) &&
-    !GuestState.active &&
-    !ViewAsState.active &&
-    ApiClient().hasSession;
+/// The tool is free and local: only the kill switch hides it.
+bool imageBackgroundAvailable() => !AppConfig.disableList.contains(kImageBackgroundFeature);
 
-/// The server's answer, kept for as long as the cropper is open.
-@immutable
-class ImageCutout {
-  const ImageCutout({required this.png, required this.width, required this.height, required this.coverage, required this.suggested});
+enum ImageBackgroundBrush { pick, restore, erase }
 
-  final Uint8List png;
-  final int width, height;
+/// Above this many pixels a phone does the first analysis on an isolate; the web has none.
+const int _sliceMs = 10;
 
-  /// The share of the picture kept as the subject, 0 … 1.
-  final double coverage;
-  final List<Color> suggested;
+/// How far the first automatic result may go before it is tried again more carefully.
+const int _guessRetries = 2;
+const double _guessMinCoverage = 0.18;
+const double _guessTighten = 0.55;
+const double _guessPlainSpread = 2.5;
+
+class _RenderJob {
+  const _RenderJob(this.fields, this.source, this.softness);
+  final BgFields fields;
+  final BgRaster source;
+  final double softness;
 }
 
-/// Above this a base64 body is decoded on a background isolate (the web has none).
-const int _inlineBase64Limit = 300000;
-
-/// The largest side sent when a picture has to be re-encoded first.
-const int _transcodeMaxSide = 2048;
-
-String? _imageExtension(Uint8List b) {
-  if (b.length > 3 && b[0] == 0xFF && b[1] == 0xD8) return 'jpg';
-  if (b.length > 8 && b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47) return 'png';
-  if (b.length > 12 && b[0] == 0x52 && b[1] == 0x49 && b[8] == 0x57 && b[9] == 0x45 && b[10] == 0x42 && b[11] == 0x50) return 'webp';
-  return null;
+BgOutput _runJob(BgJob job) {
+  final out = BgOutput();
+  bgDrain(bgProcess(job, out));
+  return out;
 }
 
-/// HEIC and the like: what this device can show, as a PNG the server can read.
-Future<Uint8List> _transcodeToPng(Uint8List bytes) async {
-  final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
-  final codec = await ui.instantiateImageCodecWithSize(buffer, getTargetSize: (w, h) {
-    final longest = w > h ? w : h;
-    if (longest <= _transcodeMaxSide) return ui.TargetImageSize(width: w, height: h);
-    final s = _transcodeMaxSide / longest;
-    return ui.TargetImageSize(width: (w * s).round(), height: (h * s).round());
-  });
-  final frame = await codec.getNextFrame();
-  final data = await frame.image.toByteData(format: ui.ImageByteFormat.png);
-  frame.image.dispose();
-  codec.dispose();
-  if (data == null) throw ApiException(statusCode: 0, message: translate('imgbg_failed'));
-  return data.buffer.asUint8List();
+Uint8List _runRender(_RenderJob job) {
+  final out = Uint8List(job.source.rgba.length);
+  bgDrain(bgRender(job.fields, job.source, job.softness, out));
+  return out;
 }
 
-Future<Uint8List> _decodeBase64(String s) async => kIsWeb || s.length < _inlineBase64Limit ? base64Decode(s) : compute(base64Decode, s);
+BgWork _makeWork(BgRaster r) => BgWork(r.width, r.height, r.rgba);
 
-/// `POST /api/v1/me/images/remove-background`. Throws only [ApiException].
-Future<ImageCutout> removeImageBackground(Uint8List bytes, {CancelToken? cancelToken}) async {
-  final ext = _imageExtension(bytes);
-  final upload = ext == null ? await _transcodeToPng(bytes) : bytes;
-  final r = await ApiClient().postMultipart(
-    '/api/v1/me/images/remove-background',
-    fields: const {},
-    fileField: 'file',
-    fileName: 'image.${ext ?? 'png'}',
-    fileBytes: upload,
-    cancelToken: cancelToken,
-  );
-  final b64 = r is Map ? r['image_b64'] : null;
-  if (b64 is! String || b64.isEmpty) throw ApiException(statusCode: 0, message: translate('imgbg_failed'));
-  final Uint8List png;
-  try {
-    png = await _decodeBase64(b64);
-  } on FormatException {
-    throw ApiException(statusCode: 0, message: translate('imgbg_failed'));
+/// The state of the tool for one picture. Holds the person's steps, the working copies and the result on the screen.
+class ImageBackgroundSession extends ChangeNotifier {
+  ImageBackgroundSession(this.bytes);
+
+  /// A session already holding a result, for tests of the panel (nothing is decoded).
+  @visibleForTesting
+  ImageBackgroundSession.preview({this.coverage, List<Color> suggested = const [], bool busyBackground = false})
+      : bytes = Uint8List(0),
+        started = true,
+        _previewOnly = true,
+        suggestedColours = suggested {
+    if (busyBackground) estimate = const BgEstimate([], 0, false);
   }
-  final raw = r['suggested_colors'];
-  return ImageCutout(
-    png: png,
-    width: (r['width'] as num?)?.toInt() ?? 0,
-    height: (r['height'] as num?)?.toInt() ?? 0,
-    coverage: (r['coverage'] as num?)?.toDouble() ?? 0.5,
-    suggested: [
-      if (raw is List)
-        for (final h in raw)
-          if (studioParseHex('$h') case final Color color) color,
-    ],
-  );
+
+  final Uint8List bytes;
+  bool _previewOnly = false;
+
+  bool started = false;
+  bool preparing = false;
+  bool failed = false;
+  BgEstimate? estimate;
+  double? coverage;
+  List<Color> suggestedColours = const [];
+  ImageBackgroundBrush brush = ImageBackgroundBrush.pick;
+  double tolerance = kBgDefaultTolerance;
+  double softness = kBgDefaultSoftness;
+  double brushSize = 0.3;
+  bool holes = false;
+
+  final List<BgOp> _ops = [];
+  final List<BgOp> _redo = [];
+  BgWork? _work;
+  BgRaster? _display;
+  BgFields? _fields;
+  int _sourceWidth = 0, _sourceHeight = 0;
+
+  ui.Image? _image;
+  bool _dirty = false, _running = false, _disposed = false;
+  Completer<void>? _settled;
+  bool _stroking = false;
+
+  /// The result to show over the backdrop.
+  ui.Image? get image => _image;
+  bool get ready => _work != null && _image != null;
+  bool get busy => preparing;
+
+  /// Anything still being worked out; tests wait on it.
+  @visibleForTesting
+  bool get working => preparing || _running || _dirty;
+  bool get canUndo => _ops.isNotEmpty;
+  bool get canRedo => _redo.isNotEmpty;
+  bool get hasSteps => _ops.isNotEmpty || _redo.isNotEmpty;
+  bool get _unlikelyBackground => estimate?.clusters.isEmpty ?? false;
+
+  bool get busyBackground => _unlikelyBackground && !hasSteps;
+  int get lowWidth => _work?.width ?? 0;
+  int get lowHeight => _work?.height ?? 0;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _settle();
+    _image?.dispose();
+    _image = null;
+    super.dispose();
+  }
+
+  static Future<BgRaster> _decode(Uint8List bytes, int maxSide, void Function(int, int) onSize) async {
+    final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
+    final codec = await ui.instantiateImageCodecWithSize(buffer, getTargetSize: (w, h) {
+      onSize(w, h);
+      final (tw, th) = bgFitWithin(w, h, maxSide);
+      return ui.TargetImageSize(width: tw, height: th);
+    });
+    final frame = await codec.getNextFrame();
+    final data = await frame.image.toByteData(format: ui.ImageByteFormat.rawStraightRgba);
+    final raster = BgRaster(frame.image.width, frame.image.height, data!.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
+    frame.image.dispose();
+    codec.dispose();
+    return raster;
+  }
+
+  /// Decodes, reads the border and shows the first result. Safe to call again; [ready] tells how it went.
+  Future<void> start() async {
+    if (started) return;
+    started = true;
+    preparing = true;
+    failed = false;
+    notifyListeners();
+    try {
+      final display = await _decode(bytes, kBgDisplaySide, (w, h) {
+        _sourceWidth = w;
+        _sourceHeight = h;
+      });
+      final raster = (display.width > display.height ? display.width : display.height) <= kBgLowSide ? display : await _decode(bytes, kBgLowSide, (_, _) {});
+      if (_disposed) return;
+      final work = kIsWeb ? BgWork(raster.width, raster.height, raster.rgba) : await compute(_makeWork, raster);
+      if (_disposed) return;
+      final found = kIsWeb ? bgEstimateBackground(work) : await compute(bgEstimateBackground, work);
+      if (_disposed) return;
+      _work = work;
+      _display = display;
+      estimate = found;
+      holes = found.graphic;
+      await _runNow();
+      // an automatic guess that took nearly everything misjudged the picture: tighter, then leave it to the person.
+      // Only on a varied border: on a truly plain one a small subject (a logo on a page) is simply small.
+      final doubtful = found.clusters.isNotEmpty && found.clusters.first.spread > _guessPlainSpread;
+      for (var i = 0; doubtful && i < _guessRetries && (coverage ?? 1) < _guessMinCoverage && estimate!.clusters.isNotEmpty; i++) {
+        tolerance *= _guessTighten;
+        await _runNow();
+      }
+      if (doubtful && (coverage ?? 1) < _guessMinCoverage && estimate!.clusters.isNotEmpty) {
+        estimate = BgEstimate(const [], estimate!.confidence, false);
+        tolerance = kBgDefaultTolerance;
+        holes = false;
+        await _runNow();
+      }
+    } catch (e) {
+      failed = true;
+      debugPrint('image background: $e');
+    } finally {
+      preparing = false;
+      if (!_disposed) notifyListeners();
+    }
+  }
+
+  
+
+  BgParams get _params => BgParams(estimate: estimate ?? const BgEstimate([], 0, false), ops: List.of(_ops), tolerance: tolerance, softness: softness, holes: holes);
+
+  /// One job at a time; changes that arrive meanwhile are folded into the next run.
+  void _schedule() {
+    if (_work == null || _previewOnly) return;
+    _dirty = true;
+    if (!_running) unawaited(_loop());
+  }
+
+  Future<void> _loop() async {
+    _running = true;
+    while (_dirty && !_disposed) {
+      _dirty = false;
+      try {
+        await _runOnce();
+      } catch (e) {
+        debugPrint('image background: $e');
+      }
+    }
+    _running = false;
+    _settle();
+  }
+
+  Future<void> _runNow() async {
+    _dirty = false;
+    _running = true;
+    try {
+      await _runOnce();
+    } finally {
+      _running = false;
+    }
+    if (_dirty) unawaited(_loop());
+  }
+
+  void _settle() {
+    final s = _settled;
+    _settled = null;
+    if (s != null && !s.isCompleted) s.complete();
+  }
+
+  Future<void> _runOnce() async {
+    // first the small copy (instant feedback), then the screen's size once nothing newer is waiting
+    final job = BgJob(_work!, _params, _work!);
+    final out = kIsWeb ? await _sliced(job) : await compute(_runJob, job);
+    if (_disposed || out == null) return;
+    _fields = out.fields;
+    coverage = out.fields?.coverage;
+    if (suggestedColours.isEmpty) {
+      suggestedColours = [for (final c in bgSuggestColours(_work!, out.fields!.removed)) Color(0xFF000000 | c)];
+    }
+    await _show(out.rgba!, out.width, out.height);
+    final display = _display!;
+    if (_dirty || (display.width == out.width && display.height == out.height)) return;
+    final rgba = await _renderAt(out.fields!, display);
+    if (_disposed || rgba == null) return;
+    await _show(rgba, display.width, display.height);
+  }
+
+  /// [source] rendered from [fields], off the UI thread; null when a newer change arrived (web only, where it can stop).
+  Future<Uint8List?> _renderAt(BgFields fields, BgRaster source) async {
+    if (!kIsWeb) return compute(_runRender, _RenderJob(fields, source, softness));
+    final rgba = Uint8List(source.rgba.length);
+    final sw = Stopwatch()..start();
+    for (final _ in bgRender(fields, source, softness, rgba)) {
+      if (sw.elapsedMilliseconds >= _sliceMs) {
+        await Future<void>.delayed(Duration.zero);
+        if (_disposed || _dirty) return null;
+        sw.reset();
+      }
+    }
+    return rgba;
+  }
+
+  Future<BgOutput?> _sliced(BgJob job) async {
+    final out = BgOutput();
+    final sw = Stopwatch()..start();
+    for (final _ in bgProcess(job, out)) {
+      if (sw.elapsedMilliseconds >= _sliceMs) {
+        await Future<void>.delayed(Duration.zero);
+        if (_disposed) return null;
+        sw.reset();
+      }
+    }
+    return out;
+  }
+
+  Future<void> _show(Uint8List rgba, int width, int height) async {
+    final done = Completer<ui.Image>();
+    ui.decodeImageFromPixels(rgba, width, height, ui.PixelFormat.rgba8888, done.complete);
+    final next = await done.future;
+    if (_disposed) {
+      next.dispose();
+      return;
+    }
+    final old = _image;
+    _image = next;
+    notifyListeners();
+    if (old != null) WidgetsBinding.instance.addPostFrameCallback((_) => old.dispose());
+  }
+
+  /// The full-resolution result for the file (the cap of [kBgFullSide] is the guard for very large pictures). Does
+  /// nothing if the screen copy already is the full picture.
+  Future<void> applyFullResolution() async {
+    await _waitSettled();
+    final fields = _fields;
+    if (_disposed || fields == null) return;
+    final (fullW, fullH) = bgFitWithin(_sourceWidth, _sourceHeight, kBgFullSide);
+    final shown = _display;
+    if (shown != null && shown.width >= fullW && shown.height >= fullH) return;
+    final source = await _decode(bytes, kBgFullSide, (_, _) {});
+    if (_disposed) return;
+    _dirty = false;
+    final rgba = await _renderAt(fields, source);
+    if (_disposed || rgba == null) return;
+    await _show(rgba, source.width, source.height);
+  }
+
+  Future<void> _waitSettled() async {
+    if (!_running) return;
+    await (_settled ??= Completer<void>()).future;
+  }
+
+  void setBrush(ImageBackgroundBrush b) {
+    if (brush == b) return;
+    brush = b;
+    notifyListeners();
+  }
+
+  void setTolerance(double v) {
+    tolerance = v;
+    _schedule();
+    notifyListeners();
+  }
+
+  void setSoftness(double v) {
+    softness = v;
+    _schedule();
+    notifyListeners();
+  }
+
+  void setBrushSize(double v) {
+    brushSize = v;
+    notifyListeners();
+  }
+
+  void setHoles(bool v) {
+    holes = v;
+    _schedule();
+    notifyListeners();
+  }
+
+  void _add(BgOp op) {
+    _ops.add(op);
+    _redo.clear();
+    _schedule();
+    notifyListeners();
+  }
+
+  void undo() {
+    if (_ops.isEmpty) return;
+    _redo.add(_ops.removeLast());
+    _schedule();
+    notifyListeners();
+  }
+
+  void redo() {
+    if (_redo.isEmpty) return;
+    _ops.add(_redo.removeLast());
+    _schedule();
+    notifyListeners();
+  }
+
+  /// Back to what the border alone said, every step and slider undone.
+  void reset() {
+    _ops.clear();
+    _redo.clear();
+    tolerance = kBgDefaultTolerance;
+    softness = kBgDefaultSoftness;
+    holes = estimate?.graphic ?? false;
+    _schedule();
+    notifyListeners();
+  }
+
+  /// A tap on the small copy: what is kept is removed, what is removed comes back.
+  void tapAt(int x, int y) {
+    final fields = _fields;
+    if (fields == null) return;
+    final removed = fields.removed[y * fields.width + x] == 1;
+    _add(removed ? BgOp.keep(x, y) : BgOp.pick(x, y));
+  }
+
+  void startStroke(double x, double y, double radius) {
+    _stroking = true;
+    _add(BgOp.stroke(brush == ImageBackgroundBrush.erase ? BgOpKind.erase : BgOpKind.restore, [x, y], radius));
+  }
+
+  void extendStroke(double x, double y) {
+    if (!_stroking || _ops.isEmpty) return;
+    _ops[_ops.length - 1] = _ops.last.extendedTo(x, y);
+    _schedule();
+  }
+
+  void endStroke() => _stroking = false;
 }
 
 enum ImageBackdropKind { original, transparent, color, mesh }
@@ -194,13 +476,12 @@ class _CheckerPainter extends CustomPainter {
   bool shouldRepaint(_CheckerPainter old) => false;
 }
 
-/// The moving light over the photo while the server works, with a way out. It sits above the captured area.
+/// The moving light over the photo while the picture is read. It sits above the captured area.
 class ImageBackgroundWorking extends StatefulWidget {
-  const ImageBackgroundWorking({super.key, required this.size, required this.circle, required this.onCancel});
+  const ImageBackgroundWorking({super.key, required this.size, required this.circle});
 
   final Size size;
   final bool circle;
-  final VoidCallback onCancel;
 
   @override
   State<ImageBackgroundWorking> createState() => _ImageBackgroundWorkingState();
@@ -239,18 +520,11 @@ class _ImageBackgroundWorkingState extends State<ImageBackgroundWorking> with Si
             child: DecoratedBox(
               decoration: BoxDecoration(color: _glass, borderRadius: AppRadius.cardAll),
               child: Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.xxs, AppSpace.xxs, AppSpace.xxs),
+                padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.auto_awesome_rounded, size: AppIconSize.sm, color: _ink),
+                  const Icon(Icons.auto_fix_high_rounded, size: AppIconSize.sm, color: _ink),
                   const SizedBox(width: AppSpace.xs),
                   Text(translate('imgbg_working'), style: appText(13, w: FontWeight.w600, c: _ink)),
-                  const SizedBox(width: AppSpace.xs),
-                  TextButton(
-                    key: const ValueKey('imgbg_cancel'),
-                    onPressed: widget.onCancel,
-                    style: TextButton.styleFrom(foregroundColor: _ink, minimumSize: const Size(AppTouch.min, AppTouch.min)),
-                    child: Text(translate('imgbg_cancel'), style: appText(13, w: FontWeight.w700, c: _ink)),
-                  ),
                 ]),
               ),
             ),
@@ -295,36 +569,80 @@ class _LightPainter extends CustomPainter {
   bool shouldRepaint(_LightPainter old) => old.t != t || old.tint != tint;
 }
 
-/// Plain values in, choices out: the panel of the tool. [wide] lays the choices in rows (a side panel), otherwise
-/// they are one strip that scrolls sideways.
+/// The ring where a tap landed, drawn in the frame's coordinates.
+class ImageTapRing extends CustomPainter {
+  ImageTapRing(this.t, this.center, this.color) : super(repaint: t);
+
+  final Animation<double> t;
+  final Offset center;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final v = t.value;
+    if (v <= 0 || v >= 1) return;
+    canvas.drawCircle(
+      center,
+      8 + v * 26,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5
+        ..color = color.withValues(alpha: 1 - v),
+    );
+  }
+
+  @override
+  bool shouldRepaint(ImageTapRing old) => old.center != center || old.color != color;
+}
+
+/// The brush outline over the picture.
+class ImageBrushCursor extends CustomPainter {
+  const ImageBrushCursor(this.center, this.radius);
+
+  final Offset center;
+  final double radius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawCircle(center, radius + 1, Paint()..style = PaintingStyle.stroke..strokeWidth = 3..color = const Color(0x66000000));
+    canvas.drawCircle(center, radius, Paint()..style = PaintingStyle.stroke..strokeWidth = 1.5..color = const Color(0xFFFFFFFF));
+  }
+
+  @override
+  bool shouldRepaint(ImageBrushCursor old) => old.center != center || old.radius != radius;
+}
+
+/// The panel of the tool. [wide] lays the choices in rows (a side panel), otherwise they are one strip that scrolls
+/// sideways.
 class ImageBackgroundTool extends StatelessWidget {
   const ImageBackgroundTool({
     super.key,
+    required this.session,
     required this.original,
     required this.selected,
-    required this.working,
-    required this.cutout,
     required this.allowTransparent,
     required this.wide,
     required this.customColor,
     required this.onPick,
-    required this.onUndo,
     required this.onCustom,
+    required this.onToolUsed,
   });
 
+  final ImageBackgroundSession session;
   final Uint8List original;
   final ImageBackdrop selected;
-  final bool working;
-  final ImageCutout? cutout;
   final bool allowTransparent, wide;
   final Color? customColor;
   final ValueChanged<ImageBackdrop> onPick;
-  final VoidCallback onUndo, onCustom;
+  final VoidCallback onCustom;
+
+  /// A slider moved or a tool chosen: the cropper shows the removal if the person was looking at the original.
+  final VoidCallback onToolUsed;
 
   /// Kept that much or more of the picture, there was little background to take away.
   static const double coverageHigh = 0.93;
 
-  /// Kept that little, the subject found may not be the one meant.
+  /// Kept that little, too much went.
   static const double coverageLow = 0.05;
   static const int _maxSuggested = 5;
 
@@ -334,23 +652,59 @@ class ImageBackgroundTool extends StatelessWidget {
   static const Color _rose = Color(0xFFD9467E);
 
   String get _hint {
-    final cut = cutout;
-    if (working) return translate('imgbg_hint_working');
-    if (cut == null) return translate('imgbg_hint_start');
-    if (cut.coverage >= coverageHigh) return translate('imgbg_hint_cover_high');
-    if (cut.coverage <= coverageLow) return translate('imgbg_hint_cover_low');
+    if (session.preparing) return translate('imgbg_hint_working');
+    if (session.failed) return translate('imgbg_failed');
+    switch (session.brush) {
+      case ImageBackgroundBrush.restore:
+        return translate('imgbg_hint_restore');
+      case ImageBackgroundBrush.erase:
+        return translate('imgbg_hint_erase');
+      case ImageBackgroundBrush.pick:
+        break;
+    }
+    final cov = session.coverage;
+    if (session.busyBackground) return translate('imgbg_hint_busy');
+    if (cov != null && cov >= coverageHigh) return translate('imgbg_hint_cover_high');
+    if (cov != null && cov <= coverageLow) return translate('imgbg_hint_cover_low');
     return translate('imgbg_hint_ready');
+  }
+
+  Widget _sliderRow(BuildContext context, String key, String label, double value, ValueChanged<double> onChanged) {
+    final c = context.colors;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: AppTouch.min),
+      child: Row(children: [
+        SizedBox(
+          width: 92,
+          child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: c.textMedium)),
+        ),
+        Expanded(
+          child: Slider(
+            key: ValueKey(key),
+            value: value.clamp(0.0, 1.0),
+            semanticFormatterCallback: (v) => '$label ${(v * 100).round()}%',
+            onChanged: session.ready
+                ? (v) {
+                    onChanged(v);
+                    onToolUsed();
+                  }
+                : null,
+          ),
+        ),
+      ]),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final enabled = !session.preparing;
     bool same(Color a, Color b) => (a.toARGB32() & 0xFFFFFF) == (b.toARGB32() & 0xFFFFFF);
     const white = Color(0xFFFFFFFF);
     final colours = <(Color, String)>[(white, translate('imgbg_white')), (c.primary, translate('imgbg_brand'))];
     if (!same(c.accent, c.primary)) colours.add((c.accent, translate('imgbg_accent')));
     final suggested = <Color>[];
-    for (final s in cutout?.suggested ?? const <Color>[]) {
+    for (final s in session.suggestedColours) {
       if (suggested.length == _maxSuggested) break;
       if (!suggested.any((x) => same(x, s)) && !colours.any((x) => same(x.$1, s))) suggested.add(s);
     }
@@ -361,7 +715,7 @@ class ImageBackgroundTool extends StatelessWidget {
           key: ValueKey(key),
           label: label,
           selected: selected == ImageBackdrop.color(color) && !customOn,
-          enabled: !working,
+          enabled: enabled,
           onTap: () => onPick(ImageBackdrop.color(color)),
           child: ColoredBox(color: color),
         );
@@ -370,7 +724,7 @@ class ImageBackgroundTool extends StatelessWidget {
           key: ValueKey('imgbg_mesh_$index'),
           label: '${translate('imgbg_gradient')} ${index + 1}',
           selected: selected == ImageBackdrop.mesh(color, seed),
-          enabled: !working,
+          enabled: enabled,
           onTap: () => onPick(ImageBackdrop.mesh(color, seed)),
           child: AppMeshSurface(color: color, seed: seed),
         );
@@ -382,9 +736,9 @@ class ImageBackgroundTool extends StatelessWidget {
           label: translate('imgbg_original'),
           caption: translate('imgbg_original'),
           selected: selected == ImageBackdrop.original,
-          enabled: !working,
+          enabled: enabled,
           onTap: () => onPick(ImageBackdrop.original),
-          child: Image.memory(original, fit: BoxFit.cover, cacheWidth: 128, gaplessPlayback: true),
+          child: Image.memory(original, fit: BoxFit.cover, cacheWidth: 128, gaplessPlayback: true, errorBuilder: (_, _, _) => ColoredBox(color: c.divider)),
         ),
         if (allowTransparent)
           _Tile(
@@ -392,7 +746,7 @@ class ImageBackgroundTool extends StatelessWidget {
             label: translate('imgbg_remove_long'),
             caption: translate('imgbg_remove'),
             selected: selected == ImageBackdrop.transparent,
-            enabled: !working,
+            enabled: enabled,
             onTap: () => onPick(ImageBackdrop.transparent),
             child: const Stack(fit: StackFit.expand, children: [
               ImageCheckerboard(),
@@ -410,7 +764,7 @@ class ImageBackgroundTool extends StatelessWidget {
           key: const ValueKey('imgbg_custom'),
           label: translate('imgbg_custom'),
           selected: customOn,
-          enabled: !working,
+          enabled: enabled,
           onTap: onCustom,
           child: custom != null
               ? ColoredBox(color: custom, child: Icon(Icons.edit_rounded, size: AppIconSize.sm, color: ensureContrast(c.textDark, [custom], min: 3)))
@@ -471,25 +825,118 @@ class ImageBackgroundTool extends StatelessWidget {
             ]),
           );
 
+    final tools = <(ImageBackgroundBrush, String, IconData, String)>[
+      (ImageBackgroundBrush.pick, translate('imgbg_tool_pick'), Icons.colorize_rounded, 'imgbg_tool_pick'),
+      (ImageBackgroundBrush.restore, translate('imgbg_tool_restore'), Icons.brush_rounded, 'imgbg_tool_restore'),
+      (ImageBackgroundBrush.erase, translate('imgbg_tool_erase'), Icons.auto_fix_normal_rounded, 'imgbg_tool_erase'),
+    ];
+
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-      Row(children: [
+      Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
         Expanded(
           child: AnimatedSwitcher(
             duration: AppMotion.of(context).base,
             layoutBuilder: (current, previous) => Stack(alignment: AlignmentDirectional.centerStart, children: [...previous, ?current]),
-            child: Text(_hint, key: ValueKey(_hint), style: appText(13, w: FontWeight.w400, c: c.textMedium)),
+            child: Text(_hint, key: ValueKey(_hint), maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w400, c: c.textMedium)),
           ),
         ),
-        if (selected != ImageBackdrop.original && !working)
-          AppButton.ghost(
-            key: const ValueKey('imgbg_undo'),
-            label: translate('imgbg_undo'),
-            icon: Icons.undo_rounded,
-            onPressed: onUndo,
-          ),
+        AppIconButton(key: const ValueKey('imgbg_undo'), icon: Icons.undo_rounded, tooltip: translate('imgbg_undo'), onPressed: session.canUndo ? session.undo : null),
+        AppIconButton(key: const ValueKey('imgbg_redo'), icon: Icons.redo_rounded, tooltip: translate('imgbg_redo'), onPressed: session.canRedo ? session.redo : null),
+        AppIconButton(
+          key: const ValueKey('imgbg_reset'),
+          icon: Icons.restart_alt_rounded,
+          tooltip: translate('imgbg_reset'),
+          onPressed: session.hasSteps || session.tolerance != kBgDefaultTolerance || session.softness != kBgDefaultSoftness ? session.reset : null,
+        ),
       ]),
-      const SizedBox(height: AppSpace.xs),
-      choices,
+      const SizedBox(height: AppSpace.xxs),
+      _ToolPicker(
+        items: tools,
+        selected: session.brush,
+        enabled: enabled,
+        onChanged: (b) {
+          session.setBrush(b);
+          onToolUsed();
+        },
+      ),
+      if (!wide) ...[
+        const SizedBox(height: AppSpace.sm),
+        choices,
+      ],
+      const SizedBox(height: AppSpace.xxs),
+      _sliderRow(context, 'imgbg_tolerance', translate('imgbg_tolerance'), session.tolerance, session.setTolerance),
+      _sliderRow(context, 'imgbg_softness', translate('imgbg_softness'), session.softness, session.setSoftness),
+      if (session.brush != ImageBackgroundBrush.pick) _sliderRow(context, 'imgbg_brush_size', translate('imgbg_brush_size'), session.brushSize, session.setBrushSize),
+      AppSwitchTile(
+        key: const ValueKey('imgbg_holes'),
+        title: translate('imgbg_holes'),
+        value: session.holes,
+        dense: true,
+        padding: EdgeInsets.zero,
+        onChanged: session.ready
+            ? (v) {
+                session.setHoles(v);
+                onToolUsed();
+              }
+            : null,
+      ),
+      if (wide) ...[
+        const SizedBox(height: AppSpace.sm),
+        choices,
+      ],
+    ]);
+  }
+}
+
+class _ToolPicker extends StatelessWidget {
+  const _ToolPicker({required this.items, required this.selected, required this.enabled, required this.onChanged});
+
+  final List<(ImageBackgroundBrush, String, IconData, String)> items;
+  final ImageBackgroundBrush selected;
+  final bool enabled;
+  final ValueChanged<ImageBackgroundBrush> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ring = ensureContrast(c.primary, [c.cardBg]);
+    return Row(children: [
+      for (final (i, (brush, label, icon, key)) in items.indexed) ...[
+        if (i > 0) const SizedBox(width: AppSpace.xxs),
+        Expanded(
+          child: Semantics(
+            button: true,
+            selected: brush == selected,
+            enabled: enabled,
+            label: label,
+            excludeSemantics: true,
+            child: InkWell(
+              key: ValueKey(key),
+              onTap: enabled ? () => onChanged(brush) : null,
+              borderRadius: AppRadius.chipAll,
+              child: AnimatedContainer(
+                duration: AppMotion.of(context).fast,
+                constraints: const BoxConstraints(minHeight: AppTouch.min),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs, vertical: AppSpace.xxs),
+                decoration: BoxDecoration(
+                  color: brush == selected ? c.primaryTint : null,
+                  borderRadius: AppRadius.chipAll,
+                  border: Border.all(color: brush == selected ? ring : c.divider, width: brush == selected ? AppBorder.focus : AppBorder.hairline),
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(icon, size: AppIconSize.sm, color: brush == selected ? ring : c.textMedium),
+                    const SizedBox(width: AppSpace.xxs),
+                    Text(label, maxLines: 1, style: appText(12, w: FontWeight.w600, c: brush == selected ? c.textDark : c.textMedium)),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     ]);
   }
 }
@@ -504,7 +951,7 @@ class _Tile extends StatelessWidget {
   final Widget child;
 
   static const double _visual = 52;
-  static const double _captioned = 68;
+  static const double _captioned = 84;
 
   @override
   Widget build(BuildContext context) {
