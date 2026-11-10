@@ -103,6 +103,7 @@ void main() {
             onIdBox: (_) {},
             onRotate: () {},
             onDirection: () {},
+            onOrder: () {},
             onBlockOptions: (_, _) {},
             onUndo: () {},
             onRetake: () {},

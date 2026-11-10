@@ -385,6 +385,7 @@ class _BubbleImportScreenState extends State<BubbleImportScreen> {
                 },
                 onRotate: () => _fix(set: {'rotate': 90}),
                 onDirection: () => _fix(set: {'direction': d.isRtl ? 'ltr' : 'rtl'}),
+                onOrder: () => _fix(set: {'order': d.isAcross ? 'down' : 'across'}),
                 onBlockOptions: (b, n) => _fix(set: {
                   'block_options': {'block': b.id, 'value': n}
                 }),

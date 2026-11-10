@@ -129,6 +129,7 @@ class BubbleImport {
     this.issues = const [],
     this.marks = const [],
     this.direction = 'ltr',
+    this.order = 'down',
   });
 
   final int id;
@@ -153,7 +154,11 @@ class BubbleImport {
   final List<BubbleQuestionMark> marks;
   final String direction;
 
+  /// "down" each column, or "across" the rows.
+  final String order;
+
   bool get isRtl => direction == 'rtl';
+  bool get isAcross => order == 'across';
 
   /// "4", or "4–5" on a sheet whose questions differ.
   String get optionsText {
@@ -215,6 +220,7 @@ class BubbleImport {
       issues: bubbleIssues(j['issues']),
       marks: [for (final q in (j['questions'] is List ? j['questions'] as List : const [])) if (q is Map<String, dynamic>) BubbleQuestionMark.fromJson(q)],
       direction: '${asMap(j['numbering'])['direction'] ?? 'ltr'}',
+      order: '${asMap(j['numbering'])['order'] ?? 'down'}',
     );
   }
 }
