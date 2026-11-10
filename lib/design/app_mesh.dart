@@ -61,7 +61,9 @@ class AppMeshBlob {
 }
 
 abstract final class AppMesh {
-  static const double _inkContrast = 4.6; // WCAG AA (4.5) with a rounding margin
+  // 5.5, not 4.6: the hero's secondary lines are drawn in onHeroMuted (90 % ink), which keeps WCAG AA (4.5) only on a
+  // surface that gives the full ink 5.4 or more
+  static const double _inkContrast = 5.5;
   static final LinkedHashMap<int, AppMeshSpec> _specs = LinkedHashMap();
   static final LinkedHashMap<int, LinearGradient> _blends = LinkedHashMap();
   static const int _cacheSize = 48;

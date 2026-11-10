@@ -324,7 +324,8 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
   Color get onHero => _model?.onHero ?? _model?.surfaceCard ?? AppTheme.surfaceCard;
 
   /// Secondary text over a hero (the old `Colors.white70`).
-  Color get onHeroMuted => onHero.withValues(alpha: _hc ? 0.92 : 0.72);
+  // 0.90: at 0.72 a subtitle on a hero stop that just passes AA fell to about 3:1 (the a11y guideline test found it)
+  Color get onHeroMuted => onHero.withValues(alpha: _hc ? 0.96 : 0.9);
 
   /// Unselected icons / labels over the sidebar (the old `white.withValues(alpha: .42)`).
   Color get onHeroFaint => onHero.withValues(alpha: _hc ? 0.75 : 0.45);
@@ -405,7 +406,7 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     return _stopCache[key] = [lift, mid, deep];
   }
 
-  static const double _kBrandInk = 4.6; // WCAG AA (4.5) with a rounding margin
+  static const double _kBrandInk = 5.5; // so onHeroMuted (90 % ink) still reads at WCAG AA on every stop
   final Map<int, List<Color>> _stopCache = {};
 
   /// [from] moved toward [to] by at most [maxT], as far as [ink] keeps [_kBrandInk] on it.
