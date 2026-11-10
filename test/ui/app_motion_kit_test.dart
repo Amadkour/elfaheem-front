@@ -1,4 +1,5 @@
 // The motion kit (D-580 .. D-586): numbers, one-shot entrances, the platform switch, the 3D tilt at rest.
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/display/display_settings.dart';
@@ -120,5 +121,16 @@ void main() {
     await g.up();
     await t.pumpAndSettle();
     expect(m(), Matrix4.identity());
+
+    // the mouse: tilts toward the pointer while it is over the surface, settles back when it leaves
+    final mouse = await t.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    await mouse.moveTo(t.getCenter(find.byType(AppTilt)) + const Offset(120, -40));
+    await t.pumpAndSettle();
+    expect(m() == Matrix4.identity(), isFalse);
+    await mouse.moveTo(Offset.zero);
+    await t.pumpAndSettle();
+    expect(m(), Matrix4.identity());
+    await mouse.removePointer();
   });
 }
