@@ -36,7 +36,7 @@ class DisplaySettingsTile extends StatelessWidget {
         icon: Icons.text_fields_rounded,
         color: color ?? context.colors.primary,
         label: t('العرض والقراءة', 'Display & reading'),
-        subtitle: t('الخط، حجم النص، التكبير، التباين', 'Font, text size, zoom, contrast'),
+        subtitle: t('الخط، حجم النص، التكبير، التباين، الحركة', 'Font, text size, zoom, contrast, motion'),
         keywords: 'font zoom size scale contrast bold accessibility خط حجم تكبير تباين',
         onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DisplaySettingsPage())),
       );
