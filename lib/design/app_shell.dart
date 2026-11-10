@@ -46,6 +46,7 @@ import '../utils/widget/app_network_image.dart';
 import '../utils/widget/base_page.dart';
 import 'app_focus_mode.dart';
 import 'app_mesh.dart';
+import 'app_motion_kit.dart';
 import 'app_tokens.dart';
 import 'app_responsive.dart';
 import 'app_shell_nav.dart';
@@ -109,10 +110,14 @@ class ShellBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (item.attentionKeys.isEmpty) return builder(context, item.badge);
+    // a count that changes pops once (D-581)
+    if (item.attentionKeys.isEmpty) return AppBump(trigger: item.badge, child: builder(context, item.badge));
     return ListenableBuilder(
       listenable: source(),
-      builder: (context, _) => builder(context, item.badge + _live()),
+      builder: (context, _) {
+        final n = item.badge + _live();
+        return AppBump(trigger: n, child: builder(context, n));
+      },
     );
   }
 }
@@ -138,6 +143,9 @@ class _LazyTabStackState extends State<LazyTabStack> {
   final Set<String> _visited = {};
   ShellTabs? _own;
 
+  /// The labels built in the shell's first frame: they appear with the page; a tab opened later enters (D-580).
+  Set<String>? _initial;
+
   ShellTabs get _tabs => widget.tabs ?? (_own ??= ShellTabs());
 
   @override
@@ -152,6 +160,7 @@ class _LazyTabStackState extends State<LazyTabStack> {
     if (items.isEmpty) return const SizedBox.shrink();
     final current = widget.index.clamp(0, items.length - 1);
     _visited.add(items[current].label);
+    _initial ??= {..._visited};
     _tabs.homeLabel = items.first.label; // the home's own URL; another tab is `<home>/<tab>` (D-170)
     _tabs.setActive(items[current].label);
     // Each tab's navigator draws its pages over a modal barrier, and a barrier BLOCKS the semantics of everything
@@ -167,7 +176,12 @@ class _LazyTabStackState extends State<LazyTabStack> {
           _visited.contains(items[i].label)
               ? KeyedSubtree(
                   key: ValueKey('tab:${items[i].label}'),
-                  child: _TabNavigatorHost(tab: _tabs.tab(items[i].label), screen: items[i].screen, active: i == current),
+                  // the tab coming to the front fades in and rises 8 px (D-580)
+                  child: AppTabEntrance(
+                    active: i == current,
+                    enterNow: !_initial!.contains(items[i].label),
+                    child: _TabNavigatorHost(tab: _tabs.tab(items[i].label), screen: items[i].screen, active: i == current),
+                  ),
                 )
               : const SizedBox.shrink(),
       ],

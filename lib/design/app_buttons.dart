@@ -20,6 +20,7 @@ import 'app_charts.dart' show appInk;
 import 'app_contrast.dart' show ensureContrast;
 import 'app_gradients.dart';
 import 'app_tokens.dart';
+import 'app_motion_kit.dart';
 
 enum AppButtonVariant { primary, secondary, tonal, ghost, danger }
 
@@ -311,7 +312,16 @@ class _AppButtonState extends State<AppButton> {
       mouseCursor: _enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: AppTouch.min, minWidth: AppTouch.min),
-        child: Center(widthFactor: widget.expand ? null : 1, child: visual),
+        // pressed in a touch (D-582); nothing under Reduce motion
+        child: Center(
+          widthFactor: widget.expand ? null : 1,
+          child: AnimatedScale(
+            scale: _pressed && _enabled && !appMotionOff(context) ? 0.97 : 1,
+            duration: Duration(milliseconds: _pressed ? 90 : 160),
+            curve: Curves.easeOutCubic,
+            child: visual,
+          ),
+        ),
       ),
     );
 

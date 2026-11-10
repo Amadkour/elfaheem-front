@@ -18,6 +18,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'app_kit.dart';
+import 'app_motion_kit.dart';
 import 'app_responsive.dart';
 import 'app_tokens.dart';
 
@@ -56,7 +57,8 @@ class _AppDialog extends StatelessWidget {
       backgroundColor: Colors.transparent,
       elevation: 0,
       insetPadding: const EdgeInsets.all(AppSpace.md),
-      child: ConstrainedBox(
+      child: AppPopIn(
+        child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
         child: DecoratedBox(
           decoration: BoxDecoration(
@@ -114,6 +116,7 @@ class _AppDialog extends StatelessWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }

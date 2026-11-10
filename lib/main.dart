@@ -985,12 +985,11 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
   }
 }
 
-PageRoute _fade(Widget page, RouteSettings settings) => PageRouteBuilder(
+// Every named route: the theme's page transition (app_motion_kit.dart, D-580: a fade + glide from the reading end,
+// iOS's native slide with its edge back swipe, nothing under Reduce motion).
+PageRoute _fade(Widget page, RouteSettings settings) => MaterialPageRoute(
   settings: settings,
-  pageBuilder: (_, _, _) => page,
-  transitionsBuilder: (_, anim, _, child) =>
-      FadeTransition(opacity: anim, child: child),
-  transitionDuration: const Duration(milliseconds: 300),
+  builder: (_) => page,
 );
 
 // ─────────────────────────────────────────────────────────────────────────────

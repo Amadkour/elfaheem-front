@@ -23,6 +23,7 @@ import '../../../core/display/display_settings.dart';
 import '../../../design/app_kit.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../admin/admin_common.dart' show t;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show appAnimationsOffForAll;
 
 /// The settings entry (put it next to "Language").
 class DisplaySettingsTile extends StatelessWidget {
@@ -150,12 +151,16 @@ class DisplaySettingsView extends StatelessWidget {
                 value: prefs.highContrast,
                 onChanged: (v) => onChanged(prefs.copyWith(highContrast: v)),
               ),
+              // D-584: what it stops, and locked on while the Super Admin has animations off for everyone
               AppSwitchTile(
                 icon: Icons.motion_photos_off_rounded,
                 title: t('تقليل الحركة', 'Reduce motion'),
-                subtitle: t('بلا انتقالات ولا حركة في الصفحات', 'No page transitions or moving effects'),
-                value: prefs.reduceMotion,
-                onChanged: (v) => onChanged(prefs.copyWith(reduceMotion: v)),
+                subtitle: appAnimationsOffForAll
+                    ? t('أوقفت الإدارة الحركة لكل الحسابات', 'Turned off for every account by the administrator')
+                    : t('بلا انتقالات بين الصفحات ولا عدّ للأرقام ولا ميل ثلاثي الأبعاد',
+                        'No page transitions, counting numbers or 3D tilt'),
+                value: prefs.reduceMotion || appAnimationsOffForAll,
+                onChanged: appAnimationsOffForAll ? null : (v) => onChanged(prefs.copyWith(reduceMotion: v)),
               ),
               AppSwitchTile(
                 icon: Icons.touch_app_rounded,

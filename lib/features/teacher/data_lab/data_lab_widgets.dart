@@ -16,6 +16,7 @@ import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/core/display/display_settings.dart';
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
+import 'package:flutter_education_app/design/app_motion_kit.dart';
 
 /// Translation with a friendly English fallback while a key is not in the language files yet.
 String dlTr(String key, String fallback) {
@@ -63,7 +64,10 @@ class DlCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final r = BorderRadius.circular(c.radiusLarge - 4);
-    return Container(
+    // a tappable card presses in (D-582)
+    return AppPressScale(
+      enabled: onTap != null || onLongPress != null,
+      child: Container(
       margin: margin,
       decoration: BoxDecoration(
         color: c.cardBg,
@@ -78,6 +82,7 @@ class DlCard extends StatelessWidget {
           child: InkWell(onTap: onTap, onLongPress: onLongPress, child: Padding(padding: padding, child: child)),
         ),
       ),
+    ),
     );
   }
 }
@@ -157,7 +162,7 @@ class DlHeroStat extends StatelessWidget {
     child: Column(children: [
       Icon(icon, color: context.colors.onHero, size: 18),
       const SizedBox(height: 4),
-      Text(value, style: dlText(17, w: FontWeight.w800, c: context.colors.onHero)),
+      AppCountUp(value, memoryKey: 'herostat:$label', style: dlText(17, w: FontWeight.w800, c: context.colors.onHero)),
       Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(10.5, c: context.colors.onHero.withValues(alpha: 0.70))),
     ]),
   );
@@ -306,12 +311,14 @@ class DlBar extends StatelessWidget {
             height: height,
             decoration: BoxDecoration(color: c.divider.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(height)),
           ),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 500),
-            curve: Curves.easeOutCubic,
-            height: height,
-            width: w * pct,
-            decoration: BoxDecoration(color: col, borderRadius: BorderRadius.circular(height)),
+          // fills from 0 the first time, glides on a change (D-582)
+          AppFill(
+            value: pct,
+            builder: (_, v) => Container(
+              height: height,
+              width: w * v,
+              decoration: BoxDecoration(color: col, borderRadius: BorderRadius.circular(height)),
+            ),
           ),
           if (marker != null)
             PositionedDirectional(
@@ -341,15 +348,20 @@ class DlRing extends StatelessWidget {
       SizedBox(
         width: size,
         height: size,
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: ((value ?? 0) / 100).clamp(0.0, 1.0)),
-          duration: const Duration(milliseconds: 700),
-          curve: Curves.easeOutCubic,
-          builder: (_, t, __) => CustomPaint(
+        // fills and counts together; nothing moves under Reduce motion (D-582)
+        child: AppFill(
+          value: ((value ?? 0) / 100).clamp(0.0, 1.0),
+          builder: (_, t) => CustomPaint(
             painter: _RingPainter(t, col, c.divider),
+            // the screen reader hears the final value only
             child: Center(
-              child: Text(value == null ? '–' : '${value!.round()}%',
-                  style: dlText(size * 0.22, w: FontWeight.w800, c: c.textDark)),
+              child: Semantics(
+                label: value == null ? '–' : '${value!.round()}%',
+                child: ExcludeSemantics(
+                  child: Text(value == null ? '–' : '${(t >= (value! / 100).clamp(0.0, 1.0) ? value! : t * 100).round()}%',
+                      style: dlText(size * 0.22, w: FontWeight.w800, c: c.textDark)),
+                ),
+              ),
             ),
           ),
         ),
