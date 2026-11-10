@@ -1,14 +1,16 @@
 // lib/design/app_tabs.dart
 //
-// Tabs of the design system.
+// Tabs of the design system (D-612).
 //
 //   AppTabs(items: [AppTabItem('Open', count: 3), AppTabItem('Done')], index: i, onChanged: (v) => setState(() => i = v))
 //   AppUnderlineTabs(...)   the lighter variant for sections of a page (same API)
 //
-// AppTabs is a pill track whose selected pill (brand gradient, on-hero ink) slides to the chosen tab. When the tabs do
-// not fit, the strip scrolls horizontally and keeps the selected tab in view; with `expand` the tabs share the width
-// when they fit. On web / desktop the arrow keys move the selection (the arrow that points "forward" follows the
-// text direction). Each tab is a selected / unselected button for screen readers.
+// AppTabs is a pill track (the input surface with a warm hairline) whose selected pill — solid emerald, the primary,
+// with the on-hero ink — slides to the chosen tab; it never walks into the gradient's teal. AppUnderlineTabs draws
+// the labels in ink with a 2 px ink rule under the chosen one. When the tabs do not fit, the strip scrolls
+// horizontally and keeps the selected tab in view; with `expand` the tabs share the width when they fit. On web /
+// desktop the arrow keys move the selection (the arrow that points "forward" follows the text direction) and the
+// strip shows the focus ring. Each tab is a selected / unselected button for screen readers.
 library;
 
 import 'package:flutter/material.dart';
@@ -16,8 +18,6 @@ import 'package:flutter/services.dart';
 
 import '../config/theme/theme_config_provider.dart';
 import 'app_badges.dart';
-import 'app_charts.dart' show appInk;
-import 'app_gradients.dart';
 import 'app_tokens.dart';
 
 class AppTabItem {
@@ -96,7 +96,16 @@ class _TabStripState extends State<_TabStrip> {
 
   static const double _gap = AppSpace.xs;
 
-  TextStyle _style(BuildContext context) => AppType.row(context).copyWith(fontWeight: FontWeight.w600, fontSize: 14, height: 1.2);
+  /// The pill track's inset around the pills.
+  static const double _trackPad = AppSpace.xxs;
+
+  /// The ink rule under the chosen underline tab.
+  static const double _rule = 2;
+
+  /// The smallest count bubble (a round one-digit pill).
+  static const double _bubble = AppIconSize.md;
+
+  TextStyle _style(BuildContext context) => AppType.row(context).copyWith(fontWeight: FontWeight.w600, height: 1.2);
 
   double _textWidth(BuildContext context, String text, TextStyle style) {
     final p = TextPainter(
@@ -110,7 +119,7 @@ class _TabStripState extends State<_TabStrip> {
 
   double _countWidth(BuildContext context, int n) {
     final s = AppType.overline(context);
-    return (_textWidth(context, appCountText(n), s) + AppSpace.xs + 2).clamp(20.0, double.infinity);
+    return (_textWidth(context, appCountText(n), s) + AppSpace.xs + 2).clamp(_bubble, double.infinity);
   }
 
   double _natural(BuildContext context, AppTabItem it, TextStyle style) {
@@ -147,14 +156,14 @@ class _TabStripState extends State<_TabStrip> {
     if (_keys.length != items.length) _keys = List.generate(items.length, (_) => GlobalKey());
     final style = _style(context);
     final underline = widget.underline;
-    final pad = underline ? 0.0 : 4.0;
+    final pad = underline ? 0.0 : _trackPad;
     final index = widget.index.clamp(0, items.length - 1);
     final motion = AppMotion.of(context);
 
     return LayoutBuilder(builder: (context, box) {
       final widths = [for (final it in items) _natural(context, it, style)];
       final total = widths.fold<double>(0, (a, b) => a + b);
-      final avail = box.hasBoundedWidth ? box.maxWidth - pad * 2 - (underline ? 0 : 2) : total;
+      final avail = box.hasBoundedWidth ? box.maxWidth - pad * 2 - (underline ? 0 : 2 * AppBorder.hairline) : total;
       if (widget.expand && total < avail) {
         final each = avail / items.length;
         for (var i = 0; i < widths.length; i++) {
@@ -172,7 +181,7 @@ class _TabStripState extends State<_TabStrip> {
       Widget tab(int i) {
         final it = items[i];
         final sel = i == index;
-        final ink = sel ? (underline ? appInk(context, c.primary) : c.onHero) : c.textMedium; // underline: readable on dark
+        final ink = sel ? (underline ? c.textDark : c.onHero) : c.textMedium;
         final ts = style.copyWith(color: ink);
         return Semantics(
           button: true,
@@ -186,7 +195,7 @@ class _TabStripState extends State<_TabStrip> {
             height: AppTouch.min,
             child: InkWell(
               onTap: () => widget.onChanged(i),
-              borderRadius: BorderRadius.circular(AppRadius.pill),
+              borderRadius: BorderRadius.circular(underline ? AppRadius.chip : AppRadius.pill),
               splashFactory: NoSplash.splashFactory,
               mouseCursor: SystemMouseCursors.click,
               child: Center(
@@ -200,9 +209,9 @@ class _TabStripState extends State<_TabStrip> {
                     const SizedBox(width: _gap),
                     AnimatedContainer(
                       duration: motion.base,
-                      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                      constraints: const BoxConstraints(minWidth: _bubble, minHeight: _bubble),
                       // no `alignment`: it would make the bubble fill the tab's whole height
-                      padding: const EdgeInsetsDirectional.symmetric(horizontal: 5, vertical: 2),
+                      padding: const EdgeInsetsDirectional.symmetric(horizontal: AppSpace.xxs + 1, vertical: 2),
                       decoration: BoxDecoration(
                         color: sel && !underline ? c.onHero.withValues(alpha: 0.22) : c.primaryTint,
                         borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -229,15 +238,14 @@ class _TabStripState extends State<_TabStrip> {
             curve: AppMotion.curve,
             start: offsets[index],
             width: widths[index],
-            top: underline ? null : 4,
-            bottom: underline ? 0 : 4,
-            height: underline ? 3 : null,
+            top: underline ? null : _trackPad,
+            bottom: underline ? 0 : _trackPad,
+            height: underline ? _rule : null,
             child: ExcludeSemantics(
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  gradient: underline ? AppGradients.strip(context) : AppGradients.brand(context),
-                  borderRadius: BorderRadius.circular(underline ? 3 : AppRadius.pill),
-                  boxShadow: underline ? null : c.primaryButtonShadow,
+                  color: underline ? c.textDark : c.primary,
+                  borderRadius: BorderRadius.circular(underline ? _rule / 2 : AppRadius.pill),
                 ),
               ),
             ),
@@ -253,18 +261,24 @@ class _TabStripState extends State<_TabStrip> {
 
       return Focus(
         onKeyEvent: _onKey,
-        child: Container(
-          height: AppTouch.min,
-          padding: EdgeInsetsDirectional.symmetric(horizontal: pad),
-          decoration: underline
-              ? BoxDecoration(border: Border(bottom: BorderSide(color: c.divider, width: AppBorder.hairline)))
-              : BoxDecoration(
-                  color: c.inputBg,
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                  border: Border.all(color: c.divider, width: AppBorder.hairline),
-                ),
-          child: body,
-        ),
+        child: Builder(builder: (context) {
+          final focused = Focus.of(context).hasFocus;
+          final edge = focused ? c.primary : c.divider;
+          final width = focused ? AppBorder.focus : AppBorder.hairline;
+          return AnimatedContainer(
+            duration: motion.fast,
+            height: AppTouch.min,
+            padding: EdgeInsetsDirectional.symmetric(horizontal: pad),
+            decoration: underline
+                ? BoxDecoration(border: Border(bottom: BorderSide(color: edge, width: width)))
+                : BoxDecoration(
+                    color: c.inputBg,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    border: Border.all(color: edge, width: width),
+                  ),
+            child: body,
+          );
+        }),
       );
     });
   }
