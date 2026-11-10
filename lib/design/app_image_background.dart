@@ -646,7 +646,9 @@ class ImageBackgroundTool extends StatelessWidget {
   static const double coverageLow = 0.05;
   static const int _maxSuggested = 5;
 
-  /// Gradient hues beside the brand's. Not the theme's accent: a gold darkened for the fill's ink turns olive.
+  /// Backdrop hues beside the brand's for a PICTURE (the person's choice, not the app's chrome: D-622 keeps the UI
+  /// itself to the emerald family). Not the theme's accent: a gold darkened for the fill's ink turns olive. Each is
+  /// drawn as one family with soft lights (app_mesh.dart), so a blue backdrop stays blue in every corner.
   static const Color _sky = Color(0xFF2F7DE1);
   static const Color _teal = Color(0xFF0E8F8A);
   static const Color _rose = Color(0xFFD9467E);

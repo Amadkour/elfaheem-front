@@ -38,7 +38,7 @@ void main() {
       test('every stop keeps the on-hero ink at AA (${dark ? 'dark' : 'light'})', () {
         final t = ThemeConfigProvider(api: ApiClient());
         t.isDark = dark;
-        expect(t.primaryGradient.colors.length, greaterThanOrEqualTo(3)); // D-550: three hues
+        expect(t.primaryGradient.colors.length, greaterThanOrEqualTo(3)); // D-622: three shades of one hue
         for (final s in t.primaryGradient.colors) {
           expect(contrastRatio(t.onHero, s), greaterThanOrEqualTo(kWcagAaText), reason: '$s');
         }

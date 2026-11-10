@@ -11,10 +11,12 @@
 //   0.35 s  the mark comes alive: it floats (a slow bob), tilts in 3D on a
 //           Lissajous path with a shadow that follows it, breathes, a light
 //           sweeps across it and a soft ring ripples out of it once per breath;
-//           an ambient field of drifting emerald / gold light and a few sparks
-//           fades in behind;
-//   0.9 s   the tagline (the one the super admin set, cached by AppIdentity)
-//           rises below the mark;
+//           an ambient field of drifting warm light (emerald, gold, peach — one
+//           family, no blue; D-622) and a few gold sparks fades in behind;
+//   0.9 s   the wordmark (the app's name as the super admin set it, cached by
+//           AppIdentity; D-622: the editorial face, Markazi Text, drawn as the
+//           display role — the splash has no theme scope for AppType) and the
+//           tagline rise below the mark;
 //   1.0 s   the footer the super admin set ("Powered by Double Y" + its small
 //           logo, cached by AppIdentity) and the version fade in at the bottom;
 //   1.2 s   the smart line: a time-of-day greeting with the returning user's
@@ -40,6 +42,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/storage_service.dart' show StorageService;
+import 'package:flutter_education_app/core/app_identity.dart' show AppIdentity;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import '../core/display/display_settings.dart';
@@ -78,6 +81,8 @@ class SplashState extends ChangeNotifier {
   /// The device has no connection: the app will open on the downloads.
   bool offline = false;
 
+  /// The app's name for the wordmark under the mark; '' = [AppIdentity.instance.name] (nothing when that is empty).
+  String appName = '';
   String tagline = '';
   String version = '';
 
@@ -116,9 +121,10 @@ class SplashState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setIdentity({String? tagline, String? version}) {
+  void setIdentity({String? tagline, String? version, String? name}) {
     if (tagline != null) this.tagline = tagline.trim();
     if (version != null) this.version = version.trim();
+    if (name != null) appName = name.trim();
     notifyListeners();
   }
 
@@ -146,6 +152,7 @@ class SplashState extends ChangeNotifier {
     step = '';
     userName = '';
     offline = false;
+    appName = '';
     tagline = '';
     version = '';
     footerText = '';
@@ -346,11 +353,20 @@ abstract final class SplashArt {
 // The splash
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Brand colours of the native splash (must match pubspec `flutter_native_splash`).
+/// Brand colours of the native splash (must match pubspec `flutter_native_splash`): the warm cream canvas and the
+/// emerald the dark splash sits on. Frame 1 must equal the OS splash, so these two never follow the theme.
 const splashCream = Color(0xFFFBF7EC);
 const splashEmerald = Color(0xFF0F7B5F);
+
+/// The warm lights of the ambient field (D-622: one warm family — gold for the sparks, a peach light, a pale
+/// emerald — never a blue or a mint that turns the canvas cold).
 const splashGold = Color(0xFFC8923A);
-const splashMint = Color(0xFF6FC7A5);
+const splashPeach = Color(0xFFF2C4A6);
+const splashMint = Color(0xFF8FD1B4);
+
+/// The charcoal ink of the light splash (the theme's `text_dark`) and its muted line.
+const splashInk = Color(0xFF211D18);
+const splashInkSoft = Color(0xFF6E655A);
 
 class BootSplash extends StatefulWidget {
   const BootSplash({super.key, this.exit, this.state});
@@ -419,8 +435,8 @@ class _BootSplashState extends State<BootSplash> with SingleTickerProviderStateM
         ((mq?.platformBrightness ?? ui.PlatformDispatcher.instance.platformBrightness) == Brightness.dark);
     final bg = dark ? splashEmerald : splashCream;
     final accent = dark ? splashCream : splashEmerald;
-    final ink = dark ? splashCream : const Color(0xFF14362B);
-    final soft = dark ? splashCream.withValues(alpha: 0.78) : const Color(0xFF4D6A61);
+    final ink = dark ? splashCream : splashInk;
+    final soft = dark ? splashCream.withValues(alpha: 0.78) : splashInkSoft;
     final en = AppConfig.lang == 'en';
     final exit = widget.exit;
     final s = _s;
@@ -484,6 +500,7 @@ class _BootSplashState extends State<BootSplash> with SingleTickerProviderStateM
                 final verIn = _in(t, _versionAt, 0.8, reduce);
 
                 final tagline = s.tagline;
+                final wordmark = s.appName.isNotEmpty ? s.appName : AppIdentity.instance.name;
                 final greeting = SplashTexts.greeting(name: s.userName, en: en);
                 final status = SplashTexts.status(step: s.step, stage: s.stage, offline: s.offline, elapsed: t, en: en);
 
@@ -585,7 +602,19 @@ class _BootSplashState extends State<BootSplash> with SingleTickerProviderStateM
                         child: SizedBox(
                           width: contentW,
                           child: Column(mainAxisSize: MainAxisSize.min, children: [
-                            if (tagline.isNotEmpty)
+                            if (wordmark.isNotEmpty)
+                              _Rise(
+                                progress: tagIn * gone,
+                                child: Text(
+                                  wordmark,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: _wordmarkStyle(ink, en: en),
+                                ),
+                              ),
+                            if (tagline.isNotEmpty) ...[
+                              if (wordmark.isNotEmpty) const SizedBox(height: 4),
                               _Rise(
                                 progress: tagIn * gone,
                                 child: Text(
@@ -597,11 +626,12 @@ class _BootSplashState extends State<BootSplash> with SingleTickerProviderStateM
                                     fontFamily: AppFonts.family,
                                     fontSize: 14,
                                     height: 1.3,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w500,
                                     color: soft,
                                   ),
                                 ),
                               ),
+                            ],
                             const SizedBox(height: 22),
                             _Rise(
                               progress: lineIn * gone,
@@ -615,7 +645,7 @@ class _BootSplashState extends State<BootSplash> with SingleTickerProviderStateM
                                     fontFamily: AppFonts.family,
                                     fontSize: 15,
                                     height: 1.3,
-                                    fontWeight: FontWeight.w700,
+                                    fontWeight: FontWeight.w600,
                                     color: ink.withValues(alpha: 0.92),
                                   ),
                                 ),
@@ -708,6 +738,24 @@ class _BootSplashState extends State<BootSplash> with SingleTickerProviderStateM
   }
 }
 
+/// The wordmark's style: the editorial face at the display role's optical size (32 × the face's scale, as
+/// `AppType.display` draws it; D-611 / D-622). Built by hand because the splash runs above the MaterialApp and
+/// the theme scope, where `AppType` cannot be asked. Falls back to the text font with "Headings: Same as text".
+TextStyle _wordmarkStyle(Color ink, {required bool en}) {
+  const optical = 32.0;
+  final editorial = AppFonts.editorialHeadings;
+  final size = editorial ? (optical * AppFonts.editorialScale(en ? 'en' : 'ar')).roundToDouble() : 28.0;
+  return TextStyle(
+    fontFamily: AppFonts.editorial,
+    fontFamilyFallback: AppFonts.editorialFallback,
+    fontSize: size,
+    fontWeight: FontWeight.w600,
+    height: editorial ? (en ? 1.15 : 1.3) : 1.25,
+    letterSpacing: en && editorial ? -size * 0.01 : null,
+    color: ink,
+  );
+}
+
 /// The footer the super admin set: a small logo and a line such as "Powered by Double Y".
 class _SplashFooter extends StatelessWidget {
   const _SplashFooter({
@@ -757,7 +805,7 @@ class _SplashFooter extends StatelessWidget {
               fontFamily: AppFonts.family,
               fontSize: 12.5,
               height: 1.3,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               color: color.withValues(alpha: dark ? 0.9 : 0.85),
             ),
           ),
@@ -854,7 +902,7 @@ class _BarPainter extends CustomPainter {
       o.progress != progress || o.track != track || o.fill != fill || o.head != head;
 }
 
-/// Ambient field: three soft lights drifting slowly on Lissajous paths and a
+/// Ambient field: three soft warm lights drifting slowly on Lissajous paths and a
 /// few gold sparks twinkling. Cheap: three radial gradients and a dozen dots.
 class _AmbientPainter extends CustomPainter {
   const _AmbientPainter({required this.t, required this.alpha, required this.dark, required this.reduce});
@@ -880,10 +928,11 @@ class _AmbientPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (alpha <= 0) return;
     final base = math.max(size.width, size.height);
+    // one warm family: a pale emerald, gold and a peach light (dark: cream, gold, peach over the emerald)
     final colors = dark
-        ? [splashMint, splashGold, splashCream]
-        : [splashEmerald, splashGold, splashMint];
-    final strength = dark ? 0.20 : 0.11;
+        ? [splashCream, splashGold, splashPeach]
+        : [splashMint, splashGold, splashPeach];
+    final strength = dark ? 0.18 : 0.12;
     for (final (cx, cy, rr, px, py, ph, ci) in _lights) {
       final dx = reduce ? 0.0 : 0.06 * math.sin(2 * math.pi * t / px + ph);
       final dy = reduce ? 0.0 : 0.05 * math.cos(2 * math.pi * t / py + ph);

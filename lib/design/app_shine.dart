@@ -27,7 +27,9 @@ class AppShineBand extends StatefulWidget {
     this.width = 22,
   });
 
-  /// The band's colour; null = the on-hero ink at 18 % (the attendance entry's, made for gradient surfaces).
+  /// The band's colour; null = the on-hero ink at 14 % (made for the brand surfaces). On a tinted block pass the
+  /// block's ink at a low alpha (`AppBlock.colorsOf(context).ink.withValues(alpha: 0.06)`), D-622: a white band
+  /// on peach reads as a smear.
   final Color? color;
   final Duration period;
 
@@ -89,7 +91,7 @@ class _AppShineBandState extends State<AppShineBand> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    final color = widget.color ?? context.colors.onHero.withValues(alpha: 0.18);
+    final color = widget.color ?? context.colors.onHero.withValues(alpha: 0.14);
     return IgnorePointer(
       child: LayoutBuilder(
         builder: (context, box) => AnimatedBuilder(

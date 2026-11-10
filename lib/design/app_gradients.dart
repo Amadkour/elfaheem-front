@@ -4,14 +4,19 @@
 // the server palette's primary family, every stop AA under the on-hero ink, mirrored in Arabic); this file only
 // says where they go.
 //
-// D-360 replaces the "touch only" rule of D-180: every component with a main colour gets the organic gradient from
-// app_mesh.dart, through these roles:
-//   mesh    headers, heroes, banners, highlighted cards (layered blobs; content uses the on-hero ink)
-//   meshWash ordinary cards and panels (a faint wash; content keeps the normal ink)
-//   blend   buttons, chips, pills, selected tabs (a multi-stop angled blend)
-//   ✗ never an opaque fill behind body text, forms, lists or dense tables: they get meshWash or a plain surface
+// D-622 (the editorial theme, `.interface-design/system.md`): the gradient is ONE family — primary_light → primary
+// → primary_dark, no hue turn, no gold glow — and it is a TOUCH again (D-136 / D-180), not a wash:
+//   ✓ the page header's band (AppHeader, AppPageHeader's accent strip), the shell's sidebar, the ONE primary button
+//     of a screen, the selected tab or pill, the active sidebar item, a key chart series, ONE highlighted KPI
+//   ✗ a role home's greeting / welcome hero: that is a tinted BLOCK (AppBlock(hero: true), home_kit.dart), charcoal
+//     ink on peach or sky — never a gradient
+//   ✗ never an opaque fill behind body text, forms, lists or dense tables: they get a wash or a plain surface
 //   ✗ never a gradient value in a screen: ask this file for it
 //   ✗ never the legacy accent / teal / gold getters for new UI (they predate D-136 and do not pass the ink check)
+// The roles, all from app_mesh.dart:
+//   mesh     the header band, the sidebar, a highlighted card (soft lights of one hue; content uses the on-hero ink)
+//   meshWash ordinary cards and panels (a faint wash; content keeps the normal ink)
+//   blend    buttons, chips, pills, selected tabs (a three-shade angled blend)
 library;
 
 import 'package:flutter/material.dart';
@@ -37,7 +42,8 @@ abstract final class AppGradients {
   /// A header / hero surface: primary at the start where the title sits, deepening toward the end.
   static LinearGradient hero(BuildContext context) => context.colors.heroGradient;
 
-  /// The warm accent light layered in a hero's top-end corner (capped by the same contrast guard).
+  /// The soft light in a hero gradient's top-end corner: the family's lift stop (D-622), capped by the same
+  /// contrast guard. A role home's hero is a block and needs none of this.
   static RadialGradient heroGlow(BuildContext context) => context.colors.heroGlow;
 
   /// A faint brand wash for the top of a card or page header. Text on it reads as on the surface below.
@@ -64,8 +70,9 @@ abstract final class AppGradients {
   }
 }
 
-/// A brand-gradient surface with the hero glow: for a page hero, a welcome card, a highlighted KPI. Content inside
-/// uses the on-hero ink (`context.colors.onHero` / `onHeroMuted`); never put a form or a table in it.
+/// A brand surface (the mesh, one emerald family): for ONE highlighted KPI, a banner, a page hero that is not a role
+/// home's greeting (that one is `AppBlock(hero: true)`, D-622). Content inside uses the on-hero ink
+/// (`context.colors.onHero` / `onHeroMuted`); never put a form or a table in it.
 class AppGradientSurface extends StatelessWidget {
   const AppGradientSurface({
     super.key,
