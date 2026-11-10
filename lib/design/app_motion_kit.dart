@@ -582,7 +582,8 @@ class _AppPressScaleState extends State<AppPressScale> {
   Offset? _at;
 
   void _set(bool v) {
-    if (v != _down) setState(() => _down = v);
+    // a pointer up / cancel can arrive after a long press rebuilt the list and took this card away
+    if (mounted && v != _down) setState(() => _down = v);
   }
 
   @override

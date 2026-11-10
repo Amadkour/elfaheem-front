@@ -729,7 +729,8 @@ class _TitleBlock extends StatelessWidget {
                   child: Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.onHeroMuted)),
                 ),
               if (hasSub && updated != null)
-                Text('  ·  ', style: AppType.meta(context).copyWith(color: c.onHeroMuted)),
+                // a narrow title column (a long primary beside it) can leave less room than the dot itself
+                Flexible(child: Text('  ·  ', maxLines: 1, softWrap: false, overflow: TextOverflow.clip, style: AppType.meta(context).copyWith(color: c.onHeroMuted))),
               if (updated != null) Flexible(child: _UpdatedText(refresh: updated!)),
             ]),
           ),
