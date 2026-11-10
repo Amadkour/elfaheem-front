@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/bubble/bubble_flow.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/paper/bubble/bubble_one_photo.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/bubble/bubble_widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -63,5 +64,53 @@ void main() {
           BubbleKeyGrid(questions: qs, form: form, flagged: {2}, columns: box.maxWidth >= 1100 ? 3 : (box.maxWidth >= 720 ? 2 : 1), onToggle: (_, _) {}, onDetails: (_) {}),
           BubbleLabPreviewView(preview: lab, onSheet: (_) {}),
         ]))));
+  });
+  testWidgets('one photo (D-500): the capture card and the result with its fixes', (tester) async {
+    final j = _fx('import_detected');
+    j['one_photo'] = true;
+    j['numbering'] = {'direction': 'rtl'};
+    j['issues'] = [
+      {'code': 'cut_off', 'ar': 'جزء من الورقة خارج الصورة — صوّر الورقة كاملة', 'en': 'Part of the sheet is outside the picture. Photograph the whole sheet.'}
+    ];
+    j['questions'] = [
+      for (var n = 1; n <= 30; n++)
+        {
+          'n': n,
+          'block': 1,
+          'cells': [for (var c = 0; c < 4; c++) [0.2 + c * 0.05, 0.3 + n * 0.02]],
+          'labels': ['A', 'B', 'C', 'D'],
+        }
+    ];
+    final d = BubbleImport.fromJson(j);
+    expect(d.onePhoto, isTrue);
+    expect(d.isRtl, isTrue);
+    expect(d.marks.length, 30);
+    final name = TextEditingController();
+    addTearDown(name.dispose);
+    await expectNoLayoutErrors(tester, () => _scroll(Column(children: [
+          BubbleCaptureCard(onFiles: () {}, onCamera: () {}, onWrittenTable: () {}, issues: _issues, error: 'A long server message'),
+          BubbleCaptureCard(onFiles: () {}, busy: true),
+        ])));
+    for (final mode in [null, BubbleTapMode.fixOptions, BubbleTapMode.dragId]) {
+      await expectNoLayoutErrors(tester, () => LayoutBuilder(builder: (_, box) => _scroll(BubbleResultPanel(
+            data: d,
+            image: null,
+            wide: box.maxWidth >= 900,
+            mode: mode,
+            selectedBlock: d.blocks.first,
+            onMode: (_) {},
+            onTapSheet: (_) {},
+            onIdBox: (_) {},
+            onRotate: () {},
+            onDirection: () {},
+            onOrder: () {},
+            onBlockOptions: (_, _) {},
+            onUndo: () {},
+            onRetake: () {},
+            onConfirm: () {},
+            name: name,
+            error: 'A long server message',
+          ))));
+    }
   });
 }

@@ -7,13 +7,16 @@
 //   AppMeshSurface(color: c.danger, seed: 7, …)    the same logic from any main colour
 //   AppMeshSurface(style: AppMeshStyle.wash, …)    a faint wash for cards: text still reads as on the card surface
 //   BoxDecoration(gradient: AppMesh.blend(context)) small fills: buttons, chips, pills (multi-stop angled blend)
-//   AppMesh.companion(color)                       the harmonious partner of a colour (green → teal)
+//   AppMesh.companion(color)                       the nearest harmonious partner of a colour (green → teal)
 //
 // The look is random but the result is not: blob positions come from a Random seeded by the colour and [seed], so a
 // surface never changes between rebuilds or between runs.
 //
 // Fill colours are moved until the on-hero ink keeps WCAG AA on them, so text and icons on a fill are always readable,
 // whatever palette the super admin picks. A mix of two passing colours also passes for light ink.
+//
+// The colours are not shades of the main colour: AppHarmony (app_contrast.dart) walks the colour wheel (D-550), and the
+// app's own gradient takes the theme's accent as its highlight.
 //
 // Performance: shaders are built once per palette in a small cache, in unit space, and the canvas is scaled to the
 // surface. A header changing height every frame therefore allocates nothing and draws five rectangles.
@@ -58,7 +61,9 @@ class AppMeshBlob {
 }
 
 abstract final class AppMesh {
-  static const double _inkContrast = 4.6; // WCAG AA (4.5) with a rounding margin
+  // 5.5, not 4.6: the hero's secondary lines are drawn in onHeroMuted (90 % ink), which keeps WCAG AA (4.5) only on a
+  // surface that gives the full ink 5.4 or more
+  static const double _inkContrast = 5.5;
   static final LinkedHashMap<int, AppMeshSpec> _specs = LinkedHashMap();
   static final LinkedHashMap<int, LinearGradient> _blends = LinkedHashMap();
   static const int _cacheSize = 48;
@@ -70,14 +75,15 @@ abstract final class AppMesh {
   static AppMeshSpec of(BuildContext context, {Color? color, int seed = 0, AppMeshStyle style = AppMeshStyle.fill}) {
     final c = context.colors;
     final main = color ?? c.brandStops(dark: c.isDark)[1];
-    final key = Object.hash(main, c.onHero, seed, style, c.isDark);
+    final key = Object.hash(main, c.onHero, seed, style, c.isDark, color == null ? c.accent2 : null);
     final hit = _specs.remove(key);
     if (hit != null) return _specs[key] = hit; // most recently used last
     if (_specs.length >= _cacheSize) _specs.remove(_specs.keys.first);
-    return _specs[key] = _build(main, c.onHero, seed, style, c.isDark, c.heroEnd);
+    return _specs[key] = _build(main, c.onHero, seed, style, c.isDark, color == null ? c.accent2 : null);
   }
 
-  /// A multi-stop angled blend for fills too small for blobs. Every stop keeps the on-hero ink at AA.
+  /// A wide, multi-hue angled blend for fills too small for blobs. Every stop keeps the on-hero ink at AA. Three hues at
+  /// even distances: more stops would read as stripes on a long button.
   static LinearGradient blend(BuildContext context, {Color? color, int seed = 0}) {
     final c = context.colors;
     final main = color ?? c.brandStops(dark: c.isDark)[1];
@@ -85,49 +91,46 @@ abstract final class AppMesh {
     final hit = _blends[key];
     if (hit != null) return hit;
     if (_blends.length >= _cacheSize) _blends.remove(_blends.keys.first);
-    Color safe(Color x) => ensureContrast(x, [c.onHero], min: _inkContrast);
-    final base = safe(main);
-    final partner = safe(companionOf(base));
-    final deep = safe(c.heroEnd(base, 0.28));
+    final h = AppHarmony.of(main, c.onHero, min: _inkContrast, dark: c.isDark);
     final r = math.Random(Object.hash(main, seed));
     final tilt = -0.9 + r.nextDouble() * 0.5;
-    final middle = 0.2 + r.nextDouble() * 0.14;
     return _blends[key] = LinearGradient(
       begin: AlignmentDirectional(-1, tilt),
       end: AlignmentDirectional(1, -tilt * 0.7),
-      colors: [Color.lerp(base, partner, 0.7)!, base, Color.lerp(base, deep, 0.5)!, Color.lerp(base, partner, 0.5)!, deep],
-      stops: [0, middle, middle + 0.3, middle + 0.5, 1],
+      colors: [
+        h.base,
+        ensureContrast(Color.lerp(h.base, h.near, 0.7)!, [c.onHero], min: _inkContrast),
+        ensureContrast(Color.lerp(h.base, h.far, 0.6)!, [c.onHero], min: _inkContrast),
+      ],
+      stops: const [0, 0.5, 1],
     );
   }
 
-  static AppMeshSpec _build(Color main, Color ink, int seed, AppMeshStyle style, bool dark, Color Function(Color, [double]) shade) {
+  static AppMeshSpec _build(Color main, Color ink, int seed, AppMeshStyle style, bool dark, Color? spark) {
     final r = math.Random(Object.hash(main, seed));
     double between(double a, double b) => a + r.nextDouble() * (b - a);
     final wash = style == AppMeshStyle.wash;
-    Color safe(Color x) => wash ? x : ensureContrast(x, [ink], min: _inkContrast);
-    final base = safe(main);
-    final partner = safe(companionOf(base));
-    final deep = safe(shade(base, dark ? 0.42 : 0.3));
-    final lift = safe(Color.lerp(base, partner, 0.5)!);
-    final strength = wash ? (dark ? 0.16 : 0.10) : (dark ? 0.72 : 0.92);
+    final h = AppHarmony.of(main, ink, min: _inkContrast, spark: spark, dark: dark);
+    final strength = wash ? (dark ? 0.2 : 0.14) : 1.0;
 
     Paint blob(Color color, Offset center, double radius, double alpha) => Paint()
       ..shader = ui.Gradient.radial(
         center,
         radius,
-        [color.withValues(alpha: alpha * strength), color.withValues(alpha: alpha * strength * 0.45), color.withValues(alpha: 0)],
-        const [0, 0.55, 1],
+        [color.withValues(alpha: alpha * strength), color.withValues(alpha: alpha * strength * 0.55), color.withValues(alpha: 0)],
+        const [0, 0.5, 1],
       );
 
     return AppMeshSpec._(
-      wash ? null : base,
+      wash ? null : h.base,
       [
-        AppMeshBlob(blob(partner, Offset(between(0.72, 1.05), between(-0.15, 0.25)), between(0.75, 0.98), 1), -0.10, -0.16),
-        AppMeshBlob(blob(deep, Offset(between(0, 0.3), between(0.85, 1.2)), between(0.8, 1.05), 1), 0.08, -0.22),
-        AppMeshBlob(blob(lift, Offset(between(0.32, 0.6), between(-0.25, 0.1)), between(0.42, 0.62), 0.75), 0.14, -0.08),
-        AppMeshBlob(blob(partner, Offset(between(0.86, 1.12), between(0.75, 1.12)), between(0.4, 0.6), 0.7), -0.06, -0.26),
+        AppMeshBlob(blob(h.near, Offset(between(0.7, 1.05), between(-0.2, 0.3)), between(0.6, 0.85), 0.8), -0.10, -0.16),
+        AppMeshBlob(blob(h.far, Offset(between(0.42, 0.72), between(0.75, 1.2)), between(0.45, 0.65), 0.55), 0.08, -0.22),
+        AppMeshBlob(blob(h.depth, Offset(between(-0.1, 0.22), between(0.8, 1.25)), between(0.45, 0.65), 0.45), 0.12, -0.10),
+        AppMeshBlob(blob(h.spark, Offset(between(0.82, 1.08), between(0.72, 1.1)), between(0.28, 0.42), 0.8), -0.06, -0.26),
+        AppMeshBlob(blob(Color.lerp(h.base, h.near, 0.5)!, Offset(between(0.2, 0.5), between(-0.3, 0.05)), between(0.45, 0.65), 0.7), 0.14, -0.08),
       ],
-      wash ? null : (Paint()..color = base),
+      wash ? null : (Paint()..color = h.base),
     );
   }
 }

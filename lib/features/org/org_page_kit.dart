@@ -132,7 +132,7 @@ class OrgPageBody extends StatelessWidget {
       if (wide || p == null) return column;
       return Stack(children: [
         Positioned.fill(child: column),
-        PositionedDirectional(end: AppSpace.md, bottom: AppSpace.md, child: _Fab(action: p)),
+        PositionedDirectional(end: AppSpace.md, bottom: AppSpace.md, child: OrgFab(action: p)),
       ]);
     });
   }
@@ -247,8 +247,11 @@ class OrgPrimaryButton extends StatelessWidget {
   }
 }
 
-class _Fab extends StatelessWidget {
-  const _Fab({required this.action});
+/// THE floating primary action of an org page (the brand gradient, white ink): OrgPageBody draws it on phones; a page
+/// with its own layout (the timetable list) uses it directly instead of a FloatingActionButton in the raw primary colour,
+/// which a light brand colour left unreadable.
+class OrgFab extends StatelessWidget {
+  const OrgFab({super.key, required this.action});
   final OrgPrimaryAction action;
 
   @override

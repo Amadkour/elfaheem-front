@@ -40,10 +40,10 @@ void main() {
         for (final s in t.heroGradient.colors) {
           expect(contrastRatio(t.onHero, Color.alphaBlend(glow, s)), greaterThanOrEqualTo(kWcagAaText));
         }
-        // a real gradient, not a flat fill: the lift is lighter than the deep end
+        // a real gradient, not a flat fill: its two ends are different colours (D-550: different hues, not two shades)
         final g = t.primaryGradient.colors;
-        expect(g.length, greaterThan(3)); // D-360: an uneven blend through the companion hue
-        expect(relativeLuminance(g.first), greaterThan(relativeLuminance(g.last)));
+        expect(g.length, greaterThanOrEqualTo(3)); // D-550: a blend through three hues
+        expect(g.first, isNot(g.last));
         // RTL-aware direction
         expect(t.primaryGradient.begin, isA<AlignmentDirectional>());
       });

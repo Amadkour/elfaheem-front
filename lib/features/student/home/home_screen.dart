@@ -575,9 +575,9 @@ class _Feeds extends StatelessWidget {
     final guest = GuestState.active;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       // ── Featured (ads) — after personal content, never above the greeting
-      const HomeAdsSlider(),
+      const HomeAdsSlider(padding: EdgeInsets.fromLTRB(20, 4, 20, 14)), // the sections' 20 px inset
       // ── Organizations (join a university / faculty)
-      if (!guest) const ParentComponent(key: ValueKey('student_home.org'), child: HomeOrgMix()),
+      if (!guest) const ParentComponent(key: ValueKey('student_home.org'), child: Padding(padding: EdgeInsets.symmetric(horizontal: 20), child: HomeOrgMix())),
       // ── the marketing call (GET /teacher/student-dashboard): other courses · categories · best teachers
       Consumer<HomeProvider>(builder: (context, provider, _) => _MarketingFeeds(provider: provider, guest: guest)),
     ]);

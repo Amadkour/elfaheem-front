@@ -37,6 +37,7 @@ import 'course_space.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 import 'package:flutter_education_app/design/app_back_button.dart';
+import 'package:flutter_education_app/design/app_mesh.dart' show AppMeshSurface;
 import 'package:flutter_education_app/design/app_kit.dart' show AppSheetContent;
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
@@ -203,9 +204,9 @@ class CourseCover extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final fallback = DecoratedBox(
-      decoration: BoxDecoration(gradient: c.accentGradient),
-      child: Center(child: Icon(Icons.school_rounded, size: 88, color: c.onHero.withValues(alpha: 0.13))),
+    final fallback = AppMeshSurface(
+      seed: 11,
+      child: Center(child: Icon(Icons.auto_stories_rounded, size: 88, color: c.onHero.withValues(alpha: 0.16))),
     );
     if (imageUrl.isEmpty) return fallback;
     return Stack(

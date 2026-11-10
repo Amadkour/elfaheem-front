@@ -320,7 +320,7 @@ class BubbleReviewPanel extends StatelessWidget {
       Text(t('انقر على الورقة لتصحيح', 'Tap the sheet to correct'), style: AppType.section(context)),
       const SizedBox(height: AppSpace.xs),
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-        for (final m in BubbleTapMode.values)
+        for (final m in BubbleTapMode.legacy)
           AppChoiceChip(label: m.label, selected: tapMode == m, onTap: () => onMode(tapMode == m ? null : m)),
       ]),
       if (taps.isNotEmpty) ...[

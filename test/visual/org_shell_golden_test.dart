@@ -84,7 +84,7 @@ Future<void> _render(WidgetTester tester, String name, String section, {bool she
   final prevLang = AppConfig.lang;
   debugDisableShadows = false;
   try {
-    for (final size in const [Size(390, 844), Size(1440, 900)]) {
+    for (final size in const [Size(390, 844), Size(820, 1100), Size(1440, 900)]) {
       for (final lang in const ['ar', 'en']) {
         for (final dark in const [false, true]) {
           AppConfig.lang = lang;

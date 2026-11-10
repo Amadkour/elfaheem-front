@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/student/models.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/paged_progress.dart';
-import '../../student/courses/details/components/app_responsive.dart';
 import 'course_list_card.dart';
 import 'course_row.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
@@ -25,10 +24,10 @@ class HomeCourseList extends StatefulWidget {
     this.loadFailed = false,
     this.onRetry,
     this.badgeFor,
-    this.maxWidth = Breakpoints.contentMax,
+    this.maxWidth = 1440, // AppWidth.wide: the page card already sets the width role; 860 left empty sides (D-561)
   });
 
-  /// The list's widest (a desktop course list page passes the home's wide width).
+  /// The list's widest; the page around it decides (its width role).
   final double maxWidth;
 
   /// A small mark drawn over each card's picture (under the favourite heart) — e.g. where the course lives when

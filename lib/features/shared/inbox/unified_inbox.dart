@@ -391,7 +391,7 @@ class InboxCard extends StatelessWidget {
               boxShadow: c.cardShadow,
             ),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
+              padding: const EdgeInsetsDirectional.fromSTEB(12, 12, 10, 12),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Container(
                   width: 42,

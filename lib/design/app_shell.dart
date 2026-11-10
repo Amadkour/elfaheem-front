@@ -44,9 +44,9 @@ import '../features/shared/profile/update_account_widget.dart';
 import '../utils/widget/app_navigator.dart' show AppNavigator;
 import '../utils/widget/app_network_image.dart';
 import '../utils/widget/base_page.dart';
-import '../utils/widget/refresh_button.dart';
 import 'app_focus_mode.dart';
 import 'app_mesh.dart';
+import 'app_motion_kit.dart';
 import 'app_tokens.dart';
 import 'app_responsive.dart';
 import 'app_shell_nav.dart';
@@ -110,10 +110,14 @@ class ShellBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (item.attentionKeys.isEmpty) return builder(context, item.badge);
+    // a count that changes pops once (D-581)
+    if (item.attentionKeys.isEmpty) return AppBump(trigger: item.badge, child: builder(context, item.badge));
     return ListenableBuilder(
       listenable: source(),
-      builder: (context, _) => builder(context, item.badge + _live()),
+      builder: (context, _) {
+        final n = item.badge + _live();
+        return AppBump(trigger: n, child: builder(context, n));
+      },
     );
   }
 }
@@ -139,6 +143,9 @@ class _LazyTabStackState extends State<LazyTabStack> {
   final Set<String> _visited = {};
   ShellTabs? _own;
 
+  /// The labels built in the shell's first frame: they appear with the page; a tab opened later enters (D-580).
+  Set<String>? _initial;
+
   ShellTabs get _tabs => widget.tabs ?? (_own ??= ShellTabs());
 
   @override
@@ -153,6 +160,7 @@ class _LazyTabStackState extends State<LazyTabStack> {
     if (items.isEmpty) return const SizedBox.shrink();
     final current = widget.index.clamp(0, items.length - 1);
     _visited.add(items[current].label);
+    _initial ??= {..._visited};
     _tabs.homeLabel = items.first.label; // the home's own URL; another tab is `<home>/<tab>` (D-170)
     _tabs.setActive(items[current].label);
     // Each tab's navigator draws its pages over a modal barrier, and a barrier BLOCKS the semantics of everything
@@ -168,7 +176,12 @@ class _LazyTabStackState extends State<LazyTabStack> {
           _visited.contains(items[i].label)
               ? KeyedSubtree(
                   key: ValueKey('tab:${items[i].label}'),
-                  child: _TabNavigatorHost(tab: _tabs.tab(items[i].label), screen: items[i].screen, active: i == current),
+                  // the tab coming to the front fades in and rises 8 px (D-580)
+                  child: AppTabEntrance(
+                    active: i == current,
+                    enterNow: !_initial!.contains(items[i].label),
+                    child: _TabNavigatorHost(tab: _tabs.tab(items[i].label), screen: items[i].screen, active: i == current),
+                  ),
                 )
               : const SizedBox.shrink(),
       ],
@@ -292,6 +305,8 @@ class _AppShellState extends State<AppShell> {
 
   int get _current => widget.items.isEmpty ? 0 : widget.currentIndex.clamp(0, widget.items.length - 1);
 
+  Widget _shellTools(BuildContext context) => _GlobalTools(unread: widget.unreadCount);
+
   void _onTap(int i) {
     switch (shellTapAction(tapped: i, current: _current, tabCanPop: _tabs.activeCanPop)) {
       case ShellTap.popToRoot:
@@ -340,14 +355,19 @@ class _AppShellState extends State<AppShell> {
             AppShellKind.mobile => MobileShell(currentIndex: _current, onTap: _onTap, dashboardItems: items, body: body),
           };
     final back = shellBackAction(tabCanPop: _tabs.activeCanPop, index: _current);
+    final barAvailable = widget.showTopBar && !full && kind != AppShellKind.mobile;
     return ShellScope(
       tabs: _tabs,
-      child: PopScope<Object?>(
-        canPop: back == ShellBack.leave,
-        onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) _onBack();
-        },
-        child: shell,
+      child: ShellChrome(
+        barShown: barAvailable && !_tabs.activeCanPop,
+        tools: barAvailable ? _shellTools : null,
+        child: PopScope<Object?>(
+          canPop: back == ShellBack.leave,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) _onBack();
+          },
+          child: shell,
+        ),
       ),
     );
   }
@@ -376,24 +396,26 @@ class _FocusFold extends StatelessWidget {
       );
 }
 
-/// The page area, with the way out of focus mode floating over it.
-class _FocusExitLayer extends StatelessWidget {
-  const _FocusExitLayer({required this.focus, required this.child});
+/// The page area, a sheet laid on the shell's one continuous gradient (D-551).
+class _ContentPanel extends StatelessWidget {
+  const _ContentPanel({required this.focus, required this.child});
 
+  /// True in focus mode and when the page draws its own header across the top (showTopBar: false, D-570): no
+  /// rounded corner then, which would leave a thin arc where the sidebar meets that header.
   final bool focus;
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => Stack(fit: StackFit.expand, children: [
-        child,
-        if (focus)
-          const PositionedDirectional(bottom: AppSpace.md, end: AppSpace.md, child: AppFocusExitPill()),
-      ]);
+  Widget build(BuildContext context) {
+    final body = ColoredBox(color: context.colors.background, child: child);
+    if (focus) return body;
+    return ClipRRect(
+      borderRadius: const BorderRadiusDirectional.only(topStart: Radius.circular(AppRadius.sheet)).resolve(Directionality.of(context)),
+      clipBehavior: Clip.antiAlias,
+      child: body,
+    );
+  }
 }
-
-// ─────────────────────────────────────────
-// WIDE LAYOUT (>= Breakpoints.desktop) — persistent sidebar + top bar
-// ─────────────────────────────────────────────────────────────────────────────
 
 class WideShell extends StatelessWidget {
   final int currentIndex;
@@ -426,18 +448,15 @@ class WideShell extends StatelessWidget {
     final c = context.colors;
     final user = context.watch<MyAuthProvider>().currentUser;
     final current = currentIndex.clamp(0, dashboardItems.length - 1);
+    final barShown = showTopBar && !(ShellScope.maybeOf(context)?.activeCanPop ?? false);
     return BasePage(
-      child: Row(
+      child: RepaintBoundary(child: AppMeshSurface(seed: 3, child: Row(
         children: [
           // ── Sidebar ──────────────────────────────────────────────────────
-          _FocusFold(focus: focus, child: AppMeshSurface(seed: 3, child: Container(
+          _FocusFold(focus: focus, child: SizedBox(
             width: Breakpoints.sidebarW,
             child: Stack(
               children: [
-                // decorative glows
-                Positioned(top: -80, right: -80, child: _Glow(size: 320, opacity: 0.06)),
-                Positioned(bottom: -100, left: -60, child: _Glow(size: 280, opacity: 0.04)),
-                Positioned(top: 200, left: -40, child: _Glow(size: 160, opacity: 0.05)),
                 Column(
                   children: [
                     const SizedBox(height: 32),
@@ -514,48 +533,35 @@ class WideShell extends StatelessWidget {
                 ),
               ],
             ),
-          ))),
+          )),
 
           // ── Main content ──────────────────────────────────────────────────
           Expanded(
             child: Column(
               children: [
-                if (showTopBar && !focus)
+                if (barShown)
                   _TopBar(
                     title: dashboardItems[current].label.tr,
                     unread: unreadCount,
                     onRefresh: dashboardItems[current].onRefresh,
                     helpPageId: shellHelpPageId(context, dashboardItems[current].label, current == 0),
+                    focus: focus,
                   ),
                 // the top bar already sits under the status bar: the pages below must not pad for it again
                 Expanded(
                   child: MediaQuery.removePadding(
                     context: context,
-                    removeTop: showTopBar && !focus,
-                    child: _FocusExitLayer(focus: focus, child: body ?? LazyTabStack(index: current, items: dashboardItems)),
+                    removeTop: barShown,
+                    child: _ContentPanel(focus: focus || !showTopBar, child: body ?? LazyTabStack(index: current, items: dashboardItems)),
                   ),
                 ),
               ],
             ),
           ),
         ],
-      ),
+      ))),
     );
   }
-}
-
-class _Glow extends StatelessWidget {
-  const _Glow({required this.size, required this.opacity});
-
-  final double size;
-  final double opacity;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(shape: BoxShape.circle, color: context.colors.onHero.withValues(alpha: opacity)),
-      );
 }
 
 /// The signed-in user at the bottom of the sidebar / rail — opens the account editor.
@@ -710,7 +716,7 @@ class _SidebarTile extends StatelessWidget {
                 decoration: BoxDecoration(color: c.accent, borderRadius: BorderRadius.circular(2)),
                 margin: const EdgeInsetsDirectional.only(end: 10),
               ),
-            Icon(selected ? item.selectedIcon : item.icon, color: selected ? c.onHero : c.onHeroFaint, size: 20),
+            Icon(selected ? item.selectedIcon : item.icon, color: selected ? c.onHero : c.onHeroMuted, size: 20),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -719,7 +725,7 @@ class _SidebarTile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontFamily: AppFonts.display,
-                  color: selected ? c.onHero : c.onHeroFaint,
+                  color: selected ? c.onHero : c.onHeroMuted,
                   fontWeight: selected ? FontWeight.w500 : FontWeight.normal,
                   fontSize: 14,
                 ),
@@ -774,64 +780,106 @@ class _TopBar extends StatelessWidget {
   final Future<void> Function()? onRefresh;
   final String? helpPageId;
 
-  const _TopBar({required this.title, required this.unread, required this.onRefresh, this.helpPageId});
+  /// Focus mode: a slim bar with the title and the way out, in the corner where focus mode was entered.
+  final bool focus;
+
+  const _TopBar({required this.title, required this.unread, required this.onRefresh, this.helpPageId, this.focus = false});
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    // A page pushed inside the tab (a course, a setting …) brings its own title: the tab's name would lie (M8).
-    final shell = ShellScope.maybeOf(context);
-    final pushed = shell?.activeCanPop ?? false;
     return Semantics(
       container: true,
       explicitChildNodes: true,
       label: 'shell_top_bar'.tr,
-      child: AppMeshSurface(seed: 5, child: Container(
-        height: 64,
-        padding: const EdgeInsets.symmetric(horizontal: 28),
-        child: ChromeBar(
-          child: Row(
-            children: [
-              Expanded(
-                child: pushed
-                    ? const SizedBox.shrink()
-                    : Semantics(
-                        header: true,
-                        child: Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: c.h2.copyWith(color: c.onHero, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-              ),
-              // the actions scale down instead of overflowing when the shell is squeezed
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    if (onRefresh != null && !pushed) ...[RefreshButton(onTap: onRefresh!), const SizedBox(width: 6)],
-                    if (!GuestState.active) const CalendarIcon(),
-                    if (!GuestState.active) const ChatEntryIcon(),
-                    if (!GuestState.active && !AppConfig.disableList.contains(appAssistantFeatureKey))
-                      ChromeIconButton(
-                        icon: Icons.auto_awesome_rounded,
-                        label: 'assistant_entry_title'.tr,
-                        onTap: AppAssistant.openPanel,
-                      ),
-                    if (helpPageId != null && !pushed) HelpInfoButton(pageId: helpPageId!),
-                    NotificationIcon(unreadCount: unread),
-                    const AppFocusToggle(onHero: true),
-                  ]),
+      child: SizedBox(
+        height: focus ? 56 : 68,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(start: AppSpace.lg, end: AppSpace.md),
+          child: ChromeBar(
+            child: LayoutBuilder(builder: (context, box) => Row(
+              children: [
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: c.h2.copyWith(color: c.onHero, fontWeight: FontWeight.w600),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: AppSpace.xs),
+                // the buttons keep their size and sit at the end; only a squeezed shell scales them down
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: box.maxWidth * 0.72),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: focus
+                        ? const AppFocusExitButton()
+                        : Row(mainAxisSize: MainAxisSize.min, children: [
+                            if (onRefresh != null) _ChromeRefresh(onRefresh: onRefresh!),
+                            _GlobalTools(unread: unread),
+                            if (helpPageId != null) HelpInfoButton(pageId: helpPageId!),
+                            const AppFocusToggle(onHero: true),
+                          ]),
+                  ),
+                ),
+              ],
+            )),
           ),
         ),
-      )),
+      ),
     );
   }
+}
+
+/// The app-wide actions, in one order on every header: calendar, messages, assistant, notifications.
+class _GlobalTools extends StatelessWidget {
+  const _GlobalTools({required this.unread});
+
+  final int unread;
+
+  @override
+  Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
+        if (!GuestState.active) const CalendarIcon(),
+        if (!GuestState.active) const ChatEntryIcon(),
+        if (!GuestState.active && !AppConfig.disableList.contains(appAssistantFeatureKey))
+          ChromeIconButton(
+            icon: Icons.auto_awesome_rounded,
+            label: 'assistant_entry_title'.tr,
+            onTap: AppAssistant.openPanel,
+          ),
+        NotificationIcon(unreadCount: unread),
+      ]);
+}
+
+/// Refresh, the same glass square as its neighbours; the icon turns into a spinner while it runs.
+class _ChromeRefresh extends StatefulWidget {
+  const _ChromeRefresh({required this.onRefresh});
+
+  final Future<void> Function() onRefresh;
+
+  @override
+  State<_ChromeRefresh> createState() => _ChromeRefreshState();
+}
+
+class _ChromeRefreshState extends State<_ChromeRefresh> {
+  bool _busy = false;
+
+  Future<void> _run() async {
+    setState(() => _busy = true);
+    try {
+      await widget.onRefresh();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ChromeIconButton(icon: Icons.refresh_rounded, label: 'refresh'.tr, busy: _busy, onTap: _run);
 }
 
 /// Opens the personal overall calendar ('/calendar' with no org/dept = every source the user belongs to).
@@ -900,17 +948,16 @@ class RailShell extends StatelessWidget {
     final c = context.colors;
     final user = context.watch<MyAuthProvider>().currentUser;
     final current = currentIndex.clamp(0, dashboardItems.length - 1);
-    final railBg = c.isDark ? c.cardBg : c.primary;
+    final barShown = showTopBar && !(ShellScope.maybeOf(context)?.activeCanPop ?? false);
     return BasePage(
-      child: Row(
+      child: RepaintBoundary(child: AppMeshSurface(seed: 3, child: Row(
         children: [
-          _FocusFold(focus: focus, child: ColoredBox(
-            color: railBg,
+          _FocusFold(focus: focus, child: SizedBox(
             child: Column(
               children: [
                 Expanded(
                   child: NavigationRail(
-                    backgroundColor: railBg,
+                    backgroundColor: Colors.transparent,
                     selectedIndex: current,
                     onDestinationSelected: onTap,
                     minWidth: 66,
@@ -936,30 +983,30 @@ class RailShell extends StatelessWidget {
               ],
             ),
           )),
-          if (!focus) VerticalDivider(width: 1, color: c.divider),
           Expanded(
             child: Column(
               children: [
-                if (showTopBar && !focus)
+                if (barShown)
                   _TopBar(
                     title: dashboardItems[current].label.tr,
                     unread: unreadCount,
                     onRefresh: dashboardItems[current].onRefresh,
                     helpPageId: shellHelpPageId(context, dashboardItems[current].label, current == 0),
+                    focus: focus,
                   ),
                 // the top bar already sits under the status bar: the pages below must not pad for it again
                 Expanded(
                   child: MediaQuery.removePadding(
                     context: context,
-                    removeTop: showTopBar && !focus,
-                    child: _FocusExitLayer(focus: focus, child: body ?? LazyTabStack(index: current, items: dashboardItems)),
+                    removeTop: barShown,
+                    child: _ContentPanel(focus: focus || !showTopBar, child: body ?? LazyTabStack(index: current, items: dashboardItems)),
                   ),
                 ),
               ],
             ),
           ),
         ],
-      ),
+      ))),
     );
   }
 }

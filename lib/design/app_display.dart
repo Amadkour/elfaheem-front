@@ -10,7 +10,8 @@
 //   bold text     MediaQuery.boldText (Text applies it)
 //   high contrast MediaQuery.highContrast; the palette's muted ink is pulled toward the main ink in
 //                 ThemeConfigProvider (textMedium / textLight / divider)
-//   reduce motion MediaQuery.disableAnimations + no page transitions
+//   reduce motion MediaQuery.disableAnimations + no page transitions; the Super Admin's `app.animations` switch
+//                 (feature catalog, in the disable list = off) forces it for every account (D-585)
 //   large targets padded tap targets + a roomier visual density for Material buttons, chips and tiles
 //   spacing       reading spacing (ReadingSpacing): taller lines and wider word gaps for every inherited style,
 //                 the theme's text styles and appText; letter spacing in English only
@@ -26,6 +27,7 @@ import 'package:flutter/material.dart';
 import '../core/display/app_fonts.dart';
 import '../config/app_config.dart';
 import '../core/display/display_settings.dart';
+import 'app_motion_kit.dart';
 
 /// The system's text scaler times the person's factor (keeps Android's non-linear scaling).
 @immutable
@@ -90,15 +92,6 @@ class DisplayZoom extends StatelessWidget {
   }
 }
 
-class _NoTransitions extends PageTransitionsBuilder {
-  const _NoTransitions();
-
-  @override
-  Widget buildTransitions<T>(PageRoute<T> route, BuildContext context, Animation<double> animation,
-          Animation<double> secondaryAnimation, Widget child) =>
-      child;
-}
-
 /// [theme] with the preferences' fonts, motion and target size.
 ThemeData displayTheme(ThemeData theme, DisplayPrefs p) {
   final family = AppFonts.family, fallback = AppFonts.fallback;
@@ -107,16 +100,8 @@ ThemeData displayTheme(ThemeData theme, DisplayPrefs p) {
   return theme.copyWith(
     textTheme: text(theme.textTheme),
     primaryTextTheme: text(theme.primaryTextTheme),
-    pageTransitionsTheme: p.reduceMotion
-        ? const PageTransitionsTheme(builders: {
-            TargetPlatform.android: _NoTransitions(),
-            TargetPlatform.iOS: _NoTransitions(),
-            TargetPlatform.macOS: _NoTransitions(),
-            TargetPlatform.windows: _NoTransitions(),
-            TargetPlatform.linux: _NoTransitions(),
-            TargetPlatform.fuchsia: _NoTransitions(),
-          })
-        : null,
+    // the app's own transition on every platform (iOS keeps its native slide and back swipe), none when reduced
+    pageTransitionsTheme: appPageTransitionsTheme(reduced: p.reduceMotion),
     materialTapTargetSize: p.largeTargets ? MaterialTapTargetSize.padded : null,
     visualDensity: p.largeTargets ? const VisualDensity(horizontal: 1, vertical: 1) : null,
   );
@@ -171,8 +156,12 @@ class AppDisplayScope extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = settings ?? DisplaySettings.instance;
     return ListenableBuilder(
-      listenable: Listenable.merge([s, AppFonts.version]),
-      builder: (context, _) => AppDisplayApply(prefs: s.prefs, child: child),
+      // the disable list carries the Super Admin's animations switch: a theme fetch / push applies it live
+      listenable: Listenable.merge([s, AppFonts.version, AppConfig.disableListVersion]),
+      builder: (context, _) => AppDisplayApply(
+        prefs: appAnimationsOffForAll ? s.prefs.copyWith(reduceMotion: true) : s.prefs,
+        child: child,
+      ),
     );
   }
 }

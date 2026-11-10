@@ -12,6 +12,8 @@ import 'package:flutter_education_app/features/shared/records/records_guests_par
 import 'package:flutter_education_app/features/shared/records/records_share_api.dart';
 import 'package:flutter_education_app/features/shared/records/records_share_parts.dart';
 import 'package:flutter_education_app/features/shared/records/records_studio_parts.dart';
+import 'package:flutter_education_app/features/shared/records/studio_project.dart';
+import 'package:flutter_education_app/features/shared/records/studio_timeline.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';
@@ -55,7 +57,7 @@ RecordItem _material() => RecordItem.fromJson({
     })!;
 
 Widget _studio(StudioTool tool, {bool job = false}) {
-  const tools = [StudioTool.trim, StudioTool.cut, StudioTool.split, StudioTool.speed, StudioTool.merge];
+  const tools = [StudioTool.edit, StudioTool.text, StudioTool.image, StudioTool.history, StudioTool.quality, StudioTool.split, StudioTool.merge];
   final item = _material();
   final ready = _d(21, const {});
   return RecordStudioLayout(
@@ -64,8 +66,8 @@ Widget _studio(StudioTool tool, {bool job = false}) {
     onTool: (_) {},
     preview: const SizedBox.expand(),
     transport: StudioTransport(position: 60, duration: 3600, onPlayPause: () {}, onSkip: (_) {}, onPreviewSpeed: () {}),
-    timeline: StudioTimeline(duration: 3600, position: 60, tool: tool, start: 10, end: 1200, at: 1800, onSeek: (_) {}),
-    panel: StudioToolPanel(tool: tool, item: item, duration: 3600, position: 60, start: 10, end: 1200, at: 1800, showImages: false),
+    timeline: StudioTimelineView(edit: StudioEdit.original(3600).split(1200), position: 60, sourceDuration: 3600, onScrub: (_) {}),
+    panel: StudioToolPanel(tool: tool, item: item, duration: 3600, showImages: false),
     summary: const StudioSummary(original: 3600, result: [1190]),
     save: StudioSaveArea(
       title: const TextField(decoration: InputDecoration(labelText: 'Name of the new video')),
@@ -182,27 +184,27 @@ void main() {
       await expectNoLayoutErrors(t, () => const SingleChildScrollView(child: MaterialPublishChoice(mode: MaterialPublishMode.asNew, canReplace: false, busy: true)));
     });
 
-    for (final tool in [StudioTool.trim, StudioTool.split, StudioTool.merge]) {
+    for (final tool in [StudioTool.edit, StudioTool.split, StudioTool.merge]) {
       testWidgets('the Studio on a material: ${tool.name}', (t) async {
         await expectNoLayoutErrors(t, () => _studio(tool));
       });
     }
 
     testWidgets('the Studio on a material: the job card with Publish', (t) async {
-      await expectNoLayoutErrors(t, () => _studio(StudioTool.trim, job: true));
+      await expectNoLayoutErrors(t, () => _studio(StudioTool.edit, job: true));
     });
 
     testWidgets('material mode: no Cover tool, Save as draft, the draft note, Publish on a ready draft', (t) async {
       t.view.physicalSize = const Size(1400, 900);
       t.view.devicePixelRatio = 1;
       addTearDown(t.view.reset);
-      await t.pumpWidget(layoutHost(_studio(StudioTool.trim, job: true), scale: 1));
+      await t.pumpWidget(layoutHost(_studio(StudioTool.edit, job: true), scale: 1));
       expect(find.byKey(const ValueKey('studio.tool.cover')), findsNothing);
       expect(find.byKey(const ValueKey('studio.tool.merge')), findsOneWidget);
       expect(find.text('The draft is ready — play it, then publish it'), findsNothing); // one item still saving
       expect(find.byKey(const ValueKey('test.publish')), findsOneWidget);
       expect(find.text('To the session'), findsOneWidget);
-      await t.pumpWidget(layoutHost(_studio(StudioTool.trim), scale: 1));
+      await t.pumpWidget(layoutHost(_studio(StudioTool.edit), scale: 1));
       expect(find.text('Save as draft'), findsOneWidget);
       expect(find.byKey(const ValueKey('studio.draft.note')), findsOneWidget);
       expect(find.byKey(const ValueKey('studio.replace')), findsNothing);

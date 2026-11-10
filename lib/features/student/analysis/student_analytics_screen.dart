@@ -202,7 +202,7 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
     return BasePage(
       key: const ValueKey('analytics'),
       useWebCard: true,
-      width: AppWidth.content,
+      width: AppWidth.wide,
       child: ColoredBox(
         color: c.background,
         child: AppRefresh(
@@ -444,7 +444,7 @@ class _AllCoursesPageState extends State<_AllCoursesPage> {
     final list = prov.filtered;
     return BasePage(
       useWebCard: true,
-      width: AppWidth.content,
+      width: AppWidth.wide,
       appBar: AppHeader(title: anTr('an2_all_courses_title', 'All courses')),
       child: AppRefresh(
         onRefresh: prov.loadCourses,
@@ -638,7 +638,7 @@ class _CourseCard extends StatelessWidget {
       onTap: () => onOpen(0),
       child: Column(children: [
         Container(
-          padding: const EdgeInsets.fromLTRB(16, 14, 14, 10),
+          padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 14, 10),
           decoration: BoxDecoration(
             gradient: AppGradients.wash(context),
           ),

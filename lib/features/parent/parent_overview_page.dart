@@ -378,7 +378,7 @@ class ParentChildOverviewCard extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         // ── who
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 12, 12),
+          padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 12, 12),
           child: Row(children: [
             AppAvatar(name: ch.name, url: ch.imageUrl.isEmpty ? null : ch.imageUrl, size: 48),
             const SizedBox(width: 12),

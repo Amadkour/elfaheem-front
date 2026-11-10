@@ -41,6 +41,7 @@ List<ChatMessage> chatMergeMessages(List<ChatMessage> shown, List<ChatMessage> i
         ..kind = m.kind
         ..body = m.body
         ..attachments = m.attachments
+        ..replyTo = m.replyTo ?? mine.replyTo
         ..local = const []
         ..uploaded = const []
         ..createdAt = m.createdAt
@@ -72,18 +73,6 @@ ChatTick chatTickFor(ChatMessage m, {int? peerReadId, int? peerDeliveredId}) {
 }
 
 enum ChatTick { sending, queued, failed, sent, delivered, read }
-
-/// Pure: the inbox's rows split into what needs the person (unread and not muted) and the rest. The sections are only
-/// drawn on the plain list; a filter or a search shows its rows as they came.
-({List<ChatConversation> attention, List<ChatConversation> rest}) chatInboxSections(List<ChatConversation> rows, {required bool plain}) {
-  if (!plain) return (attention: const [], rest: rows);
-  final attention = <ChatConversation>[];
-  final rest = <ChatConversation>[];
-  for (final c in rows) {
-    (c.unread > 0 && !c.muted ? attention : rest).add(c);
-  }
-  return (attention: attention, rest: rest);
-}
 
 class ChatHub extends ChangeNotifier {
   ChatHub._();
@@ -628,6 +617,7 @@ class ChatHub extends ChangeNotifier {
       'created_at': m.createdAt.toIso8601String(),
       'files': [for (final f in m.local) f.toJson()],
       'uploaded': m.uploaded,
+      if (m.replyTo != null) 'reply_to': m.replyTo!.toJson(),
       'failed': m.sendState == ChatSendState.failed,
       'auto': m.autoRetry,
       'error': m.error,
@@ -660,6 +650,7 @@ class ChatHub extends ChangeNotifier {
         sendState: failed ? ChatSendState.failed : ChatSendState.queued,
         autoRetry: m['auto'] == true,
         error: lost ? ChatMessage.lostFileError : m['error'] as String?,
+        replyTo: ChatReplyRef.fromJson(m['reply_to']),
       ));
     }
     return out;
@@ -704,7 +695,7 @@ class ChatHub extends ChangeNotifier {
             m['uploaded'] = ids;
             _saveOutbox();
           }
-          final sent = await api.send(conv, clientId: clientId, body: m['body'] as String?, attachmentIds: ids);
+          final sent = await api.send(conv, clientId: clientId, body: m['body'] as String?, attachmentIds: ids, replyToId: ChatReplyRef.fromJson(m['reply_to'])?.id);
           if (_myId != owner) return;
           outboxRemove(clientId);
           noteSent(conv, sent);
@@ -808,6 +799,7 @@ class ChatThreadController extends ChangeNotifier {
     await hub.ensureUser();
     if (_gone) return;
     if (loaded) {
+      _placeUnread(); // the line is about this visit
       unawaited(reloadHeader());
       _syncNewest();
       _startFallback();
@@ -818,14 +810,15 @@ class ChatThreadController extends ChangeNotifier {
     if (_disposed) return;
     final pending = hub.pendingFor(conversationId);
     try {
-      final p = await _api.messages(conversationId);
+      // enough to hold what is unread, so the "new messages" line lands where it should
+      final p = await _api.messages(conversationId, limit: ((conversation?.unread ?? 0) + 12).clamp(30, 60));
       messages = chatMergeMessages([...messages, ...pending], p.items);
       for (final m in pending) {
         if (m.id != null) hub.outboxRemove(m.clientId);   // the server had it already (the app closed before the answer)
       }
       hasMore = p.hasMore;
       _syncedThrough = _newestStoredId ?? 0;
-      firstUnreadKey = _firstUnread();
+      _placeUnread();
       loaded = true;
       error = null;
     } catch (e) {
@@ -867,6 +860,20 @@ class ChatThreadController extends ChangeNotifier {
   bool get debugPolling => _fallback != null;
 
   int? get _newestStoredId => messages.where((m) => m.id != null).firstOrNull?.id;
+
+  /// Many unread messages: the screen opens on the first of them (D-544). `atLatest` goes false before the read mark
+  /// would go out, so opening a long backlog does not mark it read: reaching the end does.
+  void _placeUnread() {
+    firstUnreadKey = _firstUnread();
+    atLatest = !startsAtUnread;
+    newBelow = 0;
+  }
+
+  /// Enough unread messages that the chat opens on the first of them instead of at the end.
+  bool get startsAtUnread {
+    final key = firstUnreadKey;
+    return key != null && messages.indexWhere((m) => m.clientId == key) >= 10;
+  }
 
   String? _firstUnread() {
     final read = conversation?.lastReadId ?? 0;
@@ -1007,7 +1014,7 @@ class ChatThreadController extends ChangeNotifier {
   }
 
   /// Show the message now, then send; offline it waits in the outbox.
-  Future<void> send(String text, {List<ChatLocalFile> files = const []}) async {
+  Future<void> send(String text, {List<ChatLocalFile> files = const [], ChatReplyRef? replyTo}) async {
     final t = text.trim();
     if (t.isEmpty && files.isEmpty) return;
     hub.setDraft(conversationId, '');
@@ -1022,6 +1029,7 @@ class ChatThreadController extends ChangeNotifier {
       local: files,
       createdAt: DateTime.now().toUtc(),
       sendState: AppConnectivity.instance.isOnline ? ChatSendState.sending : ChatSendState.queued,
+      replyTo: replyTo,
     );
     messages = chatMergeMessages(messages, [m]);
     _notify();
@@ -1095,7 +1103,7 @@ class ChatThreadController extends ChangeNotifier {
         hub.outboxAdd(m);
       }
       if (_stale(m)) return;
-      final sent = await _api.send(conversationId, clientId: m.clientId, body: m.body, attachmentIds: ids);
+      final sent = await _api.send(conversationId, clientId: m.clientId, body: m.body, attachmentIds: ids, replyToId: m.replyTo?.id);
       if (_stale(m)) return;
       hub.outboxRemove(m.clientId);
       messages = chatMergeMessages(messages, [sent]);

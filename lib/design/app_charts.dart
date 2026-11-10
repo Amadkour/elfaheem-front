@@ -31,6 +31,7 @@ import '../config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_bidi.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'app_motion_kit.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data
@@ -230,13 +231,17 @@ class AppSparkline extends StatelessWidget {
         child: SizedBox(
           height: height,
           width: double.infinity,
-          child: CustomPaint(
-            painter: _SparkPainter(
-              values: values,
-              color: col,
-              surface: c.cardBg,
-              fill: fill,
-              rtl: Directionality.of(context) == TextDirection.rtl,
+          // the line draws in from the reading start (D-582)
+          child: AppDrawIn(
+            builder: (context, t) => CustomPaint(
+              painter: _SparkPainter(
+                values: values,
+                color: col,
+                surface: c.cardBg,
+                fill: fill,
+                rtl: Directionality.of(context) == TextDirection.rtl,
+                t: t,
+              ),
             ),
           ),
         ),
@@ -246,10 +251,13 @@ class AppSparkline extends StatelessWidget {
 }
 
 class _SparkPainter extends CustomPainter {
-  _SparkPainter({required this.values, required this.color, required this.surface, required this.fill, required this.rtl});
+  _SparkPainter({required this.values, required this.color, required this.surface, required this.fill, required this.rtl, this.t = 1});
   final List<double> values;
   final Color color, surface;
   final bool fill, rtl;
+
+  /// Drawn so far, 0..1 from the reading start.
+  final double t;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -266,6 +274,10 @@ class _SparkPainter extends CustomPainter {
       return Offset(x, y);
     }
 
+    if (t < 1) {
+      final shown = size.width * t;
+      canvas.clipRect(rtl ? Rect.fromLTWH(size.width - shown, 0, shown, size.height) : Rect.fromLTWH(0, 0, shown, size.height));
+    }
     final line = Path()..moveTo(at(0).dx, at(0).dy);
     for (var i = 1; i < n; i++) {
       line.lineTo(at(i).dx, at(i).dy);
@@ -286,6 +298,7 @@ class _SparkPainter extends CustomPainter {
         ..strokeJoin = StrokeJoin.round
         ..strokeCap = StrokeCap.round,
     );
+    if (t < 1) return; // the end marker lands with the line
     final end = at(n - 1);
     canvas.drawCircle(end, 6, Paint()..color = surface);   // the 2 px surface ring
     canvas.drawCircle(end, 4, Paint()..color = color);
@@ -293,7 +306,7 @@ class _SparkPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_SparkPainter o) =>
-      o.values != values || o.color != color || o.surface != surface || o.fill != fill || o.rtl != rtl;
+      o.values != values || o.color != color || o.surface != surface || o.fill != fill || o.rtl != rtl || o.t != t;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -388,9 +401,11 @@ class _AppBarChartState extends State<AppBarChart> {
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTapDown: (e) => _set(geo.groupAt(e.localPosition.dx)),
-                        child: CustomPaint(
+                        // the bars grow from the baseline (D-582)
+                        child: AppDrawIn(builder: (context, t) => CustomPaint(
                           size: Size(box.maxWidth, box.maxHeight),
                           painter: _BarPainter(
+                            t: t,
                             series: widget.series,
                             labels: widget.labels,
                             colors: colors,
@@ -405,7 +420,7 @@ class _AppBarChartState extends State<AppBarChart> {
                             textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
                             integerAxis: widget.integerAxis,
                           ),
-                        ),
+                        )),
                       ),
                     );
                   }),
@@ -481,8 +496,11 @@ class _BarPainter extends CustomPainter {
     required this.format,
     required this.textDirection,
     this.integerAxis = false,
+    this.t = 1,
   });
 
+  /// Grown so far (0..1).
+  final double t;
   final List<AppChartSeries> series;
   final List<String> labels;
   final List<Color> colors;
@@ -536,12 +554,13 @@ class _BarPainter extends CustomPainter {
       for (var s = 0; s < series.length; s++) {
         final v = _value(s, i);
         if (v <= 0) continue;
-        final h = geo.plotH * (v / top);
+        final h = geo.plotH * (v / top) * t;
+        if (h <= 0) continue;
         final x = geo.barLeft(i, s);
         final rect = Rect.fromLTWH(x, geo.baseline - h, geo.barW, h);
         final radius = Radius.circular(math.min(4, h));
         canvas.drawRRect(RRect.fromRectAndCorners(rect, topLeft: radius, topRight: radius), Paint()..color = colors[s]);
-        if (hot == i) {
+        if (hot == i && t >= 1) {
           final tp = _text(format(v), _ink(inkStrong, size: 10));
           final cx = x + geo.barW / 2 - tp.width / 2;
           final cy = geo.baseline - h - tp.height - 2;
@@ -568,7 +587,8 @@ class _BarPainter extends CustomPainter {
       o.grid != grid ||
       o.ink != ink ||
       o.textDirection != textDirection ||
-      o.integerAxis != integerAxis;
+      o.integerAxis != integerAxis ||
+      o.t != t;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -612,15 +632,19 @@ class AppDonut extends StatelessWidget {
       width: size,
       height: size,
       child: Stack(alignment: Alignment.center, children: [
-        CustomPaint(
-          size: Size(size, size),
-          painter: _DonutPainter(
-            values: [for (final p in parts) math.max(0.0, p.value)],
-            colors: colors,
-            surface: c.cardBg,
-            track: c.divider,
-            thickness: thickness,
-            rtl: rtl,
+        // the ring sweeps in (D-582)
+        AppDrawIn(
+          builder: (context, t) => CustomPaint(
+            size: Size(size, size),
+            painter: _DonutPainter(
+              values: [for (final p in parts) math.max(0.0, p.value)],
+              colors: colors,
+              surface: c.cardBg,
+              track: c.divider,
+              thickness: thickness,
+              rtl: rtl,
+              t: t,
+            ),
           ),
         ),
         Padding(
@@ -628,7 +652,7 @@ class AppDonut extends StatelessWidget {
           child: center ??
               FittedBox(
                 fit: BoxFit.scaleDown,
-                child: Text(
+                child: AppCountUp(
                   total > 0 ? format(total) : '—',
                   style: _ink(c.textDark, size: size * 0.18, w: FontWeight.w800),
                 ),
@@ -685,12 +709,14 @@ class _DonutPainter extends CustomPainter {
     required this.track,
     required this.thickness,
     required this.rtl,
+    this.t = 1,
   });
   final List<double> values;
   final List<Color> colors;
   final Color surface, track;
   final double thickness;
   final bool rtl;
+  final double t;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -705,13 +731,17 @@ class _DonutPainter extends CustomPainter {
       canvas.drawArc(rect, 0, math.pi * 2, false, stroke..color = track);
       return;
     }
+    if (t < 1) canvas.drawArc(rect, 0, math.pi * 2, false, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = thickness
+      ..color = track);
     final shown = values.where((v) => v > 0).length;
     final gap = shown > 1 ? 2.0 / r : 0.0;   // a 2 px surface gap between parts
     var start = -math.pi / 2;
     final dir = rtl ? -1.0 : 1.0;
     for (var i = 0; i < values.length; i++) {
       if (values[i] <= 0) continue;
-      final sweep = values[i] / total * math.pi * 2;
+      final sweep = values[i] / total * math.pi * 2 * t;
       final drawn = math.max(0.0, sweep - gap);
       canvas.drawArc(rect, start + dir * gap / 2, dir * drawn, false, stroke..color = colors[i]);
       start += dir * sweep;
@@ -720,7 +750,7 @@ class _DonutPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_DonutPainter o) =>
-      o.values != values || o.colors != colors || o.surface != surface || o.track != track || o.rtl != rtl;
+      o.values != values || o.colors != colors || o.surface != surface || o.track != track || o.rtl != rtl || o.t != t;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -794,7 +824,7 @@ class AppTrendTile extends StatelessWidget {
             child: FittedBox(
               fit: BoxFit.scaleDown,
               alignment: AlignmentDirectional.centerStart,
-              child: Text(value, maxLines: 1, style: _ink(c.textDark, size: 24, w: FontWeight.w800)),
+              child: AppCountUp(value, memoryKey: 'trend:$label', style: _ink(c.textDark, size: 24, w: FontWeight.w800)),
             ),
           ),
           if (deltaText != null) ...[
@@ -838,9 +868,11 @@ class AppTrendTile extends StatelessWidget {
       child: ExcludeSemantics(
         child: onTap == null
             ? body
-            : Material(
-                color: Colors.transparent,
-                child: InkWell(borderRadius: BorderRadius.circular(c.radiusLarge - 4), onTap: onTap, child: body),
+            : AppPressScale(
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(borderRadius: BorderRadius.circular(c.radiusLarge - 4), onTap: onTap, child: body),
+                ),
               ),
       ),
     );

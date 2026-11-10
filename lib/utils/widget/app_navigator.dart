@@ -34,6 +34,7 @@ import '../../features/org/org_invitation_prompt.dart' show OrgInvitationPrompt;
 import '../../features/org/org_invitations.dart' show invitationsFeatureKey;
 import '../../features/org/governance/gov_wiring.dart' deferred as gov_wiring;
 import '../../features/org/advising/adv_wiring.dart' deferred as adv_wiring;
+import '../../features/shared/live/companion/companion_incoming.dart' show CompanionIncoming;
 import '../../features/shared/live/live_room.dart' show LiveRoomRef, kLiveLobbyFeatureKey;
 import '../../features/shared/live/live_lobby_sheets.dart' show showLobbySheet;
 import '../../features/shared/points/points_api.dart' show kPointsFeatureKey, pointsModuleFor;
@@ -124,6 +125,9 @@ class AppNavigator {
     // the Downloads page lives in the phone / desktop app only: on the web such a link stays where it is
     if (!linkAvailableHere(module)) return;
     switch (module) {
+      case 'live_companion': // the phone's push: show whatever is pending now (D-520)
+        await CompanionIncoming.instance.check();
+        return;
       case 'course':
         if (targetId != null) {
           await openCourse(targetId);

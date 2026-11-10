@@ -19,6 +19,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 
 import 'app_kit.dart';
 import 'app_tokens.dart';
+import 'app_motion_kit.dart';
 
 /// The text to show for a failed load: an [ApiException]'s own (safe) message, else the generic one.
 String appErrorMessage(Object? error) {
@@ -252,8 +253,11 @@ class AppStateView<T> extends StatelessWidget {
 
   Widget _empty() => empty ?? AppEmpty(icon: Icons.inbox_rounded, title: 'ds_no_data'.tr);
 
+  // the skeleton crossfades into whatever replaces it (D-582); a change inside the content never remounts it
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => AppSkeletonSwitch(loading: data == null && loading, child: _body(context));
+
+  Widget _body(BuildContext context) {
     final d = data;
     if (d == null) {
       if (loading) return AppLoadingState(shape: loadingShape);

@@ -20,6 +20,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'app_bidi.dart';
 import 'app_gradients.dart';
 import 'app_kit.dart';
+import 'app_motion_kit.dart';
 import 'app_responsive.dart';
 import 'app_tokens.dart';
 
@@ -68,8 +69,12 @@ class AppKpiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // the skeleton crossfades into the card (D-582)
+    return AppSkeletonSwitch(loading: loading, child: loading ? _skeleton(context) : _card(context));
+  }
+
+  Widget _card(BuildContext context) {
     final c = context.colors;
-    if (loading) return _skeleton(context);
     final ink = highlight ? c.onHero : c.textDark;
     final muted = highlight ? c.onHeroMuted : c.textMedium;
     final d = delta;
@@ -100,7 +105,8 @@ class AppKpiCard extends StatelessWidget {
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: AlignmentDirectional.centerStart,
-          child: Text(value, maxLines: 1, style: AppType.figureLarge(context).copyWith(color: ink)),
+          // counts up the first time, glides on a change (D-581)
+          child: AppCountUp(value, memoryKey: 'kpi:$label', style: AppType.figureLarge(context).copyWith(color: ink)),
         ),
         if (d != null) ...[
           const SizedBox(height: AppSpace.xs),
@@ -128,10 +134,15 @@ class AppKpiCard extends StatelessWidget {
         label: semantic,
         excludeSemantics: true,
         onTap: onTap,
-        child: _tapWrap(
-          context,
+        // the one key figure of a page: depth with a soft glare (D-583)
+        child: AppTilt(
           radius: AppRadius.sheet,
-          child: AppGradientSurface(padding: AppSpace.card, radius: AppRadius.sheet, child: content),
+          glare: true,
+          child: _tapWrap(
+            context,
+            radius: AppRadius.sheet,
+            child: AppGradientSurface(padding: AppSpace.card, radius: AppRadius.sheet, child: content),
+          ),
         ),
       );
     }
@@ -141,7 +152,10 @@ class AppKpiCard extends StatelessWidget {
       label: semantic,
       excludeSemantics: true,
       onTap: onTap,
-      child: _tapWrap(
+      child: AppTilt(
+        radius: AppRadius.card,
+        maxTilt: 3,
+        child: _tapWrap(
         context,
         radius: AppRadius.card,
         child: Container(
@@ -155,6 +169,7 @@ class AppKpiCard extends StatelessWidget {
           ),
           child: content,
         ),
+      ),
       ),
     );
   }
@@ -248,7 +263,9 @@ class AppKpiGrid extends StatelessWidget {
             ? 2
             : width < Breakpoints.desktop
                 ? 3
-                : 4;
+                : width < 1100
+                    ? 4
+                    : 5; // only a grid that asks for five (maxColumns) gets it
     return math.max(1, math.min(n, maxColumns));
   }
 
@@ -265,7 +282,11 @@ class AppKpiGrid extends StatelessWidget {
             child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               for (var i = 0; i < cols; i++) ...[
                 if (i > 0) AppSpace.gapSm,
-                Expanded(child: r * cols + i < children.length ? children[r * cols + i] : const SizedBox.shrink()),
+                Expanded(
+                  child: r * cols + i < children.length
+                      ? AppReveal(index: r * cols + i, group: 'kpi', child: children[r * cols + i])
+                      : const SizedBox.shrink(),
+                ),
               ],
             ]),
           ),

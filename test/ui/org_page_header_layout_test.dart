@@ -133,7 +133,7 @@ void main() {
     );
   });
 
-  testWidgets('narrow wide row (760–980 px): Back + primary action + Search + Refresh + pill fit, "Updated" under the title',
+  testWidgets('narrow one-row header (600–1040 px): Back + primary action + Search + Refresh + pill fit, "Updated" under the title',
       (tester) async {
     final refresh = OrgPageRefresh();
     addTearDown(refresh.dispose);
@@ -145,7 +145,7 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
     // the harness only pumps 320 and 1400 px: this row's width band is set here, at the harness's 1.3 text scale
-    for (final w in [760.0, 820.0, 900.0, 979.0]) {
+    for (final w in [600.0, 633.0, 753.0, 820.0, 900.0, 979.0, 1040.0, 1160.0]) {
       for (final lang in layoutLangs) {
         AppConfig.lang = lang;
         tester.view.devicePixelRatio = 1;

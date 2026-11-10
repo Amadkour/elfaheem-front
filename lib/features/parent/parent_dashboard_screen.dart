@@ -12,6 +12,7 @@
 //   case '/parent_dashboard': → const ParentDashboardScreen()
 library;
 
+import 'package:flutter_education_app/design/app_shell_nav.dart' show ShellChrome;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 import 'package:flutter_education_app/design/app_responsive.dart' show AppWidthBox;
@@ -316,7 +317,14 @@ class _ParentTab extends StatelessWidget {
             builder: (_, e, _) => KeyedSubtree(key: ValueKey(e), child: child),
           );
     return BasePage(
-      appBar: ScreenAppBar(title: titleKey.tr, showBack: false, actions: const [QuickMeetingIcon(), CalendarEntryIcon(), ChatEntryIcon()]),
+      // the shell's bar carries the calendar and messages on a tablet / desktop: here only on phones (once per screen)
+      appBar: ScreenAppBar(
+        title: titleKey.tr,
+        showBack: false,
+        actions: ShellChrome.ownsHeaderOf(context)
+            ? const [QuickMeetingIcon()]
+            : const [QuickMeetingIcon(), CalendarEntryIcon(), ChatEntryIcon()],
+      ),
       child: width == null ? body : AppWidthBox(width: width!, gutters: false, child: body),
     );
   }

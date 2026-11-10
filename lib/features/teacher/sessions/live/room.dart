@@ -17,6 +17,12 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/media_focus.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
+import 'package:flutter_education_app/features/shared/live/companion/companion_core.dart';
+import 'package:flutter_education_app/features/shared/live/companion/companion_link.dart';
+import 'package:flutter_education_app/features/shared/live/companion/companion_parts.dart' show companionSourcesText;
+import 'package:flutter_education_app/features/shared/live/companion/companion_platform.dart' as companion_platform;
+import 'package:flutter_education_app/features/shared/live/companion/companion_sheet.dart';
+import 'widgets/live_control_bar.dart' show LiveControlAction;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'widgets/live_palette.dart';
 // Annotation over the shared screen (D-079): docs/live/annotation_wiring.md, the "Annotation" region below
@@ -360,6 +366,9 @@ class RoomPage extends StatefulWidget {
   /// connect) with the microphone / camera as they were in the room; null hides Rejoin.
   final void Function(bool micOn, bool camOn)? onRejoin;
 
+  /// D-520: what the pre-join page chose to use from the person's phone; asked for once the room is connected.
+  final Set<CompanionSource> askPhoneFor;
+
   const RoomPage(
       this.room,
       this.listener, {
@@ -386,6 +395,7 @@ class RoomPage extends StatefulWidget {
         this.liveStartedAt,
         this.liveConfig = LiveConfig.defaults,
         this.onRejoin,
+        this.askPhoneFor = const {},
       });
 
   @override
@@ -393,7 +403,8 @@ class RoomPage extends StatefulWidget {
 }
 
 class _RoomPageState extends State<RoomPage>
-    with TickerProviderStateMixin, RoomScreenShareMixin {
+    with TickerProviderStateMixin, RoomScreenShareMixin
+    implements CompanionHost {
 
   // ── RoomScreenShareMixin requirements ───────────────────────────────────
   @override Room get room => widget.room;
@@ -441,7 +452,7 @@ class _RoomPageState extends State<RoomPage>
     if (!mounted || !_depsReady || (_minimized?.value ?? false)) return;
     // Never while my camera is on (D-092): the waiting card is opaque, and a 60 fps background under a live camera
     // box is what made a phone hot for nothing.
-    final idle = _stageTracks.isEmpty && !_isBoardMain && _localCamTrack == null;
+    final idle = _stageTracks.isEmpty && !_isBoardMain && _selfCamTrack == null;
     if (idle) {
       // D-092: this called itself (an endless recursion: ~98 000 frames and a Stack Overflow, logged with its whole
       // trace and sent to Crashlytics, up to 3 times a second while the stage was empty — logcat7 22:56–22:59).
@@ -1024,7 +1035,7 @@ class _RoomPageState extends State<RoomPage>
       startsAt: widget.startsAt,
       elapsed: Duration(seconds: _sessionElapsedSeconds),
       liveFor: meetingLiveFor(widget.liveStartedAt, DateTime.now().toUtc(), own: Duration(seconds: _sessionElapsedSeconds)),
-      participants: widget.room.remoteParticipants.length + 1,
+      participants: _peopleCount,
       recording: _infoRecording,
       freeLeft: limit == null || limit.lifted ? null : limit.remaining(DateTime.now()),
     );
@@ -1349,7 +1360,7 @@ class _RoomPageState extends State<RoomPage>
   bool get _canSwapSelf => _stageTracks.isNotEmpty && !_isBoardMain;
 
   SelfViewSpot get _selfSpot => selfViewSpot(
-        camOn: _localCamTrack != null,
+        camOn: _selfCamTrack != null,
         stageHasOther: _stageHasOther,
         swapped: _pipSwapped && _canSwapSelf,
         hidden: _selfHidden,
@@ -1522,6 +1533,7 @@ class _RoomPageState extends State<RoomPage>
     _startLobby(); // host only; see the "Lobby" region
     _startControls(); // host only; see the "Host controls" region
     _startHostWatch(); // meetings: a handover gives this room the host controls (D-310)
+    _startCompanion(); // the person's phone as camera / mic / speaker (D-520)
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // Annotation: ask the room for the board (a late joiner sees what is drawn already).
@@ -1635,6 +1647,8 @@ class _RoomPageState extends State<RoomPage>
 
   @override
   void dispose() {
+    _companion?.removeListener(_onCompanionChanged);
+    _companion?.dispose();
     LiveRoomWords.leave(widget.ref.kind);
     MediaFocus.release(this);
     _sortThrottle.dispose();
@@ -1730,6 +1744,7 @@ class _RoomPageState extends State<RoomPage>
   /// layer is closed and the pre-join page pops itself; pushed as a plain route, the room and the pre-join
   /// page pop.
   void _leaveRoom() {
+    unawaited(_companion?.shutdown());
     // Once: End for everyone may close the room from its own call AND from the disconnect it causes (a plain
     // route would otherwise pop twice as many pages).
     if (!mounted || _leftRoom) return;
@@ -2336,6 +2351,7 @@ class _RoomPageState extends State<RoomPage>
     ..on<ActiveSpeakersChangedEvent>((_) => _scheduleSort())
     // A raised hand leaves with its owner; a late joiner gets my raised hand re-announced.
     ..on<ParticipantDisconnectedEvent>((e) {
+      if (isCompanionIdentity(e.participant.identity)) return _scheduleSort(); // a phone is not a person (D-520)
       _hands.drop(e.participant.identity);
       _remoteRecLeft(e.participant.identity); // their recording indicator goes with them (D-310)
       _share.participantLeft(e.participant.identity); // their request, approval and grant go too
@@ -2343,6 +2359,7 @@ class _RoomPageState extends State<RoomPage>
       _scheduleSort();
     })
     ..on<ParticipantConnectedEvent>((e) {
+      if (isCompanionIdentity(e.participant.identity)) return _scheduleSort(); // a phone is not a person (D-520)
       _hands.reannounceLocal();
       _announceRec(); // a newcomer learns at once that this meeting is recorded (D-310)
       // Annotation: the responder (presenter, else the first host) sends the newcomer the board.
@@ -2605,7 +2622,7 @@ class _RoomPageState extends State<RoomPage>
           : (local?.identity ?? '');
       final name = (widget.sessionName ?? '').trim();
       final sessionTitle = name.isNotEmpty ? name : liveTr('lr_live_session', widget.ref.kind);
-      final participantCount = widget.room.remoteParticipants.length + 1;
+      final participantCount = _peopleCount;
       await _recorder!.startWebCompositor(
         teacherName: teacherName,
         sessionTitle: sessionTitle,
@@ -2777,7 +2794,7 @@ class _RoomPageState extends State<RoomPage>
       if (t.type == ParticipantTrackType.kScreenShare) continue;
       final p = t.participant;
       if (!seen.add(p.identity)) continue;
-      final pub = _recCameraOf(p);
+      final pub = _recCameraOf(t.companion ?? p); // the person's phone is their camera in the recording too (D-520)
       final track = pub?.track;
       if (pub == null || track is! VideoTrack) continue;
       final label = p is LocalParticipant ? 'lcam' : 'rcam_${pub.sid}';
@@ -2903,10 +2920,16 @@ class _RoomPageState extends State<RoomPage>
   void _sortParticipants() {
     final userMedia = <ParticipantTrack>[];
     final screenTracks = <ParticipantTrack>[];
+    final phones = companionsByPrimary(widget.room.remoteParticipants.values, (p) => p.identity);
 
     for (final p in widget.room.remoteParticipants.values) {
+      if (isCompanionIdentity(p.identity)) continue; // D-520: a phone is folded into its person below
+      final phone = phones[p.identity];
+      final phoneCam = phone?.videoTrackPublications.firstWhereOrNull((t) => t.source == TrackSource.camera && _hasVideoTrack(t));
+      if (phoneCam != null) userMedia.add(ParticipantTrack(participant: p, companion: phone));
       for (final t in p.videoTrackPublications) {
         if (isBoardVideoName(t.name)) continue; // a board's recording track: the board is drawn from vectors
+        if (phoneCam != null && !t.isScreenShare) continue; // the phone is this person's camera now (D-520)
         if (t.isScreenShare) {
           // Include screen shares even before the track object is loaded
           // (_PremiumScreenShareView handles the null-track loading state).
@@ -2930,8 +2953,8 @@ class _RoomPageState extends State<RoomPage>
         LiveTileFacts(
           item: t,
           id: '${t.participant.identity}/${t.type.name}',
-          speaking: t.participant.isSpeaking,
-          lastSpokeAt: t.participant.lastSpokeAt,
+          speaking: t.participant.isSpeaking || (t.companion?.isSpeaking ?? false),
+          lastSpokeAt: t.participant.lastSpokeAt ?? t.companion?.lastSpokeAt,
           hasVideo: t.participant.hasVideo,
           joinedAt: t.participant.joinedAt,
         ),
@@ -2966,6 +2989,11 @@ class _RoomPageState extends State<RoomPage>
             participant: widget.room.localParticipant!,
           );
         }
+      }
+      // D-520: my phone is my camera: the recording and the (self-view-less) layouts see one person with its video.
+      final myPhone = phones[_myIdentity];
+      if (myPhone != null && myPhone.videoTrackPublications.any((t) => t.source == TrackSource.camera && _hasVideoTrack(t))) {
+        localCamera = ParticipantTrack(participant: widget.room.localParticipant!, companion: myPhone);
       }
     }
 
@@ -3003,7 +3031,7 @@ class _RoomPageState extends State<RoomPage>
     // this runs on every join/leave/track event, same as the on-screen UI.
     if (kIsWeb) {
     _recorder?.updateParticipantCount(
-    widget.room.remoteParticipants.length + 1,
+    _peopleCount,
     );
     }
     _syncRecordingScene(); // D-306
@@ -3230,7 +3258,7 @@ class _RoomPageState extends State<RoomPage>
                                   child: _GlassBadge(
                                     icon: Icons.people_rounded,
                                     label:
-                                    '${widget.room.remoteParticipants.length + 1}',
+                                    '$_peopleCount',
                                     color: _showParticipants ? _cyan : null,
                                   ),
                                 ),
@@ -3486,7 +3514,7 @@ class _RoomPageState extends State<RoomPage>
 
     // D-092: my camera fills the stage when the self-view rules say so (swapped with the stage's video, or alone
     // with "fill the screen while I'm alone"); never the stage AND the box at once.
-    final selfCam = _localCamTrack;
+    final selfCam = _selfCamTrack;
     if (selfCam != null && _selfSpot == SelfViewSpot.stage) {
       return (LiveVideoView(selfCam, key: const ValueKey('live_room.self_stage'), fit: VideoViewFit.cover), local);
     }
@@ -3607,7 +3635,7 @@ class _RoomPageState extends State<RoomPage>
   Widget _buildSelfView() {
     final spot = _selfSpot;
     final local = widget.room.localParticipant;
-    final cam = _localCamTrack;
+    final cam = _selfCamTrack;
     if (spot == SelfViewSpot.none || local == null || cam == null) return const SizedBox.shrink();
     final prefs = _selfPrefs;
     if (spot == SelfViewSpot.stage) {
@@ -3869,6 +3897,11 @@ class _RoomPageState extends State<RoomPage>
   /// A participant's camera when it can be drawn: published, not muted and received (an audio-only room has none);
   /// never a share, never the board's recording track.
   VideoTrack? _cameraTrackOf(Participant p) {
+    final phone = _phoneOf(p); // their phone is their camera (D-520)
+    if (phone != null) {
+      final t = _cameraTrackOf(phone);
+      if (t != null) return t;
+    }
     for (final pub in p.videoTrackPublications) {
       if (pub.isScreenShare || isBoardVideoName(pub.name) || pub.muted) continue;
       final t = pub.track;
@@ -3915,7 +3948,7 @@ class _RoomPageState extends State<RoomPage>
         name: _nameOf(id),
         video: cam == null ? null : LiveVideoView(cam, key: ValueKey('live_room.presenter_cam.$id'), fit: VideoViewFit.cover),
         imageUrl: participantPhotoFromMetadata(p.metadata),
-        micOn: p.isMicrophoneEnabled(),
+        micOn: _micOnFor(p),
         speaking: p.isSpeaking,
         handUp: _hands.isUp(id),
       );
@@ -4396,6 +4429,9 @@ class _RoomPageState extends State<RoomPage>
         allowMic: _allowed.mic,
         allowCamera: _allowed.camera,
         allowShare: _allowed.share,
+        companionMic: _companion?.phoneIsMic ?? false ? CompanionDeviceOverride(on: _companion!.phoneMicOn, toggle: () => _companion!.setPhoneMic(!_companion!.phoneMicOn)) : null,
+        companionCam: _companion?.phoneIsCamera ?? false ? CompanionDeviceOverride(on: _companion!.phoneCamOn, toggle: () => _companion!.setPhoneCam(!_companion!.phoneCamOn)) : null,
+        phoneAction: _phoneAction,
         onToggleScreenShare: _onShareTap,
         onToggleReactions: _reactions.togglePicker,
         reactionsOpen: _reactions.pickerOpen,
@@ -4882,7 +4918,7 @@ class _RoomPageState extends State<RoomPage>
       context,
       recording: _recordsHere && (rec == RecState.recording || rec == RecState.paused),
       canEndForAll: _controls != null,
-      others: widget.room.remoteParticipants.length,
+      others: _peopleCount - 1,
     );
     if (choice == null || !mounted) return false;
     if (choice == LiveEndChoice.endForAll) {
@@ -4898,7 +4934,7 @@ class _RoomPageState extends State<RoomPage>
 
   List<LiveHandoverCandidate> _handoverCandidates() => liveHandoverCandidates(
         [
-          for (final p in widget.room.remoteParticipants.values)
+          for (final p in _people)
             (identity: p.identity, name: p.name, imageUrl: participantPhotoFromMetadata(p.metadata)),
         ],
         localIdentity: _myIdentity,
@@ -5038,8 +5074,8 @@ class _RoomPageState extends State<RoomPage>
       kind: widget.ref.kind,
       localIdentity: _myIdentity,
       imageUrl: participantPhotoFromMetadata(p.metadata),
-      micOn: p.isMicrophoneEnabled(),
-      cameraOn: p.isCameraEnabled(),
+      micOn: _micOnFor(p),
+      cameraOn: _camOnFor(p),
       screenSharing: p.isScreenShareEnabled(),
       canPublish: perms.canPublish,
       sources: [for (final s in perms.canPublishSources) s.name], // proto names: CAMERA, SCREEN_SHARE, …
@@ -5153,7 +5189,95 @@ class _RoomPageState extends State<RoomPage>
     return p.name.isNotEmpty ? p.name : p.identity;
   }
 
-  bool get _hostPresent => widget.room.remoteParticipants.values.any(_isServerHost);
+  bool get _hostPresent => _people.any(_isServerHost);
+
+  // ── D-520: the person's phone as camera / microphone / speaker ─────────────────────────────────────────────
+  CompanionLink? _companion;
+
+  RemoteParticipant? _phoneOf(Participant p) => _remoteBy(companionIdentityFor(p.identity));
+
+  /// The person's mic / camera, whichever device has it: the panels and the mute menus read these (D-520).
+  bool _micOnFor(Participant p) => p.isMicrophoneEnabled() || (_phoneOf(p)?.isMicrophoneEnabled() ?? false);
+  bool _camOnFor(Participant p) => p.isCameraEnabled() || (_phoneOf(p)?.isCameraEnabled() ?? false);
+
+  /// Everyone else in the room as people: a phone is folded into its person, never counted.
+  Iterable<RemoteParticipant> get _people => withoutCompanions(widget.room.remoteParticipants.values, (p) => p.identity);
+
+  int get _peopleCount => _people.length + 1;
+
+  bool get _companionEnabled => !widget.isGuest && !AppConfig.disableList.contains(kCompanionFeatureKey) && !companion_platform.companionRunsOnPhone();
+
+  void _startCompanion() {
+    if (!_companionEnabled) return;
+    _companion = CompanionLink(room: widget.room, ref: widget.ref, host: this)
+      ..addListener(_onCompanionChanged)
+      ..start();
+    if (widget.askPhoneFor.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final c = _companion;
+        if (c == null || !mounted) return;
+        c.setWanted(widget.askPhoneFor);
+        unawaited(c.ask());
+      });
+    }
+  }
+
+  void _onCompanionChanged() {
+    if (!mounted) return;
+    _scheduleSort();
+    setState(() {});
+    _pokeControls();
+  }
+
+  void _openPhoneSheet() {
+    final c = _companion;
+    if (c == null) return;
+    _pokeControls();
+    unawaited(showCompanionSheet(context, c));
+  }
+
+  @override
+  bool get webMicOn => LiveMicGate.instance.micOn(widget.room.localParticipant);
+
+  @override
+  bool get webCamOn => widget.room.localParticipant?.isCameraEnabled() ?? false;
+
+  @override
+  Future<void> setWebMic(bool on) async {
+    final local = widget.room.localParticipant;
+    if (local != null) await LiveMicGate.instance.setMic(local, on);
+  }
+
+  @override
+  Future<void> setWebCam(bool on) async {
+    await widget.room.localParticipant?.setCameraEnabled(on);
+  }
+
+  @override
+  void companionNotice(String text, {bool error = false}) {
+    if (mounted) showAppNotice(text, error: error);
+  }
+
+  LiveControlAction? get _phoneAction {
+    final c = _companion;
+    if (c == null) return null;
+    final active = c.stage == CompanionStage.active;
+    final waiting = c.stage == CompanionStage.ringing || c.stage == CompanionStage.connecting;
+    return LiveControlAction(
+      key: const ValueKey('live_room.phone'),
+      icon: Icons.phonelink_ring_rounded,
+      label: active
+          ? t('هاتفك: ${companionSourcesText(c.request?.sources ?? const {})}', 'Your phone: ${companionSourcesText(c.request?.sources ?? const {})}')
+          : t('هاتفك', 'Your phone'),
+      compactLabel: t('هاتفك', 'Phone'),
+      active: active || waiting,
+      color: waiting ? LivePalette.warning : (active ? LivePalette.success : null),
+      onTap: _openPhoneSheet,
+    );
+  }
+
+  /// The self-view shows my phone's camera while it is my camera (else my own).
+  VideoTrack? get _selfCamTrack => _companion?.phoneVideo ?? _localCamTrack;
 
   /// This device presents now (iOS: the broadcast runs before its track is published).
   bool get _localPresenting =>
@@ -5509,7 +5633,7 @@ class _RoomPageState extends State<RoomPage>
 
   // ── Participant panel ──────────────────────────────────────────────────────
   Widget _buildParticipantPanel() {
-    final liveIdentities = widget.room.remoteParticipants.values
+    final liveIdentities = _people
         .map((p) => p.identity)
         .toSet();
     final guests = widget.room.remoteParticipants.values
@@ -5519,7 +5643,7 @@ class _RoomPageState extends State<RoomPage>
     // so the host can reach them too. Only for a host: other viewers keep the roster as it was.
     final others = _controls == null
         ? const <RemoteParticipant>[]
-        : widget.room.remoteParticipants.values
+        : _people
             .where((p) =>
                 !liveIsGuestIdentity(p.identity) &&
                 !_enrolledStudents.any(
@@ -5685,8 +5809,8 @@ class _RoomPageState extends State<RoomPage>
                       isTeacher: false,
                       isGuest: true,
                       isAttended: false,
-                      micOn: g.isMicrophoneEnabled(),
-                      camOn: g.isCameraEnabled(),
+                      micOn: _micOnFor(g),
+                      camOn: _camOnFor(g),
                       joinDate: g.joinedAt,
                       handUp: _hands.isUp(g.identity),
                       trailing: widget.isTeacher && !widget.isGuest ? _guestMenu(g) : null,
@@ -5729,8 +5853,8 @@ class _RoomPageState extends State<RoomPage>
                           isTeacher: false,
                           isAttended: false,
                           joinDate: o.joinedAt,
-                          micOn: o.isMicrophoneEnabled(),
-                          camOn: o.isCameraEnabled(),
+                          micOn: _micOnFor(o),
+                          camOn: _camOnFor(o),
                           handUp: _hands.isUp(o.identity),
                           trailing: _controlsButton(o, name),
                         );
@@ -5750,8 +5874,8 @@ class _RoomPageState extends State<RoomPage>
                         isAttended: s.isAttended,
                         joinDate: s.joinDate,
                         leaveDate: s.leaveDate,
-                        micOn: rp?.isMicrophoneEnabled() ?? false,
-                        camOn: rp?.isCameraEnabled() ?? false,
+                        micOn: rp != null && _micOnFor(rp),
+                        camOn: rp != null && _camOnFor(rp),
                         handUp: rp != null && _hands.isUp(rp.identity),
                         trailing: _controlsButton(rp, s.name),
                       );
@@ -7256,6 +7380,7 @@ class _PremiumWaitingPlaceholder extends StatelessWidget {
     // the meeting view, same as Teams shows just yourself before others
     // join).
     final local = room.localParticipant;
+    final phones = companionsByPrimary(room.remoteParticipants.values, (p) => p.identity);
     final tiles = <_TeamsTileData>[
       _TeamsTileData(
         name: teacherName,
@@ -7266,7 +7391,7 @@ class _PremiumWaitingPlaceholder extends StatelessWidget {
         isSpeaking: local?.isSpeaking ?? false,
         extra: _parseMetadata(local?.metadata),
       ),
-      for (final p in room.remoteParticipants.values)
+      for (final p in withoutCompanions(room.remoteParticipants.values, (p) => p.identity))
         _TeamsTileData(
           name: p.name.isNotEmpty ? p.name : p.identity,
           isHost: false,
@@ -7274,8 +7399,8 @@ class _PremiumWaitingPlaceholder extends StatelessWidget {
           // Real per-participant state from the live roster — previously
           // this was hardcoded to "always on" because EnrolledStudent
           // carries no live mic info at all.
-          isMicOn: p.isMicrophoneEnabled(),
-          isSpeaking: p.isSpeaking,
+          isMicOn: p.isMicrophoneEnabled() || (phones[p.identity]?.isMicrophoneEnabled() ?? false), // D-520
+          isSpeaking: p.isSpeaking || (phones[p.identity]?.isSpeaking ?? false),
           imageUrl: _matchEnrolledStudent(p)?.imageUrl,
           isAttended: true, // by definition: they're in room.remoteParticipants right now
           joinDate: _matchEnrolledStudent(p)?.joinDate,

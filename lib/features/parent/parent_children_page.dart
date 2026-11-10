@@ -160,7 +160,7 @@ class _ChildCard extends StatelessWidget {
       onTap: () => EntityNavigator.open(context, EntityRef(EntityKind.student, id, label: name)),
       child: Column(children: [
         Container(
-          padding: const EdgeInsets.fromLTRB(16, 16, 12, 14),
+          padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 12, 14),
           decoration: BoxDecoration(
             gradient: AppGradients.wash(context),
           ),

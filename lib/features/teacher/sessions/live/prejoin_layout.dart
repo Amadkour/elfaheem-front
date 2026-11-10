@@ -56,6 +56,7 @@ class PreJoinLayout extends StatelessWidget {
     required this.onBack,
     this.issue,
     this.onRetry,
+    this.phoneSlot,
     this.subtitle,
     this.isGuest = false,
     this.canPublish = true,
@@ -125,6 +126,9 @@ class PreJoinLayout extends StatelessWidget {
   final bool busy;
   final VoidCallback? onJoin;
   final VoidCallback onBack;
+
+  /// D-520: the "Use your phone" row (web / desktop, signed in, live.companion on); null hides it.
+  final Widget? phoneSlot;
 
   final PreJoinIssue? issue;
   final VoidCallback? onRetry;
@@ -259,6 +263,10 @@ class PreJoinLayout extends StatelessWidget {
       if (cameraOffHint && !camOn) ...[
         const SizedBox(height: 12),
         PreJoinCameraOffHint(onTurnOn: onToggleCam),
+      ],
+      if (phoneSlot != null) ...[
+        const SizedBox(height: 12),
+        phoneSlot!,
       ],
       ],
     ]);

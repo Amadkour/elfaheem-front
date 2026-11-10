@@ -428,7 +428,7 @@ class _CertificateViewerState extends State<_CertificateViewer> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 6, 6),
+            padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 6, 6),
             child: Row(
               children: [
                 Expanded(
