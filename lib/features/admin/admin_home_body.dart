@@ -310,7 +310,8 @@ class _Kpis extends StatelessWidget {
       onTap: first.onTap,
       highlight: true,
     );
-    return AppKpiGrid(maxColumns: 3, children: cards);
+    // a full last row at every count (5 cards: one row of five, never three above two with a hole)
+    return AppKpiGrid(maxColumns: cards.length == 5 ? 5 : (cards.length == 4 ? 4 : 3), children: cards);
   }
 }
 
@@ -599,13 +600,6 @@ class _Health extends StatelessWidget {
             color: data.complaints30 > 0 ? c.warning : c.success,
           ),
         ],
-        AppStatTile(
-          icon: Icons.card_membership_rounded,
-          label: 'admin_active_subscribers'.tr,
-          value: data.activeSubscriptions,
-          color: c.primary,
-          onTap: actions.openSubscriptions,
-        ),
       ]),
     );
   }

@@ -248,7 +248,9 @@ class AppKpiGrid extends StatelessWidget {
             ? 2
             : width < Breakpoints.desktop
                 ? 3
-                : 4;
+                : width < 1100
+                    ? 4
+                    : 5; // only a grid that asks for five (maxColumns) gets it
     return math.max(1, math.min(n, maxColumns));
   }
 

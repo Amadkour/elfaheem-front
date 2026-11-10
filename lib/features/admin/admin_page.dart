@@ -17,6 +17,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_shell_nav.dart' show ShellChrome;
 import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -111,7 +112,8 @@ class AdminPage extends StatelessWidget {
       primaryAction: primaryAction,
       actions: [...actions, if (helpPageId != null) HelpInfoButton(pageId: helpPageId!)],
       search: search,
-      onRefresh: onRefresh,
+      // a shell tab: the shell's bar already has Refresh (the tab reaches this page through AdminRefreshScope)
+      onRefresh: ShellChrome.ownsHeaderOf(context) ? null : onRefresh,
       updatedAt: updatedAt,
       bottom: bottom,
       onBack: showBack && nav.canPop() ? () => nav.maybePop() : null,
