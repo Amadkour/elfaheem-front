@@ -8,6 +8,10 @@
 //   AppFonts.fallback   the other language's choice: Arabic names inside English UI (and the reverse) use it;
 //                       the theme carries it, so Text widgets get it through DefaultTextStyle
 //   AppFonts.select(arabic:, latin:)   loads the files, switches, rebuilds every mounted widget
+//   AppFonts.editorial  the HEADING family (D-611): Markazi Text, the editorial serif made for Arabic and Latin, or
+//                       [family] when the person set "Headings: Same as text" (DisplayPrefs.editorialHeadings).
+//                       AppType display / headline / pageTitle / section and the theme's display, headline and
+//                       titleLarge styles use it; body text never does. A pubspec font (uiEditorial): no loading.
 //
 // The two defaults (IBM Plex Sans Arabic · Inter) are declared in pubspec `fonts:`, so they draw from the first
 // frame (boot splash). On the web build the post-build prune step keeps Inter out of FontManifest.json (the Arabic
@@ -174,6 +178,23 @@ abstract final class AppFonts {
   static String get family => current.family;
   static String get display => _displayReady.contains(current.id) ? current.displayFamily : current.family;
   static List<String> get fallback => [current.family, other.family];
+
+  /// The editorial display face (D-611): Markazi Text, static 500 / 600 / 700 (pubspec, assets/fonts/editorial/).
+  static const editorialFamily = 'uiEditorial';
+
+  /// "Headings: Editorial" (true, the default) or "Same as text" — set by DisplaySettings from the person's prefs.
+  static bool editorialHeadings = true;
+
+  /// The family of headings: [editorialFamily], or the text family when the person turned editorial headings off.
+  static String get editorial => editorialHeadings ? editorialFamily : family;
+
+  /// What a heading falls back to for a glyph the editorial face lacks: the person's text fonts.
+  static List<String> get editorialFallback => fallback;
+
+  /// How much larger the editorial face is drawn than a heading's optical size (system.md §3), per language:
+  /// Markazi's letters are small on their body (cap height 0.48 em against Inter's 0.73; the Arabic alef 0.53 em
+  /// against Plex's 0.74), so 24 "reads as" 24 only at about 1.3 × in Latin and 1.25 × in Arabic.
+  static double editorialScale([String? lang]) => (lang ?? AppConfig.lang) == 'ar' ? 1.25 : 1.3;
 
   // the ids whose files are registered; a bundled family joins after LazyFonts.ensure (instant when not lazy)
   static final Set<String> _loaded = {};

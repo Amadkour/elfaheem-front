@@ -90,7 +90,7 @@ class AppGradientSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final r = BorderRadius.circular(radius ?? AppRadius.sheet);
+    final r = BorderRadius.circular(radius ?? AppRadius.block);
     return DecoratedBox(
       decoration: BoxDecoration(borderRadius: r, boxShadow: AppShadow.raised(context)),
       child: RepaintBoundary(

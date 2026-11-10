@@ -5,6 +5,7 @@
 //   preview        a heading + a paragraph in the chosen Arabic and English fonts, at the chosen size
 //   presets        Standard · Young learners · Easy reading (one tap sets every field below)
 //   fonts          one choice for Arabic, one for English (each option drawn in its own font)
+//   headings       Editorial (Markazi Text, the default) or Same as text (D-611)
 //   size           text size (on top of the phone's) and the whole interface's zoom, with − / + steps
 //   comfort        bold text · high contrast · reduce motion · larger touch targets
 //
@@ -104,6 +105,13 @@ class DisplaySettingsView extends StatelessWidget {
               load: loadFonts,
               onTap: () => onChanged(prefs.copyWith(latinFont: f.id)))),
         w(const SizedBox(height: 16), bottom: 0),
+        w(AppSectionTitle(t('العناوين', 'Headings'))),
+        w(
+          _HeadingsRow(
+              editorial: prefs.editorialHeadings,
+              onChanged: (v) => onChanged(prefs.copyWith(editorialHeadings: v))),
+          bottom: 24,
+        ),
         w(AppSectionTitle(t('الحجم', 'Size'))),
         w(
           AppCard(
@@ -188,6 +196,69 @@ class DisplaySettingsView extends StatelessWidget {
   }
 }
 
+/// Headings: Editorial · Same as text (D-611). Each choice is drawn in the face it picks.
+class _HeadingsRow extends StatelessWidget {
+  const _HeadingsRow({required this.editorial, required this.onChanged});
+  final bool editorial;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    Widget option(bool value, String label, String family) {
+      final on = value == editorial;
+      return Expanded(
+        child: Semantics(
+          button: true,
+          selected: on,
+          child: Material(
+            color: on ? c.primaryTint : c.inputBg,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.control),
+              side: BorderSide(color: on ? c.primary : c.divider, width: on ? AppBorder.focus : AppBorder.hairline),
+            ),
+            child: InkWell(
+              customBorder: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
+              onTap: () => onChanged(value),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: AppTouch.primary),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+                  child: Row(children: [
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                        Text(t('درس اليوم', "Today's lesson"),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontFamily: family,
+                                fontFamilyFallback: AppFonts.fallback,
+                                // the editorial face is small on its body: drawn at its optical scale, as AppType does
+                                fontSize: family == AppFonts.editorialFamily ? (18 * AppFonts.editorialScale()).roundToDouble() : 18,
+                                fontWeight: FontWeight.w600,
+                                height: 1.25,
+                                color: c.textDark)),
+                        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                      ]),
+                    ),
+                    if (on) Icon(Icons.check_circle_rounded, size: AppIconSize.md, color: c.primary),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Row(children: [
+      option(true, t('تحريرية', 'Editorial'), AppFonts.editorialFamily),
+      const SizedBox(width: AppSpace.sm),
+      option(false, t('مثل النص', 'Same as text'), AppFonts.family),
+    ]);
+  }
+}
+
 /// Reading spacing: Normal · Comfortable · Wide.
 class _SpacingRow extends StatelessWidget {
   const _SpacingRow({required this.value, required this.onChanged});
@@ -234,6 +305,16 @@ class _Preview extends StatelessWidget {
     final en = AppFonts.byId(prefs.latinFont, arabic: false);
     TextStyle s(AppFontOption f, double size, FontWeight w, Color color) =>
         TextStyle(fontFamily: f.family, fontFamilyFallback: AppFonts.fallback, fontSize: size, fontWeight: w, color: color, height: 1.45);
+    // the heading line in the face headings will use: the editorial one, or the chosen text font
+    TextStyle h(AppFontOption f, Color color, String lang) => prefs.editorialHeadings
+        ? TextStyle(
+            fontFamily: AppFonts.editorialFamily,
+            fontFamilyFallback: [f.family],
+            fontSize: (18 * AppFonts.editorialScale(lang)).roundToDouble(),
+            fontWeight: FontWeight.w600,
+            color: color,
+            height: 1.3)
+        : s(f, 18, FontWeight.w600, color);
     return AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
@@ -245,7 +326,7 @@ class _Preview extends StatelessWidget {
         Directionality(
           textDirection: TextDirection.rtl,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('درس اليوم: الكسور العشرية', style: s(ar, 18, FontWeight.w800, c.textDark)),
+            Text('درس اليوم: الكسور العشرية', style: h(ar, c.textDark, 'ar')),
             const SizedBox(height: 4),
             Text('اقرأ الفقرة ثم أجب عن الأسئلة. يبدأ البث المباشر الساعة ٤:٣٠ مساءً.', style: s(ar, 14, FontWeight.w400, c.textMedium)),
           ]),
@@ -254,7 +335,7 @@ class _Preview extends StatelessWidget {
         Directionality(
           textDirection: TextDirection.ltr,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text("Today's lesson: decimals", style: s(en, 18, FontWeight.w800, c.textDark)),
+            Text("Today's lesson: decimals", style: h(en, c.textDark, 'en')),
             const SizedBox(height: 4),
             Text('Read the passage, then answer the questions. The live session starts at 4:30 PM.',
                 style: s(en, 14, FontWeight.w400, c.textMedium)),

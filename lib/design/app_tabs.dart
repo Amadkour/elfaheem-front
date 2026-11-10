@@ -186,7 +186,7 @@ class _TabStripState extends State<_TabStrip> {
             height: AppTouch.min,
             child: InkWell(
               onTap: () => widget.onChanged(i),
-              borderRadius: BorderRadius.circular(AppRadius.sheet),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
               splashFactory: NoSplash.splashFactory,
               mouseCursor: SystemMouseCursors.click,
               child: Center(
@@ -205,7 +205,7 @@ class _TabStripState extends State<_TabStrip> {
                       padding: const EdgeInsetsDirectional.symmetric(horizontal: 5, vertical: 2),
                       decoration: BoxDecoration(
                         color: sel && !underline ? c.onHero.withValues(alpha: 0.22) : c.primaryTint,
-                        borderRadius: BorderRadius.circular(AppRadius.sheet),
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
                       ),
                       child: Text(appCountText(it.count!),
                           maxLines: 1,
@@ -236,7 +236,7 @@ class _TabStripState extends State<_TabStrip> {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: underline ? AppGradients.strip(context) : AppGradients.brand(context),
-                  borderRadius: BorderRadius.circular(underline ? 3 : AppRadius.sheet),
+                  borderRadius: BorderRadius.circular(underline ? 3 : AppRadius.pill),
                   boxShadow: underline ? null : c.primaryButtonShadow,
                 ),
               ),
@@ -260,7 +260,7 @@ class _TabStripState extends State<_TabStrip> {
               ? BoxDecoration(border: Border(bottom: BorderSide(color: c.divider, width: AppBorder.hairline)))
               : BoxDecoration(
                   color: c.inputBg,
-                  borderRadius: BorderRadius.circular(AppRadius.sheet),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                   border: Border.all(color: c.divider, width: AppBorder.hairline),
                 ),
           child: body,

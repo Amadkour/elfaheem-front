@@ -12,6 +12,8 @@
 //                           (also kept on the account when the server has GET/PUT /api/v1/me/ui-prefs: display_sync.dart)
 //   spacing                 reading spacing 0 normal · 1 comfortable · 2 wide: line height and word spacing (and
 //                           letter spacing for English only — it would break Arabic joins); `ReadingSpacing`
+//   editorialHeadings       "Headings: Editorial" (true, the default: Markazi Text, AppFonts.editorial, D-611) or
+//                           "Same as text" (headings in the chosen text font); JSON `headings`: 'editorial' | 'text'
 //
 // `presets` are one-tap bundles ("Young learners", "Easy reading") of the same fields. AppDisplayScope
 // (lib/design/app_display.dart, in MaterialApp.builder) applies everything; this file holds no widgets.
@@ -38,6 +40,7 @@ class DisplayPrefs {
     this.reduceMotion = false,
     this.largeTargets = false,
     this.spacing = 0,
+    this.editorialHeadings = true,
   });
 
   static const minText = 0.85, maxText = 1.6, minZoom = 0.9, maxZoom = 1.4;
@@ -48,6 +51,9 @@ class DisplayPrefs {
 
   /// 0 normal · 1 comfortable · 2 wide (ReadingSpacing).
   final int spacing;
+
+  /// Headings in the editorial face (true) or in the text font ("Same as text").
+  final bool editorialHeadings;
 
   bool get isDefault => this == const DisplayPrefs();
 
@@ -61,6 +67,7 @@ class DisplayPrefs {
     bool? reduceMotion,
     bool? largeTargets,
     int? spacing,
+    bool? editorialHeadings,
   }) =>
       DisplayPrefs(
         arabicFont: arabicFont ?? this.arabicFont,
@@ -72,6 +79,7 @@ class DisplayPrefs {
         reduceMotion: reduceMotion ?? this.reduceMotion,
         largeTargets: largeTargets ?? this.largeTargets,
         spacing: (spacing ?? this.spacing).clamp(0, 2).toInt(),
+        editorialHeadings: editorialHeadings ?? this.editorialHeadings,
       );
 
   Map<String, dynamic> toJson() => {
@@ -84,6 +92,7 @@ class DisplayPrefs {
         'motion': reduceMotion,
         'targets': largeTargets,
         'spacing': spacing,
+        'headings': editorialHeadings ? 'editorial' : 'text',
       };
 
   /// Unknown or broken values fall back to the defaults field by field.
@@ -100,6 +109,7 @@ class DisplayPrefs {
       reduceMotion: bool_(j['motion']),
       largeTargets: bool_(j['targets']),
       spacing: j['spacing'] is int ? j['spacing'] as int : 0,
+      editorialHeadings: j['headings'] != 'text',
     );
   }
 
@@ -114,10 +124,11 @@ class DisplayPrefs {
       other.highContrast == highContrast &&
       other.reduceMotion == reduceMotion &&
       other.largeTargets == largeTargets &&
-      other.spacing == spacing;
+      other.spacing == spacing &&
+      other.editorialHeadings == editorialHeadings;
 
   @override
-  int get hashCode => Object.hash(arabicFont, latinFont, textScale, zoom, boldText, highContrast, reduceMotion, largeTargets, spacing);
+  int get hashCode => Object.hash(arabicFont, latinFont, textScale, zoom, boldText, highContrast, reduceMotion, largeTargets, spacing, editorialHeadings);
 }
 
 /// What a reading-spacing step does to text (DisplayPrefs.spacing). Read by AppDisplayApply (the default text
@@ -209,6 +220,7 @@ class DisplaySettings extends ChangeNotifier {
       debugPrint('[DisplaySettings] load failed: $e');
     }
     AppFonts.setChoices(arabic: _prefs.arabicFont, latin: _prefs.latinFont);
+    AppFonts.editorialHeadings = _prefs.editorialHeadings;
     await AppFonts.start(lang);
     LazyFonts.prefetchLater();
     notifyListeners();
@@ -222,9 +234,12 @@ class DisplaySettings extends ChangeNotifier {
   /// push the change back.
   Future<void> update(DisplayPrefs next, {DateTime? at}) async {
     if (next == _prefs) return;
-    final fontChanged = next.arabicFont != _prefs.arabicFont || next.latinFont != _prefs.latinFont;
+    final fontChanged = next.arabicFont != _prefs.arabicFont ||
+        next.latinFont != _prefs.latinFont ||
+        next.editorialHeadings != _prefs.editorialHeadings;
     final contrastChanged = next.highContrast != _prefs.highContrast || next.spacing != _prefs.spacing;
     _prefs = next;
+    AppFonts.editorialHeadings = next.editorialHeadings;
     if (fontChanged) {
       await AppFonts.select(arabic: next.arabicFont, latin: next.latinFont);
     }

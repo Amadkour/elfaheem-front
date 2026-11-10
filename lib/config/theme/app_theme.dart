@@ -1,6 +1,6 @@
 /// ─────────────────────────────────────────────────────────────────────────────
 /// app_theme.dart
-/// Premium Theme — Indigo Brand & Gold Accents (built-in DEFAULT theme)
+/// Warm Editorial — the built-in DEFAULT palette (D-610, `.interface-design/system.md` §2)
 ///
 /// This file holds only:
 ///   • Raw static design tokens (colours, radii, text styles, gradients,
@@ -8,14 +8,15 @@
 ///   • ThemeData factories (themeData / darkThemeData) for MaterialApp.
 ///
 /// This file IS the default theme: it is what the app shows on first launch,
-/// offline, or whenever the API / cache has no value for a token. The live
+/// offline, or whenever the API / cache has no value for a token. The values are
+/// the server's built-in preset `warm_editorial` (back services/theme_presets.py),
+/// so a first launch looks like the platform after its first theme fetch. The live
 /// palette (fetched from the API, cached in SharedPreferences) overrides it —
 /// see theme_config_provider.dart.
 ///
-/// There is no `context.colors` / ThemeConfigProvider anymore — the single theme
-/// accessor across the whole app is `context.themeConfig`, defined in
-/// theme_config_provider.dart. Nothing outside this file and that one
-/// should ever reference `AppTheme.*` directly.
+/// The single theme accessor across the whole app is `context.colors`, defined in
+/// theme_config_provider.dart. Nothing outside this file and that one should ever
+/// reference `AppTheme.*` colours directly.
 /// ─────────────────────────────────────────────────────────────────────────────
 library;
 
@@ -29,84 +30,87 @@ import 'package:flutter_education_app/core/display/app_fonts.dart';
 class AppTheme {
   AppTheme._();
 
-  // ── Brand palette (DEFAULT theme) ─────────────────────────────────────────
-  static const Color primary         = Color(0xFF2F3E9E);   // Indigo
-  static const Color primaryDark     = Color(0xFF1B2466);
-  static const Color primaryLight    = Color(0xFF5C6BD6);
-  static const Color lightPrimary    = Color(0x1F2F3E9E);   // primary @ ~12 %
+  // ── Brand palette (DEFAULT theme: warm_editorial) ─────────────────────────
+  static const Color primary         = Color(0xFF0B6B4F);   // deep emerald: the primary action, success / correct
+  static const Color primaryDark     = Color(0xFF064733);
+  static const Color primaryLight    = Color(0xFF3E9C78);
+  static const Color lightPrimary    = Color(0x1F0B6B4F);   // primary @ 12 %
 
-  static const Color charcoal        = Color(0xFF2A2D45);
-  static const Color charcoalLight   = Color(0xFF4B4F6B);
-  static const Color charcoalDark    = Color(0xFF1B1E33);
+  static const Color charcoal        = Color(0xFF2A251F);   // warm charcoal: ink, the shadow tone
+  static const Color charcoalLight   = Color(0xFF4D463E);
+  static const Color charcoalDark    = Color(0xFF211D18);
 
-  static const Color accent          = Color(0xFFF6E3B4);   // Soft gold
-  static const Color accent2         = Color(0xFFC9A227);   // Gold
-  static const Color success         = Color(0xFF2FB67C);
-  static const Color danger          = Color(0xFFF0435F);
-  static const Color warning         = Color(0xFFF2A93B);
-  static const Color secondText      = Color(0xFF696E8E);   // light mode; 4.5:1+ on every light surface (WCAG AA)
-  static const Color darkSecondText  = Color(0xFF8F93B2);   // dark mode; 4.5:1+ on every dark surface (WCAG AA)
-  static const Color purple          = Color(0xFF7C5CFF);
+  static const Color accent          = Color(0xFFFBE2D3);   // block peach (accent1): learning / progress blocks
+  static const Color accent2         = Color(0xFF94691A);   // gold: streaks, achievements, top marks (text-safe)
+  static const Color accent3         = Color(0xFFDCE7F5);   // block sky: schedule / information blocks
+  static const Color success         = Color(0xFF12805C);
+  static const Color danger          = Color(0xFFB42E3A);
+  static const Color warning         = Color(0xFFB7791F);   // 2.9 – 3.6:1: icons and fills, never small text
+  static const Color secondText      = Color(0xFF6E655A);   // light mode; 4.5:1+ on every light surface and block
+  static const Color darkSecondText  = Color(0xFFA99C8A);   // dark mode; 4.5:1+ on every dark surface (WCAG AA)
+  static const Color purple          = Color(0xFF6F58C9);
 
   // ── Tints & shadow base colours ───────────────────────────────────────────
-  static const Color primaryTint            = Color(0x1F2F3E9E);
-  static const Color primaryTintDark        = Color(0x335C6BD6);
-  static const Color primaryShadowColor     = Color(0x4C2F3E9E);   // light mode
-  static const Color primaryShadowColorDark = Color(0x262F3E9E);   // dark mode
-  static const Color cardShadowColor        = Color(0xFF1B2040);   // light mode
+  static const Color primaryTint            = Color(0x1F0B6B4F);   // 12 %
+  static const Color primaryTintDark        = Color(0x330B6B4F);   // 20 %
+  static const Color primaryShadowColor     = Color(0x4D0B6B4F);   // light mode, 30 %
+  static const Color primaryShadowColorDark = Color(0x260B6B4F);   // dark mode, 15 %
+  static const Color cardShadowColor        = Color(0xFF2A251F);   // light mode: the warm charcoal shadow tone
   static const Color cardShadowColorDark    = Color(0xFF000000);   // dark mode
 
   // ── Light surfaces ────────────────────────────────────────────────────────
-  static const Color background           = Color(0xFFF2F4FF);
-  static const Color surfaceCard          = Color(0xFFFFFFFF);
-  static const Color cardBg               = Color(0xFFFFFFFF);
-  static const Color textFieldBackground  = Color(0xFFF6F7FC);
-  static const Color inputBg              = Color(0xFFF6F7FC);
-  static const Color divider              = Color(0xFFE6E8F2);
+  static const Color background           = Color(0xFFFBF7F0);   // canvas: warm white
+  static const Color surfaceCard          = Color(0xFFFFFDF9);   // paper
+  static const Color cardBg               = Color(0xFFFFFDF9);
+  static const Color textFieldBackground  = Color(0xFFF5EFE5);
+  static const Color inputBg              = Color(0xFFF5EFE5);
+  static const Color divider              = Color(0xFFECE4D8);   // warm hairline
 
   // ── Light text ────────────────────────────────────────────────────────────
-  static const Color textDark     = Color(0xFF1B1E33);
-  static const Color textMedium   = Color(0xFF4B4F6B);
-  static const Color textLight    = Color(0xFF696E8E);   // 4.5:1+ on background / card / input (WCAG AA)
-  static const Color textAction   = Color(0xFF2F3E9E);
+  static const Color textDark     = Color(0xFF211D18);   // 15.4:1 on canvas
+  static const Color textMedium   = Color(0xFF4D463E);
+  static const Color textLight    = Color(0xFF6E655A);   // 4.5:1+ on canvas / paper / input / peach / sky (WCAG AA)
+  static const Color textAction   = Color(0xFF0B6B4F);
 
   // ── Dark surfaces ─────────────────────────────────────────────────────────
-  static const Color darkBackground  = Color(0xFF0F1224);
-  static const Color darkSurface     = Color(0xFF161A33);
-  static const Color darkCard        = Color(0xFF1E2342);
-  static const Color darkInput       = Color(0xFF262B4D);
-  static const Color inputBgDark     = Color(0xFF262B4D);
-  static const Color darkDivider     = Color(0xFF2F3560);
+  static const Color darkBackground  = Color(0xFF15120E);
+  static const Color darkSurface     = Color(0xFF1C1813);
+  static const Color darkCard        = Color(0xFF241F19);
+  static const Color darkInput       = Color(0xFF2C261F);
+  static const Color inputBgDark     = Color(0xFF2C261F);
+  static const Color darkDivider     = Color(0xFF3A3229);
 
   // ── Dark text ─────────────────────────────────────────────────────────────
-  static const Color darkTextPrimary  = Color(0xFFF4F5FB);
-  static const Color darkTextMuted    = Color(0xFFA9AECC);
-  static const Color darkTextLight    = Color(0xFF8F93B2);   // 4.5:1+ on every dark surface (WCAG AA)
+  static const Color darkTextPrimary  = Color(0xFFF5EFE6);
+  static const Color darkTextMuted    = Color(0xFFCBBFAE);
+  static const Color darkTextLight    = Color(0xFFA99C8A);   // 4.5:1+ on every dark surface (WCAG AA)
 
-  // ── Radii ─────────────────────────────────────────────────────────────────
-  static const double radiusSmall  = 10;
-  static const double radiusMedium = 16;
-  static const double radiusLarge  = 24;
-  static const double radiusXL     = 32;
+  // ── Radii (D-612: by hierarchy) ───────────────────────────────────────────
+  static const double radiusSmall   = 10;   // chip
+  static const double radiusControl = 14;   // button, input
+  static const double radiusMedium  = 16;   // card
+  static const double radiusLarge   = 24;   // block
+  static const double radiusSheet   = 28;   // bottom sheet, dialog
+  static const double radiusXL      = 32;   // hero
 
   // ── Gradients (derived from the palette above) ───────────────────────────
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF2F3E9E), Color(0xFF5C6BD6), Color(0xFF2F3E9E)],
+    colors: [primary, primaryLight, primary],
   );
   static const LinearGradient disableGradient = LinearGradient(
-    colors: [Color(0x501B1E33), Color(0x504B4F6B)],
+    colors: [Color(0x4F211D18), Color(0x4F4D463E)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   static const LinearGradient backgroundGradient = LinearGradient(
-    colors: [Color(0xFFF2F4FF), Color(0xFFFFFFFF)],
+    colors: [background, surfaceCard],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
   static const LinearGradient darkBackgroundGradient = LinearGradient(
-    colors: [Color(0xFF0F1224), Color(0xFF161A33)],
+    colors: [darkBackground, darkSurface],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
@@ -118,40 +122,40 @@ class AppTheme {
   static const LinearGradient lightSlideBarGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF2A2D45), Color(0xFF4B4F6B), Color(0xFF2A2D45)],
+    colors: [charcoal, charcoalLight, charcoal],
   );
   static const LinearGradient accentGradient = LinearGradient(
-    colors: [Color(0xFFC9A227), Color(0xFFF6E3B4)],
+    colors: [accent2, Color(0xFFF6E7C4)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   static const LinearGradient sliderGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF2A2D45), Color(0xFF4B4F6B), Color(0xFF2A2D45)],
+    colors: [charcoal, charcoalLight, charcoal],
   );
   static const LinearGradient tealGradient = LinearGradient(
-    colors: [Color(0xFF2F3E9E), Color(0xFF5C6BD6)],
+    colors: [charcoal, charcoalLight],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   static const LinearGradient successGradient = LinearGradient(
-    colors: [success, Color(0xFF5FD8A3)],
+    colors: [success, Color(0xFF3E9C78)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   static const LinearGradient dangerGradient = LinearGradient(
-    colors: [Color(0xFFF0435F), Color(0xFFFF7A90)],
+    colors: [danger, Color(0xFFD9606A)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   static const LinearGradient purpleGradient = LinearGradient(
-    colors: [Color(0xFF7C5CFF), Color(0xFFA992FF)],
+    colors: [purple, Color(0xFF9A87DE)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   static const LinearGradient goldCharcoalGradient = LinearGradient(
-    colors: [Color(0xFFC9A227), Color(0xFF2A2D45)],
+    colors: [accent2, charcoal],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -163,7 +167,7 @@ class AppTheme {
         blurRadius: 24,
         offset: const Offset(0, 8)),
     BoxShadow(
-        color: const Color(0xFF000000).withValues(alpha: 0.02),
+        color: cardShadowColor.withValues(alpha: 0.03),
         blurRadius: 4,
         offset: const Offset(0, 2)),
   ];
@@ -421,7 +425,7 @@ class AppTheme {
     style: ElevatedButton.styleFrom(
       elevation: 0,
       backgroundColor: primary,
-      foregroundColor: Colors.white,   // White text on the indigo primary
+      foregroundColor: Colors.white,   // white ink on the emerald primary (6.5:1)
       disabledBackgroundColor: divider,
       disabledForegroundColor: textLight,
       shape: RoundedRectangleBorder(

@@ -178,7 +178,8 @@ class HomeHeader extends StatelessWidget {
             child: Text(name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: appText(24, w: FontWeight.w600, c: c.onHero, h: 1.2).copyWith(letterSpacing: -0.3)),
+                // the greeting is the page's one editorial line (D-611): the headline role on the hero ink
+                style: AppType.headline(context).copyWith(color: c.onHero)),
           ),
           if (subtitle != null && subtitle!.isNotEmpty) ...[
             const SizedBox(height: 4),
@@ -209,7 +210,7 @@ class HomeHeader extends StatelessWidget {
           child: RepaintBoundary(
             child: AppMeshSurface(
               seed: 21,
-              radius: BorderRadius.circular(AppRadius.sheet),
+              radius: BorderRadius.circular(AppRadius.hero),
               child: Padding(
                 padding: const EdgeInsets.all(AppSpace.md + AppSpace.xxs),
                 child: ChromeBar(child: content),
@@ -357,7 +358,8 @@ class HomeSectionTitle extends StatelessWidget {
                 child: Text(title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: appText(16, w: quiet ? FontWeight.w500 : FontWeight.w600, c: quiet ? c.textMedium : c.textDark))),
+                    // an editorial section heading (D-611); a quiet one keeps the muted ink
+                    style: AppType.section(context).copyWith(color: quiet ? c.textMedium : c.textDark))),
             if (count != null && count! > 0) ...[
               const SizedBox(width: 8),
               Text(count! > 999 ? '999+' : '$count',

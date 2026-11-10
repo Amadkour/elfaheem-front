@@ -96,6 +96,11 @@ class ThemeConfigModel {
   /// The dark tone a hero gradient fades into (`hero_shade`).
   final Color? heroShade;
 
+  // ── Block tones (optional, D-610) ──
+  /// The sky block tone (`accent3`, schedule / information blocks), sent only by a theme that sets it (the
+  /// warm_editorial preset); null = ThemeConfigProvider derives one from the palette (`ThemeConfigProvider.deriveAccent3`).
+  final Color? accent3;
+
   // ── Brand gradient stops (optional, D-136: derived from the primary family when absent) ──
   /// The light outer stop of the brand gradient (`primary_gradient_start`).
   final Color? primaryGradientStart;
@@ -164,6 +169,7 @@ class ThemeConfigModel {
     required this.gradientTeal,
     this.onHero,
     this.heroShade,
+    this.accent3,
     this.primaryGradientStart,
     this.primaryGradientEnd,
     required this.platform,
@@ -285,6 +291,7 @@ class ThemeConfigModel {
       // On-hero roles (optional)
       onHero: _opt(j['on_hero']),
       heroShade: _opt(j['hero_shade']),
+      accent3: _opt(j['accent3']),
       primaryGradientStart: _opt(j['primary_gradient_start']),
       primaryGradientEnd: _opt(j['primary_gradient_end']),
 
@@ -355,6 +362,7 @@ class ThemeConfigModel {
     'gradient_teal': _hexList(gradientTeal),
     if (onHero != null) 'on_hero': _hex(onHero!),
     if (heroShade != null) 'hero_shade': _hex(heroShade!),
+    if (accent3 != null) 'accent3': _hex(accent3!),
     if (primaryGradientStart != null) 'primary_gradient_start': _hex(primaryGradientStart!),
     if (primaryGradientEnd != null) 'primary_gradient_end': _hex(primaryGradientEnd!),
     'platform': platform,

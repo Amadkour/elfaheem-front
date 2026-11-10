@@ -87,7 +87,7 @@ class AppStatusBadge extends StatelessWidget {
     return Container(
       constraints: BoxConstraints(minHeight: dense ? 20 : 24),
       padding: EdgeInsetsDirectional.symmetric(horizontal: dense ? AppSpace.xs : AppSpace.sm, vertical: 2),
-      decoration: BoxDecoration(color: appToneTint(context, tone), borderRadius: BorderRadius.circular(AppRadius.sheet)),
+      decoration: BoxDecoration(color: appToneTint(context, tone), borderRadius: BorderRadius.circular(AppRadius.pill)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         if (icon != null) ...[
           Icon(icon, size: AppIconSize.xs, color: ink),
@@ -146,7 +146,7 @@ class AppCountBadge extends StatelessWidget {
               alignment: AlignmentDirectional.center,
               decoration: BoxDecoration(
                 color: appToneColor(context, tone),
-                borderRadius: BorderRadius.circular(AppRadius.sheet),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
                 border: child == null ? null : Border.all(color: c.cardBg, width: AppBorder.focus),
               ),
               child: Text(

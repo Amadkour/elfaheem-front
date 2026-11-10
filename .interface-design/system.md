@@ -50,6 +50,11 @@ Every text role keeps ≥ 4.5:1 on every surface it sits on (large display text 
 | `headline` | Markazi Text | 24 · 600 |
 | `pageTitle` | Markazi Text | 22 · 600 |
 | `section` | Markazi Text | 18 · 600 |
+
+The four editorial sizes are OPTICAL (what the heading reads like beside the UI sans). Markazi's letters are small on
+their body (cap height 0.48 em against Inter's 0.73, the Arabic alef 0.53 em against Plex's 0.74), so the face is drawn
+at 1.3 × the size in Latin and 1.25 × in Arabic (`AppFonts.editorialScale`; D-611, judged on the home renders).
+"Same as text" uses the text font at 28 · 22 · 20 · 16.
 | `body`, `row`, `label`, `meta`, `overline` | the person's chosen UI sans (D-072; defaults IBM Plex Sans Arabic / Inter) | unchanged scale |
 | `figure`, `figureLarge` | UI sans, tabular digits | unchanged |
 

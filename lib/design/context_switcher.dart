@@ -618,7 +618,7 @@ class _Count extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs + 2, vertical: 1),
-    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(AppRadius.sheet)),
+    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(AppRadius.pill)),
     child: Text(
       n > 99 ? '99+' : '$n',
       style: AppType.overline(context).copyWith(color: context.colors.button.color, letterSpacing: 0),

@@ -10,6 +10,14 @@ import 'package:flutter_test/flutter_test.dart';
 const _oldTextLight = Color(0xFF8A8EA8);
 const _oldDarkTextLight = Color(0xFF6B7099);
 
+// the indigo default's surfaces those old captions sat on (before the warm editorial default, D-610)
+const _oldBackground = Color(0xFFF2F4FF);
+const _oldCard = Color(0xFFFFFFFF);
+const _oldDarkCard = Color(0xFF1E2342);
+const _oldDarkInput = Color(0xFF262B4D);
+const _oldLightSurfaces = [_oldBackground, _oldCard, Color(0xFFF6F7FC)];
+const _oldDarkSurfaces = [Color(0xFF0F1224), Color(0xFF161A33), _oldDarkCard, _oldDarkInput];
+
 const _lightSurfaces = [
   AppTheme.background,
   AppTheme.surfaceCard,
@@ -100,14 +108,14 @@ void main() {
     });
 
     test('the old secondary text colours fail AA', () {
-      expect(contrastRatio(_oldTextLight, AppTheme.background), lessThan(3.0)); // 2.94
-      expect(contrastRatio(_oldTextLight, AppTheme.cardBg), lessThan(4.5)); // 3.22
-      expect(contrastRatio(_oldDarkTextLight, AppTheme.darkCard), lessThan(4.5)); // 3.20
-      expect(passesContrast(_oldTextLight, _lightSurfaces), isFalse);
-      expect(passesContrast(_oldDarkTextLight, _darkSurfaces), isFalse);
+      expect(contrastRatio(_oldTextLight, _oldBackground), lessThan(3.0)); // 2.94
+      expect(contrastRatio(_oldTextLight, _oldCard), lessThan(4.5)); // 3.22
+      expect(contrastRatio(_oldDarkTextLight, _oldDarkCard), lessThan(4.5)); // 3.20
+      expect(passesContrast(_oldTextLight, _oldLightSurfaces), isFalse);
+      expect(passesContrast(_oldDarkTextLight, _oldDarkSurfaces), isFalse);
       // the old single secondText (same value as the old textLight) failed in BOTH modes
       expect(passesContrast(_oldTextLight, _lightSurfaces), isFalse);
-      expect(contrastRatio(_oldTextLight, AppTheme.darkInput), lessThan(4.5));
+      expect(contrastRatio(_oldTextLight, _oldDarkInput), lessThan(4.5));
     });
   });
 
@@ -139,10 +147,14 @@ void main() {
       }
     });
 
-    test('the new values stay in the old hue family', () {
+    test('the warm editorial default (D-610): warm captions that also read on the peach and sky blocks', () {
       double hue(Color c) => HSLColor.fromColor(c).hue;
-      expect((hue(AppTheme.textLight) - hue(_oldTextLight)).abs(), lessThan(3));
-      expect((hue(AppTheme.darkTextLight) - hue(_oldDarkTextLight)).abs(), lessThan(3));
+      for (final c in [AppTheme.textLight, AppTheme.darkTextLight, AppTheme.textMedium, AppTheme.darkTextMuted]) {
+        expect(hue(c), inInclusiveRange(20, 45), reason: _hex(c)); // warm, never the old cold slate
+      }
+      for (final block in [AppTheme.accent, AppTheme.accent3]) {
+        expect(contrastRatio(AppTheme.textLight, block), greaterThanOrEqualTo(4.5), reason: _hex(block));
+      }
     });
   });
 

@@ -58,6 +58,7 @@ import '../features/teacher/data_lab/data_lab_widgets.dart' as dl;
 // The design system (D-180, lib/design/README.md): tokens, the gradient rules and the components added on top of
 // the Data Lab / org kits below.
 export 'app_tokens.dart';
+export 'app_blocks.dart';
 export 'app_gradients.dart';
 export 'app_buttons.dart';
 export 'app_badges.dart';
