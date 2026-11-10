@@ -631,11 +631,14 @@ class TeacherHomeBody extends StatelessWidget {
       if (liveNow.isNotEmpty) HomeLiveNow(rooms: liveNow, now: now, padding: const EdgeInsets.fromLTRB(20, 0, 20, 24)),
 
       // phone: needs you · today · courses · inbox. The desktop dashboard: what happens (today, my teaching) beside
-      // what waits (needs you as a list, the inbox); with nothing waiting the courses card takes the side column
+      // what waits (needs you as a list, the inbox); with nothing waiting the courses card takes the side column —
+      // unless today is free too: a one-line folded day beside a tall card left a blank column, so both stack
       HomeDashboard(
         narrow: [?todoSection, ?needsYou, todaySection, coursesSection, ?inbox],
-        main: [todaySection, if (todoSection != null || needsYou != null || inbox != null) coursesSection],
-        side: todoSection == null && needsYou == null && inbox == null ? [coursesSection] : [?todoSection, ?needsYou, ?inbox],
+        main: [todaySection, if (todoSection != null || needsYou != null || inbox != null || items.isEmpty) coursesSection],
+        side: todoSection == null && needsYou == null && inbox == null
+            ? [if (items.isNotEmpty) coursesSection]
+            : [?todoSection, ?needsYou, ?inbox],
       ),
       if (extra == null && showFeeds) const InboxEntryCard(padding: EdgeInsets.fromLTRB(20, 0, 20, 16)),
 
