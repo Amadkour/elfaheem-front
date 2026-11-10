@@ -1,13 +1,19 @@
 // lib/design/app_mesh.dart
 //
-// THE organic gradient of the app (D-360). Every component with a main colour gets its gradient here, so no screen
-// holds gradient values of its own.
+// THE brand surface of the app (D-360, re-tuned by D-622). Every component with a main colour gets its surface
+// here, so no screen holds gradient values of its own.
 //
-//   AppMeshSurface(child: …)                       large surfaces: headers, heroes, banners (layered radial blobs)
+//   AppMeshSurface(child: …)                       the page header's band, the shell's sidebar, a highlighted KPI
 //   AppMeshSurface(color: c.danger, seed: 7, …)    the same logic from any main colour
 //   AppMeshSurface(style: AppMeshStyle.wash, …)    a faint wash for cards: text still reads as on the card surface
-//   BoxDecoration(gradient: AppMesh.blend(context)) small fills: buttons, chips, pills (multi-stop angled blend)
-//   AppMesh.companion(color)                       the nearest harmonious partner of a colour (green → teal)
+//   BoxDecoration(gradient: AppMesh.blend(context)) small fills: buttons, chips, pills (a three-shade angled blend)
+//   AppMesh.companion(color)                       the nearest harmonious partner of a colour (green → teal); kept
+//                                                  for the colour pickers, the surface itself no longer uses it
+//
+// The look (D-622, `.interface-design/system.md` §1 "no gradient washes"): ONE family. A surface is its main colour
+// with two soft lights of the same hue — a lift toward the family's light shade and a deeper shade in the far
+// corner — nothing that walks the colour wheel, no contrasting spark. Emerald stays emerald in every corner; a
+// danger surface stays red. It reads as a material with depth, not as a wash.
 //
 // The look is random but the result is not: blob positions come from a Random seeded by the colour and [seed], so a
 // surface never changes between rebuilds or between runs.
@@ -15,11 +21,8 @@
 // Fill colours are moved until the on-hero ink keeps WCAG AA on them, so text and icons on a fill are always readable,
 // whatever palette the super admin picks. A mix of two passing colours also passes for light ink.
 //
-// The colours are not shades of the main colour: AppHarmony (app_contrast.dart) walks the colour wheel (D-550), and the
-// app's own gradient takes the theme's accent as its highlight.
-//
 // Performance: shaders are built once per palette in a small cache, in unit space, and the canvas is scaled to the
-// surface. A header changing height every frame therefore allocates nothing and draws five rectangles.
+// surface. A header changing height every frame therefore allocates nothing and draws four rectangles.
 library;
 
 import 'dart:collection';
@@ -60,6 +63,35 @@ class AppMeshBlob {
   final double driftX, driftY;
 }
 
+/// The three shades of one main colour that a surface is painted with (all pass the ink check).
+@immutable
+class AppMeshFamily {
+  const AppMeshFamily(this.base, this.lift, this.deep);
+
+  /// The main colour itself.
+  final Color base;
+
+  /// The same hue, lighter: where the light falls.
+  final Color lift;
+
+  /// The same hue, deeper: the far corner.
+  final Color deep;
+
+  /// The family of [main] under [ink]: lift and deep move along the lightness axis only (the hue and saturation are
+  /// the main colour's), each as far as [ink] keeps [min] on it. A grey has no hue: its shades are plain greys.
+  factory AppMeshFamily.of(Color main, Color ink, {double min = kWcagAaText, bool dark = false}) {
+    Color safe(Color c) => ensureContrast(c, [ink], min: min);
+    final base = safe(main);
+    final h = HSLColor.fromColor(base);
+    Color at(double lightness) => safe(h.withLightness(lightness.clamp(0.0, 1.0)).toColor());
+    // the lift: a step lighter (a shorter step on a dark page, where a bright corner glares); the contrast guard
+    // then brings it back to the last shade the ink still reads on
+    final lift = at(h.lightness + (dark ? 0.08 : 0.14));
+    final deep = at(h.lightness * 0.68);
+    return AppMeshFamily(base, lift, deep);
+  }
+}
+
 abstract final class AppMesh {
   // 5.5, not 4.6: the hero's secondary lines are drawn in onHeroMuted (90 % ink), which keeps WCAG AA (4.5) only on a
   // surface that gives the full ink 5.4 or more
@@ -68,22 +100,23 @@ abstract final class AppMesh {
   static final LinkedHashMap<int, LinearGradient> _blends = LinkedHashMap();
   static const int _cacheSize = 48;
 
-  /// The harmonious partner of [color]; see [companionOf].
+  /// The harmonious partner of [color]; see [companionOf]. The surface does not use it (D-622): it is for pickers
+  /// that offer "a colour and its partner".
   static Color companion(Color color) => companionOf(color);
 
   /// The gradient for [color] (the brand primary by default). Two surfaces with different [seed]s differ in shape.
   static AppMeshSpec of(BuildContext context, {Color? color, int seed = 0, AppMeshStyle style = AppMeshStyle.fill}) {
     final c = context.colors;
     final main = color ?? c.brandStops(dark: c.isDark)[1];
-    final key = Object.hash(main, c.onHero, seed, style, c.isDark, color == null ? c.accent2 : null);
+    final key = Object.hash(main, c.onHero, seed, style, c.isDark);
     final hit = _specs.remove(key);
     if (hit != null) return _specs[key] = hit; // most recently used last
     if (_specs.length >= _cacheSize) _specs.remove(_specs.keys.first);
-    return _specs[key] = _build(main, c.onHero, seed, style, c.isDark, color == null ? c.accent2 : null);
+    return _specs[key] = _build(main, c.onHero, seed, style, c.isDark);
   }
 
-  /// A wide, multi-hue angled blend for fills too small for blobs. Every stop keeps the on-hero ink at AA. Three hues at
-  /// even distances: more stops would read as stripes on a long button.
+  /// A three-shade angled blend for fills too small for blobs: lift at the start, the colour, deep at the end. Every
+  /// stop keeps the on-hero ink at AA. Three stops: more would read as stripes on a long button.
   static LinearGradient blend(BuildContext context, {Color? color, int seed = 0}) {
     final c = context.colors;
     final main = color ?? c.brandStops(dark: c.isDark)[1];
@@ -91,26 +124,22 @@ abstract final class AppMesh {
     final hit = _blends[key];
     if (hit != null) return hit;
     if (_blends.length >= _cacheSize) _blends.remove(_blends.keys.first);
-    final h = AppHarmony.of(main, c.onHero, min: _inkContrast, dark: c.isDark);
+    final f = AppMeshFamily.of(main, c.onHero, min: _inkContrast, dark: c.isDark);
     final r = math.Random(Object.hash(main, seed));
     final tilt = -0.9 + r.nextDouble() * 0.5;
     return _blends[key] = LinearGradient(
       begin: AlignmentDirectional(-1, tilt),
       end: AlignmentDirectional(1, -tilt * 0.7),
-      colors: [
-        h.base,
-        ensureContrast(Color.lerp(h.base, h.near, 0.7)!, [c.onHero], min: _inkContrast),
-        ensureContrast(Color.lerp(h.base, h.far, 0.6)!, [c.onHero], min: _inkContrast),
-      ],
+      colors: [Color.lerp(f.base, f.lift, 0.7)!, f.base, Color.lerp(f.base, f.deep, 0.6)!],
       stops: const [0, 0.5, 1],
     );
   }
 
-  static AppMeshSpec _build(Color main, Color ink, int seed, AppMeshStyle style, bool dark, Color? spark) {
+  static AppMeshSpec _build(Color main, Color ink, int seed, AppMeshStyle style, bool dark) {
     final r = math.Random(Object.hash(main, seed));
     double between(double a, double b) => a + r.nextDouble() * (b - a);
     final wash = style == AppMeshStyle.wash;
-    final h = AppHarmony.of(main, ink, min: _inkContrast, spark: spark, dark: dark);
+    final f = AppMeshFamily.of(main, ink, min: _inkContrast, dark: dark);
     final strength = wash ? (dark ? 0.2 : 0.14) : 1.0;
 
     Paint blob(Color color, Offset center, double radius, double alpha) => Paint()
@@ -121,16 +150,16 @@ abstract final class AppMesh {
         const [0, 0.5, 1],
       );
 
+    // three lights of one hue: the lift where a title sits (the start, high), a second lift low in the middle,
+    // the deep shade in the far corner — a surface with a light on it, never a second colour
     return AppMeshSpec._(
-      wash ? null : h.base,
+      wash ? null : f.base,
       [
-        AppMeshBlob(blob(h.near, Offset(between(0.7, 1.05), between(-0.2, 0.3)), between(0.6, 0.85), 0.8), -0.10, -0.16),
-        AppMeshBlob(blob(h.far, Offset(between(0.42, 0.72), between(0.75, 1.2)), between(0.45, 0.65), 0.55), 0.08, -0.22),
-        AppMeshBlob(blob(h.depth, Offset(between(-0.1, 0.22), between(0.8, 1.25)), between(0.45, 0.65), 0.45), 0.12, -0.10),
-        AppMeshBlob(blob(h.spark, Offset(between(0.82, 1.08), between(0.72, 1.1)), between(0.28, 0.42), 0.8), -0.06, -0.26),
-        AppMeshBlob(blob(Color.lerp(h.base, h.near, 0.5)!, Offset(between(0.2, 0.5), between(-0.3, 0.05)), between(0.45, 0.65), 0.7), 0.14, -0.08),
+        AppMeshBlob(blob(f.lift, Offset(between(0.05, 0.35), between(-0.3, 0.1)), between(0.55, 0.8), 0.55), 0.12, -0.08),
+        AppMeshBlob(blob(Color.lerp(f.base, f.lift, 0.5)!, Offset(between(0.4, 0.7), between(0.8, 1.2)), between(0.4, 0.6), 0.4), 0.08, -0.2),
+        AppMeshBlob(blob(f.deep, Offset(between(0.85, 1.1), between(0.6, 1.1)), between(0.55, 0.85), 0.7), -0.1, -0.16),
       ],
-      wash ? null : (Paint()..color = h.base),
+      wash ? null : (Paint()..color = f.base),
     );
   }
 }
@@ -176,8 +205,8 @@ class AppMeshPainter extends CustomPainter {
   bool shouldRepaint(AppMeshPainter old) => !identical(old.spec, spec) || old.mirror != mirror || old.drift != drift;
 }
 
-/// A surface painted with the organic gradient. On a [AppMeshStyle.fill], text and icons inside default to the on-hero
-/// ink; never put a form or a table on a fill.
+/// A surface painted with the brand material. On a [AppMeshStyle.fill], text and icons inside default to the on-hero
+/// ink; never put a form or a table on a fill. A home's greeting is NOT this: it is a tinted block (AppBlock, D-622).
 class AppMeshSurface extends StatelessWidget {
   const AppMeshSurface({
     super.key,

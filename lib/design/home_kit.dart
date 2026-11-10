@@ -8,14 +8,17 @@
 // card with hairline dividers rather than many tinted tiles; tints stay at a low alpha. Colours come only from
 // context.colors (server theme); times only through AppTime.
 //
-//   HomeHeader         greeting (time of day, effective timezone) + name + trailing actions + the context switcher
+//   HomeHeader         THE hero block of a home (D-622): greeting (time of day, effective timezone), the name in the
+//                      editorial display face, the day line, the actions as paper chips and the context switcher,
+//                      on a tinted AppBlock (peach for a student / parent, sky for an instructor / admin /
+//                      organization; HomeHeader.toneForRole) with charcoal ink — never a gradient
 //   HomeEntrance       the ONE entrance motion (fade + 12px rise, staggered, once; off with reduced motion)
 //   HomeSectionTitle   section title with an optional count and action
 //   HomeActionCard /   important actions: icon, title, count (badge), tone; a responsive equal-height grid
 //     HomeActionGrid
 //   HomeAgenda         today's schedule as a timeline (live marker), skeleton while loading, inviting empty state
 //   HomeShortcuts      quick shortcuts (courses, timetable …) in a responsive grid
-//   HomeHeroCard       the gradient hero surface (each role puts its own memorable element inside)
+//   HomeHeroCard       a second tinted block (each role puts its own memorable element inside: the day ribbon)
 //   HomeDayRibbon      the instructor's hero element: the day as a ribbon with today's sessions and a "now" marker
 //   HomeTodoCard       "To do" from AttentionService (AttentionTabs.home) → the items sheet with deep links
 //   HomeStatStrip      "Needs you" as ONE slim row of pills, the counts above zero only (student · instructor ·
@@ -38,8 +41,6 @@
 // the screen-reader hint); a section with nothing to say is not drawn; what is live comes first.
 library;
 
-import 'chrome_button.dart';
-import 'package:flutter_education_app/design/app_mesh.dart';
 import 'app_motion_kit.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -52,8 +53,10 @@ import 'package:flutter_education_app/design/app_contrast.dart' show ensureContr
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show ShellScope;
+import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
 import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
+import 'package:provider/provider.dart' show Provider;
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -84,8 +87,9 @@ int? homeClockMinutes(String? hhmm) {
   return h == null || m == null ? null : h * 60 + m;
 }
 
-/// The colour that reads on the theme's primary gradient (the theme's button text colour).
-Color homeOnHero(BuildContext context) => context.colors.button.color ?? context.colors.cardBg;
+/// The ink that reads on a home hero: the enclosing block's ink (D-622 — the heroes were gradients under the
+/// theme's on-hero ink before; the name stays for the callers that draw on them).
+Color homeOnHero(BuildContext context) => AppBlock.colorsOf(context).ink;
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Motion
@@ -118,6 +122,7 @@ class HomeHeader extends StatelessWidget {
     this.wideTrailing,
     this.padding = const EdgeInsets.fromLTRB(20, 20, 20, 8),
     this.helpPageId,
+    this.tone,
   });
 
   /// The page id of the Info button (help entry), drawn on phones only (the shell's top bar carries it on wide screens).
@@ -140,6 +145,20 @@ class HomeHeader extends StatelessWidget {
   final String? subtitle;
   final EdgeInsetsGeometry padding;
 
+  /// The hero block's tint (D-622): peach for a student's or a parent's home, sky for an instructor's, an admin's or
+  /// an organization's. Null = from the signed-in role ([toneOf]); peach without one (a guest).
+  final AppBlockTone? tone;
+
+  /// The hero tone of a role: students and parents learn (peach), everyone else runs a schedule (sky).
+  static AppBlockTone toneForRole(String? role) => switch (role) {
+        null || '' || 'student' || 'parent' => AppBlockTone.peach,
+        _ => AppBlockTone.sky,
+      };
+
+  /// [toneForRole] of the signed-in user, when an auth provider is in scope (a preview without one is peach).
+  static AppBlockTone toneOf(BuildContext context) =>
+      toneForRole(Provider.of<MyAuthProvider?>(context, listen: false)?.currentUser?.role);
+
   /// True while the shell's top bar (sidebar / rail layouts) is on screen around this page.
   static bool shellTopBar(BuildContext context) {
     MediaQuery.sizeOf(context); // re-asked when the window is resized
@@ -149,7 +168,7 @@ class HomeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
+    final blockTone = tone ?? toneOf(context);
     final buttons = [
       ...actions,
       if (!shellTopBar(context)) ...[...shellActions, if (helpPageId != null) HelpInfoButton(pageId: helpPageId!)],
@@ -163,57 +182,59 @@ class HomeHeader extends StatelessWidget {
         // at the end) instead of floating mid-page at the end of the greeting line
         final wide = wideTrailing != null && homeIsWide(box.maxWidth);
         final lineButtons = wide ? const <Widget>[] : buttons;
-        final block = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-            if (leading != null) ...[leading!, const SizedBox(width: 10)],
-            Expanded(
-              child: Text(homeGreetingKey(homeNow().hour).tr,
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, c: c.onHeroMuted)),
-            ),
-            ...lineButtons,
-          ]),
-          SizedBox(height: lineButtons.isEmpty && leading == null ? 4 : 6),
-          Semantics(
-            header: true,
-            child: Text(name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                // the greeting is the page's one editorial line (D-611): the headline role on the hero ink
-                style: AppType.headline(context).copyWith(color: c.onHero)),
-          ),
-          if (subtitle != null && subtitle!.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, c: c.onHeroMuted, h: 1.4)),
-          ],
-          if (contextSwitcher != null) ...[
-            const SizedBox(height: 14),
-            Align(alignment: AlignmentDirectional.centerStart, child: contextSwitcher!),
-          ],
-        ]);
-        final content = !wide
-              ? block
-              : Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Expanded(child: block),
-                  const SizedBox(width: 24),
-                  // the side column's cards are inset 20 px on each side: the trailing part lines up with them
-                  SizedBox(
-                    width: HomeDashboard.sideWidthFor(box.maxWidth) - 40,
-                    child: Row(children: [
-                      Expanded(child: wideTrailing!),
-                      for (final b in buttons) ...[const SizedBox(width: 8), b],
-                    ]),
-                  ),
-                ]);
-        // the greeting wears the same organic gradient as every page header (D-360); its buttons turn to glass on it
+        // the hero block (D-622): one tinted surface with the editorial name as the page's one memorable element,
+        // the greeting and the day line in the UI sans, the buttons as paper chips (ChromeIconButton off a bar);
+        // the tilt (D-583) stays, with its glare over the light surface
         return Padding(
           padding: padding.resolve(Directionality.of(context)).copyWith(top: AppSpace.sm, bottom: AppSpace.xs),
           child: RepaintBoundary(
-            child: AppMeshSurface(
-              seed: 21,
-              radius: BorderRadius.circular(AppRadius.hero),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpace.md + AppSpace.xxs),
-                child: ChromeBar(child: content),
+            child: AppTilt(
+              radius: AppRadius.block,
+              maxTilt: 2.5,
+              glare: true,
+              child: AppBlock(
+                tone: blockTone,
+                hero: true,
+                child: Builder(builder: (context) {
+                  final ink = AppBlock.colorsOf(context);
+                  final greeting = AppType.body(context).copyWith(color: ink.muted);
+                  final block = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                      if (leading != null) ...[leading!, const SizedBox(width: AppSpace.sm)],
+                      Expanded(
+                        child: Text(homeGreetingKey(homeNow().hour).tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: greeting),
+                      ),
+                      ...lineButtons,
+                    ]),
+                    SizedBox(height: lineButtons.isEmpty && leading == null ? AppSpace.xxs : AppSpace.xs),
+                    Semantics(
+                      header: true,
+                      // the name is the page's one editorial line (D-611 / D-622): the display role in the block's ink
+                      child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.display(context).copyWith(color: ink.ink)),
+                    ),
+                    if (subtitle != null && subtitle!.isNotEmpty) ...[
+                      const SizedBox(height: AppSpace.xxs),
+                      Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: greeting),
+                    ],
+                    if (contextSwitcher != null) ...[
+                      const SizedBox(height: AppSpace.md),
+                      Align(alignment: AlignmentDirectional.centerStart, child: contextSwitcher!),
+                    ],
+                  ]);
+                  if (!wide) return block;
+                  return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                    Expanded(child: block),
+                    const SizedBox(width: AppSpace.lg),
+                    // the side column's cards are inset 20 px on each side: the trailing part lines up with them
+                    SizedBox(
+                      width: HomeDashboard.sideWidthFor(box.maxWidth) - 40,
+                      child: Row(children: [
+                        Expanded(child: wideTrailing!),
+                        for (final b in buttons) ...[const SizedBox(width: AppSpace.xs), b],
+                      ]),
+                    ),
+                  ]);
+                }),
               ),
             ),
           ),
@@ -425,69 +446,69 @@ class HomeSectionTitle extends StatelessWidget {
 //  Hero surface
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// A home's second tinted block (D-622): the role's memorable element (the instructor's day ribbon, a figure) on
+/// an [AppBlock] in [tone] (the home's hero tone by default), with the tilt of D-583 and one quiet ornament — a
+/// large ring in the block's ink bleeding off the end edge. Content inside draws in the block's ink
+/// ([homeOnHero] / [AppBlock.colorsOf]).
 class HomeHeroCard extends StatelessWidget {
-  const HomeHeroCard({super.key, required this.child, this.gradient, this.glow, this.onTap, this.margin});
+  const HomeHeroCard({super.key, required this.child, this.tone, this.gradient, this.glow, this.onTap, this.margin});
   final Widget child;
+
+  /// Null = the home's hero tone ([HomeHeader.toneOf]).
+  final AppBlockTone? tone;
+
+  /// Kept for existing callers: a hero is a tinted block now, no gradient paints it.
   final Gradient? gradient;
+
+  /// Kept for existing callers: the block casts no coloured glow.
   final Color? glow;
   final VoidCallback? onTap;
   final EdgeInsetsGeometry? margin;
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final r = BorderRadius.circular(c.radiusXL);
+    final blockTone = tone ?? HomeHeader.toneOf(context);
     return Padding(
       padding: margin ?? const EdgeInsets.symmetric(horizontal: 20),
       // depth (D-583): a gentle tilt toward the mouse with a soft glare, a press depth on touch; the ring floats
       child: AppTilt(
-        radius: c.radiusXL,
+        radius: AppRadius.block,
         maxTilt: 2.5,
         glare: true,
-        child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: gradient ?? c.heroGradient,
-          borderRadius: r,
-          boxShadow: [BoxShadow(color: (glow ?? c.primary).withValues(alpha: 0.16), blurRadius: 20, offset: const Offset(0, 6))],
-        ),
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
-            borderRadius: r,
-            onTap: onTap,
-            child: ClipRRect(
-              borderRadius: r,
-              child: Stack(children: [
-                // the organic brand gradient (D-360), only when the caller chose no gradient of its own
-                if (gradient == null) const Positioned.fill(child: RepaintBoundary(child: AppMeshSurface(seed: 11))),
-                // a single quiet ornament: a large ring bleeding off the end edge
-                PositionedDirectional(
-                  end: -60,
-                  top: -70,
-                  child: AppTiltLayer(
-                    depth: 2.5,
+        child: AppBlock(
+          tone: blockTone,
+          onTap: onTap,
+          padding: EdgeInsets.zero,
+          child: Builder(builder: (context) {
+            final ink = AppBlock.colorsOf(context).ink;
+            return Stack(children: [
+              PositionedDirectional(
+                end: -60,
+                top: -70,
+                child: AppTiltLayer(
+                  depth: 2.5,
+                  child: ExcludeSemantics(
                     child: Container(
                       width: 200,
                       height: 200,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: homeOnHero(context).withValues(alpha: 0.10), width: 26),
+                        border: Border.all(color: ink.withValues(alpha: 0.06), width: 26),
                       ),
                     ),
                   ),
                 ),
-                Padding(padding: const EdgeInsets.all(20), child: child),
-              ]),
-            ),
-          ),
+              ),
+              Padding(padding: AppSpace.block, child: child),
+            ]);
+          }),
         ),
-      ),
       ),
     );
   }
 }
 
-/// A small label on the hero ("NEXT UP", "LIVE NOW" …).
+/// A small label on a hero block ("Next up", "Live now" — sentence case): the block's ink on a faint ink chip.
 class HomeHeroTag extends StatelessWidget {
   const HomeHeroTag(this.text, {super.key, this.icon});
   final String text;
@@ -497,11 +518,16 @@ class HomeHeroTag extends StatelessWidget {
   Widget build(BuildContext context) {
     final on = homeOnHero(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: on.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(20)),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
+      decoration: BoxDecoration(color: on.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(AppRadius.pill)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        if (icon != null) ...[Icon(icon, size: 13, color: on), const SizedBox(width: 5)],
-        Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w600, c: on))),
+        if (icon != null) ...[Icon(icon, size: AppIconSize.xs, color: on), const SizedBox(width: AppSpace.xxs)],
+        Flexible(
+          child: Text(text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppType.overline(context).copyWith(color: on, letterSpacing: 0)),
+        ),
       ]),
     );
   }
@@ -977,7 +1003,7 @@ class HomeShortcuts extends StatelessWidget {
                     Badge(
                       isLabelVisible: s.badge > 0,
                       backgroundColor: c.danger,
-                      label: Text(s.badge > 99 ? '99+' : '${s.badge}', style: appText(10, w: FontWeight.w600, c: homeOnHero(context))),
+                      label: Text(s.badge > 99 ? '99+' : '${s.badge}', style: appText(10, w: FontWeight.w600, c: c.onHero)),
                       child: Container(
                         width: 52,
                         height: 52,
@@ -1011,7 +1037,8 @@ class HomeShortcuts extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Today's sessions laid on a ribbon of the day (07:00–22:00, widened to fit), with a "now" marker.
-/// Drawn on a hero gradient. Flows in reading direction (RTL aware).
+/// Drawn on a hero block (D-622): the track in the block's ink, the sessions in emerald (the primary subject), the
+/// marker in ink. Flows in reading direction (RTL aware).
 class HomeDayRibbon extends StatelessWidget {
   const HomeDayRibbon({super.key, required this.items, this.nowMin});
   final List<HomeAgendaItem> items;
@@ -1029,10 +1056,13 @@ class HomeDayRibbon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final on = homeOnHero(context);
+    final block = AppBlock.colorsOf(context);
+    final on = block.ink;
+    final session = block.accentInk(context.colors.primary);
     final (a, b) = window(items);
     final span = math.max(1, b - a);
     final now = nowMin ?? (homeNow().hour * 60 + homeNow().minute);
+    final clock = AppType.meta(context).copyWith(color: block.muted, fontWeight: FontWeight.w500, fontFeatures: const [FontFeature.tabularFigures()]);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       SizedBox(
         height: 30,
@@ -1043,7 +1073,7 @@ class HomeDayRibbon extends StatelessWidget {
             Positioned.fill(
               top: 11,
               bottom: 11,
-              child: DecoratedBox(decoration: BoxDecoration(color: on.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(8))),
+              child: DecoratedBox(decoration: BoxDecoration(color: on.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(AppRadius.chip))),
             ),
             for (final i in items)
               if (i.startMin != null && i.endMin != null)
@@ -1054,8 +1084,9 @@ class HomeDayRibbon extends StatelessWidget {
                   width: math.max(6, x(i.endMin!) - x(i.startMin!)),
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: on.withValues(alpha: i.endMin! <= now ? 0.45 : 0.95),
-                      borderRadius: BorderRadius.circular(6),
+                      // what already ended fades; what is to come is full emerald
+                      color: session.withValues(alpha: i.endMin! <= now ? 0.4 : 1),
+                      borderRadius: BorderRadius.circular(AppRadius.chip / 2),
                     ),
                   ),
                 ),
@@ -1065,22 +1096,22 @@ class HomeDayRibbon extends StatelessWidget {
                 top: 0,
                 bottom: 0,
                 width: 2,
-                child: DecoratedBox(decoration: BoxDecoration(color: on, borderRadius: BorderRadius.circular(2))),
+                child: DecoratedBox(decoration: BoxDecoration(color: on, borderRadius: BorderRadius.circular(AppBorder.focus))),
               ),
           ]);
         }),
       ),
-      const SizedBox(height: 4),
+      const SizedBox(height: AppSpace.xxs),
       Row(children: [
-        Text(AppTime.clockMinutes(a), style: appText(10.5, w: FontWeight.w500, c: on.withValues(alpha: 0.85))),
+        Text(AppTime.clockMinutes(a), style: clock),
         const Spacer(),
-        Text(AppTime.clockMinutes(b % (24 * 60)), style: appText(10.5, w: FontWeight.w500, c: on.withValues(alpha: 0.85))),
+        Text(AppTime.clockMinutes(b % (24 * 60)), style: clock),
       ]),
     ]);
   }
 }
 
-/// A figure on the hero: big number + small label.
+/// A figure on a hero block: the key figure (tabular, counted up once) + a small label, in the block's ink.
 class HomeHeroFigure extends StatelessWidget {
   const HomeHeroFigure({super.key, required this.value, required this.label});
   final String value;
@@ -1088,15 +1119,15 @@ class HomeHeroFigure extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final on = homeOnHero(context);
+    final block = AppBlock.colorsOf(context);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
       FittedBox(
           fit: BoxFit.scaleDown,
           alignment: AlignmentDirectional.centerStart,
-          child: AppCountUp(value, memoryKey: 'hero:$label', style: appText(24, w: FontWeight.w600, c: on, h: 1.1))),
-      const SizedBox(height: 2),
+          child: AppCountUp(value, memoryKey: 'hero:$label', style: AppType.figureLarge(context).copyWith(color: block.ink))),
+      const SizedBox(height: AppSpace.xxs / 2),
       // two lines: "Earnings this month" was cut to "Earnings thi…" on a phone
-      Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, c: on.withValues(alpha: 0.85), h: 1.25)),
+      Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: block.muted)),
     ]);
   }
 }

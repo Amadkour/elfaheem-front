@@ -478,8 +478,13 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
   // (4.5:1): the light stop moves toward primary_light only as far as that holds, so the light end is a sheen, not a
   // pale corner under white text. 135° (top-start → bottom-end), mirrored in Arabic. Flat [primary] stays THE colour
   // for text, icons, outlines and focus rings.
+  //
+  // D-622 (the editorial theme): the fill stays in ONE family — primary_light → primary → primary_dark — with no hue
+  // turn at either end (the old sweep drifted from emerald into blue and the warm glow turned olive). The gradient
+  // is a touch again (a button, the selected tab, a page header's band); heroes are tinted blocks (AppBlock).
 
-  /// The three stops of the brand fill in [dark] mode: lift (toward primary_light) · primary · deep.
+  /// The three stops of the brand fill in [dark] mode: lift (toward primary_light) · primary · deep (toward
+  /// primary_dark). All three the primary's own hue.
   List<Color> brandStops({required bool dark}) {
     final key = Object.hash(_model, dark, onHero);
     final hit = _stopCache[key];
@@ -488,16 +493,24 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     Color safe(Color c) => ensureContrast(c, [ink], min: _kBrandInk);
     final mid = safe(primary);
     // light: up to 55 % of the way to primary_light; dark: a shorter lift (a bright edge glares on a dark page)
-    // a lift of the SAME hue barely shows (the contrast guard keeps it within a shade of primary), so the derived
-    // ends also turn the hue: a fresher light end, a cooler, deeper end — a visible sweep at the same contrast
     final lift = _model?.primaryGradientStart != null
         ? safe(_model!.primaryGradientStart!)
-        : safe(_turn(_liftToward(mid, primaryLight, dark ? 0.35 : 0.55, ink), -7, 1.08, 1));
-    final deepBase = _model?.primaryGradientEnd ?? _turn(primaryDark, 16, 1, dark ? 1 : 0.86);
-    // dark: stop short of primary_dark so the fill still separates from the dark page around it
+        : safe(_liftToward(mid, primaryLight, dark ? 0.35 : 0.55, ink));
+    // the deep end: primary_dark (a server stop wins); dark mode stops short of it so the fill still separates from
+    // the dark page around it
+    final deepBase = _model?.primaryGradientEnd ?? _settle(primaryDark, mid);
     final deep = safe(dark ? Color.lerp(mid, deepBase, 0.7)! : deepBase);
     if (_stopCache.length > 8) _stopCache.clear();
     return _stopCache[key] = [lift, mid, deep];
+  }
+
+  /// [deep] kept in [mid]'s family: the same hue (a palette whose primary_dark drifted toward another hue is pulled
+  /// back), at least a shade darker than [mid] so the gradient reads at all.
+  static Color _settle(Color deep, Color mid) {
+    final m = HSLColor.fromColor(mid);
+    var d = HSLColor.fromColor(deep).withHue(m.hue);
+    if (d.lightness > m.lightness * 0.82) d = d.withLightness((m.lightness * 0.72).clamp(0.0, 1.0));
+    return d.toColor();
   }
 
   static const double _kBrandInk = 5.5; // so onHeroMuted (90 % ink) still reads at WCAG AA on every stop
@@ -512,28 +525,12 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     return from;
   }
 
-  /// [c] with its hue turned by [deg], its saturation and lightness scaled.
-  static Color _turn(Color c, double deg, double sat, double light) {
-    final h = HSLColor.fromColor(c);
-    return h
-        .withHue((h.hue + deg) % 360)
-        .withSaturation((h.saturation * sat).clamp(0.0, 1.0))
-        .withLightness((h.lightness * light).clamp(0.0, 1.0))
-        .toColor();
-  }
-
-  // D-550: a wide angled blend through three hues, not a plain fade. Every stop passes the ink check.
+  // D-622: one family, three shades (lift · primary · deep) on a 135° sweep, start → end. Every stop passes the ink
+  // check (the stops come from [brandStops]).
   LinearGradient _brand(List<Color> stops) => LinearGradient(
     begin: const AlignmentDirectional(-1, -0.7),
     end: const AlignmentDirectional(1, 0.5),
-    colors: () {
-      final h = AppHarmony.of(stops[1], onHero, min: _kBrandInk, dark: isDark);
-      return [
-        stops[1],
-        ensureContrast(Color.lerp(stops[1], h.near, 0.7)!, [onHero], min: _kBrandInk),
-        ensureContrast(Color.lerp(stops[1], h.far, 0.6)!, [onHero], min: _kBrandInk),
-      ];
-    }(),
+    colors: [stops[0], stops[1], stops[2]],
     stops: const [0, 0.5, 1],
   );
 
@@ -570,18 +567,19 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     );
   }
 
-  /// A faint warm glow (accent2) for the top-end corner of a hero, at most as strong as the on-hero ink allows
-  /// over every hero stop.
+  /// A faint light for the top-end corner of a hero gradient: the family's lift stop (D-622: the old accent2 glow
+  /// turned olive on emerald), at most as strong as the on-hero ink allows over every hero stop.
   RadialGradient get heroGlow {
     final stops = heroGradient.colors;
+    final light = brandStops(dark: isDark).first;
     var a = 0.22;
-    while (a > 0 && stops.any((s) => contrastRatio(onHero, Color.alphaBlend(accent2.withValues(alpha: a), s)) < _kBrandInk)) {
+    while (a > 0 && stops.any((s) => contrastRatio(onHero, Color.alphaBlend(light.withValues(alpha: a), s)) < _kBrandInk)) {
       a -= 0.02;
     }
     return RadialGradient(
       center: AlignmentDirectional.topEnd,
       radius: 1.1,
-      colors: [accent2.withValues(alpha: a.clamp(0.0, 1.0)), accent2.withValues(alpha: 0)],
+      colors: [light.withValues(alpha: a.clamp(0.0, 1.0)), light.withValues(alpha: 0)],
     );
   }
 

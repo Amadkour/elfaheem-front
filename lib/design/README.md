@@ -49,21 +49,32 @@ theme's `display*` / `headline*` / `titleLarge` (app bar, dialog titles) follow.
 `shadowTone`, status (`success`, `warning`, `danger` + `*Tint`), on-gradient ink (`onHero`,
 `onHeroMuted`, `heroGlass`, `heroGlassBorder`). Never `Colors.white` / `Colors.black` / a hex in a screen.
 
-## 2. The gradient — `app_gradients.dart` (D-136, D-180)
+## 2. The gradient — `app_gradients.dart`, `app_mesh.dart` (D-136, D-180, D-622)
 
-The brand gradient is derived from the primary family; every stop keeps white ink at WCAG AA. It is a **touch**:
+The brand gradient is ONE family — `primary_light → primary → primary_dark`, derived from the live primary so every
+preset keeps working; no hue turn at either end, no gold glow (D-622) — and every stop keeps white ink at WCAG AA.
+The mesh (`AppMeshSurface`, the page header's band and the shell's sidebar) is the same family with soft lights of
+that one hue, never a second colour. It is a **touch**:
 
-- ✓ page / section headers (`AppPageHeader`'s accent strip, `AppGradientSurface`), the ONE primary button of a
+- ✓ page / section headers (`AppHeader`'s band, `AppPageHeader`'s accent strip), the ONE primary button of a
   screen, the selected tab or pill, the active sidebar item, key chart series, ONE highlighted KPI
+  (`AppGradientSurface`)
+- ✗ a role home's greeting / welcome hero: that is a tinted **block** (`HomeHeader` = `AppBlock(hero: true)`, peach
+  for students and parents, sky for instructors, admins and organizations, charcoal ink, the name in `AppType.display`)
 - ✗ never behind body text, forms, lists or tables · never two gradient fills side by side · never the legacy
   accent / teal / gold gradient getters in new UI
 
 ```dart
-AppGradientSurface(child: Text('Good morning', style: AppType.display(context)))  // onHero ink inside
+HomeHeader(name: user.name, subtitle: homeDaySummary(…), actions: [...])  // the hero block; tone: from the role
+AppGradientSurface(child: Text('Revenue', style: AppType.section(context)))  // ONE highlighted KPI, onHero ink
 const AppAccentStrip()                                    // 3 px brand line on top of a header / card
 AppGradientText('12,480')                                 // ONE key figure (plain primary in high contrast)
 AppGradients.chart(context)                               // a bar / area fill
 ```
+
+The boot splash (`boot_splash.dart`) follows the same rule: the native cream canvas (emerald in dark mode, frame 1
+equals the OS splash), the app's name as an editorial wordmark under the mark, warm emerald / gold / peach lights,
+charcoal ink — no blue, no mint.
 
 ## 3. Components
 
@@ -80,6 +91,7 @@ AppGradients.chart(context)                               // a bar / area fill
 | pagination | `AppPagination(page:, pageCount:, onPage:, total:, pageSize:)` | `app_pagination.dart` |
 | card | `AppCard` · `AppActionCard` | `app_kit.dart` |
 | block (D-613) | `AppBlock(tone: AppBlockTone.peach / sky / gold / emerald / paper, child:, hero:, onTap:)` · `AppBlockTone.forKey(id)` · `AppBlock.colorsOf(context)` (ink, muted, faint, `accentInk(c)`) | `app_blocks.dart` |
+| home hero (D-622) | `HomeHeader(name:, subtitle:, actions:, shellActions:, contextSwitcher:, tone:)` · `HomeHeroCard(child:, tone:)` with `HomeHeroTag` / `HomeDayRibbon` / `HomeHeroFigure` in the block's ink (`homeOnHero`) | `home_kit.dart` |
 | KPI | `AppKpiCard(label:, value:, icon:, delta:, spark:, highlight:)` in an `AppKpiGrid` · `AppStatTile` · `AppTrendTile` | `app_kpi.dart`, `app_charts.dart` |
 | status | `AppStatusBadge(label:, tone: AppTone.success)` · `AppCountBadge(count:)` · `AppBadgePill` | `app_badges.dart` |
 | tabs | `AppTabs(items:, index:, onChanged:)` (pill, gradient selection) · `AppUnderlineTabs` (page sections) | `app_tabs.dart` |

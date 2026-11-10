@@ -3,6 +3,7 @@
 // palette whose primary_light is far too pale for white text.
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -40,10 +41,16 @@ void main() {
         for (final s in t.heroGradient.colors) {
           expect(contrastRatio(t.onHero, Color.alphaBlend(glow, s)), greaterThanOrEqualTo(kWcagAaText));
         }
-        // a real gradient, not a flat fill: its two ends are different colours (D-550: different hues, not two shades)
+        // a real gradient, not a flat fill: its two ends are different SHADES of one hue (D-622 replaced D-550's
+        // three hues: the fill no longer drifts from emerald into blue, and the glow is the family's lift, not gold)
         final g = t.primaryGradient.colors;
-        expect(g.length, greaterThanOrEqualTo(3)); // D-550: a blend through three hues
+        expect(g.length, greaterThanOrEqualTo(3)); // lift · primary · deep
         expect(g.first, isNot(g.last));
+        double hue(Color c) => HSLColor.fromColor(c).hue;
+        for (final s in g) {
+          final d = (hue(s) - hue(g[1])).abs();
+          expect(math.min(d, 360 - d), lessThanOrEqualTo(6), reason: 'one family: $s is off the primary hue');
+        }
         // RTL-aware direction
         expect(t.primaryGradient.begin, isA<AlignmentDirectional>());
       });
