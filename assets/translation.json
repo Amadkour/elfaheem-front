@@ -23631,6 +23631,66 @@
   "pp_msg_note": {"en": "The teacher gets it as a notification about {child}. Up to 3 messages per teacher a day.", "ar": "تصل المدرّس إشعارًا عن {child}. الحد 3 رسائل لكل مدرّس يوميًا."},
   "pp_msg_empty": {"en": "Write your message first.", "ar": "اكتب رسالتك أولًا."},
   "pp_msg_no_teacher": {"en": "No teacher to message yet.", "ar": "لا يوجد مدرّس لمراسلته بعد."},
+  "chat_reply": {
+    "en": "Reply",
+    "ar": "رد"
+  },
+  "chat_reply_cancel": {
+    "en": "Cancel reply",
+    "ar": "إلغاء الرد"
+  },
+  "chat_copy": {
+    "en": "Copy text",
+    "ar": "نسخ النص"
+  },
+  "chat_copied": {
+    "en": "Copied",
+    "ar": "تم النسخ"
+  },
+  "chat_deleted": {
+    "en": "This message was deleted",
+    "ar": "حُذفت هذه الرسالة"
+  },
+  "chat_quote_gone": {
+    "en": "That message is no longer available",
+    "ar": "هذه الرسالة لم تعد متاحة"
+  },
+  "chat_requests_sub": {
+    "en": "People you have no link with yet",
+    "ar": "أشخاص لا تربطك بهم صلة بعد"
+  },
+  "chat_requests_note": {
+    "en": "Nothing is shared with them until you accept. Decline quietly or block if it is not welcome.",
+    "ar": "لا يصلهم أي شيء منك قبل أن تقبل. ارفض بهدوء أو احظر إن لم يكن مرحبًا به."
+  },
+  "chat_request_from": {
+    "en": "{name} wants to message you",
+    "ar": "{name} يريد مراسلتك"
+  },
+  "chat_person_info": {
+    "en": "Contact info",
+    "ar": "بيانات جهة الاتصال"
+  },
+  "chat_filter_more": {
+    "en": "More",
+    "ar": "المزيد"
+  },
+  "chat_filter_person": {
+    "en": "Person",
+    "ar": "الشخص"
+  },
+  "chat_filter_course": {
+    "en": "Course",
+    "ar": "الدورة"
+  },
+  "chat_open_external": {
+    "en": "Open in a new tab",
+    "ar": "فتح في تبويب جديد"
+  },
+  "chat_close": {
+    "en": "Close",
+    "ar": "إغلاق"
+  },
   "chat_title": {
     "en": "Messages",
     "ar": "الرسائل"
@@ -24268,8 +24328,8 @@
     "ar": "الخلفية"
   },
   "imgbg_group_photo": {
-    "en": "Photo",
-    "ar": "الصورة"
+    "en": "Background",
+    "ar": "الخلفية"
   },
   "imgbg_group_suggested": {
     "en": "Suggested",
@@ -24288,12 +24348,12 @@
     "ar": "الأصلية"
   },
   "imgbg_remove": {
-    "en": "Remove",
-    "ar": "إزالة"
+    "en": "Transparent",
+    "ar": "شفافة"
   },
   "imgbg_remove_long": {
-    "en": "Remove the background",
-    "ar": "إزالة الخلفية"
+    "en": "Make the background transparent",
+    "ar": "جعل الخلفية شفافة"
   },
   "imgbg_white": {
     "en": "White",
@@ -24327,36 +24387,76 @@
     "en": "Undo",
     "ar": "تراجع"
   },
-  "imgbg_cancel": {
-    "en": "Cancel",
-    "ar": "إلغاء"
-  },
   "imgbg_working": {
-    "en": "Removing the background…",
-    "ar": "جارٍ إزالة الخلفية…"
+    "en": "Reading the picture…",
+    "ar": "جارٍ قراءة الصورة…"
   },
   "imgbg_hint_working": {
-    "en": "Finding the subject of your photo…",
-    "ar": "نبحث عن العنصر الأساسي في صورتك…"
-  },
-  "imgbg_hint_start": {
-    "en": "Remove the background, or pick a colour for it.",
-    "ar": "أزل الخلفية، أو اختر لوناً لها."
+    "en": "Reading the picture…",
+    "ar": "جارٍ قراءة الصورة…"
   },
   "imgbg_hint_ready": {
-    "en": "Your subject is ready. Try any background.",
-    "ar": "العنصر الأساسي جاهز. جرّب أي خلفية."
+    "en": "Tap any background left to remove it, or tap a removed part to bring it back.",
+    "ar": "اضغط على أي خلفية متبقية لإزالتها، أو على جزء أُزيل لاستعادته."
   },
   "imgbg_hint_cover_high": {
-    "en": "Most of this photo was kept, so the change may be small.",
-    "ar": "أُبقي معظم الصورة، لذلك قد يكون التغيير بسيطاً."
+    "en": "Little was removed. Tap the background to remove it.",
+    "ar": "أُزيل القليل فقط. اضغط على الخلفية لإزالتها."
   },
   "imgbg_hint_cover_low": {
-    "en": "Only a small part of the photo was kept. If it looks wrong, undo and try a clearer photo.",
-    "ar": "أُبقي جزء صغير فقط من الصورة. إن بدا غير صحيح، تراجع وجرّب صورة أوضح."
+    "en": "Almost everything went. Tap your subject to bring it back, or lower the colour range.",
+    "ar": "أُزيل كل شيء تقريباً. اضغط على العنصر لاستعادته، أو قلّل مدى اللون."
   },
   "imgbg_failed": {
-    "en": "Couldn't remove the background. Your photo is unchanged.",
-    "ar": "تعذّرت إزالة الخلفية. صورتك لم تتغير."
+    "en": "This picture could not be read. Try another one.",
+    "ar": "تعذّرت قراءة هذه الصورة. جرّب صورة أخرى."
+  },
+  "imgbg_redo": {
+    "en": "Redo",
+    "ar": "إعادة"
+  },
+  "imgbg_reset": {
+    "en": "Start over",
+    "ar": "البدء من جديد"
+  },
+  "imgbg_tool_pick": {
+    "en": "Pick colour",
+    "ar": "اختيار لون"
+  },
+  "imgbg_tool_restore": {
+    "en": "Restore",
+    "ar": "استعادة"
+  },
+  "imgbg_tool_erase": {
+    "en": "Erase",
+    "ar": "مسح"
+  },
+  "imgbg_tolerance": {
+    "en": "Colour range",
+    "ar": "مدى اللون"
+  },
+  "imgbg_softness": {
+    "en": "Edge softness",
+    "ar": "نعومة الحواف"
+  },
+  "imgbg_brush_size": {
+    "en": "Brush size",
+    "ar": "حجم الفرشاة"
+  },
+  "imgbg_holes": {
+    "en": "Also inside shapes (letters, gaps)",
+    "ar": "أيضاً داخل الأشكال (الحروف والفراغات)"
+  },
+  "imgbg_hint_busy": {
+    "en": "This background has many colours. Tap each part you want to remove.",
+    "ar": "هذه الخلفية متعددة الألوان. اضغط على كل جزء تريد إزالته."
+  },
+  "imgbg_hint_restore": {
+    "en": "Paint over a part to bring it back.",
+    "ar": "لوّن فوق أي جزء لاستعادته."
+  },
+  "imgbg_hint_erase": {
+    "en": "Paint over a part to remove it.",
+    "ar": "لوّن فوق أي جزء لإزالته."
   }
 }

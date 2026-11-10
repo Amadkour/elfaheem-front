@@ -15,6 +15,8 @@
 // The preview body is the plain-values [ShareLinkPreviewView] (test/ui/share_link_preview_layout_test.dart).
 library;
 
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -22,6 +24,7 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../design/app_kit.dart';
+import '../../../design/app_notice.dart';
 import '../../../design/app_icons.dart';
 import '../../../design/app_share_sheet.dart';
 import '../../../utils/web_entry_route.dart' show SignInReturn;
@@ -31,6 +34,7 @@ import '../../student/courses/details/course_link_loader.dart';
 import '../course_profile/course_profile_hub.dart' show CoursePageLoader;
 import '../guest/guest_state.dart';
 import '../public_profile/public_profile_page.dart' show PublicProfileScreen;
+import '../live/companion/companion_incoming.dart' show CompanionIncoming;
 import '../records/records_share.dart' show SharedRecordPage;
 
 /// The public card of a link (`GET /api/v1/public/share/{kind}/{id}`).
@@ -99,7 +103,7 @@ class _ShareLinkPageState extends State<ShareLinkPage> {
       _error = null;
     });
     if (_signedIn) return _openTarget();
-    if (_link.kind == AppLinkKind.page) {
+    if (_link.kind == AppLinkKind.page || _link.kind == AppLinkKind.companion) {
       setState(() => _loading = false);
       return;
     }
@@ -140,6 +144,13 @@ class _ShareLinkPageState extends State<ShareLinkPage> {
         return;
       case AppLinkKind.record:
         return _replace(SharedRecordPage(token: _link.token ?? ''), name: '/records/shared');
+      case AppLinkKind.companion:
+        final secret = _link.token ?? '';
+        nav.pushReplacementNamed(home);
+        unawaited(CompanionIncoming.instance.openFromLink(secret).catchError((Object e) {
+          showAppNotice(appErrorMessage(e), error: true);
+        }));
+        return;
       case AppLinkKind.page:
         final pid = _link.pageId ?? '';
         String? to;

@@ -61,12 +61,13 @@ class ChatCourse {
 }
 
 class ChatLastMessage {
-  const ChatLastMessage({required this.id, required this.kind, this.body = '', this.senderId, this.senderName, required this.createdAt});
+  const ChatLastMessage({required this.id, required this.kind, this.body = '', this.senderId, this.senderName, required this.createdAt, this.deleted = false});
   final int id;
   final String kind, body;
   final int? senderId;
   final String? senderName;
   final DateTime createdAt;
+  final bool deleted;
 
   static ChatLastMessage? fromJson(Object? j) {
     if (j is! Map) return null;
@@ -77,7 +78,42 @@ class ChatLastMessage {
       senderId: _intOf(j['sender_id']),
       senderName: j['sender_name'] as String?,
       createdAt: chatUtc(j['created_at']),
+      deleted: j['deleted'] == true,
     );
+  }
+}
+
+/// The message a reply quotes (D-540): what the small block on top of the bubble needs.
+class ChatReplyRef {
+  const ChatReplyRef({required this.id, this.kind = 'text', this.body = '', this.senderId, this.senderName, this.deleted = false});
+  final int id;
+  final String kind, body;
+  final int? senderId;
+  final String? senderName;
+  final bool deleted;
+
+  static ChatReplyRef? fromJson(Object? j) {
+    if (j is! Map) return null;
+    final id = _intOf(j['id']);
+    if (id == null) return null;
+    return ChatReplyRef(
+      id: id,
+      kind: '${j['kind'] ?? 'text'}',
+      body: '${j['body'] ?? ''}',
+      senderId: _intOf(j['sender_id']),
+      senderName: j['sender_name'] as String?,
+      deleted: j['deleted'] == true,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {'id': id, 'kind': kind, 'body': body, 'sender_id': senderId, 'sender_name': senderName, 'deleted': deleted};
+
+  /// Quoting a message on screen. Null for one the server does not know yet.
+  static ChatReplyRef? of(ChatMessage m) {
+    final id = m.id;
+    if (id == null) return null;
+    final body = m.body ?? '';
+    return ChatReplyRef(id: id, kind: m.kind, body: body.length > 200 ? body.substring(0, 200) : body, senderId: m.senderId, senderName: m.senderName, deleted: m.deleted);
   }
 }
 
@@ -275,6 +311,7 @@ class ChatMessage {
     this.sendState = ChatSendState.sent,
     this.autoRetry = false,
     this.error,
+    this.replyTo,
   });
 
   /// [error] of a message whose picked file is gone (a web page was reloaded): no retry can send it.
@@ -301,6 +338,9 @@ class ChatMessage {
   bool autoRetry;
   String? error;
 
+  /// The message this one answers (D-540).
+  ChatReplyRef? replyTo;
+
   bool get hasImages => attachments.any((a) => a.image);
 
   static ChatMessage fromJson(Map<String, dynamic> j) {
@@ -318,6 +358,7 @@ class ChatMessage {
       attachments: [for (final a in (j['attachments'] as List? ?? const [])) if (a is Map) ChatAttachment.fromJson(a)],
       createdAt: chatUtc(j['created_at']),
       deleted: j['deleted'] == true,
+      replyTo: ChatReplyRef.fromJson(j['reply_to']),
     );
   }
 }

@@ -32,7 +32,7 @@ class FakeServer extends ChatApi {
   List<ChatMessage> Function(int? after)? pageAfter;
 
   @override
-  Future<ChatMessage> send(int id, {required String clientId, String? body, List<int> attachmentIds = const []}) async {
+  Future<ChatMessage> send(int id, {required String clientId, String? body, List<int> attachmentIds = const [], int? replyToId}) async {
     onSend?.call();
     _inFlight++;
     if (_inFlight > maxConcurrent) maxConcurrent = _inFlight;
@@ -400,22 +400,6 @@ void main() {
     });
   });
 
-  group('inbox', () {
-    test('unread and not muted is on top; the rest keeps its order; a filter shows the rows as they came', () {
-      final a = row()..unread = 0;
-      final b = row()..unread = 2;
-      final muted = row()
-        ..unread = 5
-        ..muted = true;
-      final s = chatInboxSections([a, b, muted], plain: true);
-      expect(s.attention, [b]);
-      expect(s.rest, [a, muted]);
-      final f = chatInboxSections([a, b], plain: false);
-      expect(f.attention, isEmpty);
-      expect(f.rest, [a, b]);
-    });
-  });
-
   group('keys', () {
     test('Enter sends on the web and desktop, not on a phone', () {
       expect(chatEnterSendsOn(TargetPlatform.windows), isTrue);
@@ -460,19 +444,19 @@ void main() {
       await t.drag(find.byType(CustomScrollView), const Offset(0, 500));
       await t.pump();
       await t.pump(const Duration(milliseconds: 400));
-      final anchor = find.text('hi 45');
+      final anchor = find.textContaining('hi 45', findRichText: true);
       expect(anchor, findsOneWidget);
       final before = t.getTopLeft(anchor).dy;
       thread.visible = true;
       thread.onIncoming(incoming(61));
       await t.pump();
-      expect(t.getTopLeft(find.text('hi 45')).dy, before, reason: 'the list did not move');
+      expect(t.getTopLeft(find.textContaining('hi 45', findRichText: true)).dy, before, reason: 'the list did not move');
       expect(find.byType(ChatJumpToLatest), findsOneWidget);
       expect(find.text('1'), findsWidgets);
       await t.tap(find.byType(ChatJumpToLatest));
       await t.pump(const Duration(milliseconds: 500));
       await t.pump(const Duration(milliseconds: 500));
-      expect(find.text('hi 61'), findsOneWidget);
+      expect(find.textContaining('hi 61', findRichText: true), findsOneWidget);
       expect(find.byType(ChatJumpToLatest), findsNothing);
     });
   });

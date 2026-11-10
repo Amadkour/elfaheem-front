@@ -89,6 +89,7 @@ import 'features/shared/profile/update_account_widget.dart';
 import 'features/shared/subscription/subscription_screen.dart';
 import 'features/student/courses/details/course_detail_screen.dart';
 import 'features/org/orgs_unavailable_gate.dart';
+import 'features/shared/live/companion/companion_incoming.dart';
 import 'features/student/courses/details/course_link_loader.dart';
 import 'features/shared/public_profile/public_profile_page.dart' show PublicProfileScreen;
 import 'core/share/app_links.dart';
@@ -314,6 +315,7 @@ void _onZoneError(Object error, StackTrace stack) {
 // ── App entry point ──────────────────────────────────────────────────────────
 
 void _runApp() {
+  CompanionIncoming.instance.start(); // a phone can be asked to join its person's live room (D-520)
   final api = ApiClient();
 
   runApp(

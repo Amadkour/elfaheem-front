@@ -13,13 +13,28 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../../../admin/admin_common.dart' show t;
-import '../templates/own_sheet.dart' show OwnSheetPicker, defaultOwnSheetPicker;
+import '../exam_setup.dart' show OmrTemplateItem;
+import '../templates/own_sheet.dart' show OwnSheetPicker, defaultOwnSheetPicker, openOwnSheet;
 import 'bubble_flow.dart';
+import 'bubble_one_photo.dart';
 import 'bubble_widgets.dart';
 
 /// Opens the wizard (a new draft, or [resumeId]). The confirmed template id, or null.
 Future<int?> openBubbleImport(BuildContext context, {int? orgId, int? resumeId, BubbleApi? api, OwnSheetPicker? picker}) =>
     Navigator.of(context).push<int>(MaterialPageRoute(builder: (_) => BubbleImportScreen(orgId: orgId, resumeId: resumeId, api: api, picker: picker)));
+
+/// D-500, the way a teacher adds any sheet: one picture, no corner marks. The saved sheet, ready to pick, or null.
+Future<OmrTemplateItem?> openBubbleSheetFinder(BuildContext context, {int? orgId, BubbleApi? api}) async {
+  final client = api ?? BubbleApi();
+  final id = await openBubbleImport(context, orgId: orgId, api: client);
+  if (id == null) return null;
+  final r = await client.templates(orgId: orgId);
+  if (!r.ok) return null;
+  for (final m in (r.map['items'] is List ? r.map['items'] as List : const [])) {
+    if (m is Map<String, dynamic> && m['id'] == id) return OmrTemplateItem.fromJson(m);
+  }
+  return null;
+}
 
 class BubbleImportScreen extends StatefulWidget {
   const BubbleImportScreen({super.key, this.orgId, this.resumeId, this.api, this.picker, this.camera});
@@ -47,6 +62,10 @@ class _BubbleImportScreenState extends State<BubbleImportScreen> {
   bool _loading = true;
   BubbleTapMode? _mode;
   final List<BubbleTap> _taps = [];
+  BubbleBlock? _picked;
+
+  /// One picture (D-500) for anything new; an older four-picture draft finishes the way it began.
+  bool get _onePhoto => widget.resumeId == null || (_data?.onePhoto ?? false);
 
   @override
   void initState() {
@@ -106,8 +125,89 @@ class _BubbleImportScreenState extends State<BubbleImportScreen> {
   Future<void> _pick({required bool camera}) async {
     final f = await (widget.picker ?? defaultOwnSheetPicker)(camera: camera);
     if (f == null || !mounted) return;
-    await _send(f.$1, f.$2);
+    if (_onePhoto) {
+      await _sendSheet(f.$1, f.$2);
+    } else {
+      await _send(f.$1, f.$2);
+    }
   }
+
+  void _defaultName(BubbleImport d) {
+    if (_name.text.isEmpty && d.questions > 0) _name.text = t('ورقة ${d.questions} سؤال', 'Sheet of ${d.questions} questions');
+  }
+
+  Future<void> _sendSheet(String name, Uint8List bytes) async {
+    final d = _data;
+    if (d == null) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+      _sheet = null;
+      _picked = null;
+      _mode = null;
+    });
+    final r = await _api.sendSheet(d.id, (name, bytes));
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      if (r.ok) {
+        final next = BubbleImport.fromJson(r.map);
+        _data = next;
+        _defaultName(next);
+      } else {
+        _error = bubbleErrorText(r);
+      }
+    });
+    if (r.ok && _data!.detected) await _loadSheet();
+  }
+
+  /// A one-tap fix: applied at once, the sheet redrawn.
+  Future<void> _fix({List<BubbleTap> taps = const [], Map<String, dynamic>? set}) async {
+    final d = _data;
+    if (d == null) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final r = await _api.quickFix(d.id, taps: taps, set: set);
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      if (r.ok) {
+        _data = BubbleImport.fromJson(r.map);
+        _picked = null;
+      } else {
+        _error = bubbleErrorText(r);
+      }
+    });
+    if (r.ok) await _loadSheet();
+  }
+
+  void _tapResult(Offset o) {
+    final m = _mode;
+    final d = _data;
+    if (m == null || d == null) return;
+    if (m == BubbleTapMode.fixOptions) {
+      final hit = d.blocks.where((b) => b.role == 'answers' && b.box.length == 4 && o.dx >= b.box[0] && o.dx <= b.box[0] + b.box[2] && o.dy >= b.box[1] && o.dy <= b.box[1] + b.box[3]);
+      setState(() => _picked = hit.isEmpty ? null : hit.first);
+      return;
+    }
+    setState(() => _mode = null);
+    _fix(taps: [BubbleTap(m, o.dx, o.dy)]);
+  }
+
+  Future<void> _written() async {
+    final made = await openOwnSheet(context, orgId: widget.orgId);
+    if (made != null && mounted) Navigator.of(context).pop(made.id);
+  }
+
+  void _retake() => setState(() {
+        _data = BubbleImport.fromJson({'id': _data!.id, 'one_photo': true});
+        _sheet = null;
+        _mode = null;
+        _picked = null;
+        _name.clear();
+      });
 
   Future<void> _crop() async {
     final raw = _previews[_step];
@@ -259,6 +359,57 @@ class _BubbleImportScreenState extends State<BubbleImportScreen> {
       body = const AppListSkeleton(items: 4, withAvatar: false);
     } else if (d == null) {
       body = AppEmpty(icon: Icons.document_scanner_rounded, title: _error ?? t('تعذّر بدء الاستيراد', "Couldn't start the import"));
+    } else if (_onePhoto) {
+      body = LayoutBuilder(builder: (context, box) {
+        final wide = box.maxWidth >= 900;
+        final child = d.detected
+            ? BubbleResultPanel(
+                data: d,
+                image: _sheet,
+                wide: wide,
+                mode: _mode,
+                busy: _busy,
+                error: _error,
+                name: _name,
+                selectedBlock: _picked,
+                onMode: (m) => setState(() {
+                  _mode = m;
+                  _picked = null;
+                }),
+                onTapSheet: _tapResult,
+                onIdBox: (r) {
+                  setState(() => _mode = null);
+                  _fix(set: {
+                    'id_box': {'x': r.left, 'y': r.top, 'w': r.width, 'h': r.height}
+                  });
+                },
+                onRotate: () => _fix(set: {'rotate': 90}),
+                onDirection: () => _fix(set: {'direction': d.isRtl ? 'ltr' : 'rtl'}),
+                onBlockOptions: (b, n) => _fix(set: {
+                  'block_options': {'block': b.id, 'value': n}
+                }),
+                onUndo: _undo,
+                onRetake: _retake,
+                onConfirm: _confirm,
+              )
+            : Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: BubbleCaptureCard(
+                    busy: _busy,
+                    error: _error,
+                    issues: d.issues,
+                    onCamera: (widget.camera ?? _phoneLike(context)) ? () => _pick(camera: true) : null,
+                    onFiles: () => _pick(camera: false),
+                    onWrittenTable: _written,
+                  ),
+                ),
+              );
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(wide ? AppSpace.lg : AppSpace.md),
+          child: Center(child: ConstrainedBox(constraints: BoxConstraints(maxWidth: AppWidth.wide.max), child: child)),
+        );
+      });
     } else if (d.detected) {
       body = LayoutBuilder(builder: (context, box) {
         final wide = box.maxWidth >= 900;
@@ -346,7 +497,7 @@ class _BubbleImportScreenState extends State<BubbleImportScreen> {
     }
     return BasePage(
       key: const ValueKey(kBubbleTeachFeature),
-      appBar: ScreenAppBar(title: t('استيراد ورقة جديدة', 'Import a new sheet')),
+      appBar: ScreenAppBar(title: t('إضافة ورقة إجابة', 'Add an answer sheet')),
       child: body,
     );
   }

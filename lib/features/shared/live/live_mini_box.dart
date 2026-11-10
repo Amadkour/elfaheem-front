@@ -319,7 +319,7 @@ class LiveMiniTile extends StatelessWidget {
           }
 
           for (final p in room.remoteParticipants.values) {
-            add(p, isLocal: false);
+            if (!p.identity.startsWith('companion:')) add(p, isLocal: false); // a phone is its person (D-520)
           }
           final local = room.localParticipant;
           if (local != null) add(local, isLocal: true);

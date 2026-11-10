@@ -14,6 +14,7 @@ import '../../../core/api_client.dart';
 import '../../../core/live/live_events_client.dart';
 import '../../../main.dart';
 import '../../../utils/live_events.dart';
+import '../live/companion/companion_incoming.dart' show CompanionIncoming;
 import '../../../utils/top_route_observer.dart';
 import '../live/live_room.dart' show LiveLobbyEvents;
 import 'package:provider/provider.dart';
@@ -344,6 +345,11 @@ class NotificationService {
     // (live-rooms-spec §4). Shows nothing; the visible `live_lobby` notification is a separate push.
     if (type == LiveLobbyEvents.pushType) {
       LiveLobbyEvents.notify(data);
+      return true;
+    }
+    // D-520: the phone is asked to join the person's live room; an app in front shows the prompt at once (server decides).
+    if (type == LiveEvents.liveCompanionRequest) {
+      CompanionIncoming.instance.check().ignore();
       return true;
     }
     // Real-time event (attention_changed, job_updated, lobby_updated, *_updated, …): same dedupe and bus as
