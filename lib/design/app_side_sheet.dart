@@ -9,6 +9,11 @@
 //
 // A sheet opens on the nearest Navigator, as showModalBottomSheet did, so providers scoped to a shell tab stay
 // readable from inside it. Close it with `Navigator.pop(ctx, value)`.
+//
+// Motion (D-621): the phone sheet rises in 280 ms on the iOS sheet curve and leaves in 200 ms (`AppEase.sheet`); a
+// drag follows the finger, can catch the sheet while it is still moving, settles on the same curve from where it was
+// let go, and a fast fling down (or a drop past half) dismisses it. The side panel slides in 280 ms on `AppEase.out`
+// and leaves in about 200 ms. Reduce motion: no slide (the drag itself still follows the finger).
 library;
 
 import 'package:flutter/material.dart';
@@ -16,6 +21,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
+import 'app_motion_kit.dart' show AppEase;
 import 'app_responsive.dart';
 import 'app_tokens.dart';
 
@@ -48,10 +54,10 @@ Future<T?> showAppSideSheet<T>(
     barrierDismissible: dismissible,
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     barrierColor: Colors.black.withValues(alpha: context.colors.isDark ? 0.6 : 0.4),
-    transitionDuration: motion.slow,
+    transitionDuration: motion.off ? Duration.zero : _sideIn,
     pageBuilder: (ctx, _, _) => AppSideSheetFrame(width: width, withCloseBar: withCloseBar, builder: builder),
     transitionBuilder: (ctx, anim, _, child) {
-      final curved = CurvedAnimation(parent: anim, curve: AppMotion.curve, reverseCurve: Curves.easeInCubic);
+      final curved = CurvedAnimation(parent: anim, curve: AppEase.out, reverseCurve: _sideOut);
       return SlideTransition(
         position: Tween<Offset>(begin: Offset(rtl ? -0.6 : 0.6, 0), end: Offset.zero).animate(curved),
         child: FadeTransition(opacity: curved, child: child),
@@ -59,6 +65,11 @@ Future<T?> showAppSideSheet<T>(
     },
   );
 }
+
+/// The side panel's entrance. A dialog route has one duration both ways, so the exit is made faster by its curve:
+/// it reaches the closed place after the first 200 ms of the 280 and rests there.
+const Duration _sideIn = Duration(milliseconds: 280);
+const Curve _sideOut = Interval(1 - 200 / 280, 1, curve: AppEase.outReversed);
 
 /// The floating panel. Public so a layout test can pump it on its own.
 class AppSideSheetFrame extends StatelessWidget {
@@ -158,6 +169,7 @@ Future<T?> _showPhoneSheet<T>(
     enableDrag: dismissible,
     useRootNavigator: useRootNavigator,
     routeSettings: routeSettings,
+    sheetAnimationStyle: appSheetAnimationStyle(context),
     backgroundColor: Colors.transparent,
     elevation: 0,
     builder: (ctx) => Padding(
@@ -200,6 +212,10 @@ Future<T?> _showPhoneSheet<T>(
     ),
   );
 }
+
+/// The phone sheet's motion (D-621): [AppEase.sheet], or none under Reduce motion.
+AnimationStyle appSheetAnimationStyle(BuildContext context) =>
+    AppMotion.of(context).off ? AnimationStyle.noAnimation : AppEase.sheet;
 
 /// [showModalBottomSheet]'s arguments, drawn as the app's sheet. On phones it IS a modal bottom sheet (the builder's
 /// own look is kept), on wide windows the side panel with a close button.

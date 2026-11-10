@@ -154,3 +154,32 @@ AppStateView<Overview>(loading: p.loading, error: p.error, data: p.data, onRetry
 4. Loading = skeleton, error = `AppErrorState` with the server's message, empty = `AppEmpty`.
 5. Destructive or platform-wide changes → `appConfirm(danger: true)`; settings forms → `AppUnsavedGuard`.
 6. `expectNoLayoutErrors` (320 × 640 and 1400 × 900, ar + en, text × 1.3) in a test.
+
+## 6. Motion — `app_motion_kit.dart`, `app_depth.dart` (D-580 .. D-586, D-620, D-621)
+
+Everything plays once and stops, is driven from where it is on screen (a second toggle turns it around, never a
+jump), keeps the transform the identity at rest, and parks under Reduce motion and the Super Admin's
+`app.animations` switch (`appMotionOff(context)`). Curves: `AppEase.out` for entrances and exits, `AppEase.drawer` for
+sheets; never ease-in on UI. One orchestrated entrance per screen, not a fade-up on every section.
+
+| Need | Use | Notes |
+|---|---|---|
+| a number | `AppCountUp(value, memoryKey:)` | counts once, glides on a change, the reader hears the final value |
+| a key figure (streak, points, score) | `AppOdometer(value, memoryKey:)` = `AppCountUp(roll: true)` | digits roll with a drum perspective, tabular, one per block |
+| progress / chart / press | `AppFill` · `AppDrawIn` · `AppPressScale` | |
+| list entrance | `AppReveal(index:, group:)` | first 8 items, once per route |
+| hero surface 3D | `AppTilt(glare: true)` + `AppTiltLayer` | hero blocks only |
+| a card in a scrolling list | `AppTilt.subtle(child:)` | 2°, no glare, touch = press depth only, no layout while moving |
+| a cover in a list | `AppParallaxImage(image:)` | ≤ 8 px drift, paint only; give it a bounded box and a `BoxFit.cover` picture |
+| quiz answer / flashcard | `AppFlip3D(front:, back:, flipped:)` | spring, turns toward the reading end, the reader hears the visible face; crossfade under Reduce motion |
+| lesson / accordion | `AppExpandCard(header:, child:, expanded:, onExpandedChanged:)` | 48 px header button with expanded state, Enter / Space |
+| feedback panel | `AppSlideIn(visible:, child:, from: AppSlideFrom.bottom)` | 260 ms in, 180 ms out; put it where it may overlap |
+| sheet | `showAppSheet` | 280 ms in / 200 ms out (`AppEase.sheet`), drag catches it mid-way, fling dismisses |
+
+```dart
+AppFlip3D(flipped: _revealed, front: _QuestionCard(q), back: _AnswerCard(q))
+AppExpandCard(header: Text(lesson.title, style: AppType.row(context)), child: _LessonBody(lesson))
+Stack(children: [list, Align(alignment: Alignment.bottomCenter, child: AppSlideIn(visible: _checked, child: _Feedback(ok)))])
+AspectRatio(aspectRatio: 16 / 9, child: AppParallaxImage(image: Image.network(url, fit: BoxFit.cover)))
+AppOdometer('$points', memoryKey: 'home.points', style: AppType.figureLarge(context))
+```
