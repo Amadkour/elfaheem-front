@@ -27,6 +27,13 @@ Color get _emerald => LivePalette.success;   // resume / sharing
 // Pause / Resume / Stop, the REC time) is not on the bar: it lives in the room's
 // top row (live_top_row.dart, D-095).
 // ─────────────────────────────────────────────────────────────────────────────
+/// D-520: the bar's mic or camera while the person's phone provides it (companion_link.dart).
+class CompanionDeviceOverride {
+  const CompanionDeviceOverride({required this.on, required this.toggle});
+  final bool on;
+  final VoidCallback toggle;
+}
+
 class ControlsWidget extends StatefulWidget {
   final Room room;
   final LocalParticipant participant;
@@ -93,6 +100,13 @@ class ControlsWidget extends StatefulWidget {
   /// Lobby requests the host has not seen yet.
   final int? lobbyAttention;
 
+  /// D-520: the phone is this person's microphone / camera: the bar's button is that device's, its tap reaches the phone.
+  final CompanionDeviceOverride? companionMic;
+  final CompanionDeviceOverride? companionCam;
+
+  /// The bar's "Your phone" (web / desktop); null hides it.
+  final LiveControlAction? phoneAction;
+
   const ControlsWidget(
       this.room,
       this.participant, {
@@ -124,6 +138,9 @@ class ControlsWidget extends StatefulWidget {
         this.shareButton,
         this.handsAttention,
         this.lobbyAttention,
+        this.companionMic,
+        this.companionCam,
+        this.phoneAction,
       });
 
   @override
@@ -360,6 +377,7 @@ class ControlsWidgetState extends State<ControlsWidget> {
 
   void toggleMic() {
     if (!widget.canPublish || !widget.allowMic) return;
+    if (widget.companionMic != null) return widget.companionMic!.toggle();
     if (LiveMicGate.instance.micOn(participant)) {
       _disableAudio();
     } else {
@@ -390,8 +408,11 @@ class ControlsWidgetState extends State<ControlsWidget> {
   // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final isMicOn   = LiveMicGate.instance.micOn(participant);
-    final isCamOn   = participant.isCameraEnabled();
+    final micPhone = widget.companionMic;
+    final camPhone = widget.companionCam;
+    final isMicOn   = micPhone?.on ?? LiveMicGate.instance.micOn(participant);
+    final isCamOn   = camPhone?.on ?? participant.isCameraEnabled();
+    final phoneMark = t(' · الهاتف', ' · phone');
     // iOS (I3): the broadcast is live before its track is published (and the sheet may still be open).
     final isSharing = participant.isScreenShareEnabled() ||
         (IosShareNative.supported && IosShareNative.broadcasting.value);
@@ -401,30 +422,30 @@ class ControlsWidgetState extends State<ControlsWidget> {
     final mic = !widget.allowMic ? null : LiveControlAction(
       key: const ValueKey('live_room.mic'),
       icon: isMicOn ? Icons.mic_rounded : Icons.mic_off_rounded,
-      label: isMicOn ? 'lr_mute'.tr : 'lr_unmute'.tr,
+      label: '${isMicOn ? 'lr_mute'.tr : 'lr_unmute'.tr}${micPhone != null ? phoneMark : ''}',
       active: isMicOn,
       off: !isMicOn,
       shortcut: 'M',
       onTap: toggleMic,
       menuTitle: 'lr_microphone'.tr,
-      menu: lkPlatformIs(PlatformType.android) ? null : _deviceOptions(_audioInputs, widget.room.selectedAudioInputDeviceId, _selectAudioInput, 'lr_microphone'.tr),
+      menu: lkPlatformIs(PlatformType.android) || micPhone != null ? null : _deviceOptions(_audioInputs, widget.room.selectedAudioInputDeviceId, _selectAudioInput, 'lr_microphone'.tr),
     );
 
     final cam = !widget.allowCamera ? null : LiveControlAction(
       key: const ValueKey('live_room.camera'),
       icon: isCamOn ? Icons.videocam_rounded : Icons.videocam_off_rounded,
-      label: isCamOn ? 'lr_camera'.tr : 'lr_cam_off'.tr,
+      label: '${isCamOn ? 'lr_camera'.tr : 'lr_cam_off'.tr}${camPhone != null ? phoneMark : ''}',
       compactLabel: 'lr_camera'.tr, // the slashed icon already says "off" (the long label is cut on phones)
-      active: isCamOn && _hasAnyCamera,
-      off: !isCamOn && _hasAnyCamera,
+      active: isCamOn && (_hasAnyCamera || camPhone != null),
+      off: !isCamOn && (_hasAnyCamera || camPhone != null),
       loading: _camActionBusy,
       shortcut: 'V',
-      onTap: (_camActionBusy || !_hasAnyCamera) ? null : _toggleCameraOnOff,
+      onTap: camPhone != null ? camPhone.toggle : (_camActionBusy || !_hasAnyCamera) ? null : _toggleCameraOnOff,
       menuTitle: 'lr_camera'.tr,
-      menu: mobile ? null : _deviceOptions(_videoInputs, widget.room.selectedVideoInputDeviceId, _selectVideoInput, 'lr_camera'.tr),
+      menu: mobile || camPhone != null ? null : _deviceOptions(_videoInputs, widget.room.selectedVideoInputDeviceId, _selectVideoInput, 'lr_camera'.tr),
     );
 
-    final flip = (widget.allowCamera && isCamOn && _hasBackCamera)
+    final flip = (widget.allowCamera && isCamOn && _hasBackCamera && camPhone == null)
         ? LiveControlAction(
             key: const ValueKey('live_room.flip_camera'),
             icon: position == CameraPosition.back ? Icons.camera_front_rounded : Icons.camera_rear_rounded,
@@ -551,6 +572,8 @@ class ControlsWidgetState extends State<ControlsWidget> {
       onTap: _onTapDisconnect,
     );
 
+    final phone = widget.phoneAction;
+
     if (!widget.canPublish) {
       // Listen-only: no mic / camera / share — just Leave, reactions and audio output.
       return LiveControlBar(
@@ -571,10 +594,10 @@ class ControlsWidgetState extends State<ControlsWidget> {
 
     return LiveControlBar(
       // Phones: whatever does not fit the pill moves into the "More" sheet automatically.
-      primary: [?mic, ?cam, ?share, ?annotate, ?react, ?hand, ?hands, ?chat],
+      primary: [?mic, ?cam, ?phone, ?share, ?annotate, ?react, ?hand, ?hands, ?chat],
       secondary: [?flip, ?speaker, ?output, ?help],
       groups: [
-        [?mic, ?cam, ?flip, ?speaker, ?output],
+        [?mic, ?cam, ?phone, ?flip, ?speaker, ?output],
         [?share, ?annotate],
         [?react, ?hand, ?hands, ?chat],
       ],

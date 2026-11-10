@@ -28,6 +28,9 @@ enum AppLinkKind {
 
   /// A shared recording (D-312): the link carries the share's token ([AppLink.token]).
   record,
+
+  /// A companion device's QR code (D-520): the token opens that person's request on their phone.
+  companion,
   page;
 
   /// The `/s/<kind>/` segment.
@@ -55,6 +58,9 @@ class AppLink {
   /// A shared recording by its share token (D-312).
   const AppLink.record(String token) : this._(AppLinkKind.record, token: token);
 
+  /// A companion phone's QR link (D-520).
+  const AppLink.companion(String secret) : this._(AppLinkKind.companion, token: secret);
+
   /// What a record token may look like (the server makes 24 url-safe characters).
   static final recordToken = RegExp(r'^[A-Za-z0-9_-]{8,64}$');
 
@@ -71,7 +77,7 @@ class AppLink {
   final Map<String, String> params;
   final int? ref;
 
-  /// [AppLinkKind.record] only.
+  /// [AppLinkKind.record] and [AppLinkKind.companion].
   final String? token;
 
   /// The in-app route of the link (what Flutter's deep linking hands to `onGenerateRoute`).
@@ -84,6 +90,8 @@ class AppLink {
         return params.isEmpty ? path : Uri(path: path, queryParameters: params).toString();
       case AppLinkKind.record:
         return '/s/record/$token';
+      case AppLinkKind.companion:
+        return '/s/companion/$token';
       default:
         return '/s/${kind.segment}/$id';
     }
@@ -113,6 +121,10 @@ class AppLink {
     if (kind == AppLinkKind.record) {
       final tok = segs[2];
       return recordToken.hasMatch(tok) ? AppLink.record(tok) : null;
+    }
+    if (kind == AppLinkKind.companion) {
+      final tok = segs[2];
+      return recordToken.hasMatch(tok) ? AppLink.companion(tok) : null;
     }
     if (kind == AppLinkKind.page) {
       final id = segs[2];

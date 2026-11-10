@@ -35,6 +35,7 @@ const kShareLinksKey = 'share.links';
       AppLinkKind.meeting => (t('اجتماع', 'Meeting'), Icons.groups_rounded),
       AppLinkKind.roadmap => (t('مسار تعلم', 'Learning path'), Icons.route_rounded),
       AppLinkKind.record => (t('تسجيل', 'Recording'), Icons.video_library_rounded),
+      AppLinkKind.companion => (t('هاتفك', 'Your phone'), Icons.phonelink_ring_rounded), // D-520: QR only, never shared
       AppLinkKind.page => (t('صفحة', 'Page'), Icons.web_rounded),
     };
 

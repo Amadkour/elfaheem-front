@@ -144,6 +144,10 @@ class LiveEvents {
 
   static const connectivity = 'connectivity_changed';
 
+  /// D-520: a phone is asked to join the person's live room · the request was answered, ended or changed.
+  static const liveCompanionRequest = 'live_companion_request';
+  static const liveCompanionState = 'live_companion_state';
+
   /// The legacy silent pushes, sent with `type` (older server) as well as `event`.
   static const silentTypes = {complaints, transfers, payments, payouts};
 
@@ -158,6 +162,8 @@ class LiveEvents {
     meetingLive,
     calendarUpdated,
     liveHostChanged,
+    liveCompanionRequest,
+    liveCompanionState,
     quizStarted,
     attendanceRosterUpdated,
     orgAccessChanged,
