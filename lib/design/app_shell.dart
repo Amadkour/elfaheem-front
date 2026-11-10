@@ -562,20 +562,6 @@ class WideShell extends StatelessWidget {
   }
 }
 
-class _Glow extends StatelessWidget {
-  const _Glow({required this.size, required this.opacity});
-
-  final double size;
-  final double opacity;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(shape: BoxShape.circle, color: context.colors.onHero.withValues(alpha: opacity)),
-      );
-}
-
 /// The signed-in user at the bottom of the sidebar / rail — opens the account editor.
 class UserChipButton extends StatelessWidget {
   final UserModel user;
