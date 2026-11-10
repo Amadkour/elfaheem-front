@@ -400,6 +400,8 @@ class _FocusFold extends StatelessWidget {
 class _ContentPanel extends StatelessWidget {
   const _ContentPanel({required this.focus, required this.child});
 
+  /// True in focus mode and when the page draws its own header across the top (showTopBar: false, D-570): no
+  /// rounded corner then, which would leave a thin arc where the sidebar meets that header.
   final bool focus;
   final Widget child;
 
@@ -550,7 +552,7 @@ class WideShell extends StatelessWidget {
                   child: MediaQuery.removePadding(
                     context: context,
                     removeTop: barShown,
-                    child: _ContentPanel(focus: focus, child: body ?? LazyTabStack(index: current, items: dashboardItems)),
+                    child: _ContentPanel(focus: focus || !showTopBar, child: body ?? LazyTabStack(index: current, items: dashboardItems)),
                   ),
                 ),
               ],
@@ -997,7 +999,7 @@ class RailShell extends StatelessWidget {
                   child: MediaQuery.removePadding(
                     context: context,
                     removeTop: barShown,
-                    child: _ContentPanel(focus: focus, child: body ?? LazyTabStack(index: current, items: dashboardItems)),
+                    child: _ContentPanel(focus: focus || !showTopBar, child: body ?? LazyTabStack(index: current, items: dashboardItems)),
                   ),
                 ),
               ],

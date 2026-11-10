@@ -26,8 +26,10 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 
 import 'app_kit.dart';
+import 'app_responsive.dart' show Breakpoints;
 import 'app_shell_nav.dart' show ShellChrome;
 import 'app_tokens.dart';
+import 'chrome_button.dart' show ChromeBar;
 
 /// "Updated just now" / "Updated 3 min ago" / "Updated 2 h ago" / "Updated 12 Oct 2026 · 09:30".
 String appUpdatedText(DateTime at, DateTime now) {
@@ -198,6 +200,7 @@ class AppPageHeader extends StatelessWidget {
             onPressed: onRefresh,
             icon: Icon(Icons.refresh_rounded, size: AppIconSize.lg, color: c.onHero),
           );
+    final global = MediaQuery.sizeOf(context).width >= Breakpoints.desktop ? ShellChrome.toolsOf(context) : null;
     return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
       if (onBack != null) ...[
         AppBackButton(onHero: true, onPressed: onBack),
@@ -218,6 +221,8 @@ class AppPageHeader extends StatelessWidget {
         ?refresh,
         if (actions.isNotEmpty) AppHeaderTray(child: Row(mainAxisSize: MainAxisSize.min, children: actions)),
         if (primaryAction != null) ...[AppSpace.gapXs, AppHeaderTray(child: primaryAction!)],
+        // the app-wide tools (calendar, messages, assistant, bell) on every pushed page, as AppHeader draws them
+        if (global != null) ...[AppSpace.gapXs, ChromeBar(child: global(context))],
         AppSpace.gapXs,
         const AppFocusToggle(onHero: true),
       ] else ...[
