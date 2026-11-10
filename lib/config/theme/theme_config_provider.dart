@@ -196,12 +196,13 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
   // SURFACES
   // ══════════════════════════════════════════════════════════════════════
 
+  /// The canvas. Dark mode uses `dark_background` (D-610): it used to be the card tone at 90 %, so a card on the page
+  /// had no tone step under it, and depth is tone first (canvas → paper card → tinted block).
   Color get background => isDark
-      ? (_model?.darkCard.withAlpha(230) ?? AppTheme.darkBackground)
+      ? (_model?.darkBackground ?? AppTheme.darkBackground)
       : (_model?.background ?? AppTheme.background);
 
-  /// [background] made opaque, for a pinned header (a tab strip) that content scrolls under: in dark mode
-  /// [background] is the card tone at 90 % alpha, so cards and titles showed through the strip. Blended over the
+  /// [background] made opaque, for a pinned header (a tab strip) that content scrolls under. Blended over the
   /// page's base tone it looks the same as the page around it when nothing is under it.
   Color get pinnedBackground => Color.alphaBlend(background, isDark ? cardBg2 : cardBg).withAlpha(255);
 
@@ -311,6 +312,99 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
   Color get darkIconBg => isDark
       ? Colors.white.withValues(alpha: 0.08)
       : textDark.withValues(alpha: 0.08);
+
+  // ══════════════════════════════════════════════════════════════════════
+  // BLOCKS (D-610, D-613) — the tinted containers that group one subject (AppBlock). Peach is `accent` (accent1),
+  // sky is `accent3` (derived when the theme sends none), gold is a tint of accent2, emerald a tint of the primary.
+  // Dark mode: each becomes a dark surface tinted with its hue. Ink on every block keeps WCAG AA: [blockInk] /
+  // [blockMuted] / [blockFaint], and [blockAccentInk] darkens gold / success / warning until they read as text.
+  // ══════════════════════════════════════════════════════════════════════
+
+  /// The sky block tone, light mode: the theme's `accent3`, else [deriveAccent3] from this palette.
+  Color get accent3 {
+    final m = _model;
+    if (m == null) return AppTheme.accent3;
+    return m.accent3 ?? (_accent3Cache[m] ??= deriveAccent3(primary: m.primary, background: m.background, ink: m.textLight));
+  }
+
+  final Map<ThemeConfigModel, Color> _accent3Cache = {};
+
+  /// A sky block tone for a palette without `accent3`: a pale blue (hue 214, the editorial preset's) turned 15 %
+  /// toward the primary's hue and mixed 15 % into the canvas so it sits in the same light, then lightened until the
+  /// caption ink [ink] still reads at AA on it.
+  static Color deriveAccent3({required Color primary, required Color background, required Color ink}) {
+    final ph = HSLColor.fromColor(primary);
+    var d = ((ph.hue - 214 + 540) % 360) - 180; // the shortest way from 214° to the primary's hue
+    if (ph.saturation < 0.12) d = 0; // a grey primary has no hue to lean toward
+    final sky = HSLColor.fromAHSL(1, (214 + d * 0.15) % 360, 0.6, 0.91).toColor();
+    return blockSurface(Color.lerp(sky, background, 0.15)!, ink);
+  }
+
+  /// [c] made into a light block surface: at least 0.86 lightness, at most 0.85 saturation, and light enough for
+  /// [ink] at AA (a theme whose accent is a saturated mid tone still gets a calm block).
+  static Color blockSurface(Color c, Color ink) {
+    var h = HSLColor.fromColor(c.withValues(alpha: 1));
+    if (h.lightness < 0.86) h = h.withLightness(0.9);
+    if (h.saturation > 0.85) h = h.withSaturation(0.85);
+    while (contrastRatio(ink, h.toColor()) < kWcagAaText && h.lightness < 0.975) {
+      h = h.withLightness(h.lightness + 0.005);
+    }
+    return h.toColor();
+  }
+
+  /// A block's dark-mode surface: the hue of [tone] on a deep, low-saturation tone, a step above the dark card.
+  static Color darkBlock(Color tone) {
+    final h = HSLColor.fromColor(tone);
+    final sat = h.saturation < 0.08 ? h.saturation : 0.3;
+    return HSLColor.fromAHSL(1, h.hue, sat, 0.18).toColor();
+  }
+
+  Color get _lightInk => _model?.textLight ?? AppTheme.textLight;
+
+  /// Peach: learning / progress blocks (`accent`).
+  Color get blockPeach {
+    final light = blockSurface(accent, _lightInk);
+    return isDark ? darkBlock(light) : light;
+  }
+
+  /// Sky: schedule / information blocks (`accent3`).
+  Color get blockSky {
+    final light = blockSurface(accent3, _lightInk);
+    return isDark ? darkBlock(light) : light;
+  }
+
+  /// Gold: streaks, achievements, top marks (a tint of accent2; about #F6E7C4 for the editorial preset).
+  Color get blockGold {
+    final g = HSLColor.fromColor(accent2);
+    final light = blockSurface(
+        g.withSaturation((g.saturation * 1.08).clamp(0.0, 0.85)).withLightness(0.87).toColor(), _lightInk);
+    return isDark ? darkBlock(light) : light;
+  }
+
+  /// Emerald: done / correct / the primary subject (a tint of the primary).
+  Color get blockEmerald {
+    final p = HSLColor.fromColor(primary);
+    final light = blockSurface(p.withSaturation(p.saturation.clamp(0.0, 0.42)).withLightness(0.9).toColor(), _lightInk);
+    return isDark ? darkBlock(light) : light;
+  }
+
+  /// Main ink on a block (titles, figures): `text_dark` / `dark_text_primary`.
+  Color get blockInk => textDark;
+
+  /// Secondary ink on [block], at AA.
+  Color blockMuted(Color block) => ensureContrast(textMedium, [block]);
+
+  /// Caption ink on [block], at AA.
+  Color blockFaint(Color block) => ensureContrast(textLight, [block]);
+
+  /// [accent] (gold, success, warning, danger, the primary) as TEXT on [block]: the same hue, darkened (lifted in
+  /// dark mode) until it reaches AA. Gold / success / warning are only 2.9 – 4.3:1 on the light blocks as they come.
+  Color blockAccentInk(Color accent, Color block) => ensureContrast(accent, [block]);
+
+  /// The one shadow tone (system.md §4): the theme's `card_shadow_color` (warm charcoal) in light mode, black in dark.
+  Color get shadowTone => isDark
+      ? (_model?.cardShadowColorDark ?? AppTheme.cardShadowColorDark)
+      : (_model?.cardShadowColor ?? AppTheme.cardShadowColor);
 
   // ══════════════════════════════════════════════════════════════════════
   // ON-HERO ROLES — ink and glass over a gradient hero, the sidebar and the
@@ -608,14 +702,15 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     final base = isDark
         ? (_model?.cardShadowColorDark ?? AppTheme.cardShadowColorDark)
         : (_model?.cardShadowColor ?? AppTheme.cardShadowColor);
+    // level 1 (D-612): a whisper in the warm shadow tone; a resting card leans on tone + hairline instead
     return isDark
         ? [
-      BoxShadow(color: base.withValues(alpha: 0.30), blurRadius: 24, offset: const Offset(0, 8)),
-      BoxShadow(color: base.withValues(alpha: 0.20), blurRadius: 4, offset: const Offset(0, 2)),
+      BoxShadow(color: base.withValues(alpha: 0.26), blurRadius: 18, offset: const Offset(0, 6)),
+      BoxShadow(color: base.withValues(alpha: 0.16), blurRadius: 3, offset: const Offset(0, 1)),
     ]
         : [
-      BoxShadow(color: base.withValues(alpha: 0.04), blurRadius: 24, offset: const Offset(0, 8)),
-      BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 2)),
+      BoxShadow(color: base.withValues(alpha: 0.035), blurRadius: 16, offset: const Offset(0, 6)),
+      BoxShadow(color: base.withValues(alpha: 0.03), blurRadius: 3, offset: const Offset(0, 1)),
     ];
   }
 
@@ -631,8 +726,8 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       : [BoxShadow(color: danger.withValues(alpha: 0.30), blurRadius: 16, offset: const Offset(0, 6))];
 
   List<BoxShadow> get disableShadow => [
-    BoxShadow(color: const Color(0x001A1A1A).withValues(alpha: 0.04), blurRadius: 24, offset: const Offset(0, 8)),
-    BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 2)),
+    BoxShadow(color: shadowTone.withValues(alpha: 0.03), blurRadius: 16, offset: const Offset(0, 6)),
+    BoxShadow(color: shadowTone.withValues(alpha: 0.02), blurRadius: 3, offset: const Offset(0, 1)),
   ];
 
   List<BoxShadow> get bottomNavShadow => isDark
@@ -641,8 +736,8 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     BoxShadow(color: Colors.black.withValues(alpha: 0.20), blurRadius: 8, offset: const Offset(0, -2)),
   ]
       : [
-    BoxShadow(color: const Color(0xFF1A1A1A).withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, -4)),
-    BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, -2)),
+    BoxShadow(color: shadowTone.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, -4)),
+    BoxShadow(color: shadowTone.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, -2)),
   ];
 
   // ══════════════════════════════════════════════════════════════════════
@@ -666,7 +761,7 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   TextStyle get label => AppTheme.label.copyWith(color: textMedium);
 
-  /// Button text — white on the indigo primary (readable contrast).
+  /// Button text — white on the emerald primary (readable contrast).
   TextStyle get button => AppTheme.button.copyWith(color: Colors.white);
 
   TextStyle get buttonSm => AppTheme.buttonSmall.copyWith(color: Colors.white);
@@ -702,33 +797,122 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     final base = dark ? AppTheme.darkThemeData : AppTheme.themeData;
     final m = _model;
     final p = m?.primary ?? AppTheme.primary;
+    final pDark = m?.primaryDark ?? AppTheme.primaryDark;
     final pLight = m?.primaryLight ?? AppTheme.primaryLight;
     final danger = m?.danger ?? AppTheme.danger;
-    final success = m?.success ?? AppTheme.success;
     final accent2 = m?.accent2 ?? AppTheme.accent2;
-    final bg = m == null ? base.scaffoldBackgroundColor : (dark ? m.darkBackground : m.background);
-    final card = m == null ? base.cardColor : (dark ? m.darkCard : m.cardBg);
-    final surface = m == null ? base.colorScheme.surface : (dark ? m.darkSurface : m.surfaceCard);
-    final divider = m == null ? base.dividerColor : (dark ? m.darkDivider : m.divider);
-    final input = m == null ? (base.inputDecorationTheme.fillColor ?? card) : (dark ? m.inputBgDark : m.inputBg);
-    final text = m == null ? (dark ? Colors.white : const Color(0xFF1F2430)) : (dark ? m.darkTextPrimary : m.textDark);
-    final muted = m == null ? Colors.grey : (dark ? m.darkTextMuted : m.textMedium);
-    final faint = m == null ? Colors.grey : (dark ? m.darkTextLight : m.textLight);
-    final ink = m?.charcoal ?? const Color(0xFF1F2430);
-    // The primary as TEXT on the page / card / sheet surfaces (text and outlined buttons): the raw indigo is about
-    // 2:1 on the dark surfaces, so its lightness is moved until it reaches WCAG AA (4.5:1) on all of them, hue
-    // kept. A primary that already passes (the light theme) is unchanged. Fills and borders keep the raw primary.
-    // Without a server theme, cards are drawn in the card theme's colour (= context.colors.cardBg), which is not
-    // ThemeData.cardColor there (the darker surface): the text colour is checked against it too.
-    final cardDrawn = m == null ? (base.cardTheme.color ?? card) : card;
-    final pText = ensureContrast(p, [bg, card, surface, cardDrawn]);
-    // The same for a selected chip's label and check: it sits on the 14 % primary tint, where the raw indigo was
-    // 1.9:1 in dark (every selected ChoiceChip / FilterChip); light is unchanged (6.6:1 already).
+    final bg = dark ? (m?.darkBackground ?? AppTheme.darkBackground) : (m?.background ?? AppTheme.background);
+    final card = dark ? (m?.darkCard ?? AppTheme.darkCard) : (m?.cardBg ?? AppTheme.cardBg);
+    final surface = dark ? (m?.darkSurface ?? AppTheme.darkSurface) : (m?.surfaceCard ?? AppTheme.surfaceCard);
+    final divider = dark ? (m?.darkDivider ?? AppTheme.darkDivider) : (m?.divider ?? AppTheme.divider);
+    final input = dark ? (m?.inputBgDark ?? AppTheme.inputBgDark) : (m?.inputBg ?? AppTheme.inputBg);
+    final text = dark ? (m?.darkTextPrimary ?? AppTheme.darkTextPrimary) : (m?.textDark ?? AppTheme.textDark);
+    final muted = dark ? (m?.darkTextMuted ?? AppTheme.darkTextMuted) : (m?.textMedium ?? AppTheme.textMedium);
+    final faint = dark ? (m?.darkTextLight ?? AppTheme.darkTextLight) : (m?.textLight ?? AppTheme.textLight);
+    final ink = m?.charcoal ?? AppTheme.charcoal;
+    final shadow = dark ? (m?.cardShadowColorDark ?? AppTheme.cardShadowColorDark) : (m?.cardShadowColor ?? AppTheme.cardShadowColor);
+    final heroInk = onHero;
+    // The primary as TEXT on the page / card / sheet surfaces (text and outlined buttons, the focus ring, the selected
+    // tab): the raw primary is about 2:1 on the dark surfaces, so its lightness is moved until it reaches WCAG AA
+    // (4.5:1) on all of them, hue kept. A primary that already passes (the light theme) is unchanged. Fills keep
+    // the raw primary (white ink on it).
+    final pText = ensureContrast(p, [bg, card, surface, input]);
+    // The same for a selected chip's label and check: it sits on the 14 % primary tint.
     final chipTint = p.withValues(alpha: 0.14);
     final pOnChip = ensureContrast(p, [for (final s in [bg, card, surface, input]) Color.alphaBlend(chipTint, s)]);
 
+    // ── blocks, mode by mode (the getters read [isDark]) ──
+    final wasDark = isDark;
+    isDark = dark;
+    final peach = blockPeach, gold = blockGold, emerald = blockEmerald;
+    isDark = wasDark;
+
+    // ── Material 3 colour roles (D-610): a strict scheme from the palette, so dialogs, menus, date pickers, chips,
+    // the FAB and every other Material widget wear the theme without a per-widget colour. ──
+    // light: paper is the lightest surface, the canvas a step down, the input well the deepest;
+    // dark: the canvas is the deepest, paper a step up, the input well the highest.
+    final lowest = dark ? bg : card;
+    final highest = input;
+    final mid = dark ? Color.lerp(surface, card, 0.5)! : bg;
+    final errorContainer = dark ? darkBlock(danger) : Color.lerp(card, danger, 0.1)!;
+    // the dark primary role is the AA-lifted one (selection, focus, a date picker's chosen day on a dark sheet);
+    // its ink is whichever of the two inks reads better on it
+    final schemePrimary = dark ? pText : p;
+    Color inkOn(Color fill) =>
+        contrastRatio(heroInk, fill) >= contrastRatio(ink, fill) ? heroInk : (m?.charcoalDark ?? AppTheme.charcoalDark);
+    final scheme = ColorScheme(
+      brightness: dark ? Brightness.dark : Brightness.light,
+      primary: schemePrimary,
+      onPrimary: inkOn(schemePrimary),
+      primaryContainer: emerald,
+      onPrimaryContainer: ensureContrast(dark ? pLight : pDark, [emerald]),
+      secondary: dark ? muted : (m?.charcoalLight ?? AppTheme.charcoalLight),
+      onSecondary: dark ? bg : heroInk,
+      secondaryContainer: peach,
+      onSecondaryContainer: text,
+      tertiary: ensureContrast(accent2, [bg, card]),
+      onTertiary: inkOn(ensureContrast(accent2, [bg, card])),
+      tertiaryContainer: gold,
+      onTertiaryContainer: ensureContrast(accent2, [gold]),
+      error: ensureContrast(danger, [bg, card]),
+      onError: inkOn(ensureContrast(danger, [bg, card])),
+      errorContainer: errorContainer,
+      onErrorContainer: ensureContrast(danger, [errorContainer]),
+      surface: surface,
+      onSurface: text,
+      onSurfaceVariant: muted,
+      surfaceDim: dark ? bg : Color.lerp(bg, input, 0.5)!,
+      surfaceBright: dark ? Color.lerp(card, input, 0.5)! : card,
+      surfaceContainerLowest: lowest,
+      surfaceContainerLow: Color.lerp(lowest, mid, 0.5)!,
+      surfaceContainer: mid,
+      surfaceContainerHigh: Color.lerp(mid, highest, 0.5)!,
+      surfaceContainerHighest: highest,
+      surfaceTint: Colors.transparent, // tone comes from the palette, never from an elevation tint
+      outline: Color.lerp(divider, faint, 0.45)!,
+      outlineVariant: divider,
+      shadow: shadow,
+      scrim: m?.charcoalDark ?? AppTheme.charcoalDark,
+      inverseSurface: dark ? text : ink,
+      onInverseSurface: dark ? bg : card,
+      inversePrimary: dark ? p : pLight,
+    );
+
     TextStyle ts(double size, [FontWeight w = FontWeight.w600, Color? c]) =>
         TextStyle(fontFamily: AppFonts.family, fontSize: size, fontWeight: w, color: c);
+    // D-611: headings in the editorial face (or the text font, "Headings: Same as text"), sized as AppType does
+    final editorial = AppFonts.editorialHeadings;
+    final scale = editorial ? AppFonts.editorialScale() : 1.0;
+    final ar = AppConfig.lang == 'ar';
+    TextStyle? head(TextStyle? s, double optical) => s?.copyWith(
+          fontFamily: AppFonts.editorial,
+          fontFamilyFallback: AppFonts.editorialFallback,
+          fontSize: editorial ? (optical * scale).roundToDouble() : s.fontSize,
+          fontWeight: FontWeight.w600,
+          height: editorial ? (ar ? 1.3 : 1.15) : s.height,
+          letterSpacing: ar ? 0 : (editorial ? -optical * scale * 0.01 : s.letterSpacing),
+          color: text,
+        );
+    final tt = base.textTheme;
+    final textTheme = tt.copyWith(
+      displayLarge: head(tt.displayLarge, 44),
+      displayMedium: head(tt.displayMedium, 38),
+      displaySmall: head(tt.displaySmall, 32),
+      headlineLarge: head(tt.headlineLarge, 28),
+      headlineMedium: head(tt.headlineMedium, 24),
+      headlineSmall: head(tt.headlineSmall, 22),
+      titleLarge: head(tt.titleLarge, 20),
+    );
+    TextStyle heading(double optical, double sans) => editorial
+        ? TextStyle(
+            fontFamily: AppFonts.editorialFamily,
+            fontFamilyFallback: AppFonts.editorialFallback,
+            fontSize: (optical * scale).roundToDouble(),
+            fontWeight: FontWeight.w600,
+            height: ar ? 1.3 : 1.15,
+            color: text)
+        : ts(sans, FontWeight.w600, text);
+
     // D-136: a Filled / Elevated button whose fill IS the brand primary (the theme default, or a screen that asks
     // for `backgroundColor: c.primary`) is painted with the brand gradient; any other fill (danger, success, a
     // tint, the disabled well) keeps its own colour. The gradient is an Ink on the button's own Material, so the
@@ -738,7 +922,7 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     final gloss = LinearGradient(
       begin: Alignment.topCenter,
       end: const Alignment(0, -0.38),
-      colors: [Colors.white.withValues(alpha: dark ? 0.12 : 0.2), Colors.white.withValues(alpha: 0)],
+      colors: [heroInk.withValues(alpha: dark ? 0.12 : 0.2), heroInk.withValues(alpha: 0)],
     );
     Widget brandFill(BuildContext context, Set<WidgetState> states, Widget? child) {
       if (states.contains(WidgetState.disabled)) return child ?? const SizedBox.shrink();
@@ -763,96 +947,130 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
         );
       });
     }
-    final r14 = RoundedRectangleBorder(borderRadius: BorderRadius.circular(14));
+
+    // ── component geometry (D-612): controls 14 · cards 16 · sheets and dialogs 28; 48 px targets ──
+    final control = RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusControl));
+    const buttonSize = Size(64, 48);
+    const buttonPad = EdgeInsets.symmetric(horizontal: 24);
+    final buttonText = ts(15, FontWeight.w600);
     WidgetStateProperty<Color?> on(Color sel, Color off) =>
         WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? sel : off);
-    OutlineInputBorder ob(Color c, [double w = 1]) =>
-        OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c, width: w));
+    OutlineInputBorder ob(Color c, [double w = 1]) => OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppTheme.radiusControl), borderSide: BorderSide(color: c, width: w));
+    // a 2 px focus ring in the primary for keyboard focus on any button
+    WidgetStateProperty<BorderSide?> focusSide([BorderSide? rest]) => WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.focused) ? BorderSide(color: pText, width: 2) : rest);
 
     return base.copyWith(
       scaffoldBackgroundColor: bg,
+      canvasColor: bg,
       cardColor: card,
       dividerColor: divider,
-      colorScheme: base.colorScheme.copyWith(
-        primary: p,
-        onPrimary: Colors.white,
-        primaryContainer: p.withValues(alpha: 0.12),
-        onPrimaryContainer: p,
-        secondary: accent2,
-        tertiary: success,
-        error: danger,
-        surface: surface,
-        onSurface: text,
-        onSurfaceVariant: muted,
-        outline: divider,
-        outlineVariant: divider,
-      ),
+      shadowColor: shadow,
+      colorScheme: scheme,
+      textTheme: textTheme,
       textSelectionTheme: TextSelectionThemeData(
-          cursorColor: p, selectionColor: p.withValues(alpha: 0.25), selectionHandleColor: p),
+          cursorColor: pText, selectionColor: p.withValues(alpha: 0.25), selectionHandleColor: p),
+      appBarTheme: base.appBarTheme.copyWith(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        foregroundColor: text,
+        titleTextStyle: heading(22, 20),
+        iconTheme: IconThemeData(color: text),
+      ),
       // ── buttons ──
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: (base.elevatedButtonTheme.style ?? const ButtonStyle()).copyWith(
           backgroundColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.disabled) ? divider : p),
-          foregroundColor: const WidgetStatePropertyAll(Colors.white),
-          shape: WidgetStatePropertyAll(r14),
-          textStyle: WidgetStatePropertyAll(ts(14.5, FontWeight.w800)),
-          minimumSize: const WidgetStatePropertyAll(Size(64, 48)),
+          foregroundColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.disabled) ? faint : heroInk),
+          shape: WidgetStatePropertyAll(control),
+          textStyle: WidgetStatePropertyAll(buttonText),
+          minimumSize: const WidgetStatePropertyAll(buttonSize),
+          padding: const WidgetStatePropertyAll(buttonPad),
           elevation: const WidgetStatePropertyAll(0),
+          side: focusSide(),
           backgroundBuilder: brandFill,
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: p,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: p.withValues(alpha: 0.35),
-          shape: r14,
-          minimumSize: const Size(64, 48),
-          textStyle: ts(14.5, FontWeight.w800),
+          foregroundColor: heroInk,
+          disabledBackgroundColor: divider,
+          disabledForegroundColor: faint,
+          shape: control,
+          minimumSize: buttonSize,
+          padding: buttonPad,
+          textStyle: buttonText,
           backgroundBuilder: brandFill,
-        ),
+        ).copyWith(side: focusSide()),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: pText,
-          side: BorderSide(color: p.withValues(alpha: 0.45), width: 1.3),
-          shape: r14,
-          minimumSize: const Size(64, 48),
-          textStyle: ts(14, FontWeight.w700),
-        ),
+          shape: control,
+          minimumSize: buttonSize,
+          padding: buttonPad,
+          textStyle: buttonText,
+        ).copyWith(side: focusSide(BorderSide(color: Color.lerp(divider, pText, 0.45)!, width: 1.2))),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: pText, shape: r14, textStyle: ts(13.5, FontWeight.w700)),
+        style: TextButton.styleFrom(
+          foregroundColor: pText,
+          shape: control,
+          minimumSize: const Size(48, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          textStyle: ts(14, FontWeight.w600),
+        ).copyWith(side: focusSide()),
       ),
-      iconButtonTheme: IconButtonThemeData(style: IconButton.styleFrom(foregroundColor: text)),
+      iconButtonTheme: IconButtonThemeData(
+          style: IconButton.styleFrom(foregroundColor: text, minimumSize: const Size(48, 48))),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: p,
-        foregroundColor: Colors.white,
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        extendedTextStyle: ts(14, FontWeight.w800),
+        foregroundColor: heroInk,
+        elevation: 3,
+        focusElevation: 3,
+        hoverElevation: 4,
+        highlightElevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
+        extendedTextStyle: buttonText,
       ),
-      // ── inputs & selection ──
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          shape: WidgetStatePropertyAll(control),
+          textStyle: WidgetStatePropertyAll(ts(13.5, FontWeight.w600)),
+          side: WidgetStatePropertyAll(BorderSide(color: divider)),
+          backgroundColor: on(emerald, Colors.transparent),
+          foregroundColor: on(ensureContrast(pText, [emerald]), muted),
+        ),
+      ),
+      // ── inputs & selection: a warm inset well, a hairline at rest, a 2 px primary ring on focus ──
       inputDecorationTheme: base.inputDecorationTheme.copyWith(
         filled: true,
         fillColor: input,
-        labelStyle: ts(13, FontWeight.w500, muted),
-        hintStyle: ts(13, FontWeight.w400, faint),
-        floatingLabelStyle: ts(13, FontWeight.w700, p),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        labelStyle: ts(13.5, FontWeight.w500, muted),
+        hintStyle: ts(14, FontWeight.w400, faint),
+        helperStyle: ts(12, FontWeight.w400, faint),
+        floatingLabelStyle: ts(13.5, FontWeight.w600, pText),
+        prefixIconColor: muted,
+        suffixIconColor: muted,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: ob(divider),
         enabledBorder: ob(divider),
-        focusedBorder: ob(p, 1.6),
-        errorBorder: ob(danger),
-        focusedErrorBorder: ob(danger, 1.6),
+        disabledBorder: ob(divider.withValues(alpha: 0.6)),
+        focusedBorder: ob(pText, 2),
+        errorBorder: ob(scheme.error),
+        focusedErrorBorder: ob(scheme.error, 2),
       ),
       checkboxTheme: base.checkboxTheme.copyWith(
         fillColor: on(p, Colors.transparent),
+        checkColor: WidgetStatePropertyAll(heroInk),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+        side: BorderSide(color: scheme.outline, width: 1.5),
       ),
-      radioTheme: RadioThemeData(fillColor: on(p, faint)),
+      radioTheme: RadioThemeData(fillColor: on(dark ? pText : p, faint)),
       switchTheme: SwitchThemeData(
-        thumbColor: on(Colors.white, Colors.white),
+        thumbColor: on(heroInk, heroInk),
         trackColor: on(p, divider),
         trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
         // Safety net for any stray Material Switch: same white knob + check as AppSwitch.
@@ -860,80 +1078,149 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
             s.contains(WidgetState.selected) ? Icon(Icons.check_rounded, size: 14, color: p) : null),
       ),
       sliderTheme: base.sliderTheme.copyWith(
-          activeTrackColor: p, thumbColor: p, inactiveTrackColor: p.withValues(alpha: 0.18)),
+          activeTrackColor: dark ? pText : p, thumbColor: dark ? pText : p, inactiveTrackColor: p.withValues(alpha: 0.18)),
       chipTheme: ChipThemeData(
         backgroundColor: input,
         selectedColor: chipTint,
         secondarySelectedColor: chipTint,
         checkmarkColor: pOnChip,
         side: BorderSide(color: divider),
-        shape: const StadiumBorder(),
-        labelStyle: ts(12.5, FontWeight.w600, text),
-        secondaryLabelStyle: ts(12.5, FontWeight.w800, pOnChip),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSmall)),
+        labelStyle: ts(13, FontWeight.w500, text),
+        secondaryLabelStyle: ts(13, FontWeight.w600, pOnChip),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
-          color: p, linearTrackColor: p.withValues(alpha: 0.14), circularTrackColor: Colors.transparent),
-      tabBarTheme: base.tabBarTheme.copyWith(
-        labelColor: p,
-        indicatorColor: p,
-        unselectedLabelColor: muted,
-        labelStyle: ts(13.5, FontWeight.w800),
-        unselectedLabelStyle: ts(13.5, FontWeight.w500),
+        color: dark ? pText : p,
+        linearTrackColor: emerald,
+        circularTrackColor: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
       ),
-      // ── surfaces ──
+      tabBarTheme: base.tabBarTheme.copyWith(
+        labelColor: pText,
+        indicatorColor: pText,
+        unselectedLabelColor: muted,
+        dividerColor: divider,
+        indicatorSize: TabBarIndicatorSize.label,
+        labelStyle: ts(14, FontWeight.w600),
+        unselectedLabelStyle: ts(14, FontWeight.w500),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: card,
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: emerald,
+        elevation: 0,
+        height: 68,
+        iconTheme: WidgetStateProperty.resolveWith((s) =>
+            IconThemeData(size: 24, color: s.contains(WidgetState.selected) ? ensureContrast(pText, [emerald]) : muted)),
+        labelTextStyle: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected)
+            ? ts(12, FontWeight.w600, text)
+            : ts(12, FontWeight.w500, muted)),
+      ),
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: bg,
+        indicatorColor: emerald,
+        selectedIconTheme: IconThemeData(size: 24, color: ensureContrast(pText, [emerald])),
+        unselectedIconTheme: IconThemeData(size: 24, color: muted),
+        selectedLabelTextStyle: ts(12, FontWeight.w600, text),
+        unselectedLabelTextStyle: ts(12, FontWeight.w500, muted),
+      ),
+      // ── surfaces: tone + hairline at rest (D-612); only what floats casts a shadow ──
       cardTheme: base.cardTheme.copyWith(
         color: card,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: divider)),
+        surfaceTintColor: Colors.transparent,
+        shadowColor: shadow,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusMedium), side: BorderSide(color: divider)),
       ),
       dialogTheme: base.dialogTheme.copyWith(
         backgroundColor: card,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        titleTextStyle: ts(18, FontWeight.w800, text),
-        contentTextStyle: ts(14, FontWeight.w500, muted),
+        shadowColor: shadow,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSheet)),
+        titleTextStyle: heading(22, 18),
+        contentTextStyle: ts(14, FontWeight.w400, muted),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: card,
         modalBackgroundColor: card,
         surfaceTintColor: Colors.transparent,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+        shadowColor: shadow,
+        dragHandleColor: divider,
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusSheet))),
         clipBehavior: Clip.antiAlias,
-        constraints: const BoxConstraints(maxWidth: 720),     // comfortable on tablets & web
+        constraints: const BoxConstraints(maxWidth: 720), // comfortable on tablets & web
       ),
       popupMenuTheme: PopupMenuThemeData(
         color: card,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        textStyle: ts(13.5, FontWeight.w600, text),
+        shadowColor: shadow,
+        elevation: 6,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusMedium), side: BorderSide(color: divider)),
+        textStyle: ts(14, FontWeight.w500, text),
+      ),
+      menuTheme: MenuThemeData(
+        style: MenuStyle(
+          backgroundColor: WidgetStatePropertyAll(card),
+          surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+          shadowColor: WidgetStatePropertyAll(shadow),
+          shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusMedium), side: BorderSide(color: divider))),
+        ),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: dark ? card : ink,
-        contentTextStyle: ts(13.5, FontWeight.w600, Colors.white),
-        actionTextColor: pLight,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        backgroundColor: scheme.inverseSurface,
+        contentTextStyle: ts(14, FontWeight.w500, scheme.onInverseSurface),
+        actionTextColor: dark ? p : pLight,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusControl)),
         insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       ),
       tooltipTheme: TooltipThemeData(
-        decoration: BoxDecoration(color: ink.withValues(alpha: 0.92), borderRadius: BorderRadius.circular(10)),
-        textStyle: ts(12, FontWeight.w600, Colors.white),
+        decoration: BoxDecoration(
+            color: scheme.inverseSurface.withValues(alpha: 0.95), borderRadius: BorderRadius.circular(AppTheme.radiusSmall)),
+        textStyle: ts(12.5, FontWeight.w500, scheme.onInverseSurface),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        waitDuration: const Duration(milliseconds: 400),
       ),
       listTileTheme: ListTileThemeData(
         iconColor: muted,
-        titleTextStyle: ts(14, FontWeight.w700, text),
-        subtitleTextStyle: ts(12.5, FontWeight.w500, muted),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        textColor: text,
+        titleTextStyle: ts(15, FontWeight.w500, text),
+        subtitleTextStyle: ts(13, FontWeight.w400, muted),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+        minVerticalPadding: 12,
+        shape: control,
       ),
-      dividerTheme: base.dividerTheme.copyWith(color: divider, space: 1),
+      dividerTheme: base.dividerTheme.copyWith(color: divider, space: 1, thickness: 1),
+      expansionTileTheme: ExpansionTileThemeData(
+        iconColor: muted,
+        collapsedIconColor: muted,
+        textColor: text,
+        collapsedTextColor: text,
+        shape: const Border(),
+        collapsedShape: const Border(),
+      ),
+      badgeTheme: BadgeThemeData(backgroundColor: scheme.error, textColor: scheme.onError),
       datePickerTheme: DatePickerThemeData(
         backgroundColor: card,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        headerBackgroundColor: p,
-        headerForegroundColor: Colors.white,
-        todayBorder: BorderSide(color: p),
+        shadowColor: shadow,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSheet)),
+        headerBackgroundColor: emerald,
+        headerForegroundColor: ensureContrast(dark ? pLight : pDark, [emerald]),
+        headerHeadlineStyle: heading(28, 24),
+        todayBorder: BorderSide(color: pText),
+        dayStyle: ts(14, FontWeight.w500),
+      ),
+      timePickerTheme: TimePickerThemeData(
+        backgroundColor: card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSheet)),
+        hourMinuteShape: control,
+        dayPeriodShape: control,
       ),
     );
   }

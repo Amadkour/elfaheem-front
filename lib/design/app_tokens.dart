@@ -5,16 +5,20 @@
 // place and adds what had no name yet: the spacing scale, the motion durations / curves and the touch target.
 // Never write a raw number for these in a screen: `AppSpace.md`, `AppRadius.card`, `AppMotion.of(context).base`.
 //
-//   AppSpace    4 · 8 · 12 · 16 · 24 · 32 · 48 (the 8 · 16 · 24 · 32 home rhythm, plus the half steps)
-//   AppRadius   chip 10 · card 16 · sheet 24 · hero 32 (= AppTheme.radius*)
+//   AppSpace    4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 (8 pt grid with the 4 pt half step; D-612)
+//   AppRadius   by hierarchy (D-612): chip 10 · control 14 (button, input) · card 16 · block 24 · sheet 28 · hero 32
+//               · pill (a full stadium for status badges)
 //   AppMotion   fast 180 ms · base 220 ms · slow 300 ms on easeOutCubic; every duration is zero under Reduce motion
 //   AppTouch    48 px minimum target (Material / WCAG), 56 px for a primary action on phones
 //   AppShadow   the theme's soft card / raised shadows, by role
-//   AppElevation  0 flat · 1 card · 2 raised (hover, sticky bar) · 3 overlay (menu, drawer) · 4 modal (dialog)
+//   AppElevation  0 flat · 1 card · 2 raised (hover, sticky bar) · 3 overlay (menu, drawer) · 4 modal (dialog);
+//               depth is TONE first (canvas → paper → tinted block, warm hairlines): a resting card has no shadow,
+//               only what floats casts one, in the warm charcoal shadow tone (D-612)
 //   AppIconSize   xs 14 · sm 16 · md 20 · lg 24 · xl 32 · hero 40
 //   AppBorder     hairline 1 · strong 1.5 · focus 2
 //   AppType     the type roles (display · headline · page title · section · body · row · label · meta · overline ·
-//               figure · figureLarge) mapped onto the theme's styles
+//               figure · figureLarge) mapped onto the theme's styles; display → section are EDITORIAL (Markazi
+//               Text, AppFonts.editorial, D-611) unless the person chose "Headings: Same as text"
 //   AppWidth    the page-width roles (D-304): form 600 · reading 860 · content 1120 · wide 1440 · full, plus the
 //               responsive side gutter (AppSpace.gutter: 16 phone · 24 above); `AppWidthBox` / `BasePage(width:)` apply them
 // The whole system (gradient rules, components, examples) is described in lib/design/README.md.
@@ -23,8 +27,11 @@ library;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/core/display/display_settings.dart' show ReadingSpacing;
 
 /// The spacing scale. Between sections: [lg]; inside a card: [md]; between a label and its value: [xs].
 abstract final class AppSpace {
@@ -36,6 +43,9 @@ abstract final class AppSpace {
   static const double xl = 32;
   static const double xxl = 48;
 
+  /// The widest step: between the big parts of a page on wide screens, above a hero on desktop.
+  static const double xxxl = 64;
+
   /// The page gutter: 16 on phones, 24 from tablet width.
   static double gutter(double width) => width < 600 ? md : lg;
 
@@ -44,17 +54,36 @@ abstract final class AppSpace {
   static const SizedBox gapSm = SizedBox(width: sm, height: sm);
   static const SizedBox gapMd = SizedBox(width: md, height: md);
   static const SizedBox gapLg = SizedBox(width: lg, height: lg);
+  static const SizedBox gapXl = SizedBox(width: xl, height: xl);
+
+  /// Editorial rhythm (system.md §4): a section heading has more room above it than below.
+  static const EdgeInsetsDirectional sectionHead = EdgeInsetsDirectional.only(top: xl, bottom: sm);
+
+  /// A hero block's padding: [lg] on the sides and bottom, [xl] on top.
+  static const EdgeInsetsDirectional hero = EdgeInsetsDirectional.fromSTEB(lg, xl, lg, lg);
+
+  /// A content block's padding (AppBlock): [lg] around, [md] on phones' dense rows is the block's own choice.
+  static const EdgeInsets block = EdgeInsets.all(lg);
 }
 
-/// Corner radii, the same values as the theme's.
+/// Corner radii by hierarchy (D-612), never one radius on everything: the smaller the thing, the tighter the corner.
+///   chip 10 · control 14 (buttons, inputs) · card 16 · block 24 (AppBlock, a KPI highlight) · sheet 28 (bottom
+///   sheets, dialogs) · hero 32 · pill (status badges, a selected pill tab)
 abstract final class AppRadius {
   static const double chip = AppTheme.radiusSmall;
+  static const double control = AppTheme.radiusControl;
   static const double card = AppTheme.radiusMedium;
-  static const double sheet = AppTheme.radiusLarge;
+  static const double block = AppTheme.radiusLarge;
+  static const double sheet = AppTheme.radiusSheet;
   static const double hero = AppTheme.radiusXL;
+
+  /// A full stadium at any height a badge or pill reaches.
+  static const double pill = 999;
 
   static BorderRadius get cardAll => BorderRadius.circular(card);
   static BorderRadius get chipAll => BorderRadius.circular(chip);
+  static BorderRadius get controlAll => BorderRadius.circular(control);
+  static BorderRadius get blockAll => BorderRadius.circular(block);
   static BorderRadius get sheetTop => const BorderRadius.vertical(top: Radius.circular(sheet));
 }
 
@@ -81,25 +110,27 @@ abstract final class AppTouch {
   static const double primary = 56;
 }
 
-/// Shadows by role (the theme's, so dark mode and the server palette follow).
+/// Shadows by role (the theme's, so dark mode and the server palette follow). [card] is the faint level-1 lift of a
+/// card that must float a little (a hovered row, a pinned bar); a card at rest uses tone + [AppBorder.hairline].
 abstract final class AppShadow {
   static List<BoxShadow> card(BuildContext context) => context.colors.cardShadow;
   static List<BoxShadow> raised(BuildContext context) => context.colors.primaryShadow;
 }
 
-/// Elevation by level. Light mode lifts with soft shadows tinted by the theme's card-shadow colour; dark mode, where a
-/// shadow barely shows, adds a hairline in the divider colour instead (`AppElevation.border`).
+/// Elevation by level, in the theme's warm shadow tone (`card_shadow_color`, charcoal; never a neutral grey). Depth
+/// is tone first (D-612): level 1 is a whisper, the clear shadows belong to what floats (2 raised · 3 overlay ·
+/// 4 modal). Dark mode, where a shadow barely shows, adds a hairline in the divider colour (`AppElevation.border`).
 ///   0 flat (inside a card) · 1 card · 2 raised (hover, sticky save bar) · 3 overlay (menu, drawer) · 4 modal (dialog)
 abstract final class AppElevation {
   static List<BoxShadow> of(BuildContext context, int level) {
     if (level <= 0) return const [];
     if (level == 1) return context.colors.cardShadow;
     final dark = context.colors.isDark;
-    final base = dark ? Colors.black : context.colors.textDark;
+    final base = context.colors.shadowTone;
     final (blur, y, a) = switch (level) {
-      2 => (18.0, 6.0, dark ? 0.32 : 0.07),
-      3 => (28.0, 10.0, dark ? 0.40 : 0.10),
-      _ => (44.0, 16.0, dark ? 0.48 : 0.14),
+      2 => (18.0, 6.0, dark ? 0.32 : 0.08),
+      3 => (28.0, 10.0, dark ? 0.40 : 0.11),
+      _ => (44.0, 16.0, dark ? 0.48 : 0.15),
     };
     return [
       BoxShadow(color: base.withValues(alpha: a), blurRadius: blur, offset: Offset(0, y)),
@@ -131,14 +162,58 @@ abstract final class AppBorder {
 }
 
 /// Type roles over the theme's styles (fonts follow DisplaySettings, never a family name here). Weights stay at
-/// w400 – w600 (D-102). Sizes are the same in Arabic and English; the theme gives Arabic body text its taller line.
-///   display 28 · headline 22 · page title 20 · section 16 · body 14 · row 14 w500 · label 13 · meta 12 · overline 11
-///   figure 17 w600 · figureLarge 28 w600 (tabular digits)
+/// w400 – w600 (D-102).
+///
+/// Headings are EDITORIAL (D-611): display · headline · pageTitle · section draw in Markazi Text
+/// ([AppFonts.editorial]) at the system.md sizes 32 · 24 · 22 · 18, which are OPTICAL sizes — what the heading reads
+/// like next to the UI sans. Markazi's letters are small on their body (cap height 0.48 em against Inter's 0.73, the
+/// Arabic alef 0.53 em against Plex's 0.74), so the face is drawn at [editorialScale] × that size (Latin 1.3, Arabic
+/// 1.25), negative tracking on Latin only (spaced Arabic loses its joins). With "Headings: Same as text" they fall
+/// back to the text font at the sans scale 28 · 22 · 20 · 16.
+///   body 14 · row 14 w500 · label 13 · meta 12 · overline 11 · figure 17 w600 · figureLarge 28 w600 (tabular digits)
 abstract final class AppType {
-  static TextStyle display(BuildContext context) =>
-      context.colors.h1.copyWith(fontSize: 28, fontWeight: FontWeight.w600, height: 1.25, color: context.colors.textDark);
-  static TextStyle headline(BuildContext context) =>
-      context.colors.h2.copyWith(fontSize: 22, fontWeight: FontWeight.w600, height: 1.3, color: context.colors.textDark);
+  /// How much larger the editorial face is drawn than its optical size, per language.
+  static double editorialScale([String? lang]) => AppFonts.editorialScale(lang);
+
+  /// A heading role: the editorial face at [optical] × [editorialScale], or the text font at [sans].
+  static TextStyle heading(BuildContext context, {required double optical, required double sans, double? height}) {
+    final c = context.colors;
+    if (!AppFonts.editorialHeadings) {
+      return TextStyle(
+          fontFamily: AppFonts.family,
+          fontFamilyFallback: AppFonts.fallback,
+          fontSize: sans,
+          fontWeight: FontWeight.w600,
+          height: ReadingSpacing.current.height(height),
+          letterSpacing: AppConfig.lang == 'ar' ? null : -0.2,
+          color: c.textDark);
+    }
+    final ar = AppConfig.lang == 'ar';
+    final size = (optical * editorialScale()).roundToDouble();
+    return TextStyle(
+      fontFamily: AppFonts.editorialFamily,
+      fontFamilyFallback: AppFonts.editorialFallback,
+      fontSize: size,
+      fontWeight: FontWeight.w600,
+      // Markazi's own line (ascent + descent) is 1.2 em; Arabic marks want a little more air
+      height: ReadingSpacing.current.height(ar ? 1.3 : 1.15),
+      letterSpacing: ar ? null : -size * 0.01,
+      color: c.textDark,
+    );
+  }
+
+  /// A dashboard greeting, the one big line of a page.
+  static TextStyle display(BuildContext context) => heading(context, optical: 32, sans: 28, height: 1.25);
+
+  /// A hero title.
+  static TextStyle headline(BuildContext context) => heading(context, optical: 24, sans: 22, height: 1.3);
+
+  /// The page header's title.
+  static TextStyle pageTitle(BuildContext context) => heading(context, optical: 22, sans: 20);
+
+  /// A section heading, a card's title.
+  static TextStyle section(BuildContext context) => heading(context, optical: 18, sans: 16);
+
   static TextStyle body(BuildContext context) =>
       context.colors.body.copyWith(fontWeight: FontWeight.w400, color: context.colors.textMedium);
   static TextStyle bodyStrong(BuildContext context) =>
@@ -153,11 +228,6 @@ abstract final class AppType {
       height: 1.15,
       color: context.colors.textDark,
       fontFeatures: const [FontFeature.tabularFigures()]);
-
-  static TextStyle pageTitle(BuildContext context) =>
-      context.colors.h3.copyWith(fontSize: 20, fontWeight: FontWeight.w600, color: context.colors.textDark);
-  static TextStyle section(BuildContext context) =>
-      context.colors.h4.copyWith(fontSize: 16, fontWeight: FontWeight.w600, color: context.colors.textDark);
   static TextStyle row(BuildContext context) =>
       context.colors.body.copyWith(fontWeight: FontWeight.w500, color: context.colors.textDark);
   static TextStyle meta(BuildContext context) =>

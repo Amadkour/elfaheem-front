@@ -96,7 +96,21 @@ class DisplayZoom extends StatelessWidget {
 ThemeData displayTheme(ThemeData theme, DisplayPrefs p) {
   final family = AppFonts.family, fallback = AppFonts.fallback;
   final sp = ReadingSpacing.of(p.spacing);
-  TextTheme text(TextTheme t) => spacedTextTheme(t.apply(fontFamily: family, fontFamilyFallback: fallback), sp, AppConfig.lang);
+  // the person's text font on every role, then the heading roles back in the editorial face (D-611) unless they
+  // chose "Headings: Same as text"
+  final headFamily = p.editorialHeadings ? AppFonts.editorialFamily : family;
+  TextStyle? head(TextStyle? s) => s?.copyWith(fontFamily: headFamily, fontFamilyFallback: fallback);
+  TextTheme text(TextTheme t) {
+    final a = t.apply(fontFamily: family, fontFamilyFallback: fallback);
+    return spacedTextTheme(
+        a.copyWith(
+          displayLarge: head(a.displayLarge), displayMedium: head(a.displayMedium), displaySmall: head(a.displaySmall),
+          headlineLarge: head(a.headlineLarge), headlineMedium: head(a.headlineMedium),
+          headlineSmall: head(a.headlineSmall), titleLarge: head(a.titleLarge),
+        ),
+        sp,
+        AppConfig.lang);
+  }
   return theme.copyWith(
     textTheme: text(theme.textTheme),
     primaryTextTheme: text(theme.primaryTextTheme),

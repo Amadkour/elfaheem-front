@@ -13,9 +13,9 @@ Never write a raw number for these in a screen.
 
 | Token | Values | Use |
 |---|---|---|
-| `AppSpace` | xxs 4 · xs 8 · sm 12 · md 16 · lg 24 · xl 32 · xxl 48 · `gutter(width)` | padding, gaps (`AppSpace.gapMd`) |
-| `AppRadius` | chip 10 · card 16 · sheet 24 · hero 32 | corners (`AppRadius.cardAll`) |
-| `AppElevation.of(context, level)` | 0 flat · 1 card · 2 raised · 3 overlay · 4 modal | shadows; `AppElevation.border` adds the dark-mode hairline |
+| `AppSpace` | xxs 4 · xs 8 · sm 12 · md 16 · lg 24 · xl 32 · xxl 48 · xxxl 64 · `gutter(width)` · `sectionHead` (32 above, 12 below) · `hero` / `block` paddings | padding, gaps (`AppSpace.gapMd`) |
+| `AppRadius` (D-612) | chip 10 · control 14 (button, input) · card 16 · block 24 · sheet 28 · hero 32 · pill | corners by hierarchy (`AppRadius.cardAll`), never one radius on everything |
+| `AppElevation.of(context, level)` | 0 flat · 1 card (a whisper) · 2 raised · 3 overlay · 4 modal | shadows in the warm `shadowTone`; a resting card is tone + hairline (D-612); `AppElevation.border` adds the dark-mode hairline |
 | `AppShadow` | card · raised | the theme's two named shadows |
 | `AppMotion.of(context)` | fast 180 · base 220 · slow 300 ms, zero under Reduce motion | every animation |
 | `AppTouch` | min 48 · primary 56 | hit areas |
@@ -24,15 +24,17 @@ Never write a raw number for these in a screen.
 | `AppType` | see below | text |
 | `AppWidth` (D-304) | form 600 · reading 860 · content 1120 · wide 1440 · full; `inside(available)` | page-body width: `BasePage(useWebCard: true, width: AppWidth.wide)`, `AppWidthBox`, `AdminPage(width:)` |
 
-**Type scale** (`AppType.x(context)`; weights w400–w600, D-102; Arabic and English share sizes, the theme gives Arabic
-body text its taller line):
+**Type scale** (`AppType.x(context)`; weights w400–w600, D-102). The four heading roles are EDITORIAL (D-611): Markazi
+Text (`AppFonts.editorial`) at an OPTICAL size, drawn at 1.3 × (Latin) / 1.25 × (Arabic) because its letters are
+small on their body; with Display & reading › Headings › Same as text they use the text font at the sans size. The
+theme's `display*` / `headline*` / `titleLarge` (app bar, dialog titles) follow.
 
 | Role | Size / weight | For |
 |---|---|---|
-| `display` | 28 · 600 | a dashboard greeting |
-| `headline` | 22 · 600 | a hero title |
-| `pageTitle` | 20 · 600 | the page header |
-| `section` | 16 · 600 | section headings, card titles |
+| `display` | editorial 32 (sans 28) · 600 | a dashboard greeting |
+| `headline` | editorial 24 (sans 22) · 600 | a hero title, the home greeting |
+| `pageTitle` | editorial 22 (sans 20) · 600 | the page header |
+| `section` | editorial 18 (sans 16) · 600 | section headings, card titles, `AppSectionTitle` |
 | `body` / `bodyStrong` | 14 · 400 / 600 | paragraphs |
 | `row` | 14 · 500 | list and table rows |
 | `label` | 13 · 500 | field labels, buttons sm |
@@ -40,9 +42,11 @@ body text its taller line):
 | `overline` | 11 · 600 | small caps-like labels above a figure |
 | `figure` / `figureLarge` | 17 / 28 · 600, tabular digits | numbers in tiles / KPI cards |
 
-**Colours** are roles on `context.colors`: surfaces (`background`, `surface`, `cardBg`, `cardBg2`, `inputBg`,
-`divider`), ink (`textDark`, `textMedium`, `textLight`), brand (`primary`, `primaryDark`, `primaryLight`,
-`accent`, `accent2`), status (`success`, `warning`, `danger` + `*Tint`), on-gradient ink (`onHero`,
+**Colours** are roles on `context.colors` (default palette: Warm Editorial, D-610): surfaces (`background`, `surface`,
+`cardBg`, `cardBg2`, `inputBg`, `divider`), ink (`textDark`, `textMedium`, `textLight`), brand (`primary`,
+`primaryDark`, `primaryLight`, `accent` = peach, `accent2` = gold, `accent3` = sky), blocks (`blockPeach`,
+`blockSky`, `blockGold`, `blockEmerald`, `blockInk`, `blockMuted(b)`, `blockFaint(b)`, `blockAccentInk(c, b)`),
+`shadowTone`, status (`success`, `warning`, `danger` + `*Tint`), on-gradient ink (`onHero`,
 `onHeroMuted`, `heroGlass`, `heroGlassBorder`). Never `Colors.white` / `Colors.black` / a hex in a screen.
 
 ## 2. The gradient — `app_gradients.dart` (D-136, D-180)
@@ -75,6 +79,7 @@ AppGradients.chart(context)                               // a bar / area fill
 | table | `AppDataTable<T>(columns:, rows:, state:, onSearch:, filters:, sortKey:, onSort:, pagination:, rowActions:)` — a real table on wide screens, cards on phones | `app_data_table.dart` |
 | pagination | `AppPagination(page:, pageCount:, onPage:, total:, pageSize:)` | `app_pagination.dart` |
 | card | `AppCard` · `AppActionCard` | `app_kit.dart` |
+| block (D-613) | `AppBlock(tone: AppBlockTone.peach / sky / gold / emerald / paper, child:, hero:, onTap:)` · `AppBlockTone.forKey(id)` · `AppBlock.colorsOf(context)` (ink, muted, faint, `accentInk(c)`) | `app_blocks.dart` |
 | KPI | `AppKpiCard(label:, value:, icon:, delta:, spark:, highlight:)` in an `AppKpiGrid` · `AppStatTile` · `AppTrendTile` | `app_kpi.dart`, `app_charts.dart` |
 | status | `AppStatusBadge(label:, tone: AppTone.success)` · `AppCountBadge(count:)` · `AppBadgePill` | `app_badges.dart` |
 | tabs | `AppTabs(items:, index:, onChanged:)` (pill, gradient selection) · `AppUnderlineTabs` (page sections) | `app_tabs.dart` |

@@ -186,6 +186,17 @@ flutter:
           weight: 700
         - asset: assets/fonts/ui/inter/Inter-800.ttf
           weight: 800
+    # the editorial heading face (D-611): Markazi Text (OFL, Arabic + Latin; assets/fonts/editorial/OFL.txt), static
+    # 500 / 600 / 700 instances of the Google Fonts variable file. A pubspec font so headings draw from the first
+    # frame; the web prune step keeps it in FontManifest.json. Never named in a TextStyle: AppFonts.editorial.
+    - family: uiEditorial
+      fonts:
+        - asset: assets/fonts/editorial/MarkaziText-500.ttf
+          weight: 500
+        - asset: assets/fonts/editorial/MarkaziText-600.ttf
+          weight: 600
+        - asset: assets/fonts/editorial/MarkaziText-700.ttf
+          weight: 700
     - family: NotoSansSC
       fonts:
         - asset: assets/fonts/Tajawal-Regular.ttf

@@ -136,12 +136,12 @@ class AppKpiCard extends StatelessWidget {
         onTap: onTap,
         // the one key figure of a page: depth with a soft glare (D-583)
         child: AppTilt(
-          radius: AppRadius.sheet,
+          radius: AppRadius.block,
           glare: true,
           child: _tapWrap(
             context,
-            radius: AppRadius.sheet,
-            child: AppGradientSurface(padding: AppSpace.card, radius: AppRadius.sheet, child: content),
+            radius: AppRadius.block,
+            child: AppGradientSurface(padding: AppSpace.card, radius: AppRadius.block, child: content),
           ),
         ),
       );

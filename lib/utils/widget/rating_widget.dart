@@ -393,7 +393,7 @@ class _RatingWidgetState extends State<RatingWidget>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.star_rounded, color: AppTheme.accent, size: 14),
+                    Icon(Icons.star_rounded, color: AppTheme.accent2, size: 14),
                     const SizedBox(width: 4),
                     Text(
                       widget.type.label,

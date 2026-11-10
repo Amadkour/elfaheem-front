@@ -17,6 +17,7 @@ import 'package:flutter_education_app/core/display/display_settings.dart';
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 import 'package:flutter_education_app/design/app_motion_kit.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppType;
 
 /// Translation with a friendly English fallback while a key is not in the language files yet.
 String dlTr(String key, String fallback) {
@@ -467,7 +468,8 @@ class DlSectionTitle extends StatelessWidget {
       child: Row(children: [
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: dlText(15, w: FontWeight.w800, c: c.textDark)),
+            // AppSectionTitle: the editorial section role (D-611)
+            Text(title, style: AppType.section(context)),
             if (subtitle != null) Text(subtitle!, style: dlText(11.5, c: c.textMedium, h: 1.4)),
           ]),
         ),

@@ -13,8 +13,9 @@
 // [lazyFamilies] is the ONE list. A family on it must be awaited with `LazyFonts.ensure` (or drawn under a
 // `LazyFontGate`) before any screen that draws with it is shown; uiInter is loaded by AppFonts.start /
 // ensureLanguage. NOT on it, because the first frame draws with them: MaterialIcons, CupertinoIcons, the Arabic UI
-// font (uiPlexArabic, which also draws the Latin of the Arabic UI) and NotoSansSC (a tiny file whose NAME keeps the
-// engine from fetching Noto Sans SC from Google for CJK glyphs).
+// font (uiPlexArabic, which also draws the Latin of the Arabic UI), the editorial heading face (uiEditorial, Markazi
+// Text, D-611: every page title draws with it, about 560 KB for its three weights) and NotoSansSC (a tiny file whose
+// NAME keeps the engine from fetching Noto Sans SC from Google for CJK glyphs).
 import 'dart:convert';
 import 'dart:io';
 
