@@ -736,6 +736,7 @@ class _TimelinePainter extends CustomPainter {
     final lane = RRect.fromRectAndRadius(Rect.fromLTRB(_x(0) - 2, clipsTop, _x(dur) + 2, clipsBottom), const Radius.circular(8));
     canvas.drawRRect(lane, Paint()..color = bay.floor);
     var s0 = 0.0;
+    Rect? selRect;
     for (var i = 0; i < edit.clips.length; i++) {
       final c = edit.clips[i];
       // a clip-start drag: that clip and the ones after it are drawn [shift] px later, so its end stays put and its
@@ -800,7 +801,7 @@ class _TimelinePainter extends CustomPainter {
         canvas.drawRRect(pill, Paint()..color = bay.c.warning);
         tp.paint(canvas, Offset(pill.left + 5, pill.top + 1.5));
       }
-      if (sel) _grips(canvas, r);
+      if (sel) selRect = r;
     }
     // the joins between clips
     for (final (j, cut) in edit.cuts.indexed) {
@@ -810,6 +811,7 @@ class _TimelinePainter extends CustomPainter {
         ..color = bay.deck
         ..strokeWidth = 3);
     }
+    if (selRect != null) _grips(canvas, selRect); // over the neighbours, so both tabs show
     // ── overlay rows ──
     final rowCount = math.max(1, rows.length);
     for (var r = 0; r < rowCount; r++) {

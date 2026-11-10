@@ -5,6 +5,7 @@
 // Exact numbers everywhere: every time shows hundredths and has ◀ ▶ to move it by one frame (1/30 s).
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -293,18 +294,30 @@ class StudioEditPanel extends StatelessWidget {
               : t('السرعة', 'Speed')),
       Directionality(
         textDirection: TextDirection.ltr,
-        child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-          for (final s in studioClipSpeeds)
-            SizedBox(
-              width: 58,
-              child: _Pick(
-                key: ValueKey('studio.speed.$s'),
-                label: speedLabel(s),
-                selected: !marked && speedNow == s,
-                onTap: on ? () => onSpeed?.call(s) : null,
-              ),
-            ),
-        ]),
+        child: LayoutBuilder(builder: (context, box) {
+          // one row of six when it fits (a 48 px target each), else two rows of three
+          final perRow = box.maxWidth >= 6 * 48 + 5 * 6 ? 6 : 3;
+          final rows = <Widget>[];
+          for (var i = 0; i < studioClipSpeeds.length; i += perRow) {
+            rows.add(Padding(
+              padding: EdgeInsets.only(top: i == 0 ? 0 : AppSpace.xs),
+              child: Row(children: [
+                for (final (k, s) in studioClipSpeeds.skip(i).take(perRow).indexed) ...[
+                  if (k > 0) const SizedBox(width: 6),
+                  Expanded(
+                    child: _Pick(
+                      key: ValueKey('studio.speed.$s'),
+                      label: speedLabel(s),
+                      selected: !marked && speedNow == s,
+                      onTap: on ? () => onSpeed?.call(s) : null,
+                    ),
+                  ),
+                ],
+              ]),
+            ));
+          }
+          return Column(mainAxisSize: MainAxisSize.min, children: rows);
+        }),
       ),
       const SizedBox(height: AppSpace.xs),
       _note(t('تبقى الأصوات بطبقتها الطبيعية؛ المعاينة تعمل بالسرعة نفسها.', 'Voices keep their natural pitch; the preview plays at that speed.')),
@@ -389,8 +402,11 @@ class _StudioOverlayPanelState extends State<StudioOverlayPanel> {
     });
   }
 
+  Timer? _typing;
+
   @override
   void dispose() {
+    _typing?.cancel();
     _text.dispose();
     _focus.dispose();
     super.dispose();
@@ -562,6 +578,14 @@ class _StudioOverlayPanelState extends State<StudioOverlayPanel> {
           onChanged: (v) {
             if (v.trim().isEmpty) return;
             change(o.copyWith(text: v), commit: false);
+            // a pause in typing makes the words a step (a drag or another change never loses them)
+            _typing?.cancel();
+            _typing = Timer(const Duration(milliseconds: 700), () {
+              final cur = widget.selected;
+              if (mounted && cur != null && cur.id == o.id && _text.text.trim().isNotEmpty) {
+                widget.onChange?.call(cur.copyWith(text: _text.text), commit: true, kind: StudioStepKind.overlayStyle);
+              }
+            });
           },
         ),
         const SizedBox(height: AppSpace.sm),

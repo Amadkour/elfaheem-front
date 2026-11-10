@@ -173,7 +173,9 @@ class _StudioOverlayLayerState extends State<StudioOverlayLayer> {
         final isSel = o.id == sel;
         final look = studioOverlayLook(o, span.$1, span.$2, w.now);
         if (look == null && !isSel) continue;
-        final l = look ?? const StudioLook(opacity: 0.35);
+        // the selected one is never invisible while it is being placed (in its entrance / outside its time)
+        final l0 = look ?? const StudioLook(opacity: 0.35);
+        final l = isSel && l0.opacity < 0.35 ? StudioLook(opacity: 0.35, dx: l0.dx, dy: l0.dy, scale: l0.scale, reveal: math.max(l0.reveal, 0.35)) : l0;
         final centre = Offset((o.x + l.dx) * fw, (o.y + l.dy) * fh);
         Widget body;
         if (o.isText) {

@@ -256,8 +256,9 @@ class RecordFrames {
   }
 }
 
-/// How many frames the Studio asks for (the server takes 8–120 since D-590; 8–40 before).
-const recordFramesCount = 60;
+/// How many frames the Studio asks for: 25 tiles of 160 px = 4000 px, under the 4096 px texture limit of many
+/// phones' GPUs (a wider sprite draws black on the web's WebGL renderer).
+const recordFramesCount = 25;
 
 Uint8List? _wave(dynamic v) {
   if (v is! String || v.isEmpty) return null;

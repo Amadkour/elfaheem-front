@@ -700,7 +700,9 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       );
     }
     await _commit(kind == StudioOverlayKind.text ? StudioStepKind.textAdd : StudioStepKind.imageAdd, e.putOverlay(o), info: {'name': o.name});
-    if (mounted) setState(() => _selOverlay = o.id);
+    if (!mounted) return;
+    setState(() => _selOverlay = o.id);
+    _seek(e.outputOf(o.start) == null ? _pos : a + math.min(1.0, o.inDur + 0.1)); // past its entrance: it shows at once
   }
 
   /// A picture from the device → uploaded as an overlay asset.
@@ -859,9 +861,11 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       return studioHalves(e, _pos) == null ? t('ضع المؤشر داخل الفيديو ليُقسم عنده', 'Put the playhead inside the video to split there') : null;
     }
     if (e.duration < 1) return t('الفيديو الناتج قصير جداً', 'The result is too short');
-    if (e.isOriginal(_srcDur)) return t('لم تغيّر شيئاً بعد', 'Nothing has changed yet');
     return null;
   }
+
+  /// Nothing to save yet (not a problem to show in red: Save simply waits).
+  bool get _unchanged => _tool != StudioTool.merge && _tool != StudioTool.split && _edit.isOriginal(_srcDur);
 
   List<double> get _result {
     if (_tool == StudioTool.cover) return const [];
@@ -899,7 +903,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
   }
 
   Future<void> _save() async {
-    if (_problem != null || _busy) return;
+    if (_problem != null || _unchanged || _busy) return;
     if (_replace &&
         !_src.drafts &&
         !await appConfirm(context,
@@ -913,6 +917,12 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       return;
     }
     if (!mounted) return;
+    // a change still in the making (a text being typed, a slider held) becomes a step first: the file, the history and
+    // the draft's saved project always agree
+    if (_live != null) {
+      await _commit(StudioStepKind.overlayStyle, _live!, info: {'name': _overlay(_selOverlay)?.name ?? ''});
+      if (!mounted) return;
+    }
     _flushSave();
     setState(() => _busy = true);
     _player?.pause();
@@ -1412,14 +1422,17 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
         }),
       ),
       panel: _panel(context, editing),
-      summary: StudioSummary(original: _srcDur, result: _result, problem: _tool == StudioTool.cover || _tool == StudioTool.history ? null : _problem),
+      summary: StudioSummary(
+          original: _srcDur,
+          result: _unchanged ? const [] : _result,
+          problem: _tool == StudioTool.cover || _tool == StudioTool.history ? null : _problem),
       save: _tool == StudioTool.cover
           ? null
           : StudioSaveArea(
               merge: _tool == StudioTool.merge,
               draft: _src.drafts,
               replace: _replace,
-              canSave: _problem == null && _ready,
+              canSave: _problem == null && !_unchanged && _ready,
               canUndo: _hist.canUndo,
               canRedo: _hist.canRedo,
               busy: _busy,

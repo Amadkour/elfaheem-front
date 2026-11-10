@@ -1352,8 +1352,10 @@ class StudioJobCard extends StatelessWidget {
           Expanded(
             child: Text(r.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w600, c: c.textDark)),
           ),
-          if (r.inProgress && r.progress != null)
+          if (r.inProgress && r.progress != null) ...[
+            const SizedBox(width: AppSpace.xs),
             Text('${r.progress}%', key: ValueKey('studio.job.pct.${r.id}'), style: _tabular(appText(13, w: FontWeight.w700, c: c.textDark))),
+          ],
         ]),
         if (r.inProgress) ...[
           const SizedBox(height: AppSpace.xs),
@@ -1480,7 +1482,7 @@ class StudioJobCard extends StatelessWidget {
             Expanded(
               child: AppButton(
                 key: const ValueKey('studio.job.again'),
-                label: t('رجوع إلى التعديل', 'Back to editing'),
+                label: t('تعديل', 'Edit'),
                 icon: Icons.edit_rounded,
                 variant: AppButtonVariant.secondary,
                 size: AppButtonSize.md,

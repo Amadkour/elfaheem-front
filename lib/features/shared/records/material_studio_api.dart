@@ -116,6 +116,7 @@ class MaterialDraft {
   String status() {
     if (pendingReplace) return t('استُبدل الأصل — الملف القديم محفوظ', 'Replaced the original — the old file is kept');
     if (item.inProgress) return '${recordStatusLabel(item)}${item.progress == null ? '' : ' · ${item.progress}%'}';
+    if (item.isFailed && item.cancelled) return t('أوقفته — أعد تشغيله أو تجاهله', 'Stopped — run it again or discard it');
     if (item.isFailed) return item.error ?? t('تعذّر إكمال التعديل', 'The edit could not finish');
     return t('مسودة — لا يراها الطلاب حتى تنشرها', "Draft — students don't see it until you publish it");
   }
