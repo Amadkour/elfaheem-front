@@ -78,18 +78,18 @@ AppGradients.chart(context)                               // a bar / area fill
 | on/off | `AppSwitch` · `AppSwitchTile` (never `Switch`) | `app_switch.dart` |
 | table | `AppDataTable<T>(columns:, rows:, state:, onSearch:, filters:, sortKey:, onSort:, pagination:, rowActions:)` — a real table on wide screens, cards on phones | `app_data_table.dart` |
 | pagination | `AppPagination(page:, pageCount:, onPage:, total:, pageSize:)` | `app_pagination.dart` |
-| card | `AppCard` · `AppActionCard` | `app_kit.dart` |
+| card (D-612) | `AppCard(child:, padding:, onTap:)` · `AppActionCard(icon:, title:, subtitle:, badge:, trailing:)` — paper: the card surface on a warm hairline, radius `card`, no resting shadow, a tappable card presses in; the icon's tint carries the colour, never a wash | `app_kit.dart` |
 | block (D-613) | `AppBlock(tone: AppBlockTone.peach / sky / gold / emerald / paper, child:, hero:, onTap:)` · `AppBlockTone.forKey(id)` · `AppBlock.colorsOf(context)` (ink, muted, faint, `accentInk(c)`) | `app_blocks.dart` |
-| KPI | `AppKpiCard(label:, value:, icon:, delta:, spark:, highlight:)` in an `AppKpiGrid` · `AppStatTile` · `AppTrendTile` | `app_kpi.dart`, `app_charts.dart` |
-| status | `AppStatusBadge(label:, tone: AppTone.success)` · `AppCountBadge(count:)` · `AppBadgePill` | `app_badges.dart` |
+| KPI | `AppKpiCard(label:, value:, icon:, delta:, spark:, highlight:, tone:)` in an `AppKpiGrid` — the ONE `highlight` is an `AppBlock` (peach by default; `tone:` gold for a streak / top score, emerald for something completed) whose figure rolls (`AppOdometer`) and leans under the pointer (`AppTilt.subtle`); the others are paper and count up once · `AppStatTile(icon:, label:, value:)` (paper, two per row on phones) · `AppTrendTile` | `app_kpi.dart`, `app_kit.dart`, `app_charts.dart` |
+| status | `AppStatusBadge(label:, tone: AppTone.success)` (a full pill on an opaque tint, the label flexes; `success` = emerald, `gold` = achievements / top marks only) · `AppCountBadge(count:)` · `AppBadgePill` · `appTintOn(context, tone)` / `appInkOn(context, tone, tint)` for a tone as text on its own tint (AA, hue kept) | `app_badges.dart` |
 | tabs | `AppTabs(items:, index:, onChanged:)` (pill, gradient selection) · `AppUnderlineTabs` (page sections) | `app_tabs.dart` |
 | drawer | `showAppDrawer(context, title:, builder:, actions:)` — end-side panel on wide, sheet on phones | `app_overlays.dart` |
 | dialog / confirm | `showAppDialog(context, title:, body:, actions:)` · `appConfirm(context, message:, danger:)` | `app_overlays.dart`, `app_kit.dart` |
 | bottom sheet | `showAppSheet(context, (_) => AppSheetContent(title:, children:))` | `app_kit.dart` |
 | unsaved changes | `AppUnsavedGuard(dirty: _dirty, child: …)` | `app_overlays.dart` |
 | toast | `showAppNotice(text, error:)` (never a SnackBar) | `app_notice.dart` |
-| charts | `AppBarChart` · `AppDonut` · `AppSparkline` · `AppTrendTile` · `AppLegend` | `app_charts.dart` |
-| loading / error / empty | `AppStateView<T>(loading:, error:, data:, builder:)` · `AppLoadingState(shape:)` · `AppErrorState(onRetry:)` · `AppEmpty` · `AppListSkeleton` | `app_states.dart`, `app_kit.dart` |
+| charts | `AppBarChart` · `AppDonut` · `AppSparkline(values, surface:)` · `AppTrendTile` · `AppLegend` — `appChartPalette` is emerald · peach · sky · gold · purple from the live theme, snapped into the lightness band; every chart draws in once (`AppDrawIn`) | `app_charts.dart` |
+| loading / error / empty | `AppStateView<T>(loading:, error:, data:, builder:)` · `AppLoadingState(shape:)` · `AppErrorState(onRetry:)` · `AppEmpty(icon:, title:, message:, actionLabel:, onAction:, tone:)` — a drawn plate (`AppStatePlate`, CustomPaint in the theme's colours, never stock art or emoji), an editorial headline (`AppType.section`), one line of direction and ONE action · `AppListSkeleton` / `AppSkeletonBox` (warm bones) | `app_states.dart`, `app_kit.dart` |
 | error text | `appErrorMessage(e)` (the server's message, never `'$e'`) | `app_states.dart` |
 | settings page | `AppSettingsPage` + `AppSettingsGroup` / `AppSettingsTile` | `app_settings.dart` |
 | role dashboard | `AppShell(items: [DashboardItem(…)])` | `app_shell.dart` |
@@ -154,7 +154,7 @@ AppStateView<Overview>(loading: p.loading, error: p.error, data: p.data, onRetry
 ## 5. Checklist for a new screen
 
 1. `AppPageHeader` (or the role shell's header) — one title, one primary action.
-2. Content on `cardBg` cards; the gradient only where §2 allows.
+2. Content on paper `AppCard`s (tone + warm hairline, no shadow); colour in `AppBlock`s, at most two or three tones a screen; the gradient only where §2 allows.
 3. Lists of records → `AppDataTable` (wide) / cards (phone, automatic).
 4. Loading = skeleton, error = `AppErrorState` with the server's message, empty = `AppEmpty`.
 5. Destructive or platform-wide changes → `appConfirm(danger: true)`; settings forms → `AppUnsavedGuard`.

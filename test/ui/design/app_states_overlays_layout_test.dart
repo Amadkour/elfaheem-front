@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_blocks.dart';
+import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/design/app_overlays.dart';
 import 'package:flutter_education_app/design/app_states.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -25,6 +27,20 @@ void main() {
         SizedBox(height: 300, child: AppErrorState(message: _longAr, onRetry: () {})),
         AppErrorState(compact: true, message: _longAr, onRetry: () {}),
         const AppErrorState(compact: true),
+      ]),
+    );
+  });
+
+  testWidgets('empty states: plate, headline, one action', (tester) async {
+    await expectNoLayoutErrors(
+      tester,
+      () => ListView(children: [
+        AppEmpty(icon: Icons.menu_book_rounded, title: _longAr, message: _longAr, actionLabel: _longAr, onAction: () {}),
+        const AppEmpty(icon: Icons.inbox_rounded, title: 'Nothing here yet'),
+        const AppEmpty(icon: Icons.event_busy_rounded, title: 'No sessions', message: 'm', tone: AppBlockTone.sky),
+        // an action label without a handler shows no button
+        const AppEmpty(icon: Icons.inbox_rounded, title: 'x', actionLabel: 'Add'),
+        const SizedBox(height: 120, child: AppStatePlate(icon: Icons.school_rounded, size: 80)),
       ]),
     );
   });
@@ -111,6 +127,18 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.byType(AppLoadingState), findsNothing);
       expect(find.text('DATA'), findsOneWidget);
+    });
+
+    testWidgets('AppEmpty shows its one action only with a handler, and the action fires', (tester) async {
+      var fired = 0;
+      await tester.pumpWidget(layoutHost(AppEmpty(icon: Icons.inbox_rounded, title: 'T', actionLabel: 'Go', onAction: () => fired++)));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(AppButton), findsOneWidget);
+      await tester.tap(find.text('Go'));
+      expect(fired, 1);
+      await tester.pumpWidget(layoutHost(const AppEmpty(icon: Icons.inbox_rounded, title: 'T', actionLabel: 'Go')));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(AppButton), findsNothing);
     });
 
     testWidgets('a plain exception never leaks its text', (tester) async {

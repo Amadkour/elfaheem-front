@@ -12,13 +12,13 @@
 //   appChartPalette(context)                      the categorical slots, derived from the theme
 //   appCompactNumber(1284) → "1.3K"               the figure format of tiles and ticks
 //
-// Colour (dataviz method, validated with its script on the default theme, light surface #FFFFFF and dark
-// #1E2342): five categorical slots in a FIXED order — primary · accent2 (gold) · a teal derived from the primary
-// hue (−60°) · purple · a rose derived from the primary hue (+90°) — each snapped into the mode's OKLab lightness
-// band (light 0.45–0.72, dark 0.50–0.65) so a server theme stays legible in both modes. Series beyond five fold
-// into "other" (textLight). success / warning / danger are STATUS colours and never series colours. Every chart
-// is RTL-aware (the first category sits at the reading start), theme-aware (surface = cardBg, grid = divider,
-// ink = text tokens) and carries a semantics label with its values.
+// Colour (Warm Editorial, system.md §2, validated with the dataviz lightness script): five categorical slots in a
+// FIXED order — the primary (emerald) · peach (`accent`) · sky (`accent3`) · gold (`accent2`) · the theme's purple —
+// each snapped into the mode's OKLab lightness band (light 0.45–0.72, dark 0.50–0.65), so the pale block tints
+// become readable series and a server theme stays legible in both modes. Series beyond five fold into "other"
+// (textLight). success / warning / danger are STATUS colours and never series colours. Every chart draws in once
+// (AppDrawIn, D-582), is RTL-aware (the first category sits at the reading start), theme-aware (surface = cardBg,
+// grid = divider, ink = text tokens) and carries a semantics label with its values.
 // Layout test: test/ui/app_charts_layout_test.dart.
 library;
 
@@ -30,8 +30,9 @@ import '../config/app_config.dart';
 import '../config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_bidi.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'app_badges.dart';
 import 'app_motion_kit.dart';
+import 'app_tokens.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data
@@ -127,15 +128,20 @@ Color appInk(BuildContext context, Color tone) {
   return h.toColor().withValues(alpha: tone.a);
 }
 
-/// The categorical palette of the open theme (fixed order, see the header). Index past the end → "other".
+/// The categorical palette of the open theme (fixed order, see the header): emerald · peach · sky · gold · purple,
+/// each snapped into the lightness band so the pale block tints become series colours. Index past the end →
+/// "other". A theme whose peach and gold land on the same hue is still told apart by lightness and saturation.
 List<Color> appChartPalette(BuildContext context) {
   final c = context.colors;
   final dark = c.isDark;
-  final p = HSLColor.fromColor(c.primary);
-  Color derived(double shift) =>
-      p.withHue((p.hue + shift + 360) % 360).withSaturation(math.max(p.saturation, 0.55)).toColor();
+  Color vivid(Color x) {
+    // the block tints are desaturated pastels: a series needs at least a mid saturation to read as a colour
+    final h = HSLColor.fromColor(x);
+    return h.withSaturation(math.max(h.saturation, 0.55)).toColor();
+  }
+
   return [
-    for (final x in [c.primary, c.accent2, derived(-60), c.purple, derived(90)]) chartSnapLightness(x, dark: dark),
+    for (final x in [c.primary, vivid(c.accent), vivid(c.accent3), c.accent2, c.purple]) chartSnapLightness(x, dark: dark),
   ];
 }
 
@@ -144,8 +150,9 @@ Color _slot(BuildContext context, List<Color> palette, int i, Color? own) =>
 
 String _tx(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
-TextStyle _ink(Color color, {double size = 10.5, FontWeight w = FontWeight.w600}) =>
-    TextStyle(fontFamily: AppFonts.family, fontSize: size, fontWeight: w, color: color, height: 1.2);
+/// The small text of a chart (ticks, category labels, a legend): the overline role in [color].
+TextStyle _tick(BuildContext context, Color color) =>
+    AppType.overline(context).copyWith(color: color, letterSpacing: 0, height: 1.2);
 
 double _niceMax(double v) {
   if (v <= 0) return 1;
@@ -178,25 +185,31 @@ class AppLegend extends StatelessWidget {
   final List<AppLegendEntry> entries;
   final WrapAlignment alignment;
 
+  /// The swatch: a small rounded square.
+  static const double _swatch = 10;
+  static const double _swatchRadius = 3;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Wrap(
       alignment: alignment,
-      spacing: 14,
-      runSpacing: 6,
+      spacing: AppSpace.md,
+      runSpacing: AppSpace.xs,
       children: [
         for (final e in entries)
           Row(mainAxisSize: MainAxisSize.min, children: [
             Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(color: e.color, borderRadius: BorderRadius.circular(3)),
+              width: _swatch,
+              height: _swatch,
+              decoration: BoxDecoration(color: e.color, borderRadius: BorderRadius.circular(_swatchRadius)),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: AppSpace.xs - 2),
             Flexible(
               child: Text(e.label,
-                  maxLines: 2, overflow: TextOverflow.ellipsis, style: _ink(c.textMedium, size: 12, w: FontWeight.w500)),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.meta(context).copyWith(color: c.textMedium, fontWeight: FontWeight.w500)),
             ),
           ]),
       ],
@@ -209,10 +222,14 @@ class AppLegend extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AppSparkline extends StatelessWidget {
-  const AppSparkline(this.values, {super.key, this.color, this.height = 36, this.fill = true, this.label});
+  const AppSparkline(this.values, {super.key, this.color, this.surface, this.height = 36, this.fill = true, this.label});
 
   final List<double> values;
   final Color? color;
+
+  /// What the line is drawn on (the end marker wears a ring of it): the card surface by default, a block's tint
+  /// when the sparkline sits in a block.
+  final Color? surface;
   final double height;
   final bool fill;
 
@@ -237,7 +254,7 @@ class AppSparkline extends StatelessWidget {
               painter: _SparkPainter(
                 values: values,
                 color: col,
-                surface: c.cardBg,
+                surface: surface ?? c.cardBg,
                 fill: fill,
                 rtl: Directionality.of(context) == TextDirection.rtl,
                 t: t,
@@ -259,13 +276,17 @@ class _SparkPainter extends CustomPainter {
   /// Drawn so far, 0..1 from the reading start.
   final double t;
 
+  static const double _stroke = 2;
+  static const double _markerRing = 6;
+  static const double _marker = 4;
+
   @override
   void paint(Canvas canvas, Size size) {
     if (values.isEmpty || size.width <= 0 || size.height <= 0) return;
     final n = values.length;
     final lo = values.reduce(math.min);
     final hi = values.reduce(math.max);
-    const pad = 5.0; // room for the end marker
+    const pad = _markerRing - 1; // room for the end marker
     final w = size.width - pad * 2, h = size.height - pad * 2;
     Offset at(int i) {
       final t = n == 1 ? 1.0 : i / (n - 1);
@@ -294,14 +315,14 @@ class _SparkPainter extends CustomPainter {
       Paint()
         ..color = color
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
+        ..strokeWidth = _stroke
         ..strokeJoin = StrokeJoin.round
         ..strokeCap = StrokeCap.round,
     );
     if (t < 1) return; // the end marker lands with the line
     final end = at(n - 1);
-    canvas.drawCircle(end, 6, Paint()..color = surface);   // the 2 px surface ring
-    canvas.drawCircle(end, 4, Paint()..color = color);
+    canvas.drawCircle(end, _markerRing, Paint()..color = surface); // the 2 px surface ring
+    canvas.drawCircle(end, _marker, Paint()..color = color);
   }
 
   @override
@@ -379,13 +400,13 @@ class _AppBarChartState extends State<AppBarChart> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
           if (legend && widget.series.isNotEmpty) ...[
             AppLegend([for (var i = 0; i < widget.series.length; i++) AppLegendEntry(widget.series[i].name, colors[i])]),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
           ],
           SizedBox(
             height: widget.height,
             width: double.infinity,
             child: empty
-                ? Center(child: Text('chart_no_data'.tr, style: _ink(c.textLight, size: 12.5, w: FontWeight.w500)))
+                ? Center(child: Text('chart_no_data'.tr, style: AppType.meta(context).copyWith(color: c.textLight)))
                 : LayoutBuilder(builder: (context, box) {
                     final geo = _BarGeometry(
                       width: box.maxWidth,
@@ -413,9 +434,9 @@ class _AppBarChartState extends State<AppBarChart> {
                             hot: _hot,
                             surface: c.cardBg,
                             grid: c.divider,
-                            ink: c.textLight,
-                            inkStrong: c.textDark,
                             highlight: c.primary.withValues(alpha: 0.06),
+                            tickStyle: _tick(context, c.textLight),
+                            valueStyle: _tick(context, c.textDark),
                             format: widget.format,
                             textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
                             integerAxis: widget.integerAxis,
@@ -490,9 +511,9 @@ class _BarPainter extends CustomPainter {
     required this.hot,
     required this.surface,
     required this.grid,
-    required this.ink,
-    required this.inkStrong,
     required this.highlight,
+    required this.tickStyle,
+    required this.valueStyle,
     required this.format,
     required this.textDirection,
     this.integerAxis = false,
@@ -507,9 +528,14 @@ class _BarPainter extends CustomPainter {
   final _BarGeometry geo;
   final bool integerAxis;
   final int? hot;
-  final Color surface, grid, ink, inkStrong, highlight;
+  final Color surface, grid, highlight;
+  final TextStyle tickStyle, valueStyle;
   final String Function(num) format;
   final TextDirection textDirection;
+
+  /// The bars' rounded caps and the hot band's corners.
+  static const double _cap = AppSpace.xxs;
+  static const double _bandRadius = AppSpace.xs;
 
   double _value(int s, int i) => i < series[s].values.length ? series[s].values[i] : 0;
 
@@ -530,13 +556,12 @@ class _BarPainter extends CustomPainter {
     final (top, steps) = chartAxis(maxV, integer: integerAxis);
     final gridPaint = Paint()
       ..color = grid
-      ..strokeWidth = 1;
-    final tickStyle = _ink(ink);
+      ..strokeWidth = AppBorder.hairline;
 
     // hot band
     if (hot != null) {
       final r = Rect.fromLTWH(geo.bandLeft(hot!), 0, geo.band, geo.baseline);
-      canvas.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(8)), Paint()..color = highlight);
+      canvas.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(_bandRadius)), Paint()..color = highlight);
     }
 
     // grid + ticks: 0 · ¼ · ½ · ¾ · max (whole steps for counts)
@@ -544,8 +569,8 @@ class _BarPainter extends CustomPainter {
       final v = top * k / steps;
       final y = geo.baseline - geo.plotH * k / steps;
       canvas.drawLine(Offset(geo.plotStart, y), Offset(geo.plotStart + geo.plotW, y), gridPaint);
-      final tp = _text(format(v), tickStyle, maxWidth: _BarGeometry.axisW - 4);
-      final x = geo.rtl ? size.width - tp.width : _BarGeometry.axisW - 4 - tp.width;
+      final tp = _text(format(v), tickStyle, maxWidth: _BarGeometry.axisW - AppSpace.xxs);
+      final x = geo.rtl ? size.width - tp.width : _BarGeometry.axisW - AppSpace.xxs - tp.width;
       tp.paint(canvas, Offset(x, y - tp.height / 2));
     }
 
@@ -558,20 +583,20 @@ class _BarPainter extends CustomPainter {
         if (h <= 0) continue;
         final x = geo.barLeft(i, s);
         final rect = Rect.fromLTWH(x, geo.baseline - h, geo.barW, h);
-        final radius = Radius.circular(math.min(4, h));
+        final radius = Radius.circular(math.min(_cap, h));
         canvas.drawRRect(RRect.fromRectAndCorners(rect, topLeft: radius, topRight: radius), Paint()..color = colors[s]);
         if (hot == i && t >= 1) {
-          final tp = _text(format(v), _ink(inkStrong, size: 10));
+          final tp = _text(format(v), valueStyle);
           final cx = x + geo.barW / 2 - tp.width / 2;
           final cy = geo.baseline - h - tp.height - 2;
           final bg = Rect.fromLTWH(cx - 3, cy - 1, tp.width + 6, tp.height + 2);
-          canvas.drawRRect(RRect.fromRectAndRadius(bg, const Radius.circular(4)), Paint()..color = surface);
+          canvas.drawRRect(RRect.fromRectAndRadius(bg, const Radius.circular(_cap)), Paint()..color = surface);
           tp.paint(canvas, Offset(cx, cy));
         }
       }
       // category label
-      final tp = _text(labels[i], tickStyle, maxWidth: math.max(8, geo.band - 4));
-      tp.paint(canvas, Offset(geo.bandLeft(i) + (geo.band - tp.width) / 2, geo.baseline + 4));
+      final tp = _text(labels[i], tickStyle, maxWidth: math.max(8, geo.band - AppSpace.xxs));
+      tp.paint(canvas, Offset(geo.bandLeft(i) + (geo.band - tp.width) / 2, geo.baseline + AppSpace.xxs));
     }
   }
 
@@ -585,7 +610,7 @@ class _BarPainter extends CustomPainter {
       o.geo.height != geo.height ||
       o.surface != surface ||
       o.grid != grid ||
-      o.ink != ink ||
+      o.tickStyle != tickStyle ||
       o.textDirection != textDirection ||
       o.integerAxis != integerAxis ||
       o.t != t;
@@ -615,6 +640,9 @@ class AppDonut extends StatelessWidget {
   final bool legend;
   final String? title;
   final String Function(num value) format;
+
+  /// The centre figure's size as a share of the ring's diameter.
+  static const double _centreScale = 0.18;
 
   @override
   Widget build(BuildContext context) {
@@ -648,13 +676,13 @@ class AppDonut extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: EdgeInsets.all(thickness + 6),
+          padding: EdgeInsets.all(thickness + AppSpace.xxs + 2),
           child: center ??
               FittedBox(
                 fit: BoxFit.scaleDown,
                 child: AppCountUp(
                   total > 0 ? format(total) : '—',
-                  style: _ink(c.textDark, size: size * 0.18, w: FontWeight.w800),
+                  style: AppType.figureLarge(context).copyWith(fontSize: size * _centreScale),
                 ),
               ),
         ),
@@ -680,19 +708,21 @@ class AppDonut extends StatelessWidget {
           if (sideBySide) {
             return Row(children: [
               ring,
-              const SizedBox(width: 16),
+              AppSpace.gapMd,
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
-                  children: [for (final e in entries) Padding(padding: const EdgeInsets.only(bottom: 6), child: AppLegend([e]))],
+                  children: [
+                    for (final e in entries) Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs - 2), child: AppLegend([e])),
+                  ],
                 ),
               ),
             ]);
           }
           return Column(mainAxisSize: MainAxisSize.min, children: [
             ring,
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             AppLegend(entries, alignment: WrapAlignment.center),
           ]);
         }),
@@ -731,10 +761,13 @@ class _DonutPainter extends CustomPainter {
       canvas.drawArc(rect, 0, math.pi * 2, false, stroke..color = track);
       return;
     }
-    if (t < 1) canvas.drawArc(rect, 0, math.pi * 2, false, Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = thickness
-      ..color = track);
+    if (t < 1) {
+      // the track shows under the sweep until the ring is whole
+      canvas.drawArc(rect, 0, math.pi * 2, false, Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = thickness
+        ..color = track);
+    }
     final shown = values.where((v) => v > 0).length;
     final gap = shown > 1 ? 2.0 / r : 0.0;   // a 2 px surface gap between parts
     var start = -math.pi / 2;
@@ -757,6 +790,7 @@ class _DonutPainter extends CustomPainter {
 // Trend tile
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// A paper tile (the card surface on a warm hairline, no shadow) for "one number and its trend".
 class AppTrendTile extends StatelessWidget {
   const AppTrendTile({
     super.key,
@@ -788,6 +822,9 @@ class AppTrendTile extends StatelessWidget {
   /// Replaces "vs previous period" next to the delta.
   final String? deltaHint;
 
+  /// The sparkline's height inside the tile.
+  static const double _sparkHeight = 30;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -796,39 +833,35 @@ class AppTrendTile extends StatelessWidget {
     final up = d != null && d > 0;
     final down = d != null && d < 0;
     final good = d == null || d == 0 ? null : (up == upIsGood);
-    final deltaColor = good == null ? c.textLight : (good ? c.success : c.danger);
+    final deltaTone = good == null ? c.textMedium : (good ? c.success : c.danger);
+    final deltaTint = appTintOn(context, deltaTone);
+    final deltaInk = good == null ? c.textDark : appInkOn(context, deltaTone, deltaTint);
     final deltaText = d == null
         ? null
         : '${d > 0 ? '+' : ''}${d.abs() >= 100 || d == d.roundToDouble() ? d.toStringAsFixed(0) : d.toStringAsFixed(1)}%';
     final hint = deltaHint ?? 'chart_vs_previous'.tr;
     final sem = StringBuffer('$label: $value');
     if (deltaText != null) sem.write(', $deltaText $hint');
-    final body = Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(c.radiusLarge - 4),
-        border: Border.all(color: c.divider),
-        boxShadow: c.cardShadow,
-      ),
+    final body = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
-          if (icon != null) ...[Icon(icon, size: 16, color: col), const SizedBox(width: 6)],
+          if (icon != null) ...[Icon(icon, size: AppIconSize.sm, color: appInk(context, col)), const SizedBox(width: AppSpace.xs - 2)],
           Expanded(
-            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: _ink(c.textMedium, size: 12.5, w: FontWeight.w600)),
+            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context)),
           ),
         ]),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs - 2),
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Flexible(
             child: FittedBox(
               fit: BoxFit.scaleDown,
               alignment: AlignmentDirectional.centerStart,
-              child: AppCountUp(value, memoryKey: 'trend:$label', style: _ink(c.textDark, size: 24, w: FontWeight.w800)),
+              child: AppCountUp(value, memoryKey: 'trend:$label', style: AppType.figureLarge(context)),
             ),
           ),
           if (deltaText != null) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.xs),
             // scales down with the value on a very narrow tile instead of overflowing
             Flexible(
               child: FittedBox(
@@ -836,18 +869,19 @@ class AppTrendTile extends StatelessWidget {
                 child: Tooltip(
                   message: hint,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration:
-                        BoxDecoration(color: deltaColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs - 2, vertical: AppSpace.xxs / 2),
+                    decoration: BoxDecoration(color: deltaTint, borderRadius: BorderRadius.circular(AppRadius.pill)),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Icon(
                         up ? DirIcons.northEast : (down ? Icons.south_east_rounded : Icons.remove_rounded),
-                        size: 12,
-                        color: deltaColor,
+                        size: AppIconSize.xs - 2,
+                        color: deltaInk,
                       ),
-                      const SizedBox(width: 2),
+                      const SizedBox(width: AppSpace.xxs / 2),
                       // a signed figure reads left to right in Arabic too ("+40.7%", not "40.7%+")
-                      Text(deltaText, textDirection: TextDirection.ltr, style: _ink(appInk(context, deltaColor), size: 11, w: FontWeight.w700)),
+                      Text(deltaText,
+                          textDirection: TextDirection.ltr,
+                          style: AppType.overline(context).copyWith(color: deltaInk, letterSpacing: 0)),
                     ]),
                   ),
                 ),
@@ -856,24 +890,30 @@ class AppTrendTile extends StatelessWidget {
           ],
         ]),
         if (spark != null && spark!.length >= 2) ...[
-          const SizedBox(height: 8),
-          AppSparkline(spark!, color: col, height: 30, label: label),
+          const SizedBox(height: AppSpace.xs),
+          AppSparkline(spark!, color: col, height: _sparkHeight, label: label),
         ],
       ]),
+    );
+    final shape = RoundedRectangleBorder(
+      borderRadius: AppRadius.cardAll,
+      side: BorderSide(color: c.divider, width: AppBorder.hairline),
     );
     return Semantics(
       label: sem.toString(),
       button: onTap != null,
       container: true,
       child: ExcludeSemantics(
-        child: onTap == null
-            ? body
-            : AppPressScale(
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(borderRadius: BorderRadius.circular(c.radiusLarge - 4), onTap: onTap, child: body),
-                ),
-              ),
+        // a tappable tile presses in (D-582); at rest it is tone + hairline (D-612)
+        child: AppPressScale(
+          enabled: onTap != null,
+          child: Material(
+            color: c.cardBg,
+            shape: shape,
+            clipBehavior: Clip.antiAlias,
+            child: onTap == null ? body : InkWell(onTap: onTap, child: body),
+          ),
+        ),
       ),
     );
   }
