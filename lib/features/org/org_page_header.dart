@@ -574,7 +574,11 @@ class OrgPageHeader extends StatelessWidget {
                 final row = Row(children: [
                   if (backBtn != null) ...[backBtn, const SizedBox(width: AppSpace.xxs)],
                   Expanded(child: below == null ? ClipRect(child: titleBlock) : titleBlock),
-                  if (action != null && !actionBelow) ...[AppSpace.gapSm, action],
+                  if (action != null && !actionBelow) ...[
+                    AppSpace.gapSm,
+                    // a button that fills its height would grow to the whole header
+                    ConstrainedBox(constraints: const BoxConstraints(maxHeight: AppTouch.min + AppSpace.xs), child: action),
+                  ],
                   AppSpace.gapSm,
                   wideTools!,
                   if (pill != null) ...[

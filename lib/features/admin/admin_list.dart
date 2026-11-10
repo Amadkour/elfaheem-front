@@ -34,6 +34,7 @@ class PagedList<P extends AdminPagedProvider> extends StatefulWidget {
     this.countIcon,
     this.showCountFrom = 20,
     this.export,
+    this.minTileWidth,
   }) : assert(
   itemBuilder != null || indexedBuilder != null,
   'give itemBuilder or indexedBuilder',
@@ -56,6 +57,10 @@ class PagedList<P extends AdminPagedProvider> extends StatefulWidget {
 
   /// Builds the export table from EVERY row (all pages are fetched first) — shows an Excel · Word · PDF pill.
   final AppTableExport Function(List<Map<String, dynamic>> rows)? export;
+
+  /// Rows as cards side by side once each can have this width (two on a desktop, up to three on a very wide one);
+  /// null = one row per line. A list of short cards uses the window instead of one long column (D-573).
+  final double? minTileWidth;
 
   @override
   State<PagedList<P>> createState() => _PagedListState<P>();
@@ -123,25 +128,37 @@ class _PagedListState<P extends AdminPagedProvider> extends State<PagedList<P>> 
       );
     } else {
       _fillViewport(p);
+      Widget item(BuildContext ctx, int i) =>
+          widget.indexedBuilder != null ? widget.indexedBuilder!(ctx, p, i) : widget.itemBuilder!(ctx, p.rows[i]);
       body = AppRefresh(
         onRefresh: p.refresh,
-        child: ListView.builder(
-          controller: _scroll,
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(14, 6, 14, 90),
-          itemCount: p.rows.length + 1,
-          itemBuilder: (ctx, i) {
-            if (i == p.rows.length) {
-              return PagedListFooter(
-                loadingMore: p.loadingMore,
-                hasMore: p.hasMore,
+        child: LayoutBuilder(builder: (context, box) {
+          final min = widget.minTileWidth;
+          final cols = min == null ? 1 : ((box.maxWidth - 28) / min).floor().clamp(1, 3);
+          final lines = (p.rows.length / cols).ceil();
+          return ListView.builder(
+            controller: _scroll,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(14, 6, 14, 90),
+            itemCount: lines + 1,
+            itemBuilder: (ctx, line) {
+              if (line == lines) {
+                return PagedListFooter(
+                  loadingMore: p.loadingMore,
+                  hasMore: p.hasMore,
+                );
+              }
+              if (cols == 1) return item(ctx, line);
+              // one line of cards with the same height (the tallest one's)
+              return IntrinsicHeight(
+                child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  for (var k = 0; k < cols; k++)
+                    Expanded(child: line * cols + k < p.rows.length ? item(ctx, line * cols + k) : const SizedBox.shrink()),
+                ]),
               );
-            }
-            return widget.indexedBuilder != null
-                ? widget.indexedBuilder!(ctx, p, i)
-                : widget.itemBuilder!(ctx, p.rows[i]);
-          },
-        ),
+            },
+          );
+        }),
       );
     }
 
