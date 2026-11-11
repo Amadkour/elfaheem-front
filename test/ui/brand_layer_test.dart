@@ -47,6 +47,14 @@ void main() {
 
         // the primary button at rest, hovered and pressed
         aa(l.buttonInk, [...l.button, ...l.buttonHover, ...l.buttonPressed], 'button label');
+        // D-650: green → gold, the on-hero (white) ink itself at 4.5:1 at 5 points along each gradient, the midpoint
+        // included; the end stop is a warm gold, not the green again
+        expect(l.buttonInk, t.onHero.withValues(alpha: 1));
+        for (final g in [l.button, l.buttonHover, l.buttonPressed]) {
+          aa(t.onHero.withValues(alpha: 1), BrandLayer.gradientSamples(g.first, g.last), 'white on the gradient');
+        }
+        expect(HSLColor.fromColor(l.button.last).hue, inInclusiveRange(20, 50), reason: 'the gold stop');
+        expect(HSLColor.fromColor(l.button.first).hue, inInclusiveRange(140, 180), reason: 'the green stop');
         // the gold CTA: a DARK ink (white on gold fails)
         aa(l.goldInk, [...l.gold, ...l.goldHover, ...l.goldPressed], 'gold label');
         expect(relativeLuminance(l.goldInk), lessThan(relativeLuminance(l.gold.first)));

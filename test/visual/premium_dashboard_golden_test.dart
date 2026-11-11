@@ -57,6 +57,12 @@ Future<void> _loadFonts() async {
 }
 
 final _shot = GlobalKey();
+
+/// `VISUAL_THEME=production` paints with the production theme (test/visual/fixtures/theme_production.json) instead
+/// of the built-in palette; the files then end in `_prod`.
+final _prodTheme = Platform.environment['VISUAL_THEME'] == 'production';
+String get _prodTag => _prodTheme ? '_prod' : '';
+
 String _tr(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
 /// The sample home: desktop = hero + side card, 4 stats, KPI / ring cards, a section card with period tabs and the
@@ -223,6 +229,10 @@ void main() {
 
   Widget host({required bool dark, required double width}) {
     final theme = ThemeConfigProvider(api: ApiClient());
+    if (_prodTheme) {
+      theme.debugUseColors(
+          jsonDecode(File('test/visual/fixtures/theme_production.json').readAsStringSync()) as Map<String, dynamic>);
+    }
     final rtl = AppConfig.lang == 'ar';
     final items = [
       DashboardItem(Icons.space_dashboard_outlined, Icons.space_dashboard_rounded, 'home', null, const _SampleHome(), badge: 3),
@@ -289,7 +299,7 @@ void main() {
               expect(tester.takeException(), isNull);
               final tag = pushed ? '${role}_pushed' : role;
               await expectLater(find.byKey(_shot),
-                  matchesGoldenFile('goldens/shell_chrome_${tag}_${size.width.toInt()}_ar_${dark ? 'dark' : 'light'}.png'));
+                  matchesGoldenFile('goldens/shell_chrome_${tag}_${size.width.toInt()}_ar_${dark ? 'dark' : 'light'}$_prodTag.png'));
             }
           }
         }

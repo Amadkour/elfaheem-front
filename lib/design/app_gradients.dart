@@ -21,6 +21,12 @@
 // gradient card with a faint lattice; the primary button and the selected tab / pill / chip are primary to
 // primary_dark; at most ONE gold highlight CTA per screen (Go live, Upgrade, a featured offer) with a dark ink; the
 // home hero is forest to emerald with a soft gold glow; the canvas keeps its server colour under a faint dot pattern.
+// D-650: the primary button, the selected tab / pill / chip and the phone's active pill run green → gold (primary →
+// accent2, horizontal, mirrored in Arabic), the gold darkened until the on-hero ink keeps 4.5:1 at EVERY point of the
+// gradient; dark mode starts from primary_light and a lighter gold under the same rule. The glyphs of the shortcut
+// tiles, the stat chips, the sidebar's open tab and the tonal icon buttons wear the same family ([AppGradientIcon],
+// 3:1 on their circle); a plain inline icon stays flat. The page canvas wears [AppPatternStyle.study], small
+// education line icons, instead of the dots.
 library;
 
 import 'package:flutter/material.dart';
@@ -221,7 +227,8 @@ class BrandLayer {
   /// The faint geometric pattern over the sidebar and the brand panels (about 4 %).
   final Color sidePattern;
 
-  /// The primary button: primary → primary_dark, and its hover / pressed shades.
+  /// The primary button: primary → gold (D-650; primary_light → a lighter gold in dark mode), each stop darkened
+  /// until [buttonInk] keeps 4.5:1 at every point between them; and its hover / pressed shades.
   final List<Color> button;
   final List<Color> buttonHover;
   final List<Color> buttonPressed;
@@ -241,7 +248,7 @@ class BrandLayer {
   final Color forestMuted;
   final Color forestFaint;
 
-  /// The page canvas's very faint dot pattern.
+  /// The page canvas's faint pattern of study icons (the primary at about 5 % light / 4 % dark, D-650).
   final Color pagePattern;
 
   static final Map<int, BrandLayer> _cache = {};
@@ -278,9 +285,14 @@ class BrandLayer {
     final hoverOver = [for (final s in sidebar) Color.alphaBlend(hover, s)];
     Color onSide(double a) => ensureContrast(Color.alphaBlend(ink.withValues(alpha: a), sBottom), [...sidebar, ...hoverOver]);
 
-    // ── primary button: primary → primary_dark, diagonal; dark mode a shade deeper ──
-    final bStart = under(dark ? Color.lerp(c.primary, c.primaryDark, 0.2)! : c.primary, 5);
-    final bEnd = under(dark ? _l(c.primaryDark, 0.82) : c.primaryDark, 5);
+    // ── primary button (D-650): primary → gold, horizontal; dark mode primary_light → a lighter gold. The on-hero
+    // ink keeps 4.5:1 (with a small margin) at every point between the stops, so the gold is darkened as needed ──
+    final bStart = under(dark ? c.primaryLight : c.primary, _buttonMin);
+    var bEnd = dark ? Color.lerp(c.accent2, c.accent, 0.25)! : c.accent2;
+    final goldHsl = HSLColor.fromColor(bEnd.withValues(alpha: 1));
+    for (var i = 0; i <= 200 && minContrast(ink, gradientSamples(bStart, bEnd, 9)) < _buttonMin; i++) {
+      bEnd = goldHsl.withLightness((goldHsl.lightness - i * 0.005).clamp(0.0, 1.0)).toColor();
+    }
     final button = [bStart, bEnd];
     final buttonHover = [for (final s in button) c.heroEnd(s, 0.08)];
     final buttonPressed = [for (final s in button) c.heroEnd(s, 0.18)];
@@ -340,9 +352,16 @@ class BrandLayer {
       forestGlow: glow,
       forestMuted: ensureContrast(c.heroInkMuted, heroSurfaces),
       forestFaint: ensureContrast(c.heroInkFaint, heroSurfaces),
-      pagePattern: c.textDark.withValues(alpha: dark ? 0.035 : 0.045),
+      pagePattern: c.primary.withValues(alpha: dark ? 0.04 : 0.05),
     );
   }
+
+  /// The contrast the button's ink keeps at every point of its gradient: AA (4.5) plus a margin for rounding.
+  static const double _buttonMin = 4.6;
+
+  /// [n] evenly spaced colours from [a] to [b] (both ends included), as a linear gradient paints them.
+  static List<Color> gradientSamples(Color a, Color b, [int n = 5]) =>
+      [for (var i = 0; i < n; i++) Color.lerp(a, b, i / (n - 1))!];
 }
 
 /// The D-649 roles, as ready gradients and shadows. Widgets read these, never a hand-built LinearGradient.
@@ -362,10 +381,38 @@ abstract final class AppBrandLayer {
         colors: of(context).sidebar,
       );
 
-  /// The primary button / the selected tab, pill or chip: primary → primary_dark, diagonal (mirrors in Arabic).
+  /// The primary button / the selected tab, pill or chip: primary → gold, horizontal (mirrors in Arabic, D-650).
   static LinearGradient button(BuildContext context, {bool hover = false, bool pressed = false}) {
     final l = of(context);
-    return _diag(pressed ? l.buttonPressed : hover ? l.buttonHover : l.button);
+    return LinearGradient(
+      begin: AlignmentDirectional.centerStart,
+      end: AlignmentDirectional.centerEnd,
+      colors: pressed ? l.buttonPressed : hover ? l.buttonHover : l.button,
+    );
+  }
+
+  static final Map<int, List<Color>> _iconCache = {};
+
+  /// The two stops of a gradient glyph ([AppGradientIcon]) over [surfaces]: primary → gold on a light surface,
+  /// primary_light → a lighter gold on a dark one, each stop and the midpoint at 3:1 (non-text) on every surface.
+  static List<Color> iconStops(BuildContext context, List<Color> surfaces) {
+    final c = context.colors;
+    final key = Object.hashAll([c.primary, c.primaryLight, c.accent2, c.accent, ...surfaces]);
+    final hit = _iconCache[key];
+    if (hit != null) return hit;
+    if (_iconCache.length > 64) _iconCache.clear();
+    const midL = 0.179; // the luminance where black and white give the same ratio
+    final avg = surfaces.map(relativeLuminance).reduce((a, b) => a + b) / surfaces.length;
+    final onDark = avg < midL;
+    var stops = <Color>[];
+    for (var min = 3.0; min <= 4.5; min += 0.25) {
+      stops = [
+        ensureContrast(onDark ? c.primaryLight : c.primary, surfaces, min: min),
+        ensureContrast(onDark ? Color.lerp(c.accent2, c.accent, 0.35)! : c.accent2, surfaces, min: min),
+      ];
+      if (minContrast(Color.lerp(stops[0], stops[1], 0.5)!, surfaces) >= 3) break;
+    }
+    return _iconCache[key] = stops;
   }
 
   /// The accent / premium button (Go live on the hero, Upgrade, a featured offer): accent2 → accent2 lightened.
@@ -403,7 +450,7 @@ abstract final class AppBrandLayer {
   /// The soft primary-tinted shadow under a gradient button (smaller when pressed).
   static List<BoxShadow> buttonShadow(BuildContext context, {bool pressed = false}) {
     final c = context.colors;
-    final tone = c.isDark ? c.shadowTone : of(context).button.last;
+    final tone = c.isDark ? c.shadowTone : of(context).button.first;
     return [
       BoxShadow(
         color: tone.withValues(alpha: c.isDark ? 0.34 : (pressed ? 0.16 : 0.24)),
@@ -427,9 +474,38 @@ abstract final class AppBrandLayer {
   }
 }
 
-/// The two shapes of [AppPattern]: [dots] for the page canvas, [lattice] (staggered small diamonds) for the dark
-/// brand surfaces.
-enum AppPatternStyle { dots, lattice }
+/// A glyph painted with the brand family (D-650): green → gold over [on], the surfaces its tinted circle sits on
+/// (each stop and the midpoint at 3:1 there, lighter stops on a dark surface). For the icon of a shortcut tile, a
+/// stat chip, the sidebar's open tab and a tonal icon button only; a plain inline icon in text or a list stays flat.
+/// High contrast gets the flat start colour.
+class AppGradientIcon extends StatelessWidget {
+  const AppGradientIcon(this.icon, {super.key, required this.on, this.size});
+
+  final IconData icon;
+  final List<Color> on;
+  final double? size;
+
+  @override
+  Widget build(BuildContext context) {
+    final stops = AppBrandLayer.iconStops(context, on);
+    final glyph = Icon(icon, size: size, color: stops.first);
+    if (MediaQuery.maybeHighContrastOf(context) ?? false) return glyph;
+    final dir = Directionality.maybeOf(context) ?? TextDirection.ltr;
+    return ShaderMask(
+      blendMode: BlendMode.srcIn,
+      shaderCallback: (rect) => LinearGradient(
+        begin: AlignmentDirectional.topStart,
+        end: AlignmentDirectional.bottomEnd,
+        colors: stops,
+      ).createShader(rect, textDirection: dir),
+      child: glyph,
+    );
+  }
+}
+
+/// The shapes of [AppPattern]: [dots] (kept for callers), [lattice] (staggered small diamonds) for the dark brand
+/// surfaces, [study] (small education line icons, D-650) for the page canvas.
+enum AppPatternStyle { dots, lattice, study }
 
 /// A very faint static pattern painted behind [child] (or alone, filling its box): no image asset, no animation, so
 /// Reduce motion has nothing to park. Purely decorative: no semantics, no hit testing.
@@ -466,6 +542,7 @@ class _PatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (size.isEmpty || color.a == 0) return;
+    if (style == AppPatternStyle.study) return _paintStudy(canvas, size);
     final p = Paint()..color = color;
     final lattice = style == AppPatternStyle.lattice;
     final step = lattice ? _latticeStep : _dotStep;
@@ -487,6 +564,63 @@ class _PatternPainter extends CustomPainter {
       }
     }
     canvas.drawPath(path, p);
+  }
+
+  // ── study (D-650): book, pen, cap, lightbulb, atom, ruler, calculator, globe — 16-20 px line glyphs on an 84 px
+  // grid, each nudged and turned a little by a hash of its cell (a fixed seed), so the tiling is the same on every
+  // paint and a resize only adds or drops cells at the edges ──
+  static const List<IconData> _study = [
+    Icons.menu_book_outlined,
+    Icons.edit_outlined,
+    Icons.school_outlined,
+    Icons.lightbulb_outline_rounded,
+    Icons.science_outlined,
+    Icons.straighten_rounded,
+    Icons.calculate_outlined,
+    Icons.public_rounded,
+  ];
+  static const double _studyStep = 84, _studyJitter = 14, _studyMin = 16, _studyMax = 20, _studyTurn = 0.35;
+
+  /// One laid-out glyph per (icon, size, colour), shared by every paint.
+  static final Map<(int, int, int), TextPainter> _glyphs = {};
+
+  static TextPainter _glyph(IconData icon, double size, Color color) {
+    final key = (icon.codePoint, size.round(), color.toARGB32());
+    return _glyphs[key] ??= TextPainter(
+      textDirection: TextDirection.ltr,
+      text: TextSpan(
+        text: String.fromCharCode(icon.codePoint),
+        style: TextStyle(fontFamily: icon.fontFamily, package: icon.fontPackage, fontSize: size, color: color, height: 1),
+      ),
+    )..layout();
+  }
+
+  /// A small deterministic hash of a cell (the fixed seed of the jitter), 0 ≤ r < 1 for each [salt].
+  static double _rand(int row, int col, int salt) {
+    var h = (row * 73856093) ^ (col * 19349663) ^ (salt * 83492791) ^ 0x5bd1e995;
+    h = (h ^ (h >> 13)) * 0x5bd1e995 & 0x7fffffff;
+    h ^= h >> 15;
+    return (h & 0xffff) / 0x10000;
+  }
+
+  void _paintStudy(Canvas canvas, Size size) {
+    if (_glyphs.length > 64) _glyphs.clear();
+    var row = 0;
+    for (var y = _studyStep / 2; y < size.height + _studyStep / 2; y += _studyStep, row++) {
+      final shift = row.isOdd ? _studyStep / 2 : 0.0;
+      var col = 0;
+      for (var x = _studyStep / 2 - shift; x < size.width + _studyStep / 2; x += _studyStep, col++) {
+        final icon = _study[((_rand(row, col, 1) * _study.length).floor() + row * 3 + col) % _study.length];
+        final px = (_studyMin + (_studyMax - _studyMin) * _rand(row, col, 2)).roundToDouble();
+        final tp = _glyph(icon, px, color);
+        canvas
+          ..save()
+          ..translate(x + (_rand(row, col, 3) - 0.5) * 2 * _studyJitter, y + (_rand(row, col, 4) - 0.5) * 2 * _studyJitter)
+          ..rotate((_rand(row, col, 5) - 0.5) * 2 * _studyTurn);
+        tp.paint(canvas, Offset(-tp.width / 2, -tp.height / 2));
+        canvas.restore();
+      }
+    }
   }
 
   @override

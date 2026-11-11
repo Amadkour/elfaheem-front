@@ -31,7 +31,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'app_blocks.dart';
 import 'app_charts.dart' show AppSparkline;
-import 'app_gradients.dart' show AppBrandLayer;
+import 'app_gradients.dart' show AppBrandLayer, AppGradientIcon;
 import 'app_kpi.dart' show appDeltaText;
 import 'app_motion_kit.dart';
 import 'app_tokens.dart';
@@ -74,7 +74,8 @@ class _ToneChip extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(color: b.surface, borderRadius: BorderRadius.circular(AppRadius.control)),
         alignment: Alignment.center,
-        child: Icon(icon, size: size * 0.5, color: appToneStrong(context, tone)),
+        // D-650: the glyph wears the green → gold family on its tinted chip
+        child: AppGradientIcon(icon, size: size * 0.5, on: [Color.alphaBlend(b.surface, context.colors.cardBg)]),
       ),
     );
   }
@@ -702,7 +703,6 @@ class AppShortcutTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final b = AppBlockColors.of(context, tone == AppBlockTone.paper ? AppBlockTone.emerald : tone);
-    final strong = appToneStrong(context, tone);
     final read = badge > 0 ? '$label, $badge' : label;
     return _Paper(
       onTap: onTap,
@@ -720,7 +720,8 @@ class AppShortcutTile extends StatelessWidget {
               height: _disc,
               decoration: BoxDecoration(color: b.surface, shape: BoxShape.circle),
               alignment: Alignment.center,
-              child: Icon(icon, size: AppIconSize.xl, color: strong),
+              // D-650: the glyph wears the green → gold family on its tinted disc
+              child: AppGradientIcon(icon, size: AppIconSize.xl, on: [Color.alphaBlend(b.surface, c.cardBg)]),
             ),
           ),
           Padding(

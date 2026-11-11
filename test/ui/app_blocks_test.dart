@@ -106,7 +106,7 @@ void main() {
     expect(forest.hue, closeTo(162, 6), reason: 'about #0E3B2E');
     expect(forest.lightness, lessThanOrEqualTo(0.15));
     p.isDark = true;
-    // a dark surface with the block's hue, a step above the dark card (#241F19)
+    // a dark surface with the block's hue, a step above the dark card (#1E2021)
     expect(relativeLuminance(p.blockPeach), greaterThan(relativeLuminance(p.cardBg)));
     final sage = HSLColor.fromColor(p.blockSky);
     expect(sage.saturation, lessThanOrEqualTo(0.17), reason: 'a quiet grey-green, about #1E2A23');

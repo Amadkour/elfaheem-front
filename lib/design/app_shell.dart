@@ -57,7 +57,7 @@ import '../utils/widget/app_navigator.dart' show AppNavigator;
 import '../utils/widget/app_network_image.dart';
 import '../utils/widget/base_page.dart';
 import 'app_focus_mode.dart' show AppFocusMode, AppFocusToggle;
-import 'app_gradients.dart' show AppBrandLayer, AppPattern, AppPatternStyle;
+import 'app_gradients.dart' show AppBrandLayer, AppGradientIcon, AppPattern, AppPatternStyle;
 import 'app_keyboard.dart' show AppCommandPaletteScope;
 import 'app_motion_kit.dart';
 import 'app_tokens.dart';
@@ -1019,7 +1019,13 @@ class _SidebarTile extends StatelessWidget {
                       constraints: const BoxConstraints(minHeight: AppTouch.min),
                       child: Row(
                         children: [
-                          Icon(selected ? item.selectedIcon : item.icon, color: ink, size: AppIconSize.md),
+                          // D-650: the open tab's glyph wears the green → gold family, lightened for the glass
+                          if (selected)
+                            AppGradientIcon(item.selectedIcon, size: AppIconSize.md, on: [
+                              for (final s in l.sidebar) Color.alphaBlend(l.sideActiveFill, s),
+                            ])
+                          else
+                            Icon(item.icon, color: ink, size: AppIconSize.md),
                           const SizedBox(width: AppSpace.sm),
                           Expanded(
                             child: Text(
@@ -1533,7 +1539,11 @@ class _TabIconPill extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppRadius.pill),
             ),
             child: Center(
-              child: Icon(active ? item.selectedIcon : item.icon, size: AppIconSize.lg, color: ink),
+              child: onBrand && active
+                  ? AppGradientIcon(item.selectedIcon, size: AppIconSize.lg, on: [
+                      for (final s in l.sidebar) Color.alphaBlend(l.sideActiveFill, s),
+                    ])
+                  : Icon(active ? item.selectedIcon : item.icon, size: AppIconSize.lg, color: ink),
             ),
           ),
           // over the icon's top-end quarter, the Material badge offset, so the glyph stays readable under it

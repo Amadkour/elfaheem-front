@@ -72,13 +72,13 @@ class AppTheme {
   static const Color textLight    = Color(0xFF6E655A);   // 4.5:1+ on canvas / paper / input / peach / sage (WCAG AA)
   static const Color textAction   = Color(0xFF0B6B4F);
 
-  // ── Dark surfaces ─────────────────────────────────────────────────────────
-  static const Color darkBackground  = Color(0xFF15120E);
-  static const Color darkSurface     = Color(0xFF1C1813);
-  static const Color darkCard        = Color(0xFF241F19);
-  static const Color darkInput       = Color(0xFF2C261F);
-  static const Color inputBgDark     = Color(0xFF2C261F);
-  static const Color darkDivider     = Color(0xFF3A3229);
+  // ── Dark surfaces (D-650: neutral grey, the brown read muddy) ─────────────
+  static const Color darkBackground  = Color(0xFF121414);
+  static const Color darkSurface     = Color(0xFF181A1B);
+  static const Color darkCard        = Color(0xFF1E2021);
+  static const Color darkInput       = Color(0xFF2A2D2E);   // raised card, input
+  static const Color inputBgDark     = Color(0xFF2A2D2E);
+  static const Color darkDivider     = Color(0xFF34383A);
 
   // ── Dark text ─────────────────────────────────────────────────────────────
   static const Color darkTextPrimary  = Color(0xFFF5EFE6);

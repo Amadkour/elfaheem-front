@@ -24,6 +24,7 @@ import 'app_badges.dart';
 import 'app_bidi.dart';
 import 'app_blocks.dart';
 import 'app_charts.dart';
+import 'app_gradients.dart' show AppGradientIcon;
 import 'app_kit.dart' show AppShimmer, AppSkeletonBox;
 import 'app_motion_kit.dart';
 import 'app_responsive.dart';
@@ -107,7 +108,10 @@ class AppKpiCard extends StatelessWidget {
                 color: highlight ? Color.lerp(surface, ink, 0.07) : appTintOn(context, c.primary),
                 borderRadius: AppRadius.chipAll,
               ),
-              child: Icon(icon, size: AppIconSize.lg, color: accent),
+              // D-650: a plain card's chip glyph wears the green → gold family; the highlighted card keeps its ink
+              child: highlight
+                  ? Icon(icon, size: AppIconSize.lg, color: accent)
+                  : AppGradientIcon(icon!, size: AppIconSize.lg, on: [Color.alphaBlend(appTintOn(context, c.primary), surface)]),
             ),
           if (icon != null) AppSpace.gapSm,
           Expanded(

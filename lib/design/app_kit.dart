@@ -61,6 +61,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'app_badges.dart';
 import 'app_buttons.dart';
 import 'app_contrast.dart' show ensureContrast;
+import 'app_gradients.dart' show AppGradientIcon;
 import 'app_inputs.dart';
 import 'app_motion_kit.dart';
 import 'app_search_field.dart';
@@ -484,7 +485,10 @@ class AppStatTile extends StatelessWidget {
             width: _iconBox,
             height: _iconBox,
             decoration: BoxDecoration(color: tint, borderRadius: AppRadius.chipAll),
-            child: Icon(icon, size: AppIconSize.md + 2, color: appInkOn(context, col, tint)),
+            // D-650: the brand stat's glyph wears the green → gold family; a stat in its own tone stays flat
+            child: color == null
+                ? AppGradientIcon(icon, size: AppIconSize.md + 2, on: [Color.alphaBlend(tint, c.cardBg)])
+                : Icon(icon, size: AppIconSize.md + 2, color: appInkOn(context, col, tint)),
           ),
           AppSpace.gapSm,
           Expanded(

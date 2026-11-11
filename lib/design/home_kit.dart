@@ -55,6 +55,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_contrast.dart' show ensureContrast;
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
+import 'package:flutter_education_app/design/app_gradients.dart' show AppGradientIcon;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show ShellScope;
 import 'package:flutter_education_app/design/chrome_button.dart' show ChromeBar;
@@ -1115,7 +1116,7 @@ class HomeShortcuts extends StatelessWidget {
                           border: Border.all(color: c.divider),
                           boxShadow: c.cardShadow,
                         ),
-                        child: Icon(s.icon, size: 23, color: appInk(context, c.primary)),
+                        child: AppGradientIcon(s.icon, size: 23, on: [c.cardBg]),
                       ),
                     ),
                     const SizedBox(height: 8),

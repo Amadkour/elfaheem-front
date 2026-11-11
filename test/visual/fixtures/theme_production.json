@@ -1,6 +1,6 @@
 {
  "input_bg": "#F5F8F5",
- "input_bg_dark": "#24332D",
+ "input_bg_dark": "#2A2D2E",
  "card_shadow_color": "#14261F",
  "card_shadow_color_dark": "#000000",
  "charcoal": "#26332D",
@@ -21,11 +21,11 @@
  "text_light": "#617068",
  "text_action": "#0F7B5F",
  "second_text": "#617068",
- "dark_background": "#0C1511",
- "dark_surface": "#121D18",
- "dark_card": "#1A2822",
- "dark_input": "#24332D",
- "dark_divider": "#2E3F37",
+ "dark_background": "#121414",
+ "dark_surface": "#181A1B",
+ "dark_card": "#1E2021",
+ "dark_input": "#2A2D2E",
+ "dark_divider": "#34383A",
  "dark_text_primary": "#F2F7F4",
  "dark_text_muted": "#A7B5AD",
  "dark_text_light": "#8A9B94",
@@ -75,8 +75,8 @@
   "#F1F4F0"
  ],
  "gradient_dark_background": [
-  "#0C1511",
-  "#121D18"
+  "#121414",
+  "#181A1B"
  ],
  "gradient_disable": [
   "#4F151F1A",

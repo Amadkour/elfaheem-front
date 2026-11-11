@@ -25,7 +25,7 @@ import '../config/theme/theme_config_provider.dart';
 import 'app_badges.dart';
 import 'app_charts.dart' show appInk;
 import 'app_contrast.dart' show ensureContrast;
-import 'app_gradients.dart' show AppBrandLayer;
+import 'app_gradients.dart' show AppBrandLayer, AppGradientIcon;
 import 'app_motion_kit.dart';
 import 'app_tokens.dart';
 
@@ -461,7 +461,10 @@ class _AppIconButtonState extends State<AppIconButton> {
               width: AppIconSize.md,
               height: AppIconSize.md,
               child: CircularProgressIndicator(strokeWidth: 2.2, color: ink))
-          : Icon(widget.icon, size: AppIconSize.lg, color: ink),
+          // D-650: a tonal (primary action) chip's glyph wears the green → gold family at rest
+          : tonal && enabled && !lit
+              ? AppGradientIcon(widget.icon, size: AppIconSize.lg, on: [for (final b in [c.cardBg, c.background]) Color.alphaBlend(c.primaryTint, b)])
+              : Icon(widget.icon, size: AppIconSize.lg, color: ink),
     );
     Widget out = SizedBox(
       width: AppTouch.min,

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_blocks.dart';
-import 'package:flutter_education_app/design/app_gradients.dart' show AppBrandLayer, AppPattern;
+import 'package:flutter_education_app/design/app_gradients.dart' show AppBrandLayer, AppPattern, AppPatternStyle;
 import 'package:flutter_education_app/design/app_tokens.dart';
 
 import '../../features/shared/upload/upload_progress_footer.dart';
@@ -106,10 +106,11 @@ class BasePage extends StatelessWidget {
     // was a second floating gradient box on the doodle background.
     final headerOutside = useWebCard && appBar != null && context.width >= AppWidth.phoneMax;
     final webCard = useWebCard && context.width >= AppWidth.phoneMax;
-    // D-649: the canvas keeps its server colour under a very faint static dot pattern (the plain canvas only, never
-    // a page that sets its own background); a web-card page draws it once, on the outer canvas
+    // D-649 / D-650: the canvas keeps its server colour under a faint static pattern of small study icons (the plain
+    // canvas only, never a page that sets its own background, never inside a card); a web-card page draws it once,
+    // on the outer canvas
     Widget canvas(Widget body) => background == null
-        ? AppPattern(color: AppBrandLayer.of(context).pagePattern, child: body)
+        ? AppPattern(color: AppBrandLayer.of(context).pagePattern, style: AppPatternStyle.study, child: body)
         : body;
     Widget w = Scaffold(
       appBar: headerOutside ? null : appBar,
