@@ -13,6 +13,7 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/models_hub/models_hub_api.dart';
 import '../../../design/app_bidi.dart';
 import '../../../design/app_kit.dart';
+import '../../../design/app_motion_kit.dart' show AppCountUp, AppReveal;
 import '../../../design/app_tokens.dart';
 import '../admin_common.dart' show t;
 import 'models_hub_text.dart';
@@ -119,8 +120,10 @@ class AiModelsView extends StatelessWidget {
     return LayoutBuilder(builder: (context, box) {
       final wide = box.maxWidth >= kModelsTableWidth;
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-          _Fact(icon: Icons.hub_outlined, value: '$active/${roles.length}', label: t('أدوار مُفعّلة', 'roles active')),
+        _SystemBlock(
+          active: active,
+          total: roles.length,
+          facts: [
           if (downloads.isNotEmpty)
             _Fact(icon: Icons.downloading_rounded, value: '${downloads.length}', label: t('تنزيل', 'downloading')),
           if (s?.diskFreeMb != null)
@@ -139,12 +142,16 @@ class AiModelsView extends StatelessWidget {
           const SizedBox(height: AppSpace.md),
           _TasksHeader(actions: actions),
         ],
-        for (final r in tasks) ...[
+        for (final (i, r) in tasks.indexed) ...[
           const SizedBox(height: AppSpace.md),
-          HubRoleCard(role: r, wide: wide, downloads: downloads, busy: busy, actions: actions),
+          AppReveal(
+              index: i,
+              group: 'models.roles',
+              cap: 3,
+              child: HubRoleCard(role: r, wide: wide, downloads: downloads, busy: busy, actions: actions)),
         ],
         if (tasks.isNotEmpty && others.isNotEmpty) ...[
-          const SizedBox(height: AppSpace.lg),
+          const SizedBox(height: AppSpace.xl),
           AppSectionTitle(t('نماذج داعمة', 'Supporting models')),
         ],
         for (final r in others) ...[
@@ -190,28 +197,26 @@ class _TasksHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       AppSectionTitle(t('النماذج حسب المهمة', 'Models by task')),
-      const SizedBox(height: 2),
+      const SizedBox(height: AppSpace.xxs),
       Text(
           t('اختر نموذجاً لكل مهمة: المحادثة وتوليد الامتحانات والتصحيح. يُنزَّل النموذج الجديد ويُختبر قبل أن يحلّ محل الحالي.',
               'Pick a model for each task: chat, exam generation and grading. A new model is downloaded and tested before it replaces the current one.'),
           style: AppType.meta(context)),
-      const SizedBox(height: AppSpace.xs),
+      const SizedBox(height: AppSpace.sm),
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         if (actions.onApplyDefaults != null)
-          FilledButton.icon(
+          AppButton.primary(
             key: const ValueKey('apply_defaults'),
             onPressed: actions.onApplyDefaults,
-            style: FilledButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
-            icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-            label: Text(t('استخدام النماذج الموصى بها', 'Use the recommended models')),
+            icon: Icons.auto_awesome_rounded,
+            label: t('استخدام النماذج الموصى بها', 'Use the recommended models'),
           ),
         if (actions.onAddByName != null)
-          OutlinedButton.icon(
+          AppButton.secondary(
             key: const ValueKey('add_by_name'),
             onPressed: actions.onAddByName,
-            style: OutlinedButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
-            icon: const Icon(Icons.add_rounded, size: 18),
-            label: Text(t('إضافة نموذج بالاسم', 'Add a model by name')),
+            icon: Icons.add_rounded,
+            label: t('إضافة نموذج بالاسم', 'Add a model by name'),
           ),
       ]),
     ]);
@@ -242,14 +247,14 @@ class HubRoleCard extends StatelessWidget {
     final l = r.limits;
     final hint = hubRoleHint(r.role);
     return AppCard(
-      padding: const EdgeInsets.all(AppSpace.md),
+      padding: const EdgeInsets.all(AppSpace.lg),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(hubRoleName(r.role), style: AppType.section(context)),
               if (hint.isNotEmpty) ...[
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpace.xxs),
                 Text(hint, style: AppType.meta(context)),
               ],
             ]),
@@ -352,6 +357,49 @@ class _GradingModeBox extends StatelessWidget {
   }
 }
 
+/// The page's one block: how many roles have a model at work, as the key figure (it counts once), and the server's
+/// room on paper pills beside it.
+class _SystemBlock extends StatelessWidget {
+  const _SystemBlock({required this.active, required this.total, required this.facts});
+
+  final int active;
+  final int total;
+  final List<Widget> facts;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBlock(
+      tone: AppBlockTone.sky,
+      padding: const EdgeInsets.all(AppSpace.lg),
+      child: Builder(builder: (context) {
+        final ink = AppBlock.colorsOf(context);
+        final figure = Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Icon(Icons.hub_outlined, size: AppIconSize.lg, color: ink.ink),
+          AppSpace.gapSm,
+          AppCountUp('$active/$total',
+              memoryKey: 'models.roles_active',
+              style: AppType.figureLarge(context).copyWith(color: ink.ink),
+              textDirection: TextDirection.ltr),
+          AppSpace.gapXs,
+          Flexible(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.xxs),
+              child: Text(t('أدوار مُفعّلة', 'roles active'),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: ink.muted)),
+            ),
+          ),
+        ]);
+        return Wrap(
+          spacing: AppSpace.lg,
+          runSpacing: AppSpace.sm,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [figure, ...facts],
+        );
+      }),
+    );
+  }
+}
+
 /// One fact of the summary row: icon · value · label (the label gives way on a narrow phone).
 class _Fact extends StatelessWidget {
   const _Fact({required this.icon, required this.value, required this.label});
@@ -363,16 +411,16 @@ class _Fact extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs, AppSpace.xxs + 2, AppSpace.sm, AppSpace.xxs + 2),
-      decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(30), border: Border.all(color: c.divider)),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xs, AppSpace.md, AppSpace.xs),
+      decoration: BoxDecoration(color: c.cardBg, borderRadius: const BorderRadius.all(Radius.circular(AppRadius.pill))),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 16, color: c.primary),
-        const SizedBox(width: AppSpace.xs - 2),
+        Icon(icon, size: AppIconSize.sm, color: c.textMedium),
+        const SizedBox(width: AppSpace.xs),
         Flexible(
           child: Text.rich(
             TextSpan(children: [
-              TextSpan(text: value, style: appText(13, w: FontWeight.w800, c: c.textDark)),
-              TextSpan(text: '  $label', style: appText(12, w: FontWeight.w600, c: c.textMedium)),
+              TextSpan(text: value, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
+              TextSpan(text: '  $label', style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
             ]),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -395,12 +443,12 @@ class _HeaderButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => compact
-      ? IconButton(tooltip: label, onPressed: onTap, icon: Icon(icon, size: 22, color: context.colors.primary))
+      ? IconButton(tooltip: label, onPressed: onTap, icon: Icon(icon, size: AppIconSize.lg, color: context.colors.primary))
       : TextButton.icon(
         onPressed: onTap,
         style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min), padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs)),
-        icon: Icon(icon, size: 18),
-        label: Text(label, style: appText(13, w: FontWeight.w700, c: context.colors.primary)),
+        icon: Icon(icon, size: AppIconSize.md),
+        label: Text(label, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.primary)),
       );
 }
 
@@ -429,24 +477,22 @@ class _PendingStrip extends StatelessWidget {
     Widget button(String label, VoidCallback onTap, {bool primary = false, Key? key}) => Padding(
           padding: const EdgeInsetsDirectional.only(end: AppSpace.xs, top: AppSpace.xs),
           child: primary
-              ? FilledButton(key: key, onPressed: onTap, style: FilledButton.styleFrom(minimumSize: const Size(AppTouch.min, 40)), child: Text(label))
-              : OutlinedButton(key: key, onPressed: onTap, style: OutlinedButton.styleFrom(minimumSize: const Size(AppTouch.min, 40)), child: Text(label)),
+              ? AppButton.primary(key: key, onPressed: onTap, label: label)
+              : AppButton.secondary(key: key, onPressed: onTap, label: label),
         );
+    final tint = appTintOn(context, color);
     return Container(
-      padding: const EdgeInsets.all(AppSpace.sm),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
-      ),
+      padding: const EdgeInsets.all(AppSpace.md),
+      decoration: BoxDecoration(color: tint, borderRadius: AppRadius.cardAll),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(p.failed ? Icons.error_outline_rounded : (p.readyToConfirm ? Icons.verified_outlined : Icons.autorenew_rounded), color: color, size: 20),
+          Icon(p.failed ? Icons.error_outline_rounded : (p.readyToConfirm ? Icons.verified_outlined : Icons.autorenew_rounded),
+              color: appInkOn(context, color, tint), size: AppIconSize.md),
           const SizedBox(width: AppSpace.xs),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               for (final (i, s) in lines.indexed)
-                Text(s, style: i == 0 ? appText(13, w: FontWeight.w700, c: c.textDark) : appText(12, c: c.textMedium, h: 1.4)),
+                Text(s, style: i == 0 ? AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark) : AppType.meta(context).copyWith(color: c.textMedium, height: 1.4)),
             ]),
           ),
         ]),
@@ -568,7 +614,7 @@ class _ActionsCell extends StatelessWidget {
     final menu = x.menu;
     return Row(mainAxisSize: MainAxisSize.min, children: [
       if (x.busy)
-        const SizedBox(width: AppTouch.min, height: AppTouch.min, child: Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))))
+        const SizedBox(width: AppTouch.min, height: AppTouch.min, child: Center(child: SizedBox(width: AppIconSize.md, height: AppIconSize.md, child: CircularProgressIndicator(strokeWidth: AppBorder.focus))))
       else if (p != null)
         Flexible(
           child: OutlinedButton.icon(
@@ -592,7 +638,7 @@ class _ActionsCell extends StatelessWidget {
                 child: Row(children: [
                   Icon(icon, size: 20, color: danger ? c.danger : c.textMedium),
                   const SizedBox(width: AppSpace.sm),
-                  Flexible(child: Text(label, style: appText(14, c: danger ? c.danger : c.textDark))),
+                  Flexible(child: Text(label, style: AppType.row(context).copyWith(color: danger ? c.danger : c.textDark))),
                 ]),
               ),
           ],
@@ -623,12 +669,12 @@ class _StatusCell extends StatelessWidget {
       ]),
       if (d != null) ...[
         const SizedBox(height: AppSpace.xxs),
-        SizedBox(width: 140, child: AppProgressBar(value: (d.fraction ?? 0) * 100, height: 5, color: col)),
-        const SizedBox(height: 2),
+        SizedBox(width: AppSpace.xxxl * 2, child: AppProgressBar(value: (d.fraction ?? 0) * 100, height: AppSpace.xxs, color: col)),
+        const SizedBox(height: AppSpace.xxs),
         Text(hubDownloadLine(d), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
       ] else if (own == 'failed' && model.error != null) ...[
-        const SizedBox(height: 2),
-        AutoDirText(model.error!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11, c: context.colors.danger)),
+        const SizedBox(height: AppSpace.xxs),
+        AutoDirText(model.error!, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: context.colors.danger)),
       ],
     ]);
   }
@@ -660,7 +706,7 @@ class _ModelsTable extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     Widget cell(int i, Widget child) => Expanded(flex: _flex[i], child: Padding(padding: const EdgeInsetsDirectional.only(end: AppSpace.sm), child: child));
-    Widget head(String s) => Text(s, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, w: FontWeight.w700, c: c.textLight));
+    Widget head(String s) => Text(s, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.overline(context).copyWith(letterSpacing: 0, color: c.textLight));
     final meta = AppType.meta(context);
     return Column(children: [
       Padding(
@@ -678,13 +724,13 @@ class _ModelsTable extends StatelessWidget {
       for (final m in role.models)
         DecoratedBox(
           key: ValueKey('model_row_${m.id}'),
-          decoration: BoxDecoration(border: Border(top: BorderSide(color: c.divider))),
+          decoration: BoxDecoration(border: Border(top: BorderSide(color: c.divider, width: AppBorder.hairline))),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Row(children: [
               cell(0, Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(m.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark)),
+                Text(m.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
                 Text([m.version, if (m.quantization != null) m.quantization!].join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: meta),
               ])),
               cell(1, Text(hubBytes(m.sizeBytes), style: AppType.row(context))),
@@ -714,7 +760,7 @@ class _ModelsTable extends StatelessWidget {
 Widget _kv(BuildContext context, String label, String value) => Text.rich(
       TextSpan(children: [
         TextSpan(text: '$label  ', style: AppType.meta(context)),
-        TextSpan(text: value, style: appText(12, w: FontWeight.w700, c: context.colors.textDark)),
+        TextSpan(text: value, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
       ]),
     );
 
@@ -734,7 +780,7 @@ class _ModelCard extends StatelessWidget {
     final m = model;
     final meta = AppType.meta(context);
     return Column(key: ValueKey('model_row_${m.id}'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(m.name, style: appText(14, w: FontWeight.w700, c: c.textDark)),
+      Text(m.name, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
       Text([m.version, if (m.quantization != null) m.quantization!].join(' · '), style: meta),
       const SizedBox(height: AppSpace.xs),
       _StatusCell(model: m, download: download, role: role),
@@ -782,17 +828,17 @@ class AiModelsHistory extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Padding(
-                padding: const EdgeInsets.only(top: 5),
-                child: Icon(Icons.circle, size: 8, color: a.actor == null ? c.textLight : c.primary),
+                padding: const EdgeInsets.only(top: AppSpace.xxs),
+                child: Icon(Icons.circle, size: AppSpace.xs, color: a.actor == null ? c.textLight : c.textDark),
               ),
               const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(
                     [hubAuditAction(a.action), if (a.role != null) hubRoleName(a.role!)].join(' · '),
-                    style: appText(13, w: FontWeight.w700, c: c.textDark),
+                    style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark),
                   ),
-                  if (_what(a).isNotEmpty) Text(_what(a), style: appText(12, c: c.textMedium, h: 1.4)),
+                  if (_what(a).isNotEmpty) Text(_what(a), style: AppType.meta(context).copyWith(color: c.textMedium, height: 1.4)),
                   Text(
                     '${hubActor(a.actor, me)} · ${a.at == null ? '' : AppTime.dateTime(a.at!)}',
                     style: AppType.meta(context),
@@ -851,7 +897,7 @@ class ModelFacts extends StatelessWidget {
     final speed = hubSpeedLine(m.speed);
     final acc = hubAccuracyLine(m.accuracy[role.role]);
     Widget line(IconData icon, String text) => Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Padding(padding: const EdgeInsets.only(top: 2), child: Icon(icon, size: 14, color: c.textLight)),
+          Padding(padding: const EdgeInsets.only(top: AppBorder.focus), child: Icon(icon, size: AppIconSize.xs, color: c.textLight)),
           const SizedBox(width: AppSpace.xxs),
           Flexible(child: Text(text, style: AppType.meta(context))),
         ]);

@@ -22,6 +22,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../student/enrollment/enrollment_models.dart';
 import 'teacher_transfers_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 import '../admin_common.dart' show t;
 
 class TeacherTransfersScreen extends StatefulWidget {
@@ -83,7 +84,7 @@ class _TransfersView extends StatelessWidget {
                       )
                     : ListView.builder(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.lg),
                         // +1: the hint banner is the first row.
                         itemCount: p.items.length + 1,
                         itemBuilder: (_, i) {
@@ -94,9 +95,12 @@ class _TransfersView extends StatelessWidget {
                             );
                           }
                           final t = p.items[i - 1];
-                          return _TransferCard(
+                          // The screen's one entrance: the first requests settle in once per visit.
+                          return AppReveal(
                             key: ValueKey(t.paymentId),
-                            transfer: t,
+                            index: i - 1,
+                            group: 'transfers',
+                            child: _TransferCard(transfer: t),
                           );
                         },
                       ),
@@ -109,7 +113,7 @@ class _TransfersView extends StatelessWidget {
 class _TransferCard extends StatelessWidget {
   final PendingTransfer transfer;
 
-  const _TransferCard({super.key, required this.transfer});
+  const _TransferCard({required this.transfer});
 
   static List<String> get _quickReasons => [
     'transfer_reason_unclear_receipt'.tr,
@@ -167,9 +171,9 @@ class _TransferCard extends StatelessWidget {
       context: context,
       builder: (ctx) => Dialog(
         backgroundColor: context.colors.heroShade,
-        insetPadding: const EdgeInsets.all(12),
+        insetPadding: const EdgeInsets.all(AppSpace.sm),
         clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(AppRadius.sheet))),
         child: Stack(
           children: [
             Positioned.fill(
@@ -183,15 +187,15 @@ class _TransferCard extends StatelessWidget {
                     child: Icon(
                       Icons.broken_image_outlined,
                       color: context.colors.onHeroMuted,
-                      size: 48,
+                      size: AppIconSize.hero,
                     ),
                   ),
                 ),
               ),
             ),
             Positioned(
-              top: 6,
-              right: 6,
+              top: AppSpace.xs,
+              right: AppSpace.xs,
               child: IconButton(tooltip: t('إغلاق', 'Close'), 
                 onPressed: () => Navigator.pop(ctx),
                 icon: Icon(Icons.close_rounded, color: context.colors.onHero),
@@ -224,7 +228,7 @@ class _TransferCard extends StatelessWidget {
             Row(
               children: [
                 RequestAvatar(name: transfer.studentName),
-                const SizedBox(width: 12),
+                AppSpace.gapSm,
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,23 +246,23 @@ class _TransferCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                AppSpace.gapXs,
                 _AmountPill(
                   amount: transfer.amount,
                   currency: transfer.currency,
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            AppSpace.gapMd,
 
-            // ── Transfer details ──
+            // ── Transfer details: a quiet input-tone well on the paper card (tone, not a tinted wash) ──
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppSpace.sm),
               decoration: BoxDecoration(
-                color: c.primary.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: c.primary.withValues(alpha: 0.12)),
+                color: c.inputBg,
+                borderRadius: AppRadius.controlAll,
+                border: Border.all(color: c.divider, width: AppBorder.hairline),
               ),
               child: Column(
                 children: [
@@ -272,7 +276,7 @@ class _TransferCard extends StatelessWidget {
                         : 'transfer_instapay_title'.tr,
                   ),
                   if (transfer.plan != null) ...[
-                    const SizedBox(height: 10),
+                    AppSpace.gapXs,
                     RequestInfoRow(
                       icon: Icons.event_available_rounded,
                       label: 'plan_label'.tr,
@@ -280,7 +284,7 @@ class _TransferCard extends StatelessWidget {
                     ),
                   ],
                   if (transfer.coursePrice != null) ...[
-                    const SizedBox(height: 10),
+                    AppSpace.gapXs,
                     RequestInfoRow(
                       icon: Icons.sell_outlined,
                       label: 'transfer_course_price'.tr,
@@ -289,7 +293,7 @@ class _TransferCard extends StatelessWidget {
                     ),
                   ],
                   if (transfer.fees != null) ...[
-                    const SizedBox(height: 10),
+                    AppSpace.gapXs,
                     RequestInfoRow(
                       icon: Icons.receipt_long_outlined,
                       label: 'transfer_fees_total'.tr,
@@ -297,14 +301,14 @@ class _TransferCard extends StatelessWidget {
                           '${(transfer.fees!.platformFee + transfer.fees!.vatOnPlatform + transfer.fees!.gatewayFee).toStringAsFixed(2)} ${transfer.currency}',
                     ),
                   ],
-                  const SizedBox(height: 10),
+                  AppSpace.gapXs,
                   RequestInfoRow(
                     icon: Icons.person_outline_rounded,
                     label: 'sender_name_label'.tr,
                     value: transfer.senderName,
                   ),
                   if (transfer.senderPhone?.isNotEmpty ?? false) ...[
-                    const SizedBox(height: 10),
+                    AppSpace.gapXs,
                     RequestInfoRow(
                       icon: Icons.phone_outlined,
                       label: 'sender_phone_short'.tr,
@@ -313,7 +317,7 @@ class _TransferCard extends StatelessWidget {
                     ),
                   ],
                   if (transfer.transferReference?.isNotEmpty ?? false) ...[
-                    const SizedBox(height: 10),
+                    AppSpace.gapXs,
                     RequestInfoRow(
                       icon: Icons.tag_rounded,
                       label: 'reference_number'.tr,
@@ -324,7 +328,7 @@ class _TransferCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            AppSpace.gapSm,
 
             // ── Proof image ──
             _ProofImage(
@@ -332,7 +336,7 @@ class _TransferCard extends StatelessWidget {
               url: transfer.proofImageUrl,
               onTap: () => _openImage(context),
             ),
-            const SizedBox(height: 14),
+            AppSpace.gapMd,
 
             RequestActionButtons(
               key: const ValueKey('transfer_requests.actions'),
@@ -354,19 +358,21 @@ class _AmountPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: c.primary.withValues(alpha: 0.10),
-        border: Border.all(color: c.primary.withValues(alpha: 0.2)),
-      ),
-      child: Text(
-        '${amount.toStringAsFixed(2)} $currency',
-        style: c.h3.copyWith(
-          fontSize: 14,
-          color: c.primary,
-          fontWeight: FontWeight.w800,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+        decoration: BoxDecoration(
+          borderRadius: AppRadius.controlAll,
+          color: c.blockSky,
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            '${amount.toStringAsFixed(2)} $currency',
+            maxLines: 1,
+            style: AppType.figure(context).copyWith(color: c.blockInk),
+          ),
         ),
       ),
     );
@@ -388,7 +394,7 @@ class _ProofImage extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.controlAll,
         child: Stack(
           children: [
             Image.network(
@@ -403,8 +409,8 @@ class _ProofImage extends StatelessWidget {
                       alignment: Alignment.center,
                       color: c.divider.withValues(alpha: 0.4),
                       child: const SizedBox(
-                        width: 26,
-                        height: 26,
+                        width: AppIconSize.lg,
+                        height: AppIconSize.lg,
                         child: AppLoadingIndicator(showLogo: false),
                       ),
                     ),
@@ -418,9 +424,9 @@ class _ProofImage extends StatelessWidget {
                     Icon(
                       Icons.broken_image_outlined,
                       color: c.textLight,
-                      size: 34,
+                      size: AppIconSize.xl,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpace.xxs),
                     Text('receipt_load_failed'.tr, style: c.caption),
                   ],
                 ),
@@ -432,8 +438,8 @@ class _ProofImage extends StatelessWidget {
               bottom: 0,
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
+                  horizontal: AppSpace.sm,
+                  vertical: AppSpace.xs,
                 ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -447,15 +453,15 @@ class _ProofImage extends StatelessWidget {
                     Icon(
                       Icons.zoom_out_map_rounded,
                       color: c.onHero,
-                      size: 16,
+                      size: AppIconSize.sm,
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'receipt_tap_to_zoom'.tr,
-                      style: TextStyle(
-                        color: c.onHero,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                    const SizedBox(width: AppSpace.xxs),
+                    Flexible(
+                      child: Text(
+                        'receipt_tap_to_zoom'.tr,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppType.label(context).copyWith(color: c.onHero),
                       ),
                     ),
                   ],

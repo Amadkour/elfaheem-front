@@ -182,8 +182,8 @@ class _IdChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs + AppSpace.xxs, vertical: AppSpace.xxs),
       decoration: BoxDecoration(color: c.primaryTint, borderRadius: AppRadius.chipAll),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Flexible(child: Text('$label ', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textMedium))),
-        Flexible(child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: appText(11.5, w: FontWeight.w600, c: c.textDark))),
+        Flexible(child: Text('$label ', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium))),
+        Flexible(child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: AppType.overline(context).copyWith(letterSpacing: 0, color: c.textDark))),
       ]),
     );
   }
@@ -213,8 +213,8 @@ class _CourseDiagnostic extends StatelessWidget {
         const SizedBox(width: AppSpace.xs),
         Expanded(
           child: Text.rich(TextSpan(children: [
-            TextSpan(text: a.hasAccess ? t('لديه وصول - ', 'Has access - ') : t('لا وصول - ', 'No access - '), style: appText(13, w: FontWeight.w600, c: appInk(context, tone))),
-            TextSpan(text: csReasonText(a), style: appText(13, c: c.textDark)),
+            TextSpan(text: a.hasAccess ? t('لديه وصول - ', 'Has access - ') : t('لا وصول - ', 'No access - '), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: appInk(context, tone))),
+            TextSpan(text: csReasonText(a), style: AppType.body(context).copyWith(color: c.textDark)),
           ]), style: const TextStyle(height: 1.45)),
         ),
       ]),
@@ -256,8 +256,8 @@ class _Kv extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Text.rich(TextSpan(children: [
-      TextSpan(text: '$k: ', style: appText(12, c: c.textMedium)),
-      TextSpan(text: v, style: appText(12, w: FontWeight.w600, c: c.textDark)),
+      TextSpan(text: '$k: ', style: AppType.meta(context).copyWith(color: c.textMedium)),
+      TextSpan(text: v, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
     ]));
   }
 }
@@ -315,15 +315,15 @@ class _TimelineTile extends StatelessWidget {
     return IntrinsicHeight(
       child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         SizedBox(
-          width: 32,
+          width: AppSpace.xl,
           child: Column(children: [
             Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(shape: BoxShape.circle, color: tone.withValues(alpha: c.isDark ? 0.22 : 0.14)),
-              child: Icon(icon, size: 16, color: appInk(context, tone)),
+              width: AppSpace.lg + AppSpace.xxs,
+              height: AppSpace.lg + AppSpace.xxs,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: appTintOn(context, tone)),
+              child: Icon(icon, size: AppIconSize.sm, color: appInkOn(context, tone, appTintOn(context, tone))),
             ),
-            if (!last) Expanded(child: Container(width: 2, color: c.divider)),
+            if (!last) Expanded(child: Container(width: AppBorder.focus, color: c.divider)),
           ]),
         ),
         const SizedBox(width: AppSpace.sm),
@@ -337,8 +337,8 @@ class _TimelineTile extends StatelessWidget {
               ]),
               if (item.at != null) Text(AppTime.dateTime(item.at!), style: AppType.meta(context)),
               if (meta.isNotEmpty) Text(meta, style: AppType.meta(context)),
-              if (e?.reason != null) Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text('"${e!.reason}"', style: appText(12.5, c: c.textDark, h: 1.4))),
-              if (change != null) Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text(change, style: appText(12, c: c.textMedium, h: 1.4))),
+              if (e?.reason != null) Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text('"${e!.reason}"', style: AppType.meta(context).copyWith(color: c.textDark, height: 1.4))),
+              if (change != null) Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text(change, style: AppType.meta(context).copyWith(color: c.textMedium, height: 1.4))),
             ]),
           ),
         ),
@@ -433,7 +433,7 @@ class _CsActionSheetState extends State<CsActionSheet> {
         AppField(controller: _reason, label: t('السبب (يظهر في السجل)', 'Reason (kept in the history)'), maxLines: 3, onChanged: (_) => setState(() {})),
         Align(
           alignment: AlignmentDirectional.centerEnd,
-          child: Text('$n / $maxReason', style: appText(11.5, c: n > maxReason ? c.danger : c.textMedium)),
+          child: Text('$n / $maxReason', style: AppType.meta(context).copyWith(color: n > maxReason ? c.danger : c.textMedium)),
         ),
         if (_showDays) ...[
           const SizedBox(height: AppSpace.sm),
@@ -600,7 +600,7 @@ Future<void> showCsProfileDrawer(BuildContext context, int studentId, {String? t
     context: context,
     barrierDismissible: true,
     barrierLabel: t('إغلاق', 'Close'),
-    barrierColor: context.colors.charcoalDark.withValues(alpha: 0.5),
+    barrierColor: appScrimColor(context),
     transitionDuration: motion.base,
     pageBuilder: (ctx, _, _) => Directionality(
       textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,

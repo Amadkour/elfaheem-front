@@ -75,7 +75,7 @@ class CsPager extends StatelessWidget {
     if (pages <= 1) {
       return Padding(
         padding: const EdgeInsets.only(top: AppSpace.sm),
-        child: Center(child: Text(countText(total, ar1: 'نتيجة', arFew: '{n} نتائج', arMany: '{n} نتيجة', en1: '{n} result', en: '{n} results'), style: appText(12, c: c.textMedium))),
+        child: Center(child: Text(countText(total, ar1: 'نتيجة', arFew: '{n} نتائج', arMany: '{n} نتيجة', en1: '{n} result', en: '{n} results'), style: AppType.meta(context).copyWith(color: c.textMedium))),
       );
     }
     return Padding(
@@ -86,7 +86,7 @@ class CsPager extends StatelessWidget {
           onPressed: page > 1 ? () => onPage(page - 1) : null,
           icon: const Icon(Icons.chevron_left_rounded),
         ),
-        Text(t('صفحة $page من $pages · $total', 'Page $page of $pages · $total'), style: appText(12.5, c: c.textMedium)),
+        Text(t('صفحة $page من $pages · $total', 'Page $page of $pages · $total'), style: AppType.meta(context).copyWith(color: c.textMedium)),
         IconButton(
           tooltip: t('التالي', 'Next'),
           onPressed: page < pages ? () => onPage(page + 1) : null,
@@ -132,7 +132,7 @@ class _Metric extends StatelessWidget {
     return Row(mainAxisSize: MainAxisSize.min, children: [
       Icon(icon, size: 15, color: col),
       const SizedBox(width: AppSpace.xxs),
-      Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, c: col))),
+      Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: col))),
     ]);
   }
 }
@@ -150,7 +150,7 @@ class _HeadCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
         width: width,
-        child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: context.colors.textMedium)),
+        child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textMedium)),
       );
 }
 
@@ -243,7 +243,7 @@ class _CourseRowTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     Widget cell(double w, Widget child) => SizedBox(width: w, child: child);
-    Text txt(String s) => Text(s, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textDark));
+    Text txt(String s) => Text(s, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.body(context).copyWith(color: c.textDark));
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -321,7 +321,7 @@ class CsRosterList extends StatelessWidget {
 Color? _flagFill(BuildContext context, CsAccess a) {
   final c = context.colors;
   if (a.paidNoAccess) return c.dangerTint;
-  if (a.accessNoPayment) return c.warning.withValues(alpha: c.isDark ? 0.18 : 0.10);
+  if (a.accessNoPayment) return appTintOn(context, c.warning);
   return null;
 }
 
@@ -340,7 +340,7 @@ class CsFlagNote extends StatelessWidget {
         Icon(Icons.info_outline_rounded, size: 16, color: appInk(context, tone)),
         const SizedBox(width: AppSpace.xs),
         Expanded(
-          child: Text('${access.flags.map(csFlagText).join(' · ')} - ${csReasonText(access)}', style: appText(12, c: appInk(context, tone), h: 1.4)),
+          child: Text('${access.flags.map(csFlagText).join(' · ')} - ${csReasonText(access)}', style: AppType.meta(context).copyWith(color: appInk(context, tone), height: 1.4)),
         ),
       ]),
     );
@@ -400,7 +400,7 @@ class _RosterTableRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final a = r.access;
-    Text txt(String s) => Text(s, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textDark));
+    Text txt(String s) => Text(s, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.body(context).copyWith(color: c.textDark));
     return InkWell(
       onTap: onTap,
       child: Container(

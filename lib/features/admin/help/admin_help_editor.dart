@@ -186,7 +186,7 @@ class _HelpEntryFormState extends State<HelpEntryForm> {
   Widget _head(String text, {Widget? trailing}) {
     final c = context.colors;
     return Row(children: [
-      Expanded(child: Semantics(header: true, child: Text(text, style: appText(16, w: FontWeight.w700, c: c.textDark)))),
+      Expanded(child: Semantics(header: true, child: Text(text, style: AppType.section(context).copyWith(color: c.textDark)))),
       ?trailing,
     ]);
   }
@@ -236,7 +236,7 @@ class _HelpEntryFormState extends State<HelpEntryForm> {
       for (var ti = 0; ti < d.tour.length; ti++)
         _box([
           Row(children: [
-            Expanded(child: Text('${_t('الخطوة', 'Step')} ${ti + 1}', style: appText(13, w: FontWeight.w700, c: context.colors.textMedium))),
+            Expanded(child: Text('${_t('الخطوة', 'Step')} ${ti + 1}', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textMedium))),
             _icon(Icons.arrow_upward_rounded, _t('أعلى', 'Move up'), ti == 0 ? null : () => _touch(() => d.tour.insert(ti - 1, d.tour.removeAt(ti)))),
             _icon(Icons.arrow_downward_rounded, _t('أسفل', 'Move down'),
                 ti == d.tour.length - 1 ? null : () => _touch(() => d.tour.insert(ti + 1, d.tour.removeAt(ti)))),
@@ -254,7 +254,7 @@ class _HelpEntryFormState extends State<HelpEntryForm> {
     final s = d.sections[si];
     return _box([
       Row(children: [
-        Expanded(child: Text('${_t('القسم', 'Section')} ${si + 1}', style: appText(13, w: FontWeight.w700, c: context.colors.textMedium))),
+        Expanded(child: Text('${_t('القسم', 'Section')} ${si + 1}', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textMedium))),
         _icon(Icons.arrow_upward_rounded, _t('أعلى', 'Move up'), si == 0 ? null : () => _touch(() => d.sections.insert(si - 1, d.sections.removeAt(si)))),
         _icon(Icons.arrow_downward_rounded, _t('أسفل', 'Move down'),
             si == d.sections.length - 1 ? null : () => _touch(() => d.sections.insert(si + 1, d.sections.removeAt(si)))),
@@ -273,7 +273,7 @@ class _HelpEntryFormState extends State<HelpEntryForm> {
           decoration: BoxDecoration(color: context.colors.inputBg, borderRadius: BorderRadius.circular(AppRadius.chip)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(children: [
-              Expanded(child: Text('${_t('عنصر', 'Item')} ${ii + 1}', style: appText(12.5, w: FontWeight.w700, c: context.colors.textMedium))),
+              Expanded(child: Text('${_t('عنصر', 'Item')} ${ii + 1}', style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textMedium))),
               _icon(Icons.arrow_upward_rounded, _t('أعلى', 'Move up'), ii == 0 ? null : () => _touch(() => s.items.insert(ii - 1, s.items.removeAt(ii)))),
               _icon(Icons.arrow_downward_rounded, _t('أسفل', 'Move down'),
                   ii == s.items.length - 1 ? null : () => _touch(() => s.items.insert(ii + 1, s.items.removeAt(ii)))),

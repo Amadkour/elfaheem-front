@@ -23,6 +23,7 @@ import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppEase, AppReveal;
 
 import '../admin_common.dart' show t;
 import '../admin_page.dart';
@@ -158,7 +159,7 @@ class _LiveSettingsPageState extends State<LiveSettingsPage> {
       subtitle: t('الترميز، ضعف الشبكة، جودة الكاميرات والشاشة، ومكان التسجيل — لكل الأجهزة دون تحديث',
           'Codec, weak networks, camera and screen quality, and where classes are recorded — no app update'),
       icon: Icons.speed_rounded,
-      maxWidth: 1180,
+      width: AppWidth.content,
       onRefresh: _load,
       dirty: pending > 0,
       primaryAction: info == null
@@ -245,12 +246,14 @@ class LiveSettingsView extends StatelessWidget {
       final list = ListView(
         // every section stays built, so the jump list can scroll to any of them
         scrollCacheExtent: const ScrollCacheExtent.pixels(100000),
-        padding: EdgeInsets.fromLTRB(16, 16, 16, wide ? 32 : 24),
+        padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, wide ? AppSpace.xl : AppSpace.lg),
         children: [
-          if (!wide) ...[preview, const SizedBox(height: 16)],
+          if (!wide) ...[AppReveal(index: 0, group: 'live_settings', child: preview), AppSpace.gapMd],
           for (var i = 0; i < sections.length; i++) ...[
-            if (i > 0) const SizedBox(height: 16),
-            KeyedSubtree(key: keys[i], child: sections[i]),
+            if (i > 0) AppSpace.gapMd,
+            KeyedSubtree(
+                key: keys[i],
+                child: AppReveal(index: i + (wide ? 0 : 1), group: 'live_settings', cap: 3, child: sections[i])),
           ],
         ],
       );
@@ -259,11 +262,11 @@ class LiveSettingsView extends StatelessWidget {
         // the jump list: one chip per section
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
           child: Row(children: [
             for (var i = 0; i < names.length; i++)
               Padding(
-                padding: const EdgeInsetsDirectional.only(end: 8),
+                padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
                 child: AppChoiceChip(label: names[i], selected: false, onTap: () => jump(i)),
               ),
           ]),
@@ -275,8 +278,8 @@ class LiveSettingsView extends StatelessWidget {
                   SizedBox(
                     width: 372,
                     child: SingleChildScrollView(
-                      padding: const EdgeInsetsDirectional.fromSTEB(0, 16, 16, 24),
-                      child: preview,
+                      padding: const EdgeInsetsDirectional.fromSTEB(0, AppSpace.md, AppSpace.md, AppSpace.lg),
+                      child: AppReveal(index: 0, group: 'live_settings.preview', child: preview),
                     ),
                   ),
                 ])
@@ -386,7 +389,7 @@ class LiveSettingsView extends StatelessWidget {
               onChanged: (v) => onChanged(draft.copyWith(cameraFps: v)),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpace.xxs),
           _SwitchRow(
             icon: Icons.videocam_off_rounded,
             title: t('كاميرات الحاضرين مغلقة عند الدخول', 'Attendees join with the camera off'),
@@ -509,7 +512,7 @@ class LiveSettingsView extends StatelessWidget {
         ),
         if (!server)
           Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: AppSpace.sm),
             child: AppBanner(
               icon: Icons.dns_outlined,
               text: t('محرّك تسجيل الخادم وعدد النسخ يظهران عند اختيار التسجيل على الخادم.',
@@ -564,7 +567,7 @@ class LiveSettingsView extends StatelessWidget {
         ),
         if (server)
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: AppSpace.xxs),
             child: AppBanner(
               icon: Icons.speed_rounded,
               text: t(
@@ -589,6 +592,8 @@ String _ltr(String s) => '${String.fromCharCode(0x2066)}$s${String.fromCharCode(
 
 // ── Preview card ─────────────────────────────────────────────────────────────
 
+/// The page's one memorable element: a sky (information) block whose figure — what one viewer downloads — glides to
+/// its new value as a setting changes. Ink on the block, paper tiles for the secondary figures, no gradient.
 class _PreviewCard extends StatelessWidget {
   const _PreviewCard({required this.draft, required this.recommended});
 
@@ -596,148 +601,155 @@ class _PreviewCard extends StatelessWidget {
   final LiveSettingsDraft recommended;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final b = estimateBandwidth(draft);
-    final away = draft.differencesFrom(recommended);
-    final parts = <(String, int, Color)>[
-      (t('كاميرا المعلم', "Teacher's camera"), b.teacherCameraKbps, c.onHero),
-      (t('مشاركة الشاشة', 'Screen share'), b.screenKbps, c.onHero.withValues(alpha: 0.62)),
-      (t('كاميرات الطلاب', "Students' cameras"), b.studentTilesKbps, c.onHero.withValues(alpha: 0.38)),
-      (t('الصوت', 'Audio'), b.audioKbps, c.onHero.withValues(alpha: 0.22)),
-    ];
-    final total = b.perViewerWithShareKbps;
-    return AppMeshSurface(
-      color: c.primary,
-      radius: BorderRadius.circular(c.radiusLarge),
-      child: Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: c.heroGlass,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: c.heroGlassBorder),
-            ),
-            child: Icon(Icons.network_check_rounded, color: c.onHero, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(t('بيانات كل مشاهد', 'Data per viewer'),
-                  style: appText(16, w: FontWeight.w800, c: c.onHero), maxLines: 2),
-              const SizedBox(height: 6),
-              Row(children: [
-                _GlassPill(
-                  icon: away == 0 ? Icons.verified_rounded : Icons.tune_rounded,
-                  label: away == 0
-                      ? t('الإعداد المستحسن', 'The recommended setup')
-                      : t('$away ${away == 1 ? 'اختلاف' : 'اختلافات'} عن المستحسن',
-                          '$away ${away == 1 ? 'difference' : 'differences'} from recommended'),
-                ),
-              ]),
-            ]),
-          ),
-        ]),
-        const SizedBox(height: 18),
-        Wrap(crossAxisAlignment: WrapCrossAlignment.end, spacing: 8, runSpacing: 4, children: [
-          Text('~${mbps(b.perViewerKbps)}', style: appText(34, w: FontWeight.w800, c: c.onHero, h: 1.0), textDirection: TextDirection.ltr),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text('Mbit/s', style: appText(14, w: FontWeight.w700, c: c.onHeroMuted)),
-          ),
-        ]),
-        const SizedBox(height: 4),
-        Text(
-          t('أثناء مشاركة الشاشة حتى ${mbps(total)} ميجابت/ث', 'Up to ${mbps(total)} Mbit/s while the screen is shared'),
-          style: appText(13, w: FontWeight.w600, c: c.onHeroMuted),
-        ),
-        const SizedBox(height: 16),
-        _StackedBar(parts: [for (final p in parts) (p.$2, p.$3)], track: c.heroGlass),
-        const SizedBox(height: 12),
-        for (final p in parts)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Row(children: [
-              Container(
-                  width: 10, height: 10, decoration: BoxDecoration(color: p.$3, borderRadius: BorderRadius.circular(3))),
-              const SizedBox(width: 8),
-              Expanded(child: Text(p.$1, style: appText(12.5, w: FontWeight.w600, c: c.onHeroMuted))),
-              Text(p.$2 == 0 ? '—' : '${mbps(p.$2)} Mbit/s', style: appText(12.5, w: FontWeight.w800, c: c.onHero), textDirection: TextDirection.ltr),
-            ]),
-          ),
-        const SizedBox(height: 4),
-        Text(
-          t('حصة فيها $kPreviewStudents طالباً، ${b.camerasOn} كاميرا مفتوحة، يظهر منها ${b.studentTiles} على الشاشة.',
-              'A class of $kPreviewStudents students, ${b.camerasOn} cameras on, ${b.studentTiles} of them on screen.'),
-          style: appText(11.5, w: FontWeight.w500, c: c.onHeroFaint, h: 1.35),
-        ),
-        const SizedBox(height: 16),
-        Row(children: [
-          Expanded(
-              child: _GlassStat(
-                  icon: Icons.upload_rounded,
-                  value: '${mbps(b.teacherUploadKbps)} Mbit/s',
-                  label: t('رفع المعلم مع المشاركة', "Teacher's upload, sharing"))),
-          const SizedBox(width: 10),
-          Expanded(
-              child: _GlassStat(
-                  icon: Icons.schedule_rounded,
-                  value: '~${hourLabel(b.perViewerHourMb)}',
-                  label: t('ساعة لكل مشاهد', 'One hour per viewer'))),
-        ]),
-        const SizedBox(height: 10),
-        _GlassStat(
-          icon: draft.weakNetwork == 'audio_first' ? Icons.record_voice_over_rounded : Icons.signal_cellular_alt_2_bar_rounded,
-          value: t('تحت ${mbps(b.weakNetworkFloorKbps)} ميجابت/ث', 'Below ${mbps(b.weakNetworkFloorKbps)} Mbit/s'),
-          label: draft.weakNetwork == 'audio_first'
-              ? t('يبقى الصوت مع زر «إظهار الفيديو»', 'Voice only, with a "Show video" button')
-              : t('ينزل الفيديو إلى أدنى طبقة 180p', 'Video steps down to the 180p layer'),
-          wide: true,
-        ),
-      ]),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppBlock(
+        tone: AppBlockTone.sky,
+        hero: true,
+        child: _PreviewBody(draft: draft, recommended: recommended),
+      );
 }
 
-class _StackedBar extends StatelessWidget {
-  const _StackedBar({required this.parts, required this.track});
+class _PreviewBody extends StatelessWidget {
+  const _PreviewBody({required this.draft, required this.recommended});
 
-  final List<(int, Color)> parts;
-  final Color track;
+  final LiveSettingsDraft draft;
+  final LiveSettingsDraft recommended;
 
   @override
   Widget build(BuildContext context) {
-    final total = parts.fold<int>(0, (a, p) => a + p.$1);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(6),
-      child: SizedBox(
-        height: 12,
-        child: Container(
-          color: track,
+    final ink = AppBlock.colorsOf(context);
+    final b = estimateBandwidth(draft);
+    final away = draft.differencesFrom(recommended);
+    final palette = appChartPalette(context);
+    // the sky slot (index 2) would vanish on the sky block: emerald · peach · gold · purple
+    final parts = <(String, int, Color)>[
+      (t('كاميرا المعلم', "Teacher's camera"), b.teacherCameraKbps, palette[0]),
+      (t('مشاركة الشاشة', 'Screen share'), b.screenKbps, palette[1]),
+      (t('كاميرات الطلاب', "Students' cameras"), b.studentTilesKbps, palette[3]),
+      (t('الصوت', 'Audio'), b.audioKbps, palette[4]),
+    ];
+    final total = b.perViewerWithShareKbps;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(Icons.network_check_rounded, color: ink.ink, size: AppIconSize.lg),
+        AppSpace.gapSm,
+        Expanded(
+          child: Text(t('بيانات كل مشاهد', 'Data per viewer'),
+              style: AppType.section(context).copyWith(color: ink.ink), maxLines: 2),
+        ),
+      ]),
+      AppSpace.gapXs,
+      _StatusChip(
+        icon: away == 0 ? Icons.verified_rounded : Icons.tune_rounded,
+        label: away == 0
+            ? t('الإعداد المستحسن', 'The recommended setup')
+            : t('$away ${away == 1 ? 'اختلاف' : 'اختلافات'} عن المستحسن',
+                '$away ${away == 1 ? 'difference' : 'differences'} from recommended'),
+      ),
+      AppSpace.gapLg,
+      Wrap(crossAxisAlignment: WrapCrossAlignment.end, spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
+        AppCountUp('~${mbps(b.perViewerKbps)}',
+            memoryKey: 'live_settings.per_viewer',
+            style: AppType.figureLarge(context).copyWith(color: ink.ink),
+            textDirection: TextDirection.ltr),
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.xxs),
+          child: Text('Mbit/s', style: AppType.label(context).copyWith(color: ink.muted)),
+        ),
+      ]),
+      const SizedBox(height: AppSpace.xxs),
+      Text(
+        t('أثناء مشاركة الشاشة حتى ${mbps(total)} ميجابت/ث', 'Up to ${mbps(total)} Mbit/s while the screen is shared'),
+        style: AppType.label(context).copyWith(color: ink.muted),
+      ),
+      AppSpace.gapMd,
+      _StackedBar(parts: [for (final p in parts) (p.$2, p.$3)], edge: ink.faint),
+      AppSpace.gapSm,
+      for (final p in parts)
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.xxs),
           child: Row(children: [
-            for (final p in parts)
-              if (p.$1 > 0)
-                Expanded(
-                  flex: (p.$1 * 1000 ~/ (total == 0 ? 1 : total)).clamp(1, 1000),
-                  child: Container(
-                    margin: const EdgeInsetsDirectional.only(end: 2),
-                    color: p.$2,
-                  ),
-                ),
+            Container(
+                width: AppSpace.sm,
+                height: AppSpace.sm,
+                decoration: BoxDecoration(color: p.$3, borderRadius: AppRadius.chipAll)),
+            AppSpace.gapXs,
+            Expanded(child: Text(p.$1, style: AppType.meta(context).copyWith(color: ink.muted))),
+            Text(p.$2 == 0 ? '—' : '${mbps(p.$2)} Mbit/s',
+                style: AppType.meta(context).copyWith(color: ink.ink, fontWeight: FontWeight.w600),
+                textDirection: TextDirection.ltr),
           ]),
         ),
+      const SizedBox(height: AppSpace.xxs),
+      Text(
+        t('حصة فيها $kPreviewStudents طالباً، ${b.camerasOn} كاميرا مفتوحة، يظهر منها ${b.studentTiles} على الشاشة.',
+            'A class of $kPreviewStudents students, ${b.camerasOn} cameras on, ${b.studentTiles} of them on screen.'),
+        style: AppType.meta(context).copyWith(color: ink.faint),
       ),
+      AppSpace.gapMd,
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(
+            child: _PaperStat(
+                icon: Icons.upload_rounded,
+                value: '${mbps(b.teacherUploadKbps)} Mbit/s',
+                label: t('رفع المعلم مع المشاركة', "Teacher's upload, sharing"))),
+        AppSpace.gapXs,
+        Expanded(
+            child: _PaperStat(
+                icon: Icons.schedule_rounded,
+                value: '~${hourLabel(b.perViewerHourMb)}',
+                label: t('ساعة لكل مشاهد', 'One hour per viewer'))),
+      ]),
+      AppSpace.gapXs,
+      _PaperStat(
+        icon: draft.weakNetwork == 'audio_first' ? Icons.record_voice_over_rounded : Icons.signal_cellular_alt_2_bar_rounded,
+        value: t('تحت ${mbps(b.weakNetworkFloorKbps)} ميجابت/ث', 'Below ${mbps(b.weakNetworkFloorKbps)} Mbit/s'),
+        label: draft.weakNetwork == 'audio_first'
+            ? t('يبقى الصوت مع زر «إظهار الفيديو»', 'Voice only, with a "Show video" button')
+            : t('ينزل الفيديو إلى أدنى طبقة 180p', 'Video steps down to the 180p layer'),
+      ),
+    ]);
+  }
+}
+
+/// A share of one viewer's download, part by part, on a paper track; the parts glide when a setting moves them.
+class _StackedBar extends StatelessWidget {
+  const _StackedBar({required this.parts, required this.edge});
+
+  final List<(int, Color)> parts;
+  final Color edge;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final total = parts.fold<int>(0, (a, p) => a + p.$1);
+    final motion = AppMotion.of(context);
+    return Container(
+      height: AppSpace.sm,
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        borderRadius: const BorderRadius.all(Radius.circular(AppRadius.pill)),
+        border: Border.all(color: edge.withValues(alpha: 0.35), width: AppBorder.hairline),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: LayoutBuilder(builder: (context, box) {
+        return Row(children: [
+          for (final p in parts)
+            if (p.$1 > 0)
+              AnimatedContainer(
+                duration: motion.base,
+                curve: AppEase.out,
+                width: box.maxWidth * p.$1 / (total == 0 ? 1 : total),
+                color: p.$2,
+              ),
+        ]);
+      }),
     );
   }
 }
 
-class _GlassPill extends StatelessWidget {
-  const _GlassPill({required this.icon, required this.label});
+/// The block's status line: how far the draft is from the recommended set (paper chip, ink label).
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.icon, required this.label});
 
   final IconData icon;
   final String label;
@@ -745,56 +757,55 @@ class _GlassPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Flexible(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: c.heroGlass,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: c.heroGlassBorder),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 14, color: c.onHero),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(label,
-                style: appText(11.5, w: FontWeight.w700, c: c.onHero), maxLines: 1, overflow: TextOverflow.ellipsis),
-          ),
-        ]),
+    final ink = AppBlock.colorsOf(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        borderRadius: const BorderRadius.all(Radius.circular(AppRadius.pill)),
       ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: AppIconSize.xs, color: ink.ink),
+        const SizedBox(width: AppSpace.xxs),
+        Flexible(
+          child: Text(label,
+              style: AppType.label(context).copyWith(color: ink.ink), maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
+      ]),
     );
   }
 }
 
-class _GlassStat extends StatelessWidget {
-  const _GlassStat({required this.icon, required this.value, required this.label, this.wide = false});
+/// A secondary figure on the preview block: paper on the sky, a hairline, ink.
+class _PaperStat extends StatelessWidget {
+  const _PaperStat({required this.icon, required this.value, required this.label});
 
   final IconData icon;
   final String value;
   final String label;
-  final bool wide;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final text = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(value,
-          style: appText(14, w: FontWeight.w800, c: c.onHero),
-          textDirection: RegExp(r'^[~0-9]').hasMatch(value) ? TextDirection.ltr : null),
-      const SizedBox(height: 2),
-      Text(label, style: appText(11.5, w: FontWeight.w600, c: c.onHeroMuted, h: 1.3)),
-    ]);
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(
-        color: c.heroGlass,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: c.heroGlassBorder),
+        color: c.cardBg,
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(icon, size: 18, color: c.onHero),
-        const SizedBox(width: 10),
-        Expanded(child: text),
+        Icon(icon, size: AppIconSize.sm, color: c.textMedium),
+        AppSpace.gapXs,
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(value,
+                style: AppType.bodyStrong(context),
+                textDirection: RegExp(r'^[~0-9]').hasMatch(value) ? TextDirection.ltr : null),
+            const SizedBox(height: AppSpace.xxs),
+            Text(label, style: AppType.meta(context)),
+          ]),
+        ),
       ]),
     );
   }
@@ -838,25 +849,25 @@ class _Section extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return AppCard(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.xs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(12)),
-            child: Icon(icon, color: c.isDark ? c.textDark : c.primary, size: 22),
+            width: AppTouch.min - AppSpace.xs,
+            height: AppTouch.min - AppSpace.xs,
+            decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.controlAll),
+            child: Icon(icon, color: c.textDark, size: AppIconSize.md),
           ),
-          const SizedBox(width: 12),
+          AppSpace.gapSm,
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, style: appText(16, w: FontWeight.w800, c: c.textDark)),
-              const SizedBox(height: 2),
-              Text(subtitle, style: appText(12.5, w: FontWeight.w500, c: c.textMedium, h: 1.35)),
+              Text(title, style: AppType.section(context)),
+              const SizedBox(height: AppSpace.xxs),
+              Text(subtitle, style: AppType.meta(context)),
             ]),
           ),
         ]),
-        const SizedBox(height: 16),
+        AppSpace.gapLg,
         ...children,
       ]),
     );
@@ -879,20 +890,20 @@ class _Field extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: AppSpace.lg),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
-          Text(label, style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          Text(label, style: AppType.bodyStrong(context)),
           if (hint != null) _RecommendedPill(text: hint!, subtle: true),
         ]),
-        const SizedBox(height: 10),
+        AppSpace.gapSm,
         child,
         if (help != null) ...[
-          const SizedBox(height: 8),
+          AppSpace.gapXs,
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(Icons.info_outline_rounded, size: 15, color: c.textLight),
-            const SizedBox(width: 6),
-            Expanded(child: Text(help!, style: appText(12, w: FontWeight.w500, c: c.textMedium, h: 1.35))),
+            Icon(Icons.info_outline_rounded, size: AppIconSize.sm, color: c.textLight),
+            const SizedBox(width: AppSpace.xxs),
+            Expanded(child: Text(help!, style: AppType.meta(context))),
           ]),
         ],
       ]),
@@ -910,18 +921,19 @@ class _RecommendedPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppBorder.focus),
       decoration: BoxDecoration(
-        color: subtle ? c.cardBg2 : c.successTint,
-        borderRadius: BorderRadius.circular(999),
-        border: subtle ? Border.all(color: c.divider) : null,
+        color: subtle ? c.inputBg : appTintOn(context, c.success),
+        borderRadius: const BorderRadius.all(Radius.circular(AppRadius.pill)),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.star_rounded, size: 13, color: c.success),
-        const SizedBox(width: 4),
+        Icon(Icons.star_rounded, size: AppIconSize.xs, color: appInkOn(context, c.success, subtle ? c.inputBg : appTintOn(context, c.success))),
+        const SizedBox(width: AppSpace.xxs),
         Flexible(
           child: Text(text ?? t('مستحسن', 'Recommended'),
-              style: appText(11, w: FontWeight.w800, c: subtle ? c.textMedium : c.success),
+              style: AppType.overline(context).copyWith(
+                  letterSpacing: 0,
+                  color: subtle ? c.textMedium : appInkOn(context, c.success, appTintOn(context, c.success))),
               maxLines: 1,
               overflow: TextOverflow.ellipsis),
         ),
@@ -974,7 +986,7 @@ class _ChoiceRow<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, box) {
       final perCard = options.length == 3 ? 200.0 : 250.0;
-      final side = box.maxWidth >= perCard * options.length + 12 * (options.length - 1);
+      final side = box.maxWidth >= perCard * options.length + AppSpace.sm * (options.length - 1);
       final cards = [
         for (final o in options)
           _ChoiceCard(
@@ -987,12 +999,12 @@ class _ChoiceRow<T> extends StatelessWidget {
       ];
       if (!side) {
         return Column(children: [
-          for (var i = 0; i < cards.length; i++) ...[if (i > 0) const SizedBox(height: 10), cards[i]],
+          for (var i = 0; i < cards.length; i++) ...[if (i > 0) AppSpace.gapSm, cards[i]],
         ]);
       }
       return IntrinsicHeight(
         child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          for (var i = 0; i < cards.length; i++) ...[if (i > 0) const SizedBox(width: 12), Expanded(child: cards[i])],
+          for (var i = 0; i < cards.length; i++) ...[if (i > 0) AppSpace.gapSm, Expanded(child: cards[i])],
         ]),
       );
     });
@@ -1017,45 +1029,49 @@ class _ChoiceCard<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final r = BorderRadius.circular(16);
+    final r = AppRadius.cardAll;
     final card = AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
+      duration: AppMotion.of(context).fast,
+      curve: AppEase.out,
       decoration: BoxDecoration(
-        color: selected ? c.primaryTint : c.cardBg2,
+        color: selected ? c.primaryTint : c.cardBg,
         borderRadius: r,
-        border: Border.all(color: selected ? c.primary : c.divider, width: selected ? 1.6 : 1),
+        border: Border.all(
+            color: selected ? c.primary : c.divider, width: selected ? AppBorder.strong : AppBorder.hairline),
       ),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpace.md),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Container(
-            width: 34,
-            height: 34,
+          AnimatedContainer(
+            duration: AppMotion.of(context).fast,
+            curve: AppEase.out,
+            width: AppIconSize.hero,
+            height: AppIconSize.hero,
             decoration: BoxDecoration(
-              color: selected ? c.primary : c.primaryTint,
-              borderRadius: BorderRadius.circular(10),
+              color: selected ? c.primary : c.inputBg,
+              borderRadius: AppRadius.controlAll,
             ),
-            child: Icon(option.icon, size: 18, color: selected ? c.onHero : (c.isDark ? c.textDark : c.primary)),
+            child: Icon(option.icon, size: AppIconSize.md, color: selected ? c.onHero : c.textDark),
           ),
-          const SizedBox(width: 10),
+          AppSpace.gapSm,
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(option.title, style: appText(14, w: FontWeight.w800, c: c.textDark)),
+              padding: const EdgeInsets.only(top: AppSpace.xs),
+              child: Text(option.title, style: AppType.bodyStrong(context)),
             ),
           ),
-          const SizedBox(width: 6),
+          AppSpace.gapXs,
           _Radio(selected: selected),
         ]),
         if (recommended) ...[
-          const SizedBox(height: 8),
+          AppSpace.gapXs,
           const _RecommendedPill(),
         ],
-        const SizedBox(height: 8),
-        Text(option.body, style: appText(12.5, w: FontWeight.w500, c: c.textMedium, h: 1.4)),
+        AppSpace.gapXs,
+        Text(option.body, style: AppType.meta(context)),
         if (option.tags.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          Wrap(spacing: 6, runSpacing: 6, children: [for (final tag in option.tags) _TagChip(tag: tag)]),
+          AppSpace.gapSm,
+          Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [for (final tag in option.tags) _TagChip(tag: tag)]),
         ],
       ]),
     );
@@ -1083,15 +1099,17 @@ class _Radio extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Container(
-      width: 22,
-      height: 22,
+    return AnimatedContainer(
+      duration: AppMotion.of(context).fast,
+      curve: AppEase.out,
+      width: AppIconSize.lg,
+      height: AppIconSize.lg,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: selected ? c.primary : c.surface,
-        border: Border.all(color: selected ? c.primary : c.divider, width: 2),
+        color: selected ? c.primary : c.cardBg,
+        border: Border.all(color: selected ? c.primary : c.textLight, width: AppBorder.strong),
       ),
-      child: selected ? Icon(Icons.check_rounded, size: 14, color: c.onHero) : null,
+      child: selected ? Icon(Icons.check_rounded, size: AppIconSize.sm, color: c.onHero) : null,
     );
   }
 }
@@ -1106,16 +1124,15 @@ class _TagChip extends StatelessWidget {
     final c = context.colors;
     final pro = tag is _Pro;
     final color = pro ? c.success : c.warning;
+    final tint = appTintOn(context, color);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: c.isDark ? 0.18 : 0.10),
-        borderRadius: BorderRadius.circular(8),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
+      decoration: BoxDecoration(color: tint, borderRadius: AppRadius.chipAll),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(pro ? Icons.add_circle_rounded : Icons.remove_circle_rounded, size: 13, color: color),
-        const SizedBox(width: 4),
-        Flexible(child: Text(tag.label, style: appText(11.5, w: FontWeight.w700, c: c.textDark))),
+        Icon(pro ? Icons.add_circle_rounded : Icons.remove_circle_rounded,
+            size: AppIconSize.xs, color: appInkOn(context, color, tint)),
+        const SizedBox(width: AppSpace.xxs),
+        Flexible(child: Text(tag.label, style: AppType.meta(context).copyWith(color: c.textDark))),
       ]),
     );
   }
@@ -1135,11 +1152,10 @@ class _Segmented<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(AppSpace.xxs),
       decoration: BoxDecoration(
-        color: c.cardBg2,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: c.divider),
+        color: c.inputBg,
+        borderRadius: AppRadius.controlAll,
       ),
       child: Row(children: [
         for (final (v, label) in items)
@@ -1151,26 +1167,28 @@ class _Segmented<T> extends StatelessWidget {
               child: Material(
                 type: MaterialType.transparency,
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: AppRadius.chipAll,
                   onTap: v == value ? null : () => onChanged(v),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 160),
-                    constraints: const BoxConstraints(minHeight: 44),
+                    duration: AppMotion.of(context).fast,
+                    curve: AppEase.out,
+                    constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: v == value ? c.primary : null,
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: v == value ? c.primaryShadow : null,
+                      borderRadius: AppRadius.chipAll,
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs, vertical: AppSpace.xs),
                     child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                       if (v == recommended) ...[
-                        Icon(Icons.star_rounded, size: 13, color: v == value ? c.onHero : c.success),
-                        const SizedBox(width: 3),
+                        Icon(Icons.star_rounded,
+                            size: AppIconSize.xs, color: v == value ? c.onHero : appInkOn(context, c.success, c.inputBg)),
+                        const SizedBox(width: AppSpace.xxs),
                       ],
                       Flexible(
                         child: Text(label,
-                            style: appText(13, w: FontWeight.w800, c: v == value ? c.onHero : c.textMedium),
+                            style: AppType.label(context).copyWith(
+                                fontWeight: FontWeight.w600, color: v == value ? c.onHero : c.textMedium),
                             textDirection: TextDirection.ltr, // "24 fps", "720p"
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis),
@@ -1221,32 +1239,31 @@ class _SliderField extends StatelessWidget {
       label: label,
       hint: hint,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+        padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.sm, AppSpace.xs),
         decoration: BoxDecoration(
-          color: c.cardBg2,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: c.divider),
+          color: c.inputBg,
+          borderRadius: AppRadius.controlAll,
         ),
         child: Column(children: [
           Row(children: [
             Expanded(
-              child: Text(caption, style: appText(11.5, w: FontWeight.w600, c: c.textLight, h: 1.3), maxLines: 2),
+              child: Text(caption, style: AppType.meta(context), maxLines: 2),
             ),
-            const SizedBox(width: 8),
+            AppSpace.gapXs,
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(10)),
-              child: Text(valueLabel,
-                  style: appText(13, w: FontWeight.w800, c: c.onHero), maxLines: 1, textDirection: TextDirection.ltr),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
+              decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.chipAll),
+              child: AppCountUp(valueLabel,
+                  style: AppType.figure(context), textDirection: TextDirection.ltr),
             ),
           ]),
           Row(children: [
             Expanded(
               child: SliderTheme(
                 data: SliderTheme.of(context).copyWith(
-                  trackHeight: 6,
+                  trackHeight: AppSpace.xxs + AppBorder.focus,
                   activeTrackColor: c.primary,
-                  inactiveTrackColor: c.primaryTint,
+                  inactiveTrackColor: c.divider,
                   thumbColor: c.primary,
                   overlayColor: c.primary.withValues(alpha: 0.12),
                   tickMarkShape: SliderTickMarkShape.noTickMark,
@@ -1263,25 +1280,25 @@ class _SliderField extends StatelessWidget {
             ),
           ]),
           Padding(
-            padding: const EdgeInsetsDirectional.symmetric(horizontal: 8),
+            padding: const EdgeInsetsDirectional.symmetric(horizontal: AppSpace.xs),
             child: Row(children: [
-              Icon(Icons.remove_rounded, size: 12, color: c.textLight),
-              const SizedBox(width: 4),
+              Icon(Icons.remove_rounded, size: AppIconSize.xs, color: c.textLight),
+              const SizedBox(width: AppSpace.xxs),
               Expanded(
                   child: Text(lowLabel,
-                      style: appText(11, w: FontWeight.w600, c: c.textMedium),
+                      style: AppType.meta(context),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis)),
-              const SizedBox(width: 8),
+              AppSpace.gapXs,
               Flexible(
                 child: Text(highLabel,
                     textAlign: TextAlign.end,
-                    style: appText(11, w: FontWeight.w600, c: c.textMedium),
+                    style: AppType.meta(context),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
               ),
-              const SizedBox(width: 4),
-              Icon(Icons.add_rounded, size: 12, color: c.textLight),
+              const SizedBox(width: AppSpace.xxs),
+              Icon(Icons.add_rounded, size: AppIconSize.xs, color: c.textLight),
             ]),
           ),
         ]),
@@ -1311,12 +1328,11 @@ class _SwitchRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsetsDirectional.fromSTEB(12, 4, 8, 4),
+      margin: const EdgeInsets.only(bottom: AppSpace.sm),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xxs, AppSpace.xs, AppSpace.xxs),
       decoration: BoxDecoration(
-        color: c.cardBg2,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: c.divider),
+        color: c.inputBg,
+        borderRadius: AppRadius.controlAll,
       ),
       child: AppSwitchTile(
         icon: icon,
@@ -1324,9 +1340,9 @@ class _SwitchRow extends StatelessWidget {
         value: value,
         onChanged: onChanged,
         subtitleWidget: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(subtitle, style: appText(12, w: FontWeight.w500, c: c.textMedium, h: 1.35)),
+          Text(subtitle, style: AppType.meta(context)),
           if (value != recommended) ...[
-            const SizedBox(height: 6),
+            AppSpace.gapXs,
             _RecommendedPill(
                 text: recommended ? t('المستحسن: مفعّل', 'Recommended: on') : t('المستحسن: متوقف', 'Recommended: off'),
                 subtle: true),
@@ -1365,7 +1381,7 @@ class _ActionBar extends StatelessWidget {
             '$pending unsaved ${pending == 1 ? 'change' : 'changes'}');
     final reset = TextButton.icon(
       onPressed: saving || atRecommended ? null : onReset,
-      icon: const Icon(Icons.restart_alt_rounded, size: 18),
+      icon: const Icon(Icons.restart_alt_rounded, size: AppIconSize.md),
       label: Text(t('الرجوع إلى المستحسن', 'Reset to recommended'), maxLines: 1, overflow: TextOverflow.ellipsis),
     );
     final discard = onDiscard == null
@@ -1380,40 +1396,39 @@ class _ActionBar extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: c.surface,
-        border: Border(top: BorderSide(color: c.divider)),
-        boxShadow: c.bottomNavShadow,
+        border: Border(top: BorderSide(color: c.divider, width: AppBorder.hairline)),
       ),
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
       child: SafeArea(
         top: false,
         child: LayoutBuilder(builder: (context, box) {
           final narrow = box.maxWidth < 560;
           final statusRow = Row(children: [
             Icon(pending == 0 ? Icons.cloud_done_rounded : Icons.edit_note_rounded,
-                size: 18, color: pending == 0 ? c.success : c.warning),
-            const SizedBox(width: 8),
+                size: AppIconSize.md, color: pending == 0 ? c.success : c.warning),
+            AppSpace.gapXs,
             Expanded(
               child: Text(status,
-                  style: appText(13, w: FontWeight.w700, c: c.textDark), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  style: AppType.bodyStrong(context), maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
             if (narrow && discard != null) discard,
           ]);
           if (narrow) {
             return Column(mainAxisSize: MainAxisSize.min, children: [
               statusRow,
-              const SizedBox(height: 8),
+              AppSpace.gapXs,
               Row(children: [
                 Expanded(child: reset),
-                const SizedBox(width: 8),
+                AppSpace.gapXs,
                 SizedBox(width: 132, child: save),
               ]),
             ]);
           }
           return Row(children: [
             Expanded(child: statusRow),
-            if (discard != null) ...[discard, const SizedBox(width: 4)],
+            if (discard != null) ...[discard, const SizedBox(width: AppSpace.xxs)],
             Flexible(child: reset),
-            const SizedBox(width: 12),
+            AppSpace.gapSm,
             SizedBox(width: 180, child: save),
           ]);
         }),

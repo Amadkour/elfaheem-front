@@ -203,7 +203,7 @@ class ModelDownloadBar extends StatelessWidget {
           value: indeterminate ? null : (f ?? 0),
           strokeWidth: stroke,
           color: col,
-          backgroundColor: col.withValues(alpha: 0.16),
+          backgroundColor: appTintOn(context, col),
         ),
         Icon(download.paused ? Icons.pause_rounded : Icons.download_rounded, size: size * 0.48, color: col),
       ]),
@@ -222,7 +222,7 @@ class ModelDownloadBar extends StatelessWidget {
       child: Material(
         color: c.cardBg,
         elevation: 6,
-        shadowColor: Colors.black.withValues(alpha: 0.25),
+        shadowColor: c.shadowTone.withValues(alpha: 0.25),
         shape: StadiumBorder(side: BorderSide(color: c.divider)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -235,14 +235,14 @@ class ModelDownloadBar extends StatelessWidget {
                 _ring(context, 32),
                 if (pct.isNotEmpty) ...[
                   const SizedBox(width: AppSpace.xs),
-                  Text(pct, style: appText(13, w: FontWeight.w800, c: c.textDark)),
+                  Text(pct, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
                 ],
                 if (more > 0) ...[
                   const SizedBox(width: AppSpace.xxs),
-                  Text('+$more', style: appText(12, w: FontWeight.w700, c: c.textMedium)),
+                  Text('+$more', style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
                 ],
                 const SizedBox(width: AppSpace.xxs),
-                Icon(Icons.expand_less_rounded, size: 20, color: c.textMedium),
+                Icon(Icons.expand_less_rounded, size: AppIconSize.md, color: c.textMedium),
               ]),
             ),
           ),
@@ -259,13 +259,13 @@ class ModelDownloadBar extends StatelessWidget {
           onPressed: onTap,
           constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
           style: IconButton.styleFrom(foregroundColor: color ?? c.textMedium),
-          icon: Icon(icon, size: 22, semanticLabel: label),
+          icon: Icon(icon, size: AppIconSize.lg, semanticLabel: label),
         );
     return Material(
       key: const ValueKey('model_download_card'),
       color: c.cardBg,
       elevation: 8,
-      shadowColor: Colors.black.withValues(alpha: 0.25),
+      shadowColor: c.shadowTone.withValues(alpha: 0.25),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sheet), side: BorderSide(color: c.divider)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -278,12 +278,12 @@ class ModelDownloadBar extends StatelessWidget {
               const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                  Text(_name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w800, c: c.textDark)),
+                  Text(_name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
                   Text(
                     [role, if (more > 0) t('و$more غيره', '+$more more')].where((s) => s.isNotEmpty).join(' · '),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: appText(12, c: c.textMedium),
+                    style: AppType.meta(context).copyWith(color: c.textMedium),
                   ),
                 ]),
               ),
@@ -314,7 +314,7 @@ class ModelDownloadBar extends StatelessWidget {
                   key: const ValueKey('model_download_line'),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: appText(12, w: FontWeight.w600, c: c.textMedium)),
+                  style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
             ),
           ]),
         ),

@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -148,7 +149,11 @@ class _CourseTrashPageState extends State<CourseTrashPage> {
                   final cards = _tab == 0
                       ? [for (final it in _trash.items) TrashCourseCard(item: it, onTap: () => _open(it))]
                       : [for (final it in _purged.items) TrashPurgedCard(item: it)];
-                  return Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [for (final c in cards) SizedBox(width: w, child: c)]);
+                  // one entrance: the first cards settle in once per tab
+                  return Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [
+                    for (final (i, c) in cards.indexed)
+                      SizedBox(width: w, child: AppReveal(index: i, group: 'trash.$_tab', cap: 6, child: c)),
+                  ]);
                 }),
                 CsPager(page: total.page, pages: total.pages, total: total.total, onPage: _setPage),
               ]),

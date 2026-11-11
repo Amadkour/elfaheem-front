@@ -308,11 +308,11 @@ class BuilderTokenSheet extends StatelessWidget {
             const SizedBox(height: AppSpace.sm),
             Container(
               padding: const EdgeInsets.all(AppSpace.sm),
-              decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll, border: Border.all(color: c.divider)),
+              decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll),
               child: SelectableText(token,
                   key: const ValueKey('releases.token'),
                   textDirection: TextDirection.ltr,
-                  style: appText(13.5, w: FontWeight.w600, c: c.textDark).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+                  style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
             ),
             const SizedBox(height: AppSpace.sm),
             AppPrimaryButton(
