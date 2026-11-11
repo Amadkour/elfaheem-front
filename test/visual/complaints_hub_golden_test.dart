@@ -22,6 +22,11 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/shared/profile/compalints/complaints_hub_model.dart';
 import 'package:flutter_education_app/features/shared/profile/compalints/complaints_hub_widgets.dart';
+import 'package:flutter_education_app/config/storage_service.dart';
+import 'package:flutter_education_app/features/shared/profile/compalints/complaint_provider.dart';
+import 'package:flutter_education_app/features/shared/profile/compalints/new_complaint_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -332,6 +337,23 @@ void main() {
     await _loadFonts();
   });
   setUp(() => AppConfig.disableList = []);
+
+  // the platform complaint form (New complaint → the app team), about a course
+  testWidgets('form', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    final storage = await StorageService.getInstance();
+    await _render(
+      t,
+      'form',
+      () => MultiProvider(
+        providers: [
+          ChangeNotifierProvider<LangProvider>(create: (_) => LangProvider(storage: storage)),
+          ChangeNotifierProvider<ComplaintProvider>(create: (_) => ComplaintProvider()),
+        ],
+        child: const NewComplaintScreen(formOnly: true, courseTitle: 'Python Fundamentals'),
+      ),
+    );
+  });
 
   testWidgets('student', (t) {
     final search = TextEditingController();

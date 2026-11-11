@@ -26,13 +26,13 @@ import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
-import 'package:flutter_education_app/design/app_kit.dart' show appText, AppShimmer, AppSkeletonBox;
-import 'package:flutter_education_app/design/app_tokens.dart' show AppSpace, AppTouch;
+import 'package:flutter_education_app/design/app_kit.dart' show appText, AppShimmer, AppSkeletonBox, AppBlock, AppBlockTone;
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 
 import 'about_terms_model.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_gradients.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pure helpers
@@ -176,44 +176,35 @@ const _iconMap = <String, IconData>{
 // Shared surfaces
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// The reading pages' card: card colour, theme radius, hairline, soft shadow.
+/// The reading pages' card: paper on a warm hairline, radius `card`, no resting shadow (depth is tone first,
+/// D-612). [tint] is kept for the callers; a tinted surface is an [AppBlock] now (the hero), never a wash.
 class ReadingSurface extends StatelessWidget {
-  const ReadingSurface({super.key, required this.child, this.padding = const EdgeInsets.all(20), this.tint});
+  const ReadingSurface({super.key, required this.child, this.padding = const EdgeInsets.all(AppSpace.lg), this.tint});
 
   final Widget child;
   final EdgeInsetsGeometry padding;
 
-  /// A soft wash of this colour from the top-start corner (the hero).
+  /// Unused since the Warm Editorial theme (no gradient washes); kept so older callers compile.
   final Color? tint;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final r = BorderRadius.circular(c.radiusLarge - 4);
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: r,
-        border: Border.all(color: c.divider),
-        boxShadow: c.cardShadow,
-        gradient: tint == null
-            ? null
-            : LinearGradient(
-                begin: AlignmentDirectional.topStart,
-                end: AlignmentDirectional.bottomEnd,
-                colors: [Color.alphaBlend(tint!.withValues(alpha: c.isDark ? 0.16 : 0.07), c.cardBg), c.cardBg],
-                stops: const [0, 0.75],
-              ),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Padding(padding: padding, child: child),
     );
   }
 }
 
-/// A rounded tile with the brand gradient and an on-hero icon (the hero's mark).
+/// A rounded paper tile with the mark, the icon in readable brand ink (on the hero block it reads as an inset).
 class ReadingIconTile extends StatelessWidget {
-  const ReadingIconTile({super.key, required this.icon, this.size = 52});
+  const ReadingIconTile({super.key, required this.icon, this.size = AppTouch.primary});
 
   final IconData icon;
   final double size;
@@ -225,13 +216,11 @@ class ReadingIconTile extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(size * 0.3),
-        gradient: AppGradients.blend(context),
-        boxShadow: [
-          BoxShadow(color: c.primary.withValues(alpha: c.isDark ? 0.30 : 0.24), blurRadius: 14, offset: const Offset(0, 6)),
-        ],
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        color: c.cardBg,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
-      child: Icon(icon, color: c.onHero, size: size * 0.48),
+      child: Icon(icon, color: c.blockAccentInk(c.primary, c.cardBg), size: size * 0.48),
     );
   }
 }
@@ -254,27 +243,32 @@ class ReadingMetaPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final col = tone;
-    final ink = col == null ? appInk(context, c.textMedium) : appInk(context, col);
+    final ink = col == null ? c.textMedium : c.blockAccentInk(col, c.cardBg);
     return Container(
-      padding: const EdgeInsetsDirectional.fromSTEB(10, 6, 12, 6),
+      constraints: const BoxConstraints(minHeight: AppIconSize.xl),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm - 2, AppSpace.xxs, AppSpace.sm, AppSpace.xxs),
       decoration: BoxDecoration(
-        color: col == null ? c.inputBg : col.withValues(alpha: c.isDark ? 0.18 : 0.10),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: col == null ? c.divider : col.withValues(alpha: 0.30)),
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: col == null ? c.divider : col.withValues(alpha: 0.45), width: AppBorder.hairline),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 15, color: col == null ? c.primary : ink),
-        const SizedBox(width: 6),
+        Icon(icon, size: AppIconSize.xs, color: col == null ? c.textLight : ink),
+        const SizedBox(width: AppSpace.xs - 2),
         Flexible(
           child: Text(label,
-              maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w600, c: ink, h: 1.2)),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppType.label(context).copyWith(color: ink, fontWeight: FontWeight.w500, height: 1.2)),
         ),
       ]),
     );
   }
 }
 
-/// The calm page header: the mark (an icon tile, or [leading]), title, intro and meta pills on a softly tinted card.
+/// The page header: the reading pages' ONE tinted block (peach, the learning tone; the same on Terms, Privacy and
+/// About) with the mark (an icon tile, or [leading]), the title in the editorial display face, the intro and the
+/// meta pills on paper. A large faint watermark of the mark sits in the block's end corner.
 class ReadingHero extends StatelessWidget {
   const ReadingHero({
     super.key,
@@ -295,48 +289,54 @@ class ReadingHero extends StatelessWidget {
   final String? intro;
   final List<Widget> meta;
 
+  /// How much larger than the hero icon size the watermark is drawn.
+  static const double _markScale = 3.3;
+
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return LayoutBuilder(builder: (context, box) {
-      final roomy = box.maxWidth >= 560;
-      return ReadingSurface(
-        tint: c.primary,
-        padding: EdgeInsets.all(roomy ? 32 : 24),
-        child: Stack(clipBehavior: Clip.none, children: [
-          // a faint watermark of the mark on the end side
-          if (icon != null)
-            PositionedDirectional(
-              end: roomy ? -8 : -16,
-              top: roomy ? -12 : -16,
-              child: ExcludeSemantics(
-                child: Icon(icon, size: roomy ? 132 : 104, color: c.primary.withValues(alpha: c.isDark ? 0.08 : 0.06)),
-              ),
-            ),
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            leading ?? ReadingIconTile(icon: icon ?? Icons.article_outlined),
-            const SizedBox(height: 24),
-            if ((eyebrow ?? '').isNotEmpty) ...[
-              Text(eyebrow!,
-                  style: appText(12.5, w: FontWeight.w700, c: appInk(context, c.primary), h: 1.3)),
-              const SizedBox(height: 8),
-            ],
-            Text(title, style: appText(roomy ? 30 : 26, w: FontWeight.w800, c: c.textDark, h: 1.2)),
-            if ((intro ?? '').isNotEmpty) ...[
-              const SizedBox(height: 8),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 560),
-                child: Text(intro!, style: appText(15, w: FontWeight.w400, c: c.textMedium, h: 1.6)),
-              ),
-            ],
-            if (meta.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              Wrap(spacing: 8, runSpacing: 8, children: meta),
-            ],
-          ]),
-        ]),
+  Widget build(BuildContext context) => AppBlock(
+        tone: AppBlockTone.peach,
+        hero: true,
+        child: LayoutBuilder(builder: (context, box) => _body(context, box.maxWidth >= 560)),
       );
-    });
+
+  Widget _body(BuildContext context, bool roomy) {
+    final b = AppBlock.colorsOf(context);
+    return Stack(clipBehavior: Clip.none, children: [
+      // a faint watermark of the mark on the end side
+      if (icon != null)
+        PositionedDirectional(
+          end: -AppSpace.xs,
+          top: -AppSpace.md,
+          child: ExcludeSemantics(
+            child: Icon(icon,
+                size: AppIconSize.hero * (roomy ? _markScale : _markScale * 0.8),
+                color: Color.lerp(b.surface, b.ink, 0.07)),
+          ),
+        ),
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        leading ?? ReadingIconTile(icon: icon ?? Icons.article_outlined),
+        const SizedBox(height: AppSpace.lg),
+        if ((eyebrow ?? '').isNotEmpty) ...[
+          Text(eyebrow!, style: AppType.label(context).copyWith(color: b.muted, fontWeight: FontWeight.w600)),
+          const SizedBox(height: AppSpace.xxs),
+        ],
+        Semantics(
+          header: true,
+          child: Text(title, style: (roomy ? AppType.display(context) : AppType.headline(context)).copyWith(color: b.ink)),
+        ),
+        if ((intro ?? '').isNotEmpty) ...[
+          const SizedBox(height: AppSpace.xs),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: AppWidth.phoneMax - AppSpace.xl),
+            child: Text(intro!, style: AppType.body(context).copyWith(color: b.muted, height: 1.6)),
+          ),
+        ],
+        if (meta.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.lg),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: meta),
+        ],
+      ]),
+    ]);
   }
 }
 
@@ -465,7 +465,7 @@ class ReadingTocList extends StatelessWidget {
           button: true,
           selected: i == active,
           child: InkWell(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppRadius.chip),
             onTap: () => onTap(i),
             child: Container(
               constraints: const BoxConstraints(minHeight: 40),
@@ -574,33 +574,33 @@ class ReadingSectionCard extends StatelessWidget {
     return LayoutBuilder(builder: (context, box) {
       final roomy = box.maxWidth >= 560;
       return ReadingSurface(
-        padding: EdgeInsets.fromLTRB(roomy ? 32 : 20, roomy ? 28 : 20, roomy ? 32 : 20, roomy ? 32 : 24),
+        padding: roomy ? const EdgeInsets.fromLTRB(AppSpace.xl, AppSpace.lg, AppSpace.xl, AppSpace.xl) : const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.lg),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Container(
-              width: 40,
-              height: 40,
+              width: AppTouch.min - AppSpace.xs,
+              height: AppTouch.min - AppSpace.xs,
               decoration: BoxDecoration(
                 color: c.primary.withValues(alpha: c.isDark ? 0.20 : 0.09),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppRadius.control - AppSpace.xxs),
               ),
-              child: Icon(icon, size: 20, color: appInk(context, c.primary)),
+              child: Icon(icon, size: AppIconSize.md, color: appInk(context, c.primary)),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: AppSpace.md),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${'terms_section'.tr} ${readingNumber(number)}',
-                    style: appText(12, w: FontWeight.w600, c: c.textLight, h: 1.3)),
-                const SizedBox(height: 4),
+                    style: AppType.meta(context).copyWith(color: c.textLight, fontWeight: FontWeight.w600)),
+                const SizedBox(height: AppSpace.xxs),
                 Semantics(
                   header: true,
-                  child: Text(title, style: appText(roomy ? 19 : 17.5, w: FontWeight.w700, c: c.textDark, h: 1.35)),
+                  child: Text(title, style: (roomy ? AppType.pageTitle(context) : AppType.section(context)).copyWith(color: c.textDark)),
                 ),
               ]),
             ),
           ]),
           if (body.trim().isNotEmpty) ...[
-            SizedBox(height: roomy ? 24 : 16),
+            SizedBox(height: roomy ? AppSpace.lg : AppSpace.md),
             ReadingBody(text: body),
           ],
         ]),
@@ -625,7 +625,7 @@ class ReadingNote extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: c.success.withValues(alpha: c.isDark ? 0.12 : 0.06),
-        borderRadius: BorderRadius.circular(c.radiusMedium),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: c.success.withValues(alpha: c.isDark ? 0.30 : 0.22)),
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -678,7 +678,7 @@ class ReadingHighlights extends StatelessWidget {
         padding: EdgeInsets.all(pad),
         decoration: BoxDecoration(
           color: c.primary.withValues(alpha: c.isDark ? 0.12 : 0.05),
-          borderRadius: BorderRadius.circular(c.radiusMedium),
+          borderRadius: BorderRadius.circular(AppRadius.card),
           border: Border.all(color: c.primary.withValues(alpha: c.isDark ? 0.30 : 0.16)),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -765,7 +765,7 @@ class ReadingLegalActions extends StatelessWidget {
     return ReadingSurface(
       padding: const EdgeInsets.all(AppSpace.md + 4),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('legal_questions_title'.tr, style: appText(16, w: FontWeight.w700, c: c.textDark, h: 1.35)),
+        Text('legal_questions_title'.tr, style: AppType.section(context).copyWith(color: c.textDark)),
         const SizedBox(height: AppSpace.xxs),
         Text(
           email == null ? 'legal_questions_body'.tr : '${'legal_questions_body'.tr} $email',
@@ -833,7 +833,7 @@ class ReadingAskCard extends StatelessWidget {
         minimumSize: const Size(48, 44),
         padding: const EdgeInsets.symmetric(horizontal: 16),
         textStyle: appText(13.5, w: FontWeight.w700, h: 1.2),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control - AppSpace.xxs)),
       ),
     );
     return Container(
@@ -841,7 +841,7 @@ class ReadingAskCard extends StatelessWidget {
       padding: EdgeInsets.all(compact ? 16 : 20),
       decoration: BoxDecoration(
         color: c.primary.withValues(alpha: c.isDark ? 0.14 : 0.05),
-        borderRadius: BorderRadius.circular(c.radiusMedium),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: c.primary.withValues(alpha: c.isDark ? 0.32 : 0.16)),
       ),
       child: LayoutBuilder(builder: (context, box) {
@@ -886,7 +886,7 @@ class AskAboutPageChip extends StatelessWidget {
       excludeSemantics: true,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(AppRadius.pill),
           boxShadow: [
             BoxShadow(color: c.primary.withValues(alpha: c.isDark ? 0.34 : 0.20), blurRadius: 20, offset: const Offset(0, 8)),
           ],
@@ -943,9 +943,9 @@ class AskAboutPageAction extends StatelessWidget {
           excludeSemantics: true,
           child: Material(
             color: c.primary.withValues(alpha: c.isDark ? 0.20 : 0.09),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppRadius.control),
             child: InkWell(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppRadius.control),
               onTap: onTap,
               child: SizedBox(
                 width: 48,
@@ -978,7 +978,7 @@ class ReadingSkeleton extends StatelessWidget {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: c.cardBg,
-            borderRadius: BorderRadius.circular(c.radiusLarge - 4),
+            borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(color: c.divider),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: lines),
@@ -1122,7 +1122,7 @@ class AboutSectionTitle extends StatelessWidget {
     return Semantics(
       header: true,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: appText(19, w: FontWeight.w800, c: c.textDark, h: 1.3)),
+        Text(title, style: AppType.pageTitle(context).copyWith(color: c.textDark)),
         if ((sub ?? '').isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(sub!, style: appText(13.5, w: FontWeight.w400, c: c.textMedium, h: 1.5)),
@@ -1150,14 +1150,14 @@ class AboutStatsCard extends StatelessWidget {
       }
       Widget cell(AppStatModel st) => Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 8),
+              padding: const EdgeInsets.symmetric(vertical: AppSpace.lg, horizontal: AppSpace.xs),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 FittedBox(
                   fit: BoxFit.scaleDown,
-                  child: Text(st.value,
-                      style: appText(26, w: FontWeight.w700, c: appInk(context, c.primary), h: 1.15)),
+                  child: AppCountUp(st.value, memoryKey: 'about-${st.label}',
+                      style: AppType.figureLarge(context).copyWith(color: appInk(context, c.primary), height: 1.15)),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.xs),
                 Text(st.label,
                     textAlign: TextAlign.center,
                     maxLines: 2,
@@ -1195,17 +1195,20 @@ class AboutMissionQuote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final ar = AppConfig.lang == 'ar';
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsetsDirectional.fromSTEB(24, 20, 24, 20),
-      decoration: BoxDecoration(
-        color: c.primary.withValues(alpha: c.isDark ? 0.12 : 0.05),
-        borderRadius: BorderRadius.circular(c.radiusMedium),
-        border: BorderDirectional(start: BorderSide(color: c.primary, width: 3)),
-      ),
-      child: Text(mission, style: appText(17, w: FontWeight.w500, c: c.textDark, h: ar ? 1.85 : 1.6)),
+    // the mission as an editorial pull quote on its own sky block (the page's second tone)
+    return AppBlock(
+      tone: AppBlockTone.sky,
+      child: Builder(builder: (context) {
+        final b = AppBlock.colorsOf(context);
+        return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(Icons.format_quote_rounded, size: AppIconSize.xl, color: b.accentInk(context.colors.primary)),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Text(mission, style: AppType.headline(context).copyWith(color: b.ink, height: ar ? 1.7 : 1.45)),
+          ),
+        ]);
+      }),
     );
   }
 }
@@ -1230,7 +1233,7 @@ class AboutFeatureGrid extends StatelessWidget {
                   height: 40,
                   decoration: BoxDecoration(
                     color: c.primary.withValues(alpha: c.isDark ? 0.20 : 0.09),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppRadius.control - AppSpace.xxs),
                   ),
                   child: Icon(contentIcon(f.iconName), size: 20, color: appInk(context, c.primary)),
                 ),
@@ -1302,7 +1305,7 @@ class AboutTeamRow extends StatelessWidget {
                 : (m.emoji ?? '').isNotEmpty
                     ? Text(m.emoji!, style: appText(34, h: 1.1))
                     : Text(m.name.isNotEmpty ? m.name.characters.first.toUpperCase() : '?',
-                        style: appText(28, w: FontWeight.w700, c: appInk(context, c.primary), h: 1.1)),
+                        style: AppType.display(context).copyWith(color: appInk(context, c.primary), height: 1.1)),
           );
           return SizedBox(
             width: 152,
@@ -1380,7 +1383,7 @@ class AboutSupportCard extends StatelessWidget {
           height: 40,
           decoration: BoxDecoration(
             color: color.withValues(alpha: c.isDark ? 0.20 : 0.09),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.control - AppSpace.xxs),
           ),
           child: Icon(icon, size: 20, color: appInk(context, color)),
         );
@@ -1461,7 +1464,7 @@ class AboutSupportCard extends StatelessWidget {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: versionColor.withValues(alpha: c.isDark ? 0.14 : 0.08),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppRadius.control - AppSpace.xxs),
                     ),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('about_whats_new'.tr, style: appText(12.5, w: FontWeight.w700, c: appInk(context, versionColor), h: 1.3)),

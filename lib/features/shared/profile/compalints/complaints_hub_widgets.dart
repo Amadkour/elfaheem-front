@@ -4,17 +4,22 @@
 // chosen segment / filter, `now`, callbacks) and reads no provider, so the layout harness and the visual renders
 // pump it as it is:
 //
-//   ComplaintsHubView      header card (New complaint) · My complaints | To resolve · search · status chips · list
+//   ComplaintsHubView      hero block (New complaint) · My complaints | To resolve · search · status chips · list
 //   HubRowCard             one complaint: who / where · title · text · status, reply-by, priority · quick actions
 //
-//   phone                                 desktop (centred, ≤ 880)
+// Warm Editorial (D-610 – D-629): the page's ONE tinted block is the sky hero (an information page), its title in
+// the editorial face, the person's figures counting in on paper chips and a large support glyph set into the
+// block's end edge as a watermark — the memorable element. The cards under it are paper on a warm hairline; the
+// first few rise in once with the hero (one orchestrated entrance), never on every rebuild.
+//
+//   phone                                 desktop (centred, content width)
 //   ┌───────────────────────────┐         ┌──────────────────────────────────────────────────────────┐
 //   │ How can we help?          │         │ How can we help?   2 open · 1 reply · 5 done  [+ New]     │
 //   │ 2 open · 1 reply · 5 done │         ├──────────────────────────────────────────────────────────┤
-//   │ [+ New complaint]         │         │ [ My complaints ][ To resolve 4 ]       🔍 Search…        │
+//   │ [+ New complaint]         │         │ [ My complaints ][ To resolve 4 ]       Search…           │
 //   ├───────────────────────────┤         │ All · Open · In progress · Resolved · Closed              │
 //   │ [My complaints|To resolve]│         │ ┌ card ┐                                                  │
-//   │ 🔍 Search…                │         │ ┌ card ┐                                                  │
+//   │ Search…                   │         │ ┌ card ┐                                                  │
 //   │ All · Open · In progress  │         └──────────────────────────────────────────────────────────┘
 //   │ ┌ card ┐ …                │
 //   └───────────────────────────┘
@@ -23,8 +28,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppPressScale, AppReveal, AppTilt, AppTiltLayer;
 
 import 'complaints_hub_model.dart';
 
@@ -97,8 +102,15 @@ String hubPlaceLabel(HubRow r) {
   return r.about ?? (r.mine ? 'chub_app_team'.tr : '');
 }
 
-TextStyle _t(double size, {FontWeight w = FontWeight.w500, Color? c, double? h}) =>
-    TextStyle(fontFamily: AppFonts.family, fontSize: size, fontWeight: w, color: c, height: h);
+/// A tone as small text on the paper card: the tone itself, darkened where it would fall under 4.5 : 1 (warning
+/// and success are fills first, system.md §2).
+Color _inkOnCard(ThemeConfigProvider c, Color tone) => c.blockAccentInk(tone, c.cardBg);
+
+/// The side of a card's leading tile / avatar.
+const double _lead = AppTouch.min - AppSpace.xxs;
+
+/// How many cards rise in with the hero (the rest are simply there).
+const int _revealed = 4;
 
 // ── the page body ───────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -160,61 +172,68 @@ class ComplaintsHubView extends StatelessWidget {
     final filtered = filter != defaultFilter(seg) || query.trim().isNotEmpty;
     return LayoutBuilder(builder: (context, box) {
       final wide = box.maxWidth >= 720;
-      final side = wide ? 24.0 : 16.0;
+      final side = wide ? AppSpace.lg : AppSpace.md;
       return AppRefresh(
         onRefresh: onRefresh,
         child: ListView(
-          padding: EdgeInsets.fromLTRB(side, 8, side, 40),
+          padding: EdgeInsets.fromLTRB(side, AppSpace.xs, side, AppSpace.xxl),
           children: [
             Center(
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: AppWidth.content.max),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  HubHeaderCard(
-                    wide: wide,
-                    open: mine.where((r) => r.status.active).length,
-                    replies: mineBadge(mine),
-                    resolved: mine.where((r) => !r.status.active).length,
-                    toResolve: showToResolve ? toResolveBadge(toResolve) : null,
-                    onNew: onNew,
+                  AppReveal(
+                    index: 0,
+                    group: 'complaints',
+                    child: HubHeaderCard(
+                      wide: wide,
+                      open: mine.where((r) => r.status.active).length,
+                      replies: mineBadge(mine),
+                      resolved: mine.where((r) => !r.status.active).length,
+                      toResolve: showToResolve ? toResolveBadge(toResolve) : null,
+                      onNew: onNew,
+                    ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpace.lg),
                   // nothing in either list yet: no segments-search-chips chrome around an empty page
                   if (loading || rows.isNotEmpty || showToResolve) ...[
-                  if (wide)
-                    Row(children: [
-                      if (showToResolve) ...[
-                        SizedBox(width: 380, child: _segments(context, seg)),
-                        const SizedBox(width: 16),
-                      ],
-                      Expanded(child: HubSearchField(controller: searchController)),
-                    ])
-                  else ...[
-                    if (showToResolve) ...[_segments(context, seg), const SizedBox(height: 12)],
-                    HubSearchField(controller: searchController),
-                  ],
-                  const SizedBox(height: 12),
-                  HubFilterChips(filters: filters, selected: filter, counts: counts, onSelect: onFilter),
-                  const SizedBox(height: 14),
+                    if (wide)
+                      Row(children: [
+                        if (showToResolve) ...[
+                          Flexible(flex: 2, child: _segments(context, seg)),
+                          const SizedBox(width: AppSpace.md),
+                        ],
+                        Expanded(flex: 3, child: HubSearchField(controller: searchController)),
+                      ])
+                    else ...[
+                      if (showToResolve) ...[_segments(context, seg), const SizedBox(height: AppSpace.sm)],
+                      HubSearchField(controller: searchController),
+                    ],
+                    const SizedBox(height: AppSpace.sm),
+                    HubFilterChips(filters: filters, selected: filter, counts: counts, onSelect: onFilter),
+                    const SizedBox(height: AppSpace.md),
                   ],
                   if (failed && !loading) ...[
                     AppBanner(icon: Icons.cloud_off_rounded, text: 'chub_partial'.tr, color: context.colors.warning),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpace.sm),
                   ],
                   if (loading)
                     const AppListSkeleton(items: 4, padding: EdgeInsets.zero)
                   else if (shown.isEmpty)
                     _empty(context, seg, filtered)
                   else
-                    for (final r in shown)
+                    for (var i = 0; i < shown.length; i++)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: HubRowCard(
-                          row: r,
-                          now: now,
-                          busy: busy.contains(r.key),
-                          onTap: () => onOpen(r),
-                          onAction: (a) => onAction(r, a),
+                        padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                        child: _rise(
+                          i,
+                          HubRowCard(
+                            row: shown[i],
+                            now: now,
+                            busy: busy.contains(shown[i].key),
+                            onTap: () => onOpen(shown[i]),
+                            onAction: (a) => onAction(shown[i], a),
+                          ),
                         ),
                       ),
                 ]),
@@ -225,6 +244,10 @@ class ComplaintsHubView extends StatelessWidget {
       );
     });
   }
+
+  /// The first cards follow the hero in; the rest of the list is simply there.
+  Widget _rise(int i, Widget child) =>
+      i < _revealed ? AppReveal(index: i + 1, group: 'complaints', child: child) : child;
 
   Widget _segments(BuildContext context, HubSegment seg) => HubSegmentedControl(
         selected: seg,
@@ -237,23 +260,25 @@ class ComplaintsHubView extends StatelessWidget {
   Widget _empty(BuildContext context, HubSegment seg, bool filtered) {
     if (filtered) {
       return Padding(
-        padding: const EdgeInsets.only(top: 24),
+        padding: const EdgeInsets.only(top: AppSpace.lg),
         child: AppEmpty(
           icon: Icons.search_off_rounded,
           title: 'chub_empty_filter_t'.tr,
           message: 'chub_empty_filter_m'.tr,
           actionLabel: 'chub_clear'.tr,
           onAction: onClearFilters,
+          tone: AppBlockTone.paper,
         ),
       );
     }
     final mineSeg = seg == HubSegment.mine;
     return Padding(
-      padding: const EdgeInsets.only(top: 24),
+      padding: const EdgeInsets.only(top: AppSpace.lg),
       child: AppEmpty(
         icon: mineSeg ? Icons.forum_outlined : Icons.task_alt_rounded,
         title: (mineSeg ? 'chub_empty_mine_t' : 'chub_empty_resolve_t').tr,
         message: (mineSeg ? 'chub_empty_mine_m' : 'chub_empty_resolve_m').tr, // "New complaint" is right above
+        tone: AppBlockTone.paper,
       ),
     );
   }
@@ -261,7 +286,7 @@ class ComplaintsHubView extends StatelessWidget {
 
 // ── header ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/// The page's opening card: what the page is for, my figures, and the one primary action.
+/// The page's opening block: what the page is for, my figures, and the one primary action.
 class HubHeaderCard extends StatelessWidget {
   const HubHeaderCard({
     super.key,
@@ -280,16 +305,33 @@ class HubHeaderCard extends StatelessWidget {
   final int? toResolve;
   final VoidCallback onNew;
 
+  /// How much larger than the hero icon size the watermark glyph is drawn.
+  static const double _markScale = 3.6;
+
+  /// How much of the block's ink the watermark carries.
+  static const double _markInk = 0.06;
+
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
+  Widget build(BuildContext context) => RepaintBoundary(
+        child: AppTilt(
+          radius: AppRadius.block,
+          maxTilt: 2,
+          child: AppBlock(tone: AppBlockTone.sky, hero: true, child: Builder(builder: _body)),
+        ),
+      );
+
+  Widget _body(BuildContext context) {
+    final b = AppBlock.colorsOf(context);
     final title = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-      Text('chub_hero_title'.tr, style: _t(wide ? 22 : 20, w: FontWeight.w800, c: c.onHero, h: 1.25)),
-      const SizedBox(height: 6),
-      Text('chub_hero_sub'.tr, style: _t(13.5, c: c.onHeroMuted, h: 1.5)),
+      Semantics(
+        header: true,
+        child: Text('chub_hero_title'.tr, style: (wide ? AppType.display(context) : AppType.headline(context)).copyWith(color: b.ink)),
+      ),
+      const SizedBox(height: AppSpace.xs),
+      Text('chub_hero_sub'.tr, style: AppType.body(context).copyWith(color: b.muted)),
     ]);
     final empty = open == 0 && replies == 0 && resolved == 0 && (toResolve ?? 0) == 0;
-    final stats = Wrap(spacing: 8, runSpacing: 8, children: [
+    final stats = Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
       _HeroStat(value: open, label: 'chub_stat_open'.tr),
       _HeroStat(value: replies, label: 'chub_stat_replies'.tr, highlight: replies > 0),
       // three figures at most, so the row stays one line on a phone: the person who resolves sees that number
@@ -298,39 +340,49 @@ class HubHeaderCard extends StatelessWidget {
       else
         _HeroStat(value: resolved, label: 'chub_stat_resolved'.tr),
     ]);
-    final button = _NewButton(onTap: onNew);
-    return DecoratedBox(decoration: BoxDecoration(borderRadius: BorderRadius.circular(c.radiusLarge), boxShadow: c.primaryShadow),
-      child: AppMeshSurface(radius: BorderRadius.circular(c.radiusLarge), child: Stack(children: [
-        // a soft mark in the corner — depth without noise
-        PositionedDirectional(
-          end: -28,
-          top: -36,
-          child: Icon(Icons.support_agent_rounded, size: 150, color: c.onHero.withValues(alpha: 0.07)),
+    final button = AppButton.primary(
+      label: 'chub_new'.tr,
+      icon: Icons.edit_square,
+      size: wide ? AppButtonSize.md : AppButtonSize.lg,
+      expand: !wide,
+      onPressed: onNew,
+    );
+    final mark = PositionedDirectional(
+      // a support glyph set into the block's end edge: its corner bleeds off, a quiet watermark behind the title
+      end: -AppSpace.xl,
+      top: -AppSpace.xl,
+      child: IgnorePointer(
+        child: ExcludeSemantics(
+          child: AppTiltLayer(
+            depth: 1.5,
+            child: Icon(Icons.support_agent_rounded,
+                size: AppIconSize.hero * _markScale, color: Color.lerp(b.surface, b.ink, _markInk)),
+          ),
         ),
-        Padding(
-          padding: EdgeInsets.all(wide ? 24 : 18),
-          child: wide
-              ? Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      title,
-                      if (!empty) ...[const SizedBox(height: 16), stats],
-                    ]),
-                  ),
-                  const SizedBox(width: 24),
-                  button,
-                ])
-              : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  title,
-                  if (!empty) ...[const SizedBox(height: 14), stats],
-                  const SizedBox(height: 16),
-                  button,
-                ]),
-        ),
-      ])));
+      ),
+    );
+    final content = wide
+        ? Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                title,
+                if (!empty) ...[const SizedBox(height: AppSpace.md), stats],
+              ]),
+            ),
+            const SizedBox(width: AppSpace.lg),
+            button,
+          ])
+        : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            title,
+            if (!empty) ...[const SizedBox(height: AppSpace.md), stats],
+            const SizedBox(height: AppSpace.lg),
+            button,
+          ]);
+    return Stack(clipBehavior: Clip.none, children: [mark, SizedBox(width: double.infinity, child: content)]);
   }
 }
 
+/// One of my figures on the hero: paper, the number counting in, a highlighted figure in the brand ink.
 class _HeroStat extends StatelessWidget {
   const _HeroStat({required this.value, required this.label, this.highlight = false});
   final int value;
@@ -340,55 +392,24 @@ class _HeroStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final b = AppBlock.colorsOf(context);
+    final ink = highlight ? b.accentInk(c.primary) : c.textDark;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+      constraints: const BoxConstraints(minHeight: AppIconSize.xl + AppSpace.xs),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
       decoration: BoxDecoration(
-        color: highlight ? c.onHero.withValues(alpha: 0.22) : c.heroGlass,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: c.heroGlassBorder),
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: highlight ? ink : c.divider, width: AppBorder.hairline),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Text('$value', style: _t(15, w: FontWeight.w800, c: c.onHero, h: 1.1)),
-        const SizedBox(width: 6),
-        Text(label, style: _t(12, w: FontWeight.w600, c: c.onHeroMuted, h: 1.1)),
-      ]),
-    );
-  }
-}
-
-class _NewButton extends StatelessWidget {
-  const _NewButton({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Semantics(
-      button: true,
-      label: 'chub_new'.tr,
-      excludeSemantics: true,
-      child: Material(
-        color: c.onHero,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 50),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.edit_square, size: 19, color: c.primary),
-                const SizedBox(width: 10),
-                Flexible(
-                  child: Text('chub_new'.tr,
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: _t(15, w: FontWeight.w800, c: c.primary)),
-                ),
-              ]),
-            ),
-          ),
+        AppCountUp('$value', memoryKey: 'chub-$label', style: AppType.figure(context).copyWith(color: ink)),
+        const SizedBox(width: AppSpace.xs),
+        Flexible(
+          child: Text(label,
+              maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: c.textMedium)),
         ),
-      ),
+      ]),
     );
   }
 }
@@ -415,6 +436,7 @@ class HubSegmentedControl extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final motion = AppMotion.of(context);
     Widget seg(HubSegment s, String label, int count, Color tone) {
       final on = s == selected;
       return Expanded(
@@ -427,29 +449,32 @@ class HubSegmentedControl extends StatelessWidget {
             behavior: HitTestBehavior.opaque,
             onTap: () => onSelect(s),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              constraints: const BoxConstraints(minHeight: 44),
+              duration: motion.fast,
+              curve: AppMotion.curve,
+              constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
               alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
               decoration: BoxDecoration(
-                color: on ? c.cardBg : Colors.transparent,
-                borderRadius: BorderRadius.circular(11),
-                boxShadow: on ? c.cardShadow : null,
+                color: on ? c.cardBg : c.cardBg.withValues(alpha: 0),
+                borderRadius: BorderRadius.circular(AppRadius.control - AppSpace.xxs),
+                border: Border.all(color: on ? c.divider : c.divider.withValues(alpha: 0), width: AppBorder.hairline),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Flexible(
                   child: Text(label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: _t(14, w: on ? FontWeight.w800 : FontWeight.w600, c: on ? c.textDark : c.textMedium)),
+                      style: (on ? AppType.bodyStrong(context) : AppType.row(context))
+                          .copyWith(color: on ? c.textDark : c.textMedium)),
                 ),
                 if (count > 0) ...[
-                  const SizedBox(width: 7),
+                  const SizedBox(width: AppSpace.xs),
                   Container(
-                    constraints: const BoxConstraints(minWidth: 22),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(color: tone, borderRadius: BorderRadius.circular(20)),
-                    child: Text('$count', textAlign: TextAlign.center, style: _t(11.5, w: FontWeight.w800, c: c.onHero, h: 1.3)),
+                    constraints: const BoxConstraints(minWidth: AppIconSize.md + AppSpace.xxs),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs - AppSpace.xxs / 2),
+                    decoration: BoxDecoration(color: tone, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                    child: Text('$count',
+                        textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.onHero, fontWeight: FontWeight.w600)),
                   ),
                 ],
               ]),
@@ -460,57 +485,28 @@ class HubSegmentedControl extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(AppSpace.xxs),
       decoration: BoxDecoration(
         color: c.inputBg,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: c.divider),
+        borderRadius: BorderRadius.circular(AppRadius.control),
       ),
       child: Row(children: [
         seg(HubSegment.mine, 'chub_mine'.tr, mineCount, c.primary),
-        const SizedBox(width: 4),
+        const SizedBox(width: AppSpace.xxs),
         seg(HubSegment.toResolve, 'chub_to_resolve'.tr, toResolveCount, urgent ? c.danger : c.primary),
       ]),
     );
   }
 }
 
+/// The page's one search box (the kit's field; the page listens to [controller]).
 class HubSearchField extends StatelessWidget {
   const HubSearchField({super.key, required this.controller});
   final TextEditingController controller;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final border = OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.divider));
-    return ValueListenableBuilder<TextEditingValue>(
-      valueListenable: controller,
-      builder: (context, v, _) => TextField(
-        controller: controller,
-        textInputAction: TextInputAction.search,
-        style: _t(14, c: c.textDark),
-        decoration: InputDecoration(
-          isDense: true,
-          filled: true,
-          fillColor: c.cardBg,
-          hintText: 'chub_search'.tr,
-          hintStyle: _t(13.5, c: c.textLight),
-          prefixIcon: Icon(Icons.search_rounded, color: c.textLight, size: 21),
-          suffixIcon: v.text.isEmpty
-              ? null
-              : IconButton(
-                  tooltip: 'chub_clear'.tr,
-                  icon: Icon(Icons.close_rounded, size: 19, color: c.textLight),
-                  onPressed: controller.clear,
-                ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          border: border,
-          enabledBorder: border,
-          focusedBorder: border.copyWith(borderSide: BorderSide(color: hubInk(c), width: 1.4)),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      AppSearchField(controller: controller, hint: 'chub_search'.tr, debounce: Duration.zero, onChanged: (_) {});
 }
 
 class HubFilterChips extends StatelessWidget {
@@ -524,41 +520,51 @@ class HubFilterChips extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return SizedBox(
-      height: 44,
+      height: AppTouch.min,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: filters.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpace.xs),
         itemBuilder: (context, i) {
           final f = filters[i];
           final on = f == selected;
           final n = counts[f] ?? 0;
           final alert = f == HubFilter.overdue && n > 0;
-          return Semantics(
-            selected: on,
-            button: true,
-            label: '${hubFilterLabel(f)} $n',
-            excludeSemantics: true,
-            child: Material(
-              color: on ? c.textDark : c.cardBg,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(22),
-                side: BorderSide(color: on ? c.textDark : c.divider),
-              ),
-              child: InkWell(
-                customBorder: const StadiumBorder(),
-                onTap: () => onSelect(f),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    if (alert) ...[
-                      Container(width: 7, height: 7, decoration: BoxDecoration(color: c.danger, shape: BoxShape.circle)),
-                      const SizedBox(width: 7),
-                    ],
-                    Text(hubFilterLabel(f), style: _t(13, w: FontWeight.w700, c: on ? c.background : c.textDark)),
-                    const SizedBox(width: 6),
-                    Text('$n', style: _t(12.5, w: FontWeight.w700, c: on ? c.background.withValues(alpha: 0.7) : c.textLight)),
-                  ]),
+          final ink = on ? c.onHero : c.textDark;
+          return Center(
+            child: Semantics(
+              selected: on,
+              button: true,
+              label: '${hubFilterLabel(f)} $n',
+              excludeSemantics: true,
+              child: Material(
+                color: on ? c.primary : c.cardBg,
+                shape: StadiumBorder(side: BorderSide(color: on ? c.primary : c.divider, width: AppBorder.hairline)),
+                child: InkWell(
+                  customBorder: const StadiumBorder(),
+                  onTap: () => onSelect(f),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs, minWidth: AppTouch.min),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        if (alert) ...[
+                          Container(
+                            width: AppSpace.xs,
+                            height: AppSpace.xs,
+                            decoration: BoxDecoration(color: on ? c.onHero : c.danger, shape: BoxShape.circle),
+                          ),
+                          const SizedBox(width: AppSpace.xs),
+                        ],
+                        Text(hubFilterLabel(f), style: AppType.label(context).copyWith(color: ink, fontWeight: FontWeight.w600)),
+                        const SizedBox(width: AppSpace.xs),
+                        Text('$n',
+                            style: AppType.meta(context).copyWith(
+                                color: on ? c.onHero.withValues(alpha: 0.8) : c.textLight,
+                                fontFeatures: const [FontFeature.tabularFigures()])),
+                      ]),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -590,20 +596,21 @@ class HubRowCard extends StatelessWidget {
     final sla = slaOf(r, now);
     final actions = quickActionsFor(r);
     final finished = !r.status.active;
+    final overdue = sla?.overdue == true;
 
     final lead = r.mine
         ? Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(color: tone.withValues(alpha: 0.13), borderRadius: BorderRadius.circular(13)),
-            child: Icon(_categoryIcon(r.category), size: 21, color: tone),
+            width: _lead,
+            height: _lead,
+            decoration: BoxDecoration(color: tone.withValues(alpha: 0.13), borderRadius: BorderRadius.circular(AppRadius.control)),
+            child: Icon(_categoryIcon(r.category), size: AppIconSize.md, color: _inkOnCard(c, tone)),
           )
         : r.anonymous
             ? Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(color: c.textLight.withValues(alpha: 0.14), shape: BoxShape.circle),
-                child: Icon(Icons.visibility_off_rounded, size: 19, color: c.textMedium),
+                width: _lead,
+                height: _lead,
+                decoration: BoxDecoration(color: c.inputBg, shape: BoxShape.circle),
+                child: Icon(Icons.visibility_off_rounded, size: AppIconSize.md, color: c.textMedium),
               )
             : _SenderAvatar(name: who ?? '', url: r.senderImage);
 
@@ -615,37 +622,31 @@ class HubRowCard extends StatelessWidget {
             metaParts.join('  ·  '),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: _t(12, w: FontWeight.w600, c: c.textMedium),
+            style: AppType.meta(context).copyWith(color: c.textMedium, fontWeight: FontWeight.w500),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpace.xs),
         ConstrainedBox(
           constraints: BoxConstraints(maxWidth: box.maxWidth * 0.45),
           child: Text(hubTimeLabel(r.updatedAt, now),
-              maxLines: 1, overflow: TextOverflow.ellipsis, style: _t(11.5, c: c.textLight)),
+              maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight)),
         ),
       ]),
     );
 
-    final title = Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    final titleStyle = AppType.section(context).copyWith(color: finished ? c.textMedium : c.textDark);
+    final title = Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
       if (r.unread)
         Container(
-          width: 8,
-          height: 8,
-          margin: const EdgeInsetsDirectional.only(end: 8, top: 7),
+          width: AppSpace.xs,
+          height: AppSpace.xs,
+          margin: const EdgeInsetsDirectional.only(end: AppSpace.xs),
           decoration: BoxDecoration(color: hubInk(c), shape: BoxShape.circle),
         ),
-      Expanded(
-        child: Text(
-          r.title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: _t(15, w: r.unread ? FontWeight.w800 : FontWeight.w700, c: finished ? c.textMedium : c.textDark, h: 1.35),
-        ),
-      ),
+      Expanded(child: Text(r.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: titleStyle)),
     ]);
 
-    final chips = Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+    final chips = Wrap(spacing: AppSpace.xs - AppSpace.xxs / 2, runSpacing: AppSpace.xs - AppSpace.xxs / 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
       HubChip(label: hubStatusLabel(r.status, mine: r.mine), color: tone, dot: true),
       if (sla != null)
         HubChip(
@@ -663,72 +664,82 @@ class HubRowCard extends StatelessWidget {
       if (r.attachments > 0) _Count(icon: Icons.attach_file_rounded, n: r.attachments),
     ]);
 
+    final radius = BorderRadius.circular(AppRadius.card);
     return Semantics(
       container: true,
-      child: Material(
-        color: c.cardBg,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(c.radiusLarge - 4),
-          side: BorderSide(color: sla?.overdue == true ? c.danger.withValues(alpha: 0.45) : c.divider),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                lead,
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    meta,
-                    const SizedBox(height: 4),
-                    title,
-                    if (r.snippet.trim().isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        r.snippet.trim().replaceAll(RegExp(r'\s+'), ' '),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: _t(13, c: c.textMedium, h: 1.5),
-                      ),
-                    ],
-                    const SizedBox(height: 10),
-                    chips,
-                  ]),
-                ),
-              ]),
-              // quick actions use the card's full width: one row of equal buttons on a phone, compact on wide
-              if (actions.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Divider(height: 1, color: c.divider),
-                const SizedBox(height: 10),
-                if (busy)
-                  SizedBox(
-                    height: 40,
-                    child: Center(
-                      child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.2, color: hubInk(c))),
-                    ),
-                  )
-                else
-                  LayoutBuilder(
-                    builder: (context, box) => box.maxWidth < 560
-                        ? Row(children: [
-                            for (var i = 0; i < actions.length; i++) ...[
-                              if (i > 0) const SizedBox(width: 8),
-                              Expanded(child: HubActionButton(action: actions[i], onTap: () => onAction(actions[i]))),
-                            ],
-                          ])
-                        : Padding(
-                            padding: const EdgeInsetsDirectional.only(start: 54),
-                            child: Wrap(spacing: 8, runSpacing: 8, children: [
-                              for (final a in actions) HubActionButton(action: a, onTap: () => onAction(a)),
-                            ]),
-                          ),
+      child: AppPressScale(
+        child: Material(
+          color: c.cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: radius,
+            side: BorderSide(
+              color: overdue ? c.danger.withValues(alpha: 0.5) : c.divider,
+              width: overdue ? AppBorder.strong : AppBorder.hairline,
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: AppSpace.card,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  lead,
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      meta,
+                      const SizedBox(height: AppSpace.xxs),
+                      title,
+                      if (r.snippet.trim().isNotEmpty) ...[
+                        const SizedBox(height: AppSpace.xxs),
+                        Text(
+                          r.snippet.trim().replaceAll(RegExp(r'\s+'), ' '),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppType.body(context).copyWith(color: c.textMedium),
+                        ),
+                      ],
+                      const SizedBox(height: AppSpace.sm),
+                      chips,
+                    ]),
                   ),
-              ],
-            ]),
+                ]),
+                // quick actions use the card's full width: one row of equal buttons on a phone, compact on wide
+                if (actions.isNotEmpty) ...[
+                  const SizedBox(height: AppSpace.sm),
+                  Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+                  const SizedBox(height: AppSpace.sm),
+                  if (busy)
+                    SizedBox(
+                      height: AppTouch.min,
+                      child: Center(
+                        child: SizedBox(
+                          width: AppIconSize.md,
+                          height: AppIconSize.md,
+                          child: CircularProgressIndicator(strokeWidth: AppBorder.focus, color: hubInk(c)),
+                        ),
+                      ),
+                    )
+                  else
+                    LayoutBuilder(
+                      builder: (context, box) => box.maxWidth < 560
+                          ? Row(children: [
+                              for (var i = 0; i < actions.length; i++) ...[
+                                if (i > 0) const SizedBox(width: AppSpace.xs),
+                                Expanded(child: HubActionButton(action: actions[i], onTap: () => onAction(actions[i]))),
+                              ],
+                            ])
+                          : Padding(
+                              padding: const EdgeInsetsDirectional.only(start: _lead + AppSpace.sm),
+                              child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+                                for (final a in actions) HubActionButton(action: a, onTap: () => onAction(a)),
+                              ]),
+                            ),
+                    ),
+                ],
+              ]),
+            ),
           ),
         ),
       ),
@@ -736,7 +747,7 @@ class HubRowCard extends StatelessWidget {
   }
 }
 
-/// The sender's photo, else the first letter on a tint of the brand ink (readable in both modes).
+/// The sender's photo, else the first letter in the editorial face on a tint of the brand ink (both modes).
 class _SenderAvatar extends StatelessWidget {
   const _SenderAvatar({required this.name, this.url});
   final String name;
@@ -748,20 +759,21 @@ class _SenderAvatar extends StatelessWidget {
     final ink = hubInk(c);
     final letter = name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase();
     final fallback = Container(
-      width: 42,
-      height: 42,
+      width: _lead,
+      height: _lead,
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: ink.withValues(alpha: 0.15), shape: BoxShape.circle),
-      child: Text(letter, style: _t(17, w: FontWeight.w800, c: ink, h: 1.1)),
+      decoration: BoxDecoration(color: ink.withValues(alpha: 0.13), shape: BoxShape.circle),
+      child: Text(letter, maxLines: 1, style: AppType.section(context).copyWith(color: _inkOnCard(c, ink), height: 1.1)),
     );
     if ((url ?? '').isEmpty) return fallback;
     return ClipOval(
-      child: Image.network(url!, width: 42, height: 42, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback),
+      child: Image.network(url!, width: _lead, height: _lead, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback),
     );
   }
 }
 
-/// Small tinted label on a card (status, reply-by, priority, reference …).
+/// Small tinted label on a card (status, reply-by, priority, reference …): a tint of the tone, the text in the
+/// tone made readable on the card.
 class HubChip extends StatelessWidget {
   const HubChip({super.key, required this.label, required this.color, this.icon, this.dot = false, this.strong = false, this.mono = false});
   final String label;
@@ -771,25 +783,32 @@ class HubChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    final ink = _inkOnCard(c, color);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
       decoration: BoxDecoration(
         color: color.withValues(alpha: strong ? 0.16 : 0.10),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadius.chip),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         if (dot) ...[
-          Container(width: 7, height: 7, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-          const SizedBox(width: 6),
+          Container(width: AppSpace.xs - 1, height: AppSpace.xs - 1, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          const SizedBox(width: AppSpace.xs - AppSpace.xxs / 2),
         ] else if (icon != null) ...[
-          Icon(icon, size: 13, color: color),
-          const SizedBox(width: 5),
+          Icon(icon, size: AppIconSize.xs - 1, color: ink),
+          const SizedBox(width: AppSpace.xxs),
         ],
         Flexible(
           child: Text(label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: _t(11.5, w: FontWeight.w700, c: color, h: 1.2).copyWith(letterSpacing: mono ? 0.3 : null)),
+              style: AppType.meta(context).copyWith(
+                color: ink,
+                fontWeight: FontWeight.w600,
+                height: 1.2,
+                fontFeatures: mono ? const [FontFeature.tabularFigures()] : null,
+              )),
         ),
       ]),
     );
@@ -805,16 +824,18 @@ class _Count extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+      padding: const EdgeInsets.all(AppSpace.xxs - 1),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 14, color: c.textLight),
-        const SizedBox(width: 3),
-        Text('$n', style: _t(12, w: FontWeight.w700, c: c.textLight, h: 1.2)),
+        Icon(icon, size: AppIconSize.xs, color: c.textLight),
+        const SizedBox(width: AppSpace.xxs - 1),
+        Text('$n', style: AppType.meta(context).copyWith(color: c.textLight, fontWeight: FontWeight.w600, height: 1.2)),
       ]),
     );
   }
 }
 
+/// A card's quick action, 48 px tall with the compact side padding a row of three needs on a phone: Resolve is the
+/// filled one (it finishes the complaint, a success tint), Start and Reply are outlined on paper.
 class HubActionButton extends StatelessWidget {
   const HubActionButton({super.key, required this.action, required this.onTap});
   final HubAction action;
@@ -823,31 +844,39 @@ class HubActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final (label, icon, tone, filled) = switch (action) {
-      HubAction.reply => ('chub_reply'.tr, Icons.reply_rounded, c.textDark, false),
-      HubAction.start => ('chub_start'.tr, Icons.play_circle_outline_rounded, hubInk(c), false),
-      HubAction.resolve => ('chub_resolve'.tr, Icons.check_circle_rounded, c.success, true),
+    final (label, icon, filled) = switch (action) {
+      HubAction.reply => ('chub_reply'.tr, Icons.reply_rounded, false),
+      HubAction.start => ('chub_start'.tr, Icons.play_circle_outline_rounded, false),
+      HubAction.resolve => ('chub_resolve'.tr, Icons.check_circle_rounded, true),
     };
-    return Material(
-      color: filled ? tone.withValues(alpha: 0.13) : Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(11),
-        side: filled ? BorderSide.none : BorderSide(color: c.divider),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(11),
-        onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 40, minWidth: 48),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(icon, size: 17, color: tone),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: _t(13, w: FontWeight.w700, c: tone)),
-              ),
-            ]),
+    final surface = filled ? Color.alphaBlend(c.successTint, c.cardBg) : c.cardBg;
+    final ink = filled ? c.blockAccentInk(c.success, surface) : c.textDark;
+    final radius = BorderRadius.circular(AppRadius.control);
+    return AppPressScale(
+      child: Material(
+        color: surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: radius,
+          side: filled ? BorderSide.none : BorderSide(color: c.divider, width: AppBorder.hairline),
+        ),
+        child: InkWell(
+          borderRadius: radius,
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppTouch.min, minWidth: AppTouch.min),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+              child: Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(icon, size: AppIconSize.sm + 2, color: ink),
+                const SizedBox(width: AppSpace.xs - 2),
+                Flexible(
+                  child: Text(label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.label(context).copyWith(color: ink, fontWeight: FontWeight.w600)),
+                ),
+              ]),
+            ),
           ),
         ),
       ),
@@ -866,52 +895,44 @@ class HubDestinationSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     Widget option({required Widget lead, required String title, required String sub, required VoidCallback onTap}) => Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Material(
-            color: c.cardBg,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: c.divider)),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: onTap,
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(children: [
-                  lead,
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: _t(14.5, w: FontWeight.w800, c: c.textDark)),
-                      const SizedBox(height: 2),
-                      Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: _t(12.5, c: c.textMedium, h: 1.4)),
-                    ]),
-                  ),
-                  Icon(Icons.chevron_right_rounded, color: c.textLight),
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
+          child: AppCard(
+            onTap: onTap,
+            child: Row(children: [
+              lead,
+              const SizedBox(width: AppSpace.sm),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
+                  const SizedBox(height: AppSpace.xxs / 2),
+                  Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: c.textMedium)),
                 ]),
               ),
-            ),
+              Icon(Icons.chevron_right_rounded, color: c.textLight),
+            ]),
           ),
         );
     Widget tile(IconData i, Color col) => Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(color: col.withValues(alpha: 0.13), borderRadius: BorderRadius.circular(13)),
-          child: Icon(i, color: col, size: 22),
+          width: _lead,
+          height: _lead,
+          decoration: BoxDecoration(color: col.withValues(alpha: 0.13), borderRadius: BorderRadius.circular(AppRadius.control)),
+          child: Icon(i, color: _inkOnCard(c, col), size: AppIconSize.md),
         );
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-        Text('chub_where_t'.tr, style: _t(18, w: FontWeight.w800, c: c.textDark)),
-        const SizedBox(height: 4),
-        Text('chub_where_sub'.tr, style: _t(13, c: c.textMedium, h: 1.45)),
-        const SizedBox(height: 16),
+        Text('chub_where_t'.tr, style: AppType.headline(context).copyWith(color: c.textDark)),
+        const SizedBox(height: AppSpace.xxs),
+        Text('chub_where_sub'.tr, style: AppType.body(context).copyWith(color: c.textMedium)),
+        const SizedBox(height: AppSpace.md),
         option(lead: tile(Icons.support_agent_rounded, hubInk(c)), title: 'chub_where_app'.tr, sub: 'chub_where_app_sub'.tr, onTap: onApp),
         for (final (id, name, logo) in orgs)
           option(
             lead: (logo ?? '').isEmpty
                 ? tile(Icons.apartment_rounded, c.purple)
                 : ClipRRect(
-                    borderRadius: BorderRadius.circular(13),
-                    child: Image.network(logo!, width: 44, height: 44, fit: BoxFit.cover,
+                    borderRadius: BorderRadius.circular(AppRadius.control),
+                    child: Image.network(logo!, width: _lead, height: _lead, fit: BoxFit.cover,
                         errorBuilder: (_, _, _) => tile(Icons.apartment_rounded, c.purple)),
                   ),
             title: name.text,
