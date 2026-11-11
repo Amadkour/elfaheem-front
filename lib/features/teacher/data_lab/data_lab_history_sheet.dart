@@ -13,6 +13,7 @@ import 'data_lab_api.dart';
 import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
@@ -101,11 +102,11 @@ class _HistorySheetState extends State<_HistorySheet> {
           },
           child: ListView(
             shrinkWrap: true,
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            padding: const EdgeInsets.fromLTRB(20, 0, AppSpace.lg, 24),
             children: [
               Text(dlTr('dl_history_sub', 'Every change is kept with who made it and when — nothing is lost silently.'),
-                  style: dlText(12.5, c: c.textMedium, h: 1.5)),
-              const SizedBox(height: 12),
+                  style: AppType.meta(context).copyWith(color: c.textMedium)),
+              const SizedBox(height: AppSpace.sm),
               if (_error != null)
                 DlBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger)
               else if (_items.isEmpty)
@@ -118,13 +119,13 @@ class _HistorySheetState extends State<_HistorySheet> {
                       decoration: BoxDecoration(shape: BoxShape.circle, color: c.primary.withValues(alpha: 0.08)),
                       child: Icon(Icons.history_toggle_off_rounded, size: 30, color: c.primary),
                     ),
-                    const SizedBox(height: 10),
-                    Text(dlTr('dl_history_empty', 'No changes yet'), style: dlText(14, w: FontWeight.w800, c: c.textDark)),
+                    const SizedBox(height: AppSpace.sm),
+                    Text(dlTr('dl_history_empty', 'No changes yet'), style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
                   ]),
                 )
               else
                 for (var i = 0; i < _items.length; i++) _entry(c, _items[i], last: i == _items.length - 1),
-              if (_more) const Padding(padding: EdgeInsets.all(12), child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
+              if (_more) const Padding(padding: EdgeInsets.all(AppSpace.sm), child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
             ],
           ),
         ),
@@ -154,19 +155,19 @@ class _HistorySheetState extends State<_HistorySheet> {
             if (!last) Expanded(child: Container(width: 2, color: c.divider)),
           ]),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.only(bottom: 16, top: 4),
+            padding: const EdgeInsets.only(bottom: AppSpace.md, top: 4),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Expanded(child: Text(title, style: dlText(13.5, w: FontWeight.w800, c: c.textDark))),
-                Text(dlAgo(e.at), style: dlText(11, c: c.textLight)),
+                Expanded(child: Text(title, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark))),
+                Text(dlAgo(e.at), style: AppType.meta(context).copyWith(color: c.textLight)),
               ]),
-              if (who.isNotEmpty) Text(who, style: dlText(12, w: FontWeight.w600, c: c.textMedium)),
+              if (who.isNotEmpty) Text(who, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
               if (hasChange) ...[
-                const SizedBox(height: 6),
-                Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 6, runSpacing: 4, children: [
+                const SizedBox(height: AppSpace.xs),
+                Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                   _ValuePill(e.oldValue, c.textMedium, strike: true),
                   Icon(Icons.arrow_forward_rounded,   // auto-mirrored in RTL
                       size: 14, color: c.textLight),
@@ -174,15 +175,15 @@ class _HistorySheetState extends State<_HistorySheet> {
                 ]),
               ],
               if ((e.note ?? '').isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(e.note!, style: dlText(11.5, c: c.textMedium, h: 1.4)),
+                const SizedBox(height: AppSpace.xxs),
+                Text(e.note!, style: AppType.meta(context).copyWith(color: c.textMedium)),
               ],
               if (e.user.isNotEmpty) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpace.xxs),
                 Row(children: [
                   Icon(Icons.person_outline_rounded, size: 13, color: c.textLight),
-                  const SizedBox(width: 4),
-                  Text(e.user, style: dlText(11, c: c.textLight)),
+                  const SizedBox(width: AppSpace.xxs),
+                  Text(e.user, style: AppType.meta(context).copyWith(color: c.textLight)),
                 ]),
               ],
             ]),
@@ -205,11 +206,11 @@ class _ValuePill extends StatelessWidget {
     final c = context.colors;
     final empty = value == null || value!.isEmpty;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.09), borderRadius: BorderRadius.circular(10)),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 3),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.09), borderRadius: BorderRadius.circular(AppRadius.chip)),
       child: Text(
         empty ? dlTr('dl_h_empty', 'empty / automatic') : value!,
-        style: dlText(12, w: FontWeight.w800, c: empty ? c.textLight : color).copyWith(
+        style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: empty ? c.textLight : color).copyWith(
           decoration: strike && !empty ? TextDecoration.lineThrough : null,
         ),
       ),

@@ -15,7 +15,8 @@ import '../../student/analysis/student_analytics_profile_screen.dart';
 import 'data_lab_api.dart';
 import 'data_lab_models.dart';
 import 'data_lab_widgets.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppGradients;
+import 'package:flutter_education_app/design/app_kit.dart'
+    show AppBlockColors, AppBlockTone, AppIconSize, AppRadius, AppSpace, AppTouch, AppType;
 
 class DataLabEntryCard extends StatefulWidget {
   const DataLabEntryCard({super.key, required this.courseId, required this.courseTitle});
@@ -84,6 +85,7 @@ class _MyAnalyticsProfileCardState extends State<MyAnalyticsProfileCard> {
   );
 }
 
+/// A paper card with the Data Lab's sky tile (an information surface), the title in the editorial section role.
 class _EntryTile extends StatelessWidget {
   const _EntryTile({required this.icon, required this.title, required this.sub, required this.onTap});
 
@@ -98,23 +100,21 @@ class _EntryTile extends StatelessWidget {
       onTap: onTap,
       child: Row(children: [
         Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: AppGradients.blend(context),
-          ),
-          child: Icon(icon, color: c.onHero, size: 26),
+          width: AppTouch.min,
+          height: AppTouch.min,
+          decoration: BoxDecoration(color: c.blockSky, borderRadius: BorderRadius.circular(AppRadius.control)),
+          child: Icon(icon, color: AppBlockColors.of(context, AppBlockTone.sky).accentInk(c.primary), size: AppIconSize.lg),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: AppSpace.md),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: dlText(15, w: FontWeight.w800, c: c.textDark)),
-            const SizedBox(height: 2),
-            Text(sub, style: dlText(12, c: c.textMedium, h: 1.4)),
+            Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+            const SizedBox(height: AppSpace.xxs / 2),
+            Text(sub, style: AppType.meta(context)),
           ]),
         ),
-        Icon(Icons.arrow_forward_ios_rounded, size: 14, color: c.textLight),
+        const SizedBox(width: AppSpace.xs),
+        Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.textLight),
       ]),
     );
   }

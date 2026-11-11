@@ -26,9 +26,10 @@ import 'certificate_design_models.dart';
 import '../studio/cert_engine_studio.dart' show openCertificateStudio;
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppHeader, AppListSkeleton, AppEmpty;
+import 'package:flutter_education_app/design/app_kit.dart'
+    show AppHeader, AppListSkeleton, AppEmpty, AppButton, AppElevation, AppType, AppSpace, AppRadius, AppIconSize, AppBorder, AppTouch, appInk;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal, AppTilt;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_flow.dart' show openCertIssueFlow;
 import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_history.dart' show CertIssueHistoryPage;
 import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_lists.dart' show CertSavedListsPage;
@@ -170,20 +171,25 @@ class _View extends StatelessWidget {
         onRefresh: () => p.load(orgId: orgId),
         child: GridView.builder(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpace.md),
           gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 340,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
+            maxCrossAxisExtent: 360, // one column on a phone, the sheet preview gets the room
+            mainAxisSpacing: AppSpace.md,
+            crossAxisSpacing: AppSpace.md,
             // room for the "Issue certificates" button under each card
             childAspectRatio: 0.8,
           ),
           itemCount: p.items.length,
-          itemBuilder: (_, i) => _DesignCard(
-            design: p.items[i],
-            certificateId: certificateId,
-            orgId: orgId,
-            onOpen: () => _open(context, designId: p.items[i].id),
+          // the page's one orchestrated entrance: the first cards rise in once
+          itemBuilder: (_, i) => AppReveal(
+            index: i,
+            group: 'cert.designs',
+            child: _DesignCard(
+              design: p.items[i],
+              certificateId: certificateId,
+              orgId: orgId,
+              onOpen: () => _open(context, designId: p.items[i].id),
+            ),
           ),
         ),
       );
@@ -244,50 +250,63 @@ class _DesignCard extends StatelessWidget {
     final c = context.colors;
     final busy = p.busyIds.contains(design.id);
 
+    // a paper card on a warm hairline; the design sits on an input-well mat like a printed sheet on a desk, the one
+    // thing that floats (and tilts a little under the pointer)
     return Container(
-      decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(c.radiusMedium), boxShadow: c.cardShadow),
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
+      ),
       clipBehavior: Clip.antiAlias,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Expanded(
           child: InkWell(
             onTap: onOpen,
             child: Container(
-              color: c.textLight,
+              color: c.inputBg,
               alignment: Alignment.center,
-              padding: const EdgeInsets.all(10),
-              child: AspectRatio(
-                aspectRatio: design.logicalW / design.logicalH,
-                child: Container(
-                  decoration: BoxDecoration(color: c.cardBg, boxShadow: [BoxShadow(color: c.heroShade.withValues(alpha: 0.2), blurRadius: 6)]),
-                  child: design.backgroundUrl == null
-                      ? Icon(Icons.workspace_premium_outlined, color: c.textLight)
-                      : Image.network(design.backgroundUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const Icon(Icons.broken_image_outlined)),
+              padding: const EdgeInsets.all(AppSpace.md),
+              child: AppTilt.subtle(
+                child: AspectRatio(
+                  aspectRatio: design.logicalW / design.logicalH,
+                  child: Container(
+                    decoration: BoxDecoration(color: c.cardBg, boxShadow: AppElevation.of(context, 2)),
+                    child: design.backgroundUrl == null
+                        ? Icon(Icons.workspace_premium_outlined, color: c.textLight, size: AppIconSize.xl)
+                        : Image.network(design.backgroundUrl!, fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Icon(Icons.broken_image_outlined, color: c.textLight)),
+                  ),
                 ),
               ),
             ),
           ),
         ),
         Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 4, 4),
+          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.xxs, AppSpace.xxs),
           child: Row(children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(design.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 13)),
+                Text(design.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
                 Text(
                   '${design.orgId != null ? 'cert_scope_org'.tr : 'cert_scope_personal'.tr} · ${'cert_orientation_${design.orientation}'.tr}',
-                  style: c.caption,
+                  style: AppType.meta(context),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
-                Wrap(spacing: 4, runSpacing: 4, children: [
+                const SizedBox(height: AppSpace.xs),
+                Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
                   if (certIsDefault(design)) _Chip(label: 'cert_default_badge'.tr, icon: Icons.star_rounded, strong: true),
                   for (final l in design.langs) _Chip(label: l == 'ar' ? 'certd_lang_ar'.tr : 'certd_lang_en'.tr),
                 ]),
               ]),
             ),
             if (busy)
-              const SizedBox(width: 22, height: 22, child: AppLoadingIndicator())
+              const SizedBox(
+                width: AppTouch.min,
+                height: AppTouch.min,
+                child: Center(child: SizedBox(width: AppIconSize.md, height: AppIconSize.md, child: AppLoadingIndicator())),
+              )
             else if (design.canEdit)
               PopupMenuButton<String>(
                 onSelected: (v) async {
@@ -308,8 +327,8 @@ class _DesignCard extends StatelessWidget {
                         title: Text('cert_delete_design_title'.tr),
                         content: Text('cert_delete_design_body'.tr),
                         actions: [
-                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('cancel'.tr)),
-                          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: Text('delete'.tr)),
+                          AppButton.ghost(label: 'cancel'.tr, onPressed: () => Navigator.pop(ctx, false)),
+                          AppButton.danger(label: 'delete'.tr, onPressed: () => Navigator.pop(ctx, true)),
                         ],
                       ),
                     );
@@ -331,35 +350,32 @@ class _DesignCard extends StatelessWidget {
           ParentComponent(
             featureKey: 'certificates.standalone',
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: busy
-                      ? null
-                      : () => openCertIssueFlow(context, designId: design.id, designName: design.name, orgId: orgId),
-                  icon: const Icon(Icons.workspace_premium_outlined, size: 16),
-                  label: Text('ci_issue_action'.tr, maxLines: 1, overflow: TextOverflow.ellipsis),
-                ),
+              padding: const EdgeInsets.fromLTRB(AppSpace.sm, 0, AppSpace.sm, AppSpace.sm),
+              child: AppButton.secondary(
+                expand: true,
+                icon: Icons.workspace_premium_outlined,
+                label: 'ci_issue_action'.tr,
+                onPressed: busy
+                    ? null
+                    : () => openCertIssueFlow(context, designId: design.id, designName: design.name, orgId: orgId),
               ),
             ),
           ),
         if (certificateId != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: busy
-                    ? null
-                    : () async {
-                        final ok = await context.read<CertificateDesignsProvider>().attach(certificateId!, design.id);
-                        if (!context.mounted) return;
-                        showAppNotice((ok ? 'cert_design_in_use' : 'certificate_action_failed').tr, error: true);
-                      },
-                icon: const Icon(Icons.check_rounded, size: 16),
-                label: Text('cert_use_design'.tr),
-              ),
+            padding: const EdgeInsets.fromLTRB(AppSpace.sm, 0, AppSpace.sm, AppSpace.sm),
+            child: AppButton.primary(
+              expand: true,
+              icon: Icons.check_rounded,
+              label: 'cert_use_design'.tr,
+              onPressed: busy
+                  ? null
+                  : () async {
+                      final ok = await context.read<CertificateDesignsProvider>().attach(certificateId!, design.id);
+                      if (!context.mounted) return;
+                      // the notice's tone follows the result (it always showed as an error before)
+                      showAppNotice((ok ? 'cert_design_in_use' : 'certificate_action_failed').tr, error: !ok);
+                    },
             ),
           ),
       ]),
@@ -390,13 +406,13 @@ Future<void> showDesignAssignment(BuildContext context, int designId) async {
     builder: (ctx) => StatefulBuilder(builder: (ctx, set) {
       final c = ctx.colors;
       return Padding(
-        padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
+        padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xs, AppSpace.lg, AppSpace.lg),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('cert_use_for_courses'.tr, style: c.h3),
-          const SizedBox(height: 4),
-          Text('cert_use_for_courses_hint'.tr, style: c.caption),
+          Text('cert_use_for_courses'.tr, style: AppType.pageTitle(ctx)),
+          const SizedBox(height: AppSpace.xxs),
+          Text('cert_use_for_courses_hint'.tr, style: AppType.meta(ctx)),
           AppSwitchTile(
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
             value: all,
             onChanged: (v) => set(() => all = v),
             title: 'cert_all_my_courses'.tr,
@@ -411,23 +427,22 @@ Future<void> showDesignAssignment(BuildContext context, int designId) async {
                       contentPadding: EdgeInsets.zero,
                       value: picked.contains(co['id']),
                       onChanged: (on) => set(() => on == true ? picked.add(co['id'] as int) : picked.remove(co['id'])),
-                      title: Text('${co['title']}', style: TextStyle(fontFamily: AppFonts.family)),
+                      activeColor: c.primary,
+                      title: Text('${co['title']}', style: AppType.row(ctx)),
                     ),
                   ),
               ]),
             ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: () async {
-                try {
-                  await api.put('/api/v1/certificate-designs/$designId/assignment', body: {'apply_all': all, 'course_ids': picked.toList()});
-                  if (ctx.mounted) Navigator.pop(ctx);
-                } catch (_) {}
-              },
-              child: Text('save'.tr),
-            ),
+          const SizedBox(height: AppSpace.md),
+          AppButton.primary(
+            expand: true,
+            label: 'save'.tr,
+            onPressed: () async {
+              try {
+                await api.put('/api/v1/certificate-designs/$designId/assignment', body: {'apply_all': all, 'course_ids': picked.toList()});
+                if (ctx.mounted) Navigator.pop(ctx);
+              } catch (_) {}
+            },
           ),
         ]),
       );
@@ -445,16 +460,19 @@ class _Chip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final ink = strong ? appInk(context, c.primary) : c.textMedium;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
       decoration: BoxDecoration(
         color: strong ? c.primaryTint : c.inputBg,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: c.divider),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        if (icon != null) ...[Icon(icon, size: 12, color: c.textMedium), const SizedBox(width: 2)],
-        Text(label, style: c.caption.copyWith(fontSize: 11, color: c.textDark)),
+        if (icon != null) ...[Icon(icon, size: AppIconSize.xs, color: ink), const SizedBox(width: AppSpace.xxs)],
+        Flexible(
+          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: AppType.overline(context).copyWith(color: strong ? ink : c.textDark)),
+        ),
       ]),
     );
   }

@@ -28,6 +28,7 @@ import 'data_lab_api.dart';
 import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show showAppSideSheet;
 import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
@@ -297,12 +298,12 @@ class _ImportWizardState extends State<_ImportWizard> {
       SheetHeader('dl_import'.tr),
       // step dots: tap a step already reached to go back to it
       Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+        padding: const EdgeInsets.fromLTRB(20, 0, AppSpace.lg, 8),
         child: Row(children: [
           for (var i = 0; i < 4; i++) ...[
             Expanded(
               child: InkWell(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppRadius.chip),
                 onTap: (i <= _reached && i != _step && _step != 3 && i < 3 && (i == 0 || _pv != null)) ? () => _goTo(i) : null,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
@@ -312,10 +313,10 @@ class _ImportWizardState extends State<_ImportWizard> {
                       height: 5,
                       decoration: BoxDecoration(
                         color: i <= _step ? c.primary : (i <= _reached ? c.primary.withValues(alpha: 0.35) : c.divider),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(AppRadius.chip),
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: AppSpace.xxs),
                     Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                       if (i < _step || (i < _reached && i != _step))
                         Padding(padding: const EdgeInsetsDirectional.only(end: 3), child: Icon(Icons.check_rounded, size: 12, color: c.primary)),
@@ -323,14 +324,14 @@ class _ImportWizardState extends State<_ImportWizard> {
                         child: Text(titles[i],
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: dlText(10.5, w: i == _step ? FontWeight.w800 : FontWeight.w500, c: i == _step ? c.primary : c.textLight)),
+                            style: AppType.overline(context).copyWith(color: i == _step ? c.primary : c.textLight)),
                       ),
                     ]),
                   ]),
                 ),
               ),
             ),
-            if (i < 3) const SizedBox(width: 6),
+            if (i < 3) const SizedBox(width: AppSpace.xs),
           ],
         ]),
       ),
@@ -340,7 +341,7 @@ class _ImportWizardState extends State<_ImportWizard> {
           child: ListView(
             key: ValueKey(_step),
             shrinkWrap: true,
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+            padding: const EdgeInsets.fromLTRB(20, AppSpace.xs, AppSpace.lg, 16),
             children: switch (_step) {
               0 => _stepFile(c),
               1 => _stepColumns(c),
@@ -377,14 +378,14 @@ class _ImportWizardState extends State<_ImportWizard> {
             child: OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
                 side: BorderSide(color: c.divider),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card)),
               ),
               onPressed: _busy ? null : _back,
               icon: const Icon(Icons.arrow_back_rounded, size: 18),   // auto-mirrored in RTL
-              label: Text('dl_back'.tr, style: dlText(13, w: FontWeight.w700, c: c.textDark)),
+              label: Text('dl_back'.tr, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.sm),
         ],
         if (_step == 2)
           Padding(
@@ -396,7 +397,7 @@ class _ImportWizardState extends State<_ImportWizard> {
                 style: OutlinedButton.styleFrom(
                   padding: EdgeInsets.zero,
                   side: BorderSide(color: c.divider),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card)),
                 ),
                 onPressed: _busy ? null : _check,
                 child: Tooltip(message: 'dl_check_again'.tr, child: Icon(Icons.refresh_rounded, color: c.textMedium)),
@@ -411,7 +412,7 @@ class _ImportWizardState extends State<_ImportWizard> {
   // ── step 1 ─────────────────────────────────────────────────────────────────
   List<Widget> _stepFile(ThemeConfigProvider c) => [
     DlCard(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(AppSpace.lg),
       onTap: _busy ? null : _pick,
       child: Column(children: [
         Container(
@@ -420,19 +421,19 @@ class _ImportWizardState extends State<_ImportWizard> {
           decoration: BoxDecoration(shape: BoxShape.circle, color: (_pv == null ? c.primary : c.success).withValues(alpha: 0.10)),
           child: Icon(_pv == null ? Icons.upload_file_rounded : Icons.task_rounded, size: 36, color: _pv == null ? c.primary : c.success),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.md),
         Text(_pv == null ? 'dl_imp_file_title'.tr : _pv!.filename,
-            textAlign: TextAlign.center, style: dlText(16, w: FontWeight.w800, c: c.textDark)),
-        const SizedBox(height: 6),
+            textAlign: TextAlign.center, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
+        const SizedBox(height: AppSpace.xs),
         Text(_pv == null ? 'dl_imp_file_sub'.tr : '${_pv!.rows} ${'dl_imp_rows'.tr} · ${_pv!.headers.length} ${_tr('dl_imp_cols', 'columns')}',
-            textAlign: TextAlign.center, style: dlText(12.5, c: c.textMedium, h: 1.55)),
+            textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textMedium)),
         if (_pv != null) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           TextButton.icon(onPressed: _busy ? null : _pick, icon: const Icon(Icons.swap_horiz_rounded, size: 18), label: Text(_tr('dl_imp_other_file', 'Choose another file'))),
         ],
       ]),
     ),
-    const SizedBox(height: 12),
+    const SizedBox(height: AppSpace.sm),
     _Tip(Icons.lightbulb_outline_rounded, '${'dl_imp_limit'.tr} ${widget.p.config.maxImportRows}'),
     _Tip(Icons.table_rows_rounded, 'dl_imp_header_tip'.tr),
   ];
@@ -464,20 +465,20 @@ class _ImportWizardState extends State<_ImportWizard> {
           return ListTile(
             enabled: enabled,
             dense: true,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
             selected: on,
             selectedTileColor: c.primary.withValues(alpha: 0.08),
             leading: Icon(icon, color: enabled ? (color ?? c.primary) : c.textLight, size: 20),
-            title: Text(label, style: dlText(13.5, w: on ? FontWeight.w800 : FontWeight.w600, c: enabled ? c.textDark : c.textLight)),
-            subtitle: sub == null ? null : Text(sub, style: dlText(11, c: c.textLight)),
+            title: Text(label, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: enabled ? c.textDark : c.textLight)),
+            subtitle: sub == null ? null : Text(sub, style: AppType.meta(context).copyWith(color: c.textLight)),
             trailing: on ? Icon(Icons.check_circle_rounded, color: c.primary) : null,
             onTap: () => Navigator.pop(ctx, value),
           );
         }
 
         Widget group(String t) => Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-          child: Text(t, style: dlText(11.5, w: FontWeight.w800, c: c.textMedium)),
+          padding: const EdgeInsets.fromLTRB(12, AppSpace.sm, AppSpace.sm, 4),
+          child: Text(t, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
         );
 
         return Directionality(
@@ -485,17 +486,17 @@ class _ImportWizardState extends State<_ImportWizard> {
           child: SafeArea(
             top: false,
             child: Padding(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(AppSpace.sm),
               child: Material(
                 color: c.cardBg,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(AppRadius.block),
                 clipBehavior: Clip.antiAlias,
                 child: ConstrainedBox(
                   constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.8),
-                  child: ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(8, 12, 8, 12), children: [
+                  child: ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(8, AppSpace.sm, AppSpace.xs, 12), children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-                      child: Text('“${h.header}” →', style: dlText(15, w: FontWeight.w800, c: c.textDark)),
+                      padding: const EdgeInsets.fromLTRB(12, 0, AppSpace.sm, 6),
+                      child: Text('“${h.header}” →', style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
                     ),
                     item('skip', Icons.block_rounded, 'dl_t_skip'.tr, color: c.textMedium),
                     group(_tr('dl_t_group_student', 'Student details')),
@@ -543,47 +544,47 @@ class _ImportWizardState extends State<_ImportWizard> {
     final newCols = pv.headers.where((h) => h.target.startsWith('new:')).length;
     return [
       Row(children: [
-        Expanded(child: Text('${pv.filename} · ${pv.rows} ${'dl_imp_rows'.tr}', style: dlText(12.5, w: FontWeight.w700, c: c.textMedium))),
+        Expanded(child: Text('${pv.filename} · ${pv.rows} ${'dl_imp_rows'.tr}', style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium))),
         if (newCols > 0) DlTag('+$newCols ${_tr('dl_imp_new_cols', 'new columns')}', c.success, icon: Icons.add_chart_rounded),
       ]),
       if (pv.shared.isNotEmpty) ...[
-        const SizedBox(height: 8),
-        Wrap(spacing: 6, runSpacing: 6, children: [
-          Text('${'dl_imp_shared'.tr}:', style: dlText(12, c: c.textMedium)),
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+          Text('${'dl_imp_shared'.tr}:', style: AppType.meta(context).copyWith(color: c.textMedium)),
           for (final s in pv.shared) DlTag(s, c.success, icon: Icons.link_rounded),
         ]),
       ],
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
       for (final h in pv.headers)
         Container(
           margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 8, 10),
+          padding: const EdgeInsetsDirectional.fromSTEB(14, AppSpace.sm, AppSpace.xs, 10),
           decoration: BoxDecoration(
             color: h.target == 'skip' ? c.inputBg : c.primary.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(color: h.target == 'skip' ? c.divider : c.primary.withValues(alpha: 0.35)),
           ),
           child: Row(children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(h.header, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(13.5, w: FontWeight.w800, c: c.textDark)),
+                Text(h.header, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
                 if (h.sample.isNotEmpty)
-                  Text(h.sample.join('  ·  '), maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(11, c: c.textLight)),
+                  Text(h.sample.join('  ·  '), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight)),
               ]),
             ),
             Icon(Icons.arrow_forward_rounded, size: 16, color: c.textLight),   // auto-mirrored in RTL
-            const SizedBox(width: 6),
+            const SizedBox(width: AppSpace.xs),
             InkWell(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppRadius.control),
               onTap: () => _chooseTarget(h),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.divider)),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 8),
+                decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.control), border: Border.all(color: c.divider)),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 130),
                     child: Text(_targetLabel(h.target),
-                        maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(12, w: FontWeight.w700, c: h.target == 'skip' ? c.textMedium : c.primary)),
+                        maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: h.target == 'skip' ? c.textMedium : c.primary)),
                   ),
                   Icon(Icons.expand_more_rounded, size: 18, color: c.textMedium),
                 ]),
@@ -592,7 +593,7 @@ class _ImportWizardState extends State<_ImportWizard> {
           ]),
         ),
       DlSectionTitle('dl_merge_title'.tr, subtitle: 'dl_merge_sub'.tr),
-      Wrap(spacing: 8, runSpacing: 8, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final h in keyHeaders)
           DlChoiceChip(label: h.header, icon: Icons.key_rounded, selected: _mergeOn == h.target, onTap: () => setState(() => _mergeOn = h.target)),
         if (pv.allowStudentRequests)
@@ -604,33 +605,33 @@ class _ImportWizardState extends State<_ImportWizard> {
   }
 
   List<Widget> _askForm(ThemeConfigProvider c, DlImportPreview pv) => [
-    const SizedBox(height: 12),
+    const SizedBox(height: AppSpace.sm),
     DlCard(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpace.md),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.mark_chat_unread_rounded, color: c.warning, size: 20),
-          const SizedBox(width: 8),
-          Expanded(child: Text('dl_ask_explain'.tr, style: dlText(12.5, c: c.textMedium, h: 1.5))),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: Text('dl_ask_explain'.tr, style: AppType.meta(context).copyWith(color: c.textMedium))),
         ]),
-        const SizedBox(height: 12),
-        Text('dl_ask_which_column'.tr, style: dlText(12.5, w: FontWeight.w700, c: c.textDark)),
-        const SizedBox(height: 6),
-        Wrap(spacing: 8, runSpacing: 8, children: [
+        const SizedBox(height: AppSpace.sm),
+        Text('dl_ask_which_column'.tr, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final h in pv.headers)
             DlChoiceChip(label: h.header, selected: _reqHeader == h.header, onTap: () => setState(() {
               _reqHeader = h.header;
               if (_reqLabel.text.isEmpty) _reqLabel.text = h.header;
             })),
         ]),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         DlField(controller: _reqLabel, label: 'dl_ask_label'.tr),
-        Wrap(spacing: 8, children: [
+        Wrap(spacing: AppSpace.xs, children: [
           DlChoiceChip(label: 'dl_ask_text'.tr, icon: Icons.text_fields_rounded, selected: _reqType == 'text', onTap: () => setState(() => _reqType = 'text')),
           DlChoiceChip(label: 'dl_ask_dropdown'.tr, icon: Icons.list_alt_rounded, selected: _reqType == 'dropdown', onTap: () => setState(() => _reqType = 'dropdown')),
         ]),
         if (_reqType == 'dropdown') ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           DlField(controller: _reqOptions, label: 'dl_options'.tr, hint: 'dl_options_hint'.tr),
         ],
       ]),
@@ -649,14 +650,14 @@ class _ImportWizardState extends State<_ImportWizard> {
       else ...[
         Row(children: [
           Expanded(child: _Count(Icons.check_circle_rounded, c.success, '${pl.matched}', 'dl_plan_matched'.tr)),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.sm),
           Expanded(child: _Count(Icons.person_search_rounded, c.warning, '${pl.unmatched}', 'dl_plan_unmatched'.tr)),
         ]),
         if (pl.newColumns.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 10),
-            child: Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
-              Text('${'dl_plan_new_columns'.tr}:', style: dlText(12, c: c.textMedium)),
+            child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              Text('${'dl_plan_new_columns'.tr}:', style: AppType.meta(context).copyWith(color: c.textMedium)),
               for (final n in pl.newColumnsDetail)
                 DlTag(n['max'] == null ? '${n['label']}' : '${n['label']} · /${dlFmt(n['max'])}', c.purple,
                     icon: n['type'] == 'number' ? Icons.pin_rounded : Icons.text_fields_rounded),
@@ -684,9 +685,9 @@ class _ImportWizardState extends State<_ImportWizard> {
         Padding(padding: const EdgeInsets.only(top: 12), child: _Tip(Icons.mark_chat_unread_rounded, 'dl_policy_request_note'.tr, color: c.warning)),
       // ── what "add them to the course" will do ──
       if (accounts && pl != null) ...[
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         DlCard(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(AppSpace.sm),
           child: Column(children: [
             _PlanLine(Icons.how_to_reg_rounded, c.success, pl.willEnrollExisting, _tr('dl_plan_enroll', 'already on the platform — enrolled + notified')),
             _PlanLine(Icons.forward_to_inbox_rounded, c.primary, pl.willInviteEmail, _tr('dl_plan_invite', 'new accounts — invitation e-mail with their login')),
@@ -695,7 +696,7 @@ class _ImportWizardState extends State<_ImportWizard> {
             if (pl.willSheetOnly > 0) _PlanLine(Icons.table_rows_rounded, c.textMedium, pl.willSheetOnly, _tr('dl_plan_sheet_only', 'kept in the sheet only')),
           ]),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         _Tip(Icons.verified_user_rounded, _tr('dl_plan_setup_note', 'At their first sign-in, new students complete their details and choose their own password; an e-mail they add is verified by a code.')),
       ],
       if (accounts && pl != null && pl.needsName) ...[
@@ -709,10 +710,10 @@ class _ImportWizardState extends State<_ImportWizard> {
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
             tilePadding: EdgeInsets.zero,
-            title: Text('dl_fill_cells'.tr, style: dlText(13, w: FontWeight.w800, c: c.textDark)),
-            subtitle: Text('dl_fill_cells_sub'.tr, style: dlText(11, c: c.textMedium)),
+            title: Text('dl_fill_cells'.tr, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
+            subtitle: Text('dl_fill_cells_sub'.tr, style: AppType.meta(context).copyWith(color: c.textMedium)),
             children: [
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpace.xs),
               for (final h in mapped) DlField(controller: _fill(h.header), label: h.header, hint: 'dl_fill_value'.tr),
             ],
           ),
@@ -740,23 +741,23 @@ class _ImportWizardState extends State<_ImportWizard> {
         subtitle: _tr('dl_fix_sub', 'Add at least one, keep them in the sheet only, or ignore them. The other students are imported anyway.'),
         trailing: undecided > 0 ? DlTag('$undecided', c.warning, icon: Icons.pending_rounded) : Icon(Icons.check_circle_rounded, color: c.success),
       ),
-      Wrap(spacing: 8, runSpacing: 8, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         ActionChip(
           avatar: Icon(Icons.table_rows_rounded, size: 16, color: c.textMedium),
-          label: Text(_tr('dl_fix_all_sheet', 'Rest: sheet only'), style: dlText(12, w: FontWeight.w700, c: c.textDark)),
+          label: Text(_tr('dl_fix_all_sheet', 'Rest: sheet only'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
           backgroundColor: c.inputBg,
           side: BorderSide(color: c.divider),
           onPressed: undecided == 0 ? null : () => all('sheet_only'),
         ),
         ActionChip(
           avatar: Icon(Icons.block_rounded, size: 16, color: c.textMedium),
-          label: Text(_tr('dl_fix_all_skip', 'Rest: ignore'), style: dlText(12, w: FontWeight.w700, c: c.textDark)),
+          label: Text(_tr('dl_fix_all_skip', 'Rest: ignore'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
           backgroundColor: c.inputBg,
           side: BorderSide(color: c.divider),
           onPressed: undecided == 0 ? null : () => all('skip'),
         ),
       ]),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
       for (final f in lines) _FixCard(fix: f, onChanged: () {
         setState(() {});
         _checkSoon();
@@ -773,22 +774,22 @@ class _ImportWizardState extends State<_ImportWizard> {
         child: Container(
           width: 84,
           height: 84,
-          margin: const EdgeInsets.only(top: 6, bottom: 10),
+          margin: const EdgeInsets.only(top: AppSpace.xs, bottom: 10),
           decoration: BoxDecoration(shape: BoxShape.circle, color: c.success.withValues(alpha: 0.12)),
           child: Icon(Icons.celebration_rounded, size: 40, color: c.success),
         ),
       ),
-      Text('dl_done_title'.tr, textAlign: TextAlign.center, style: dlText(18, w: FontWeight.w800, c: c.textDark)),
-      const SizedBox(height: 14),
+      Text('dl_done_title'.tr, textAlign: TextAlign.center, style: AppType.section(context).copyWith(color: c.textDark)),
+      const SizedBox(height: AppSpace.md),
       Row(children: [
         Expanded(child: _Count(Icons.check_circle_rounded, c.success, '${r.matched}', 'dl_plan_matched'.tr)),
-        const SizedBox(width: 10),
+        const SizedBox(width: AppSpace.sm),
         Expanded(child: _Count(Icons.task_alt_rounded, c.primary, '${r.cellsWritten}', _tr('dl_done_values', 'values written'))),
       ]),
       if (r.result.isNotEmpty) ...[
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         DlCard(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(AppSpace.sm),
           child: Column(children: [
             _PlanLine(Icons.how_to_reg_rounded, c.success, r.resultOf('enrolled_existing'), _tr('dl_res_enrolled', 'enrolled in the course and notified')),
             _PlanLine(Icons.forward_to_inbox_rounded, c.primary, r.resultOf('invited'), _tr('dl_res_invited', 'invited by e-mail')),
@@ -813,19 +814,19 @@ class _ImportWizardState extends State<_ImportWizard> {
         for (final cr in creds)
           Container(
             margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(14), border: Border.all(color: c.divider)),
+            padding: const EdgeInsets.all(AppSpace.sm),
+            decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.control), border: Border.all(color: c.divider)),
             child: Row(children: [
               Icon(cr['emailed'] == true ? Icons.mark_email_read_rounded : Icons.phone_iphone_rounded,
                   size: 20, color: cr['emailed'] == true ? c.success : c.accent2),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('${cr['name']}', style: dlText(13, w: FontWeight.w800, c: c.textDark)),
-                  Text('${cr['login']}', style: dlText(11.5, c: c.textMedium), textDirection: TextDirection.ltr),
+                  Text('${cr['name']}', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
+                  Text('${cr['login']}', style: AppType.meta(context).copyWith(color: c.textMedium), textDirection: TextDirection.ltr),
                 ]),
               ),
-              SelectableText('${cr['password']}', style: dlText(13, w: FontWeight.w800, c: c.primary), textDirection: TextDirection.ltr),
+              SelectableText('${cr['password']}', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.primary), textDirection: TextDirection.ltr),
               IconButton(
                 visualDensity: VisualDensity.compact,
                 tooltip: _tr('dl_file_share', 'Share'),
@@ -852,14 +853,14 @@ class _ImportWizardState extends State<_ImportWizard> {
         for (final e in r.errors.take(12))
           Container(
             margin: const EdgeInsets.only(bottom: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(12)),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 8),
+            decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(AppRadius.control)),
             child: Row(children: [
               if ((e['row'] as num? ?? 0) > 0) ...[
                 DlTag('${dlTr('dl_line', 'Line')} ${e['row']}', c.warning),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
               ],
-              Expanded(child: Text('${e['message']}', style: dlText(12, c: c.textDark, h: 1.35))),
+              Expanded(child: Text('${e['message']}', style: AppType.meta(context).copyWith(color: c.textDark))),
             ]),
           ),
       ],
@@ -883,7 +884,7 @@ class _FixCard extends StatelessWidget {
     final c = context.colors;
     final f = fix;
     final col = f.decided ? c.success : c.warning;
-    OutlineInputBorder b(Color x) => OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: x));
+    OutlineInputBorder b(Color x) => OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: x));
     Widget field(TextEditingController ctrl, String label, IconData icon, TextInputType kb) => Expanded(
       child: TextField(
         controller: ctrl,
@@ -893,11 +894,11 @@ class _FixCard extends StatelessWidget {
           f.action = f.hasContact ? 'add' : null;
           onChanged();
         },
-        style: dlText(13, c: c.textDark),
+        style: AppType.label(context).copyWith(color: c.textDark),
         decoration: InputDecoration(
           isDense: true,
           labelText: label,
-          labelStyle: dlText(12, c: c.textMedium),
+          labelStyle: AppType.meta(context).copyWith(color: c.textMedium),
           prefixIcon: Icon(icon, size: 17, color: c.textMedium),
           filled: true,
           fillColor: c.cardBg,
@@ -913,7 +914,7 @@ class _FixCard extends StatelessWidget {
         selected: on,
         showCheckmark: false,
         avatar: Icon(icon, size: 15, color: on ? c.onHero : c.textMedium),
-        label: Text(label, style: dlText(11.5, w: FontWeight.w700, c: on ? c.onHero : c.textDark)),
+        label: Text(label, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: on ? c.onHero : c.textDark)),
         selectedColor: a == 'skip' ? c.danger : c.textMedium,
         backgroundColor: c.cardBg,
         side: BorderSide(color: on ? Colors.transparent : c.divider),
@@ -927,34 +928,34 @@ class _FixCard extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(
         color: col.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: col.withValues(alpha: 0.35)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           DlTag('${dlTr('dl_line', 'Line')} ${f.row}', c.textMedium),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           Expanded(
             child: Text(f.name.isEmpty ? (f.identifier.isEmpty ? '—' : f.identifier) : f.name,
-                maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(13.5, w: FontWeight.w800, c: c.textDark)),
+                maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
           ),
-          if (f.identifier.isNotEmpty && f.name.isNotEmpty) Text(f.identifier, style: dlText(11, c: c.textLight)),
-          const SizedBox(width: 6),
+          if (f.identifier.isNotEmpty && f.name.isNotEmpty) Text(f.identifier, style: AppType.meta(context).copyWith(color: c.textLight)),
+          const SizedBox(width: AppSpace.xs),
           Icon(f.decided ? Icons.check_circle_rounded : Icons.pending_rounded, size: 18, color: col),
         ]),
         if (f.action != 'sheet_only' && f.action != 'skip') ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           Row(children: [
             field(f.email, 'dl_t_email'.tr, Icons.alternate_email_rounded, TextInputType.emailAddress),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.xs),
             field(f.phone, 'dl_t_phone'.tr, Icons.phone_rounded, TextInputType.phone),
           ]),
         ],
-        const SizedBox(height: 8),
-        Wrap(spacing: 8, runSpacing: 6, children: [
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           choice('sheet_only', Icons.table_rows_rounded, _tr('dl_fix_sheet', 'Sheet only')),
           choice('skip', Icons.block_rounded, _tr('dl_fix_skip', 'Ignore')),
         ]),
@@ -982,13 +983,13 @@ class _PlanLine extends StatelessWidget {
           Container(
             width: 30,
             height: 30,
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)),
             child: Icon(icon, size: 16, color: color),
           ),
-          const SizedBox(width: 10),
-          Text('$n', style: dlText(16, w: FontWeight.w800, c: color)),
-          const SizedBox(width: 8),
-          Expanded(child: Text(text, style: dlText(12, c: c.textDark, h: 1.35))),
+          const SizedBox(width: AppSpace.sm),
+          Text('$n', style: AppType.bodyStrong(context).copyWith(color: color)),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: Text(text, style: AppType.meta(context).copyWith(color: c.textDark))),
         ]),
       ),
     );
@@ -1010,8 +1011,8 @@ class _Tip extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Icon(icon, size: 17, color: col),
-        const SizedBox(width: 8),
-        Expanded(child: Text(text, style: dlText(12, c: col, h: 1.5))),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(child: Text(text, style: AppType.meta(context).copyWith(color: col))),
       ]),
     );
   }
@@ -1026,19 +1027,19 @@ class _Count extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
+    padding: const EdgeInsets.all(AppSpace.md),
     decoration: BoxDecoration(
       color: color.withValues(alpha: 0.10),
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(AppRadius.card),
       border: Border.all(color: color.withValues(alpha: 0.25)),
     ),
     child: Row(children: [
       Icon(icon, color: color, size: 26),
-      const SizedBox(width: 10),
+      const SizedBox(width: AppSpace.sm),
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(value, style: dlText(20, w: FontWeight.w800, c: color)),
-          Text(label, maxLines: 2, style: dlText(11, c: context.colors.textMedium, h: 1.3)),
+          Text(value, style: AppType.pageTitle(context).copyWith(color: color)),
+          Text(label, maxLines: 2, style: AppType.meta(context).copyWith(color: context.colors.textMedium)),
         ]),
       ),
     ]),
@@ -1059,23 +1060,23 @@ class _PolicyTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(AppSpace.sm),
           decoration: BoxDecoration(
             color: selected ? c.primary.withValues(alpha: 0.08) : c.inputBg,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(color: selected ? c.primary : c.divider, width: selected ? 1.6 : 1),
           ),
           child: Row(children: [
             Icon(icon, color: selected ? c.primary : c.textMedium),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: dlText(13.5, w: FontWeight.w800, c: c.textDark)),
-                Text(sub, style: dlText(11.5, c: c.textMedium, h: 1.4)),
+                Text(title, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
+                Text(sub, style: AppType.meta(context).copyWith(color: c.textMedium)),
               ]),
             ),
             if (selected) Icon(Icons.check_circle_rounded, color: c.primary),

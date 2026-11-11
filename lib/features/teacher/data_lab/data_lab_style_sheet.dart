@@ -22,6 +22,7 @@ import 'data_lab_formula.dart';
 import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show showAppSideSheet;
 
 String _tr(String key, String fallback) => dlTr(key, fallback);
@@ -151,16 +152,16 @@ class _StyleSheetState extends State<_StyleSheet> {
     final samples = p.rows.take(4).toList();
     Widget seg<T>(List<(T, Widget)> items, T value, ValueChanged<T> onTap) => Container(
       padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(14), border: Border.all(color: c.divider)),
+      decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.control), border: Border.all(color: c.divider)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         for (final it in items)
           InkWell(
-            borderRadius: BorderRadius.circular(11),
+            borderRadius: BorderRadius.circular(AppRadius.chip),
             onTap: () => onTap(it.$1),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(color: it.$1 == value ? c.primary : Colors.transparent, borderRadius: BorderRadius.circular(11)),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 7),
+              decoration: BoxDecoration(color: it.$1 == value ? c.primary : Colors.transparent, borderRadius: BorderRadius.circular(AppRadius.chip)),
               child: IconTheme(
                 data: IconThemeData(size: 18, color: it.$1 == value ? c.onHero : c.textMedium),
                 child: DefaultTextStyle.merge(style: TextStyle(color: it.$1 == value ? c.onHero : c.textDark), child: it.$2),
@@ -175,23 +176,23 @@ class _StyleSheetState extends State<_StyleSheet> {
       Flexible(
         child: ListView(
           shrinkWrap: true,
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          padding: const EdgeInsets.fromLTRB(20, 0, AppSpace.lg, 24),
           children: [
             // ── live preview ──
             if (samples.isNotEmpty)
               Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.divider)),
+                padding: const EdgeInsets.all(AppSpace.sm),
+                decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.divider)),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(_tr('dl_style_preview', 'Preview'), style: dlText(11, w: FontWeight.w800, c: c.textLight)),
-                  const SizedBox(height: 6),
+                  Text(_tr('dl_style_preview', 'Preview'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textLight)),
+                  const SizedBox(height: AppSpace.xs),
                   for (final r in samples) _PreviewLine(p: p, col: preview, row: r),
                 ]),
               ),
             DlSectionTitle(_tr('dl_style_color', 'Column colour'), subtitle: _tr('dl_style_color_sub', 'Tints the title and every cell of the column.')),
             DlSwatches(value: _s.color, onChanged: (t) => _set(_s.copyWith(color: t, clearColor: t == null))),
             DlSectionTitle(_tr('dl_style_text', 'Text')),
-            Wrap(spacing: 8, runSpacing: 8, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final f in dlStyleFonts)
                 DlChoiceChip(
                   label: f == null ? _tr('dl_font_default', 'Sheet default') : (f == 'tajawal' ? 'Tajawal' : 'Bahij'),
@@ -200,8 +201,8 @@ class _StyleSheetState extends State<_StyleSheet> {
                   onTap: () => _set(_s.copyWith(font: f, clearFont: f == null)),
                 ),
             ]),
-            const SizedBox(height: 10),
-            Wrap(spacing: 10, runSpacing: 10, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            const SizedBox(height: AppSpace.sm),
+            Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, crossAxisAlignment: WrapCrossAlignment.center, children: [
               seg<double>([
                 (0.9, const Text('A', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800))),
                 (1.0, const Text('A', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800))),
@@ -231,14 +232,14 @@ class _StyleSheetState extends State<_StyleSheet> {
               ),
             ),
             if (_s.rules.isEmpty)
-              Wrap(spacing: 8, runSpacing: 8, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final pr in _presets())
                   ActionChip(
                     avatar: CircleAvatar(radius: 7, backgroundColor: dlStyleColor(context, pr.$2.bg)),
-                    label: Text(pr.$1, style: dlText(12, w: FontWeight.w700, c: c.textDark)),
+                    label: Text(pr.$1, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
                     backgroundColor: c.inputBg,
                     side: BorderSide(color: c.divider),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
                     onPressed: () => _set(_s.copyWith(rules: [..._s.rules, pr.$2])),
                   ),
               ])
@@ -246,15 +247,15 @@ class _StyleSheetState extends State<_StyleSheet> {
               for (var i = 0; i < _s.rules.length; i++)
                 Container(
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 4, 6),
+                  padding: const EdgeInsetsDirectional.fromSTEB(12, AppSpace.xs, AppSpace.xxs, 6),
                   decoration: BoxDecoration(
                     color: (dlStyleColor(context, _s.rules[i].bg) ?? c.primary).withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(AppRadius.control),
                     border: Border.all(color: (dlStyleColor(context, _s.rules[i].bg) ?? c.primary).withValues(alpha: 0.4)),
                   ),
                   child: Row(children: [
-                    Text('${i + 1}', style: dlText(12, w: FontWeight.w800, c: c.textLight)),
-                    const SizedBox(width: 10),
+                    Text('${i + 1}', style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textLight)),
+                    const SizedBox(width: AppSpace.sm),
                     Expanded(
                       child: InkWell(
                         onTap: () => _editRule(i),
@@ -262,7 +263,7 @@ class _StyleSheetState extends State<_StyleSheet> {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             textDirection: _s.rules[i].type == 'formula' ? TextDirection.ltr : null,
-                            style: dlText(13, w: _s.rules[i].bold ? FontWeight.w900 : FontWeight.w700, c: dlStyleColor(context, _s.rules[i].fg) ?? c.textDark)),
+                            style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: dlStyleColor(context, _s.rules[i].fg) ?? c.textDark)),
                       ),
                     ),
                     IconButton(
@@ -293,37 +294,37 @@ class _StyleSheetState extends State<_StyleSheet> {
                         width: 22,
                         height: 8,
                         margin: const EdgeInsetsDirectional.only(end: 3, top: 2),
-                        decoration: BoxDecoration(color: dlScaleColor(context, v), borderRadius: BorderRadius.circular(4)),
+                        decoration: BoxDecoration(color: dlScaleColor(context, v), borderRadius: BorderRadius.circular(AppRadius.chip)),
                       ),
-                    const SizedBox(width: 8),
-                    Flexible(child: Text(_tr('dl_scale_sub', 'low → high'), style: dlText(11, c: c.textMedium))),
+                    const SizedBox(width: AppSpace.xs),
+                    Flexible(child: Text(_tr('dl_scale_sub', 'low → high'), style: AppType.meta(context).copyWith(color: c.textMedium))),
                   ]),
                 ),
               ),
             if (_s.cells.isNotEmpty)
               Container(
                 margin: const EdgeInsets.only(top: 8),
-                padding: const EdgeInsetsDirectional.fromSTEB(12, 4, 4, 4),
-                decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(14)),
+                padding: const EdgeInsetsDirectional.fromSTEB(12, AppSpace.xxs, AppSpace.xxs, 4),
+                decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.control)),
                 child: Row(children: [
                   Icon(Icons.format_color_fill_rounded, size: 18, color: c.textMedium),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpace.xs),
                   Expanded(
                     child: Text('${_s.cells.length} ${_tr('dl_hl_by_hand', 'cells highlighted by hand')}',
-                        style: dlText(12.5, w: FontWeight.w700, c: c.textDark)),
+                        style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
                   ),
                   TextButton(onPressed: () => _set(_s.copyWith(cells: const {})), child: Text(_tr('dl_clear_all', 'Clear all'))),
                 ]),
               ),
-            const SizedBox(height: 4),
-            Text(_tr('dl_hl_tip', 'Tip: hold any cell in the sheet to highlight it by hand.'), style: dlText(11.5, c: c.textLight, h: 1.4)),
-            const SizedBox(height: 18),
+            const SizedBox(height: AppSpace.xxs),
+            Text(_tr('dl_hl_tip', 'Tip: hold any cell in the sheet to highlight it by hand.'), style: AppType.meta(context).copyWith(color: c.textLight)),
+            const SizedBox(height: AppSpace.md),
             DlPrimaryButton(label: 'save'.tr, icon: Icons.check_rounded, busy: _busy, onPressed: _save),
             if (!_s.isEmpty)
               TextButton.icon(
                 onPressed: _busy ? null : () => _set(const DlColumnStyle()),
                 icon: Icon(Icons.format_clear_rounded, color: c.danger),
-                label: Text(_tr('dl_style_reset', 'Remove all styling'), style: dlText(13, w: FontWeight.w700, c: c.danger)),
+                label: Text(_tr('dl_style_reset', 'Remove all styling'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.danger)),
               ),
           ],
         ),
@@ -355,7 +356,7 @@ class _PreviewLine extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(children: [
-        SizedBox(width: 110, child: Text(row.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(12, c: c.textMedium))),
+        SizedBox(width: 110, child: Text(row.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium))),
         Expanded(
           child: Container(
             height: 34,
@@ -363,7 +364,7 @@ class _PreviewLine extends StatelessWidget {
             alignment: dlAlignment(align),
             decoration: BoxDecoration(
               color: hl?.withValues(alpha: 0.22) ?? tint?.withValues(alpha: 0.08) ?? c.cardBg,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadius.chip),
               border: Border.all(color: hl?.withValues(alpha: 0.45) ?? c.divider),
             ),
             child: Text(dlFmt(row.values[col.key]), maxLines: 1, style: style),
@@ -432,45 +433,45 @@ class _RuleEditorState extends State<_RuleEditor> {
     final built = _build();
     final loaded = widget.p.rows;
     final hits = built.rule == null ? null : loaded.where((row) => DataLabProvider.ruleMatches(built.rule!, widget.col, row)).length;
-    final mono = dlText(14, w: FontWeight.w700, c: c.textDark).copyWith(fontFamily: 'monospace');
+    final mono = AppType.bodyStrong(context).copyWith(color: c.textDark).copyWith(fontFamily: 'monospace');
     OutlineInputBorder b(Color col, [double w = 1]) =>
-        OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: col, width: w));
+        OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: col, width: w));
 
     return SafeArea(
       top: false,
       child: Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
         child: Padding(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(AppSpace.sm),
           child: Material(
             color: c.cardBg,
-            borderRadius: BorderRadius.circular(26),
+            borderRadius: BorderRadius.circular(AppRadius.block),
             clipBehavior: Clip.antiAlias,
             child: ConstrainedBox(
               constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.88),
               child: ListView(
                 shrinkWrap: true,
-                padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                padding: const EdgeInsets.fromLTRB(18, AppSpace.md, AppSpace.md, 18),
                 children: [
                   Row(children: [
                     Icon(Icons.rule_rounded, color: c.primary),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(_tr('dl_rule_title', 'Highlight when…'), style: dlText(16, w: FontWeight.w800, c: c.textDark))),
+                    const SizedBox(width: AppSpace.xs),
+                    Expanded(child: Text(_tr('dl_rule_title', 'Highlight when…'), style: AppType.bodyStrong(context).copyWith(color: c.textDark))),
                   ]),
-                  const SizedBox(height: 12),
-                  Wrap(spacing: 8, runSpacing: 8, children: [
+                  const SizedBox(height: AppSpace.sm),
+                  Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                     DlChoiceChip(label: _tr('dl_rule_t_value', 'The value'), icon: Icons.compare_arrows_rounded, selected: _r.type == 'cmp', onTap: () => setState(() => _r = _r.copyWith(type: 'cmp'))),
                     DlChoiceChip(label: _tr('dl_rule_empty', 'is empty'), icon: Icons.crop_square_rounded, selected: _r.type == 'empty', onTap: () => setState(() => _r = _r.copyWith(type: 'empty'))),
                     DlChoiceChip(label: _tr('dl_rule_filled', 'has a value'), icon: Icons.check_box_rounded, selected: _r.type == 'filled', onTap: () => setState(() => _r = _r.copyWith(type: 'filled'))),
                     DlChoiceChip(label: _tr('dl_rule_t_formula', 'Formula'), icon: Icons.functions_rounded, selected: _r.type == 'formula', onTap: () => setState(() => _r = _r.copyWith(type: 'formula'))),
                   ]),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpace.md),
                   if (_r.type == 'cmp') ...[
-                    Wrap(spacing: 6, runSpacing: 6, children: [
+                    Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                       for (final o in _ops)
                         if (widget.col.isNumber || const {'=', '<>', 'contains'}.contains(o.$1))
                           ChoiceChip(
-                            label: Text(o.$2, style: dlText(13, w: FontWeight.w800, c: _r.op == o.$1 ? c.onHero : c.textDark)),
+                            label: Text(o.$2, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: _r.op == o.$1 ? c.onHero : c.textDark)),
                             selected: _r.op == o.$1,
                             showCheckmark: false,
                             selectedColor: c.warning,
@@ -479,17 +480,17 @@ class _RuleEditorState extends State<_RuleEditor> {
                             onSelected: (_) => setState(() => _r = _r.copyWith(op: o.$1)),
                           ),
                     ]),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AppSpace.sm),
                     Row(children: [
                       Expanded(child: DlField(controller: _a, label: _r.op == 'between' ? _tr('dl_rule_from', 'From') : _tr('dl_rule_value', 'Value'), onChanged: (_) => setState(() {}))),
                       if (_r.op == 'between') ...[
-                        const SizedBox(width: 10),
+                        const SizedBox(width: AppSpace.sm),
                         Expanded(child: DlField(controller: _b, label: _tr('dl_rule_to', 'To'), onChanged: (_) => setState(() {}))),
                       ],
                     ]),
                     if (widget.col.isNumber)
                       Text('${_tr('dl_full_mark', 'Full mark')}: ${dlFmt(widget.col.maxValue)} · ${'dl_class_avg'.tr}: ${dlFmt(widget.p.avgOf(widget.col))}',
-                          style: dlText(11.5, c: c.textMedium)),
+                          style: AppType.meta(context).copyWith(color: c.textMedium)),
                   ],
                   if (_r.type == 'formula') ...[
                     TextField(
@@ -505,7 +506,7 @@ class _RuleEditorState extends State<_RuleEditor> {
                         prefixText: '=  ',
                         prefixStyle: mono.copyWith(color: c.primary),
                         hintText: '[@] < [${_cols.isNotEmpty ? _cols.first.label : 'Midterm'}]',
-                        hintStyle: dlText(13, c: c.textLight).copyWith(fontFamily: 'monospace'),
+                        hintStyle: AppType.label(context).copyWith(color: c.textLight).copyWith(fontFamily: 'monospace'),
                         filled: true,
                         fillColor: c.inputBg,
                         border: b(c.divider),
@@ -513,32 +514,32 @@ class _RuleEditorState extends State<_RuleEditor> {
                         focusedBorder: b(c.primary, 1.6),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Wrap(spacing: 6, runSpacing: 6, children: [
+                    const SizedBox(height: AppSpace.xs),
+                    Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                       _Insert(label: '[@] ${_tr('dl_rule_this', 'this cell')}', color: c.danger, onTap: () => _ins('[@]')),
                       for (final col in _cols.take(12)) _Insert(label: col.label, color: c.primary, onTap: () => _ins('[${col.label}]')),
                       for (final o in const ['AND()', 'OR()', ' >= ', ' < ', ' = ', '""'])
                         _Insert(label: o.trim(), color: o.contains('(') ? c.purple : c.warning, onTap: () => _ins(o, back: o.endsWith(')') || o == '""' ? 1 : 0)),
                     ]),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpace.xs),
                     Text(_tr('dl_rule_formula_hint', 'True (not 0, not empty) = highlighted. [@] is the cell itself — e.g. [@] < [Midterm] marks a drop.'),
-                        style: dlText(11.5, c: c.textMedium, h: 1.4)),
+                        style: AppType.meta(context).copyWith(color: c.textMedium)),
                   ],
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AppSpace.sm),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 8),
                     decoration: BoxDecoration(
                       color: (built.error != null ? c.danger : c.success).withValues(alpha: 0.09),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppRadius.control),
                     ),
                     child: Row(children: [
                       Icon(built.error != null ? Icons.error_outline_rounded : Icons.people_alt_rounded, size: 17,
                           color: built.error != null ? c.danger : c.success),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpace.xs),
                       Expanded(
                         child: Text(
                           built.error ?? '${_tr('dl_rule_matches', 'Matches')} $hits / ${loaded.length} ${_tr('dl_rule_loaded', 'students on screen')}',
-                          style: dlText(12, w: FontWeight.w700, c: built.error != null ? c.danger : c.textDark),
+                          style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: built.error != null ? c.danger : c.textDark),
                         ),
                       ),
                     ]),
@@ -547,9 +548,9 @@ class _RuleEditorState extends State<_RuleEditor> {
                   DlSwatches(value: _r.bg, allowNone: false, onChanged: (t) => setState(() => _r = _r.copyWith(bg: t))),
                   DlSectionTitle(_tr('dl_rule_fg', 'Text colour')),
                   DlSwatches(value: _r.fg, onChanged: (t) => setState(() => _r = _r.copyWith(fg: t, clearFg: t == null))),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.xs),
                   DlChoiceChip(label: _tr('dl_style_bold', 'Bold'), icon: Icons.format_bold_rounded, selected: _r.bold, onTap: () => setState(() => _r = _r.copyWith(bold: !_r.bold))),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpace.md),
                   DlPrimaryButton(
                     label: 'save'.tr,
                     icon: Icons.check_rounded,
@@ -583,16 +584,16 @@ class _Insert extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => InkWell(
-    borderRadius: BorderRadius.circular(10),
+    borderRadius: BorderRadius.circular(AppRadius.chip),
     onTap: onTap,
     child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.09),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadius.chip),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
-      child: Text(label, style: dlText(12, w: FontWeight.w800, c: color)),
+      child: Text(label, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: color)),
     ),
   );
 }
@@ -617,10 +618,10 @@ class _SheetLookSheet extends StatelessWidget {
         Flexible(
           child: ListView(
             shrinkWrap: true,
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            padding: const EdgeInsets.fromLTRB(20, 0, AppSpace.lg, 24),
             children: [
               DlSectionTitle(_tr('dl_look_avg', 'Class averages'), subtitle: _tr('dl_look_avg_sub', 'Show them in their own band so they are never mistaken for a student.')),
-              Wrap(spacing: 8, runSpacing: 8, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 DlChoiceChip(label: _tr('dl_avg_top', 'Above the titles'), icon: Icons.vertical_align_top_rounded, selected: p.avgPlace == 'top', onTap: () => p.setSheetLook(avgPlace: 'top')),
                 DlChoiceChip(label: _tr('dl_avg_header', 'Under the titles'), icon: Icons.vertical_align_center_rounded, selected: p.avgPlace == 'header', onTap: () => p.setSheetLook(avgPlace: 'header')),
                 DlChoiceChip(label: _tr('dl_avg_off', 'Hidden'), icon: Icons.visibility_off_rounded, selected: p.avgPlace == 'off', onTap: () => p.setSheetLook(avgPlace: 'off')),
@@ -634,7 +635,7 @@ class _SheetLookSheet extends StatelessWidget {
                   subtitle: _tr('dl_avg_highlight_sub', 'Tinted band and numbers in pills.'),
                 ),
               DlSectionTitle(_tr('dl_look_font', 'Default font')),
-              Wrap(spacing: 8, runSpacing: 8, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final f in dlStyleFonts)
                   DlChoiceChip(
                     label: f == null ? _tr('dl_font_app', 'App font') : (f == 'tajawal' ? 'Tajawal' : 'Bahij'),
@@ -644,19 +645,19 @@ class _SheetLookSheet extends StatelessWidget {
                   ),
               ]),
               DlSectionTitle(_tr('dl_look_size', 'Text size')),
-              Wrap(spacing: 8, runSpacing: 8, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final s in const [(0.9, 'S'), (1.0, 'M'), (1.15, 'L')])
                   DlChoiceChip(label: s.$2, icon: Icons.format_size_rounded, selected: p.sheetSize == s.$1, onTap: () => p.setSheetLook(size: s.$1)),
               ]),
               DlSectionTitle(_tr('dl_look_align', 'Alignment of the values')),
-              Wrap(spacing: 8, runSpacing: 8, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 DlChoiceChip(label: _tr('dl_align_start', 'Start'), icon: rtl ? Icons.format_align_right_rounded : Icons.format_align_left_rounded, selected: p.sheetAlign == 'start', onTap: () => p.setSheetLook(align: 'start')),
                 DlChoiceChip(label: _tr('dl_align_center', 'Centre'), icon: Icons.format_align_center_rounded, selected: p.sheetAlign == 'center', onTap: () => p.setSheetLook(align: 'center')),
                 DlChoiceChip(label: _tr('dl_align_end', 'End'), icon: rtl ? Icons.format_align_left_rounded : Icons.format_align_right_rounded, selected: p.sheetAlign == 'end', onTap: () => p.setSheetLook(align: 'end')),
               ]),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
               Text(_tr('dl_look_note', 'These choices are kept on this device. Column colours, fonts and highlight rules (column card → Style & colours) are shared with everyone on the sheet.'),
-                  style: dlText(11.5, c: c.textLight, h: 1.45)),
+                  style: AppType.meta(context).copyWith(color: c.textLight)),
             ],
           ),
         ),

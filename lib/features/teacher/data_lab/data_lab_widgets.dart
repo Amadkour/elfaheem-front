@@ -1,9 +1,11 @@
 // lib/features/teacher/data_lab/data_lab_widgets.dart
-// Small reusable building blocks of the Data Lab (all colours come from the app theme).
+// Small reusable building blocks of the Data Lab (all colours come from the app theme). Warm Editorial (D-610 –
+// D-629): paper cards on a warm hairline, the hero is a tinted block, chips / buttons / fields wear the kit's
+// control language (radius 14, solid emerald for the chosen thing, never a gradient wash).
 library;
 
-import 'package:flutter_education_app/design/app_mesh.dart';
 import 'dart:math' as math;
+
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -14,10 +16,13 @@ import 'package:flutter_education_app/core/app_time.dart';
 import 'data_lab_models.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/core/display/display_settings.dart';
+import 'package:flutter_education_app/design/app_blocks.dart';
+import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
+import 'package:flutter_education_app/design/app_inputs.dart' show AppFieldLabel, appFieldDecoration, appFieldTextStyle;
 import 'package:flutter_education_app/design/app_motion_kit.dart';
-import 'package:flutter_education_app/design/app_tokens.dart' show AppType;
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 /// Translation with a friendly English fallback while a key is not in the language files yet.
 String dlTr(String key, String fallback) {
@@ -49,9 +54,13 @@ Color dlScoreColor(BuildContext context, double? v) {
   return c.danger;
 }
 
-/// Rounded card used by every block of the Data Lab.
+/// Tabular digits for figures that sit in a row (they do not dance while they count).
+const List<FontFeature> dlTabular = [FontFeature.tabularFigures()];
+
+/// Paper card used by every block of the Data Lab: the card surface on a warm hairline, radius `card`, no resting
+/// shadow (D-612). A tappable card presses in (D-582).
 class DlCard extends StatelessWidget {
-  const DlCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.margin, this.onTap, this.onLongPress});
+  const DlCard({super.key, required this.child, this.padding = AppSpace.card, this.margin, this.onTap, this.onLongPress});
 
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -64,31 +73,30 @@ class DlCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final r = BorderRadius.circular(c.radiusLarge - 4);
-    // a tappable card presses in (D-582)
+    final r = AppRadius.cardAll;
     return AppPressScale(
       enabled: onTap != null || onLongPress != null,
       child: Container(
-      margin: margin,
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: r,
-        border: Border.all(color: c.divider),
-        boxShadow: c.cardShadow,
-      ),
-      child: ClipRRect(
-        borderRadius: r,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(onTap: onTap, onLongPress: onLongPress, child: Padding(padding: padding, child: child)),
+        margin: margin,
+        decoration: BoxDecoration(
+          color: c.cardBg,
+          borderRadius: r,
+          border: Border.all(color: c.divider, width: AppBorder.hairline),
+        ),
+        child: ClipRRect(
+          borderRadius: r,
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(onTap: onTap, onLongPress: onLongPress, child: Padding(padding: padding, child: child)),
+          ),
         ),
       ),
-    ),
     );
   }
 }
 
-/// Gradient header of the page: a friendly title and up to three numbers.
+/// The page's hero: a sky block (an information surface, D-613) with the title in the editorial headline, a paper
+/// plate for the icon and up to three key figures. The one memorable thing of the page.
 class DlHero extends StatelessWidget {
   const DlHero({super.key, required this.title, required this.subtitle, required this.icon, this.stats = const []});
 
@@ -99,53 +107,45 @@ class DlHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final r = BorderRadius.circular(c.radiusLarge);
-    // the brand hero gradient with a faint warm glow in the top-end corner behind the content (D-136)
-    return Container(
-      margin: const EdgeInsets.fromLTRB(14, 8, 14, 10),
-      decoration: BoxDecoration(borderRadius: r, boxShadow: c.primaryShadow),
-      child: AppMeshSurface(
-        radius: r,
-        seed: title.hashCode,
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(children: [
-            Row(children: [
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(title, style: dlText(20, w: FontWeight.w800, c: c.onHero)),
-                  const SizedBox(height: 4),
-                  Text(subtitle, style: dlText(12.5, c: c.onHero.withValues(alpha: 0.70), h: 1.5)),
-                ]),
-              ),
-              const SizedBox(width: 12),
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: c.onHero.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: c.heroGlassBorder),
-                ),
-                child: Icon(icon, color: c.onHero, size: 26),
-              ),
-            ]),
-            if (stats.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Row(children: [
-                for (var i = 0; i < stats.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 10),
-                  Expanded(child: stats[i]),
-                ],
+    final ink = AppBlockColors.of(context, AppBlockTone.sky);
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.sm),
+      child: AppBlock(
+        tone: AppBlockTone.sky,
+        hero: true,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, style: AppType.headline(context).copyWith(color: ink.ink)),
+                const SizedBox(height: AppSpace.xxs),
+                Text(subtitle, style: AppType.body(context).copyWith(color: ink.muted)),
               ]),
-            ],
+            ),
+            const SizedBox(width: AppSpace.sm),
+            Container(
+              width: AppTouch.min,
+              height: AppTouch.min,
+              decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.control)),
+              child: Icon(icon, color: ink.accentInk(c.primary), size: AppIconSize.lg),
+            ),
           ]),
-        ),
+          if (stats.isNotEmpty) ...[
+            const SizedBox(height: AppSpace.md),
+            Row(children: [
+              for (var i = 0; i < stats.length; i++) ...[
+                if (i > 0) const SizedBox(width: AppSpace.xs),
+                Expanded(child: stats[i]),
+              ],
+            ]),
+          ],
+        ]),
       ),
     );
   }
 }
 
+/// One key figure on the hero block: a paper plate, the number rolls in once (AppOdometer), the label under it.
 class DlHeroStat extends StatelessWidget {
   const DlHeroStat({super.key, required this.icon, required this.value, required this.label});
 
@@ -153,23 +153,26 @@ class DlHeroStat extends StatelessWidget {
   final String value, label;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-    decoration: BoxDecoration(
-      color: context.colors.onHero.withValues(alpha: 0.14),
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: context.colors.onHero.withValues(alpha: 0.12)),
-    ),
-    child: Column(children: [
-      Icon(icon, color: context.colors.onHero, size: 18),
-      const SizedBox(height: 4),
-      AppCountUp(value, memoryKey: 'herostat:$label', style: dlText(17, w: FontWeight.w800, c: context.colors.onHero)),
-      Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(10.5, c: context.colors.onHero.withValues(alpha: 0.70))),
-    ]),
-  );
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm, horizontal: AppSpace.xs),
+      decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.cardAll),
+      child: Column(children: [
+        Icon(icon, color: appInk(context, c.primary), size: AppIconSize.sm),
+        const SizedBox(height: AppSpace.xxs),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: AppOdometer(value, memoryKey: 'herostat:$label', style: AppType.figure(context).copyWith(color: c.textDark)),
+        ),
+        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+      ]),
+    );
+  }
 }
 
-/// Tinted pill button (Import / Export / New column …).
+/// Tonal pill button (Import / Export / New column …): the tone's tint with its readable ink, radius `control`,
+/// like `AppButton.tonal`; presses in.
 class DlActionPill extends StatelessWidget {
   const DlActionPill({super.key, required this.icon, required this.label, required this.onTap, this.color});
 
@@ -182,38 +185,45 @@ class DlActionPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final col = color ?? c.primary;
-    // the label / icon ink: the tone made readable on its own tint in the open mode (fill and border keep the tone)
+    // the label / icon ink: the tone made readable on its own tint in the open mode
     final ink = appInk(context, col);
     final off = onTap == null;
+    final r = AppRadius.controlAll;
     return Semantics(
       container: true,
       button: true,
       enabled: !off,
       child: DlTapTarget(
-      child: Opacity(
-      opacity: off ? 0.45 : 1,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(30),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: col.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: col.withValues(alpha: 0.28)),
+        child: AppPressScale(
+          enabled: !off,
+          child: Opacity(
+            opacity: off ? 0.45 : 1,
+            child: Material(
+              color: col.withValues(alpha: c.isDark ? 0.18 : 0.10),
+              borderRadius: r,
+              child: InkWell(
+                borderRadius: r,
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(icon, size: AppIconSize.md, color: ink),
+                    const SizedBox(width: AppSpace.xs),
+                    // Flexible: a long label (or a big text scale on a phone) ellipsizes instead of overflowing.
+                    Flexible(
+                      child: Text(label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: ink)),
+                    ),
+                  ]),
+                ),
+              ),
             ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(icon, size: 18, color: ink),
-              const SizedBox(width: 7),
-              // Flexible: a long label (or a big text scale on a phone) ellipsizes instead of overflowing.
-              Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(12.5, w: FontWeight.w800, c: ink))),
-            ]),
           ),
         ),
       ),
-    )));
+    );
   }
 }
 
@@ -303,28 +313,22 @@ class DlBar extends StatelessWidget {
     final c = context.colors;
     final pct = value == null ? 0.0 : (value! / (max == 0 ? 100 : max)).clamp(0.0, 1.0);
     final col = color ?? dlScoreColor(context, value == null ? null : value! / (max == 0 ? 100 : max) * 100);
+    final r = BorderRadius.circular(AppRadius.pill);
     return LayoutBuilder(builder: (_, box) {
       final w = box.maxWidth;
       return SizedBox(
-        height: height + 6,
+        height: height + AppSpace.xs,
         child: Stack(alignment: AlignmentDirectional.centerStart, children: [
-          Container(
-            height: height,
-            decoration: BoxDecoration(color: c.divider.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(height)),
-          ),
+          Container(height: height, decoration: BoxDecoration(color: c.inputBg, borderRadius: r)),
           // fills from 0 the first time, glides on a change (D-582)
           AppFill(
             value: pct,
-            builder: (_, v) => Container(
-              height: height,
-              width: w * v,
-              decoration: BoxDecoration(color: col, borderRadius: BorderRadius.circular(height)),
-            ),
+            builder: (_, v) => Container(height: height, width: w * v, decoration: BoxDecoration(color: col, borderRadius: r)),
           ),
           if (marker != null)
             PositionedDirectional(
-              start: (w * (marker! / (max == 0 ? 100 : max)).clamp(0.0, 1.0)) - 1,
-              child: Container(width: 2, height: height + 6, color: c.textDark.withValues(alpha: 0.55)),
+              start: (w * (marker! / (max == 0 ? 100 : max)).clamp(0.0, 1.0)) - AppBorder.hairline,
+              child: Container(width: AppBorder.focus, height: height + AppSpace.xs, color: c.textDark.withValues(alpha: 0.55)),
             ),
         ]),
       );
@@ -353,22 +357,23 @@ class DlRing extends StatelessWidget {
         child: AppFill(
           value: ((value ?? 0) / 100).clamp(0.0, 1.0),
           builder: (_, t) => CustomPaint(
-            painter: _RingPainter(t, col, c.divider),
+            painter: _RingPainter(t, col, c.inputBg),
             // the screen reader hears the final value only
             child: Center(
               child: Semantics(
                 label: value == null ? '–' : '${value!.round()}%',
                 child: ExcludeSemantics(
                   child: Text(value == null ? '–' : '${(t >= (value! / 100).clamp(0.0, 1.0) ? value! : t * 100).round()}%',
-                      style: dlText(size * 0.22, w: FontWeight.w800, c: c.textDark)),
+                      // the figure scales with the ring it sits in
+                      style: AppType.figure(context).copyWith(color: c.textDark, fontSize: size * 0.22)),
                 ),
               ),
             ),
           ),
         ),
       ),
-      const SizedBox(height: 6),
-      Text(label, textAlign: TextAlign.center, style: dlText(11.5, w: FontWeight.w600, c: c.textMedium)),
+      const SizedBox(height: AppSpace.xs),
+      Text(label, textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textMedium)),
     ]);
   }
 }
@@ -410,26 +415,24 @@ class DlAvatar extends StatelessWidget {
       width: size,
       height: size,
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(colors: [c.primary.withValues(alpha: 0.24), c.primary.withValues(alpha: 0.10)]),
-      ),
+      // a flat sky tint (an information surface), never a gradient
+      decoration: BoxDecoration(shape: BoxShape.circle, color: c.blockSky),
       child: Text(name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase(),
-          style: dlText(size * 0.42,
-              w: FontWeight.w800, c: Theme.of(context).brightness == Brightness.dark ? c.textDark : c.primary)),
+          // the letter scales with the avatar it sits in
+          style: AppType.bodyStrong(context).copyWith(fontSize: size * 0.42, color: c.blockInk)),
     );
     if (url == null || url!.isEmpty) return fallback;
     return ClipOval(
       child: SizedBox(
         width: size,
         height: size,
-        child: Image.network(url!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => fallback),
+        child: Image.network(url!, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback),
       ),
     );
   }
 }
 
-/// Small coloured label ("Temporary", "Waiting for the student" …).
+/// Small status pill ("Temporary", "Waiting for the student" …): an opaque tint, the tone's readable ink.
 class DlTag extends StatelessWidget {
   const DlTag(this.label, this.color, {super.key, this.icon});
 
@@ -438,21 +441,23 @@ class DlTag extends StatelessWidget {
   final IconData? icon;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: color.withValues(alpha: 0.28)),
-    ),
-    child: Row(mainAxisSize: MainAxisSize.min, children: [
-      if (icon != null) ...[Icon(icon, size: 11, color: color), const SizedBox(width: 3)],
-      Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(10.5, w: FontWeight.w700, c: color))),
-    ]),
-  );
+  Widget build(BuildContext context) {
+    final ink = appInk(context, color);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: context.colors.isDark ? 0.20 : 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        if (icon != null) ...[Icon(icon, size: AppIconSize.xs, color: ink), const SizedBox(width: AppSpace.xxs)],
+        Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.overline(context).copyWith(color: ink))),
+      ]),
+    );
+  }
 }
 
-/// Section title used inside sheets and the profile.
+/// Section title used inside sheets and the profile: the editorial section role, more air above than below.
 class DlSectionTitle extends StatelessWidget {
   const DlSectionTitle(this.title, {super.key, this.subtitle, this.trailing});
 
@@ -462,15 +467,13 @@ class DlSectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 14, 4, 8),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xxs, AppSpace.md, AppSpace.xxs, AppSpace.xs),
       child: Row(children: [
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // AppSectionTitle: the editorial section role (D-611)
             Text(title, style: AppType.section(context)),
-            if (subtitle != null) Text(subtitle!, style: dlText(11.5, c: c.textMedium, h: 1.4)),
+            if (subtitle != null) Text(subtitle!, style: AppType.meta(context)),
           ]),
         ),
         ?trailing,
@@ -479,7 +482,7 @@ class DlSectionTitle extends StatelessWidget {
   }
 }
 
-/// Primary filled button of the Data Lab sheets.
+/// Primary action of the Data Lab sheets: the kit's solid emerald button at full width (busy keeps its width).
 class DlPrimaryButton extends StatelessWidget {
   const DlPrimaryButton({super.key, required this.label, required this.onPressed, this.icon, this.busy = false});
 
@@ -489,43 +492,11 @@ class DlPrimaryButton extends StatelessWidget {
   final bool busy;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    // the brand gradient comes from the Filled button theme (D-136: a primary fill is painted with it); busy keeps
-    // the brand colour behind the spinner, a disabled button is a flat neutral well with readable muted ink (L10)
-    final off = onPressed == null && !busy;
-    final r = BorderRadius.circular(16);
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: DecoratedBox(
-        decoration: BoxDecoration(borderRadius: r, boxShadow: off ? null : c.primaryButtonShadow),
-        child: FilledButton(
-          style: FilledButton.styleFrom(
-            backgroundColor: c.primary,
-            foregroundColor: c.onHero,
-            disabledBackgroundColor: busy ? c.primary : c.inputBg,
-            disabledForegroundColor: busy ? c.onHero : c.textMedium,
-            shape: RoundedRectangleBorder(borderRadius: r, side: off ? BorderSide(color: c.divider) : BorderSide.none),
-          ),
-          onPressed: busy ? null : onPressed,
-          child: busy
-              ? SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: c.onHero))
-              : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            if (icon != null) ...[Icon(icon, size: 19), const SizedBox(width: 8)],
-            Flexible(
-                child: Text(label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: dlText(14.5, w: FontWeight.w800, c: off ? c.textMedium : c.onHero))),
-          ]),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      AppButton.primary(label: label, onPressed: onPressed, icon: icon, busy: busy, expand: true);
 }
 
-/// Plain text field in the app's look (no dependency on the admin widgets).
+/// Text field in the kit's field language: the label above the warm well (`appFieldDecoration`).
 class DlField extends StatelessWidget {
   const DlField({
     super.key,
@@ -553,38 +524,29 @@ class DlField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    OutlineInputBorder b(Color col, [double w = 1]) =>
-        OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: col, width: w));
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboard,
-        maxLines: maxLines,
-        onChanged: onChanged,
-        onSubmitted: onSubmitted,
-        textInputAction: textInputAction,
-        textDirection: ltr ? TextDirection.ltr : null,
-        style: dlText(14, c: c.textDark),
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          labelStyle: dlText(13, c: c.textMedium),
-          hintStyle: dlText(13, c: c.textLight),
-          filled: true,
-          fillColor: c.inputBg,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          border: b(c.divider),
-          enabledBorder: b(c.divider),
-          focusedBorder: b(c.primary, 1.6),
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        AppFieldLabel(label),
+        const SizedBox(height: AppSpace.xs),
+        TextField(
+          controller: controller,
+          keyboardType: keyboard,
+          maxLines: maxLines,
+          onChanged: onChanged,
+          onSubmitted: onSubmitted,
+          textInputAction: textInputAction,
+          textDirection: ltr ? TextDirection.ltr : null,
+          style: appFieldTextStyle(context),
+          decoration: appFieldDecoration(context, hint: hint),
         ),
-      ),
+      ]),
     );
   }
 }
 
-/// Selectable chip (single or multi select).
+/// Selectable chip (single or multi select): the chosen one is solid emerald with the on-hero ink, the others sit
+/// in the input well on a hairline. Radius `chip`, presses in.
 class DlChoiceChip extends StatelessWidget {
   const DlChoiceChip({super.key, required this.label, required this.selected, required this.onTap, this.icon});
 
@@ -596,37 +558,46 @@ class DlChoiceChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final r = BorderRadius.circular(AppRadius.chip);
+    final ink = selected ? c.onHero : c.textDark;
     return Semantics(
       container: true,
       button: true,
       selected: selected,
       child: DlTapTarget(
-      child: Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          decoration: BoxDecoration(
-            color: selected ? null : c.inputBg,
-            gradient: selected ? c.primaryGradient : null,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: selected ? Colors.transparent : c.divider),
-          ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            if (icon != null) ...[Icon(icon, size: 16, color: selected ? c.onHero : c.textMedium), const SizedBox(width: 6)],
-            Flexible(
-              child: Text(label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: dlText(12.5, w: FontWeight.w700, c: selected ? c.onHero : c.textDark)),
+        child: AppPressScale(
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              borderRadius: r,
+              onTap: onTap,
+              child: AnimatedContainer(
+                duration: AppMotion.of(context).fast,
+                curve: AppMotion.curve,
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+                decoration: BoxDecoration(
+                  color: selected ? c.primary : c.inputBg,
+                  borderRadius: r,
+                  border: Border.all(color: selected ? c.primary : c.divider, width: AppBorder.hairline),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  if (icon != null) ...[
+                    Icon(icon, size: AppIconSize.sm, color: selected ? c.onHero : c.textMedium),
+                    const SizedBox(width: AppSpace.xs),
+                  ],
+                  Flexible(
+                    child: Text(label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: ink)),
+                  ),
+                ]),
+              ),
             ),
-          ]),
+          ),
         ),
       ),
-    )));
+    );
   }
 }
 
@@ -634,7 +605,8 @@ class DlChoiceChip extends StatelessWidget {
 // Premium building blocks (all colours from the theme)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Compact number pill: icon · value · label. Used in the sheet's header.
+/// Compact number pill: icon · value · label. Used in the sheet's header (paper on a hairline; the tone lives in the
+/// icon only, so a row of them stays calm).
 class DlStatChip extends StatelessWidget {
   const DlStatChip({super.key, required this.icon, required this.value, required this.label, this.color, this.tooltip});
 
@@ -648,23 +620,24 @@ class DlStatChip extends StatelessWidget {
     final c = context.colors;
     final col = color ?? c.primary;
     final chip = Container(
-      padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 12, 6),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xxs, AppSpace.xxs, AppSpace.sm, AppSpace.xxs),
       decoration: BoxDecoration(
-        color: col.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: col.withValues(alpha: 0.18)),
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Container(
-          width: 24,
-          height: 24,
-          decoration: BoxDecoration(color: col.withValues(alpha: 0.16), shape: BoxShape.circle),
-          child: Icon(icon, size: 14, color: col),
+          width: AppIconSize.lg + AppSpace.xxs,
+          height: AppIconSize.lg + AppSpace.xxs,
+          decoration: BoxDecoration(color: col.withValues(alpha: c.isDark ? 0.22 : 0.12), shape: BoxShape.circle),
+          child: Icon(icon, size: AppIconSize.xs, color: appInk(context, col)),
         ),
-        const SizedBox(width: 7),
-        Text(value, style: dlText(13, w: FontWeight.w800, c: c.textDark)),
-        const SizedBox(width: 5),
-        Text(label, style: dlText(11.5, w: FontWeight.w600, c: c.textMedium)),
+        const SizedBox(width: AppSpace.xs),
+        AppCountUp(value, memoryKey: 'dlstat:$label',
+            style: AppType.bodyStrong(context).copyWith(color: c.textDark, fontFeatures: dlTabular)),
+        const SizedBox(width: AppSpace.xxs),
+        Text(label, style: AppType.meta(context).copyWith(color: c.textMedium)),
       ]),
     );
     return tooltip == null ? chip : Tooltip(message: tooltip!, child: chip);
@@ -705,7 +678,7 @@ class _DlShimmerState extends State<DlShimmer> with SingleTickerProviderStateMix
 }
 
 class DlSkeletonBox extends StatelessWidget {
-  const DlSkeletonBox({super.key, this.width, this.height = 12, this.radius = 8});
+  const DlSkeletonBox({super.key, this.width, this.height = 12, this.radius = AppRadius.chip});
 
   final double? width;
   final double height, radius;
@@ -714,10 +687,7 @@ class DlSkeletonBox extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     width: width,
     height: height,
-    decoration: BoxDecoration(
-      color: context.colors.divider.withValues(alpha: 0.7),
-      borderRadius: BorderRadius.circular(radius),
-    ),
+    decoration: BoxDecoration(color: context.colors.inputBg, borderRadius: BorderRadius.circular(radius)),
   );
 }
 
@@ -733,25 +703,28 @@ class DlSheetSkeleton extends StatelessWidget {
     return DlShimmer(
       child: ListView(
         physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, 0),
         children: [
           Row(children: [
-            const DlSkeletonBox(width: 120, height: 30, radius: 10),
-            for (var j = 0; j < columns; j++) ...[const SizedBox(width: 12), const Expanded(child: DlSkeletonBox(height: 30, radius: 10))],
+            const DlSkeletonBox(width: 120, height: AppSpace.xl),
+            for (var j = 0; j < columns; j++) ...[
+              const SizedBox(width: AppSpace.sm),
+              const Expanded(child: DlSkeletonBox(height: AppSpace.xl)),
+            ],
           ]),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.md),
           for (var i = 0; i < rows; i++)
             Container(
-              height: 48,
-              decoration: BoxDecoration(border: Border(top: BorderSide(color: c.divider.withValues(alpha: 0.5)))),
+              height: AppTouch.min,
+              decoration: BoxDecoration(border: Border(top: BorderSide(color: c.divider, width: AppBorder.hairline))),
               child: Row(children: [
-                const DlSkeletonBox(width: 26, height: 26, radius: 13),
-                const SizedBox(width: 10),
-                DlSkeletonBox(width: 70.0 + (i * 23) % 40, height: 11),
-                const SizedBox(width: 24),
+                const DlSkeletonBox(width: AppIconSize.lg, height: AppIconSize.lg, radius: AppRadius.pill),
+                const SizedBox(width: AppSpace.sm),
+                DlSkeletonBox(width: 70.0 + (i * 23) % 40, height: AppSpace.sm),
+                const SizedBox(width: AppSpace.lg),
                 for (var j = 0; j < columns; j++) ...[
-                  const SizedBox(width: 12),
-                  Expanded(child: Center(child: DlSkeletonBox(width: 26.0 + (i + j) * 7 % 20, height: 11))),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(child: Center(child: DlSkeletonBox(width: 26.0 + (i + j) * 7 % 20, height: AppSpace.sm))),
                 ],
               ]),
             ),
@@ -774,29 +747,32 @@ class DlHistogram extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final top = buckets.fold<int>(0, (m, e) => e > m ? e : m);
+    final motion = AppMotion.of(context);
     return Directionality(
       textDirection: TextDirection.ltr, // a scale always reads low → high
       child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
         for (var i = 0; i < 5; i++) ...[
-          if (i > 0) const SizedBox(width: 8),
+          if (i > 0) const SizedBox(width: AppSpace.xs),
           Expanded(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Text(i < buckets.length ? '${buckets[i]}' : '0', style: dlText(11, w: FontWeight.w800, c: c.textDark)),
-              const SizedBox(height: 3),
+              Text(i < buckets.length ? '${buckets[i]}' : '0',
+                  style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark, fontFeatures: dlTabular)),
+              const SizedBox(height: AppSpace.xxs),
+              // the bars grow once, one after another (a short cascade low → high)
               TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0, end: top == 0 || i >= buckets.length ? 0 : buckets[i] / top),
-                duration: const Duration(milliseconds: 600),
-                curve: Curves.easeOutCubic,
-                builder: (_, t, __) => Container(
-                  height: 4 + (height - 4) * t,
+                duration: motion.slow + Duration(milliseconds: motion.slow == Duration.zero ? 0 : 60 * i),
+                curve: AppMotion.curve,
+                builder: (_, t, _) => Container(
+                  height: AppSpace.xxs + (height - AppSpace.xxs) * t,
                   decoration: BoxDecoration(
                     color: dlScoreColor(context, i * 20.0 + 10).withValues(alpha: 0.85),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(7), bottom: Radius.circular(3)),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.chip), bottom: Radius.circular(AppSpace.xxs)),
                   ),
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(_labels[i], maxLines: 1, style: dlText(9.5, c: c.textLight)),
+              const SizedBox(height: AppSpace.xxs),
+              FittedBox(fit: BoxFit.scaleDown, child: Text(_labels[i], maxLines: 1, style: AppType.meta(context))),
             ]),
           ),
         ],
@@ -805,7 +781,7 @@ class DlHistogram extends StatelessWidget {
   }
 }
 
-/// A calm, tinted message block (tips, warnings, "locked" notes …).
+/// A calm, tinted message block (tips, warnings, "locked" notes …): the tone's tint, radius `card`, ink text.
 class DlBanner extends StatelessWidget {
   const DlBanner({super.key, required this.icon, required this.text, this.color, this.action});
 
@@ -819,16 +795,12 @@ class DlBanner extends StatelessWidget {
     final c = context.colors;
     final col = color ?? c.primary;
     return Container(
-      padding: const EdgeInsetsDirectional.fromSTEB(12, 10, 8, 10),
-      decoration: BoxDecoration(
-        color: col.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: col.withValues(alpha: 0.22)),
-      ),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.xs, AppSpace.sm),
+      decoration: BoxDecoration(color: col.withValues(alpha: c.isDark ? 0.16 : 0.08), borderRadius: AppRadius.cardAll),
       child: Row(children: [
-        Icon(icon, size: 19, color: col),
-        const SizedBox(width: 10),
-        Expanded(child: Text(text, style: dlText(12, w: FontWeight.w600, c: c.textDark, h: 1.45))),
+        Icon(icon, size: AppIconSize.md, color: appInk(context, col)),
+        const SizedBox(width: AppSpace.sm),
+        Expanded(child: Text(text, style: AppType.body(context).copyWith(color: c.textDark))),
         ?action,
       ]),
     );
@@ -917,13 +889,13 @@ class DlSwatches extends StatelessWidget {
         customBorder: const CircleBorder(),
         onTap: () => onChanged(token),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
+          duration: AppMotion.of(context).fast,
           width: size,
           height: size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: col ?? c.inputBg,
-            border: Border.all(color: on ? c.textDark : c.divider, width: on ? 2.4 : 1),
+            border: Border.all(color: on ? c.textDark : c.divider, width: on ? AppBorder.focus : AppBorder.hairline),
           ),
           child: col == null
               ? Icon(Icons.format_color_reset_rounded, size: size * 0.55, color: c.textMedium)
@@ -932,7 +904,7 @@ class DlSwatches extends StatelessWidget {
       );
     }
 
-    return Wrap(spacing: 8, runSpacing: 8, children: [
+    return Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
       if (allowNone) dot(null),
       for (final t in dlStyleColors) dot(t),
     ]);

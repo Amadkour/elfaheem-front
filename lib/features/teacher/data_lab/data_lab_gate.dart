@@ -24,7 +24,10 @@ import 'package:provider/provider.dart';
 import 'data_lab_api.dart';
 import 'data_lab_models.dart';
 import 'data_lab_widgets.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppGradients, AppNumberField;
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_kit.dart'
+    show AppNumberField, AppBlock, AppBlockColors, AppBlockTone, AppWidthBox, AppWidth, AppFieldLabel, appFieldDecoration, appFieldTextStyle;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
 
@@ -148,6 +151,7 @@ class _GatePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final sky = AppBlockColors.of(context, AppBlockTone.sky);
     return Directionality(
       textDirection: pageDirection,
       child: Material(
@@ -155,25 +159,32 @@ class _GatePage extends StatelessWidget {
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(22),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Container(
-                    width: 92,
-                    height: 92,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: AppGradients.blend(context),
-                      boxShadow: c.primaryShadow,
+              padding: const EdgeInsets.all(AppSpace.lg),
+              child: AppWidthBox(
+                width: AppWidth.form,
+                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  // the page's one hero: a sky block (the teacher asks for information) that rises in once
+                  AppReveal(
+                    index: 0,
+                    group: 'dl.gate',
+                    child: AppBlock(
+                      tone: AppBlockTone.sky,
+                      hero: true,
+                      child: Column(children: [
+                        Container(
+                          width: AppTouch.primary + AppSpace.md,
+                          height: AppTouch.primary + AppSpace.md,
+                          decoration: BoxDecoration(shape: BoxShape.circle, color: c.cardBg),
+                          child: Icon(icon, color: sky.accentInk(c.primary), size: AppIconSize.hero),
+                        ),
+                        const SizedBox(height: AppSpace.md),
+                        Text(title, textAlign: TextAlign.center, style: AppType.headline(context)),
+                        const SizedBox(height: AppSpace.xs),
+                        Text(subtitle, textAlign: TextAlign.center, style: AppType.body(context).copyWith(color: sky.muted)),
+                      ]),
                     ),
-                    child: Icon(icon, color: c.onHero, size: 42),
                   ),
-                  const SizedBox(height: 20),
-                  Text(title, textAlign: TextAlign.center, style: dlText(21, w: FontWeight.w800, c: c.textDark)),
-                  const SizedBox(height: 8),
-                  Text(subtitle, textAlign: TextAlign.center, style: dlText(13, c: c.textMedium, h: 1.55)),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: AppSpace.lg),
                   ...children,
                   ?footer,
                 ]),
@@ -312,31 +323,23 @@ class _AccountSetupScreenState extends State<AccountSetupScreen> {
 
   Widget _field(TextEditingController ctrl, String label, IconData icon,
       {TextInputType? kb, bool obscure = false, bool ltr = false, Widget? suffix}) {
-    final c = context.colors;
-    OutlineInputBorder b(Color x, [double w = 1]) => OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: x, width: w));
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: ctrl,
-        keyboardType: kb,
-        obscureText: obscure,
-        textDirection: ltr ? TextDirection.ltr : null,
-        onChanged: (_) {
-          if (_error != null) setState(() => _error = null);
-        },
-        style: dlText(14.5, c: c.textDark),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: dlText(13, c: c.textMedium),
-          prefixIcon: Icon(icon, color: c.textMedium),
-          suffixIcon: suffix,
-          filled: true,
-          fillColor: c.cardBg,
-          border: b(c.divider),
-          enabledBorder: b(c.divider),
-          focusedBorder: b(c.primary, 1.6),
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        AppFieldLabel(label),
+        const SizedBox(height: AppSpace.xs),
+        TextField(
+          controller: ctrl,
+          keyboardType: kb,
+          obscureText: obscure,
+          textDirection: ltr ? TextDirection.ltr : null,
+          onChanged: (_) {
+            if (_error != null) setState(() => _error = null);
+          },
+          style: appFieldTextStyle(context),
+          decoration: appFieldDecoration(context, icon: icon, suffix: suffix),
         ),
-      ),
+      ]),
     );
   }
 
@@ -362,7 +365,7 @@ class _AccountSetupScreenState extends State<AccountSetupScreen> {
           height: 26,
           alignment: Alignment.center,
           decoration: BoxDecoration(shape: BoxShape.circle, color: on ? c.primary : c.divider),
-          child: Text('${i + 1}', style: dlText(12, w: FontWeight.w800, c: c.onHero)),
+          child: Text('${i + 1}', style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.onHero)),
         ),
       ],
     ]);
@@ -371,12 +374,12 @@ class _AccountSetupScreenState extends State<AccountSetupScreen> {
         : Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: c.danger.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
+      padding: const EdgeInsets.all(AppSpace.sm),
+      decoration: BoxDecoration(color: c.danger.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(AppRadius.control)),
       child: Row(children: [
         Icon(Icons.error_outline_rounded, size: 18, color: c.danger),
-        const SizedBox(width: 8),
-        Expanded(child: Text(_error!, style: dlText(12.5, w: FontWeight.w600, c: c.danger))),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(child: Text(_error!, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.danger))),
       ]),
     );
     final signOut = Padding(
@@ -388,7 +391,7 @@ class _AccountSetupScreenState extends State<AccountSetupScreen> {
           } catch (_) {}
         },
         icon: Icon(DirIcons.logout, size: 18, color: c.textMedium),
-        label: Text(_tr('dl_setup_sign_out', 'Sign out'), style: dlText(12.5, c: c.textMedium)),
+        label: Text(_tr('dl_setup_sign_out', 'Sign out'), style: AppType.meta(context).copyWith(color: c.textMedium)),
       ),
     );
 
@@ -400,7 +403,7 @@ class _AccountSetupScreenState extends State<AccountSetupScreen> {
         footer: signOut,
         children: [
           steps,
-          const SizedBox(height: 18),
+          const SizedBox(height: AppSpace.md),
           TextField(
             controller: _code,
             autofocus: true,
@@ -412,22 +415,22 @@ class _AccountSetupScreenState extends State<AccountSetupScreen> {
               if (_error != null) setState(() => _error = null);
               if (v.length == 4) _verify();
             },
-            style: dlText(30, w: FontWeight.w800, c: c.textDark).copyWith(letterSpacing: 14),
+            style: AppType.figureLarge(context).copyWith(color: c.textDark).copyWith(letterSpacing: 14),
             decoration: InputDecoration(
               counterText: '',
               hintText: '••••',
-              hintStyle: dlText(30, w: FontWeight.w800, c: c.textLight).copyWith(letterSpacing: 14),
+              hintStyle: AppType.figureLarge(context).copyWith(color: c.textLight).copyWith(letterSpacing: 14),
               filled: true,
               fillColor: c.cardBg,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide(color: c.divider)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide(color: c.divider)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide(color: c.primary, width: 1.6)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.card), borderSide: BorderSide(color: c.divider)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.card), borderSide: BorderSide(color: c.divider)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.card), borderSide: BorderSide(color: c.primary, width: 1.6)),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           error,
           DlPrimaryButton(label: _tr('dl_setup_verify', 'Verify'), icon: Icons.verified_rounded, busy: _busy, onPressed: _verify),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             TextButton(
               onPressed: _cooldown > 0 ? null : _resend,
@@ -451,17 +454,17 @@ class _AccountSetupScreenState extends State<AccountSetupScreen> {
       subtitle: _tr('dl_setup_sub', 'Your teacher created your account. Complete your details and choose your own password to finish.'),
       footer: signOut,
       children: [
-        if (_needEmail) ...[steps, const SizedBox(height: 18)],
+        if (_needEmail) ...[steps, const SizedBox(height: AppSpace.md)],
         DlCard(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(AppSpace.md),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             if (!_needName && '${s['name'] ?? ''}'.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Row(children: [
                   Icon(Icons.person_rounded, color: c.primary),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text('${s['name']}', style: dlText(15, w: FontWeight.w800, c: c.textDark))),
+                  const SizedBox(width: AppSpace.xs),
+                  Expanded(child: Text('${s['name']}', style: AppType.bodyStrong(context).copyWith(color: c.textDark))),
                 ]),
               ),
             if (_needName) _field(_name, _tr('dl_setup_name', 'Full name'), Icons.person_rounded),
@@ -471,8 +474,8 @@ class _AccountSetupScreenState extends State<AccountSetupScreen> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Row(children: [
                   Icon(Icons.mark_email_read_rounded, size: 18, color: c.success),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text('${s['email']}', textDirection: TextDirection.ltr, style: dlText(13, c: c.textMedium))),
+                  const SizedBox(width: AppSpace.xs),
+                  Expanded(child: Text('${s['email']}', textDirection: TextDirection.ltr, style: AppType.label(context).copyWith(color: c.textMedium))),
                 ]),
               ),
             if (_needPhone) _field(_phone, 'dl_t_phone'.tr, Icons.phone_rounded, kb: TextInputType.phone, ltr: true),
@@ -492,13 +495,13 @@ class _AccountSetupScreenState extends State<AccountSetupScreen> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Icon(Icons.info_outline_rounded, size: 16, color: c.primary),
-                  const SizedBox(width: 6),
-                  Expanded(child: Text(_tr('dl_setup_email_note', 'We will send a code to this e-mail to verify it.'), style: dlText(11.5, c: c.textMedium, h: 1.4))),
+                  const SizedBox(width: AppSpace.xs),
+                  Expanded(child: Text(_tr('dl_setup_email_note', 'We will send a code to this e-mail to verify it.'), style: AppType.meta(context).copyWith(color: c.textMedium))),
                 ]),
               ),
           ]),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         DlPrimaryButton(
           label: _needEmail ? _tr('dl_setup_next', 'Next') : _tr('dl_setup_finish', 'Finish'),
           icon: _needEmail ? Icons.arrow_forward_rounded : Icons.verified_rounded,
@@ -599,7 +602,7 @@ class _DataLabFormScreenState extends State<DataLabFormScreen> {
       subtitle: '${'dl_gate_sub'.tr} ${f.courseTitle}',
       children: [
         DlCard(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(AppSpace.md),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             for (var i = 0; i < f.questions.length; i++) ...[
               if (i > 0) Divider(height: 28, color: c.divider),
@@ -608,15 +611,15 @@ class _DataLabFormScreenState extends State<DataLabFormScreen> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 10),
-                child: Text(_error!, style: dlText(12, w: FontWeight.w600, c: c.danger)),
+                child: Text(_error!, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.danger)),
               ),
           ]),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         DlPrimaryButton(label: 'dl_gate_continue'.tr, icon: Icons.arrow_forward_rounded, busy: _busy, onPressed: _submit),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         Text(widget.remaining > 1 ? '${widget.remaining - 1} ${'dl_gate_more'.tr}' : 'dl_gate_why'.tr,
-            textAlign: TextAlign.center, style: dlText(11.5, c: c.textLight, h: 1.5)),
+            textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textLight)),
       ],
     );
   }
@@ -631,15 +634,15 @@ class _DataLabFormScreenState extends State<DataLabFormScreen> {
             height: 24,
             alignment: Alignment.center,
             decoration: BoxDecoration(color: (err != null ? c.danger : c.primary).withValues(alpha: 0.12), shape: BoxShape.circle),
-            child: Text('$n', style: dlText(11.5, w: FontWeight.w800, c: err != null ? c.danger : c.primary)),
+            child: Text('$n', style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: err != null ? c.danger : c.primary)),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
         ],
-        Expanded(child: Text(q.title, style: dlText(15, w: FontWeight.w800, c: c.textDark))),
+        Expanded(child: Text(q.title, style: AppType.bodyStrong(context).copyWith(color: c.textDark))),
       ]),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
       if (q.isDropdown)
-        Wrap(spacing: 8, runSpacing: 8, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final o in q.options)
             DlChoiceChip(
               label: o,
@@ -672,7 +675,7 @@ class _DataLabFormScreenState extends State<DataLabFormScreen> {
       if (err != null)
         Padding(
           padding: const EdgeInsets.only(top: 2),
-          child: Text(err, style: dlText(12, w: FontWeight.w600, c: c.danger)),
+          child: Text(err, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.danger)),
         ),
     ]);
   }
