@@ -10,7 +10,7 @@
 //    the app is in the background;
 //  • soft top/bottom scrim so the back button and the title stay readable;
 //  • glass "Preview" badge, mute + full-screen controls, tap to pause/resume,
-//    a thin gold progress line along the bottom edge;
+//    a thin light progress line along the bottom edge;
 //  • full-screen viewer with sound and a scrubbable timeline;
 //  • any failure silently falls back to the image — the hero never breaks.
 //
@@ -20,9 +20,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:video_player/video_player.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
-const _gold = Color(0xFFE6C582);
+import 'package:flutter_education_app/design/app_tokens.dart';
+
+/// The glass play badge in the middle of a paused reel, its icon, and the glass of a control (in a 48 px target).
+const double _playGlass = 56;
+const double _playIcon = AppIconSize.xl;
+const double _controlGlass = 40;
+
+/// The controls sit below the hero's own top row (back · share · edit).
+const double _belowTopRow = AppTouch.primary;
 
 class CourseReelPlayer extends StatefulWidget {
   final String url;
@@ -213,9 +220,9 @@ class _CourseReelPlayerState extends State<CourseReelPlayer>
                 opacity: _userPaused ? 1 : 0,
                 duration: const Duration(milliseconds: 180),
                 child: _Glass(
-                  size: 58,
+                  size: _playGlass,
                   child: Icon(Icons.play_arrow_rounded,
-                      color: context.colors.onHero, size: 34),
+                      color: context.colors.onHero, size: _playIcon),
                 ),
               ),
             ),
@@ -224,13 +231,13 @@ class _CourseReelPlayerState extends State<CourseReelPlayer>
           // 5 ── glass "Preview" badge (start) + mute / expand (end)
           if (!widget.compact)
             PositionedDirectional(
-              start: 16,
-              top: topInset + 58,
+              start: AppSpace.md,
+              top: topInset + _belowTopRow,
               child: const _PreviewBadge(),
             ),
           PositionedDirectional(
-            end: widget.compact ? 8 : 16,
-            top: widget.compact ? 8 : topInset + 58,
+            end: widget.compact ? AppSpace.xs : AppSpace.md,
+            top: widget.compact ? AppSpace.xs : topInset + _belowTopRow,
             child: Column(
               children: [
                 _GlassButton(
@@ -240,7 +247,7 @@ class _CourseReelPlayerState extends State<CourseReelPlayer>
                   label: (_muted ? 'pl_unmute' : 'pl_mute').tr,
                   onTap: _toggleMute,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpace.xxs / 2),
                 _GlassButton(
                   icon: Icons.fullscreen_rounded,
                   label: 'fullscreen'.tr,
@@ -250,7 +257,7 @@ class _CourseReelPlayerState extends State<CourseReelPlayer>
             ),
           ),
 
-          // 6 ── thin gold progress line along the bottom edge
+          // 6 ── thin progress line along the bottom edge, in the hero's light ink
           Positioned(
             left: 0,
             right: 0,
@@ -260,7 +267,7 @@ class _CourseReelPlayerState extends State<CourseReelPlayer>
               allowScrubbing: false,
               padding: EdgeInsets.zero,
               colors: VideoProgressColors(
-                playedColor: _gold,
+                playedColor: context.colors.onHero,
                 bufferedColor: context.colors.heroGlassBorder,
                 backgroundColor: context.colors.heroGlass,
               ),
@@ -272,10 +279,10 @@ class _CourseReelPlayerState extends State<CourseReelPlayer>
         if (!showVideo && !_failed)
           Center(
             child: SizedBox(
-              width: 26,
-              height: 26,
+              width: AppIconSize.lg,
+              height: AppIconSize.lg,
               child: CircularProgressIndicator(
-                strokeWidth: 2.2,
+                strokeWidth: AppBorder.focus,
                 color: context.colors.onHeroMuted,
               ),
             ),
@@ -294,15 +301,8 @@ class _Poster extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const fallback = DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1B1B22), Color(0xFF0E0E12)],
-        ),
-      ),
-    );
+    // no picture: the hero's own deep shade (a flat surface, never a decorative wash)
+    final fallback = ColoredBox(color: context.colors.heroShade);
     if (url == null || url!.isEmpty) return fallback;
     return Image.network(
       url!,
@@ -347,8 +347,8 @@ class _GlassButton extends StatelessWidget {
           onTap: onTap,
           // 36 px glass, 48 px target
           child: Padding(
-            padding: const EdgeInsets.all(6),
-            child: _Glass(size: 36, child: Icon(icon, color: context.colors.onHero, size: 18, semanticLabel: label)),
+            padding: const EdgeInsets.all((AppTouch.min - _controlGlass) / 2),
+            child: _Glass(size: _controlGlass, child: Icon(icon, color: context.colors.onHero, size: AppIconSize.md, semanticLabel: label)),
           ),
         ),
       );
@@ -358,31 +358,28 @@ class _PreviewBadge extends StatelessWidget {
   const _PreviewBadge();
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-        decoration: BoxDecoration(
-          color: context.colors.heroShade.withValues(alpha: 0.42),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _gold.withValues(alpha: 0.6)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.play_circle_fill_rounded, color: _gold, size: 15),
-            const SizedBox(width: 6),
-            Text(
-              'course_reel_badge'.tr,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 11.5,
-                fontWeight: FontWeight.w800,
-                color: context.colors.onHero,
-                letterSpacing: 0.3,
-              ),
-            ),
-          ],
-        ),
-      );
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsetsDirectional.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs + AppSpace.xxs / 2),
+      decoration: BoxDecoration(
+        color: c.heroShade.withValues(alpha: 0.42),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: c.heroGlassBorder, width: AppBorder.hairline),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.play_circle_fill_rounded, color: c.onHero, size: AppIconSize.sm),
+          const SizedBox(width: AppSpace.xs - AppSpace.xxs / 2),
+          Text(
+            'course_reel_badge'.tr,
+            style: AppType.meta(context).copyWith(color: c.onHero, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ── Full-screen viewer (shares the hero's controller: no re-buffering) ───────
@@ -416,8 +413,8 @@ class _ReelFullscreenState extends State<_ReelFullscreen> {
               ),
             ),
             PositionedDirectional(
-              top: 8,
-              end: 8,
+              top: AppSpace.xs,
+              end: AppSpace.xs,
               child: _GlassButton(
                 icon: Icons.close_rounded,
                 label: 'close'.tr,
@@ -425,9 +422,9 @@ class _ReelFullscreenState extends State<_ReelFullscreen> {
               ),
             ),
             Positioned(
-              left: 20,
-              right: 20,
-              bottom: 28,
+              left: AppSpace.lg,
+              right: AppSpace.lg,
+              bottom: AppSpace.lg,
               child: Row(
                 children: [
                   _GlassButton(
@@ -438,14 +435,14 @@ class _ReelFullscreenState extends State<_ReelFullscreen> {
                     onTap: () => setState(
                         () => c.value.isPlaying ? c.pause() : c.play()),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: VideoProgressIndicator(
                       c,
                       allowScrubbing: true,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
                       colors: VideoProgressColors(
-                        playedColor: _gold,
+                        playedColor: context.colors.onHero,
                         bufferedColor: context.colors.heroGlassBorder,
                         backgroundColor: context.colors.heroGlass,
                       ),

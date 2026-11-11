@@ -1,23 +1,20 @@
 // course_student_screen.dart
 //
-// PREMIUM REDESIGN
+// The students enrolled in one of the teacher's courses (Warm Editorial, D-610 – D-629).
 // ─────────────────────────────────────────────────────────────────────────────
-// One bold moment, everything else quiet:
-//   • Hero banner (gradient) with the course's *average progress* rendered as
-//     a big ring + number — the one thing on this screen worth making bold.
-//   • A floating stat card (total / completed) overlaps the hero's bottom
-//     edge, tying the two sections together instead of stacking two
-//     disconnected boxes.
-//   • Each student is a single-row card: a progress *ring* wraps the avatar
-//     (replacing the old separate name + progress-bar block), with a compact
-//     trailing certificate action instead of a full-width button per card.
-//   • Responsive: a plain list on phone widths, a 2–3 column grid once the
-//     viewport is wide enough (web / tablet) — same card, no separate
-//     "web version" to maintain.
-//   • One staggered fade/slide-in on first load; no per-hover motion spam.
+// One memorable thing, everything else quiet:
+//   • the editorial page header (title, the course as its subtitle, Back) on the canvas;
+//   • ONE peach hero block — the class's progress: the average as a ring that fills once with its figure rolling
+//     (AppOdometer), beside the class size and how many completed (counting up once); it leans under the pointer
+//     (AppTilt) and is the screen's only colour block;
+//   • search and "send a certificate to everyone" under it, on one row on wide windows;
+//   • each student a paper card on a warm hairline: a progress ring around the avatar, name / @username / email /
+//     joined, the percentage in its meaning's ink and a compact certificate pill; a list on phones, a 2–3 column grid
+//     once there is room; the first cards rise in once (AppReveal) with the ring — the screen's one entrance;
+//   • a tapped card opens the student's connected detail in the shared panel (D-290); certificates stay one action
+//     away (the panel's Certificates action opens the student's certificates in the kit's dialog).
 // ─────────────────────────────────────────────────────────────────────────────
 
-import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/entities/entity_models.dart' show EntitySummary;
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
@@ -28,21 +25,15 @@ import 'package:flutter_education_app/design/master_detail/entity_viewer_actions
 import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/search_text_field.dart';
 import '../../../teacher/home/teacher_models.dart';
 import 'course_student_provider.dart';
-import 'package:flutter_education_app/design/app_back_button.dart';
-import 'package:flutter_education_app/design/app_notice.dart';
-import 'package:flutter_education_app/design/app_refresh.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
-import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppFill, AppOdometer, AppPressScale, AppReveal, AppTilt;
 import 'package:flutter_education_app/design/app_username.dart';
-import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 class EnrolledStudentsScreen extends StatefulWidget {
   final TeacherCourse course;
@@ -107,6 +98,7 @@ class _EnrolledStudentsScreenState extends State<EnrolledStudentsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final course = widget.course;
     return BasePage(
       useWebCard: true,
       width: AppWidth.wide,
@@ -115,284 +107,283 @@ class _EnrolledStudentsScreenState extends State<EnrolledStudentsScreen> {
           controller: _panel,
           rootLabel: 'students'.tr,
           actions: (ref, s) => _actions(context, ref, s),
-          list: AppRefresh(
-          onRefresh: _load,
-          child: NotificationListener<ScrollNotification>(
-            onNotification: _onScrollNotification,
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(
-                parent: BouncingScrollPhysics(),
-              ),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      _HeroHeader(course: widget.course),
-                      Positioned(
-                        left: 20,
-                        right: 20,
-                        bottom: -30,
-                        child: const _FloatingStatsCard(),
-                      ),
-                    ],
-                  ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 46)),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
-                    child: MySearchBar(
-                      controller: _search,
-                      hint: 'search_student_by_name_email',
-                      onChanged: context.read<EnrolledStudentsProvider>().setQuery,
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                    child: _SendToAllButton(course: widget.course),
-                  ),
-                ),
-                _StudentsSliver(course: widget.course, onRetry: _load),
-              ],
-            ),
-          ),
-        ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Hero — gradient banner with the average-progress ring as the focal number.
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _HeroHeader extends StatelessWidget {
-  final TeacherCourse course;
-
-  const _HeroHeader({required this.course});
-
-  @override
-  Widget build(BuildContext context) {
-    final avg = context.watch<EnrolledStudentsProvider>().avgProgress;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 46),
-      decoration: BoxDecoration(
-        gradient: context.colors.primaryGradient,
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+          list: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppBackButton(onHero: true, onPressed: () => Navigator.maybePop(context)),
-              const SizedBox(width: 8),
+              AppPageHeader(
+                title: 'enrolled_students_title'.tr,
+                subtitle: (AppConfig.lang == 'ar' ? course.titleAr : course.titleEn) ?? '',
+                onBack: () => Navigator.maybePop(context),
+              ),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'enrolled_students_title'.tr,
-                      style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: context.colors.onHero,
-                      ),
+                child: AppRefresh(
+                  onRefresh: _load,
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: _onScrollNotification,
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                      slivers: [
+                        SliverToBoxAdapter(child: _Top(search: _search, course: course)),
+                        _StudentsSliver(course: course, onRetry: _load),
+                      ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      (AppConfig.lang=='ar'? course.titleAr:course.titleEn)??'',
-
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontSize: 12,
-                        color: context.colors.onHero.withValues(alpha: 0.78),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 26),
-          Center(child: _ProgressRing(value: avg)),
-        ],
+        ),
       ),
     );
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Hero — the class's progress, the screen's one block
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ProgressHero extends StatelessWidget {
+  const _ProgressHero();
+
+  /// From this width the two counts sit side by side next to the ring.
+  static const double _wide = 520;
+
+  /// The widest one count gets beside the ring on a wide block.
+  static const double _countMax = 180;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.watch<EnrolledStudentsProvider>();
+    return AppTilt(
+      radius: AppRadius.block,
+      child: AppBlock(
+        tone: AppBlockTone.peach,
+        hero: true,
+        child: LayoutBuilder(builder: (context, box) {
+          final wide = box.maxWidth >= _wide;
+          final counts = [
+            _HeroCount(
+              value: p.totalCount,
+              label: 'stat_total'.tr,
+              icon: Icons.people_alt_rounded,
+              memoryKey: 'course_students.total',
+            ),
+            _HeroCount(
+              value: p.completedCount,
+              label: 'stat_completed'.tr,
+              icon: Icons.task_alt_rounded,
+              done: true,
+              memoryKey: 'course_students.completed',
+            ),
+          ];
+          return Row(
+            children: [
+              _ProgressRing(value: p.avgProgress),
+              const SizedBox(width: AppSpace.lg),
+              Expanded(
+                child: wide
+                    ? Wrap(spacing: AppSpace.xxl, runSpacing: AppSpace.md, children: [
+                        for (final n in counts) ConstrainedBox(constraints: const BoxConstraints(maxWidth: _countMax), child: n),
+                      ])
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [counts[0], const SizedBox(height: AppSpace.md), counts[1]],
+                      ),
+              ),
+            ],
+          );
+        }),
+      ),
+    );
+  }
+}
+
+/// The average progress: a ring that fills once (and glides on a change) around its rolling figure.
 class _ProgressRing extends StatelessWidget {
   final double value; // 0..100
 
   const _ProgressRing({required this.value});
 
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 128,
-      height: 128,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          SizedBox(
-            width: 128,
-            height: 128,
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: (value.clamp(0, 100)) / 100),
-              duration: const Duration(milliseconds: 900),
-              curve: Curves.easeOutCubic,
-              builder: (_, animated, _) => CircularProgressIndicator(
-                value: animated,
-                strokeWidth: 9,
-                strokeCap: StrokeCap.round,
-                backgroundColor: context.colors.onHero.withValues(alpha: 0.22),
-                valueColor: AlwaysStoppedAnimation(context.colors.onHero),
-              ),
-            ),
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '${value.toStringAsFixed(0)}%',
-                style: TextStyle(
-                  fontFamily: AppFonts.family,
-                  fontSize: 30,
-                  fontWeight: FontWeight.w800,
-                  color: context.colors.onHero,
-                  height: 1,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                'stat_avg_progress'.tr,
-                style: TextStyle(
-                  fontFamily: AppFonts.family,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: context.colors.onHero.withValues(alpha: 0.85),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Floating stats card — overlaps the hero's bottom edge.
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _FloatingStatsCard extends StatelessWidget {
-  const _FloatingStatsCard();
+  /// The ring's side and stroke: the block's focal figure.
+  static const double _side = 128;
+  static const double _stroke = 8;
 
   @override
   Widget build(BuildContext context) {
-    final p = context.watch<EnrolledStudentsProvider>();
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(
-        color: context.colors.cardBg,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: context.colors.heroShade.withValues(alpha: 0.10),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _StatTile(
-              icon: Icons.people_alt_rounded,
-              label: 'stat_total'.tr,
-              value: '${p.totalCount}',
-              color: context.colors.primaryLight,
-            ),
-          ),
-          Container(width: 1, height: 34, color: context.colors.divider),
-          Expanded(
-            child: _StatTile(
-              icon: Icons.workspace_premium_rounded,
-              label: 'stat_completed'.tr,
-              value: '${p.completedCount}',
-              color: context.colors.warning,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _StatTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, size: 16, color: color),
-        ),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+    final c = context.colors;
+    final b = AppBlock.colorsOf(context);
+    final pct = value.clamp(0, 100).toDouble();
+    final track = Color.lerp(b.surface, b.ink, 0.1)!;
+    // the fill in the block's readable accent ink (a deep emerald is lost on the dark peach)
+    final fill = b.accentInk(pct >= 100 ? c.success : c.primary);
+    return Semantics(
+      label: 'stat_avg_progress'.tr,
+      value: '${pct.toStringAsFixed(0)}%',
+      child: SizedBox(
+        width: _side,
+        height: _side,
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            Text(
-              value,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: context.colors.textDark,
+            Positioned.fill(
+              child: AppFill(
+                value: pct / 100,
+                builder: (context, v) => CircularProgressIndicator(
+                  value: v,
+                  strokeWidth: _stroke,
+                  strokeCap: StrokeCap.round,
+                  backgroundColor: track,
+                  valueColor: AlwaysStoppedAnimation(fill),
+                ),
               ),
             ),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 10,
-                color: context.colors.textMedium,
+            ExcludeSemantics(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpace.md),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: AppOdometer(
+                        '${pct.toStringAsFixed(0)}%',
+                        memoryKey: 'course_students.avg',
+                        style: AppType.figureLarge(context).copyWith(color: b.ink),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpace.xxs / 2),
+                    Text(
+                      'stat_avg_progress'.tr,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.meta(context).copyWith(color: b.muted),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// One count of the hero: the figure counting up once, its label with a quiet glyph.
+class _HeroCount extends StatelessWidget {
+  const _HeroCount({required this.value, required this.label, required this.icon, required this.memoryKey, this.done = false});
+
+  final int value;
+  final String label;
+  final IconData icon;
+  final String memoryKey;
+
+  /// "Completed": the glyph in emerald (done), the figure stays ink.
+  final bool done;
+
+  @override
+  Widget build(BuildContext context) {
+    final b = AppBlock.colorsOf(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: AppCountUp('$value', memoryKey: memoryKey, style: AppType.figureLarge(context).copyWith(color: b.ink)),
+        ),
+        const SizedBox(height: AppSpace.xxs),
+        Row(children: [
+          Icon(icon, size: AppIconSize.sm, color: done ? b.accentInk(context.colors.success) : b.muted),
+          const SizedBox(width: AppSpace.xxs),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppType.label(context).copyWith(color: b.muted),
+            ),
+          ),
+        ]),
       ],
     );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Top — the hero block, search and "send to everyone" (beside the block on wide lists, stacked on phones)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// The top of the list: the hero block, then search and "send to everyone". On a wide list the block keeps a reading
+/// width at the start and the tools stand beside it; on narrower ones everything stacks.
+class _Top extends StatelessWidget {
+  const _Top({required this.search, required this.course});
+
+  final TextEditingController search;
+  final TeacherCourse course;
+
+  /// From this width the tools stand beside the block.
+  static const double _wide = 1000;
+
+  /// The block's width beside the tools.
+  static const double _heroW = 560;
+
+  /// From this width (stacked) the button shares the search's row.
+  static const double _row = 720;
+
+  @override
+  Widget build(BuildContext context) {
+    final field = MySearchBar(
+      controller: search,
+      hint: 'search_student_by_name_email',
+      onChanged: context.read<EnrolledStudentsProvider>().setQuery,
+    );
+    return LayoutBuilder(builder: (context, box) {
+      if (box.maxWidth >= _wide) {
+        return Padding(
+          padding: const EdgeInsetsDirectional.only(start: AppSpace.md, top: AppSpace.xs),
+          child: Row(children: [
+            const SizedBox(width: _heroW, child: _ProgressHero()),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                field,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
+                  child: Align(alignment: AlignmentDirectional.centerStart, child: _SendToAllButton(course: course)),
+                ),
+              ]),
+            ),
+          ]),
+        );
+      }
+      const hero = Padding(
+        padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xs),
+        child: _ProgressHero(),
+      );
+      if (box.maxWidth >= _row) {
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          hero,
+          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Expanded(child: field),
+            Padding(
+              padding: const EdgeInsetsDirectional.only(end: AppSpace.md, bottom: AppSpace.xxs),
+              child: _SendToAllButton(course: course),
+            ),
+          ]),
+        ]);
+      }
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        hero,
+        field,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
+          child: _SendToAllButton(course: course, expand: true),
+        ),
+      ]);
+    });
   }
 }
 
@@ -411,21 +402,29 @@ class _StudentsSliver extends StatelessWidget {
     final p = context.watch<EnrolledStudentsProvider>();
 
     if (p.isLoading && p.students.isEmpty) {
-      return const SliverToBoxAdapter(child: AppListSkeleton());
+      return const SliverPadding(
+        padding: EdgeInsets.only(top: AppSpace.sm),
+        sliver: SliverToBoxAdapter(child: AppListSkeleton()),
+      );
     }
 
     // A failed first load used to show "no students yet": say it failed and offer a retry.
     if (p.students.isEmpty && p.hasError) {
       return SliverFillRemaining(
         hasScrollBody: false,
-        child: ErrorRetry(message: p.errorMessage ?? 'failed_to_load'.tr, onRetry: onRetry),
+        child: AppErrorState(message: p.errorMessage ?? 'failed_to_load'.tr, onRetry: onRetry),
       );
     }
 
     if (p.students.isEmpty) {
+      final filtered = p.totalCount > 0;
       return SliverFillRemaining(
         hasScrollBody: false,
-        child: _EmptyState(isFiltered: p.totalCount > 0),
+        child: AppEmpty(
+          icon: filtered ? Icons.search_off_rounded : Icons.people_outline_rounded,
+          title: 'no_students'.tr,
+          message: 'no_students_hint'.tr,
+        ),
       );
     }
 
@@ -436,51 +435,54 @@ class _StudentsSliver extends StatelessWidget {
     return SliverLayoutBuilder(builder: (context, box) => _grid(context, p, box.crossAxisExtent));
   }
 
+  /// A card's height in the grid at text scale 1 (it grows with the reader's text size).
+  static const double _cardH = 112;
+  static const double _cardHMax = 156;
+
   Widget _grid(BuildContext context, EnrolledStudentsProvider p, double width) {
     final columns = width >= 1200 ? 3 : (width >= 760 ? 2 : 1);
+    Widget card(int i) => AppReveal(
+          index: i,
+          group: 'course_students',
+          child: _StudentCard(student: p.students[i], course: course),
+        );
+    const padding = EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xl);
+    final footer = [
+      const SliverToBoxAdapter(child: SizedBox(height: AppSpace.md)),
+      SliverToBoxAdapter(child: _LoadMoreFooter(provider: p)),
+    ];
 
     if (columns == 1) {
       return SliverPadding(
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
+        padding: padding,
         sliver: SliverMainAxisGroup(
           slivers: [
             SliverList.separated(
               itemCount: p.students.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 10),
-              itemBuilder: (_, i) => _StaggeredEntrance(
-                index: i,
-                child: _StudentCard(student: p.students[i], course: course),
-              ),
+              separatorBuilder: (_, _) => const SizedBox(height: AppSpace.xs),
+              itemBuilder: (_, i) => card(i),
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 14)),
-            SliverToBoxAdapter(child: _LoadMoreFooter(provider: p)),
+            ...footer,
           ],
         ),
       );
     }
 
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
+      padding: padding,
       sliver: SliverMainAxisGroup(
         slivers: [
           SliverGrid(
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: columns,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 14,
-              // the card's two text lines grow with the reader's text size
-              mainAxisExtent: MediaQuery.textScalerOf(context).scale(106).clamp(106.0, 150.0),
+              mainAxisSpacing: AppSpace.sm,
+              crossAxisSpacing: AppSpace.sm,
+              // the card's text lines grow with the reader's text size
+              mainAxisExtent: MediaQuery.textScalerOf(context).scale(_cardH).clamp(_cardH, _cardHMax),
             ),
-            delegate: SliverChildBuilderDelegate(
-                  (_, i) => _StaggeredEntrance(
-                index: i,
-                child: _StudentCard(student: p.students[i], course: course),
-              ),
-              childCount: p.students.length,
-            ),
+            delegate: SliverChildBuilderDelegate((_, i) => card(i), childCount: p.students.length),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 14)),
-          SliverToBoxAdapter(child: _LoadMoreFooter(provider: p)),
+          ...footer,
         ],
       ),
     );
@@ -500,98 +502,24 @@ class _LoadMoreFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (provider.isLoadingMore) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 12),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
         child: Center(
-          child: SizedBox(width: 22, height: 22, child: AppLoadingIndicator()),
+          child: SizedBox(
+            width: AppIconSize.md,
+            height: AppIconSize.md,
+            child: CircularProgressIndicator(strokeWidth: AppBorder.focus, color: context.colors.primary),
+          ),
         ),
       );
     }
     if (!provider.hasMore && provider.students.isNotEmpty) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Center(
-          child: Text(
-            'end_of_list'.tr,
-            style: TextStyle(
-              fontFamily: AppFonts.family,
-              fontSize: 11,
-              color: context.colors.textLight,
-            ),
-          ),
-        ),
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
+        child: Center(child: Text('end_of_list'.tr, style: AppType.meta(context))),
       );
     }
     return const SizedBox.shrink();
-  }
-}
-
-class _StaggeredEntrance extends StatelessWidget {
-  final int index;
-  final Widget child;
-
-  const _StaggeredEntrance({required this.index, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    final delay = (index.clamp(0, 12)) * 35;
-    return TweenAnimationBuilder<double>(
-      key: ValueKey('entrance-$index'),
-      tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: 320 + delay),
-      curve: Curves.easeOutCubic,
-      builder: (_, t, _) => Opacity(
-        opacity: t,
-        child: Transform.translate(offset: Offset(0, (1 - t) * 12), child: child),
-      ),
-      child: child,
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  final bool isFiltered;
-
-  const _EmptyState({required this.isFiltered});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: context.colors.cardBg,
-                shape: BoxShape.circle,
-                border: Border.all(color: context.colors.divider),
-              ),
-              child: Icon(
-                isFiltered ? Icons.search_off_rounded : Icons.people_outline_rounded,
-                size: 32,
-                color: context.colors.textMedium,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text('no_students'.tr, style: context.colors.h3),
-            const SizedBox(height: 6),
-            Text(
-              'no_students_hint'.tr,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 13,
-                color: context.colors.textMedium,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
@@ -599,13 +527,23 @@ class _EmptyState extends StatelessWidget {
 // Student card — ring-avatar + name/email, compact trailing certificate action.
 // ─────────────────────────────────────────────────────────────────────────────
 
+String _formatDate(String raw) {
+  try {
+    final dt = raw.toLocalSaTime;
+    return '${dt.day}/${dt.month}/${dt.year}';
+  } catch (_) {
+    return raw;
+  }
+}
+
 class _StudentCard extends StatelessWidget {
   final EnrolledStudent student;
   final TeacherCourse course;
 
   const _StudentCard({required this.student, required this.course});
 
-  Color _progressColor(BuildContext context) => _progressColorOf(context, student);
+  /// Below this inner width the certificate action is drawn as its glyph alone, so the name keeps its room.
+  static const double _compactBelow = 300;
 
   @override
   Widget build(BuildContext context) {
@@ -616,96 +554,80 @@ class _StudentCard extends StatelessWidget {
   }
 
   Widget _card(BuildContext context, EntityRef ref, bool selected) {
-    return Material(
-      color: context.colors.cardBg,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        key: ValueKey('md.course_student.${student.id}'),
-        borderRadius: BorderRadius.circular(18),
-        onTap: () => EntityNavigator.open(context, ref),
-        child: Ink(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-                color: selected ? context.colors.primary : context.colors.divider, width: selected ? 1.5 : 0.5),
+    final c = context.colors;
+    final tone = _progressColorOf(context, student);
+    final meta = AppType.meta(context);
+    final radius = AppRadius.cardAll;
+    return AppPressScale(
+      child: Material(
+        color: selected ? Color.alphaBlend(c.primaryTint, c.cardBg) : c.cardBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: radius,
+          side: BorderSide(
+            color: selected ? c.primary : c.divider,
+            width: selected ? AppBorder.strong : AppBorder.hairline,
           ),
-          child: Row(
-            children: [
-              _RingAvatar(student: student, color: _progressColor(context)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            student.name,
-                            style: TextStyle(
-                              fontFamily: AppFonts.family,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: context.colors.textDark,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: ValueKey('md.course_student.${student.id}'),
+          onTap: () => EntityNavigator.open(context, ref),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpace.sm),
+            child: LayoutBuilder(builder: (context, box) => Row(
+              children: [
+                _RingAvatar(student: student, color: tone),
+                const SizedBox(width: AppSpace.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              student.name,
+                              style: AppType.bodyStrong(context),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${student.progressPercentage.toStringAsFixed(0)}%',
-                          style: TextStyle(
-                            fontFamily: AppFonts.family,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: _progressColor(context),
+                          const SizedBox(width: AppSpace.xs),
+                          Text(
+                            '${student.progressPercentage.toStringAsFixed(0)}%',
+                            style: AppType.label(context).copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: appInk(context, tone),
+                              fontFeatures: const [FontFeature.tabularFigures()],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    if (student.username != null) AppUsernameLine(student.username, fontSize: 11),
-                    Text(
-                      student.gmail,
-                      style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontSize: 11,
-                        color: context.colors.textMedium,
+                        ],
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      '${'joined'.tr} ${_formatDate(student.enrolledAt)}',
-                      style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontSize: 10,
-                        color: context.colors.textLight,
+                      const SizedBox(height: AppSpace.xxs / 2),
+                      if (student.username != null) AppUsernameLine(student.username, fontSize: meta.fontSize!),
+                      Text(student.gmail, style: meta, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: AppSpace.xxs / 2),
+                      Text(
+                        '${'joined'.tr} ${_formatDate(student.enrolledAt)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: meta.copyWith(color: c.textLight),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              _CertificateAction(student: student, course: course),
-            ],
+                const SizedBox(width: AppSpace.xs),
+                // a narrow card keeps the text and draws the action as its glyph alone
+                _CertificateAction(student: student, course: course, compact: box.maxWidth < _compactBelow),
+              ],
+            )),
           ),
         ),
       ),
     );
-  }
-
-  String _formatDate(String raw) {
-    try {
-      final dt = raw.toLocalSaTime;
-      return '${dt.day}/${dt.month}/${dt.year}';
-    } catch (_) {
-      return raw;
-    }
   }
 }
 
@@ -714,6 +636,12 @@ class _RingAvatar extends StatelessWidget {
   final Color color;
 
   const _RingAvatar({required this.student, required this.color});
+
+  /// The ring's side and stroke; the photo sits [_gap] inside it.
+  static const double _side = 52;
+  static const double _stroke = 3;
+  static const double _gap = 5;
+  static const double _photo = _side - 2 * _gap;
 
   // One stable colour per student, from the theme's roles.
   Color _avatarColor(BuildContext context) {
@@ -726,61 +654,52 @@ class _RingAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final url = student.imageUrl;
     return SizedBox(
-      width: 52,
-      height: 52,
+      width: _side,
+      height: _side,
       child: Stack(
         alignment: Alignment.center,
         children: [
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: student.progressPercentage.clamp(0, 100) / 100),
-            duration: const Duration(milliseconds: 700),
-            curve: Curves.easeOutCubic,
-            builder: (_, v, _) => SizedBox(
-              width: 52,
-              height: 52,
-              child: CircularProgressIndicator(
+          Positioned.fill(
+            child: AppFill(
+              value: student.progressPercentage.clamp(0, 100) / 100,
+              builder: (context, v) => CircularProgressIndicator(
                 value: v,
-                strokeWidth: 3,
+                strokeWidth: _stroke,
                 strokeCap: StrokeCap.round,
                 backgroundColor: context.colors.divider,
                 valueColor: AlwaysStoppedAnimation(color),
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(5),
-            child: ClipOval(
-              child: (url != null && url.isNotEmpty)
-                  ? Image.network(
-                url,
-                width: 42,
-                height: 42,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => _initials(context),
-              )
-                  : _initials(context),
-            ),
+          ClipOval(
+            child: (url != null && url.isNotEmpty)
+                ? Image.network(
+                    url,
+                    width: _photo,
+                    height: _photo,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => _initials(context),
+                  )
+                : _initials(context),
           ),
         ],
       ),
     );
   }
 
-  Widget _initials(BuildContext context) => Container(
-    width: 42,
-    height: 42,
-    color: _avatarColor(context).withValues(alpha: 0.15),
-    alignment: Alignment.center,
-    child: Text(
-      student.initials,
-      style: TextStyle(
-        fontFamily: AppFonts.family,
-        fontSize: 14,
-        fontWeight: FontWeight.w700,
-        color: _avatarColor(context),
+  Widget _initials(BuildContext context) {
+    final tone = _avatarColor(context);
+    return Container(
+      width: _photo,
+      height: _photo,
+      color: appTintOn(context, tone),
+      alignment: Alignment.center,
+      child: Text(
+        student.initials,
+        style: AppType.bodyStrong(context).copyWith(color: appInk(context, tone)),
       ),
-    ),
-  );
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -792,7 +711,10 @@ class _CertificateAction extends StatelessWidget {
   final EnrolledStudent student;
   final TeacherCourse course;
 
-  const _CertificateAction({required this.student, required this.course});
+  const _CertificateAction({required this.student, required this.course, this.compact = false});
+
+  /// The glyph alone in a 48 px target (a narrow card), the label as its tooltip and semantics.
+  final bool compact;
 
   Future<void> _handleTap(BuildContext context) async {
     final provider = context.read<EnrolledStudentsProvider>();
@@ -806,6 +728,7 @@ class _CertificateAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final provider = context.watch<EnrolledStudentsProvider>();
     final singleCert = course.certificates.length == 1 ? course.certificates.first : null;
     final isSending = singleCert != null &&
@@ -814,87 +737,67 @@ class _CertificateAction extends StatelessWidget {
         provider.isCertificateIssued(singleCert.id, student.id);
 
     if (isSending) {
-      return const SizedBox(
-        width: 34,
-        height: 34,
-        child: Padding(
-          padding: EdgeInsets.all(8),
-          child: AppLoadingIndicator(),
+      return SizedBox(
+        width: AppTouch.min,
+        height: AppTouch.min,
+        child: Center(
+          child: SizedBox(
+            width: AppIconSize.md,
+            height: AppIconSize.md,
+            child: CircularProgressIndicator(strokeWidth: AppBorder.focus, color: c.accent2),
+          ),
         ),
       );
     }
 
-    // Always visible, labeled button. After a send it turns green and reads
+    // Always visible, labeled pill. After a send it turns emerald and reads
     // "Resend", but stays tappable so the certificate can go out again.
-    final color = isSent ? context.colors.success : context.colors.accent2;
-    return GestureDetector(
-      onTap: provider.isBulkSending ? null : () => _handleTap(context),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withValues(alpha: 0.35)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(isSent ? Icons.replay_rounded : Icons.send_rounded, size: 14, color: color),
-            const SizedBox(width: 4),
-            Text(
-              isSent ? 'resend_certificate_btn'.tr : 'send_btn'.tr,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    final icon = isSent ? Icons.replay_rounded : Icons.workspace_premium_rounded;
+    final label = isSent ? 'resend_certificate_btn'.tr : 'send_btn'.tr;
+    final tone = isSent ? c.success : c.accent2;
+    final onTap = provider.isBulkSending ? null : () => _handleTap(context);
+    if (compact) {
+      return IconButton(
+        tooltip: label,
+        onPressed: onTap,
+        constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+        icon: Icon(icon, size: AppIconSize.md, color: appInk(context, tone)),
+      );
+    }
+    return AppPill(icon: icon, label: label, color: tone, onTap: onTap);
   }
 }
 
-class _CertificatePickerSheet extends StatelessWidget {
+/// The certificate picker's rows (a sheet): one 48 px row per certificate, the gold glyph, the title.
+class _CertificatePicker extends StatelessWidget {
   final List<CourseCertificate> certificates;
 
-  const _CertificatePickerSheet({required this.certificates});
+  const _CertificatePicker({required this.certificates});
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Container(
-        margin: const EdgeInsets.all(12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'choose_certificate_title'.tr,
-              style: context.colors.h3.copyWith(fontSize: 15),
-            ),
-            const SizedBox(height: 12),
-            ...certificates.map(
-                  (c) => Material(
-                color: Colors.transparent,
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.workspace_premium_rounded, color: context.colors.accent2),
-                  title: Text(c.title, style: TextStyle(fontFamily: AppFonts.family, fontSize: 13)),
-                  onTap: () => Navigator.pop(context, c),
-                ),
+    final c = context.colors;
+    return AppSheetContent(
+      title: 'choose_certificate_title'.tr,
+      children: [
+        for (final cert in certificates)
+          InkWell(
+            borderRadius: AppRadius.controlAll,
+            onTap: () => Navigator.pop(context, cert),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouch.min),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
+                child: Row(children: [
+                  Icon(Icons.workspace_premium_rounded, size: AppIconSize.md, color: c.accent2),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(child: Text(cert.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context))),
+                  Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.textLight),
+                ]),
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
 }
@@ -911,16 +814,11 @@ Future<CourseCertificate?> _pickCertificate(
     return null;
   }
   if (certs.length == 1) return certs.first;
-  return showAppModalSheet<CourseCertificate>(
-      useSafeArea: true,
-    context: context,
-    backgroundColor: Colors.transparent,
-    builder: (_) => _CertificatePickerSheet(certificates: certs),
-  );
+  return showAppSheet<CourseCertificate>(context, (_) => _CertificatePicker(certificates: certs));
 }
 
 void _showResultSnack(BuildContext context, bool success, String okMessage) {
-  showAppNotice(success ? okMessage : 'certificate_send_failed'.tr, error: true);
+  showAppNotice(success ? okMessage : 'certificate_send_failed'.tr, error: !success);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -929,8 +827,9 @@ void _showResultSnack(BuildContext context, bool success, String okMessage) {
 
 class _SendToAllButton extends StatelessWidget {
   final TeacherCourse course;
+  final bool expand;
 
-  const _SendToAllButton({required this.course});
+  const _SendToAllButton({required this.course, this.expand = false});
 
   Future<void> _onTap(BuildContext context) async {
     final provider = context.read<EnrolledStudentsProvider>();
@@ -938,25 +837,15 @@ class _SendToAllButton extends StatelessWidget {
     final cert = await _pickCertificate(context, course.certificates);
     if (cert == null || !context.mounted) return;
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('send_to_all_title'.tr,
-            style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
-        content: Text(
-          '${'send_to_all_confirm'.tr}\n\n${cert.title} · ${provider.totalCount} ${'students'.tr}',
-          style: TextStyle(fontFamily: AppFonts.family, fontSize: 13),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text('cancel'.tr)),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text('send_btn'.tr)),
-        ],
-      ),
+    final confirmed = await showAppDialog<bool>(
+      context,
+      title: 'send_to_all_title'.tr,
+      icon: Icons.workspace_premium_rounded,
+      body: Text('${'send_to_all_confirm'.tr}\n\n${cert.title} · ${provider.totalCount} ${'students'.tr}'),
+      actions: [
+        Builder(builder: (ctx) => AppButton.ghost(label: 'cancel'.tr, onPressed: () => Navigator.pop(ctx, false))),
+        Builder(builder: (ctx) => AppButton.primary(label: 'send_btn'.tr, icon: Icons.send_rounded, onPressed: () => Navigator.pop(ctx, true))),
+      ],
     );
     if (confirmed != true || !context.mounted) return;
 
@@ -969,72 +858,57 @@ class _SendToAllButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.watch<EnrolledStudentsProvider>();
     final busy = p.isBulkSending;
-    final gold = context.colors.accent2;
-
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: (busy || p.totalCount == 0) ? null : () => _onTap(context),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: gold,
-          side: BorderSide(color: gold.withValues(alpha: 0.5)),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        ),
-        icon: busy
-            ? const SizedBox(width: 18, height: 18, child: AppLoadingIndicator())
-            : const Icon(Icons.send_rounded, size: 18),
-        label: Text(
-          busy ? 'sending_label'.tr : 'send_to_all_students_btn'.tr,
-          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700),
-        ),
-      ),
+    return AppButton.secondary(
+      label: busy ? 'sending_label'.tr : 'send_to_all_students_btn'.tr,
+      icon: Icons.workspace_premium_rounded,
+      busy: busy,
+      expand: expand,
+      onPressed: p.totalCount == 0 ? null : () => _onTap(context),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Student details dialog — opens when a student card is tapped.
-// The dialog lives on the root navigator, so the provider is re-supplied.
+// Student's certificates — the kit's dialog, opened from the detail panel's
+// Certificates action. The dialog lives on the root navigator, so the
+// provider is re-supplied.
 // ─────────────────────────────────────────────────────────────────────────────
 
 Color _progressColorOf(BuildContext context, EnrolledStudent student) {
   if (student.progressPercentage >= 80) return context.colors.success;
-  if (student.progressPercentage >= 40) return context.colors.warning;
-  return context.colors.primary;
+  if (student.progressPercentage >= 40) return context.colors.primary;
+  return context.colors.warning;
 }
 
 void _showStudentDialog(
     BuildContext context, EnrolledStudent student, TeacherCourse course, Color color) {
   final provider = context.read<EnrolledStudentsProvider>();
-  showDialog<void>(
-    context: context,
-    builder: (_) => ChangeNotifierProvider.value(
+  showAppDialog<void>(
+    context,
+    title: student.name,
+    body: ChangeNotifierProvider.value(
       value: provider,
-      child: _StudentDetailsDialog(student: student, course: course, color: color),
+      child: _StudentDetailsBody(student: student, course: course, color: color),
     ),
+    actions: [
+      Builder(builder: (ctx) => AppButton.ghost(label: 'close'.tr, onPressed: () => Navigator.pop(ctx))),
+    ],
   );
 }
 
-class _StudentDetailsDialog extends StatelessWidget {
+class _StudentDetailsBody extends StatelessWidget {
   final EnrolledStudent student;
   final TeacherCourse course;
   final Color color;
 
-  const _StudentDetailsDialog({
+  const _StudentDetailsBody({
     required this.student,
     required this.course,
     required this.color,
   });
 
-  String _formatDate(String raw) {
-    try {
-      final dt = raw.toLocalSaTime;
-      return '${dt.day}/${dt.month}/${dt.year}';
-    } catch (_) {
-      return raw;
-    }
-  }
+  /// The progress bar's thickness.
+  static const double _bar = 6;
 
   @override
   Widget build(BuildContext context) {
@@ -1042,100 +916,55 @@ class _StudentDetailsDialog extends StatelessWidget {
     final provider = context.watch<EnrolledStudentsProvider>();
     final pct = student.progressPercentage.clamp(0, 100).toDouble();
 
-    return Dialog(
-      backgroundColor: c.cardBg,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 440),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: InkWell(
-                  onTap: () => Navigator.pop(context),
-                  borderRadius: BorderRadius.circular(20),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Icon(Icons.close_rounded, size: 20, color: c.textMedium, semanticLabel: 'close'.tr),
-                  ),
-                ),
-              ),
-              _RingAvatar(student: student, color: color),
-              const SizedBox(height: 12),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(children: [
+          _RingAvatar(student: student, color: color),
+          const SizedBox(width: AppSpace.md),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(
-                student.name,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: AppFonts.family,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: c.textDark,
-                ),
+                'stat_avg_progress'.tr,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.label(context),
               ),
-              const SizedBox(height: 16),
-              _InfoRow(icon: Icons.email_outlined, label: 'email'.tr, value: student.gmail),
-              _InfoRow(
-                icon: Icons.event_available_outlined,
-                label: 'joined'.tr,
-                value: _formatDate(student.enrolledAt),
+              const SizedBox(height: AppSpace.xxs),
+              AppCountUp(
+                '${pct.toStringAsFixed(0)}%',
+                style: AppType.figureLarge(context).copyWith(color: appInk(context, color)),
               ),
-              _InfoRow(
-                icon: Icons.flag_outlined,
-                label: 'status'.tr,
-                value: student.status,
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Text('stat_avg_progress'.tr,
-                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
-                  const Spacer(),
-                  Text('${pct.toStringAsFixed(0)}%',
-                      style: TextStyle(
-                          fontFamily: AppFonts.family,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: color)),
-                ],
-              ),
-              const SizedBox(height: 6),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: LinearProgressIndicator(
-                  value: pct / 100,
-                  minHeight: 8,
-                  backgroundColor: c.divider,
-                  valueColor: AlwaysStoppedAnimation(color),
-                ),
-              ),
-              ...[
-                const SizedBox(height: 20),
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Text('certificates'.tr,
-                      style: TextStyle(
-                          fontFamily: AppFonts.family,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: c.textDark)),
-                ),
-                const SizedBox(height: 8),
-                if (course.certificates.isEmpty)
-                  Text('no_certificate_for_course'.tr,
-                      style: TextStyle(
-                          fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium))
-                else
-                  for (final cert in course.certificates)
-                    _CertificateRow(cert: cert, student: student, provider: provider),
-              ],
-            ],
+            ]),
+          ),
+        ]),
+        const SizedBox(height: AppSpace.sm),
+        AppFill(
+          value: pct / 100,
+          builder: (context, v) => ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            child: LinearProgressIndicator(
+              value: v,
+              minHeight: _bar,
+              backgroundColor: c.inputBg,
+              valueColor: AlwaysStoppedAnimation(color),
+            ),
           ),
         ),
-      ),
+        const SizedBox(height: AppSpace.md),
+        _InfoRow(icon: Icons.email_outlined, label: 'email'.tr, value: student.gmail),
+        _InfoRow(icon: Icons.event_available_outlined, label: 'joined'.tr, value: _formatDate(student.enrolledAt)),
+        _InfoRow(icon: Icons.flag_outlined, label: 'status'.tr, value: student.status),
+        const SizedBox(height: AppSpace.lg),
+        Text('certificates'.tr, style: AppType.section(context)),
+        const SizedBox(height: AppSpace.xs),
+        if (course.certificates.isEmpty)
+          Text('no_certificate_for_course'.tr, style: AppType.meta(context))
+        else
+          for (final cert in course.certificates)
+            _CertificateRow(cert: cert, student: student, provider: provider),
+      ],
     );
   }
 }
@@ -1151,24 +980,20 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: c.textMedium),
-          const SizedBox(width: 10),
-          Text(label, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
-          const SizedBox(width: 12),
+          Icon(icon, size: AppIconSize.sm, color: c.textMedium),
+          const SizedBox(width: AppSpace.sm),
+          Text(label, style: AppType.meta(context)),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Text(
               value,
               textAlign: TextAlign.end,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: c.textDark,
-              ),
+              style: AppType.row(context),
             ),
           ),
         ],
@@ -1197,45 +1022,38 @@ class _CertificateRow extends StatelessWidget {
     final sending = provider.isSendingCertificate(cert.id, student.id);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: Row(
         children: [
-          Icon(Icons.workspace_premium_rounded, color: context.colors.accent2),
-          const SizedBox(width: 10),
+          Icon(Icons.workspace_premium_rounded, size: AppIconSize.md, color: c.accent2),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(cert.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: c.textDark)),
+                Text(cert.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
                 if (count > 0)
-                  Text('${'certificate_sent_label'.tr} · $count×',
-                      style: TextStyle(
-                          fontFamily: AppFonts.family, fontSize: 11, color: c.success)),
+                  Text(
+                    '${'certificate_sent_label'.tr} · $count×',
+                    style: AppType.meta(context).copyWith(color: appInk(context, c.success)),
+                  ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          sending
-              ? const SizedBox(width: 24, height: 24, child: AppLoadingIndicator())
-              : TextButton.icon(
-            onPressed: provider.isBulkSending
-                ? null
-                : () async {
-              final ok = await provider.sendCertificate(cert.id, student.id);
-              if (!context.mounted) return;
-              _showResultSnack(context, ok, 'certificate_sent_success'.tr);
-            },
-            icon: Icon(count > 0 ? Icons.replay_rounded : Icons.send_rounded, size: 16),
-            label: Text(
-              count > 0 ? 'resend_certificate_btn'.tr : 'send_certificate_btn'.tr,
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 12),
+          const SizedBox(width: AppSpace.xs),
+          Flexible(
+            child: AppButton.ghost(
+              label: count > 0 ? 'resend_certificate_btn'.tr : 'send_certificate_btn'.tr,
+              icon: count > 0 ? Icons.replay_rounded : Icons.send_rounded,
+              size: AppButtonSize.sm,
+              busy: sending,
+              onPressed: provider.isBulkSending
+                  ? null
+                  : () async {
+                      final ok = await provider.sendCertificate(cert.id, student.id);
+                      if (!context.mounted) return;
+                      _showResultSnack(context, ok, 'certificate_sent_success'.tr);
+                    },
             ),
           ),
         ],

@@ -1,18 +1,14 @@
-import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
-import '../../../../design/app_kit.dart' show AppNumberField, AppSwitchTile;
+import '../../../../design/app_kit.dart';
 import '../../courses/component/number_pair.dart';
 import '../../../../utils/helpers.dart';
-import '../../../../utils/widget/primary_button.dart';
 import '../../../student/models.dart';
 import '../sessions_provider.dart';
 import 'package:flutter_education_app/features/shared/session/session_track_tabs.dart';
-import 'package:flutter_education_app/core/app_time.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Opens the Add/Edit Lesson UI: the app's sheet (a bottom sheet on phones, the side panel on wide windows).
 Future<void> showSessionFormSheet(
@@ -92,7 +88,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: ColorScheme.light(primary: context.colors.primary),
+          colorScheme: Theme.of(ctx).colorScheme.copyWith(primary: context.colors.primary),
         ),
         child: child!,
       ),
@@ -103,7 +99,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       initialTime: TimeOfDay.fromDateTime(_scheduled ?? DateTime.now()),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: ColorScheme.light(primary: context.colors.primary),
+          colorScheme: Theme.of(ctx).colorScheme.copyWith(primary: context.colors.primary),
         ),
         child: child!,
       ),
@@ -195,6 +191,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     // watch (not widget.provider) — this is what makes the sheet rebuild
@@ -210,102 +207,115 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       child: Directionality(
         textDirection: Helpers.pageDirection,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _Header(isEdit: _isEdit, loading: loading),
-                  const SizedBox(height: 20),
-
-                  _PremiumField(
-                    controller: _nameCtrl,
-                    label: 'session_name_label'.tr,
-                    icon: Icons.badge_outlined,
-                    errorText: _nameError,
-                    onChanged: (_) {
-                      if (_nameError != null) setState(() => _nameError = null);
-                    },
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _Header(isEdit: _isEdit, loading: loading),
+              const SizedBox(height: AppSpace.lg),
+              AppField(
+                controller: _nameCtrl,
+                label: 'session_name_label'.tr,
+                icon: Icons.badge_rounded,
+                required: true,
+                errorText: _nameError,
+                onChanged: (_) {
+                  if (_nameError != null) setState(() => _nameError = null);
+                },
+              ),
+              const SizedBox(height: AppSpace.md),
+              // the rarer fields fold away; the open state lives on the provider (an error opens it from _submit)
+              AppExpandCard(
+                expanded: detailsOpen,
+                onExpandedChanged: (_) => context.read<TeacherCourseScreenProvider>().onToggleOpenDetails(),
+                header: Row(children: [
+                  Icon(Icons.tune_rounded, size: AppIconSize.md, color: context.colors.textMedium),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Text(
+                      'session_details'.tr,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.bodyStrong(context),
+                    ),
                   ),
-                  const SizedBox(height: 14),
-
-                  _ExpandableDetails(
-                    expanded: detailsOpen,
-                    onToggle: () => context
-                        .read<TeacherCourseScreenProvider>()
-                        .onToggleOpenDetails(),
-                    children: [
-                      _PremiumField(
-                        controller: _descCtrl,
-                        label: 'session_description_label'.tr,
-                        icon: Icons.notes_rounded,
-                        maxLines: 2,
+                ]),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    AppField(
+                      controller: _descCtrl,
+                      label: 'session_description_label'.tr,
+                      icon: Icons.notes_rounded,
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: AppSpace.md),
+                    SessionTrackTabs(
+                      value: _track,
+                      showAll: false,
+                      onChanged: (v) => setState(() => _track = v),
+                    ),
+                    const SizedBox(height: AppSpace.md),
+                    _TypeSelector(
+                      selected: _type,
+                      onChanged: (t) {
+                        HapticFeedback.selectionClick();
+                        setState(() {
+                          _type = t;
+                          if (t != 'live') _dateError = null;
+                        });
+                      },
+                    ),
+                    if (_type == 'live') ...[
+                      const SizedBox(height: AppSpace.md),
+                      _LiveDateTimePicker(
+                        scheduled: _scheduled,
+                        errorText: _dateError,
+                        onTap: _pickDateTime,
                       ),
-                      const SizedBox(height: 14),
-                      SessionTrackTabs(
-                        value: _track,
-                        showAll: false,
-                        onChanged: (v) => setState(() => _track = v),
-                      ),
-                      const SizedBox(height: 14),
-                      _TypeSelector(
-                        selected: _type,
-                        onChanged: (t) {
+                      const SizedBox(height: AppSpace.xs),
+                      AppSwitchTile(
+                        title: 'record_session_title'.tr,
+                        subtitle: 'record_session_subtitle'.tr,
+                        icon: Icons.fiber_manual_record_rounded,
+                        value: _recordEnabled,
+                        dense: true,
+                        padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
+                        onChanged: (v) {
                           HapticFeedback.selectionClick();
-                          setState(() {
-                            _type = t;
-                            if (t != 'live') _dateError = null;
-                          });
+                          setState(() => _recordEnabled = v);
                         },
                       ),
-                      if (_type == 'live') ...[
-                        const SizedBox(height: 14),
-                        _LiveDateTimePicker(
-                          scheduled: _scheduled,
-                          errorText: _dateError,
-                          onTap: _pickDateTime,
-                        ),
-                        const SizedBox(height: 6),
-                        AppSwitchTile(
-                          title: 'record_session_title'.tr,
-                          subtitle: 'record_session_subtitle'.tr,
-                          icon: Icons.fiber_manual_record_rounded,
-                          value: _recordEnabled,
-                          dense: true,
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          onChanged: (v) {
-                            HapticFeedback.selectionClick();
-                            setState(() => _recordEnabled = v);
-                          },
-                        ),
-                      ],
-                      const SizedBox(height: 14),
-                      NumberPair(
-                        first: AppNumberField(
-                          controller: _durCtrl,
-                          label: 'duration_minutes_label'.tr,
-                          min: 1,
-                          step: 5,
-                        ),
-                        second: AppNumberField(
-                          controller: _orderCtrl,
-                          label: 'order_label'.tr,
-                          min: 0,
-                        ),
-                      ),
                     ],
-                  ),
-
-                  const SizedBox(height: 22),
-                  PrimaryButton(
-                    label: _isEdit ? 'save_changes'.tr : 'add_session'.tr,
-                    isLoading: loading,
-                    iconBefore: true,
-                    onPressed: _submit,
-                    icon: Icons.add_rounded,
-                  ),
-                ],
+                    const SizedBox(height: AppSpace.md),
+                    NumberPair(
+                      first: AppNumberField(
+                        controller: _durCtrl,
+                        label: 'duration_minutes_label'.tr,
+                        min: 1,
+                        step: 5,
+                      ),
+                      second: AppNumberField(
+                        controller: _orderCtrl,
+                        label: 'order_label'.tr,
+                        min: 0,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(height: AppSpace.lg),
+              AppButton.primary(
+                label: _isEdit ? 'save_changes'.tr : 'add_session'.tr,
+                icon: _isEdit ? Icons.check_rounded : Icons.add_rounded,
+                size: AppButtonSize.lg,
+                expand: true,
+                busy: loading,
+                onPressed: _submit,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -313,7 +323,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Header — icon avatar, title, subtitle, close button
+// Header — the editorial title, one line of direction, the close button
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
@@ -324,56 +334,44 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            gradient: context.colors.primaryGradient,
-            borderRadius: BorderRadius.circular(13),
-            boxShadow: context.colors.primaryShadow,
-          ),
-          child: Icon(
-            isEdit ? Icons.edit_rounded : Icons.add_rounded,
-            color: context.colors.onHero,
-            size: 19,
-          ),
-        ),
-        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                isEdit ? 'edit_session_title'.tr : 'new_session_title'.tr,
-                style: context.colors.h2,
+              Semantics(
+                header: true,
+                child: Text(
+                  isEdit ? 'edit_session_title'.tr : 'new_session_title'.tr,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.pageTitle(context),
+                ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: AppSpace.xxs),
               Text(
                 isEdit ? 'edit_session_subtitle'.tr : 'new_session_subtitle'.tr,
-                style: context.colors.body.copyWith(
-                  fontSize: 12,
-                  color: context.colors.textLight,
-                ),
+                style: AppType.meta(context),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
         ),
+        const SizedBox(width: AppSpace.xs),
         IconButton(
           onPressed: loading ? null : () => Navigator.of(context).pop(),
+          tooltip: 'close'.tr,
+          constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+          style: IconButton.styleFrom(backgroundColor: c.inputBg, disabledBackgroundColor: c.inputBg),
           icon: Icon(
             Icons.close_rounded,
-            size: 20,
-            color: loading
-                ? context.colors.textLight.withValues(alpha: 0.4)
-                : context.colors.textMedium,
+            size: AppIconSize.md,
+            color: loading ? c.textLight : c.textMedium,
           ),
-          tooltip: 'close'.tr,
-          splashRadius: 20,
         ),
       ],
     );
@@ -381,165 +379,7 @@ class _Header extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Expandable "session details" section
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ExpandableDetails extends StatelessWidget {
-  final bool expanded;
-  final VoidCallback onToggle;
-  final List<Widget> children;
-
-  const _ExpandableDetails({
-    required this.expanded,
-    required this.onToggle,
-    required this.children,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.colors.background,
-        borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-        border: Border.all(
-          color: context.colors.textLight.withValues(alpha: 0.15),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-            onTap: onToggle,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              child: Row(children: [
-                Icon(Icons.tune_rounded, size: 16, color: context.colors.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'session_details'.tr,
-                    style: context.colors.label.copyWith(
-                      color: context.colors.primary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                AnimatedRotation(
-                  duration: const Duration(milliseconds: 200),
-                  turns: expanded ? 0.5 : 0,
-                  child: Icon(Icons.keyboard_arrow_down_rounded,
-                      color: context.colors.primary),
-                ),
-              ]),
-            ),
-          ),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            alignment: Alignment.topCenter,
-            child: !expanded
-                ? const SizedBox(width: double.infinity)
-                : Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: children,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Premium text field (mirrors the one used in add_material_sheet.dart)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _PremiumField extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final String? errorText;
-  final int maxLines;
-  final ValueChanged<String>? onChanged;
-
-  const _PremiumField({
-    required this.controller,
-    required this.label,
-    required this.icon,
-    this.errorText,
-    this.maxLines = 1,
-    this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hasError = errorText != null;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontFamily: AppFonts.display,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: context.colors.textDark,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Container(
-          decoration: BoxDecoration(
-            color: context.colors.cardBg,
-            borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-            border: Border.all(
-              color: hasError
-                  ? context.colors.danger
-                  : context.colors.textLight.withValues(alpha: 0.18),
-              width: hasError ? 1.4 : 1,
-            ),
-          ),
-          child: TextField(
-            controller: controller,
-            maxLines: maxLines,
-            onChanged: onChanged,
-            style: TextStyle(
-              fontFamily: AppFonts.display,
-              fontSize: 13.5,
-              color: context.colors.textDark,
-            ),
-            decoration: InputDecoration(
-              prefixIcon: Icon(icon, size: 18, color: context.colors.textLight),
-              border: InputBorder.none,
-              contentPadding:
-              const EdgeInsets.symmetric(vertical: 13, horizontal: 4),
-            ),
-          ),
-        ),
-        if (hasError) ...[
-          const SizedBox(height: 6),
-          Padding(
-            padding: const EdgeInsetsDirectional.only(start: 4),
-            child: Text(
-              errorText!,
-              style: TextStyle(
-                fontFamily: AppFonts.display,
-                fontSize: 11,
-                color: context.colors.danger,
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Live date/time picker button
+// Live date/time picker — a well like the fields around it
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _LiveDateTimePicker extends StatelessWidget {
@@ -555,83 +395,70 @@ class _LiveDateTimePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final picked = scheduled != null;
     final hasError = errorText != null;
+    final radius = AppRadius.controlAll;
+    final border = hasError ? c.danger : c.divider;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        GestureDetector(
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: picked
-                  ? context.colors.primaryLight
-                  : context.colors.cardBg,
-              borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-              border: Border.all(
-                color: hasError
-                    ? context.colors.danger
-                    : (picked
-                    ? context.colors.primary.withValues(alpha: 0.35)
-                    : context.colors.textLight.withValues(alpha: 0.18)),
-                width: picked || hasError ? 1.4 : 1,
+        Material(
+          color: c.inputBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: radius,
+            side: BorderSide(color: border, width: hasError ? AppBorder.strong : AppBorder.hairline),
+          ),
+          child: InkWell(
+            borderRadius: radius,
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouch.min),
+              child: Padding(
+                padding: const EdgeInsetsDirectional.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+                child: Row(children: [
+                  Icon(Icons.event_rounded, size: AppIconSize.md, color: hasError ? c.danger : c.textLight),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Text(
+                      picked
+                          ? '${scheduled!.day.toString().padLeft(2, '0')}/${scheduled!.month.toString().padLeft(2, '0')}/${scheduled!.year}  ${AppTime.clockMinutes(scheduled!.hour * 60 + scheduled!.minute)}'
+                          : 'pick_live_datetime'.tr,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: appFieldTextStyle(context).copyWith(
+                        color: picked ? c.textDark : c.textLight,
+                        fontWeight: picked ? FontWeight.w500 : FontWeight.w400,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpace.xs),
+                  Icon(
+                    picked ? Icons.check_circle_rounded : Icons.chevron_right_rounded,
+                    color: picked ? c.success : c.textLight,
+                    size: AppIconSize.md,
+                  ),
+                ]),
               ),
             ),
-            child: Row(children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: context.colors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.event_rounded,
-                    color: context.colors.primary, size: 17),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  picked
-                      ? '${scheduled!.day.toString().padLeft(2, '0')}/${scheduled!.month.toString().padLeft(2, '0')}/${scheduled!.year}  ${AppTime.clockMinutes(scheduled!.hour * 60 + scheduled!.minute)}'
-                      : 'pick_live_datetime'.tr,
-                  style: context.colors.label.copyWith(
-                    color: picked
-                        ? context.colors.primary
-                        : context.colors.textLight,
-                  ),
-                ),
-              ),
-              Icon(
-                picked ? Icons.check_circle_rounded : Icons.chevron_right_rounded,
-                color: picked ? context.colors.success : context.colors.textLight,
-                size: 18,
-              ),
-            ]),
           ),
         ),
-        if (hasError) ...[
-          const SizedBox(height: 6),
+        if (hasError)
           Padding(
-            padding: const EdgeInsetsDirectional.only(start: 4),
+            padding: const EdgeInsetsDirectional.only(start: AppSpace.md, top: AppSpace.xs),
             child: Text(
               errorText!,
-              style: TextStyle(
-                fontFamily: AppFonts.display,
-                fontSize: 11,
-                color: context.colors.danger,
-              ),
+              style: AppType.meta(context).copyWith(color: c.danger, fontWeight: FontWeight.w500),
             ),
           ),
-        ],
       ],
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Type Selector (Live / Pre-recorded)
+// Type selector (Live / Pre-recorded) — the kit's pill track
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _TypeSelector extends StatelessWidget {
@@ -640,101 +467,24 @@ class _TypeSelector extends StatelessWidget {
 
   const _TypeSelector({required this.selected, required this.onChanged});
 
+  static const _values = ['live', 'pre-recorded'];
+
   @override
   Widget build(BuildContext context) {
-    final types = [
-      ('live', 'live_type'.tr, Icons.live_tv_rounded),
-      (
-      'pre-recorded',
-      'pre_recorded_type'.tr,
-      Icons.play_circle_outline_rounded,
-      ),
-    ];
-
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'session_type_label'.tr,
-          style: context.colors.label.copyWith(
-            color: context.colors.textDark,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: types.map((t) {
-            final (v, l, i) = t;
-            final isSelected = selected == v;
-            final isFirst = v == 'live';
-
-            return Expanded(
-              child: Padding(
-                padding: EdgeInsets.only(
-                  right: isFirst ? 6 : 0,
-                  left: isFirst ? 0 : 6,
-                ),
-                child: GestureDetector(
-                  onTap: () => onChanged(v),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    decoration: BoxDecoration(
-                      gradient: isSelected
-                          ? (v == 'live'
-                          ? context.colors.dangerGradient
-                          : context.colors.primaryGradient)
-                          : null,
-                      color: isSelected ? null : context.colors.cardBg,
-                      borderRadius: BorderRadius.circular(
-                        context.colors.radiusMedium,
-                      ),
-                      border: isSelected
-                          ? null
-                          : Border.all(
-                          color: context.colors.textLight.withValues(alpha: 0.18)),
-                      boxShadow: isSelected
-                          ? [
-                        BoxShadow(
-                          color: (v == 'live'
-                              ? context.colors.danger
-                              : context.colors.primary)
-                              .withValues(alpha: 0.28),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                          : [],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          i,
-                          size: 17,
-                          color: isSelected
-                              ? context.colors.onHero
-                              : context.colors.textMedium,
-                        ),
-                        const SizedBox(width: 7),
-                        Text(
-                          l,
-                          style: context.colors.label.copyWith(
-                            color: isSelected
-                                ? context.colors.onHero
-                                : context.colors.textMedium,
-                            fontWeight: isSelected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
+        AppFieldLabel('session_type_label'.tr),
+        AppTabs(
+          expand: true,
+          index: selected == 'live' ? 0 : 1,
+          items: [
+            AppTabItem('live_type'.tr, icon: Icons.live_tv_rounded),
+            AppTabItem('pre_recorded_type'.tr, icon: Icons.play_circle_outline_rounded),
+          ],
+          onChanged: (i) {
+            onChanged(_values[i]);
+          },
         ),
       ],
     );

@@ -1,11 +1,20 @@
-// The teacher's pieces of the shared course page at 320×640 and 1400×900, ar / en, textScaler 1.3.
+// The teacher's pieces of the shared course page, the add / edit session sheet and a course's enrolled students at
+// 320×640 and 1400×900, ar / en, textScaler 1.3.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/shared/course/course_space/course_space.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
+import 'package:flutter_education_app/features/student/models.dart' show TeacherSessionItem;
+import 'package:flutter_education_app/features/teacher/sessions/components/session_form_sheet.dart';
 import 'package:flutter_education_app/features/teacher/sessions/components/teacher_course_parts.dart';
+import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
+import 'package:flutter_education_app/features/teacher/sessions/students/course_student_provider.dart';
+import 'package:flutter_education_app/features/teacher/sessions/students/course_student_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/fake_api.dart';
 import 'layout_harness.dart';
 
 const _long = 'مقدمة شاملة جداً في الذكاء الاصطناعي وتعلم الآلة للمبتدئين والمحترفين — A complete, very long introduction';
@@ -107,5 +116,61 @@ void main() {
         ),
       ),
     );
+  });
+
+  testWidgets('session sheet: edit a live session, details open (date, record switch, numbers)', (t) async {
+    final existing = TeacherSessionItem.fromJson({
+      'id': 41,
+      'course_id': 7,
+      'name': _long,
+      'description': '$_long $_long',
+      'type': 'live',
+      'scheduled_at': '2026-11-20T15:00:00',
+      'duration_minutes': 90,
+    });
+    await expectNoLayoutErrors(t, () {
+      final p = TeacherCourseScreenProvider(initialCourse: _course())..openMoreDetailsForAddSession = true;
+      return ChangeNotifierProvider.value(value: p, child: SessionFormSheet(provider: p, existing: existing));
+    });
+  });
+
+  testWidgets('session sheet: a new session, details closed', (t) async {
+    await expectNoLayoutErrors(t, () {
+      final p = TeacherCourseScreenProvider(initialCourse: _course());
+      return ChangeNotifierProvider.value(value: p, child: SessionFormSheet(provider: p));
+    });
+  });
+
+  testWidgets('enrolled students: hero block, search, cards (list and grid), long names', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    mockRequestPlugins();
+    final api = FakeApi({
+      'GET /api/v1/courses/7/students': (o) => {
+            'items': [
+              for (var i = 0; i < 6; i++)
+                {
+                  'id': 100 + i,
+                  'name': i.isEven ? _long : 'Omar',
+                  'gmail': 'a.very.long.email.address.$i@example-university.edu.eg',
+                  if (i.isEven) 'username': 'a_rather_long_username_$i',
+                  'enrolled_at': '2026-10-0${i + 1}T10:00:00',
+                  'status': 'active',
+                  'progress_percentage': i * 20.0,
+                },
+            ],
+            'total': 12480,
+            'avg_progress': 57.0,
+            'completed_count': 1999,
+          },
+    }, latency: Duration.zero)
+      ..install();
+    addTearDown(api.uninstall);
+    await expectNoLayoutErrors(
+      t,
+      // .value: the provider outlives each pumped variant (a fetch may still be in flight)
+      () => ChangeNotifierProvider.value(value: EnrolledStudentsProvider(), child: EnrolledStudentsScreen(course: _course())),
+      frames: 6,
+    );
+    await t.pump(const Duration(seconds: 30));
   });
 }

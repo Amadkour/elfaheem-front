@@ -14,7 +14,7 @@ import '../../../shared/course/course_space/course_space.dart';
 import '../../../shared/session/material/session_material_widget.dart';
 import '../sessions_provider.dart';
 import 'package:flutter_education_app/features/shared/session/session_track_tabs.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart' show AppElevation, AppListSkeleton, AppRadius, AppSpace;
 import 'teacher_course_parts.dart';
 
 class TeacherSessionsBody extends StatelessWidget {
@@ -47,7 +47,7 @@ class TeacherSessionsBody extends StatelessWidget {
           // Lectures (teacher) · Sections (assistant) — only when the course has sections
           if (provider.hasSections)
             Padding(
-              padding: const EdgeInsets.fromLTRB(kCourseGutter, 0, kCourseGutter, 12),
+              padding: const EdgeInsets.fromLTRB(kCourseGutter, 0, kCourseGutter, AppSpace.sm),
               child: SessionTrackTabs(
                 value: provider.trackFilter,
                 lectures: sessions.where((s) => s.track != 'section').length,
@@ -58,7 +58,7 @@ class TeacherSessionsBody extends StatelessWidget {
           // ONE timeline card (the same look as the student's): live · up next · scheduled · delivered
           Padding(
             key: const ValueKey('teacher_sessions.list'),
-            padding: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.only(bottom: AppSpace.md),
             child: CourseSessionsSurface(
               child: Builder(
                 builder: (context) {
@@ -78,11 +78,17 @@ class TeacherSessionsBody extends StatelessWidget {
                       // onReorderItem already gives the final index; reorderSessions takes the old onReorder one
                       if (reorder) provider.reorderSessions(oldIndex, newIndex > oldIndex ? newIndex + 1 : newIndex);
                     },
-                    proxyDecorator: (child, _, _) => Material(
-                      color: context.colors.cardBg,
-                      elevation: 4,
-                      borderRadius: BorderRadius.circular(16),
-                      child: child,
+                    // the dragged session floats: paper on the raised shadow (the one thing here that casts one)
+                    proxyDecorator: (child, _, _) => DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(AppRadius.card),
+                        boxShadow: AppElevation.of(context, 2),
+                      ),
+                      child: Material(
+                        color: context.colors.cardBg,
+                        borderRadius: BorderRadius.circular(AppRadius.card),
+                        child: child,
+                      ),
                     ),
                     itemBuilder: (ctx, i) => KeyedSubtree(
                       key: ValueKey('session_${shown[i].id}'),

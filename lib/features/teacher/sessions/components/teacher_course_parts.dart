@@ -7,16 +7,21 @@
 //                             tools · certificates (each with its manage action)
 //   TeacherSessionsHeader     the Sessions tab's header (count + Add session)
 //   TeacherSessionsEmpty      no session yet: the first-session call to action
+//
+// Warm Editorial (D-610 – D-629): the side card is paper with the price as its one figure, the status a full pill,
+// the actions the kit's solid primary + paper secondary; the Details tab keeps ONE card, its colour only where it
+// means something (gold for rating and certificates, the primary for progress, emerald once it is done); the empty
+// Sessions tab is the drawn plate, an editorial headline and ONE action.
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:flutter/material.dart';
 
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
-import '../../../../design/app_kit.dart' show AppPrimaryButton;
+import '../../../../design/app_kit.dart';
+import '../../../../design/app_motion_kit.dart' show AppCountUp, AppFill;
 import '../../../shared/course/course_price_tag.dart';
 import '../../../shared/course/course_space/course_space.dart';
 import '../../home/teacher_models.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
@@ -37,37 +42,20 @@ class TeacherCourseStatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final published = course.isPublished;
-    final tone = published ? c.success : c.warning;
     final rate = course.rateSummary;
+    final price = AppType.figureLarge(context);
     return CourseSideCard(
-      accent: c.primary,
+      padding: const EdgeInsets.all(AppSpace.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
               Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: tone.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(published ? Icons.public_rounded : Icons.edit_note_rounded, size: 15, color: tone),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          published ? _t('منشور', 'Published') : _t('مسودة', 'Draft'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, fontWeight: FontWeight.w600, color: tone),
-                        ),
-                      ),
-                    ],
-                  ),
+                child: AppStatusBadge(
+                  label: published ? _t('منشور', 'Published') : _t('مسودة', 'Draft'),
+                  icon: published ? Icons.public_rounded : Icons.edit_note_rounded,
+                  tone: published ? AppTone.success : AppTone.warning,
                 ),
               ),
               const Spacer(),
@@ -76,14 +64,16 @@ class TeacherCourseStatusCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.star_rounded, size: 18, color: c.accent2),
-                      const SizedBox(width: 4),
+                      Icon(Icons.star_rounded, size: AppIconSize.md, color: c.accent2),
+                      const SizedBox(width: AppSpace.xxs),
                       Flexible(
-                        child: Text(
-                          '${rate.average.toStringAsFixed(1)} (${rate.total})',
+                        child: Text.rich(
+                          TextSpan(children: [
+                            TextSpan(text: rate.average.toStringAsFixed(1), style: AppType.bodyStrong(context)),
+                            TextSpan(text: ' (${rate.total})', style: AppType.meta(context)),
+                          ]),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w600, color: c.textDark),
                         ),
                       ),
                     ],
@@ -92,15 +82,16 @@ class TeacherCourseStatusCard extends StatelessWidget {
             ],
           ),
           if (!published) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             Text(
               _t('الطلاب لا يرون الكورس حتى تنشره.', 'Students cannot see the course until you publish it.'),
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, height: 1.45, color: c.textMedium),
+              style: AppType.meta(context),
             ),
           ],
-          const SizedBox(height: 16),
-          Text('cost'.tr, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight)),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpace.lg),
+          Text('cost'.tr, style: AppType.label(context)),
+          const SizedBox(height: AppSpace.xxs),
+          // the card's one figure: the price, in the figure role
           Align(
             alignment: AlignmentDirectional.centerStart,
             child: FittedBox(
@@ -111,23 +102,20 @@ class TeacherCourseStatusCard extends StatelessWidget {
                 finalPrice: course.finalPrice ?? 0,
                 discountActive: course.discountActive ?? false,
                 format: (v) => coursePriceLabel(course.currency, v),
-                fontSize: 26,
-                originalFontSize: 13,
+                fontSize: price.fontSize!,
+                originalFontSize: AppType.meta(context).fontSize!,
               ),
             ),
           ),
-          const SizedBox(height: 18),
-          AppPrimaryButton(label: 'add_session_btn'.tr, icon: Icons.add_rounded, onPressed: onAddSession),
+          const SizedBox(height: AppSpace.lg),
+          AppButton.primary(label: 'add_session_btn'.tr, icon: Icons.add_rounded, expand: true, onPressed: onAddSession),
           if (onEdit != null) ...[
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
+            const SizedBox(height: AppSpace.xs),
+            AppButton.secondary(
+              label: _t('تعديل الكورس', 'Edit course'),
+              icon: Icons.edit_rounded,
+              expand: true,
               onPressed: onEdit,
-              icon: const Icon(Icons.edit_rounded, size: 17),
-              label: Text(_t('تعديل الكورس', 'Edit course'), maxLines: 1, overflow: TextOverflow.ellipsis),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(0, 44),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
             ),
           ],
         ],
@@ -169,21 +157,23 @@ class TeacherCourseDetails extends StatelessWidget {
         course.prerequisites.isEmpty &&
         course.tools.isEmpty &&
         course.certificates.isEmpty;
+    final body = AppType.body(context);
 
-    // ONE card, its sections split by hairlines
+    // ONE card, its sections split by hairlines; colour only where it means something
     return Padding(
-      padding: const EdgeInsets.fromLTRB(kCourseGutter, 4, kCourseGutter, 8),
+      padding: const EdgeInsets.fromLTRB(kCourseGutter, AppSpace.xxs, kCourseGutter, AppSpace.xs),
       child: CourseInfoGroup(
         children: [
           if (empty)
             CourseInfoSection(
               title: _t('لا توجد تفاصيل بعد', 'No details yet'),
               icon: Icons.info_outline_rounded,
+              color: c.textMedium,
               children: [
                 Text(
                   _t('أضف الوصف والمتطلبات والأدوات من تعديل الكورس.',
                       'Add a description, prerequisites and tools from Edit course.'),
-                  style: c.body,
+                  style: body,
                 ),
               ],
             ),
@@ -191,7 +181,8 @@ class TeacherCourseDetails extends StatelessWidget {
             CourseInfoSection(
               title: _t('عن الكورس', 'About the course'),
               icon: Icons.info_outline_rounded,
-              children: [Text(description, style: c.body.copyWith(height: 1.7))],
+              color: c.textMedium,
+              children: [Text(description, style: body.copyWith(height: 1.7))],
             ),
           if (rating != null)
             CourseInfoSection(
@@ -204,7 +195,7 @@ class TeacherCourseDetails extends StatelessWidget {
             CourseInfoSection(
               title: _t('المحتوى المُنتَج', 'Content produced'),
               icon: Icons.timer_rounded,
-              color: c.warning,
+              color: c.textMedium,
               children: [_HoursProgress(done: course.totalHours, planned: planned)],
             ),
           if (showSchedule)
@@ -212,20 +203,22 @@ class TeacherCourseDetails extends StatelessWidget {
               featureKey: 'course_details.schedule',
               title: 'weekly_schedule'.tr,
               icon: Icons.calendar_month_rounded,
+              color: c.textMedium,
               trailing: course.schedules.isNotEmpty && onManageSchedule != null
                   ? _ManageButton(label: _t('إدارة', 'Manage'), icon: Icons.tune_rounded, onTap: onManageSchedule!)
                   : null,
               children: course.schedules.isEmpty
                   ? [
-                      Text('donnot_have_schedule'.tr, style: c.body),
+                      Text('donnot_have_schedule'.tr, style: body),
                       if (onManageSchedule != null) ...[
-                        const SizedBox(height: 10),
+                        const SizedBox(height: AppSpace.sm),
                         Align(
                           alignment: AlignmentDirectional.centerStart,
-                          child: FilledButton.tonalIcon(
+                          child: AppButton.tonal(
+                            label: 'add_schedule'.tr,
+                            icon: Icons.add_rounded,
+                            size: AppButtonSize.sm,
                             onPressed: onManageSchedule,
-                            icon: const Icon(Icons.add_rounded, size: 18),
-                            label: Text('add_schedule'.tr, maxLines: 1, overflow: TextOverflow.ellipsis),
                           ),
                         ),
                       ],
@@ -236,14 +229,14 @@ class TeacherCourseDetails extends StatelessWidget {
             CourseInfoSection(
               title: 'prerequisites'.tr,
               icon: Icons.checklist_rounded,
-              color: c.warning,
+              color: c.textMedium,
               children: [
                 for (final p in course.prerequisites)
                   CourseInfoRow(
                     title: p.title,
                     subtitle: p.description,
                     icon: Icons.check_circle_outline_rounded,
-                    color: c.warning,
+                    color: c.textMedium,
                   ),
               ],
             ),
@@ -251,10 +244,10 @@ class TeacherCourseDetails extends StatelessWidget {
             CourseInfoSection(
               title: 'required_tools'.tr,
               icon: Icons.build_rounded,
-              color: c.success,
+              color: c.textMedium,
               children: [
                 for (final t in course.tools)
-                  CourseInfoRow(title: t.name, subtitle: t.description, icon: Icons.handyman_rounded, color: c.success),
+                  CourseInfoRow(title: t.name, subtitle: t.description, icon: Icons.handyman_rounded, color: c.textMedium),
               ],
             ),
           if (course.certificates.isNotEmpty)
@@ -274,7 +267,6 @@ class TeacherCourseDetails extends StatelessWidget {
                         : _ManageButton(
                             label: 'manage_certificate_btn'.tr,
                             icon: Icons.send_rounded,
-                            color: c.accent2,
                             onTap: () => onManageCertificate!(cert),
                           ),
                   ),
@@ -286,90 +278,74 @@ class TeacherCourseDetails extends StatelessWidget {
   }
 }
 
-/// Recorded hours against the planned hours of the course.
+/// Recorded hours against the planned hours of the course: the sentence, the percentage counting up beside it and
+/// the bar filling once; the primary while it grows, emerald (success) once the plan is met.
 class _HoursProgress extends StatelessWidget {
   const _HoursProgress({required this.done, required this.planned});
 
   final double done, planned;
 
+  /// The bar's thickness: a reading-weight line, not a slab.
+  static const double _bar = 6;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final v = planned <= 0 ? 0.0 : (done / planned).clamp(0.0, 1.0);
+    final tone = v >= 1 ? c.success : c.primary;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          _t('${courseHoursLabel(done)} من ${courseHoursLabel(planned)} ساعة مخططة',
-              '${courseHoursLabel(done)} of ${courseHoursLabel(planned)} planned hours'),
-          style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w500, color: c.textDark),
-        ),
-        const SizedBox(height: 8),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
           children: [
             Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: LinearProgressIndicator(
-                  value: v,
-                  minHeight: 7,
-                  backgroundColor: c.warning.withValues(alpha: 0.12),
-                  valueColor: AlwaysStoppedAnimation(v >= 1 ? c.success : c.warning),
-                ),
+              child: Text(
+                _t('${courseHoursLabel(done)} من ${courseHoursLabel(planned)} ساعة مخططة',
+                    '${courseHoursLabel(done)} of ${courseHoursLabel(planned)} planned hours'),
+                style: AppType.row(context),
               ),
             ),
-            const SizedBox(width: 10),
-            Text(
+            const SizedBox(width: AppSpace.sm),
+            AppCountUp(
               '${(v * 100).round()}%',
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, fontWeight: FontWeight.w600, color: c.textDark),
+              memoryKey: 'teacher_course.hours_pct',
+              style: AppType.figure(context).copyWith(color: appInk(context, tone)),
             ),
           ],
+        ),
+        const SizedBox(height: AppSpace.xs),
+        AppFill(
+          value: v,
+          builder: (context, f) => ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            child: LinearProgressIndicator(
+              value: f,
+              minHeight: _bar,
+              backgroundColor: c.inputBg,
+              valueColor: AlwaysStoppedAnimation(tone),
+            ),
+          ),
         ),
       ],
     );
   }
 }
 
+/// A section's quiet action ("Manage", "Manage / send"): the kit's small ghost button, hugging the row's end.
 class _ManageButton extends StatelessWidget {
-  const _ManageButton({required this.label, required this.icon, required this.onTap, this.color});
+  const _ManageButton({required this.label, required this.icon, required this.onTap});
 
   final String label;
   final IconData icon;
   final VoidCallback onTap;
-  final Color? color;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final tone = color ?? c.primary;
-    final ink = c.isDark ? Color.lerp(tone, c.textDark, 0.4)! : tone;
-    return Material(
-      color: tone.withValues(alpha: c.isDark ? 0.2 : 0.1),
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, fontWeight: FontWeight.w500, color: ink),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Icon(icon, size: 13, color: ink),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Align(
+        alignment: AlignmentDirectional.centerEnd,
+        child: AppButton.ghost(label: label, trailingIcon: icon, size: AppButtonSize.sm, onPressed: onTap),
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -382,80 +358,59 @@ class TeacherSessionsHeader extends StatelessWidget {
   final int count;
   final VoidCallback onAdd;
 
+  /// The widest the header's button gets beside a long title.
+  static const double _actionMax = 200;
+
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final ink = c.isDark ? Color.lerp(c.primary, c.textDark, 0.4)! : c.primary;
     return CourseSectionHeader(
       title: _t('الجلسات', 'Sessions'),
       count: count,
       trailing: count == 0
           ? null
           : ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 200),
-              child: FilledButton.icon(
-                onPressed: onAdd,
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: Text('add_session_btn'.tr, maxLines: 1, overflow: TextOverflow.ellipsis),
-                style: FilledButton.styleFrom(
-                  backgroundColor: c.primary.withValues(alpha: c.isDark ? 0.18 : 0.09),
-                  foregroundColor: ink,
-                  elevation: 0,
-                  minimumSize: const Size(0, 40),
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  textStyle: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w600),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
+              constraints: const BoxConstraints(maxWidth: _actionMax),
+              child: AppButton.tonal(label: 'add_session_btn'.tr, icon: Icons.add_rounded, size: AppButtonSize.sm, onPressed: onAdd),
             ),
     );
   }
 }
 
+/// No session yet: the drawn plate, an editorial headline, one line of direction and ONE action, on a paper card.
 class TeacherSessionsEmpty extends StatelessWidget {
   const TeacherSessionsEmpty({super.key, required this.onAdd});
 
   final VoidCallback onAdd;
 
+  /// A comfortable measure for the headline and its one sentence.
+  static const double _measure = 360;
+
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final ink = c.isDark ? Color.lerp(c.primary, c.textDark, 0.4)! : c.primary;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: c.divider.withValues(alpha: 0.7)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
-            child: Icon(Icons.video_library_outlined, size: 28, color: ink),
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xl, AppSpace.lg, AppSpace.lg),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: _measure),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const AppStatePlate(icon: Icons.video_library_rounded),
+              const SizedBox(height: AppSpace.lg),
+              Text('no_sessions_yet'.tr, textAlign: TextAlign.center, style: AppType.section(context)),
+              const SizedBox(height: AppSpace.xs),
+              Text('add_first_session_hint'.tr, textAlign: TextAlign.center, style: AppType.body(context)),
+              const SizedBox(height: AppSpace.lg),
+              AppButton.primary(
+                label: 'add_first_session_btn'.tr,
+                icon: Icons.add_rounded,
+                size: AppButtonSize.lg,
+                expand: true,
+                onPressed: onAdd,
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            'no_sessions_yet'.tr,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: AppFonts.family, fontSize: 16, fontWeight: FontWeight.w600, color: c.textDark),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'add_first_session_hint'.tr,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, height: 1.5, color: c.textMedium),
-          ),
-          const SizedBox(height: 24),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 320),
-            child: AppPrimaryButton(label: 'add_first_session_btn'.tr, icon: Icons.add_rounded, onPressed: onAdd),
-          ),
-        ],
+        ),
       ),
     );
   }
