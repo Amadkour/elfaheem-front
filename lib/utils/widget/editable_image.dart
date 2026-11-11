@@ -1,7 +1,7 @@
 // ── Image picking ──────────────────────────────────────────────────────────
 import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppSheetContent;
+import 'package:flutter_education_app/design/app_kit.dart' show AppSheetContent, AppSpace, AppRadius, AppBorder, AppIconSize, AppElevation, AppType, AppBlockColors, AppBlockTone;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -10,7 +10,6 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class EditableImage extends StatelessWidget {
   const EditableImage(
@@ -36,7 +35,7 @@ class EditableImage extends StatelessWidget {
     return Container(
       height: size,
       width: size,
-        padding: EdgeInsets.all(10),
+        padding: const EdgeInsets.all(AppSpace.xs),
         child: Stack(
           clipBehavior : Clip.none,
       children: [
@@ -50,20 +49,14 @@ class EditableImage extends StatelessWidget {
                 height: size,
                 decoration: BoxDecoration(
                   shape:isCircle? BoxShape.circle : BoxShape.rectangle,
-                  borderRadius:isCircle?null: BorderRadius.all(Radius.circular(20)),
-                  border: Border.all(color: context.colors.cardBg, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 20,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
+                  borderRadius: isCircle ? null : BorderRadius.circular(AppRadius.card),
+                  border: Border.all(color: context.colors.cardBg, width: AppBorder.focus),
+                  boxShadow: AppElevation.of(context, 2),
                 ),
                 child: isCircle? ClipOval(
                   child: _imageChild(context, imageByte, imageUrl),
                 ):ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(AppRadius.card),
                   clipBehavior: Clip.hardEdge,
                   child: _imageChild(context, imageByte, imageUrl),
                 ),
@@ -76,28 +69,21 @@ class EditableImage extends StatelessWidget {
             bottom: isCircle?0 :0,
             left:isCircle? (size/1.7): - 10,
             child: InkWell(
-              borderRadius: const BorderRadius.all(Radius.circular(10)),
+              customBorder: isCircle ? const CircleBorder() : RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.chip)),
               onTap: () => _pickImage(context,onChange),
               child: Container(
-                width: 34,
-                height: 34,
+                width: AppIconSize.xl,
+                height: AppIconSize.xl,
                 decoration: BoxDecoration(
-                  gradient: context.colors.primaryGradient,
+                  color: context.colors.primary,
                   shape:isCircle? BoxShape.circle : BoxShape.rectangle,
-                  borderRadius:isCircle?null: BorderRadius.all(Radius.circular(10)),
-                  border: Border.all(color: context.colors.cardBg, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: context.colors.primary.withValues(alpha: 0.4),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+                  borderRadius: isCircle ? null : BorderRadius.circular(AppRadius.chip),
+                  border: Border.all(color: context.colors.cardBg, width: AppBorder.focus),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.camera_alt_rounded,
-                  size: 16,
-                  color: Colors.white,
+                  size: AppIconSize.sm,
+                  color: context.colors.onHero,
                 ),
               ),
             ),
@@ -119,15 +105,13 @@ class EditableImage extends StatelessWidget {
   Widget _placeholder(BuildContext context) {
     final n = name?.trim() ?? '';
     if (name != null) {
+      // An avatar without a photo: the first letter in ink on the person's own block tone (stable per name).
+      final block = AppBlockColors.of(context, AppBlockTone.forKey('person-$n'));
       return Container(
-        color: context.colors.primary.withValues(alpha: 0.10),
+        color: block.surface,
         alignment: Alignment.center,
         child: Text(n.isNotEmpty ? n.characters.first.toUpperCase() : '?',
-            style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: size * 0.36,
-                fontWeight: FontWeight.w800,
-                color: context.colors.primary)),
+            style: AppType.figureLarge(context).copyWith(fontSize: size * 0.36, height: 1, color: block.ink)),
       );
     }
     return _addPicture(context);
@@ -135,22 +119,21 @@ class EditableImage extends StatelessWidget {
 
   Widget _addPicture(BuildContext context) => Container(
         decoration: BoxDecoration(
-          shape:isCircle? BoxShape.circle : BoxShape.rectangle,
-            color: context.colors.primary.withValues(alpha: 0.10),
-
-  ),
+          shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
+          color: context.colors.inputBg,
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.add_photo_alternate_rounded,
-                size: 26, color: context.colors.primary),
-            SizedBox(height: 4),
-            Text('صورة',
-                style: TextStyle(
-                    fontSize: 9,
-                    color: context.colors.primary,
-                    fontFamily: AppFonts.display,
-                    fontWeight: FontWeight.w600)),
+                size: AppIconSize.lg, color: context.colors.primary),
+            const SizedBox(height: AppSpace.xxs),
+            Flexible(
+              child: Text('صورة',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.overline(context).copyWith(color: context.colors.textMedium)),
+            ),
           ],
         ),
       );
@@ -220,15 +203,15 @@ class _SheetTile extends StatelessWidget {
   Widget build(BuildContext context) => ListTile(
         onTap: onTap,
         leading: Container(
-          width: 40,
-          height: 40,
+          width: AppIconSize.hero,
+          height: AppIconSize.hero,
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.chip),
           ),
-          child: Icon(icon, color: color, size: 20),
+          child: Icon(icon, color: color, size: AppIconSize.md),
         ),
         title: Text(label,
-            style: TextStyle(fontFamily: AppFonts.display, fontSize: 14)),
+            style: AppType.row(context)),
       );
 }

@@ -3,6 +3,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_badges.dart';
 
 class CountBadge extends StatelessWidget {
   const CountBadge({super.key, required this.count, required this.child});
@@ -45,25 +46,7 @@ class TileCountOverlay extends StatelessWidget {
             top: 0,
             bottom: 0,
             child: IgnorePointer(
-              child: Center(
-                child: Container(
-                  constraints: const BoxConstraints(minWidth: 22, minHeight: 22,maxHeight: 22),
-                  padding: const EdgeInsets.fromLTRB(3,3,3,0),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.error,
-                    borderRadius: BorderRadius.circular(11),
-                  ),
-                  child: Text(
-                    count > 99 ? '99+' : '$count',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onError,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
+              child: Center(child: AppCountBadge(count: count)),
             ),
           ),
       ],
