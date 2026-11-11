@@ -14,6 +14,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppOdometer;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -92,15 +93,15 @@ class CpOverviewTab extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           AppSectionTitle(t('تقدّمك', 'Your progress'),
               subtitle: t('${ms.done} من ${ms.materials} مادة مكتملة', '${ms.done} of ${ms.materials} items done')),
-          const SizedBox(height: 12),
-          Wrap(spacing: 18, runSpacing: 12, alignment: WrapAlignment.center, children: [
+          const SizedBox(height: AppSpace.sm),
+          Wrap(spacing: AppSpace.md, runSpacing: AppSpace.sm, alignment: WrapAlignment.center, children: [
             AppRing(value: _num(pr['overall']) ?? 0, label: t('الإجمالي', 'Overall')),
             if (pr['lecture'] != null) AppRing(value: _num(pr['lecture']), label: t('المحاضرات', 'Lectures')),
             if (pr['section'] != null) AppRing(value: _num(pr['section']), label: t('السكاشن', 'Sections')),
           ]),
           if (cont != null && !p.readOnly) ...[
-            const SizedBox(height: 14),
-            AppPrimaryButton(
+            const SizedBox(height: AppSpace.md),
+            AppButton.primary(expand: true, 
               icon: Icons.play_arrow_rounded,
               label: t('تابع: ${cont.name}', 'Continue: ${cont.name}'),
               onPressed: () => onOpenTab(cont.track),
@@ -108,11 +109,12 @@ class CpOverviewTab extends StatelessWidget {
           ],
           Align(
             alignment: AlignmentDirectional.centerEnd,
-            child: TextButton.icon(
+            child: AppButton.ghost(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
                   builder: (_) => StudentCourseAnalyticsScreen(courseId: p.id, courseTitle: p.name(ar)))),
-              icon: const Icon(Icons.insights_rounded, size: 18),
-              label: Text(t('تحليلاتي في المقرر', 'My course analytics')),
+              icon: Icons.insights_rounded,
+              size: AppButtonSize.sm,
+              label: t('تحليلاتي في المقرر', 'My course analytics'),
             ),
           ),
         ]),
@@ -124,17 +126,17 @@ class CpOverviewTab extends StatelessWidget {
         children.add(AppCard(
           onTap: p.readOnly ? null : () => onOpenTab('attendance'),
           child: Row(children: [
-            Icon(Icons.how_to_reg_rounded, color: appScoreColor(context, 100 - absence)),
-            const SizedBox(width: 10),
+            Icon(Icons.how_to_reg_rounded, color: appScoreColor(context, 100 - absence), size: AppIconSize.lg),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(t('حضرت ${a['attended']} من ${a['expected']}', 'Attended ${a['attended']} of ${a['expected']}'),
-                    style: appText(14, w: FontWeight.w700, c: c.textDark)),
-                const SizedBox(height: 6),
+                    style: AppType.bodyStrong(context)),
+                const SizedBox(height: AppSpace.xs),
                 AppProgressBar(value: 100 - absence, color: appScoreColor(context, 100 - absence)),
               ]),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpace.sm),
             AppBadgePill(t('غياب ${_pct(absence)}', 'Absent ${_pct(absence)}'), color: appScoreColor(context, 100 - absence)),
           ]),
         ));
@@ -178,7 +180,11 @@ class CpOverviewTab extends StatelessWidget {
     if (!merged) children.add(AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         AppSectionTitle(t('عن المقرر', 'About the course')),
-        if (desc.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(desc, style: appText(13.5, c: c.textMedium, h: 1.5))),
+        if (desc.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
+            child: Text(desc, style: AppType.body(context).copyWith(height: 1.6)),
+          ),
         if (p.instructor != null) AppInfoRow(Icons.person_rounded, '${t('أستاذ المقرر', 'Instructor')}: ${p.instructor!['name']}'),
         if (p.course['credit_hours'] != null) AppInfoRow(Icons.timer_outlined, '${t('الساعات المعتمدة', 'Credit hours')}: ${p.course['credit_hours']}'),
         if (term.isNotEmpty)
@@ -186,11 +192,12 @@ class CpOverviewTab extends StatelessWidget {
       ]),
     ));
 
-    return Column(children: [for (final w in children) Padding(padding: const EdgeInsets.only(bottom: 12), child: w)]);
+    return Column(children: [for (final w in children) Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: w)]);
   }
 }
 
-/// The student's approved grade for this run (registrar).
+/// The student's approved grade for this run (registrar): the letter set in the editorial face on a peach block
+/// (a learning result), the percentage rolling in as the key figure.
 class _GradeCard extends StatelessWidget {
   const _GradeCard({required this.grade});
   final Map<String, dynamic> grade;
@@ -200,24 +207,31 @@ class _GradeCard extends StatelessWidget {
     final c = context.colors;
     final pct = _num(grade['percent']);
     final letter = '${grade['letter'] ?? ''}'.trim();
-    return AppCard(
-      child: Row(children: [
-        Container(
-          width: 46,
-          height: 46,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(color: c.accent.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(14)),
-          child: Text(letter.isEmpty ? '—' : letter, style: appText(17, w: FontWeight.w900, c: c.accent)),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(t('درجتك في المقرر', 'Your grade'), style: appText(12, c: c.textLight)),
-            Text(pct == null ? '—' : _pct(pct), style: appText(16, w: FontWeight.w800, c: c.textDark)),
-          ]),
-        ),
-        if (grade['denied'] == true) AppBadgePill(t('محروم', 'Denied'), color: c.danger),
-      ]),
+    return AppBlock(
+      tone: AppBlockTone.peach,
+      padding: AppSpace.card,
+      child: Builder(builder: (context) {
+        final b = AppBlock.colorsOf(context);
+        return Row(children: [
+          Container(
+            width: AppTouch.primary,
+            height: AppTouch.primary,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.cardAll),
+            child: Text(letter.isEmpty ? '—' : letter, style: AppType.headline(context).copyWith(color: b.ink)),
+          ),
+          const SizedBox(width: AppSpace.md),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(t('درجتك في المقرر', 'Your grade'), style: AppType.meta(context).copyWith(color: b.muted)),
+              pct == null
+                  ? Text('—', style: AppType.figureLarge(context).copyWith(color: b.ink))
+                  : AppOdometer(_pct(pct), memoryKey: 'cp.grade', style: AppType.figureLarge(context).copyWith(color: b.ink)),
+            ]),
+          ),
+          if (grade['denied'] == true) AppBadgePill(t('محروم', 'Denied'), color: c.danger),
+        ]);
+      }),
     );
   }
 }
@@ -230,6 +244,8 @@ String _termRange(Map<String, dynamic> term) {
   ].where((s) => s.trim().isNotEmpty).join(' · ');
 }
 
+/// The next session: a sky block (schedule blocks are sky, system.md §5) with the session's kind on a paper plate,
+/// its name in the editorial face and the time in the block's ink.
 class _NextSessionCard extends StatelessWidget {
   const _NextSessionCard({required this.next});
   final Map<String, dynamic> next;
@@ -238,27 +254,31 @@ class _NextSessionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final section = next['track'] == 'section';
-    final tone = section ? c.purple : c.primary;
-    return AppCard(
-      child: Row(children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
-          child: Icon(section ? Icons.science_rounded : Icons.co_present_rounded, color: tone),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(t('الجلسة القادمة', 'Next session'), style: appText(12, c: c.textLight)),
-            Text('${next['name']}', maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: appText(14, w: FontWeight.w700, c: c.textDark)),
-            const SizedBox(height: 2),
-            Text(_when(orgParseUtcLocal(next['scheduled_at'])), maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: appText(12.5, w: FontWeight.w600, c: tone)),
-          ]),
-        ),
-      ]),
+    return AppBlock(
+      tone: AppBlockTone.sky,
+      padding: AppSpace.card,
+      child: Builder(builder: (context) {
+        final b = AppBlock.colorsOf(context);
+        return Row(children: [
+          Container(
+            width: AppTouch.min,
+            height: AppTouch.min,
+            decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.controlAll),
+            child: Icon(section ? Icons.science_rounded : Icons.co_present_rounded, color: b.ink, size: AppIconSize.lg),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(t('الجلسة القادمة', 'Next session'), style: AppType.meta(context).copyWith(color: b.muted)),
+              Text('${next['name']}', maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: AppType.section(context).copyWith(color: b.ink)),
+              const SizedBox(height: AppSpace.xxs / 2),
+              Text(_when(orgParseUtcLocal(next['scheduled_at'])), maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: AppType.label(context).copyWith(color: b.ink, fontWeight: FontWeight.w600)),
+            ]),
+          ),
+        ]);
+      }),
     );
   }
 }
@@ -271,10 +291,11 @@ class _AnnouncementsPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppSectionTitle(t('آخر الإعلانات', 'Latest announcements'),
-            trailing: TextButton(onPressed: () => onOpenTab('announcements'), child: Text(t('الكل', 'All')))),
-        const SizedBox(height: 6),
+            trailing: AppButton.ghost(
+                label: t('الكل', 'All'), size: AppButtonSize.sm, onPressed: () => onOpenTab('announcements'))),
+        const SizedBox(height: AppSpace.xs),
         for (final a in profile.announcements.take(2))
-          Padding(padding: const EdgeInsets.only(bottom: 8), child: CpAnnouncementCard(item: a, compact: true)),
+          Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: CpAnnouncementCard(item: a, compact: true)),
       ]);
 }
 
@@ -291,49 +312,47 @@ class CpSideRail extends StatelessWidget {
     final next = _map(p.analytics['next_session']);
     final ins = p.instructor;
     Widget person(String name, dynamic url, String role) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: AppSpace.xs),
           child: Row(children: [
-            AppAvatar(name: name, url: url?.toString(), size: 32),
-            const SizedBox(width: 10),
+            AppAvatar(name: name, url: url?.toString(), size: AppIconSize.xl),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: c.textDark)),
-                Text(role, style: appText(11.5, c: c.textLight)),
+                Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
+                Text(role, style: AppType.meta(context)),
               ]),
             ),
           ]),
         );
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      if (next.isNotEmpty && !p.pastVersion) ...[_NextSessionCard(next: next), const SizedBox(height: 14)],
+      if (next.isNotEmpty && !p.pastVersion) ...[_NextSessionCard(next: next), const SizedBox(height: AppSpace.md)],
       if (p.announcements.isNotEmpty) ...[
         _AnnouncementsPreview(profile: p, onOpenTab: onOpenTab),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
       ] else if (p.caps.announce && !p.readOnly && !p.pastVersion) ...[
         AppCard(
           onTap: () => onOpenTab('announcements'),
           child: Row(children: [
-            Icon(Icons.campaign_rounded, color: c.accent),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(t('انشر إعلاناً لطلابك', 'Post an announcement'),
-                  style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
-            ),
+            Icon(Icons.campaign_rounded, color: c.textMedium, size: AppIconSize.lg),
+            const SizedBox(width: AppSpace.sm),
+            Expanded(child: Text(t('انشر إعلاناً لطلابك', 'Post an announcement'), style: AppType.bodyStrong(context))),
           ]),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.md),
       ],
       if (ins != null || p.assistants.isNotEmpty)
         AppCard(
           onTap: p.caps.manageStaff || p.role == 'ta' ? () => onOpenTab('team') : null,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             AppSectionTitle(t('فريق التدريس', 'Teaching team')),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             if (ins != null) person('${ins['name'] ?? ''}', ins['image_url'], t('أستاذ المقرر', 'Instructor')),
             for (final a in p.assistants.take(4))
               person('${_map(a['user'])['name'] ?? ''}', _map(a['user'])['image_url'], t('معيد', 'Assistant')),
             if (p.assistants.length > 4)
               Text(t('+${p.assistants.length - 4} آخرين', '+${p.assistants.length - 4} more'),
-                  style: appText(12, c: c.textLight)),
+                  style: AppType.meta(context)),
           ]),
         ),
     ]);
@@ -983,7 +1002,7 @@ class _StaffCertificate extends StatelessWidget {
               ]),
             ),
             const SizedBox(height: 10),
-            AppPrimaryButton(
+            AppButton.primary(expand: true, 
               icon: Icons.send_rounded,
               label: t('إرسال (${chosen.length})', 'Send (${chosen.length})'),
               onPressed: chosen.isEmpty ? null : () => Navigator.of(ctx).pop(chosen.toList()),
@@ -1276,7 +1295,7 @@ class _CpArchiveTabState extends State<CpArchiveTab> {
         if (mode == 'code') ...[
           AppField(controller: _code, label: t('كود الأرشيف', 'Archive code'), ltr: true),
           const SizedBox(height: 10),
-          AppPrimaryButton(
+          AppButton.primary(expand: true, 
             icon: Icons.key_rounded,
             label: t('فتح', 'Unlock'),
             onPressed: () async {
@@ -1288,7 +1307,7 @@ class _CpArchiveTabState extends State<CpArchiveTab> {
         ] else ...[
           AppField(controller: _reason, label: t('السبب (اختياري)', 'Reason (optional)'), maxLines: 2),
           const SizedBox(height: 10),
-          AppPrimaryButton(
+          AppButton.primary(expand: true, 
             icon: Icons.send_rounded,
             label: t('اطلب الوصول', 'Request access'),
             onPressed: a['took_it'] == true

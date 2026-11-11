@@ -254,7 +254,7 @@ class _ComposerState extends State<_Composer> {
               onChanged: (v) => setState(() => _notify = v),
             ),
             const SizedBox(height: 12),
-            AppPrimaryButton(icon: Icons.send_rounded, label: t('نشر', 'Post'), busy: _busy, onPressed: _busy ? null : _send),
+            AppButton.primary(expand: true, icon: Icons.send_rounded, label: t('نشر', 'Post'), busy: _busy, onPressed: _busy ? null : _send),
           ]),
         ),
       ),
