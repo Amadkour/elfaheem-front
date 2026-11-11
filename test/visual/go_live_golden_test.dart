@@ -22,6 +22,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/teacher/home/go_live.dart';
 import 'package:flutter_education_app/features/teacher/home/go_live_sheet.dart';
+import 'package:flutter_education_app/features/teacher/home/home_screen.dart' show TeacherHomeHero;
 import 'package:flutter_education_app/features/teacher/sessions/model/live_response_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -88,54 +89,29 @@ List<GoLiveCourse> _courses() => [
       GoLiveCourse(id: 4, title: tr('تعلم الآلة المتقدم', 'Advanced machine learning'), students: 0, published: false),
     ];
 
-/// A slice of the instructor home behind the sheet: the header and the hero, enough to read the page under it.
-Widget _homeBehind({bool live = false}) => Builder(builder: (context) {
-      final c = context.colors;
-      return ListView(padding: EdgeInsets.zero, children: [
-        Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1100),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              HomeHeader(
-                name: tr('أحمد حمدي', 'Ahmed Hamdy'),
-                subtitle: tr('٣ حصص اليوم · التالية ١٢:١٢ م', '3 sessions today · next at 12:12 PM'),
-                leading: CircleAvatar(radius: 20, backgroundColor: c.primaryTint, child: Text('A', style: TextStyle(color: c.primary))),
-                actions: [
-                  IconButton(onPressed: () {}, icon: Icon(Icons.calendar_month_rounded, color: c.textMedium)),
-                  IconButton(onPressed: () {}, icon: Icon(Icons.notifications_none_rounded, color: c.textMedium)),
-                ],
-                contextSwitcher: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  Flexible(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(20)),
-                      child: Text(tr('الحساب الشخصي', 'Personal'), style: TextStyle(color: c.textDark, fontWeight: FontWeight.w700, fontSize: 12.5)),
-                    ),
-                  ),
-                  Flexible(
-                    child: Padding(
-                      padding: const EdgeInsetsDirectional.only(start: 12),
-                      child: GoLiveButton(live: live, onTap: () {}),
-                    ),
-                  ),
-                ]),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                child: Container(
-                  height: 150,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(c.radiusLarge),
-                    gradient: LinearGradient(colors: [c.primary, c.heroEnd(c.primary)]),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 400),
-            ]),
-          ),
+/// A slice of the instructor home behind the sheet: the real hero (the sky block, its day ribbon, Go live), enough
+/// to read the page under it.
+Widget _homeBehind({bool live = false}) => ListView(padding: EdgeInsets.zero, children: [
+      Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1100),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            TeacherHomeHero(
+              name: tr('أحمد حمدي', 'Ahmed Hamdy'),
+              subtitle: tr('٣ حصص اليوم · التالية ١٢:١٢ م', '3 sessions today · next at 12:12 PM'),
+              day: const [
+                HomeAgendaItem(start: '', end: '', title: 'a', startMin: 9 * 60, endMin: 10 * 60 + 30),
+                HomeAgendaItem(start: '', end: '', title: 'b', startMin: 12 * 60 + 12, endMin: 13 * 60 + 42),
+              ],
+              nowMin: 12 * 60,
+              switcher: Text(tr('الحساب الشخصي', 'Personal')),
+              goLive: GoLiveButton(live: live, onTap: () {}),
+            ),
+            const SizedBox(height: 400),
+          ]),
         ),
-      ]);
-    });
+      ),
+    ]);
 
 Widget _host(Widget child, {required bool dark}) {
   final theme = ThemeConfigProvider(api: ApiClient());

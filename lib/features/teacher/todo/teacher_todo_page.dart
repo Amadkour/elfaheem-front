@@ -20,8 +20,8 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
 import '../../../core/plural.dart';
 import '../../../design/app_kit.dart';
+import '../../../design/app_motion_kit.dart' show AppEase, AppReveal;
 import '../../../utils/widget/base_page.dart';
-import '../../admin/admin_common.dart' show ErrorRetry;
 import 'teacher_todo_actions.dart';
 import 'teacher_todo_api.dart';
 import 'teacher_todo_models.dart';
@@ -194,7 +194,7 @@ class _TeacherTodoViewState extends State<TeacherTodoView> {
       final gutter = AppSpace.gutter(box.maxWidth);
       Widget width(Widget child) => Align(
             alignment: AlignmentDirectional.topCenter,
-            child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 1120), child: child), // AppWidth.content
+            child: ConstrainedBox(constraints: BoxConstraints(maxWidth: AppWidth.content.max), child: child),
           );
       final header = AppPageHeader(
         title: 'todo_title'.tr,
@@ -211,7 +211,7 @@ class _TeacherTodoViewState extends State<TeacherTodoView> {
           child: const AppListSkeleton(items: 5, withAvatar: true, padding: EdgeInsets.zero),
         ));
       } else if (widget.error != null && list == null) {
-        body = Padding(padding: const EdgeInsets.symmetric(vertical: AppSpace.lg), child: ErrorRetry(message: widget.error!, onRetry: widget.onRefresh));
+        body = Padding(padding: const EdgeInsets.symmetric(vertical: AppSpace.lg), child: AppErrorState(message: widget.error, onRetry: widget.onRefresh));
       } else if (list != null && !list.enabled) {
         body = AppEmpty(icon: Icons.checklist_rounded, title: 'todo_off'.tr);
       } else {
@@ -219,7 +219,8 @@ class _TeacherTodoViewState extends State<TeacherTodoView> {
           padding: EdgeInsets.fromLTRB(gutter, AppSpace.md, gutter, AppSpace.xl),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             if (items.isNotEmpty) ...[
-              TodoSummary(items: items, selected: filter, onSelect: (p) => setState(() => _filter = p)),
+              // the page's one entrance: the counts lead, the list follows them (its rows are simply there)
+              AppReveal(index: 0, group: 'todo', child: TodoSummary(items: items, selected: filter, onSelect: (p) => setState(() => _filter = p))),
               const SizedBox(height: AppSpace.md),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -241,7 +242,7 @@ class _TeacherTodoViewState extends State<TeacherTodoView> {
             if (items.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: AppSpace.xl),
-                child: AppEmpty(icon: Icons.task_alt_rounded, title: 'todo_all_clear'.tr, message: 'todo_all_clear_hint'.tr),
+                child: AppEmpty(icon: Icons.task_alt_rounded, title: 'todo_all_clear'.tr, message: 'todo_all_clear_hint'.tr, tone: AppBlockTone.emerald),
               )
             else if (shown.isEmpty)
               Padding(
@@ -249,11 +250,19 @@ class _TeacherTodoViewState extends State<TeacherTodoView> {
                 child: AppEmpty(icon: Icons.filter_alt_off_outlined, title: 'todo_filter_empty'.tr, actionLabel: 'todo_all'.tr, onAction: () => setState(() => _filter = null)),
               )
             else
-              AppCard(
+              AppReveal(
+                index: 1,
+                group: 'todo',
+                child: AppCard(
                 padding: EdgeInsets.zero,
+                // a row that leaves (done, snoozed, dismissed) closes its gap instead of jumping
+                child: AnimatedSize(
+                duration: AppMotion.of(context).base,
+                curve: AppEase.out,
+                alignment: AlignmentDirectional.topStart,
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   for (var i = 0; i < shown.length; i++) ...[
-                    if (i > 0) Divider(height: 1, thickness: 1, indent: 68, color: c.divider),
+                    if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, indent: kTodoRowIndent, color: c.divider),
                     TodoRow(
                       key: ValueKey('todo:${shown[i].key}'),
                       item: shown[i],
@@ -263,17 +272,26 @@ class _TeacherTodoViewState extends State<TeacherTodoView> {
                     ),
                   ],
                 ]),
+                ),
+              ),
               ),
             if ((list?.hidden ?? const []).isNotEmpty) ...[
               const SizedBox(height: AppSpace.lg),
               _HiddenHeader(count: list!.hidden.length, open: _showHidden, onTap: () => setState(() => _showHidden = !_showHidden)),
-              if (_showHidden) ...[
-                const SizedBox(height: AppSpace.xs),
-                AppCard(
+              // the folded list opens under its header (and closes) on the kit's ease-out, from where it is
+              AnimatedSize(
+                duration: AppMotion.of(context).base,
+                curve: AppEase.out,
+                alignment: AlignmentDirectional.topStart,
+                child: !_showHidden
+                    ? const SizedBox(width: double.infinity)
+                    : Padding(
+                padding: const EdgeInsets.only(top: AppSpace.xs),
+                child: AppCard(
                   padding: EdgeInsets.zero,
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     for (var i = 0; i < list.hidden.length; i++) ...[
-                      if (i > 0) Divider(height: 1, thickness: 1, indent: 68, color: c.divider),
+                      if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, indent: kTodoRowIndent, color: c.divider),
                       TodoRow(
                         item: list.hidden[i],
                         busy: widget.busy.contains(list.hidden[i].key),
@@ -282,13 +300,14 @@ class _TeacherTodoViewState extends State<TeacherTodoView> {
                     ],
                   ]),
                 ),
-              ],
+                    ),
+              ),
             ],
-            const SizedBox(height: AppSpace.md),
+            const SizedBox(height: AppSpace.lg),
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Icon(Icons.auto_awesome_outlined, size: 16, color: c.textLight),
+              Icon(Icons.auto_awesome_outlined, size: AppIconSize.sm, color: c.textLight),
               const SizedBox(width: AppSpace.xs),
-              Expanded(child: Text('todo_how'.tr, style: appText(12.5, w: FontWeight.w400, c: c.textLight, h: 1.45))),
+              Expanded(child: Text('todo_how'.tr, style: AppType.meta(context).copyWith(height: 1.45))),
             ]),
           ]),
         ));
@@ -324,16 +343,17 @@ class _HiddenHeader extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: AppTouch.min),
           child: Row(children: [
-            Icon(Icons.inventory_2_outlined, size: 18, color: c.textMedium),
+            Icon(Icons.inventory_2_outlined, size: AppIconSize.md, color: c.textMedium),
             const SizedBox(width: AppSpace.xs),
             Expanded(
               child: Text('todo_hidden_n'.tr.replaceAll('{n}', '$count'),
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w600, c: c.textMedium)),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textMedium, fontWeight: FontWeight.w600)),
             ),
             AnimatedRotation(
               turns: open ? 0.5 : 0,
               duration: AppMotion.of(context).base,
-              child: Icon(Icons.expand_more_rounded, color: c.textLight),
+              curve: AppEase.out,
+              child: Icon(Icons.expand_more_rounded, size: AppIconSize.lg, color: c.textMedium),
             ),
           ]),
         ),

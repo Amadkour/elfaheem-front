@@ -5,7 +5,7 @@
 //                      chips · the one action button (full page) · ⋯ menu (Done · Snooze 1 / 3 / 7 days · Dismiss),
 //                      or Restore for a hidden item. Compact (the home card): the row itself is the action.
 //   TeacherTodoCard    the home's "Your to-do": the top items in one card with hairlines + "See all (n)"
-//   TodoSummary        the full page's three counts: Urgent · Soon · When you can
+//   TodoSummary        the full page's three counts: Urgent · Soon · When you can (urgent = the peach block, rolling)
 //   todoActionLabel    the action button's text per kind
 library;
 
@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/plural.dart';
 import '../../../design/app_kit.dart';
+import '../../../design/app_motion_kit.dart' show AppCountUp, AppOdometer, AppPressScale;
 import '../../../config/app_config.dart';
 import 'teacher_todo_models.dart';
 
@@ -72,6 +73,12 @@ String todoReasonLabel(String r) => switch (r) {
       _ => r,
     };
 
+/// The kind icon's well beside a row (full page / home card), and where the hairline between rows starts.
+const double _kWell = AppSpace.xxl - AppSpace.xs;
+const double _kWellCompact = AppSpace.xl + AppSpace.xxs;
+const double kTodoRowIndent = AppSpace.md + _kWell + AppSpace.sm;
+const double _kRowIndentCompact = AppSpace.md + _kWellCompact + AppSpace.sm;
+
 /// One to-do item. [onOpen] runs its action; [onMenu] a menu choice; [onRestore] (a hidden item) replaces the menu.
 class TodoRow extends StatelessWidget {
   const TodoRow({
@@ -101,22 +108,24 @@ class TodoRow extends StatelessWidget {
     final x = item;
     final hiddenRow = onRestore != null;
     final tone = hiddenRow ? c.textLight : todoTone(context, x.priority);
-    final ink = appInk(context, tone);
+    final well = appTintOn(context, tone);
+    final ink = appInkOn(context, tone, well);
     final chips = <Widget>[
       if (!compact || x.isHigh) _Chip(text: todoPriorityLabel(x.priority), color: tone, strong: true),
       if ((x.courseName ?? '').isNotEmpty) _Chip(text: x.courseName!, icon: Icons.auto_stories_outlined, color: c.textMedium),
       if (x.when != null) _Chip(text: '${AppTime.date(x.when!, pattern: 'EEE d MMM')} · ${AppTime.time(x.when!)}', icon: Icons.schedule_rounded, color: c.textMedium),
-      if (x.returned) _Chip(text: 'todo_returned'.tr, icon: Icons.replay_rounded, color: c.accent2),
+      if (x.returned) _Chip(text: 'todo_returned'.tr, icon: Icons.replay_rounded, color: c.textMedium),
       if (hiddenRow) _Chip(text: _hiddenLabel(x), icon: Icons.visibility_off_outlined, color: c.textLight),
     ];
+    final size = compact ? _kWellCompact : _kWell;
     final body = Padding(
       padding: EdgeInsetsDirectional.fromSTEB(AppSpace.md, compact ? AppSpace.sm : AppSpace.md, hiddenRow ? AppSpace.md : AppSpace.xxs, compact ? AppSpace.sm : AppSpace.md),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(
-          width: compact ? 36 : 40,
-          height: compact ? 36 : 40,
-          decoration: BoxDecoration(color: tone.withValues(alpha: 0.11), borderRadius: BorderRadius.circular(AppRadius.chip)),
-          child: Icon(todoKindIcon(x.kind), size: compact ? 18 : 20, color: ink),
+          width: size,
+          height: size,
+          decoration: BoxDecoration(color: well, borderRadius: AppRadius.chipAll),
+          child: Icon(todoKindIcon(x.kind), size: compact ? AppIconSize.sm + 2 : AppIconSize.md, color: ink),
         ),
         const SizedBox(width: AppSpace.sm),
         Expanded(
@@ -124,14 +133,17 @@ class TodoRow extends StatelessWidget {
             Text(x.title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: appText(compact ? 14 : 15, w: FontWeight.w600, c: hiddenRow ? c.textMedium : c.textDark, h: 1.3)),
+                style: AppType.bodyStrong(context).copyWith(color: hiddenRow ? c.textMedium : c.textDark, height: 1.3)),
             if (x.why.isNotEmpty) ...[
               const SizedBox(height: AppSpace.xxs),
-              Text(x.why, maxLines: compact ? 1 : 3, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w400, c: c.textMedium, h: 1.4)),
+              Text(x.why,
+                  maxLines: compact ? 1 : 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: (compact ? AppType.meta(context) : AppType.body(context)).copyWith(color: c.textMedium, height: 1.4)),
             ],
             if (chips.isNotEmpty) ...[
               const SizedBox(height: AppSpace.xs),
-              Wrap(spacing: 6, runSpacing: 6, children: chips),
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: chips),
             ],
             if (!compact && x.students.isNotEmpty) ...[
               const SizedBox(height: AppSpace.sm),
@@ -139,11 +151,12 @@ class TodoRow extends StatelessWidget {
             ],
             if (!compact && !hiddenRow && onOpen != null) ...[
               const SizedBox(height: AppSpace.sm),
-              _ActionButton(label: todoActionLabel(x), tone: tone, onTap: busy ? null : onOpen),
+              // the one way to get it done: the emerald tint (the priority already speaks through the well and chip)
+              AppButton.tonal(label: todoActionLabel(x), size: AppButtonSize.sm, onPressed: busy ? null : onOpen),
             ],
             if (hiddenRow) ...[
               const SizedBox(height: AppSpace.xs),
-              _ActionButton(label: 'todo_restore'.tr, tone: c.primary, icon: Icons.undo_rounded, onTap: busy ? null : onRestore),
+              AppButton.ghost(label: 'todo_restore'.tr, icon: Icons.undo_rounded, size: AppButtonSize.sm, onPressed: busy ? null : onRestore),
             ],
           ]),
         ),
@@ -151,8 +164,9 @@ class TodoRow extends StatelessWidget {
           _Menu(onMenu: busy ? null : onMenu!),
       ]),
     );
-    return Opacity(
+    return AnimatedOpacity(
       opacity: busy ? 0.5 : 1,
+      duration: AppMotion.of(context).fast,
       child: Semantics(
         button: compact && onOpen != null,
         child: InkWell(onTap: busy || hiddenRow ? null : onOpen, child: body),
@@ -167,6 +181,7 @@ class TodoRow extends StatelessWidget {
       };
 }
 
+/// A small fact under a row: a full pill. [strong] (the priority) wears its tone's tint and ink; the rest are quiet.
 class _Chip extends StatelessWidget {
   const _Chip({required this.text, required this.color, this.icon, this.strong = false});
   final String text;
@@ -174,51 +189,27 @@ class _Chip extends StatelessWidget {
   final IconData? icon;
   final bool strong;
 
+  /// A long course name stops here and ellipsizes (the row keeps its other chips on the line).
+  static const double _maxWidth = 260;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final ink = strong ? appInk(context, color) : color;
+    final fill = strong ? appTintOn(context, color) : c.cardBg2;
+    final ink = strong ? appInkOn(context, color, fill) : color;
     return Container(
-      constraints: const BoxConstraints(maxWidth: 260),
-      padding: const EdgeInsetsDirectional.fromSTEB(8, 3, 9, 3),
-      decoration: BoxDecoration(
-        color: strong ? color.withValues(alpha: 0.11) : c.cardBg2,
-        borderRadius: BorderRadius.circular(999),
-      ),
+      constraints: const BoxConstraints(maxWidth: _maxWidth),
+      padding: const EdgeInsetsDirectional.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
+      decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(AppRadius.pill)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        if (icon != null) ...[Icon(icon, size: 13, color: ink), const SizedBox(width: 4)],
+        if (icon != null) ...[Icon(icon, size: AppIconSize.xs, color: ink), const SizedBox(width: AppSpace.xxs)],
         Flexible(
-          child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: strong ? FontWeight.w600 : FontWeight.w500, c: ink)),
+          child: Text(text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppType.meta(context).copyWith(color: ink, fontWeight: strong ? FontWeight.w600 : FontWeight.w500)),
         ),
       ]),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({required this.label, required this.tone, this.onTap, this.icon = Icons.arrow_forward_rounded});
-  final String label;
-  final Color tone;
-  final IconData icon;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final ink = appInk(context, tone);
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: AppTouch.min),
-      child: TextButton.icon(
-        onPressed: onTap,
-        style: TextButton.styleFrom(
-          foregroundColor: ink,
-          backgroundColor: tone.withValues(alpha: 0.10),
-          minimumSize: const Size(AppTouch.min, AppTouch.min),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.chip)),
-        ),
-        icon: Icon(icon, size: 18),
-        label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w600, c: ink)),
-      ),
     );
   }
 }
@@ -232,12 +223,18 @@ class _Menu extends StatelessWidget {
     final c = context.colors;
     PopupMenuItem<TodoMenu> item(TodoMenu v, IconData icon, String label) => PopupMenuItem(
           value: v,
-          child: Row(children: [Icon(icon, size: 18, color: c.textMedium), const SizedBox(width: AppSpace.sm), Flexible(child: Text(label))]),
+          child: Row(children: [
+            Icon(icon, size: AppIconSize.md, color: c.textMedium),
+            const SizedBox(width: AppSpace.sm),
+            Flexible(child: Text(label, style: AppType.row(context))),
+          ]),
         );
     return PopupMenuButton<TodoMenu>(
       enabled: onMenu != null,
       tooltip: 'todo_more'.tr,
-      icon: Icon(Icons.more_vert_rounded, color: c.textLight),
+      icon: Icon(Icons.more_vert_rounded, color: c.textLight, size: AppIconSize.md),
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: BorderSide(color: c.divider, width: AppBorder.hairline)),
+      color: c.cardBg,
       onSelected: onMenu,
       itemBuilder: (_) => [
         item(TodoMenu.done, Icons.check_circle_outline_rounded, 'todo_done'.tr),
@@ -263,19 +260,19 @@ class _Students extends StatelessWidget {
     final more = total - shown.length;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
-      decoration: BoxDecoration(color: c.cardBg2, borderRadius: BorderRadius.circular(AppRadius.chip)),
+      decoration: BoxDecoration(color: c.cardBg2, borderRadius: AppRadius.chipAll),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         for (final s in shown)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5),
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Icon(Icons.person_outline_rounded, size: 16, color: c.textLight),
+              Icon(Icons.person_outline_rounded, size: AppIconSize.sm, color: c.textLight),
               const SizedBox(width: AppSpace.xs),
               Expanded(
                 child: Text.rich(
                   TextSpan(children: [
-                    TextSpan(text: s.name, style: appText(13, w: FontWeight.w600, c: c.textDark)),
-                    TextSpan(text: '  ${s.reasons.map(todoReasonLabel).join(' · ')}', style: appText(12.5, w: FontWeight.w400, c: c.textMedium)),
+                    TextSpan(text: s.name, style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
+                    TextSpan(text: '  ${s.reasons.map(todoReasonLabel).join(' · ')}', style: AppType.meta(context).copyWith(color: c.textMedium)),
                   ]),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -285,10 +282,10 @@ class _Students extends StatelessWidget {
           ),
         if (more > 0)
           Padding(
-            padding: const EdgeInsets.only(top: 2, bottom: 4),
+            padding: const EdgeInsets.only(top: AppSpace.xxs / 2, bottom: AppSpace.xxs),
             child: Text(
               countText(more, ar1: 'وطالب آخر', ar2: 'وطالبان آخران', arFew: 'و{n} طلاب آخرين', arMany: 'و{n} طالبًا آخر', en1: 'and 1 more', en: 'and {n} more'),
-              style: appText(12.5, c: c.textLight),
+              style: AppType.meta(context),
             ),
           ),
       ]),
@@ -304,7 +301,7 @@ class TeacherTodoCard extends StatelessWidget {
     required this.onOpenItem,
     required this.onMenu,
     required this.onSeeAll,
-    this.padding = const EdgeInsets.symmetric(horizontal: 20),
+    this.padding = const EdgeInsets.symmetric(horizontal: AppSpace.md + AppSpace.xxs), // the home kit's 20 px edge
     this.max = 3,
   });
 
@@ -319,16 +316,17 @@ class TeacherTodoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final top = list.items.take(max).toList();
+    final link = appInk(context, c.primary);
     return Padding(
       padding: padding,
       child: AppCard(
         padding: EdgeInsets.zero,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           for (var i = 0; i < top.length; i++) ...[
-            if (i > 0) Divider(height: 1, thickness: 1, indent: 64, color: c.divider),
+            if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, indent: _kRowIndentCompact, color: c.divider),
             TodoRow(item: top[i], compact: true, onOpen: () => onOpenItem(top[i]), onMenu: (m) => onMenu(top[i], m)),
           ],
-          Divider(height: 1, thickness: 1, color: c.divider),
+          Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
           InkWell(
             onTap: onSeeAll,
             child: ConstrainedBox(
@@ -336,17 +334,17 @@ class TeacherTodoCard extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
                 child: Row(children: [
-                  Icon(Icons.checklist_rounded, size: 18, color: appInk(context, c.primary)),
+                  Icon(Icons.checklist_rounded, size: AppIconSize.md, color: link),
                   const SizedBox(width: AppSpace.xs),
                   Expanded(
                     child: Text(
                       list.totalCount > top.length ? 'todo_see_all_n'.tr.replaceAll('{n}', '${list.totalCount}') : 'todo_open_list'.tr,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: appText(13.5, w: FontWeight.w600, c: appInk(context, c.primary)),
+                      style: AppType.label(context).copyWith(color: link, fontWeight: FontWeight.w600),
                     ),
                   ),
-                  Icon(Icons.chevron_right_rounded, size: 20, color: c.textLight),
+                  Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.textLight),
                 ]),
               ),
             ),
@@ -357,7 +355,9 @@ class TeacherTodoCard extends StatelessWidget {
   }
 }
 
-/// The full page's three counts in one row of calm tiles; a tap filters (null = clear).
+/// The full page's three counts in one row; a tap filters (null = clear). The page's one memorable element: while
+/// something is urgent its tile is the peach block with the figure rolling in (AppOdometer) in the danger ink — the
+/// other two stay paper and count up once.
 class TodoSummary extends StatelessWidget {
   const TodoSummary({super.key, required this.items, this.selected, this.onSelect});
   final List<TodoItem> items;
@@ -367,7 +367,7 @@ class TodoSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     int n(String p) => items.where((x) => x.priority == p).length;
-    return Row(children: [
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       for (final (i, p) in const ['high', 'medium', 'low'].indexed) ...[
         if (i > 0) const SizedBox(width: AppSpace.xs),
         Expanded(child: _SummaryTile(priority: p, count: n(p), selected: selected == p, onTap: onSelect == null ? null : () => onSelect!(selected == p ? null : p))),
@@ -387,32 +387,52 @@ class _SummaryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final tone = todoTone(context, priority);
-    final ink = appInk(context, tone);
-    final r = BorderRadius.circular(AppRadius.card);
+    final lead = priority == 'high' && count > 0; // the block
+    final block = AppBlockColors.of(context, lead ? AppBlockTone.peach : AppBlockTone.paper);
+    final figureInk = count == 0 ? block.faint : block.accentInk(tone);
+    final r = AppRadius.cardAll;
+    final figureStyle = AppType.figureLarge(context).copyWith(color: figureInk);
+    final memory = 'todo.summary.$priority';
     return Semantics(
       button: onTap != null,
       selected: selected,
       label: '$count ${todoPriorityLabel(priority)}',
       excludeSemantics: true,
-      child: Material(
-        color: selected ? tone.withValues(alpha: 0.12) : c.cardBg,
-        shape: RoundedRectangleBorder(borderRadius: r, side: BorderSide(color: selected ? tone.withValues(alpha: 0.5) : c.divider)),
-        child: InkWell(
-          onTap: onTap,
-          customBorder: RoundedRectangleBorder(borderRadius: r),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.sm),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Container(width: 8, height: 8, decoration: BoxDecoration(color: tone, shape: BoxShape.circle)),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(todoPriorityLabel(priority), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium)),
+      child: AppPressScale(
+        enabled: onTap != null,
+        child: Material(
+          color: block.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: r,
+            // picked: a 2 px ink ring (the filter it applies); else the block's own edge
+            side: selected
+                ? BorderSide(color: c.textDark, width: AppBorder.focus)
+                : block.border == null
+                    ? BorderSide.none
+                    : BorderSide(color: block.border!, width: AppBorder.hairline),
+          ),
+          child: InkWell(
+            onTap: onTap,
+            customBorder: RoundedRectangleBorder(borderRadius: r),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpace.sm),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Container(width: AppSpace.xs, height: AppSpace.xs, decoration: BoxDecoration(color: tone, shape: BoxShape.circle)),
+                  const SizedBox(width: AppSpace.xs - 2),
+                  Flexible(
+                    child: Text(todoPriorityLabel(priority),
+                        maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: block.muted)),
+                  ),
+                ]),
+                const SizedBox(height: AppSpace.xs),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: lead ? AppOdometer('$count', memoryKey: memory, style: figureStyle) : AppCountUp('$count', memoryKey: memory, style: figureStyle),
                 ),
               ]),
-              const SizedBox(height: AppSpace.xxs),
-              Text('$count', style: appText(22, w: FontWeight.w600, c: count == 0 ? c.textLight : ink).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
-            ]),
+            ),
           ),
         ),
       ),

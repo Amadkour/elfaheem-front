@@ -1,21 +1,28 @@
+// lib/features/teacher/schedules/schedules_screen.dart — a course's weekly appointments (the teacher's course studio).
+//
+//   header   "Appointments <course>" · Add (the one action)
+//   week     the sky block: the seven days in the week's order, a filled day for each that holds an appointment
+//            (its start time under it) and the "repeats every week" note — the screen's one memorable element
+//   list     one paper card per appointment (day · time · delete), in the week's order
+//   empty    "No appointments" with Add; loading: the warm skeleton
+//   add      AddScheduleSheet: day chips · start / end wells · Add (a same-day appointment asks first)
+//
+// TeacherSchedulesView draws all of it from plain values (layout harness, renders); the screen wires the provider.
 library;
 
-import 'package:flutter_education_app/design/app_side_sheet.dart';
-import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_contrast.dart' show ensureContrast;
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppPressScale, AppReveal;
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse, CourseSchedule;
 import 'package:provider/provider.dart';
-import '../../../config/app_config.dart' as Helpers;
+
+import '../../../config/app_config.dart' as helpers;
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/base_page.dart';
-import '../../../utils/widget/primary_button.dart';
-import '../../admin/admin_common.dart';
+import '../../admin/admin_common.dart' show trp;
 import 'schedules_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
-import 'package:flutter_education_app/design/app_notice.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppHeader, AppTime;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
-import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  TeacherSchedulesScreen
 // ══════════════════════════════════════════════════════════════════════════════
@@ -45,249 +52,241 @@ class _TeacherSchedulesScreenState extends State<TeacherSchedulesScreen> {
             .fetchSchedules(widget.course));
   }
 
-
+  Future<void> _confirmDelete(CourseSchedule s) async {
+    final ok = await showAppDialog<bool>(
+      context,
+      title: 'appointment-delete'.tr,
+      icon: Icons.delete_outline_rounded,
+      danger: true,
+      body: Text(trp('appointment_delete_confirm', {'day': s.dayLabel, 'time': AppTime.clock(s.startTime)}), style: AppType.body(context)),
+      actions: [
+        AppButton.secondary(label: 'cancel'.tr, onPressed: () => Navigator.pop(context, false)),
+        AppButton.danger(label: 'delete'.tr, onPressed: () => Navigator.pop(context, true)),
+      ],
+    );
+    if (ok == true && mounted) {
+      context.read<TeacherSchedulesProvider>().removeSchedule(s.id);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-
     final provider = context.watch<TeacherSchedulesProvider>();
+    void add() => TeacherSchedulesScreen.openAddScheduleScreenSheet(context);
     return BasePage(
       key: const ValueKey('teacher_schedules'),
       useWebCard: true,
       width: AppWidth.content,
       appBar: AppHeader(
-        title: '${'appointment'.tr} ${Helpers.AppConfig.lang=='ar'?widget.course.titleAr:widget.course.titleEn}',
-        actions: [_AddBtn(onTap:()=> TeacherSchedulesScreen.openAddScheduleScreenSheet(context))],
+        title: '${'appointment'.tr} ${helpers.AppConfig.lang=='ar'?widget.course.titleAr:widget.course.titleEn}',
+        actions: [AppIconButton(icon: Icons.add_rounded, tooltip: 'add_schedule'.tr, variant: AppIconButtonVariant.tonal, onPressed: add)],
       ),
-      child:
-      SafeArea(top: false, child: Column(children: [
-        // Info banner
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: Container(
-            padding: const EdgeInsets.all(13),
-            decoration: BoxDecoration(
-                color: context.colors.primary.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                    color: context.colors.primary.withValues(alpha: 0.15))),
-            child: Row(children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: context.colors.primary.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child:  Icon(Icons.repeat_rounded,
-                    color: context.colors.primary, size: 15),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'appointment-repeat'.tr,
-                  style: context.colors.caption.copyWith(
-                      color: context.colors.primary, height: 1.5),
-                ),
-              ),
-            ]),
-          ),
+      child: SafeArea(
+        top: false,
+        child: TeacherSchedulesView(
+          schedules: provider.schedules,
+          loading: provider.isLoading && provider.schedules.isEmpty,
+          onAdd: add,
+          onDelete: _confirmDelete,
         ),
-
-        Expanded(
-          child: provider.isLoading && provider.schedules.isEmpty
-              ?  Center(
-              child: AppLoadingIndicator())
-              : provider.schedules.isEmpty
-              ? _ManageEmptyState(onAdd: ()=>TeacherSchedulesScreen.openAddScheduleScreenSheet(context))
-              : _ManageList(schedules: provider.schedules),
-        ),
-      ])),
+      ),
     );
   }
 }
 
-class _ManageList extends StatelessWidget {
+/// The page's body from plain values.
+class TeacherSchedulesView extends StatelessWidget {
+  const TeacherSchedulesView({super.key, required this.schedules, this.loading = false, this.onAdd, this.onDelete});
+
   final List<CourseSchedule> schedules;
-  const _ManageList({required this.schedules});
+  final bool loading;
+  final VoidCallback? onAdd;
+  final ValueChanged<CourseSchedule>? onDelete;
 
-  List<CourseSchedule> get _sorted => [...schedules]..sort((a, b) {
-    final di =
-    slotDayOrder(a.day).compareTo(slotDayOrder(b.day));
-    if (di != 0) return di;
-    return a.startTime.compareTo(b.startTime);
-  });
+  /// In the week's order, then by start time.
+  static List<CourseSchedule> sorted(List<CourseSchedule> all) => [...all]..sort((a, b) {
+        final di = slotDayOrder(a.day).compareTo(slotDayOrder(b.day));
+        return di != 0 ? di : a.startTime.compareTo(b.startTime);
+      });
 
   @override
-  Widget build(BuildContext context) => ListView.separated(
-    padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-    physics: const BouncingScrollPhysics(),
-    itemCount: _sorted.length,
-    separatorBuilder: (_, _) => const SizedBox(height: 10),
-    itemBuilder: (ctx, i) => _ManageCard(schedule: _sorted[i]),
-  );
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
+        final gutter = AppSpace.gutter(box.maxWidth);
+        if (loading) {
+          return Padding(
+            padding: EdgeInsets.fromLTRB(gutter, AppSpace.md, gutter, AppSpace.md),
+            child: const AppListSkeleton(items: 4, withAvatar: true, padding: EdgeInsets.zero),
+          );
+        }
+        if (schedules.isEmpty) {
+          return AppEmpty(
+            icon: Icons.calendar_month_rounded,
+            tone: AppBlockTone.sky,
+            title: 'no-appointment'.tr,
+            message: 'add-weekly-appointment-for-student'.tr,
+            actionLabel: onAdd == null ? null : 'add-weekly-appointment'.tr,
+            onAction: onAdd,
+          );
+        }
+        final list = sorted(schedules);
+        return ListView(
+          padding: EdgeInsets.fromLTRB(gutter, AppSpace.md, gutter, AppSpace.xl),
+          children: [
+            // ONE entrance: the week leads, the list follows it as one piece
+            AppReveal(index: 0, group: 'schedules', child: TeacherWeekBlock(schedules: list)),
+            const SizedBox(height: AppSpace.lg),
+            AppReveal(
+              index: 1,
+              group: 'schedules',
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                for (var i = 0; i < list.length; i++) ...[
+                  if (i > 0) const SizedBox(height: AppSpace.xs),
+                  _AppointmentCard(schedule: list[i], onDelete: onDelete == null ? null : () => onDelete!(list[i])),
+                ],
+              ]),
+            ),
+          ],
+        );
+      });
 }
 
-class _ManageCard extends StatelessWidget {
-  final CourseSchedule schedule;
-  const _ManageCard({required this.schedule});
+/// The week at a glance on the sky block: every day in the week's order, filled where an appointment falls (its
+/// start under it), then the one line that says the appointments repeat every week.
+class TeacherWeekBlock extends StatelessWidget {
+  const TeacherWeekBlock({super.key, required this.schedules});
+  final List<CourseSchedule> schedules;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding:
-    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    decoration: BoxDecoration(
-        color: context.colors.cardBg,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: context.colors.cardShadow),
-    child: Row(children: [
-      // Day badge
-      Container(
-        width: 54,
-        height: 54,
-        decoration: BoxDecoration(
-            gradient: context.colors.primaryGradient,
-            borderRadius: BorderRadius.circular(14)),
-        child: Center(
-          child: Text(
-            slotDayShort(schedule.day),
-            style: TextStyle(
-                color: context.colors.onHero,
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                fontFamily: AppFonts.display),
-            textAlign: TextAlign.center,
-          ),
-        ),
-      ),
-      const SizedBox(width: 14),
-      Expanded(
-        child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(slotDayLabel(schedule.day),
-                  style: context.colors.h3.copyWith(fontSize: 15)),
-              const SizedBox(height: 5),
-              Row(children: [
-                Icon(Icons.access_time_filled_rounded,
-                    size: 14, color: context.colors.primary),
-                const SizedBox(width: 5),
-                Text(
-                    '${AppTime.clock(schedule.startTime)}  —  ${AppTime.clock(schedule.endTime)}',
-                    style: context.colors.label.copyWith(
-                        color: context.colors.textDark, fontSize: 13)),
-              ]),
-            ]),
-      ),
-      // Delete
-      GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => _confirmDelete(context, schedule),
-        child: Container(
-            width: 38,
-            height: 38,
-            margin: const EdgeInsets.all(5),
-            decoration: BoxDecoration(
-                color: context.colors.danger.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                    color: context.colors.danger.withValues(alpha: 0.2))),
-            child:  Icon(Icons.delete_outline_rounded,
-                color: context.colors.danger, size: 18, semanticLabel: 'delete'.tr)),
-      ),
-    ]),
-  );
-
-  Future<void> _confirmDelete(
-      BuildContext ctx, CourseSchedule s) async {
-    final ok = await showDialog<bool>(
-      context: ctx,
-      builder: (BuildContext context) => Directionality(
-          textDirection: Helpers.pageDirection,
-          child: AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-            title:  Text('appointment-delete'.tr,
-                style: TextStyle(
-                    fontFamily: AppFonts.display,
-                    fontWeight: FontWeight.w700)),
-            content: Text(
-                trp('appointment_delete_confirm', {'day': slotDayLabel(s.day), 'time': AppTime.clock(s.startTime)}),
-
-                style: TextStyle(fontFamily: AppFonts.display)),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child:  Text('cancel'.tr,
-                      style: TextStyle(
-                          fontFamily: AppFonts.display,
-                          color: context.colors.textMedium))),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: context.colors.danger,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10))),
-                onPressed: () => Navigator.pop(ctx, true),
-                child:  Text('delete'.tr,
-                    style: TextStyle(
-                        fontFamily: AppFonts.display,
-                        color: context.colors.onHero,
-                        fontWeight: FontWeight.w700)),
-              ),
-            ],
-          )),
-    );
-    if (ok == true && ctx.mounted) {
-      ctx.read<TeacherSchedulesProvider>().removeSchedule(s.id);
+  Widget build(BuildContext context) {
+    final byDay = <String, List<CourseSchedule>>{};
+    for (final s in schedules) {
+      (byDay[s.day.toLowerCase()] ??= []).add(s);
     }
+    return AppBlock(
+      tone: AppBlockTone.sky,
+      child: Builder(builder: (context) {
+        final ink = AppBlock.colorsOf(context);
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            for (final d in kDayOrder) Expanded(child: _DayCell(day: d, slots: byDay[d] ?? const [])),
+          ]),
+          const SizedBox(height: AppSpace.md),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(Icons.repeat_rounded, size: AppIconSize.sm, color: ink.muted),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(child: Text('appointment-repeat'.tr, style: AppType.meta(context).copyWith(color: ink.muted, height: 1.45))),
+          ]),
+        ]);
+      }),
+    );
   }
 }
 
-class _ManageEmptyState extends StatelessWidget {
-  final VoidCallback onAdd;
-  const _ManageEmptyState({required this.onAdd});
+/// A day's column in the week: its short name, a disc (filled emerald when the day holds an appointment, a faint
+/// ring when it is free) and the first start time.
+class _DayCell extends StatelessWidget {
+  const _DayCell({required this.day, required this.slots});
+  final String day;
+  final List<CourseSchedule> slots;
+
+  static const double _disc = AppSpace.xl;
 
   @override
-  Widget build(BuildContext context) =>
-      Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ink = AppBlock.colorsOf(context);
+    final on = slots.isNotEmpty;
+    final full = 'day_$day'.tr;
+    final short = helpers.AppConfig.lang == 'ar' || full.length <= 3 ? full : full.substring(0, 3);
+    final fill = ensureContrast(c.primary, [c.onHero]); // the emerald that carries white ink
+    final label = on ? '$full · ${slots.map((s) => AppTime.clock(s.startTime)).join('، ')}' : full;
+    return Semantics(
+      label: label,
+      excludeSemantics: true,
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(short, maxLines: 1, style: AppType.meta(context).copyWith(color: on ? ink.ink : ink.muted, fontWeight: on ? FontWeight.w600 : FontWeight.w400)),
+        ),
+        const SizedBox(height: AppSpace.xs),
         Container(
-            width: 90,
-            height: 90,
-            decoration: BoxDecoration(
-                gradient: context.colors.primaryGradient,
-                shape: BoxShape.circle,
-                boxShadow: context.colors.primaryShadow),
-            child: Icon(Icons.calendar_month_rounded,
-                color: context.colors.onHero, size: 44)),
-        const SizedBox(height: 20),
-        Text('no-appointment'.tr, style: context.colors.h3),
-        const SizedBox(height: 6),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 40),
-          child: Text(
-            'add-weekly-appointment-for-student'.tr,
-            style: context.colors.caption,
-            textAlign: TextAlign.center,
+          width: _disc,
+          height: _disc,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: on ? fill : null,
+            border: on ? null : Border.all(color: ink.faint.withValues(alpha: 0.5), width: AppBorder.hairline),
           ),
+          child: on
+              ? (slots.length > 1
+                  ? Text('${slots.length}', style: AppType.label(context).copyWith(color: c.onHero, fontWeight: FontWeight.w600))
+                  : Icon(Icons.check_rounded, size: AppIconSize.sm, color: c.onHero))
+              : null,
         ),
-        const SizedBox(height: 24),
-        GestureDetector(
-          onTap: onAdd,
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 28, vertical: 14),
-            decoration: BoxDecoration(
-                gradient: context.colors.primaryGradient,
-                borderRadius: BorderRadius.circular(26),
-                boxShadow: context.colors.primaryShadow),
-            child:  Text('add-weekly-appointment'.tr,
-                style: TextStyle(
-                    color: context.colors.onHero,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: AppFonts.display,
-                    fontSize: 14)),
-          ),
+        const SizedBox(height: AppSpace.xxs),
+        SizedBox(
+          height: AppIconSize.md,
+          child: on
+              ? FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(AppTime.clock(slots.first.startTime),
+                      maxLines: 1, style: AppType.meta(context).copyWith(color: ink.ink, fontFeatures: const [FontFeature.tabularFigures()])),
+                )
+              : null,
         ),
-      ]));
+      ]),
+    );
+  }
+}
+
+/// One weekly appointment: the day on its sky chip, the day's name (editorial), the time, Delete.
+class _AppointmentCard extends StatelessWidget {
+  const _AppointmentCard({required this.schedule, this.onDelete});
+  final CourseSchedule schedule;
+  final VoidCallback? onDelete;
+
+  static const double _chip = AppTouch.min;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final sky = AppBlockColors.of(context, AppBlockTone.sky);
+    final day = schedule.dayLabel;
+    return AppCard(
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.xs, AppSpace.sm),
+      child: Row(children: [
+        Container(
+          width: _chip,
+          height: _chip,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.all(AppSpace.xxs),
+          decoration: BoxDecoration(color: sky.surface, borderRadius: AppRadius.controlAll),
+          child: Icon(Icons.event_repeat_rounded, size: AppIconSize.md, color: sky.ink),
+        ),
+        const SizedBox(width: AppSpace.sm),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text(day, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+            const SizedBox(height: AppSpace.xxs / 2),
+            Row(children: [
+              Icon(Icons.schedule_rounded, size: AppIconSize.xs, color: c.textLight),
+              const SizedBox(width: AppSpace.xxs),
+              Flexible(
+                child: Text(
+                  '${AppTime.clock(schedule.startTime)} – ${AppTime.clock(schedule.endTime)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.row(context).copyWith(color: c.textMedium, fontFeatures: const [FontFeature.tabularFigures()]),
+                ),
+              ),
+            ]),
+          ]),
+        ),
+        if (onDelete != null) AppIconButton(icon: Icons.delete_outline_rounded, tooltip: 'delete'.tr, onPressed: onDelete),
+      ]),
+    );
+  }
 }
 
 // ── Add Schedule Sheet ────────────────────────────────────────────────────────
@@ -331,39 +330,16 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
         context.read<TeacherSchedulesProvider>().schedules;
     final conflict = existing.any((s) => s.day == _day);
     if (conflict) {
-      final ok = await showDialog<bool>(
-          context: context,
-          builder: (_) => Directionality(
-              textDirection: Helpers.pageDirection,
-              child: AlertDialog(
-                title:  Text('duplicate-schedule'.tr,
-                    style: TextStyle(
-                        fontFamily: AppFonts.display,
-                        fontWeight: FontWeight.w700)),
-                content:  Text(
-                    'same-day-schedule-exists'.tr,
-                    style: TextStyle(fontFamily: AppFonts.display)),
-                actions: [
-                  TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child:  Text('cancel'.tr,
-                          style: TextStyle(
-                              fontFamily: AppFonts.display,
-                              color: context.colors.textMedium))),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: context.colors.primary,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10))),
-                    onPressed: () => Navigator.pop(context, true),
-                    child:  Text('add'.tr,
-                        style: TextStyle(
-                            fontFamily: AppFonts.display,
-                            color: context.colors.onHero,
-                            fontWeight: FontWeight.w700)),
-                  ),
-                ],
-              )));
+      final ok = await showAppDialog<bool>(
+        context,
+        title: 'duplicate-schedule'.tr,
+        icon: Icons.event_busy_rounded,
+        body: Text('same-day-schedule-exists'.tr, style: AppType.body(context)),
+        actions: [
+          AppButton.secondary(label: 'cancel'.tr, onPressed: () => Navigator.pop(context, false)),
+          AppButton.primary(label: 'add'.tr, onPressed: () => Navigator.pop(context, true)),
+        ],
+      );
       if (ok != true || !mounted) return;
     }
 
@@ -375,7 +351,8 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
         endTime: _fmt(_end));
     if (mounted) {
       Navigator.pop(context);
-      showAppNotice(r != null ? 'appointment-added-successfully'.tr : 'something-went-wrong'.tr, error: true);
+      // the notice tells which way it went (it was drawn as an error even when the appointment was added)
+      showAppNotice(r != null ? 'appointment-added-successfully'.tr : 'something-went-wrong'.tr, error: r == null);
     }
   }
 
@@ -384,74 +361,36 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
     final loading =
         context.watch<TeacherSchedulesProvider>().isLoading;
     return Directionality(
-      textDirection: Helpers.pageDirection,
+      textDirection: helpers.pageDirection,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+        padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xs, AppSpace.lg, AppSpace.lg),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('add-weekly-appointment'.tr, style: context.colors.h2),
-            const SizedBox(height: 20),
+            Semantics(header: true, child: Text('add-weekly-appointment'.tr, style: AppType.headline(context))),
+            const SizedBox(height: AppSpace.lg),
 
             // Day chips
-            Text('today'.tr,
-                style: context.colors.label.copyWith(
-                    color: context.colors.textDark,
-                    fontWeight: FontWeight.w700)),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 44,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _days.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (_, i) {
-                  final (v, lKey) = _days[i];
-                  final l = lKey.tr;
-                  final sel = _day == v;
-                  return GestureDetector(
-                    onTap: () { if(mounted) setState(() => _day = v);},
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(
-                        gradient:
-                        sel ? context.colors.primaryGradient : null,
-                        color:
-                        sel ? null : context.colors.background,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(
-                            color: sel
-                                ? Colors.transparent
-                                : context.colors.divider),
-                        boxShadow:
-                        sel ? context.colors.primaryShadow : null,
-                      ),
-                      child: Text(l,
-                          style: context.colors.label.copyWith(
-                              color: sel
-                                  ? context.colors.onHero
-                                  : context.colors.textMedium,
-                              fontWeight: sel
-                                  ? FontWeight.w700
-                                  : FontWeight.w500)),
-                    ),
-                  );
-                },
-              ),
+            AppFieldLabel('today'.tr),
+            Wrap(
+              spacing: AppSpace.xs,
+              runSpacing: AppSpace.xs,
+              children: [
+                for (final (v, lKey) in _days)
+                  AppChoiceChip(label: lKey.tr, selected: _day == v, onTap: () { if (mounted) setState(() => _day = v); }),
+              ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpace.lg),
 
             // Time pickers
-            Row(children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(
                   child: _TimePicker(
                       label: 'start-time'.tr,
                       time: _start,
                       onTap: () => _pick(true))),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpace.sm),
               Expanded(
                   child: _TimePicker(
                       label: 'end-time'.tr,
@@ -460,15 +399,15 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
                       hasError: !_valid)),
             ]),
             if (!_valid) ...[
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpace.xs),
               Text('end-time-must-be-after-start-time'.tr,
-                  style: context.colors.caption
-                      .copyWith(color: context.colors.danger)),
+                  style: AppType.meta(context).copyWith(color: context.colors.danger, fontWeight: FontWeight.w500)),
             ],
-            const SizedBox(height: 24),
-            PrimaryButton(
+            const SizedBox(height: AppSpace.lg),
+            AppButton.primary(
                 label: 'add-appointment'.tr,
-                isLoading: loading,
+                expand: true,
+                busy: loading,
                 onPressed: _valid ? _submit : null),
           ],
         ),
@@ -477,6 +416,7 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
   }
 }
 
+/// A time well (the field language: label above, the warm input well, the danger hairline on an error).
 class _TimePicker extends StatelessWidget {
   final String    label;
   final TimeOfDay time;
@@ -489,50 +429,45 @@ class _TimePicker extends StatelessWidget {
         this.hasError = false});
 
   @override
-  Widget build(BuildContext context) =>
-      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label,
-            style: context.colors.label.copyWith(
-                color: context.colors.textDark,
-                fontWeight: FontWeight.w700)),
-        const SizedBox(height: 8),
-        GestureDetector(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-                color: context.colors.background,
-                borderRadius:
-                BorderRadius.circular(context.colors.radiusMedium),
-                border: Border.all(
-                    color: hasError
-                        ? context.colors.danger
-                        : context.colors.divider,
-                    width: hasError ? 1.5 : 1)),
-            child: Row(children: [
-              Icon(Icons.access_time_rounded,
-                  size: 18,
-                  color:
-                  hasError ? context.colors.danger : context.colors.primary),
-              const SizedBox(width: 8),
-              Text(
-                  AppTime.clockMinutes(time.hour * 60 + time.minute),
-                  style: context.colors.h3.copyWith(fontSize: 18)),
-            ]),
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final value = AppTime.clockMinutes(time.hour * 60 + time.minute);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+      AppFieldLabel(label),
+      Semantics(
+        button: true,
+        label: '$label $value',
+        excludeSemantics: true,
+        child: AppPressScale(
+          child: Material(
+            color: c.inputBg,
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.controlAll,
+              side: BorderSide(color: hasError ? c.danger : c.divider, width: hasError ? AppBorder.strong : AppBorder.hairline),
+            ),
+            child: InkWell(
+              onTap: onTap,
+              customBorder: RoundedRectangleBorder(borderRadius: AppRadius.controlAll),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: AppTouch.min),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+                  child: Row(children: [
+                    Icon(Icons.access_time_rounded, size: AppIconSize.md, color: hasError ? c.danger : c.textLight),
+                    const SizedBox(width: AppSpace.xs),
+                    Flexible(
+                      child: Text(value,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: appFieldTextStyle(context).copyWith(fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()])),
+                    ),
+                  ]),
+                ),
+              ),
+            ),
           ),
         ),
-      ]);
-}
-
-class _AddBtn extends StatelessWidget {
-  final VoidCallback onTap;
-  const _AddBtn({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) => IconButton(
-    tooltip: 'add_schedule'.tr,
-    onPressed: onTap,
-    icon: Icon(Icons.add_rounded, color: context.colors.primary, size: 24),
-  );
+      ),
+    ]);
+  }
 }
