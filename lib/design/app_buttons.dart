@@ -14,8 +14,9 @@
 // the button, a canvas-coloured gap between. busy draws a spinner over the label, which stays laid out, so the
 // button never changes width; taps are ignored (no double submit). A disabled filled button is a flat neutral well
 // with muted ink (no washed-out brand colour); the unfilled variants fade to 45 %. The label is one line (ellipsis).
-// Colour: the fills are the emerald primary (never a blue, never a decorative gradient) and the danger red; no
-// shadow — a button does not float (system.md §4, depth is tone first).
+// Colour (D-649): primary is the brand gradient primary → primary_dark on a soft primary-tinted shadow (a press
+// deepens it); accent is the gold highlight CTA (accent2 → lighter, dark ink), sparingly; danger is the solid red;
+// secondary, tonal and ghost stay flat.
 library;
 
 import 'package:flutter/material.dart';
@@ -24,10 +25,11 @@ import '../config/theme/theme_config_provider.dart';
 import 'app_badges.dart';
 import 'app_charts.dart' show appInk;
 import 'app_contrast.dart' show ensureContrast;
+import 'app_gradients.dart' show AppBrandLayer;
 import 'app_motion_kit.dart';
 import 'app_tokens.dart';
 
-enum AppButtonVariant { primary, secondary, tonal, ghost, danger }
+enum AppButtonVariant { primary, secondary, tonal, ghost, danger, accent }
 
 enum AppButtonSize { sm, md, lg }
 
@@ -81,6 +83,30 @@ class AppButton extends StatefulWidget {
             onPressed: onPressed,
             icon: icon,
             trailingIcon: trailingIcon,
+            size: size,
+            busy: busy,
+            expand: expand,
+            tooltip: tooltip);
+
+  /// The accent / premium button (D-649): a gold gradient with a dark ink, for a HIGHLIGHT call to action only — Go
+  /// live on the hero, Upgrade, a featured offer. At most one per screen; the main action stays [AppButton.primary].
+  const AppButton.accent({
+    Key? key,
+    required String label,
+    required VoidCallback? onPressed,
+    IconData? icon,
+    IconData? trailingIcon,
+    AppButtonSize size = AppButtonSize.md,
+    bool busy = false,
+    bool expand = false,
+    String? tooltip,
+  }) : this(
+            key: key,
+            label: label,
+            onPressed: onPressed,
+            icon: icon,
+            trailingIcon: trailingIcon,
+            variant: AppButtonVariant.accent,
             size: size,
             busy: busy,
             expand: expand,
@@ -205,7 +231,7 @@ class _AppButtonState extends State<AppButton> {
     final c = context.colors;
     final v = widget.variant;
     final outlineDanger = v == AppButtonVariant.danger && widget.dangerOutline;
-    final filled = (v == AppButtonVariant.primary || v == AppButtonVariant.danger) && !outlineDanger;
+    final filled = (v == AppButtonVariant.primary || v == AppButtonVariant.danger || v == AppButtonVariant.accent) && !outlineDanger;
     final h = _heightOf(widget.size);
     final sm = widget.size == AppButtonSize.sm;
     final disabled = widget.onPressed == null && !widget.busy;
@@ -222,8 +248,10 @@ class _AppButtonState extends State<AppButton> {
         Color.alphaBlend(Color.lerp(c.primaryTint, c.primary, 0.12)!, base),
       ],
     ]);
+    final brand = AppBrandLayer.of(context);
     Color ink = switch (v) {
-      AppButtonVariant.primary => c.onHero,
+      AppButtonVariant.primary => brand.buttonInk,
+      AppButtonVariant.accent => brand.goldInk,
       AppButtonVariant.danger => outlineDanger ? appInk(context, c.danger) : c.onHero,
       AppButtonVariant.secondary => c.textDark,
       AppButtonVariant.tonal => tonalInk,
@@ -232,11 +260,19 @@ class _AppButtonState extends State<AppButton> {
     if (disabled && filled) ink = c.textMedium;
 
     Color? fill;
+    Gradient? gradient;
+    List<BoxShadow>? shadow;
     BoxBorder? border;
     final inkHairline = Color.lerp(c.divider, c.textDark, 0.35)!;
+    final hover = _hover && _enabled;
     switch (v) {
       case AppButtonVariant.primary:
-        fill = down ? Color.lerp(c.primary, c.primaryDark, 0.5) : _hover && _enabled ? Color.lerp(c.primary, c.primaryDark, 0.22) : c.primary;
+        // D-649: primary → primary_dark on a soft primary-tinted shadow; hover and press deepen it
+        gradient = AppBrandLayer.button(context, hover: hover, pressed: down);
+        shadow = AppBrandLayer.buttonShadow(context, pressed: down);
+      case AppButtonVariant.accent:
+        gradient = AppBrandLayer.gold(context, hover: hover, pressed: down);
+        shadow = AppBrandLayer.goldShadow(context, pressed: down);
       case AppButtonVariant.danger:
         if (outlineDanger) {
           fill = lit ? c.dangerTint : c.cardBg;
@@ -255,6 +291,8 @@ class _AppButtonState extends State<AppButton> {
     if (disabled && filled) {
       // a flat neutral well: the brand colour is never washed out (an unreadable half-transparent fill)
       fill = c.inputBg;
+      gradient = null;
+      shadow = null;
       border = Border.all(color: c.divider, width: AppBorder.hairline);
     }
 
@@ -300,12 +338,13 @@ class _AppButtonState extends State<AppButton> {
       curve: AppEase.out,
       height: h,
       decoration: BoxDecoration(
-        color: fill,
+        color: gradient == null ? fill : null,
+        gradient: gradient,
         borderRadius: radius,
         border: border,
         boxShadow: _focus && _enabled && appKeyboardFocus()
             ? appFocusRing(context, ring: v == AppButtonVariant.danger ? appInk(context, c.danger) : null)
-            : null,
+            : shadow,
       ),
       padding: EdgeInsetsDirectional.symmetric(horizontal: sm ? AppSpace.md : AppSpace.lg),
       child: body,
@@ -393,8 +432,14 @@ class _AppIconButtonState extends State<AppIconButton> {
             : lit
                 ? c.textDark
                 : c.textMedium;
+    // D-649: filled wears the brand gradient, tonal (a primary action's icon chip) a subtle tint gradient at rest
+    final Gradient? gradient = filled && enabled
+        ? AppBrandLayer.button(context, hover: lit && !_pressed, pressed: _pressed)
+        : tonal && !lit
+            ? AppBrandLayer.iconTint(context)
+            : null;
     final Color? fill = filled
-        ? (_pressed && enabled ? Color.lerp(c.primary, c.primaryDark, 0.5) : lit ? Color.lerp(c.primary, c.primaryDark, 0.22) : c.primary)
+        ? c.primary
         : tonal
             ? (lit ? Color.lerp(c.primaryTint, c.primary, 0.08) : c.primaryTint)
             : (lit ? c.inputBg : null);
@@ -406,7 +451,8 @@ class _AppIconButtonState extends State<AppIconButton> {
       height: AppTouch.min - AppSpace.xs,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: fill,
+        color: gradient == null ? fill : null,
+        gradient: gradient,
         borderRadius: AppRadius.chipAll,
         boxShadow: _focus && enabled && appKeyboardFocus() ? appFocusRing(context) : null,
       ),

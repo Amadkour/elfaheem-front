@@ -4,7 +4,7 @@
 // subject (today's lesson, your streak, the next session, a category) — instead of accents sprinkled on cards.
 //
 //   AppBlock(tone: AppBlockTone.peach, child: …)              a full-width tinted block, radius 24, padding 24
-//   AppBlock(tone: AppBlockTone.forest, hero: true, child: …) THE home hero (D-630): deep forest, cream ink, 32 on top
+//   AppBlock(tone: AppBlockTone.forest, hero: true, child: …) THE home hero (D-630, D-649): forest → emerald gradient + gold glow, cream ink, 32 on top
 //   AppBlock(tone: AppBlockTone.sage, child: …)               schedule / information / a calm empty state
 //   AppBlock(tone: AppBlockTone.forKey(course.id), onTap: …)  a category keeps its tone everywhere
 //   AppBlock.colorsOf(context).accentInk(c.accent2)           gold / success / warning as TEXT inside a block
@@ -24,6 +24,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../config/theme/theme_config_provider.dart';
+import 'app_gradients.dart' show AppBrandLayer, AppPattern, AppPatternStyle;
 import 'app_tokens.dart';
 
 /// A block's tint.
@@ -123,8 +124,9 @@ class AppBlockColors {
       return AppBlockColors(
         surface: surface,
         ink: c.heroInk,
-        muted: c.heroInkMuted,
-        faint: c.heroInkFaint,
+        // D-649: the hero is a gradient now (forest → emerald, a gold glow): its inks are checked on every stop
+        muted: AppBrandLayer.of(context).forestMuted,
+        faint: AppBrandLayer.of(context).forestFaint,
         // dark mode: a hairline of the cream so the lifted forest still has an edge on the dark canvas
         border: c.isDark ? c.heroInk.withValues(alpha: 0.10) : null,
         palette: c,
@@ -158,9 +160,13 @@ class AppBlock extends StatelessWidget {
     this.hero = false,
     this.onTap,
     this.semanticLabel,
+    this.pattern = false,
   });
 
   final AppBlockTone tone;
+
+  /// forest only: the faint brand lattice over the gradient (the auth brand panel, D-649).
+  final bool pattern;
   final Widget child;
 
   /// Defaults to [AppSpace.block] (24 around), or [AppSpace.hero] (32 on top) for a [hero] block.
@@ -191,6 +197,24 @@ class AppBlock extends StatelessWidget {
         child: IconTheme.merge(data: IconThemeData(color: colors.ink), child: child),
       ),
     );
+    final forest = tone == AppBlockTone.forest;
+    if (forest) {
+      // D-649: the hero is forest → emerald with a soft gold light in the top-end corner (and, on a brand panel, the
+      // faint lattice); static, so Reduce motion has nothing to park
+      body = Ink(
+        decoration: BoxDecoration(gradient: AppBrandLayer.forest(context)),
+        child: Stack(fit: StackFit.passthrough, children: [
+          Positioned.fill(
+            child: IgnorePointer(child: DecoratedBox(decoration: BoxDecoration(gradient: AppBrandLayer.forestGlow(context)))),
+          ),
+          if (pattern)
+            Positioned.fill(
+              child: AppPattern(color: AppBrandLayer.of(context).sidePattern, style: AppPatternStyle.lattice),
+            ),
+          body,
+        ]),
+      );
+    }
     if (onTap != null) {
       body = InkWell(onTap: onTap, borderRadius: radius, child: body);
     }
@@ -198,7 +222,7 @@ class AppBlock extends StatelessWidget {
     body = SizedBox(
       width: double.infinity,
       child: _maybeLift(paper, radius, Material(
-        color: colors.surface,
+        color: forest ? Colors.transparent : colors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: radius,
           side: colors.border == null ? BorderSide.none : BorderSide(color: colors.border!, width: AppBorder.hairline),

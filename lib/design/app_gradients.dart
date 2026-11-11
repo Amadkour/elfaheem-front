@@ -17,11 +17,16 @@
 //   mesh     the header band, the sidebar, a highlighted card (soft lights of one hue; content uses the on-hero ink)
 //   meshWash ordinary cards and panels (a faint wash; content keeps the normal ink)
 //   blend    buttons, chips, pills, selected tabs (a three-shade angled blend)
+// D-649 (the brand gradient layer, [AppBrandLayer] at the end of this file): the shell's sidebar is a deep green
+// gradient card with a faint lattice; the primary button and the selected tab / pill / chip are primary to
+// primary_dark; at most ONE gold highlight CTA per screen (Go live, Upgrade, a featured offer) with a dark ink; the
+// home hero is forest to emerald with a soft gold glow; the canvas keeps its server colour under a faint dot pattern.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
+import 'app_contrast.dart';
 import 'app_mesh.dart';
 import 'app_tokens.dart';
 
@@ -144,4 +149,346 @@ class AppGradientText extends StatelessWidget {
       child: Text(text, style: s, maxLines: maxLines, overflow: TextOverflow.ellipsis),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// D-649 — the brand gradient layer: the deep green sidebar, the gradient primary button, the gold highlight CTA, the
+// forest → emerald hero with a gold glow, and the faint geometric pattern. Every colour is derived here from the
+// server's theme roles (primary, primary_dark, accent2, accent / accent1, on_hero, background); no new server keys.
+// Every ink is checked (ensureContrast) against BOTH ends of the gradient it sits on, in both modes. Gradients are
+// static; they mirror in Arabic (AlignmentDirectional).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// The resolved colours of the brand layer for one theme and mode. Read it through [AppBrandLayer.of]; widgets use
+/// the gradient roles of [AppBrandLayer] and the inks here.
+@immutable
+class BrandLayer {
+  const BrandLayer._({
+    required this.sidebar,
+    required this.sideInk,
+    required this.sideMuted,
+    required this.sideItem,
+    required this.sideActiveFill,
+    required this.sideActiveInk,
+    required this.sideIndicator,
+    required this.sideHover,
+    required this.sideGlass,
+    required this.sideGlassBorder,
+    required this.sidePattern,
+    required this.button,
+    required this.buttonHover,
+    required this.buttonPressed,
+    required this.buttonInk,
+    required this.gold,
+    required this.goldHover,
+    required this.goldPressed,
+    required this.goldInk,
+    required this.forest,
+    required this.forestGlow,
+    required this.forestMuted,
+    required this.forestFaint,
+    required this.pagePattern,
+  });
+
+  /// The sidebar's two stops, top → bottom: primary_dark → a deeper forest (primary_dark darkened).
+  final List<Color> sidebar;
+
+  /// Titles and the person's name on the sidebar (the on-hero ink).
+  final Color sideInk;
+
+  /// Section labels on the sidebar: the on-hero ink, muted, AA on both stops.
+  final Color sideMuted;
+
+  /// An idle tab's icon and label on the sidebar.
+  final Color sideItem;
+
+  /// The open tab's soft glass pill.
+  final Color sideActiveFill;
+
+  /// The open tab's cream ink (accent1), AA on the glass over both stops.
+  final Color sideActiveInk;
+
+  /// The 3 px gold bar on the open tab's start edge (non-text: 3:1).
+  final Color sideIndicator;
+
+  /// Hover / focus wash of a tab.
+  final Color sideHover;
+
+  /// The person box at the foot (glass) and its hairline.
+  final Color sideGlass;
+  final Color sideGlassBorder;
+
+  /// The faint geometric pattern over the sidebar and the brand panels (about 4 %).
+  final Color sidePattern;
+
+  /// The primary button: primary → primary_dark, and its hover / pressed shades.
+  final List<Color> button;
+  final List<Color> buttonHover;
+  final List<Color> buttonPressed;
+  final Color buttonInk;
+
+  /// The accent / premium button (highlight CTAs only): accent2 → accent2 lightened, with a DARK ink.
+  final List<Color> gold;
+  final List<Color> goldHover;
+  final List<Color> goldPressed;
+  final Color goldInk;
+
+  /// The home hero: forest → emerald, and the soft gold light in its top-end corner.
+  final List<Color> forest;
+  final Color forestGlow;
+
+  /// The hero's secondary / caption ink, AA over both stops and the glow.
+  final Color forestMuted;
+  final Color forestFaint;
+
+  /// The page canvas's very faint dot pattern.
+  final Color pagePattern;
+
+  static final Map<int, BrandLayer> _cache = {};
+
+  /// The layer for [c]'s palette and mode (cached per palette).
+  static BrandLayer of(ThemeConfigProvider c) {
+    final key = Object.hashAll([
+      c.primary, c.primaryDark, c.accent, c.accent2, c.onHero, c.heroInk, c.heroInkMuted, c.heroInkFaint,
+      c.blockForest, c.textDark, c.isDark, c.heroGlass, c.cardBg, c.shadowTone,
+    ]);
+    final hit = _cache[key];
+    if (hit != null) return hit;
+    if (_cache.length > 8) _cache.clear();
+    return _cache[key] = _derive(c);
+  }
+
+  static Color _l(Color c, double factor) {
+    final h = HSLColor.fromColor(c.withValues(alpha: 1));
+    return h.withLightness((h.lightness * factor).clamp(0.0, 1.0)).toColor();
+  }
+
+  static BrandLayer _derive(ThemeConfigProvider c) {
+    final dark = c.isDark;
+    final ink = c.onHero;
+    Color under(Color bg, double min) => ensureContrast(bg, [ink], min: min);
+
+    // ── sidebar: primary_dark → deeper forest; dark mode deeper still ──
+    final sTop = under(dark ? _l(c.primaryDark, 0.72) : c.primaryDark, 7);
+    final sBottom = under(_l(sTop, dark ? 0.55 : 0.62), 7);
+    final sidebar = [sTop, sBottom];
+    final glass = c.heroGlass;
+    final glassOver = [for (final s in sidebar) Color.alphaBlend(glass, s)];
+    final hover = ink.withValues(alpha: 0.08);
+    final hoverOver = [for (final s in sidebar) Color.alphaBlend(hover, s)];
+    Color onSide(double a) => ensureContrast(Color.alphaBlend(ink.withValues(alpha: a), sBottom), [...sidebar, ...hoverOver]);
+
+    // ── primary button: primary → primary_dark, diagonal; dark mode a shade deeper ──
+    final bStart = under(dark ? Color.lerp(c.primary, c.primaryDark, 0.2)! : c.primary, 5);
+    final bEnd = under(dark ? _l(c.primaryDark, 0.82) : c.primaryDark, 5);
+    final button = [bStart, bEnd];
+    final buttonHover = [for (final s in button) c.heroEnd(s, 0.08)];
+    final buttonPressed = [for (final s in button) c.heroEnd(s, 0.18)];
+
+    // ── gold: accent2 → accent2 lightened, a deep forest ink (white on gold fails) ──
+    final goldInkBase = _l(c.primaryDark, dark ? 0.42 : 0.5);
+    Color overInk(Color bg) => ensureContrast(bg, [goldInkBase], min: 4.8);
+    final gStart = overInk(dark ? c.heroEnd(c.accent2, 0.06) : c.accent2);
+    final gEnd = overInk(Color.lerp(c.accent2, c.accent, dark ? 0.3 : 0.45)!);
+    final gold = [gStart, gEnd];
+    final goldHover = [for (final s in gold) overInk(c.heroEnd(s, 0.05))];
+    final goldPressed = [for (final s in gold) overInk(c.heroEnd(s, 0.12))];
+
+    // ── hero: forest → emerald, the cream ink kept at 7:1 on both ends; a gold glow as strong as that allows ──
+    final fStart = c.blockForest;
+    var fEnd = fStart;
+    for (var t = dark ? 0.32 : 0.75; t > 0; t -= 0.02) {
+      final e = Color.lerp(fStart, c.primary, t)!;
+      if (contrastRatio(c.heroInk, e) >= 7 && contrastRatio(ink, e) >= 7) {
+        fEnd = e;
+        break;
+      }
+    }
+    final forest = [fStart, fEnd];
+    var a = dark ? 0.08 : 0.2;
+    bool weak(double a) => forest.any((s) {
+          final lit = Color.alphaBlend(c.accent2.withValues(alpha: a), s);
+          return contrastRatio(c.heroInk, lit) < 6.5 || contrastRatio(ink, lit) < 6.5;
+        });
+    while (a > 0 && weak(a)) {
+      a -= 0.02;
+    }
+    final glow = c.accent2.withValues(alpha: a.clamp(0.0, 1.0));
+    final heroSurfaces = [...forest, for (final s in forest) Color.alphaBlend(glow, s)];
+
+    return BrandLayer._(
+      sidebar: sidebar,
+      sideInk: ensureContrast(ink, [...sidebar, ...glassOver]),
+      sideMuted: onSide(0.64),
+      sideItem: onSide(0.82),
+      sideActiveFill: glass,
+      sideActiveInk: ensureContrast(c.accent, glassOver),
+      sideIndicator: ensureContrast(Color.lerp(c.accent2, c.accent, 0.2)!, glassOver, min: 3),
+      sideHover: hover,
+      sideGlass: ink.withValues(alpha: 0.10),
+      sideGlassBorder: ink.withValues(alpha: 0.14),
+      sidePattern: ink.withValues(alpha: 0.045),
+      button: button,
+      buttonHover: buttonHover,
+      buttonPressed: buttonPressed,
+      buttonInk: ensureContrast(ink, [...button, ...buttonHover, ...buttonPressed]),
+      gold: gold,
+      goldHover: goldHover,
+      goldPressed: goldPressed,
+      goldInk: ensureContrast(goldInkBase, [...gold, ...goldHover, ...goldPressed]),
+      forest: forest,
+      forestGlow: glow,
+      forestMuted: ensureContrast(c.heroInkMuted, heroSurfaces),
+      forestFaint: ensureContrast(c.heroInkFaint, heroSurfaces),
+      pagePattern: c.textDark.withValues(alpha: dark ? 0.035 : 0.045),
+    );
+  }
+}
+
+/// The D-649 roles, as ready gradients and shadows. Widgets read these, never a hand-built LinearGradient.
+abstract final class AppBrandLayer {
+  static BrandLayer of(BuildContext context) => BrandLayer.of(context.colors);
+
+  static LinearGradient _diag(List<Color> s) => LinearGradient(
+        begin: AlignmentDirectional.topStart,
+        end: AlignmentDirectional.bottomEnd,
+        colors: s,
+      );
+
+  /// The sidebar card: vertical, primary_dark → deep forest.
+  static LinearGradient sidebar(BuildContext context) => LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: of(context).sidebar,
+      );
+
+  /// The primary button / the selected tab, pill or chip: primary → primary_dark, diagonal (mirrors in Arabic).
+  static LinearGradient button(BuildContext context, {bool hover = false, bool pressed = false}) {
+    final l = of(context);
+    return _diag(pressed ? l.buttonPressed : hover ? l.buttonHover : l.button);
+  }
+
+  /// The accent / premium button (Go live on the hero, Upgrade, a featured offer): accent2 → accent2 lightened.
+  static LinearGradient gold(BuildContext context, {bool hover = false, bool pressed = false}) {
+    final l = of(context);
+    return _diag(pressed ? l.goldPressed : hover ? l.goldHover : l.gold);
+  }
+
+  /// The home hero: forest at the start → emerald at the end.
+  static LinearGradient forest(BuildContext context) => _diag(of(context).forest);
+
+  /// The soft gold light in the hero's top-end corner.
+  static RadialGradient forestGlow(BuildContext context) {
+    final g = of(context).forestGlow;
+    return RadialGradient(
+      center: AlignmentDirectional.topEnd.resolve(Directionality.maybeOf(context) ?? TextDirection.ltr),
+      radius: 0.9,
+      colors: [g, g.withValues(alpha: 0)],
+    );
+  }
+
+  /// The tint of a primary action's icon chip: primary_tint → a lighter tint (translucent, so it sits on any surface
+  /// the flat tint did; its ink, [iconTintInk], is checked on the stronger end).
+  static LinearGradient iconTint(BuildContext context) {
+    final t = context.colors.primaryTint;
+    return _diag([t, t.withValues(alpha: t.a * 0.45)]);
+  }
+
+  /// The ink on [iconTint].
+  static Color iconTintInk(BuildContext context) {
+    final c = context.colors;
+    return ensureContrast(c.primary, [Color.alphaBlend(c.primaryTint, c.cardBg)]);
+  }
+
+  /// The soft primary-tinted shadow under a gradient button (smaller when pressed).
+  static List<BoxShadow> buttonShadow(BuildContext context, {bool pressed = false}) {
+    final c = context.colors;
+    final tone = c.isDark ? c.shadowTone : of(context).button.last;
+    return [
+      BoxShadow(
+        color: tone.withValues(alpha: c.isDark ? 0.34 : (pressed ? 0.16 : 0.24)),
+        blurRadius: pressed ? 6 : 14,
+        offset: Offset(0, pressed ? 2 : 5),
+      ),
+    ];
+  }
+
+  /// The warm shadow under the gold button.
+  static List<BoxShadow> goldShadow(BuildContext context, {bool pressed = false}) {
+    final c = context.colors;
+    final tone = c.isDark ? c.shadowTone : of(context).gold.first;
+    return [
+      BoxShadow(
+        color: tone.withValues(alpha: c.isDark ? 0.34 : (pressed ? 0.2 : 0.3)),
+        blurRadius: pressed ? 6 : 14,
+        offset: Offset(0, pressed ? 2 : 5),
+      ),
+    ];
+  }
+}
+
+/// The two shapes of [AppPattern]: [dots] for the page canvas, [lattice] (staggered small diamonds) for the dark
+/// brand surfaces.
+enum AppPatternStyle { dots, lattice }
+
+/// A very faint static pattern painted behind [child] (or alone, filling its box): no image asset, no animation, so
+/// Reduce motion has nothing to park. Purely decorative: no semantics, no hit testing.
+class AppPattern extends StatelessWidget {
+  const AppPattern({super.key, required this.color, this.style = AppPatternStyle.dots, this.child});
+
+  final Color color;
+  final AppPatternStyle style;
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    final paint = IgnorePointer(
+      child: ExcludeSemantics(
+        child: RepaintBoundary(
+          child: CustomPaint(painter: _PatternPainter(color: color, style: style), size: Size.infinite),
+        ),
+      ),
+    );
+    if (child == null) return paint;
+    return Stack(fit: StackFit.passthrough, children: [Positioned.fill(child: paint), child!]);
+  }
+}
+
+class _PatternPainter extends CustomPainter {
+  _PatternPainter({required this.color, required this.style});
+
+  final Color color;
+  final AppPatternStyle style;
+
+  /// The grid step: a dot every 22 px on the canvas, a diamond every 26 px on the brand surfaces.
+  static const double _dotStep = 22, _latticeStep = 26, _dot = 1, _diamond = 2.2;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty || color.a == 0) return;
+    final p = Paint()..color = color;
+    final lattice = style == AppPatternStyle.lattice;
+    final step = lattice ? _latticeStep : _dotStep;
+    final path = Path();
+    var row = 0;
+    for (var y = step / 2; y < size.height; y += step, row++) {
+      final shift = row.isOdd ? step / 2 : 0.0;
+      for (var x = step / 2 + shift; x < size.width; x += step) {
+        if (lattice) {
+          path
+            ..moveTo(x, y - _diamond)
+            ..lineTo(x + _diamond, y)
+            ..lineTo(x, y + _diamond)
+            ..lineTo(x - _diamond, y)
+            ..close();
+        } else {
+          path.addOval(Rect.fromCircle(center: Offset(x, y), radius: _dot));
+        }
+      }
+    }
+    canvas.drawPath(path, p);
+  }
+
+  @override
+  bool shouldRepaint(_PatternPainter old) => old.color != color || old.style != style;
 }

@@ -20,6 +20,7 @@ import 'package:flutter_education_app/design/app_blocks.dart';
 import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
+import 'package:flutter_education_app/design/app_gradients.dart' show AppBrandLayer;
 import 'package:flutter_education_app/design/app_inputs.dart' show AppFieldLabel, appFieldDecoration, appFieldTextStyle;
 import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
@@ -575,10 +576,12 @@ class DlChoiceChip extends StatelessWidget {
                 duration: AppMotion.of(context).fast,
                 curve: AppMotion.curve,
                 padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+                // the selected chip wears the brand gradient (D-649)
                 decoration: BoxDecoration(
-                  color: selected ? c.primary : c.inputBg,
+                  color: selected ? null : c.inputBg,
+                  gradient: selected ? AppBrandLayer.button(context) : null,
                   borderRadius: r,
-                  border: Border.all(color: selected ? c.primary : c.divider, width: AppBorder.hairline),
+                  border: Border.all(color: selected ? AppBrandLayer.of(context).button.last : c.divider, width: AppBorder.hairline),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   if (icon != null) ...[

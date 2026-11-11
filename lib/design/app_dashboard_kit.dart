@@ -31,6 +31,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'app_blocks.dart';
 import 'app_charts.dart' show AppSparkline;
+import 'app_gradients.dart' show AppBrandLayer;
 import 'app_kpi.dart' show appDeltaText;
 import 'app_motion_kit.dart';
 import 'app_tokens.dart';
@@ -264,17 +265,21 @@ class AppGreetingHero extends StatelessWidget {
     }
 
     return DecoratedBox(
-      // the home's ONE forest block (D-630): solid, never a gradient; dark mode keeps a cream hairline for an edge
+      // the home's ONE forest block (D-630): forest → emerald with a soft gold glow (D-649, static); dark mode keeps a
+      // cream hairline for an edge
       decoration: BoxDecoration(
-        color: c.blockForest,
+        gradient: AppBrandLayer.forest(context),
         borderRadius: BorderRadius.circular(AppRadius.block),
         border: c.isDark ? Border.all(color: c.heroInk.withValues(alpha: 0.10), width: AppBorder.hairline) : null,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadius.block),
-        child: CustomPaint(
-          painter: _HeroShapesPainter(ink: c.onHero, rtl: rtl),
-          child: Padding(padding: AppSpace.block, child: content),
+        child: DecoratedBox(
+          decoration: BoxDecoration(gradient: AppBrandLayer.forestGlow(context)),
+          child: CustomPaint(
+            painter: _HeroShapesPainter(ink: c.onHero, rtl: rtl),
+            child: Padding(padding: AppSpace.block, child: content),
+          ),
         ),
       ),
     );

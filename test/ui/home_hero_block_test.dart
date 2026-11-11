@@ -1,6 +1,7 @@
 // D-622 / D-630: a role home's hero is a BLOCK (AppBlock(hero: true)) — the ONE deep forest block for every role,
 // cream ink at 7:1 (muted at AA) — with the name in the editorial display face, the actions as translucent cream
-// plates (ChromeIconButton inside a ChromeBar) and no gradient anywhere in it. The hero parts (tag, day ribbon,
+// plates (ChromeIconButton inside a ChromeBar) and no gradient anywhere in it (D-649: the block itself is now the static forest → emerald gradient, every
+// ink checked on both stops). The hero parts (tag, day ribbon,
 // figure) draw in the block's ink too. Plus: no layout error at 320 / 1400, ar + en, textScaler 1.3.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -57,7 +58,13 @@ void main() {
     expect(find.byType(ChromeBar), findsOneWidget, reason: 'the chips are translucent cream plates on the forest');
     final c = tester.element(find.byType(AppBlock)).colors;
     final block = tester.widget<Material>(find.descendant(of: find.byType(AppBlock), matching: find.byType(Material)).first);
-    expect(block.color, c.blockForest);
+    // D-649: the forest block paints the brand layer's forest → emerald gradient (its first stop the forest)
+    expect(block.color, Colors.transparent);
+    final layer = BrandLayer.of(c);
+    expect(layer.forest.first, c.blockForest);
+    for (final stop in layer.forest) {
+      expect(contrastRatio(c.heroInk, stop), greaterThanOrEqualTo(7), reason: '$stop');
+    }
 
     final name = tester.widget<Text>(find.text('Sara Ali')).style!;
     expect(name.color, c.heroInk);
@@ -65,7 +72,9 @@ void main() {
     expect(name.fontSize, (32 * AppFonts.editorialScale('en')).roundToDouble(), reason: 'the display role');
     final sub = tester.widget<Text>(find.text('2 sessions today')).style!;
     expect(sub.fontFamily, isNot(AppFonts.editorialFamily), reason: 'the day line is the UI sans');
-    expect(contrastRatio(sub.color!, c.blockForest), greaterThanOrEqualTo(kWcagAaText));
+    for (final stop in BrandLayer.of(c).forest) {
+      expect(contrastRatio(sub.color!, stop), greaterThanOrEqualTo(kWcagAaText));
+    }
 
     for (final chip in find.byType(ChromeIconButton).evaluate()) {
       final size = (chip.renderObject! as RenderBox).size;

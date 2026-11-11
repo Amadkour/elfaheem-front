@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_blocks.dart';
+import 'package:flutter_education_app/design/app_gradients.dart' show AppBrandLayer, AppPattern;
 import 'package:flutter_education_app/design/app_tokens.dart';
 
 import '../../features/shared/upload/upload_progress_footer.dart';
@@ -104,6 +105,12 @@ class BasePage extends StatelessWidget {
     // A card page's header lies across the whole page, on top, like every other page's header (D-575): inside the card it
     // was a second floating gradient box on the doodle background.
     final headerOutside = useWebCard && appBar != null && context.width >= AppWidth.phoneMax;
+    final webCard = useWebCard && context.width >= AppWidth.phoneMax;
+    // D-649: the canvas keeps its server colour under a very faint static dot pattern (the plain canvas only, never
+    // a page that sets its own background); a web-card page draws it once, on the outer canvas
+    Widget canvas(Widget body) => background == null
+        ? AppPattern(color: AppBrandLayer.of(context).pagePattern, child: body)
+        : body;
     Widget w = Scaffold(
       appBar: headerOutside ? null : appBar,
       backgroundColor:bg,
@@ -116,12 +123,12 @@ class BasePage extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(context.colors.radiusXL),
           ),
-          child: child,
+          child: webCard ? child : canvas(child),
         ),
       ),
     );
 
-    if (useWebCard && context.width >= AppWidth.phoneMax) {
+    if (webCard) {
       return Directionality(
         textDirection: Helpers.pageDirection,
         child: Scaffold(
@@ -134,7 +141,7 @@ class BasePage extends StatelessWidget {
           // share), not the window: the role's width, less a gutter each side once the room is narrower (D-304).
           // The margins are the plain warm canvas (D-622: the doodle pattern of D-560 was decoration; the paper
           // cards and blocks on the canvas carry the depth now).
-          body: LayoutBuilder(builder: (context, box) {
+          body: canvas(LayoutBuilder(builder: (context, box) {
             final cardWidth = width != null
                 ? width!.inside(box.maxWidth)
                 : AppWidth.content.inside(box.maxWidth, max: maxWith);
@@ -144,7 +151,7 @@ class BasePage extends StatelessWidget {
               alignment: AlignmentDirectional.topCenter,
               child: SizedBox(width: cardWidth, height: double.infinity, child: w),
             );
-          }),
+          })),
         ),
       );
     }

@@ -32,6 +32,11 @@
 // (the home it belongs to as one small line above it), the search pill (when the screen has a Ctrl+K palette), ghost
 // icon buttons with small counts and the avatar. The phone's bottom bar is paper with a hairline, the open tab's icon
 // on a tinted pill over its label in the primary ink.
+// D-649 (the brand gradient layer): the sidebar (and the rail) is no longer white — it is a floating rounded card in
+// the deep green gradient (primary_dark → a deeper forest, AppBrandLayer.sidebar) with a faint lattice, its text and
+// icons in the on-hero roles, the open tab a soft glass pill with a 3 px gold bar on its start edge and cream ink, the
+// person in a glass box; counts stay red. The top bar stays a white card (the intended contrast), its avatar ringed
+// in the brand gradient; the phone bar stays light, its open tab on a brand-gradient pill.
 // Colours come from context.colors only. Layout test: test/ui/app_shell_layout_test.dart.
 library;
 
@@ -51,8 +56,8 @@ import '../features/shared/profile/update_account_widget.dart';
 import '../utils/widget/app_navigator.dart' show AppNavigator;
 import '../utils/widget/app_network_image.dart';
 import '../utils/widget/base_page.dart';
-import 'app_contrast.dart' show ensureContrast;
 import 'app_focus_mode.dart' show AppFocusMode, AppFocusToggle;
+import 'app_gradients.dart' show AppBrandLayer, AppPattern, AppPatternStyle;
 import 'app_keyboard.dart' show AppCommandPaletteScope;
 import 'app_motion_kit.dart';
 import 'app_tokens.dart';
@@ -147,13 +152,6 @@ double shellInset(double width) => AppSpace.gutter(width);
 /// Presentation only: the tabs, their order and their callbacks are the same either way.
 final ValueNotifier<bool> appSidebarCollapsed = ValueNotifier(false);
 
-/// The tinted pill of an open tab and the ink on it (sidebar, rail, phone bar).
-({Color fill, Color ink}) _openTabColors(BuildContext context) {
-  final c = context.colors;
-  // an opaque tint of the primary over the paper (a translucent fill would fool the contrast check)
-  final fill = Color.lerp(c.cardBg, c.primary, c.isDark ? 0.22 : 0.12)!;
-  return (fill: fill, ink: c.blockAccentInk(c.primary, fill));
-}
 
 /// The shell's own measures, the few the tokens do not name.
 abstract final class _ShellMetrics {
@@ -634,7 +632,7 @@ class _Sidebar extends StatelessWidget {
     final generalLabel = items.isNotEmpty && items.first.label.tr == general ? null : general;
     return SizedBox(
       width: Breakpoints.sidebarW,
-      child: ChromeCard(
+      child: _BrandSideCard(
         child: Column(
           children: [
             SizedBox(
@@ -669,6 +667,48 @@ class _Sidebar extends StatelessWidget {
   }
 }
 
+/// The sidebar / rail card (D-649): floating and rounded like the top bar (D-648), but filled with the deep green
+/// brand gradient (primary_dark → a deeper forest) under a faint lattice. Its subtree is a [ChromeBar], so the fold
+/// button and the person's avatar draw as glass and their text in the on-hero ink.
+class _BrandSideCard extends StatelessWidget {
+  const _BrandSideCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final l = AppBrandLayer.of(context);
+    final radius = BorderRadius.circular(AppRadius.card);
+    return DecoratedBox(
+      decoration: BoxDecoration(borderRadius: radius, boxShadow: AppElevation.of(context, 2)),
+      child: ClipRRect(
+        borderRadius: radius,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: AppBrandLayer.sidebar(context),
+            borderRadius: radius,
+            // dark mode: a hairline of the ink so the deep card still has an edge on the dark canvas
+            border: c.isDark ? Border.all(color: c.heroDivider, width: AppBorder.hairline) : null,
+          ),
+          child: Stack(fit: StackFit.passthrough, children: [
+            Positioned.fill(child: AppPattern(color: l.sidePattern, style: AppPatternStyle.lattice)),
+            Material(
+              type: MaterialType.transparency,
+              child: ChromeBar(
+                child: DefaultTextStyle.merge(
+                  style: TextStyle(color: l.sideInk),
+                  child: IconTheme.merge(data: IconThemeData(color: l.sideItem), child: child),
+                ),
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
 /// A group's label: small muted text over its tabs (HOME / APPS in the reference) — a heading, never a plate that
 /// reads as a button. English draws it in capitals; Arabic has none and keeps its letters joined (no tracking).
 class _GroupLabel extends StatelessWidget {
@@ -679,7 +719,6 @@ class _GroupLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final latin = AppConfig.lang != 'ar';
     return Padding(
       padding: EdgeInsetsDirectional.fromSTEB(AppSpace.md, first ? AppSpace.xxs : AppSpace.md, AppSpace.md, AppSpace.xs),
@@ -690,7 +729,7 @@ class _GroupLabel extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: AppType.overline(context).copyWith(
-            color: c.textMedium,
+            color: AppBrandLayer.of(context).sideMuted,
             fontWeight: FontWeight.w700,
             letterSpacing: latin ? 0.8 : 0,
           ),
@@ -709,15 +748,19 @@ class _SidebarUser extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final box = Color.lerp(c.cardBg, c.primary, c.isDark ? 0.14 : 0.07)!;
+    // a glass box on the brand gradient (D-649); its role line reads in the on-hero ink (the chip is on a ChromeBar)
+    final l = AppBrandLayer.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(AppSpace.sm, 0, AppSpace.sm, AppSpace.sm),
       child: DecoratedBox(
-        decoration: BoxDecoration(color: box, borderRadius: AppRadius.controlAll),
+        decoration: BoxDecoration(
+          color: l.sideGlass,
+          borderRadius: AppRadius.controlAll,
+          border: Border.all(color: l.sideGlassBorder, width: AppBorder.hairline),
+        ),
         child: Material(
           type: MaterialType.transparency,
-          child: UserChipButton(user: user, showLabel: true, surface: box),
+          child: UserChipButton(user: user, showLabel: true, surface: Color.alphaBlend(l.sideGlass, l.sidebar.last)),
         ),
       ),
     );
@@ -742,20 +785,22 @@ class _FoldButton extends StatelessWidget {
       );
 }
 
-/// The brand mark: a small emerald tile with the school glyph.
+/// The brand mark: a small glass tile with the school glyph in cream, on the green sidebar / rail (D-649).
 class _AppMark extends StatelessWidget {
   const _AppMark();
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
+    final l = AppBrandLayer.of(context);
     return Container(
       width: _ShellMetrics.mark,
       height: _ShellMetrics.mark,
-      decoration: BoxDecoration(color: c.primary, borderRadius: AppRadius.chipAll),
-      // the primary fill's own ink (the pairing a primary button uses), lifted when a server theme's primary is
-      // light enough to wash it out — the mark keeps its contrast in both modes
-      child: Icon(Icons.school_rounded, color: ensureContrast(c.onHero, [c.primary], min: 3), size: AppIconSize.md),
+      decoration: BoxDecoration(
+        color: l.sideActiveFill,
+        borderRadius: AppRadius.chipAll,
+        border: Border.all(color: l.sideGlassBorder, width: AppBorder.hairline),
+      ),
+      child: Icon(Icons.school_rounded, color: l.sideActiveInk, size: AppIconSize.md),
     );
   }
 }
@@ -766,7 +811,7 @@ class _Wordmark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
+    final l = AppBrandLayer.of(context);
     return Row(
       children: [
         const _AppMark(),
@@ -780,13 +825,13 @@ class _Wordmark extends StatelessWidget {
                 AppIdentity.instance.name.isNotEmpty ? AppIdentity.instance.name : 'NextBrain',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppType.section(context),
+                style: AppType.section(context).copyWith(color: l.sideInk),
               ),
               Text(
                 AppIdentity.instance.tagline.isNotEmpty ? AppIdentity.instance.tagline : 'app_tagline'.tr,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppType.meta(context).copyWith(color: c.textLight),
+                style: AppType.meta(context).copyWith(color: l.sideMuted),
               ),
             ],
           ),
@@ -818,11 +863,16 @@ class UserChipButton extends StatelessWidget {
     final initial = name.isNotEmpty ? name[0] : '؟';
     final image = user.imageUrl;
     final onBar = ChromeBar.of(context);
-    final avatar = Container(
-      width: _ShellMetrics.mark,
-      height: _ShellMetrics.mark,
+    // on paper (the top bar, D-649): the brand gradient fills the initials and rings the avatar, a paper gap between
+    final ringed = !onBar && surface == null;
+    const ringW = AppBorder.focus + AppBorder.strong;
+    final inner = ringed ? _ShellMetrics.mark + AppSpace.xxs - 2 * ringW : _ShellMetrics.mark;
+    Widget avatar = Container(
+      width: inner,
+      height: inner,
       decoration: BoxDecoration(
-        color: onBar ? c.heroGlass : c.primary,
+        color: onBar ? c.heroGlass : (ringed ? null : c.primary),
+        gradient: ringed ? AppBrandLayer.button(context) : null,
         shape: BoxShape.circle,
         border: onBar ? Border.all(color: c.heroGlassBorder, width: AppBorder.hairline) : null,
       ),
@@ -835,6 +885,17 @@ class UserChipButton extends StatelessWidget {
               style: AppType.row(context)
                   .copyWith(color: c.onHero, fontWeight: FontWeight.w600, fontFamilyFallback: AppFonts.fallback)),
     );
+    if (ringed) {
+      avatar = Container(
+        padding: const EdgeInsets.all(AppBorder.focus),
+        decoration: BoxDecoration(shape: BoxShape.circle, gradient: AppBrandLayer.button(context)),
+        child: Container(
+          padding: const EdgeInsets.all(AppBorder.strong),
+          decoration: BoxDecoration(shape: BoxShape.circle, color: c.cardBg),
+          child: avatar,
+        ),
+      );
+    }
     return Padding(
       padding: showLabel
           ? (surface != null ? const EdgeInsets.all(AppSpace.xs) : const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.xs, AppSpace.sm, AppSpace.sm))
@@ -895,7 +956,8 @@ class UserChipButton extends StatelessWidget {
 
 // ── Sidebar tile ──────────────────────────────────────────────────────────────
 
-/// One tab of the sidebar: a 48 px row; the open one is an emerald pill with on-hero ink.
+/// One tab of the sidebar on the green gradient (D-649): a 48 px row, the idle one in the muted on-hero ink; the open
+/// one a soft glass pill in cream ink with a 3 px gold bar on its start edge (it mirrors in Arabic). Counts stay red.
 class _SidebarTile extends StatelessWidget {
   final DashboardItem item;
   final bool selected;
@@ -903,11 +965,13 @@ class _SidebarTile extends StatelessWidget {
 
   const _SidebarTile({required this.item, required this.selected, required this.onTap});
 
+  /// The gold bar's width and its inset from the pill's top and bottom.
+  static const double _bar = 3, _barInset = AppSpace.sm + 2;
+
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final open = _openTabColors(context);
-    final ink = selected ? open.ink : c.textDark;
+    final l = AppBrandLayer.of(context);
+    final ink = selected ? l.sideActiveInk : l.sideItem;
     // a real button for screen readers and the keyboard (H12): focusable, Enter / Space, selected state read out
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs / 2),
@@ -919,37 +983,65 @@ class _SidebarTile extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             customBorder: RoundedRectangleBorder(borderRadius: AppRadius.controlAll),
-            hoverColor: c.primary.withValues(alpha: 0.06),
-            focusColor: c.primary.withValues(alpha: 0.06),
+            hoverColor: l.sideHover,
+            focusColor: l.sideHover,
+            highlightColor: l.sideHover,
+            splashColor: l.sideHover,
             child: AnimatedContainer(
               duration: AppMotion.of(context).fast,
               curve: AppMotion.curve,
               constraints: const BoxConstraints(minHeight: AppTouch.min),
-              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
               decoration: BoxDecoration(
-                color: selected ? open.fill : open.fill.withValues(alpha: 0),
+                color: selected ? l.sideActiveFill : l.sideActiveFill.withValues(alpha: 0),
                 borderRadius: AppRadius.controlAll,
               ),
-              child: Row(
+              child: Stack(
+                alignment: AlignmentDirectional.centerStart,
                 children: [
-                  Icon(selected ? item.selectedIcon : item.icon, color: selected ? open.ink : c.textMedium, size: AppIconSize.md),
-                  const SizedBox(width: AppSpace.sm),
-                  Expanded(
-                    child: Text(
-                      item.label.tr,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppType.row(context).copyWith(color: ink, fontWeight: selected ? FontWeight.w600 : FontWeight.w500),
-                    ),
-                  ),
-                  ShellBadge(
-                    item: item,
-                    builder: (context, n) => n <= 0
-                        ? const SizedBox.shrink()
-                        : Padding(
-                            padding: const EdgeInsetsDirectional.only(start: AppSpace.xs),
-                            child: _CountPill(n, tone: item.badgeTone),
+                  if (selected)
+                    PositionedDirectional(
+                      start: 0,
+                      top: _barInset,
+                      bottom: _barInset,
+                      width: _bar,
+                      child: ExcludeSemantics(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: l.sideIndicator,
+                            borderRadius: BorderRadius.circular(AppRadius.pill),
                           ),
+                        ),
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: AppTouch.min),
+                      child: Row(
+                        children: [
+                          Icon(selected ? item.selectedIcon : item.icon, color: ink, size: AppIconSize.md),
+                          const SizedBox(width: AppSpace.sm),
+                          Expanded(
+                            child: Text(
+                              item.label.tr,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppType.row(context)
+                                  .copyWith(color: ink, fontWeight: selected ? FontWeight.w600 : FontWeight.w500),
+                            ),
+                          ),
+                          ShellBadge(
+                            item: item,
+                            builder: (context, n) => n <= 0
+                                ? const SizedBox.shrink()
+                                : Padding(
+                                    padding: const EdgeInsetsDirectional.only(start: AppSpace.xs),
+                                    child: _CountPill(n, tone: item.badgeTone),
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1183,7 +1275,7 @@ class _RailColumn extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: _ShellMetrics.railW,
-      child: ChromeCard(
+      child: _BrandSideCard(
         child: Column(
           children: [
             SizedBox(
@@ -1377,7 +1469,8 @@ class _RailTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
+    // the rail sits on the green brand card (D-649): its hover is the on-hero wash
+    final hover = AppBrandLayer.of(context).sideHover;
     return Tooltip(
       message: item.label.tr,
       excludeFromSemantics: true,
@@ -1390,12 +1483,14 @@ class _RailTile extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             borderRadius: AppRadius.controlAll,
-            hoverColor: c.primary.withValues(alpha: 0.06),
-            focusColor: c.primary.withValues(alpha: 0.06),
+            hoverColor: hover,
+            focusColor: hover,
             child: SizedBox(
               width: _ShellMetrics.railW,
               height: _ShellMetrics.railCellH,
-              child: Center(child: _TabIconPill(item: item, active: selected, width: _ShellMetrics.railPillW)),
+              child: Center(
+                child: _TabIconPill(item: item, active: selected, width: _ShellMetrics.railPillW, onBrand: true),
+              ),
             ),
           ),
         ),
@@ -1404,19 +1499,24 @@ class _RailTile extends StatelessWidget {
   }
 }
 
-/// The icon of a rail / phone tab on its pill — emerald with on-hero ink when the tab is open, bare otherwise — and
-/// its count on the top-end corner, ringed with the surface under it so it reads over the icon.
+/// The icon of a rail / phone tab on its pill, and its count on the top-end corner, ringed with the surface under it
+/// so it reads over the icon (D-649): on the phone's light bar the open tab's pill is the brand gradient with the
+/// on-hero ink; on the green rail ([onBrand]) it is the sidebar's glass pill in cream ink, the idle icons muted on-hero.
 class _TabIconPill extends StatelessWidget {
-  const _TabIconPill({required this.item, required this.active, required this.width});
+  const _TabIconPill({required this.item, required this.active, required this.width, this.onBrand = false});
 
   final DashboardItem item;
   final bool active;
   final double width;
+  final bool onBrand;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final open = _openTabColors(context);
+    final l = AppBrandLayer.of(context);
+    final ink = onBrand
+        ? (active ? l.sideActiveInk : l.sideItem)
+        : (active ? l.buttonInk : c.textMedium);
     return ShellBadge(
       item: item,
       builder: (context, n) => Stack(
@@ -1428,15 +1528,12 @@ class _TabIconPill extends StatelessWidget {
             width: width,
             height: _ShellMetrics.pillH,
             decoration: BoxDecoration(
-              color: active ? open.fill : open.fill.withValues(alpha: 0),
+              color: onBrand ? (active ? l.sideActiveFill : l.sideActiveFill.withValues(alpha: 0)) : null,
+              gradient: !onBrand && active ? AppBrandLayer.button(context) : null,
               borderRadius: BorderRadius.circular(AppRadius.pill),
             ),
             child: Center(
-              child: Icon(
-                active ? item.selectedIcon : item.icon,
-                size: AppIconSize.lg,
-                color: active ? open.ink : c.textMedium,
-              ),
+              child: Icon(active ? item.selectedIcon : item.icon, size: AppIconSize.lg, color: ink),
             ),
           ),
           // over the icon's top-end quarter, the Material badge offset, so the glyph stays readable under it
@@ -1444,7 +1541,7 @@ class _TabIconPill extends StatelessWidget {
             PositionedDirectional(
               top: -(AppSpace.xxs + 2),
               end: -AppSpace.xxs,
-              child: _CountPill(n, tone: item.badgeTone, ring: c.cardBg),
+              child: _CountPill(n, tone: item.badgeTone, ring: onBrand ? l.sidebar.first : c.cardBg),
             ),
         ],
       ),

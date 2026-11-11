@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/theme/theme_config_provider.dart';
 import '../../design/app_buttons.dart' show appFocusRing, appKeyboardFocus;
+import '../../design/app_gradients.dart' show AppBrandLayer;
 import '../../design/app_motion_kit.dart' show AppEase, AppPressScale;
 import '../../design/app_tokens.dart';
 import 'app_loading_indicator.dart';
@@ -52,6 +53,7 @@ class _PrimaryButtonState extends State<PrimaryButton> {
     final off = disabled && !widget.isLoading;
     final active = !off && !widget.isLoading;
     final own = widget.background ?? c.primary;
+    final brand = widget.background == null && !off;
     final deep = own == c.primary ? c.primaryDark : Color.lerp(own, c.textDark, 0.35)!;
     final ink = off ? c.textMedium : c.onHero;
     final fill = off
@@ -109,10 +111,16 @@ class _PrimaryButtonState extends State<PrimaryButton> {
                   duration: motion.fast,
                   curve: AppEase.out,
                   decoration: BoxDecoration(
-                    color: fill,
+                    color: brand ? null : fill,
+                    // D-649: the brand button is the gradient primary → primary_dark on a soft tinted shadow
+                    gradient: brand ? AppBrandLayer.button(context, hover: _hover && active, pressed: _pressed && active) : null,
                     borderRadius: r,
                     border: off ? Border.all(color: c.divider, width: AppBorder.hairline) : null,
-                    boxShadow: _focused && active && appKeyboardFocus() ? appFocusRing(context) : null,
+                    boxShadow: _focused && active && appKeyboardFocus()
+                        ? appFocusRing(context)
+                        : brand
+                            ? AppBrandLayer.buttonShadow(context, pressed: _pressed && active)
+                            : null,
                   ),
                   padding: const EdgeInsetsDirectional.symmetric(horizontal: AppSpace.lg),
                   // the label keeps its place under the ring, so the width never jumps

@@ -135,12 +135,21 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('the primary button has no gradient or shadow (solid emerald, tone first)', (tester) async {
+  // D-649 replaced D-612's solid fill: the primary button is the brand gradient on a soft tinted shadow; the accent
+  // (gold) variant too, with a dark ink; a disabled primary is still the flat neutral well
+  testWidgets('the primary button is the brand gradient on a soft shadow; disabled it is a flat well', (tester) async {
     await tester.pumpWidget(layoutHost(Center(child: AppButton.primary(label: 'Save', onPressed: () {}))));
     final boxes = tester.widgetList<AnimatedContainer>(find.descendant(of: find.byType(AppButton), matching: find.byType(AnimatedContainer)));
     final deco = boxes.first.decoration as BoxDecoration;
-    expect(deco.gradient, isNull);
-    expect(deco.boxShadow, isNull);
+    expect(deco.gradient, isNotNull);
+    expect(deco.boxShadow, isNotEmpty);
+    await tester.pumpWidget(layoutHost(const Center(child: AppButton.primary(label: 'Save', onPressed: null))));
+    final off = tester.widgetList<AnimatedContainer>(find.descendant(of: find.byType(AppButton), matching: find.byType(AnimatedContainer))).first.decoration as BoxDecoration;
+    expect(off.gradient, isNull);
+    expect(off.boxShadow, isNull);
+    await tester.pumpWidget(layoutHost(Center(child: AppButton.accent(label: 'Go live', onPressed: () {}))));
+    final gold = tester.widgetList<AnimatedContainer>(find.descendant(of: find.byType(AppButton), matching: find.byType(AnimatedContainer))).first.decoration as BoxDecoration;
+    expect(gold.gradient, isNotNull);
     await tester.pumpWidget(const SizedBox());
   });
 

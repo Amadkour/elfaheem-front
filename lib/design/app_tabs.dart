@@ -5,8 +5,8 @@
 //   AppTabs(items: [AppTabItem('Open', count: 3), AppTabItem('Done')], index: i, onChanged: (v) => setState(() => i = v))
 //   AppUnderlineTabs(...)   the lighter variant for sections of a page (same API)
 //
-// AppTabs is a pill track (the input surface with a warm hairline) whose selected pill — solid emerald, the primary,
-// with the on-hero ink — slides to the chosen tab; it never walks into the gradient's teal. AppUnderlineTabs draws
+// AppTabs is a pill track (the input surface with a warm hairline) whose selected pill — the brand gradient primary → primary_dark
+// (D-649), with the on-hero ink — slides to the chosen tab; it never walks into the gradient's teal. AppUnderlineTabs draws
 // the labels in ink with a 2 px ink rule under the chosen one. When the tabs do not fit, the strip scrolls
 // horizontally and keeps the selected tab in view; with `expand` the tabs share the width when they fit. On web /
 // desktop the arrow keys move the selection (the arrow that points "forward" follows the text direction) and the
@@ -18,6 +18,7 @@ import 'package:flutter/services.dart';
 
 import '../config/theme/theme_config_provider.dart';
 import 'app_badges.dart';
+import 'app_gradients.dart' show AppBrandLayer;
 import 'app_tokens.dart';
 
 class AppTabItem {
@@ -187,7 +188,7 @@ class _TabStripState extends State<_TabStrip> {
       Widget tab(int i) {
         final it = items[i];
         final sel = i == index;
-        final ink = sel ? (underline ? c.textDark : c.onHero) : c.textMedium;
+        final ink = sel ? (underline ? c.textDark : AppBrandLayer.of(context).buttonInk) : c.textMedium;
         final ts = style.copyWith(color: ink);
         return Semantics(
           button: true,
@@ -249,8 +250,10 @@ class _TabStripState extends State<_TabStrip> {
             height: underline ? _rule : null,
             child: ExcludeSemantics(
               child: DecoratedBox(
+                // the selected pill wears the brand gradient (D-649); the underline stays an ink rule
                 decoration: BoxDecoration(
-                  color: underline ? c.textDark : c.primary,
+                  color: underline ? c.textDark : null,
+                  gradient: underline ? null : AppBrandLayer.button(context),
                   borderRadius: BorderRadius.circular(underline ? _rule / 2 : AppRadius.pill),
                 ),
               ),

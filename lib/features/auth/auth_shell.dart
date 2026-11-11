@@ -4,9 +4,9 @@
 //   AuthScaffold  – BasePage + AuthLayout + the language / theme switches; rebuilds when the language changes
 //   AuthLayout    – plain values (no provider), so the layout harness can pump it:
 //                   phone / tablet: the warm canvas — the brand row (back · logo + wordmark · switches), then the
-//                   page's title and subtitle in ONE peach hero block (the editorial welcome), then the form right on
+//                   page's title and subtitle in ONE compact brand gradient header (D-649), then the form right on
 //                   the canvas (no card around it: one surface less);
-//                   wide (≥ 900): the brand panel (AuthSidebar, a peach block inset on the canvas) beside a paper
+//                   wide (≥ 900): the brand panel (AuthSidebar, the forest → emerald gradient block with the lattice, D-649) beside a paper
 //                   card holding the title and the form (max width [AuthLayout.maxWidth]).
 //                   One orchestrated entrance: the block (or the card) rises first, the form follows a beat later.
 //   AuthHeroBar   – back · logo tile · wordmark / tagline · actions
@@ -156,9 +156,10 @@ class AuthLayout extends StatelessWidget {
                 if (header) ...[
                   // the lead of the entrance: the welcome block
                   AuthEntrance(
+                    // D-649: a compact brand gradient header (forest → emerald, the faint lattice), cream ink
                     child: AppBlock(
-                      tone: AppBlockTone.peach,
-                      hero: !compact,
+                      tone: AppBlockTone.forest,
+                      pattern: true,
                       child: _HeroTitle(title: title, subtitle: subtitle),
                     ),
                   ),

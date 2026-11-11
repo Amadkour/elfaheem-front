@@ -7,7 +7,7 @@
 //
 //   authText / authTracking         the older auth type helper (the person's font; kept for callers outside)
 //   AuthLogoTile · AuthBrandName    the app-icon style logo on paper and the editorial wordmark
-//   AuthSidebar                     the brand panel of the wide layout: ONE peach block on the canvas
+//   AuthSidebar                     the brand panel of the wide layout: the brand gradient block (D-649)
 //   AuthCard · AuthEntrance         the paper form surface and the page's one orchestrated entrance
 //   authInputDecoration             = the kit's well (appFieldDecoration)
 //   IconTextField · IconPasswordField · AuthEmailField · AuthDateField   the fields (label above)
@@ -30,6 +30,7 @@ import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_blocks.dart';
 import 'package:flutter_education_app/design/app_buttons.dart' show appFocusRing, appKeyboardFocus;
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
+import 'package:flutter_education_app/design/app_gradients.dart' show AppBrandLayer;
 import 'package:flutter_education_app/design/app_inputs.dart'
     show validateEmail, kEmailRegex, appFieldDecoration, appFieldTextStyle, appFieldFocusInk;
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppEase, AppPressScale;
@@ -107,10 +108,14 @@ class AuthLogoTile extends StatelessWidget {
 /// The app's name as an editorial wordmark (the boot splash's) + its tagline, as the admin set them (fallbacks
 /// before the first fetch). Ink on the canvas or on a block; [onHero] is kept for older callers.
 class AuthBrandName extends StatelessWidget {
-  const AuthBrandName({super.key, this.onHero = true, this.large = false});
+  const AuthBrandName({super.key, this.onHero = true, this.large = false, this.ink, this.muted});
 
   final bool onHero;
   final bool large;
+
+  /// The name's and the tagline's ink on a coloured surface (the brand panel); null = the canvas ink.
+  final Color? ink;
+  final Color? muted;
 
   @override
   Widget build(BuildContext context) {
@@ -127,13 +132,13 @@ class AuthBrandName extends StatelessWidget {
               id.name.isNotEmpty ? id.name : 'NextBrain',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: (large ? AppType.pageTitle(context) : AppType.section(context)).copyWith(color: c.textDark, height: 1.1),
+              style: (large ? AppType.pageTitle(context) : AppType.section(context)).copyWith(color: ink ?? c.textDark, height: 1.1),
             ),
             Text(
               id.tagline.isNotEmpty ? id.tagline : 'learning_platform'.tr,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppType.meta(context),
+              style: AppType.meta(context).copyWith(color: muted),
             ),
           ],
         );
@@ -144,9 +149,9 @@ class AuthBrandName extends StatelessWidget {
 
 // ── 1. Brand panel (wide layout) ──────────────────────────────────────────────
 
-/// The brand panel of the wide layout: ONE peach block inset on the warm canvas (D-613) — the logo and wordmark, the
+/// The brand panel of the wide layout: the forest → emerald gradient block with the faint lattice (D-649) — the logo and wordmark, the
 /// editorial headline as the page's memorable line, the mission, three things the platform does, and the admin's
-/// "About us" figures counting up once. No gradient, no glow: colour lives in the block.
+/// "About us" figures counting up once, in the cream ink.
 class AuthSidebar extends StatelessWidget {
   const AuthSidebar({super.key, this.width});
 
@@ -172,7 +177,9 @@ class AuthSidebar extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, 0, AppSpace.md),
           child: AppBlock(
-            tone: AppBlockTone.peach,
+            // D-649: the brand gradient panel (forest → emerald, a gold glow, the faint lattice), cream ink
+            tone: AppBlockTone.forest,
+            pattern: true,
             padding: EdgeInsets.all(inner),
             child: Builder(builder: (context) {
               final ink = AppBlock.colorsOf(context);
@@ -189,7 +196,7 @@ class AuthSidebar extends StatelessWidget {
                             // a very narrow panel (the password page's third of a phone) keeps the logo only
                             if (!narrow) ...[
                               const SizedBox(width: AppSpace.sm),
-                              const Expanded(child: AuthBrandName(large: true)),
+                              Expanded(child: AuthBrandName(large: true, ink: ink.ink, muted: ink.muted)),
                             ],
                           ],
                         ),
@@ -284,7 +291,12 @@ class _SidebarFeature extends StatelessWidget {
         Container(
           width: AppTouch.min - AppSpace.xs,
           height: AppTouch.min - AppSpace.xs,
-          decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.chipAll),
+          // a glass well on the brand panel (D-649), the icon in the panel's ink
+          decoration: BoxDecoration(
+            color: ink.surface == c.blockForest ? c.heroGlass : c.cardBg,
+            borderRadius: AppRadius.chipAll,
+            border: ink.surface == c.blockForest ? Border.all(color: c.heroGlassBorder, width: AppBorder.hairline) : null,
+          ),
           child: Icon(icon, size: AppIconSize.md, color: ink.ink),
         ),
         const SizedBox(width: AppSpace.sm),
@@ -401,6 +413,7 @@ class AuthCard extends StatelessWidget {
         color: c.cardBg,
         borderRadius: AppRadius.cardAll,
         border: Border.all(color: c.divider, width: AppBorder.hairline),
+        boxShadow: AppShadow.card(context),
       ),
       child: child,
     );
@@ -882,6 +895,8 @@ class _AuthButtonState extends State<AuthButton> {
     final base = widget.tone ?? c.primary;
     final deep = widget.tone == null ? c.primaryDark : Color.lerp(base, c.textDark, 0.3)!;
     final fg = lit ? c.onHero : c.textMedium;
+    // D-649: the brand button (no tone) is the gradient primary → primary_dark on a soft tinted shadow
+    final brand = widget.tone == null && lit;
     final radius = AppRadius.controlAll;
 
     final label = Text(
@@ -929,7 +944,11 @@ class _AuthButtonState extends State<AuthButton> {
             curve: AppEase.out,
             decoration: BoxDecoration(
               borderRadius: radius,
-              boxShadow: _focused && active && appKeyboardFocus() ? appFocusRing(context) : const [],
+              boxShadow: _focused && active && appKeyboardFocus()
+                  ? appFocusRing(context)
+                  : brand
+                      ? AppBrandLayer.buttonShadow(context)
+                      : const [],
             ),
             child: FilledButton(
               statesController: _states,
@@ -949,14 +968,24 @@ class _AuthButtonState extends State<AuthButton> {
                 foregroundColor: WidgetStatePropertyAll(fg),
                 backgroundColor: WidgetStateProperty.resolveWith((s) {
                   if (!lit) return c.inputBg;
+                  if (brand) return Colors.transparent;
                   if (s.contains(WidgetState.pressed)) return Color.lerp(base, deep, 0.5);
                   if (s.contains(WidgetState.hovered)) return Color.lerp(base, deep, 0.22);
                   return base;
                 }),
                 side: WidgetStatePropertyAll(lit ? BorderSide.none : BorderSide(color: c.divider, width: AppBorder.hairline)),
                 shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: radius)),
-                // the solid fill above, not the theme's brand-gradient painter for raw FilledButtons
-                backgroundBuilder: (context, states, child) => child ?? const SizedBox.shrink(),
+                // the brand gradient (D-649) or the solid fill above, not the theme's painter for raw FilledButtons
+                backgroundBuilder: (context, states, child) => brand
+                    ? DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: radius,
+                          gradient: AppBrandLayer.button(context,
+                              hover: states.contains(WidgetState.hovered), pressed: states.contains(WidgetState.pressed)),
+                        ),
+                        child: child ?? const SizedBox.shrink(),
+                      )
+                    : child ?? const SizedBox.shrink(),
               ),
               child: content,
             ),

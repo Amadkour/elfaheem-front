@@ -66,8 +66,15 @@ class GoLiveButton extends StatelessWidget {
     // hero (the greeting hero's call to action, or inside a ChromeBar) a cream plate in emerald ink, elsewhere the
     // solid primary in cream; the small red dot says "live"
     final hero = onHero || ChromeBar.of(context);
+    // D-649: the greeting hero's call to action is THE gold highlight (accent2 → lighter, a dark ink); a ChromeBar
+    // plate stays cream
+    final gold = onHero && !live;
     final fill = hero ? c.onHero : c.primary;
-    final ink = hero ? ensureContrast(c.primary, [fill]) : ensureContrast(c.onHero, [fill]);
+    final ink = gold
+        ? AppBrandLayer.of(context).goldInk
+        : hero
+            ? ensureContrast(c.primary, [fill])
+            : ensureContrast(c.onHero, [fill]);
     final label = labelFor(live);
     final icon = busy
         ? SizedBox.square(dimension: AppIconSize.sm, child: CircularProgressIndicator(strokeWidth: AppBorder.focus, color: ink))
@@ -76,7 +83,12 @@ class GoLiveButton extends StatelessWidget {
             : _LiveDot(color: c.danger, ring: c.onHero);
     final height = onHero ? AppTouch.min : _pill;
     final pill = DecoratedBox(
-      decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(AppRadius.pill)),
+      decoration: BoxDecoration(
+        color: gold ? null : fill,
+        gradient: gold ? AppBrandLayer.gold(context) : null,
+        boxShadow: gold ? AppBrandLayer.goldShadow(context) : null,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+      ),
       child: SizedBox(
         height: height,
         width: compact ? height : null,
