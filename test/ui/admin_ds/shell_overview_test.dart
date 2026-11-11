@@ -1,11 +1,11 @@
-// The redesigned Overview (AdminHomeBody): greeting + search, ONE highlighted KPI, students and teachers counted
+// The redesigned Overview (AdminHomeBody): greeting hero + search, ONE greeting hero, the figures as stat cards, students and teachers counted
 // apart, "Needs your attention" as one list, "Nothing waits" only when nothing does, and a layout check.
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppKpiCard;
+import 'package:flutter_education_app/design/app_kit.dart' show AppGreetingHero, AppStatCard;
 import 'package:flutter_education_app/features/admin/admin_global_search.dart';
 import 'package:flutter_education_app/features/admin/admin_home_body.dart';
 import 'package:flutter_education_app/features/admin/admin_home_data.dart';
@@ -26,14 +26,14 @@ void main() {
   setUpAll(() => translation = jsonDecode(File('assets/translation.json').readAsStringSync()) as Map<String, dynamic>);
   setUp(() => AppConfig.lang = 'en');
 
-  testWidgets('shows the greeting with the name, the search field and exactly one highlighted KPI', (tester) async {
+  testWidgets('shows the greeting with the name, the search field and exactly one hero', (tester) async {
     final data = AdminHomeData.fromOverview(base.fullPayload());
     await _pump(tester, AdminHomeBody(data: data, name: 'Ahmed', pendingPayouts: 3));
     expect(find.textContaining('Ahmed'), findsWidgets);
     expect(find.byType(AdminSearchLauncher), findsOneWidget);
-    final cards = tester.widgetList<AppKpiCard>(find.byType(AppKpiCard)).toList();
-    expect(cards.where((c) => c.highlight).length, 1);
-    expect(cards.first.highlight, isTrue);
+    final cards = tester.widgetList<AppStatCard>(find.byType(AppStatCard)).toList();
+    expect(cards.length, 5); // revenue · students · teachers · courses + subscribers
+    expect(find.byType(AppGreetingHero), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 1));
   });
@@ -47,7 +47,7 @@ void main() {
             data: data,
             name: 'A',
             actions: AdminHomeActions(openStudents: () => opened = 'students', openTeachers: () => opened = 'teachers')));
-    final cards = tester.widgetList<AppKpiCard>(find.byType(AppKpiCard)).toList();
+    final cards = tester.widgetList<AppStatCard>(find.byType(AppStatCard)).toList();
     final students = cards.firstWhere((c) => c.value == '128.4K' || c.value.contains('128'));
     final teachers = cards.firstWhere((c) => c.value.contains('8.4K') || c.value == '8,400');
     students.onTap!();
