@@ -181,14 +181,14 @@ void main() {
       final message = 'Roll Generation back from $from to $to?\nNo rebuild is needed: the previous model serves at once.';
       expect(find.text(message), findsOneWidget);
       expect(calls, isEmpty, reason: 'nothing is sent before the confirm');
-      await tester.tap(find.descendant(of: find.byType(AlertDialog), matching: find.byType(OutlinedButton)).first);
+      await tester.tap(find.byKey(const ValueKey('app.confirm.cancel')));
       await _settle(tester);
       expect(find.text(message), findsNothing);
       expect(calls, isEmpty, reason: 'Cancel sends nothing');
 
       await tester.tap(button);
       await _settle(tester);
-      await tester.tap(find.descendant(of: find.byType(AlertDialog), matching: find.text('Roll back')));
+      await tester.tap(find.descendant(of: find.byKey(const ValueKey('app.confirm.ok')), matching: find.text('Roll back')));
       await _settle(tester);
       expect(calls, ['rollback']);
       expect(api.unmatched, isEmpty);

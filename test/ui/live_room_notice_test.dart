@@ -80,6 +80,7 @@ void main() {
     expect(appNoticeTopOverlay?.call(), same(LiveRoomHost.noticeOverlay()));
     hideAppNotice();
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300)); // the exit (180 ms) plays before the entry leaves
     expect(find.text('from the sheet'), findsNothing);
   });
 
@@ -91,6 +92,7 @@ void main() {
     await _settleNotice(tester);
     expect(find.text('from the dialog').hitTestable(), findsOneWidget);
     await tester.pump(const Duration(seconds: 4));
+    await tester.pump(const Duration(milliseconds: 300)); // the exit (180 ms) plays before the entry leaves
     expect(find.text('from the dialog'), findsNothing);
   });
 
@@ -116,6 +118,7 @@ void main() {
     expect(find.text('second'), findsOneWidget);
     hideAppNotice(message: 'second');
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300)); // the exit (180 ms) plays before the entry leaves
     expect(find.text('second'), findsNothing);
   });
 }

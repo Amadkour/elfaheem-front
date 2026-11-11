@@ -570,10 +570,13 @@ class EntityRowFrame extends StatelessWidget {
               ),
               if (trailing != null) ...[
                 const SizedBox(width: AppSpace.xs),
-                // a narrow sheet at a large text size: the chip shrinks instead of pushing the title out
+                // a narrow sheet at a large text size: the chip shrinks instead of pushing the title out — a status
+                // badge's label ellipsizes in place (scaled down, its small text fell below AA contrast)
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: _trailingWidth),
-                  child: FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.topEnd, child: trailing!),
+                  child: trailing is AppStatusBadge
+                      ? Align(alignment: AlignmentDirectional.topEnd, widthFactor: 1, heightFactor: 1, child: trailing!)
+                      : FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.topEnd, child: trailing!),
                 ),
               ],
             ]),

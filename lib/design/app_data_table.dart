@@ -351,6 +351,9 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
   static const double _minColumn = 72;
   static const double _maxColumn = 480;
 
+  /// Below this height a phone table scrolls its toolbar, cards and pages as one (seven touch rows and a half).
+  static const double _phoneTogetherBelow = AppTouch.min * 7.5;
+
   @override
   void initState() {
     super.initState();
@@ -451,7 +454,10 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
         _fitWidths(box.maxWidth);
         final ready = widget.state == AppTableState.ready;
         final empty = ready && widget.rows.isEmpty;
-        final fit = widget.shrinkWrap;
+        // a phone that leaves the table little height (a tall page header, text at 1.3) scrolls the toolbar, the
+        // cards and the pages together instead of squeezing the cards between a fixed toolbar and a fixed bar
+        final together = phone && !widget.shrinkWrap && box.maxHeight.isFinite && box.maxHeight < _phoneTogetherBelow;
+        final fit = widget.shrinkWrap || together;
         final body = switch (widget.state) {
           AppTableState.loading => _loading(context, phone),
           AppTableState.error => phone ? _paper(context, _error(context)) : _error(context),
@@ -459,6 +465,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
               ? (phone ? _paper(context, _emptyBlock(context)) : _emptyBlock(context))
               : _rowsList(context, phone, fit),
         };
+        final pages = widget.pagination != null && widget.state != AppTableState.error;
         final column = Column(
           mainAxisSize: fit ? MainAxisSize.min : MainAxisSize.max,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -467,11 +474,27 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
             if (ready && widget.selectable && _sel.isNotEmpty) _bulkBar(context, phone),
             if (ready && !empty && !phone) _headerRow(context),
             _fill(fit, body, scrolls: !(ready && !empty)),
-            if (widget.pagination != null && widget.state != AppTableState.error) widget.pagination!,
+            if (together && ready && !empty && widget.loadingMore) ...[AppSpace.gapXs, _paper(context, _loadMoreFooter())],
+            if (pages) widget.pagination!,
           ],
         );
         // phones: every row is its own paper card on the canvas (D-612), nothing drawn around them; wide: ONE
         // paper surface with a warm hairline, the rows separated by hairlines inside it
+        if (together) {
+          final scroll = SingleChildScrollView(child: column);
+          if (widget.onLoadMore == null) return scroll;
+          return NotificationListener<Notification>(
+            onNotification: (n) {
+              if (n is ScrollNotification) {
+                _maybeLoadMore(n.metrics);
+              } else if (n is ScrollMetricsNotification) {
+                _maybeLoadMore(n.metrics);
+              }
+              return false;
+            },
+            child: scroll,
+          );
+        }
         if (phone) return column;
         return Material(
           color: c.cardBg,

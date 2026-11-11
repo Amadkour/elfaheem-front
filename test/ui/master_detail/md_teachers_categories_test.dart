@@ -238,6 +238,8 @@ void main() {
     testWidgets('a course, then its category: the trail of scenario 3', (tester) async {
       await teachersPage(tester);
       await tapRow(tester, 'Omar Khaled 2');
+      await tester.ensureVisible(find.text(mdCourses[0].$2).first); // the editorial section rhythm puts it below the fold
+      await frames(tester);
       await tester.tap(find.text(mdCourses[0].$2).first);
       await frames(tester);
       await tester.tap(find.bySemanticsLabel(RegExp('Category: Computer Science')).first);
@@ -310,7 +312,7 @@ void main() {
       await categoriesPage(tester);
       await tapRow(tester, 'Computer Science 1');
       await tapKey(tester, 'md.category_delete');
-      await tester.tap(find.byType(FilledButton).last);
+      await tester.tap(find.byKey(const ValueKey('app.confirm.ok')));
       await frames(tester, 14);
       expect(api.calls.map((c) => '${c.method} ${c.path}'), contains('DELETE /api/v1/admin/categories/5'));
       expect(panelOf(tester).isOpen, isFalse);

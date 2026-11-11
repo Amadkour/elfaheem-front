@@ -8,6 +8,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_contrast.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/design/chrome_button.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_test/flutter_test.dart';

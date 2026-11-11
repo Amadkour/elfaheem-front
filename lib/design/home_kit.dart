@@ -198,14 +198,27 @@ class HomeHeader extends StatelessWidget {
                 child: Builder(builder: (context) {
                   final ink = AppBlock.colorsOf(context);
                   final greeting = AppType.body(context).copyWith(color: ink.muted);
-                  final block = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                  // the greeting line: when its buttons leave the greeting less than two targets (a phone at 320 px
+                  // with every chip), they take a line of their own at the end edge and wrap there
+                  final greetingLine = LayoutBuilder(builder: (context, line) {
+                    final need = (leading != null ? AppTouch.min : 0) + (lineButtons.length + 2) * AppTouch.min;
+                    final own = lineButtons.isNotEmpty && need > line.maxWidth;
+                    final row = Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
                       if (leading != null) ...[leading!, const SizedBox(width: AppSpace.sm)],
                       Expanded(
                         child: Text(homeGreetingKey(homeNow().hour).tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: greeting),
                       ),
-                      ...lineButtons,
-                    ]),
+                      if (!own) ...lineButtons,
+                    ]);
+                    if (!own) return row;
+                    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      Wrap(alignment: WrapAlignment.end, children: lineButtons),
+                      const SizedBox(height: AppSpace.xxs),
+                      row,
+                    ]);
+                  });
+                  final block = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    greetingLine,
                     SizedBox(height: lineButtons.isEmpty && leading == null ? AppSpace.xxs : AppSpace.xs),
                     Semantics(
                       header: true,
@@ -1102,10 +1115,11 @@ class HomeDayRibbon extends StatelessWidget {
         }),
       ),
       const SizedBox(height: AppSpace.xxs),
-      Row(children: [
-        Text(AppTime.clockMinutes(a), style: clock),
-        const Spacer(),
-        Text(AppTime.clockMinutes(b % (24 * 60)), style: clock),
+      // the two ends flex (a 320 px phone at text 1.3 had no room for both clocks)
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Flexible(child: Text(AppTime.clockMinutes(a), maxLines: 1, overflow: TextOverflow.ellipsis, style: clock)),
+        const SizedBox(width: AppSpace.xs),
+        Flexible(child: Text(AppTime.clockMinutes(b % (24 * 60)), maxLines: 1, overflow: TextOverflow.ellipsis, style: clock)),
       ]),
     ]);
   }

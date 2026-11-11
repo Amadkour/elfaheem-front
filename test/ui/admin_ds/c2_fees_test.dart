@@ -76,7 +76,7 @@ void main() {
     await tester.enterText(find.byType(TextField).first, '12');
     await tester.tap(find.text('Save'));
     await finFrames(tester, 6);
-    await tester.tap(find.descendant(of: find.byType(AlertDialog), matching: find.byType(FilledButton)));
+    await tester.tap(find.byKey(const ValueKey('app.confirm.ok')));
     await finFrames(tester, 8);
     expect(body, {'percent': 12.0, 'fixed': 0.0});
   });
@@ -92,7 +92,7 @@ void main() {
     expect(stackIndex(tester), 1);
     await tester.tap(find.text('Save').last);
     await finFrames(tester, 6);
-    await tester.tap(find.descendant(of: find.byType(AlertDialog), matching: find.byType(FilledButton)));
+    await tester.tap(find.byKey(const ValueKey('app.confirm.ok')));
     await finFrames(tester, 8);
     expect(body, {'fee_bearer': 'both', 'vat_on': 'fee'});
     expect(api.calls.where((c) => c.method == 'PUT' && c.path.endsWith('/fees/policy')), hasLength(1));

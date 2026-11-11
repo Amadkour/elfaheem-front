@@ -199,7 +199,7 @@ void main() {
       // teacher · amount + currency · method (the first row is an automatic Moyasar payout)
       expect(find.textContaining('سارة أحمد'), findsWidgets);
       expect(find.textContaining('EGP'), findsWidgets);
-      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.byKey(const ValueKey('app.confirm.ok')), findsOneWidget);
       // Cancel: nothing is sent
       await tester.tap(find.text('exam_cancel'.tr));
       await finFrames(tester, 4);

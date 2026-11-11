@@ -156,7 +156,10 @@ void main() {
         tester,
         () => _opener((c) => showAppModalSheet<void>(
               context: c,
-              builder: (_) => Column(mainAxisSize: MainAxisSize.min, children: [for (var i = 0; i < 8; i++) ListTile(title: Text('$_long $i'))]),
+              // a caller's own content scrolls (as with a plain showModalBottomSheet); the kit draws the sheet around it
+              builder: (_) => SingleChildScrollView(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [for (var i = 0; i < 8; i++) ListTile(title: Text('$_long $i'))]),
+              ),
             )),
         act: (tester) => tester.tap(find.text('open')),
       );
@@ -211,11 +214,13 @@ void main() {
       showAppNotice('Stays');
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
-      await tester.drag(find.text('Stays'), const Offset(0, -10));
+      // past the touch slop (a shorter move is a tap, which closes it) but short of the dismiss distance, slowly
+      await tester.timedDrag(find.text('Stays'), const Offset(0, -24), const Duration(milliseconds: 600));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('Stays'), findsOneWidget);
       await tester.pump(const Duration(seconds: 4)); // the auto-dismiss timer, then the exit
+      await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('Stays'), findsNothing);
       expect(tester.takeException(), isNull);
     });
