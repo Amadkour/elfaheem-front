@@ -8,6 +8,7 @@
 //   share      the meeting's share link sheet: the link block with its facts and actions
 //   waiting    the joiner's "Waiting for the host…" page
 //   rejected   the same page after the host said no
+//   links      the meeting links page (D-307): a live meeting I host, a session later today, a weekly meeting tomorrow
 @Tags(['visual'])
 library;
 
@@ -22,6 +23,8 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show showAppSheet;
 import 'package:flutter_education_app/features/shared/live/live_lobby_sheets.dart';
 import 'package:flutter_education_app/features/shared/live/live_room.dart';
+import 'package:flutter_education_app/features/shared/live/meeting_links.dart';
+import 'package:flutter_education_app/features/shared/live/meeting_links_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'home_screens_golden_test.dart' show pubspecFonts;
@@ -112,6 +115,51 @@ Widget _share() => ShareLinkBody(
       onRevoke: () {},
     );
 
+class _FakeLinks extends MeetingLinksApi {
+  const _FakeLinks();
+
+  @override
+  Future<MeetingLinksData> load() async {
+    final now = DateTime.now().toUtc();
+    return MeetingLinksData([
+      MeetingLinkItem(
+        kind: 'meeting',
+        refId: 1,
+        title: tr('مراجعة مشروع التخرج', 'Graduation project review'),
+        status: MeetingLinkStatus.live,
+        appLink: '/m/1',
+        subtitle: tr('د. منى عبد العزيز', 'Dr. Mona Abdelaziz'),
+        startsAt: now.subtract(const Duration(minutes: 20)),
+        endsAt: now.add(const Duration(minutes: 40)),
+        isHost: true,
+        guest: const MeetingGuestLink(url: 'https://nextbrain.site/live/4f3b1c9e', direct: true, guestsJoined: 3),
+      ),
+      MeetingLinkItem(
+        kind: 'session',
+        refId: 2,
+        title: tr('تراكيب البيانات — المحاضرة السابعة', 'Data structures — lecture 7'),
+        status: MeetingLinkStatus.scheduled,
+        appLink: '/s/2',
+        courseId: 9,
+        subtitle: tr('تراكيب البيانات', 'Data structures'),
+        startsAt: now.add(const Duration(hours: 2)),
+        endsAt: now.add(const Duration(hours: 3)),
+      ),
+      MeetingLinkItem(
+        kind: 'meeting',
+        refId: 3,
+        title: tr('اجتماع القسم الأسبوعي', 'Weekly department meeting'),
+        status: MeetingLinkStatus.scheduled,
+        appLink: '/m/3',
+        subtitle: tr('أ. خالد يوسف', 'Mr. Khaled Youssef'),
+        startsAt: now.add(const Duration(days: 1, hours: 1)),
+        recurring: true,
+        myStatus: 'pending',
+      ),
+    ]);
+  }
+}
+
 /// The sheet scenes open through the real showAppSheet (side panel on wide windows, bottom sheet on phones).
 Widget _host(String name, {required bool dark}) {
   final theme = ThemeConfigProvider(api: ApiClient());
@@ -138,7 +186,9 @@ Widget _host(String name, {required bool dark}) {
           backgroundColor: context.colors.background,
           body: sheet
               ? const SizedBox.expand()
-              : WaitingForHostScreen(
+              : name == 'links'
+                  ? const MeetingLinksPage(api: _FakeLinks())
+                  : WaitingForHostScreen(
                   state: name == 'waiting' ? WaitingState.waiting : WaitingState.rejected,
                   title: tr('مراجعة مشروع التخرج', 'Graduation project review'),
                   hostName: tr('د. منى عبد العزيز', 'Dr. Mona Abdelaziz'),
@@ -194,4 +244,5 @@ void main() {
   testWidgets('share', (tester) => _render(tester, 'share'));
   testWidgets('waiting', (tester) => _render(tester, 'waiting'));
   testWidgets('rejected', (tester) => _render(tester, 'rejected'));
+  testWidgets('links', (tester) => _render(tester, 'links'));
 }
