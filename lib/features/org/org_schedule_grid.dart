@@ -13,7 +13,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../admin/admin_common.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 
 enum GridFilterKind { all, cohort, teacher, assistant, room, group, student }
@@ -132,7 +131,7 @@ class TimetableFilterBar extends StatelessWidget {
         if (k == GridFilterKind.all || k == GridFilterKind.student || (options[k]?.isNotEmpty ?? false)) k,
     ];
     final active = filter.kind != GridFilterKind.all && filter.value != null;
-    final style = TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w700, color: c.textDark);
+    final style = AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark);
 
     final Widget value = switch (filter.kind) {
       GridFilterKind.all => Text(
@@ -223,7 +222,7 @@ class TimetableFilterBar extends StatelessWidget {
                             gridFilterLabel(filter.kind),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: style.copyWith(color: c.primary, fontSize: 12.5, fontWeight: FontWeight.w800),
+                            style: style.copyWith(color: c.primary, fontSize: 12.5, fontWeight: FontWeight.w600),
                           ),
                         ),
                         Icon(Icons.arrow_drop_down_rounded, size: AppIconSize.md, color: c.primary),
@@ -261,7 +260,7 @@ class TimetableLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final style = TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, fontWeight: FontWeight.w700, color: c.textMedium);
+    final style = AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium);
     Widget item(Widget mark, String label) => Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -285,8 +284,8 @@ class TimetableLegend extends StatelessWidget {
         if (kinds.contains(k) || (k == 'section' && kinds.contains('tutorial'))) k,
     ];
     return Wrap(
-      spacing: 14,
-      runSpacing: 4,
+      spacing: AppSpace.md,
+      runSpacing: AppSpace.xxs,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         for (final k in shown.isEmpty ? const ['lecture'] : shown) item(swatch(sessionKindColor(c, k)), sessionKindLabel(k)),

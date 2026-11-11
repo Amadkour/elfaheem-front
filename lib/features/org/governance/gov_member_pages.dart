@@ -99,7 +99,7 @@ class GovSubmitForm extends StatelessWidget {
     final complaintOnly = category?.kind == 'complaint';
     final councilOffer = e != null && e.canSubmitToCouncil && !complaintOnly && type == 'request';
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(t('إلى أي جهة؟', 'To which entity?'), style: appText(12, c: c.textLight)),
+      Text(t('إلى أي جهة؟', 'To which entity?'), style: AppType.meta(context).copyWith(color: c.textLight)),
       const SizedBox(height: AppSpace.xs),
       AppDropdown<int>(
         value: e?.id,
@@ -108,13 +108,13 @@ class GovSubmitForm extends StatelessWidget {
         items: [for (final x in entities) DropdownMenuItem(value: x.id, child: Text(x.name, maxLines: 1, overflow: TextOverflow.ellipsis))],
         onChanged: (v) => onEntity(entities.where((x) => x.id == v).firstOrNull),
       ),
-      if (e != null && (e.description ?? '').isNotEmpty) ...[const SizedBox(height: AppSpace.xs), Text(e.description!, style: appText(12, c: c.textMedium, h: 1.4))],
+      if (e != null && (e.description ?? '').isNotEmpty) ...[const SizedBox(height: AppSpace.xs), Text(e.description!, style: AppType.meta(context).copyWith(color: c.textMedium, height: 1.4))],
       if (forWho != null) ...[const SizedBox(height: AppSpace.sm), forWho!],
       if (cats.isNotEmpty) ...[
         const SizedBox(height: AppSpace.sm),
-        Text(t('ما موضوعها؟', 'What is it about?'), style: appText(12, c: c.textLight)),
+        Text(t('ما موضوعها؟', 'What is it about?'), style: AppType.meta(context).copyWith(color: c.textLight)),
         const SizedBox(height: AppSpace.xs),
-        Wrap(spacing: 6, runSpacing: 6, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final cat in cats)
             AppChoiceChip(
               label: cat.name,
@@ -129,9 +129,9 @@ class GovSubmitForm extends StatelessWidget {
         ],
       ],
       const SizedBox(height: AppSpace.sm),
-      Text(t('النوع', 'Type'), style: appText(12, c: c.textLight)),
+      Text(t('النوع', 'Type'), style: AppType.meta(context).copyWith(color: c.textLight)),
       const SizedBox(height: AppSpace.xs),
-      Wrap(spacing: 6, runSpacing: 6, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final x in types)
           AppChoiceChip(
             label: itemTypeLabel(x),
@@ -159,9 +159,9 @@ class GovSubmitForm extends StatelessWidget {
       const SizedBox(height: AppSpace.sm),
       AppField(controller: body, label: t('التفاصيل', 'Details'), maxLines: 5),
       const SizedBox(height: AppSpace.sm),
-      Text(t('الأولوية', 'Priority'), style: appText(12, c: c.textLight)),
+      Text(t('الأولوية', 'Priority'), style: AppType.meta(context).copyWith(color: c.textLight)),
       const SizedBox(height: AppSpace.xs),
-      Wrap(spacing: 6, runSpacing: 6, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final p in priorities) AppChoiceChip(label: priorityLabelOf(p), selected: priority == p, onTap: () => onPriority(p)),
       ]),
       if (!forOthers) ...[
@@ -175,15 +175,15 @@ class GovSubmitForm extends StatelessWidget {
         ),
       ],
       const SizedBox(height: AppSpace.xs),
-      Text(t('مرفقات', 'Attachments'), style: appText(12, c: c.textLight)),
+      Text(t('مرفقات', 'Attachments'), style: AppType.meta(context).copyWith(color: c.textLight)),
       const SizedBox(height: AppSpace.xxs / 2),
-      Text(t('PDF أو صور أو مستندات Office — حتى 10 ميجابايت للملف', 'PDF, images or Office documents — up to 10 MB each'), style: appText(11.5, c: c.textLight)),
+      Text(t('PDF أو صور أو مستندات Office — حتى 10 ميجابايت للملف', 'PDF, images or Office documents — up to 10 MB each'), style: AppType.meta(context).copyWith(color: c.textLight)),
       const SizedBox(height: AppSpace.xs),
       if (attachments.isNotEmpty) ...[GovAttachmentChips(attachments: attachments, onRemove: onRemoveAttachment), const SizedBox(height: AppSpace.xs)],
-      Wrap(spacing: 6, runSpacing: 6, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         ActionChip(
           avatar: uploading ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.add_rounded, size: AppIconSize.sm, color: appInk(context, c.primary)),
-          label: Text(t('إضافة ملف', 'Add file'), style: appText(12, w: FontWeight.w700, c: appInk(context, c.primary))),
+          label: Text(t('إضافة ملف', 'Add file'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: appInk(context, c.primary))),
           onPressed: uploading || attachments.length >= 10 ? null : onAddAttachment,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
         ),
@@ -353,9 +353,9 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.block)),
         icon: Icon(Icons.check_circle_rounded, color: ctx.colors.success, size: AppIconSize.hero),
-        title: Text(t('أُرسلت', 'Sent'), style: appText(16, w: FontWeight.w800)),
+        title: Text(t('أُرسلت', 'Sent'), style: AppType.section(ctx)),
         content: Text('${m['message'] ?? t('استلمت الجهة معاملتك وسيصلك إشعار بكل تحديث', 'The entity received your item; you will be notified of every update')}\n\n${t('رقم المرجع', 'Reference')}: $ref',
-            textAlign: TextAlign.center, style: appText(13.5, h: 1.5)),
+            textAlign: TextAlign.center, style: AppType.row(ctx).copyWith(height: 1.5)),
         actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t('حسناً', 'OK')))],
       ),
     );
@@ -679,9 +679,9 @@ class _GovMyAssignmentsPageState extends State<GovMyAssignmentsPage> {
                 const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(a.formTitle ?? '${t('نموذج', 'Form')} #${a.formId}', style: appText(14, w: FontWeight.w800, c: c.textDark)),
+                    Text(a.formTitle ?? '${t('نموذج', 'Form')} #${a.formId}', style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
                     if (a.dueAt != null)
-                      Text('${t('قبل', 'By')} ${govWhen(a.dueAt)} · ${govDueText(a.dueAt)}', style: appText(12, c: a.overdue ? c.danger : c.textMedium)),
+                      Text('${t('قبل', 'By')} ${govWhen(a.dueAt)} · ${govDueText(a.dueAt)}', style: AppType.meta(context).copyWith(color: a.overdue ? c.danger : c.textMedium)),
                   ]),
                 ),
                 Icon(Icons.chevron_right_rounded, color: c.textLight),

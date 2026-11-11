@@ -477,13 +477,13 @@ class _TimetableWizardState extends State<TimetableWizard> {
         ]),
         if (p.loads.isEmpty) OrgEmpty(icon: Icons.menu_book_rounded, title: t('لا مقررات في المؤسسة بعد', 'No courses yet')),
         if (d.termId != null) _termBar(context, d, termIds),
-        Wrap(spacing: 6, runSpacing: 6, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           // the term's courses first, then the rest — every course stays selectable
           for (final l in [...shown.where((l) => termIds.contains(asInt(l['course_id']))), ...shown.where((l) => !termIds.contains(asInt(l['course_id'])))])
             FilterChip(
               avatar: termIds.contains(asInt(l['course_id'])) ? Icon(Icons.event_available_rounded, size: AppIconSize.sm, color: c.primary) : null,
               label: Text('${'${asMap(l['course'])['code'] ?? ''}'.isEmpty ? '' : '${asMap(l['course'])['code']} · '}${courseName(l)}',
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
+                  style: AppType.label(context).copyWith(color: context.colors.textDark)),
               selected: d.courseIds.contains(asInt(l['course_id'])),
               onSelected: _locked ? null : (on) => setState(() => on ? d.courseIds.add(asInt(l['course_id'])) : d.courseIds.remove(asInt(l['course_id']))),
             ),
@@ -617,7 +617,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
       Section(
         title: t('أيام الدراسة', 'Teaching days'),
         icon: Icons.view_week_rounded,
-        child: Wrap(spacing: 6, runSpacing: 6, children: [
+        child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final day in scheduleDays)
             FilterChip(
               label: Text(dayLabels()[day] ?? day),
@@ -667,7 +667,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
             onChanged: (v) => setState(() => int.tryParse(v) == null ? d.settings.remove('max_periods_per_day_teacher') : d.settings['max_periods_per_day_teacher'] = int.parse(v)),
           ),
           Text(t('أيام يتجنبها التوليد إن أمكن', 'Days to avoid if possible'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
-          Wrap(spacing: 6, runSpacing: 6, children: [
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             for (final day in d.days)
               FilterChip(
                 label: Text(dayLabels()[day] ?? day),
@@ -771,7 +771,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
                     '${t('المعيدون', 'Assistants')}: ${((l['assistant_ids'] as List?) ?? const []).isEmpty ? '—' : (l['assistant_ids'] as List).map((i) => people[asInt(i)] ?? '#$i').join('، ')}',
                     style: AppType.label(context).copyWith(color: c.textMedium)),
               if (canEdit)
-                Wrap(spacing: 6, children: [
+                Wrap(spacing: AppSpace.xs, children: [
                   TextButton.icon(onPressed: () => assign(l, 'lecture'), icon: const Icon(Icons.person_search_rounded, size: AppIconSize.md), label: Text(t('مرشحو المحاضرة', 'Lecture candidates'))),
                   if (asInt(l['lab_sessions_per_week']) > 0)
                     TextButton.icon(onPressed: () => assign(l, 'lab'), icon: const Icon(Icons.science_rounded, size: AppIconSize.md), label: Text(t('مرشحو السكشن', 'Lab candidates'))),
@@ -849,7 +849,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
       Section(
         title: t('ملخص الإعداد', 'Setup summary'),
         icon: Icons.summarize_rounded,
-        child: Wrap(spacing: 6, runSpacing: 6, children: [
+        child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           OrgPill(t('${sel.length} مقرر', '${sel.length} courses'), icon: Icons.menu_book_rounded),
           OrgPill(t('$lectures محاضرة و$labs سكشن أسبوعياً', '$lectures lectures + $labs labs / week'), icon: Icons.timer_rounded),
           OrgPill(t('${d.days.length} أيام × ${p.periods.length} فترات', '${d.days.length} days × ${p.periods.length} periods'), icon: Icons.view_week_rounded),

@@ -74,7 +74,7 @@ class _CapabilityPickerState extends State<_CapabilityPicker> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(widget.label, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textMedium)),
       const SizedBox(height: AppSpace.xs),
-      Wrap(spacing: 6, runSpacing: 6, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final x in all)
           FilterChip(
               label: Text(x),
@@ -131,7 +131,7 @@ Future<bool> showRoomForm(BuildContext context, OrgScheduleProvider p, Map<Strin
             ]),
             Text(t('النوع', 'Type'), style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
             const SizedBox(height: AppSpace.xs),
-            Wrap(spacing: 8, runSpacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final k in kinds.entries) ChoiceChip(label: Text(k.value), selected: kind == k.key, onSelected: (_) => set(() => kind = k.key)),
             ]),
             const SizedBox(height: AppSpace.sm),
@@ -330,7 +330,7 @@ Future<void> showOfficeMembers(BuildContext context, OrgScheduleProvider p, Map<
             Text(max == null ? t('${picked.length} شخص', '${picked.length} people') : '${picked.length} / $max', style: AppType.row(ctx).copyWith(color: c.textMedium)),
             const SizedBox(height: AppSpace.xs),
             if (people.isEmpty) Text(t('أضف أعضاء هيئة أولاً', 'Add staff members first'), style: AppType.row(ctx).copyWith(color: c.textLight)),
-            Wrap(spacing: 8, runSpacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final e in people.entries)
                 FilterChip(
                     label: Text(e.value),
@@ -464,7 +464,7 @@ Future<void> showStaffPrefs(BuildContext context, OrgScheduleProvider p, int use
                     '"Unavailable" is a hard rule, broken only by an approved override. "Preferred" and "Avoid" are preferences the generator may relax when needed.'),
                 style: AppType.meta(ctx).copyWith(color: c.textMedium)),
             const SizedBox(height: AppSpace.xs),
-            Wrap(spacing: 8, children: [
+            Wrap(spacing: AppSpace.xs, children: [
               for (final b in brushes.entries)
                 ChoiceChip(
                   avatar: CircleAvatar(radius: 6, backgroundColor: col(b.key)),
@@ -512,7 +512,7 @@ Future<void> showStaffPrefs(BuildContext context, OrgScheduleProvider p, int use
               Text(t('🔒 من رد طلب المواعيد — يُعدَّل من هناك', '🔒 From their availability reply — edited there'), style: AppType.meta(ctx).copyWith(color: c.textLight)),
             const SizedBox(height: AppSpace.sm),
             Text(t('المقررات المفضّلة', 'Preferred courses'), style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
-            Wrap(spacing: 6, runSpacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final l in p.loads)
                 FilterChip(
                     label: Text(courseName(l)),
@@ -582,9 +582,9 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         Widget stepper(String label, int v, int min, int max, ValueChanged<int> on) => Row(children: [
-              Expanded(child: Text(label, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, color: c.textDark))),
+              Expanded(child: Text(label, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, color: c.textDark))),
               IconButton(tooltip: t('تقليل', 'Decrease'), onPressed: v > min ? () => set(() => on(v - 1)) : null, icon: const Icon(Icons.remove_circle_outline_rounded)),
-              Text('$v', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              Text('$v', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
               IconButton(tooltip: t('زيادة', 'Increase'), onPressed: v < max ? () => set(() => on(v + 1)) : null, icon: const Icon(Icons.add_circle_outline_rounded)),
             ]);
         return SingleChildScrollView(
@@ -644,7 +644,7 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
                 Row(children: [
                   Icon(Icons.science_rounded, color: c.purple, size: AppIconSize.md),
                   const SizedBox(width: AppSpace.xs),
-                  Flexible(child: Text(t('السكشن / المعمل', 'Section / lab'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark))),
+                  Flexible(child: Text(t('السكشن / المعمل', 'Section / lab'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, color: c.textDark))),
                 ]),
                 stepper(t('عدد السكاشن أسبوعياً (0 = لا يوجد)', 'Labs per week (0 = none)'), labSessions, 0, 14, (v) => labSessions = v),
                 if (labSessions > 0) ...[
@@ -671,7 +671,7 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
                       label: Text(t('اقتراح', 'Suggest')),
                     ),
                   ]),
-                  Wrap(spacing: 8, children: [
+                  Wrap(spacing: AppSpace.xs, children: [
                     for (final u in p.staffOf('teacher_assistant'))
                       FilterChip(
                         label: Text('${u['name']}'),
@@ -791,7 +791,7 @@ class ScheduleResultView extends StatelessWidget {
               if (stats.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: AppSpace.xs),
-                  child: Wrap(spacing: 6, runSpacing: 4, children: [
+                  child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                     OrgPill(t('${stats['sessions_placed']} من ${stats['sessions_required']} حصة', '${stats['sessions_placed']} of ${stats['sessions_required']} sessions'),
                         icon: Icons.event_available_rounded, color: col),
                     if (stats['soft_cost'] != null)

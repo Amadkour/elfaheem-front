@@ -143,7 +143,7 @@ class _FormCard extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${row['title']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
               const SizedBox(height: AppSpace.xxs),
-              Wrap(spacing: 6, runSpacing: 4, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                 StatusChip(statusLabel('${row['status']}'), statusColor(context, '${row['status']}')),
                 OrgPill(_formKinds()[row['kind']] ?? '${row['kind']}'),
                 OrgPill(t('${asInt(counts['total'])} رد', '${asInt(counts['total'])} responses'), color: c.textMedium),
@@ -228,7 +228,7 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
             padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               SheetHeader(index == null ? t('حقل جديد', 'New field') : t('تعديل الحقل', 'Edit field')),
-              Wrap(spacing: 8, runSpacing: 8, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final e in fieldTypes().entries)
                   ChoiceChip(
                     avatar: Icon(fieldIcons[e.key], size: AppIconSize.sm, color: f['type'] == e.key ? c.onHero : c.textMedium),
@@ -403,7 +403,7 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
           onPressed: _busy ? null : () => _save(),
           style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control))),
-          child: Text(t('حفظ كمسودة', 'Save as draft'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
+          child: Text(t('حفظ كمسودة', 'Save as draft'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600)),
         ),
       ]);
   }
@@ -619,7 +619,7 @@ Future<void> _openResponse(BuildContext context, Map<String, dynamic> row, Map<S
           Text('${f['label']}', style: AppType.meta(ctx).copyWith(color: c.textLight)),
           const SizedBox(height: AppSpace.xxs / 2),
           if (f['type'] == 'file')
-            Wrap(spacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, children: [
               for (final a in asMapList(answers[f['key']]))
                 ActionChip(avatar: const Icon(Icons.attach_file_rounded, size: AppIconSize.sm), label: Text('${a['name']}'),
                     onPressed: () => openFileUrl('${a['url']}')),
@@ -726,7 +726,7 @@ class _MaterialTile extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${row['title']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
               const SizedBox(height: AppSpace.xxs),
-              Wrap(spacing: 6, children: [
+              Wrap(spacing: AppSpace.xs, children: [
                 OrgPill(members ? t('للأعضاء', 'Members') : t('للفريق فقط', 'Team only'),
                     color: members ? c.success : c.textMedium, icon: members ? Icons.public_rounded : Icons.lock_rounded),
                 if ('${row['folder'] ?? ''}'.isNotEmpty) OrgPill('${row['folder']}', icon: Icons.folder_rounded),
@@ -806,7 +806,7 @@ Future<void> _addMaterial(BuildContext context, int? deptId, List<String> folder
             Field(controller: title, label: t('اسم واضح للملف', 'A clear title')),
             Field(controller: folder, label: t('المجلد (مثلاً: لوائح، نماذج)', 'Folder (e.g. Regulations, Templates)')),
             if (folders.isNotEmpty)
-              Wrap(spacing: 6, children: [
+              Wrap(spacing: AppSpace.xs, children: [
                 for (final f in folders) ActionChip(label: Text(f), onPressed: () => set(() => folder.text = f)),
               ]),
             OrgSwitchRow(
@@ -952,7 +952,7 @@ class _ComplaintCard extends StatelessWidget {
               Text('${row['ref']} · ${asMap(row['user'])['name'] ?? ''} · ${relTime(row['created_at'])}',
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
               const SizedBox(height: AppSpace.xs),
-              Wrap(spacing: 6, runSpacing: 4, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                 StatusChip(statusLabel(st), statusColor(context, st)),
                 OrgPill(priorityLabel('${row['priority']}'), color: priorityColor(context, '${row['priority']}')),
                 if (overdue) OrgPill(t('تجاوزت المهلة', 'Overdue'), color: c.danger, icon: Icons.timer_off_rounded),
@@ -1049,7 +1049,7 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
           for (final d in depts)
             ListTile(
               leading: IconBadge(deptIcon(d['icon']), hexColor(d['color'], ctx.colors.primary), size: 38),
-              title: Text(orgNameOf(d), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
+              title: Text(orgNameOf(d), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600)),
               onTap: () => Navigator.pop(ctx, asInt(d['id'])),
             ),
         ]));
@@ -1134,7 +1134,7 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                         title: '${d['subject']}',
                         icon: Icons.support_agent_rounded,
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Wrap(spacing: 6, runSpacing: 4, children: [
+                          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                             StatusChip(statusLabel('${d['status']}'), statusColor(context, '${d['status']}')),
                             OrgPill(priorityLabel('${d['priority']}'), color: priorityColor(context, '${d['priority']}')),
                             if (d['overdue'] == true) OrgPill(t('تجاوزت المهلة', 'Overdue'), color: c.danger, icon: Icons.timer_off_rounded),
@@ -1155,7 +1155,7 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                             const SizedBox(height: AppSpace.xs),
                             Text(t('إسناد إلى', 'Assign to'), style: AppType.meta(context).copyWith(color: c.textLight)),
                             const SizedBox(height: AppSpace.xxs),
-                            Wrap(spacing: 6, runSpacing: 6, children: [
+                            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                               for (final u in asMapList(d['assignable']))
                                 ChoiceChip(
                                   label: Text('${u['name']}', style: TextStyle(fontFamily: AppFonts.family)),
@@ -1178,7 +1178,7 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                       // a Wrap: on a narrow phone the second chip goes under the first instead of overflowing
                       Align(
                         alignment: AlignmentDirectional.centerStart,
-                        child: Wrap(spacing: 8, runSpacing: 4, children: [
+                        child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                         ChoiceChip(
                           label: Text(t('رد على صاحب الشكوى', 'Reply'), style: TextStyle(fontFamily: AppFonts.family)),
                           selected: !_internal,

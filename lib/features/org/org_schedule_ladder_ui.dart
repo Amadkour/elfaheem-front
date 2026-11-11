@@ -86,7 +86,7 @@ class _ModePicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Wrap(spacing: 6, runSpacing: 6, children: [
+    return Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
       for (final m in modes)
         Material(
           color: Colors.transparent,
@@ -408,7 +408,7 @@ class _LadderEditorState extends State<LadderEditor> {
       _sectionTitle(context, t('إعدادات محفوظة', 'Presets')),
       if (cfg.presets.isEmpty && !widget.canEdit)
         Text(t('لا إعدادات محفوظة', 'No presets yet'), style: AppType.meta(context).copyWith(color: c.textLight)),
-      Wrap(spacing: 6, runSpacing: 6, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final p in cfg.presets)
           InputChip(
             avatar: Icon(Icons.bookmark_rounded, size: AppIconSize.sm, color: c.primary),
@@ -557,7 +557,7 @@ class LadderDecisionCard extends StatelessWidget {
         if (d.top.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: AppSpace.xs),
-            child: Wrap(spacing: 6, runSpacing: 6, children: [for (final (reason, n) in d.top) _pill(context, '$n × ${unplacedReasonText(reason)}', c.textMedium)]),
+            child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [for (final (reason, n) in d.top) _pill(context, '$n × ${unplacedReasonText(reason)}', c.textMedium)]),
           ),
         const SizedBox(height: AppSpace.sm),
         for (final o in orderedOptions(d)) _OptionCard(option: o, onChoose: busy || !o.possible ? null : () => onChoose(o.id)),
@@ -617,7 +617,7 @@ class _OptionCard extends StatelessWidget {
           if (impact != null && impact.brokenByRung.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: AppSpace.xs),
-              child: Wrap(spacing: 6, runSpacing: 6, children: [
+              child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final e in impact.brokenByRung.entries) _pill(context, '${rungName(e.key)} ×${e.value}', c.warning, icon: Icons.rule_rounded),
               ]),
             ),
@@ -825,7 +825,7 @@ class _LadderOverlayState extends State<LadderOverlay> {
           Expanded(
             child: Text(
               s.elapsedS != null && s.elapsedS! >= 1 ? '${s.text} · ${liveClock(Duration(seconds: s.elapsedS!.round()))}' : s.text,
-              style: orgText(context, size: 12.5, w: now ? FontWeight.w700 : FontWeight.w400, color: now ? c.textDark : c.textLight),
+              style: orgText(context, size: 12.5, w: now ? FontWeight.w600 : FontWeight.w400, color: now ? c.textDark : c.textLight),
             ),
           ),
         ]),
@@ -850,7 +850,7 @@ class _LadderOverlayState extends State<LadderOverlay> {
         TextButton(onPressed: widget.busy ? null : widget.onCancel, child: Text(t('إلغاء', 'Cancel'), style: TextStyle(color: c.danger))),
     ]);
 
-    final clock = Wrap(spacing: 10, runSpacing: 2, children: [
+    final clock = Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs / 2, children: [
       Text(
         budget != null && budget > 0
             ? t('المدة ${liveClock(elapsed)} من ${liveClock(Duration(seconds: budget))} كحد أقصى', 'Elapsed ${liveClock(elapsed)} of up to ${liveClock(Duration(seconds: budget))}')
@@ -890,7 +890,7 @@ class _LadderOverlayState extends State<LadderOverlay> {
         ),
         const SizedBox(height: AppSpace.xs),
         if (live.hasBest)
-          Wrap(spacing: 6, runSpacing: 6, children: [
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             counter(t('وُضعت', 'placed'), '${live.placed} / ${live.required}', c.success),
             counter(t('متبقية', 'remaining'), '${live.unplaced}', live.unplaced > 0 ? c.warning : c.success),
             counter(t('قواعد مكسورة', 'rules bent'), '${live.broken}', live.broken > 0 ? c.danger : c.success),
@@ -1208,7 +1208,7 @@ class LadderResultCard extends StatelessWidget {
               ? t('فحص مستقل: ${r.proof.hardVsRelaxed} تعارض · ${r.proof.hardVsOriginal} كسر مقصود مُسجَّل', 'Independent check: ${r.proof.hardVsRelaxed} conflicts · ${r.proof.hardVsOriginal} deliberate break(s) listed')
               : t('الفحص المستقل وجد ${r.proof.hardVsRelaxed} تعارضاً و${r.proof.neverBrokenViolations} خرقاً لقاعدة ثابتة', 'The independent check found ${r.proof.hardVsRelaxed} conflict(s) and ${r.proof.neverBrokenViolations} fixed-rule violation(s)'),
           color: r.provenClean ? c.success : c.danger,
-          w: FontWeight.w700,
+          w: FontWeight.w600,
         ),
         if (!r.complete && r.status != 'cancelled' && r.status != 'invalid')
           Container(
@@ -1227,7 +1227,7 @@ class LadderResultCard extends StatelessWidget {
                         ? t('فتح «${b.name}» يُكمل الجدول', 'Unlocking "${b.name}" would complete the timetable')
                         : t('فتح «${b.name}» يضع ${b.placedAfter} من ${b.required}', 'Unlocking "${b.name}" would place ${b.placedAfter} of ${b.required}'),
                     color: b == best ? c.warning : c.textMedium,
-                    w: b == best ? FontWeight.w700 : FontWeight.w400,
+                    w: b == best ? FontWeight.w600 : FontWeight.w400,
                   ),
               if (onOpenLadder != null)
                 Align(
@@ -1250,7 +1250,7 @@ class LadderResultCard extends StatelessWidget {
           const SizedBox(height: AppSpace.sm),
           Text(t('$pending اقتراح بانتظار قرارك — النشر ينتظرها.', '$pending proposal(s) wait for your decision — publishing waits for them.'), style: AppType.meta(context).copyWith(color: c.textMedium)),
           const SizedBox(height: AppSpace.xs),
-          Wrap(spacing: 8, runSpacing: 6, children: [
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             if (onAcceptAll != null)
               FilledButton.tonalIcon(onPressed: onAcceptAll, icon: const Icon(Icons.done_all_rounded, size: AppIconSize.md), label: Text(t('قبول الكل ($pending)', 'Accept all ($pending)'))),
             if (onOpenProposals != null) OutlinedButton(onPressed: onOpenProposals, child: Text(t('راجع الاقتراحات', 'Review the proposals'))),

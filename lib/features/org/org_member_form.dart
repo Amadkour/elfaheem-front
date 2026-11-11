@@ -147,7 +147,7 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
                 const SizedBox(height: AppSpace.xs),
                 Padding(
                   padding: const EdgeInsets.only(bottom: AppSpace.sm),
-                  child: Wrap(spacing: 8, runSpacing: 6, children: [
+                  child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                     for (final r in roleOptions)
                       ChoiceChip(label: Text(orgRoleLabels()[r] ?? r), selected: role == r, onSelected: (_) => set(() => role = r)),
                   ]),
@@ -203,13 +203,13 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
               label(t('الفرقة / المستوى', 'Year / level')),
               if (data.levels.isEmpty)
                 Text(t('لم تُعرّف مستويات للمؤسسة بعد', 'No levels are configured yet'), style: AppType.meta(ctx).copyWith(color: c.textLight)),
-              Wrap(spacing: 8, runSpacing: 6, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final l in data.levels)
                   ChoiceChip(label: Text(orgOption(l).$2), selected: level == '${l['key']}', onSelected: (on) => set(() => level = on ? '${l['key']}' : null)),
               ]),
               const SizedBox(height: AppSpace.sm),
               label(t('الدفعة', 'Cohort')),
-              Wrap(spacing: 8, children: [
+              Wrap(spacing: AppSpace.xs, children: [
                 for (final e in memberCohortLabels().entries)
                   ChoiceChip(label: Text(e.value), selected: cohort == e.key, onSelected: (on) => set(() => cohort = on ? e.key : null)),
               ]),
@@ -277,7 +277,7 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
                         },
                       ),
                   ]),
-                  Wrap(spacing: 8, runSpacing: 6, children: [
+                  Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                     for (final r in data.roles)
                       if (!(head && r['key'] == 'dept_head'))
                         Tooltip(
@@ -388,7 +388,7 @@ Future<void> showGeneratedPassword(BuildContext context, String login, String pa
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             SheetHeader(t('بيانات الدخول', 'Login details')),
             SelectableText('$login\n$password',
-                textDirection: TextDirection.ltr, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                textDirection: TextDirection.ltr, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
             const SizedBox(height: AppSpace.xs),
             Text(t('تظهر مرة واحدة فقط — انسخها الآن.', 'Shown once — copy it now.')),
           ]),

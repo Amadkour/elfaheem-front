@@ -160,7 +160,7 @@ class MiniTimetable extends StatelessWidget {
           border: Border.all(color: hot ? tone : Colors.transparent, width: hot ? 1.4 : 0),
         ),
         child: Text(short, maxLines: 1, overflow: TextOverflow.clip, softWrap: false,
-            style: TextStyle(fontFamily: AppFonts.family, fontSize: 9.5, fontWeight: hot ? FontWeight.w800 : FontWeight.w600, color: hot ? tone : c.textMedium)),
+            style: TextStyle(fontFamily: AppFonts.family, fontSize: 9.5, fontWeight: hot ? FontWeight.w600 : FontWeight.w600, color: hot ? tone : c.textMedium)),
       );
     }
 
@@ -285,7 +285,7 @@ class ChangePreviewSheet extends StatelessWidget {
         if (p.changes.length > 8) Text(t('+${p.changes.length - 8} أخرى', '+${p.changes.length - 8} more'), style: AppType.meta(context).copyWith(color: c.textLight)),
       ],
       const SizedBox(height: AppSpace.sm),
-      Wrap(spacing: 8, runSpacing: 8, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         FilledButton.icon(
           onPressed: onApply,
           icon: Icon(p.afterWins ? Icons.check_rounded : Icons.warning_amber_rounded, size: AppIconSize.md),
@@ -326,7 +326,7 @@ class ChangePreviewSheet extends StatelessWidget {
         const SizedBox(height: AppSpace.xs),
         MiniTimetable(days: days, periods: periods, slots: xs, highlight: hl, tone: tone, names: names),
         const SizedBox(height: AppSpace.xs),
-        Wrap(spacing: 6, runSpacing: 4, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
           stat(t('تعارض إلزامي', 'hard'), m.hard, bad: true),
           stat(t('بلا مكان', 'unplaced'), m.unplaced, bad: true),
           if (m.warnings > 0) stat(t('تنبيه', 'warnings'), m.warnings),

@@ -212,7 +212,7 @@ class _GovCouncilSettingsFormState extends State<GovCouncilSettingsForm> {
           title: t('العطلات', 'Holidays'),
           icon: Icons.beach_access_rounded,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Wrap(spacing: 6, runSpacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final h in _s.holidays)
                 InputChip(
                   label: Text(h, textDirection: TextDirection.ltr, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
@@ -280,7 +280,7 @@ class _GovCouncilSettingsFormState extends State<GovCouncilSettingsForm> {
             const SizedBox(height: AppSpace.sm),
             Text(t('الأنواع', 'Types'), style: AppType.label(context).copyWith(color: c.textLight)),
             const SizedBox(height: AppSpace.xs),
-            Wrap(spacing: 8, runSpacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final ty in itemTypes)
                 FilterChip(
                   label: Text(itemTypeLabel(ty), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
@@ -296,7 +296,7 @@ class _GovCouncilSettingsFormState extends State<GovCouncilSettingsForm> {
             if (widget.categories.isEmpty)
               Text(t('لا تصنيفات في القسم بعد — كل التصنيفات مشمولة', 'The department has no categories yet — every category is included'), style: AppType.meta(context).copyWith(color: c.textMedium))
             else
-              Wrap(spacing: 8, runSpacing: 6, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final e in widget.categories.entries)
                   FilterChip(
                     label: Text(e.value, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
@@ -397,7 +397,7 @@ class _Choice extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label, style: AppType.label(context).copyWith(color: c.textLight)),
         const SizedBox(height: AppSpace.xs),
-        Wrap(spacing: 8, runSpacing: 6, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final e in options.entries)
             AppChoiceChip(label: e.value, selected: e.key == value, onTap: () => onChanged?.call(e.key)),
         ]),
@@ -485,7 +485,7 @@ class _VoteRulePreviewState extends State<VoteRulePreview> {
           const SizedBox(height: AppSpace.xs),
           Text(t('صوت الرئيس (في العيّنة)', "The chair's vote (in the sample)"), style: AppType.meta(context).copyWith(color: c.textLight)),
           const SizedBox(height: AppSpace.xxs),
-          Wrap(spacing: 6, runSpacing: 6, children: [
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             AppChoiceChip(label: t('لم يصوّت', 'Did not vote'), selected: _chair == null, onTap: () => setState(() => _chair = null)),
             AppChoiceChip(label: voteLabel('approve'), selected: _chair == 'approve', onTap: () => setState(() => _chair = 'approve')),
             AppChoiceChip(label: voteLabel('reject'), selected: _chair == 'reject', onTap: () => setState(() => _chair = 'reject')),
@@ -494,7 +494,7 @@ class _VoteRulePreviewState extends State<VoteRulePreview> {
         const SizedBox(height: AppSpace.sm),
         Divider(color: c.divider, height: 1),
         const SizedBox(height: AppSpace.sm),
-        Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
           AppBadgePill(voteOutcomeLabel(tally.outcome), color: col, icon: tally.quorumMet ? Icons.gavel_rounded : Icons.hourglass_empty_rounded),
           AppBadgePill(
             tally.quorumMet ? t('النصاب مكتمل: $_voted من ${tally.needed}', 'Quorum met: $_voted of ${tally.needed}') : t('النصاب غير مكتمل: $_voted من ${tally.needed}', 'No quorum: $_voted of ${tally.needed}'),

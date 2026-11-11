@@ -99,7 +99,7 @@ class _OrgAvailabilityRequestsPageState extends State<OrgAvailabilityRequestsPag
               Field(controller: title, label: t('العنوان', 'Title')),
               Field(controller: msg, label: t('رسالة توضيحية (اختياري)', 'Message (optional)'), maxLines: 3),
               Text(t('مطلوب من', 'Who must answer'), style: AppType.label(ctx).copyWith(color: c.textLight)),
-              Wrap(spacing: 8, children: [
+              Wrap(spacing: AppSpace.xs, children: [
                 for (final e in {'teacher': t('هيئة التدريس', 'Teaching staff'), 'teacher_assistant': t('الهيئة المعاونة', 'Assistants'),
                   'admin_assistant': t('الإداريون', 'Admin staff')}.entries)
                   FilterChip(label: Text(e.value), selected: roles.contains(e.key),
@@ -189,7 +189,7 @@ class _OrgAvailabilityRequestsPageState extends State<OrgAvailabilityRequestsPag
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Text('${it['title']}', style: AppType.bodyStrong(context)),
                             const SizedBox(height: AppSpace.xxs),
-                            Wrap(spacing: 6, runSpacing: 4, children: [
+                            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                               OrgPill('${it['submitted']} / ${it['targeted']}', icon: Icons.how_to_reg_rounded, color: c.success),
                               OrgPill('${t('حتى', 'until')} ${_stamp(it['deadline'])}', icon: Icons.timer_rounded, color: c.warning),
                               OrgPill('${it['min_cells']}–${it['max_cells'] ?? '∞'}', icon: Icons.grid_view_rounded),
@@ -291,13 +291,13 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
               ? (_failed ? ErrorRetry(message: t('تعذّر تحميل الطلب، تحقق من الاتصال', 'Could not load the request — check your connection'), onRetry: _load) : const AppListSkeleton())
               : Column(children: [
                   Container(width: double.infinity, margin: const EdgeInsets.all(AppSpace.md), decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppRadius.block)), child: AppMeshSurface(radius: BorderRadius.circular(AppRadius.block), child: Padding(padding: const EdgeInsets.all(AppSpace.md), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(orgNameOf(asMap(r['organization'])), style: TextStyle(fontFamily: AppFonts.family, color: c.onHeroMuted, fontSize: 12.5)),
+                      Text(orgNameOf(asMap(r['organization'])), style: AppType.label(context).copyWith(color: c.onHeroMuted)),
                       const SizedBox(height: AppSpace.xxs),
-                      Text('${r['title']}', style: TextStyle(fontFamily: AppFonts.family, color: c.onHero, fontSize: 19, fontWeight: FontWeight.w800)),
+                      Text('${r['title']}', style: AppType.section(context).copyWith(color: c.onHero)),
                       if ('${r['message'] ?? ''}'.isNotEmpty)
                         Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: Text('${r['message']}', style: TextStyle(fontFamily: AppFonts.family, color: c.onHero))),
                       const SizedBox(height: AppSpace.sm),
-                      Wrap(spacing: 8, runSpacing: 6, children: [
+                      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                         _chip(Icons.timer_rounded, '${t('قبل', 'Before')} ${_stamp(r['deadline'])}'),
                         _chip(Icons.grid_view_rounded, maxC == null ? t('$minC فترات على الأقل', 'At least $minC periods') : t('من $minC إلى $maxC فترات', '$minC – $maxC periods')),
                       ]),
@@ -367,7 +367,7 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(i, size: AppIconSize.xs, color: context.colors.onHero),
           const SizedBox(width: AppSpace.xxs),
-          Flexible(child: Text(text, style: TextStyle(fontFamily: AppFonts.family, color: context.colors.onHero, fontSize: 12))),
+          Flexible(child: Text(text, style: AppType.meta(context).copyWith(color: context.colors.onHero))),
         ]),
       );
 }

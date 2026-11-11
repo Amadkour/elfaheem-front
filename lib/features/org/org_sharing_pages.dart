@@ -66,7 +66,7 @@ class ShareCard extends StatelessWidget {
           Flexible(child: OrgPill(shareStateText(state), color: tone)),
         ]),
         const SizedBox(height: AppSpace.sm),
-        Wrap(spacing: 6, runSpacing: 6, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final m in methods) AppTag(shareMethodLabel(m), c.primary, icon: _methodIcon(m)),
           if (type == 'graduates')
             AppTag(asMap(share['scope'])['year'] == true ? t('مع سنة التخرج', 'with graduation year') : t('نعم / لا فقط', 'yes / no only'),
@@ -74,7 +74,7 @@ class ShareCard extends StatelessWidget {
         ]),
         if (grantorName == null || expires != null) ...[
           const SizedBox(height: AppSpace.xs),
-          Wrap(spacing: 14, runSpacing: 4, children: [
+          Wrap(spacing: AppSpace.md, runSpacing: AppSpace.xxs, children: [
             if (grantorName == null)
               _mini(context, Icons.handshake_rounded, t('$grants مؤسسة لديها وصول', '$grants organizations have access')),
             if (grantorName == null && pending > 0) _mini(context, Icons.hourglass_top_rounded, t('$pending طلب بانتظارك', '$pending pending'), c.warning),
@@ -147,7 +147,7 @@ class GrantCard extends StatelessWidget {
         if (note.isNotEmpty) ...[const SizedBox(height: AppSpace.xs), Text(note, style: AppType.label(context).copyWith(color: c.textMedium))],
         if (actions.isNotEmpty) ...[
           const SizedBox(height: AppSpace.sm),
-          Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, children: actions),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.end, children: actions),
         ],
       ]),
     );
@@ -168,7 +168,7 @@ class VerifyResultsList extends StatelessWidget {
     final yearIncluded = result['year_included'] == true;
     final rows = asMapList(result['results']);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Wrap(spacing: 8, runSpacing: 8, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         AppTag(t('$yes خريج', '$yes graduates'), c.success, icon: Icons.check_circle_rounded),
         AppTag(t('$no غير خريج', '$no not graduates'), c.textMedium, icon: Icons.cancel_rounded),
         if (bad > 0) AppTag(t('$bad بدون معرّف', '$bad without identifier'), c.warning, icon: Icons.help_rounded),
@@ -222,7 +222,7 @@ class ShareFormBody extends StatelessWidget {
       if (!editing) ...[
         Text(t('ماذا تشارك؟', 'What do you share?'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
         const SizedBox(height: AppSpace.xs),
-        Wrap(spacing: 8, runSpacing: 8, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final tp in shareResourceTypes)
             ChoiceChip(
               key: ValueKey('share.type.$tp'),
@@ -592,7 +592,7 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
           ShareCard(share: share),
           if ('${share['description'] ?? ''}'.isNotEmpty) ...[const SizedBox(height: AppSpace.xs), Text('${share['description']}', style: AppType.row(ctx).copyWith(color: c.textMedium))],
           const SizedBox(height: AppSpace.sm),
-          Wrap(spacing: 8, runSpacing: 8, children: [
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             if (_canEdit && active) OutlinedButton.icon(onPressed: () { Navigator.pop(ctx); _shareForm(existing: share); }, icon: const Icon(Icons.edit_rounded, size: AppIconSize.md), label: Text(t('تعديل', 'Edit'))),
             if (_canEdit && active && (share['methods'] as List? ?? const []).contains('invite'))
               OutlinedButton.icon(
@@ -785,7 +785,7 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
             ShareCard(share: s, grantorName: orgNameOfBrief(asMap(s['grantor'])), onTap: s['readable'] == true && '${s['resource_type']}' != 'graduates' ? () => _openContent(asInt(s['id'])) : null),
             Padding(
               padding: const EdgeInsetsDirectional.only(start: AppSpace.xs, top: AppSpace.xxs),
-              child: Wrap(spacing: 8, children: [
+              child: Wrap(spacing: AppSpace.xs, children: [
                 if (s['readable'] == true && '${s['resource_type']}' != 'graduates')
                   TextButton.icon(onPressed: () => _openContent(asInt(s['id'])), icon: const Icon(Icons.open_in_new_rounded, size: AppIconSize.md), label: Text(t('عرض', 'Open'))),
                 if (_canEdit && enabled && s['my_grant'] == null && ((s['methods'] as List? ?? const []).contains('auto') || (s['methods'] as List? ?? const []).contains('request')))

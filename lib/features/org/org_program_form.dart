@@ -21,7 +21,6 @@ import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 
 String orgCourseName(Map c) =>
@@ -480,10 +479,10 @@ class CourseSetField extends StatelessWidget {
         AnimatedSize(
           duration: const Duration(milliseconds: 180),
           alignment: AlignmentDirectional.topStart,
-          child: Wrap(spacing: 6, runSpacing: 6, children: [
+          child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             for (final id in selected)
               InputChip(
-                label: Text(byId[id] == null ? '#$id' : orgCourseName(byId[id]!), style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
+                label: Text(byId[id] == null ? '#$id' : orgCourseName(byId[id]!), style: AppType.label(context).copyWith(color: context.colors.textDark)),
                 onDeleted: () {
                   selected.remove(id);
                   onChanged();

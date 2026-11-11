@@ -60,28 +60,28 @@ class GovFormAssignForm extends StatelessWidget {
     final c = context.colors;
     final any = people.isNotEmpty || deptIds.isNotEmpty || roles.isNotEmpty;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(t('أشخاص', 'People'), style: appText(12, c: c.textLight)),
+      Text(t('أشخاص', 'People'), style: AppType.meta(context).copyWith(color: c.textLight)),
       const SizedBox(height: AppSpace.xs),
-      Wrap(spacing: 6, runSpacing: 6, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final p in people)
           InputChip(
             avatar: AdminAvatar(name: p.name, url: p.avatar, size: 22),
-            label: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: c.textDark)),
+            label: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
             onDeleted: () => onRemovePerson(p),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
           ),
         ActionChip(
           avatar: Icon(Icons.person_add_alt_1_rounded, size: AppIconSize.sm, color: c.primary),
-          label: Text(t('إضافة شخص', 'Add person'), style: appText(12, w: FontWeight.w700, c: c.primary)),
+          label: Text(t('إضافة شخص', 'Add person'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.primary)),
           onPressed: onAddPerson,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
         ),
       ]),
       if (entities.isNotEmpty) ...[
         const SizedBox(height: AppSpace.md),
-        Text(t('جهات (كل أعضائها)', 'Entities (every member)'), style: appText(12, c: c.textLight)),
+        Text(t('جهات (كل أعضائها)', 'Entities (every member)'), style: AppType.meta(context).copyWith(color: c.textLight)),
         const SizedBox(height: AppSpace.xs),
-        Wrap(spacing: 6, runSpacing: 6, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final e in entities)
             AppChoiceChip(
               label: e.name,
@@ -204,14 +204,14 @@ class GovAssignmentsBody extends StatelessWidget {
             dense: true,
             onTap: onTap,
             leading: AdminAvatar(name: a.user.name, url: a.user.avatar, size: 34),
-            title: Text(a.user.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
+            title: Text(a.user.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
             subtitle: Text(
               [
                 if (a.status == 'pending' && a.dueAt != null) '${t('قبل', 'by')} ${govWhen(a.dueAt)}',
                 if (a.overdue) t('متأخر', 'Overdue'),
                 if (a.remindCount > 0) t('ذُكّر ${a.remindCount}', 'Reminded ${a.remindCount}×'),
               ].join(' · '),
-              style: appText(11.5, c: a.overdue ? c.danger : c.textMedium),
+              style: AppType.meta(context).copyWith(color: a.overdue ? c.danger : c.textMedium),
             ),
             trailing: trailing,
           ),
@@ -220,12 +220,12 @@ class GovAssignmentsBody extends StatelessWidget {
       AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Expanded(child: Text(t('${submitted.length} من $total أجابوا', '${submitted.length} of $total answered'), style: appText(14, w: FontWeight.w800, c: c.textDark))),
-            Text('${pct.toStringAsFixed(0)}%', style: appText(13, w: FontWeight.w800, c: appScoreColor(context, pct))),
+            Expanded(child: Text(t('${submitted.length} من $total أجابوا', '${submitted.length} of $total answered'), style: AppType.bodyStrong(context).copyWith(color: c.textDark))),
+            Text('${pct.toStringAsFixed(0)}%', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: appScoreColor(context, pct))),
           ]),
           const SizedBox(height: AppSpace.xs),
           AppProgressBar(value: pct, max: 100),
-          if (dueAt != null) ...[const SizedBox(height: AppSpace.xs), Text('${t('الموعد', 'Due')}: ${govWhen(dueAt)}', style: appText(12, c: c.textMedium))],
+          if (dueAt != null) ...[const SizedBox(height: AppSpace.xs), Text('${t('الموعد', 'Due')}: ${govWhen(dueAt)}', style: AppType.meta(context).copyWith(color: c.textMedium))],
           if (onRemindAll != null && pending.isNotEmpty) ...[
             const SizedBox(height: AppSpace.sm),
             Align(

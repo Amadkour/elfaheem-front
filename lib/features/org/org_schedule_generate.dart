@@ -515,7 +515,7 @@ class ConflictsPanel extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
         decoration: BoxDecoration(color: col.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(AppRadius.control), border: Border.all(color: col.withValues(alpha: 0.3))),
-        child: Wrap(spacing: 10, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        child: Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
           Icon(d.hard > 0 ? Icons.error_rounded : (d.soft > 0 ? Icons.warning_amber_rounded : Icons.verified_rounded), size: AppIconSize.md, color: col),
           if (done != null && done.required > 0)
             Text(done.isComplete ? t('الجدول مكتمل', 'Timetable complete') : t('مكتمل ${done.pct}٪', '${done.pct}% complete'),
@@ -642,7 +642,7 @@ class _GenerationLivePanelState extends State<GenerationLivePanel> with SingleTi
             final budget = live?.budgetS;
             final hint = open && current != null ? patienceText(inStep, relax: current.relax == true) : null;
             return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Wrap(spacing: 10, runSpacing: 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs / 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
                 Text(
                   budget != null
                       ? t('المدة ${liveClock(elapsed)} من ${liveClock(Duration(seconds: budget))} كحد أقصى', 'Elapsed ${liveClock(elapsed)} of up to ${liveClock(Duration(seconds: budget))}')
@@ -702,7 +702,7 @@ class _GenerationLivePanelState extends State<GenerationLivePanel> with SingleTi
           Expanded(
             child: Text(
               s.ms != null && s.ms! >= 1000 ? '${s.text} · ${liveClock(Duration(milliseconds: s.ms!))}' : s.text,
-              style: orgText(context, size: 12.5, w: now ? FontWeight.w700 : FontWeight.w400, color: now ? c.textDark : c.textMedium),
+              style: orgText(context, size: 12.5, w: now ? FontWeight.w600 : FontWeight.w400, color: now ? c.textDark : c.textMedium),
             ),
           ),
         ]),
@@ -1299,7 +1299,7 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
             Expanded(child: Text(quickRuleText(a.rule), style: AppType.bodyStrong(context))),
           ]),
           const SizedBox(height: AppSpace.xs),
-          Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
               decoration: BoxDecoration(color: c.success.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)),
@@ -1366,7 +1366,7 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
           if (fixers.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: AppSpace.xs),
-              child: Wrap(spacing: 6, runSpacing: 6, children: [
+              child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final a in fixers.take(3))
                   ActionChip(
                     avatar: Icon(Icons.bolt_rounded, size: AppIconSize.sm, color: c.primary),
@@ -1425,7 +1425,7 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
         else if (widget.canEdit)
           busy.contains(block)
               ? const Padding(padding: EdgeInsets.all(AppSpace.xs), child: LinearProgressIndicator())
-              : Wrap(spacing: 8, children: [
+              : Wrap(spacing: AppSpace.xs, children: [
                   TextButton.icon(onPressed: () => _decide(block, true), icon: Icon(Icons.check_rounded, color: c.success), label: Text(t('قبول', 'Accept'))),
                   TextButton.icon(onPressed: () => _decide(block, false), icon: Icon(Icons.close_rounded, color: c.danger), label: Text(t('رفض', 'Reject'))),
                 ]),

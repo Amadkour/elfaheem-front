@@ -291,7 +291,7 @@ class _OrgRequestCard extends StatelessWidget {
             AppBadgePill(t('الكود صحيح', 'Code verified'), color: c.success, icon: Icons.verified_rounded),
           ],
           const SizedBox(height: AppSpace.xs),
-          Wrap(spacing: 8, runSpacing: 6, children: [
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             AppButton.secondary(size: AppButtonSize.sm, onPressed: busy ? null : () => onDecide(true), icon: Icons.check_rounded, label: t('قبول', 'Accept')),
             AppButton.ghost(size: AppButtonSize.sm, onPressed: busy ? null : () => onDecide(false), icon: Icons.close_rounded, label: t('رفض', 'Reject')),
           ]),

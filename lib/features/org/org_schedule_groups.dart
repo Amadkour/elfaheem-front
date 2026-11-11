@@ -217,7 +217,7 @@ class _GroupsPageState extends State<_GroupsPage> {
       ),
       if (course != null && canEdit) ...[
         const SizedBox(height: AppSpace.sm),
-        Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
           ChoiceChip(label: Text(t('أبجدياً', 'Alphabetical')), selected: mode == 'alphabetical', onSelected: (_) => setState(() => mode = 'alphabetical')),
           ChoiceChip(label: Text(t('بالرقم الجامعي', 'By student ID')), selected: mode == 'student_code', onSelected: (_) => setState(() => mode = 'student_code')),
           FilledButton.tonalIcon(onPressed: loading ? null : _distribute, icon: const Icon(Icons.sort_by_alpha_rounded), label: Text(t('وزّع الطلاب', 'Distribute'))),

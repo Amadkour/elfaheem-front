@@ -158,7 +158,7 @@ class NextStepBanner extends StatelessWidget {
             ? null
             : OutlinedButton.icon(onPressed: onSecondary, icon: Icon(secondaryIcon, size: AppIconSize.md), label: Text(secondary!, maxLines: 1, overflow: TextOverflow.ellipsis));
         // AppPrimaryButton fills its width: it always sits in a bounded box
-        final buttons = Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        final buttons = Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.end, crossAxisAlignment: WrapCrossAlignment.center, children: [
           if (second != null) second,
           if (button != null) ConstrainedBox(constraints: const BoxConstraints(maxWidth: 260, minWidth: 160), child: button),
         ]);

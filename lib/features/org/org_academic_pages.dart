@@ -231,10 +231,10 @@ class _Calendar extends StatelessWidget {
 }
 
 Widget _courseChips(BuildContext ctx, List<Map<String, dynamic>> courses, Set<int> sel, void Function(void Function()) set, {Set<int> disabled = const {}}) =>
-    Wrap(spacing: 6, runSpacing: 6, children: [
+    Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
       for (final co in courses)
         FilterChip(
-          label: Text(_cname(co), style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
+          label: Text(_cname(co), style: AppType.label(ctx).copyWith(color: ctx.colors.textDark)),
           selected: sel.contains(asInt(co['id'])),
           onSelected: disabled.contains(asInt(co['id'])) ? null : (on) => set(() => on ? sel.add(asInt(co['id'])) : sel.remove(asInt(co['id']))),
         ),
@@ -508,7 +508,7 @@ class _Students extends StatelessWidget {
                             EntityGuardedChip(EntityRef(EntityKind.student, asInt(u['id']), label: '${u['name']}'), maxWidth: 320)
                           else
                             Text('${u['name']}', style: AppType.bodyStrong(context)),
-                          Wrap(spacing: 6, runSpacing: 4, children: [
+                          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                             OrgPill(stageLabels()['${row['stage']}'] ?? '', color: row['stage'] == 'graduated' ? c.success : c.primary),
                             if (row['program'] != null) OrgPill('${asMap(row['program'])['code']}', icon: Icons.account_tree_rounded),
                             if (req['status'] == 'pending')
@@ -523,7 +523,7 @@ class _Students extends StatelessWidget {
                       if (req['status'] == 'pending' || row['ready_to_graduate'] == true)
                         Padding(
                           padding: const EdgeInsets.only(top: AppSpace.xs),
-                          child: Wrap(spacing: 8, children: [
+                          child: Wrap(spacing: AppSpace.xs, children: [
                             if (req['status'] == 'pending') ...[
                               FilledButton(onPressed: () async {
                                 if (await OrgApi.i.post('$base/students/${u['id']}/request/approve', {'days': 1}, t('تم القبول', 'Approved')) != null) p.refresh();
@@ -723,7 +723,7 @@ class _CourseArchiveScreenState extends State<CourseArchiveScreen> {
             padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               SheetHeader('${termKinds()[asMap(d['term'])['kind']]} ${asMap(d['term'])['year_label']}'),
-              Wrap(spacing: 6, children: [
+              Wrap(spacing: AppSpace.xs, children: [
                 OrgPill(statusLabel('${d['status']}'), color: live ? c.success : c.textMedium),
                 if (!live) OrgPill(t('${d['passed']} / ${d['students']} ناجح', '${d['passed']} / ${d['students']} passed'), color: c.success),
               ]),
@@ -943,7 +943,7 @@ class _MyAcademicPathPageState extends State<MyAcademicPathPage> {
                       child: Icon(steps[i].$3, color: i <= at ? c.primary : c.onHeroMuted, size: AppIconSize.md)),
                   const SizedBox(height: AppSpace.xs),
                   Text(steps[i].$2, style: TextStyle(fontFamily: AppFonts.family, color: i <= at ? c.onHero : c.onHeroMuted,
-                      fontWeight: i == at ? FontWeight.w800 : FontWeight.w500, fontSize: 12.5)),
+                      fontWeight: i == at ? FontWeight.w600 : FontWeight.w500, fontSize: 12.5)),
                 ])),
                 if (i < steps.length - 1) Expanded(child: Container(height: 2, color: i < at ? c.onHero : c.heroGlassBorder)),
               ],
@@ -951,7 +951,7 @@ class _MyAcademicPathPageState extends State<MyAcademicPathPage> {
             const SizedBox(height: AppSpace.md),
             if (p['program'] != null)
               Text('${asMap(p['program'])['code']} · ${t('${asMap(p['program'])['name_ar'] ?? asMap(p['program'])['name_en']}', '${asMap(p['program'])['name_en'] ?? asMap(p['program'])['name_ar']}')}',
-                  style: TextStyle(fontFamily: AppFonts.family, color: c.onHero, fontSize: 16, fontWeight: FontWeight.w800)),
+                  style: AppType.section(context).copyWith(color: c.onHero)),
             const SizedBox(height: AppSpace.xs),
             ClipRRect(borderRadius: BorderRadius.circular(AppRadius.chip),
                 child: LinearProgressIndicator(value: pct / 100, minHeight: 8, backgroundColor: c.heroGlassBorder, color: c.accent2)),

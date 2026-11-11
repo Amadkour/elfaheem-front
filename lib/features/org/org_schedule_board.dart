@@ -17,7 +17,6 @@ import 'org_providers.dart';
 import 'org_schedule_grid.dart' show sessionKindColor, sessionKindIcon, sessionKindLabel;
 import 'org_schedule_insights.dart' show WhyHere, WhyHereSection;
 import 'org_v3.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 
 /// Height of a grid row whose fullest cell holds [maxSessions] sessions (text scale included).
@@ -99,7 +98,7 @@ class _TimetableBoardState extends State<TimetableBoard> {
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 13, color: d == widget.today ? c.primary : c.textDark),
+                  style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: d == widget.today ? c.primary : c.textDark),
                 ),
               ),
             ),
@@ -422,8 +421,8 @@ class _SessionDialogState extends State<_SessionDialog> {
                         Text(widget.courseNames[asInt(s['course_id'])] ?? '#${s['course_id']}', style: AppType.section(context)),
                         const SizedBox(height: AppSpace.xs),
                         Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
+                          spacing: AppSpace.xs,
+                          runSpacing: AppSpace.xxs,
                           children: [
                             pill(sessionKindLabel(s['kind']), col),
                             pill(s['group_no'] == null ? t('مجموعة واحدة', 'Single group') : '${t('مجموعة', 'Group')} ${s['group_no']}', c.textMedium),
@@ -454,8 +453,8 @@ class _SessionDialogState extends State<_SessionDialog> {
                         final two = box.maxWidth >= 380;
                         final w = two ? (box.maxWidth - 8) / 2 : box.maxWidth;
                         return Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
+                          spacing: AppSpace.xs,
+                          runSpacing: AppSpace.xs,
                           children: [for (final f in facts) SizedBox(width: w, child: f)],
                         );
                       },
@@ -558,8 +557,8 @@ class _SessionDialogState extends State<_SessionDialog> {
               padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md),
               child: Wrap(
                 alignment: WrapAlignment.end,
-                spacing: 8,
-                runSpacing: 6,
+                spacing: AppSpace.xs,
+                runSpacing: AppSpace.xs,
                 children: [
                   TextButton(onPressed: () => Navigator.pop(context), child: Text(t('إغلاق', 'Close'))),
                   if (widget.onEdit != null)

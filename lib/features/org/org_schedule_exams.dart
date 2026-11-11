@@ -418,7 +418,7 @@ Future<int?> showExamSettingsSheet(BuildContext context, OrgScheduleProvider p, 
             const SizedBox(height: AppSpace.sm),
             Text(t('أيام الامتحانات', 'Exam days'), style: AppType.bodyStrong(ctx)),
             const SizedBox(height: AppSpace.xs),
-            Wrap(spacing: 6, runSpacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final d in orgDaysOrder)
                 FilterChip(
                   label: Text(labels[d] ?? d),
@@ -464,7 +464,7 @@ Future<int?> showExamSettingsSheet(BuildContext context, OrgScheduleProvider p, 
             ),
             Text(t('أقصى عدد امتحانات للطالب في اليوم', 'Most exams a student sits in one day'), style: AppType.bodyStrong(ctx)),
             const SizedBox(height: AppSpace.xs),
-            Wrap(spacing: 6, runSpacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final n in const [null, 1, 2, 3])
                 ChoiceChip(label: Text(n == null ? t('بلا حد', 'No limit') : '$n'), selected: maxPerDay == n, onSelected: (_) => set(() => maxPerDay = n)),
             ]),
@@ -643,7 +643,7 @@ class _ExamPageState extends State<_ExamPage> {
                 },
               ),
               const SizedBox(height: AppSpace.sm),
-              Wrap(spacing: 6, runSpacing: 6, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (var i = 0; i < sittings.length; i++)
                   ChoiceChip(
                     label: Text(periodRange(sittings[i])),
@@ -752,7 +752,7 @@ class _ExamPageState extends State<_ExamPage> {
           color: ex['pause_weekly'] == false ? c.textMedium : c.primary,
         ),
         const SizedBox(height: AppSpace.sm),
-        Wrap(spacing: 8, runSpacing: 8, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           if (widget.canEdit && !active)
             AppPrimaryButton(
               label: items.isEmpty ? t('ولّد الجدول', 'Generate') : t('ولّد من جديد', 'Generate again'),
@@ -861,7 +861,7 @@ class _ExamPageState extends State<_ExamPage> {
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(names.course(x['course_id']), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
                       const SizedBox(height: AppSpace.xxs),
-                      Wrap(spacing: 6, runSpacing: 4, children: [
+                      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                         AppBadgePill(t('${x['students']} طالب', '${x['students']} students'), icon: Icons.people_alt_rounded, color: c.purple),
                         _made.containsKey(asInt(x['id']))
                             ? AppBadgePill(t('الاختبار جاهز', 'Exam created'), icon: Icons.task_alt_rounded, color: c.success)

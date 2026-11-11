@@ -109,7 +109,7 @@ class GovItemBody extends StatelessWidget {
         const SizedBox(height: AppSpace.sm),
         _PendingRouteCard(route: pr, canAnswer: _routedToMe && onAnswerRoute != null && pr.action != 'vote', busy: busy, onAnswer: () => onAnswerRoute?.call(pr)),
       ],
-      if (actions.isNotEmpty) ...[const SizedBox(height: AppSpace.sm), Wrap(spacing: 8, runSpacing: 8, children: actions)],
+      if (actions.isNotEmpty) ...[const SizedBox(height: AppSpace.sm), Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: actions)],
       if (it.routes.isNotEmpty) ...[
         const SizedBox(height: AppSpace.md),
         AppSectionTitle(t('مسار الإحالات', 'Routing chain'), subtitle: t('${it.routes.length} إحالة', '${it.routes.length} routes')),
@@ -142,8 +142,8 @@ class _Header extends StatelessWidget {
         : [if (it.sourceUser != null) it.sourceUser!.name, if (it.sourceDept != null) it.sourceDept!.name].join(' · ');
     return AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Wrap(spacing: 6, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
-          Text(it.ref, style: appText(12, w: FontWeight.w800, c: c.textLight)),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          Text(it.ref, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textLight)),
           GovTypePill(it.type),
           GovStatusPill(it.status),
           GovPriorityPill(it.priority),
@@ -151,14 +151,14 @@ class _Header extends StatelessWidget {
           if (it.voteOutcome != null) GovOutcomePill(it.voteOutcome!),
         ]),
         const SizedBox(height: AppSpace.xs),
-        Text(it.title, style: appText(18, w: FontWeight.w800, c: c.textDark, h: 1.3)),
+        Text(it.title, style: AppType.section(context).copyWith(color: c.textDark, height: 1.3)),
         if ((it.body ?? '').trim().isNotEmpty) ...[
           const SizedBox(height: AppSpace.xs),
-          SelectableText(it.body!.trim(), style: appText(13.5, c: c.textDark, h: 1.55)),
+          SelectableText(it.body!.trim(), style: AppType.row(context).copyWith(color: c.textDark, height: 1.55)),
         ],
         if (it.tags.isNotEmpty) ...[
           const SizedBox(height: AppSpace.xs),
-          Wrap(spacing: 6, runSpacing: 4, children: [for (final tg in it.tags) AppBadgePill('#$tg', color: c.textMedium)]),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [for (final tg in it.tags) AppBadgePill('#$tg', color: c.textMedium)]),
         ],
         if (it.attachments.isNotEmpty) ...[
           const SizedBox(height: AppSpace.sm),
@@ -224,17 +224,17 @@ class _DecisionBar extends StatelessWidget {
           style: FilledButton.styleFrom(backgroundColor: col, minimumSize: const Size.fromHeight(46), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control))),
           onPressed: busy ? null : () => onDecide(outcome),
           icon: Icon(icon, color: c.onHero, size: AppIconSize.md),
-          label: Text(label, style: appText(14, w: FontWeight.w800, c: c.onHero)),
+          label: Text(label, style: AppType.bodyStrong(context).copyWith(color: c.onHero)),
         );
     return AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.gavel_rounded, size: AppIconSize.md, color: c.primary),
           const SizedBox(width: AppSpace.xs),
-          Expanded(child: Text(t('القرار بيدك', 'Your decision'), style: appText(14, w: FontWeight.w800, c: c.textDark))),
+          Expanded(child: Text(t('القرار بيدك', 'Your decision'), style: AppType.bodyStrong(context).copyWith(color: c.textDark))),
         ]),
         const SizedBox(height: AppSpace.xxs),
-        Text(t('أول قرار يُغلق المعاملة أمام بقية المخوّلين', 'The first decision locks the item for every other decider'), style: appText(12, c: c.textMedium)),
+        Text(t('أول قرار يُغلق المعاملة أمام بقية المخوّلين', 'The first decision locks the item for every other decider'), style: AppType.meta(context).copyWith(color: c.textMedium)),
         const SizedBox(height: AppSpace.sm),
         LayoutBuilder(builder: (context, box) {
           final a = btn('approved', Icons.check_rounded, c.success, t('اعتماد', 'Approve'));
@@ -269,7 +269,7 @@ class _PendingRouteCard extends StatelessWidget {
           Icon(govActionIcon(r.action), size: AppIconSize.md, color: c.warning),
           const SizedBox(width: AppSpace.xs),
           Expanded(
-            child: Text('${t('بانتظار', 'Waiting')}: ${routeActionLabel(r.action)} · ${r.targetName}', style: appText(13.5, w: FontWeight.w800, c: c.textDark)),
+            child: Text('${t('بانتظار', 'Waiting')}: ${routeActionLabel(r.action)} · ${r.targetName}', style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
           ),
         ]),
         const SizedBox(height: AppSpace.xxs),
@@ -279,9 +279,9 @@ class _PendingRouteCard extends StatelessWidget {
             if (r.createdAt != null) govWhen(r.createdAt),
             if (r.dueAt != null) '${t('قبل', 'by')} ${govWhen(r.dueAt)}',
           ].join(' · '),
-          style: appText(12, c: c.textMedium),
+          style: AppType.meta(context).copyWith(color: c.textMedium),
         ),
-        if ((r.note ?? '').isNotEmpty) ...[const SizedBox(height: AppSpace.xs), Text(r.note!, style: appText(12.5, c: c.textDark, h: 1.4))],
+        if ((r.note ?? '').isNotEmpty) ...[const SizedBox(height: AppSpace.xs), Text(r.note!, style: AppType.label(context).copyWith(color: c.textDark, height: 1.4))],
         if (canAnswer) ...[
           const SizedBox(height: AppSpace.sm),
           Align(
@@ -331,8 +331,8 @@ class GovRouteChain extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: AppSpace.sm),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Wrap(spacing: 6, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                      Text('${routes[i].sourceName.isEmpty ? '—' : routes[i].sourceName} → ${routes[i].targetName}', style: appText(13, w: FontWeight.w800, c: c.textDark)),
+                    Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                      Text('${routes[i].sourceName.isEmpty ? '—' : routes[i].sourceName} → ${routes[i].targetName}', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
                       AppBadgePill(routeActionLabel(routes[i].action), color: c.textMedium),
                       AppBadgePill(routes[i].answer != null ? routeAnswerLabel(routes[i].answer!) : routeStatusLabel(routes[i].status), color: col(routes[i])),
                     ]),
@@ -342,13 +342,13 @@ class GovRouteChain extends StatelessWidget {
                         if (routes[i].createdBy != null) '${t('بواسطة', 'by')} ${routes[i].createdBy!.name}',
                         if (routes[i].dueAt != null) '${t('قبل', 'due')} ${govWhen(routes[i].dueAt)}',
                       ].join(' · '),
-                      style: appText(11.5, c: c.textLight),
+                      style: AppType.meta(context).copyWith(color: c.textLight),
                     ),
-                    if ((routes[i].note ?? '').isNotEmpty) Text(routes[i].note!, style: appText(12.5, c: c.textDark, h: 1.4)),
+                    if ((routes[i].note ?? '').isNotEmpty) Text(routes[i].note!, style: AppType.label(context).copyWith(color: c.textDark, height: 1.4)),
                     if (routes[i].answeredAt != null)
                       Text(
                         '${t('الرد', 'Answer')}: ${routes[i].answeredBy?.name ?? ''} · ${govWhen(routes[i].answeredAt)}${(routes[i].answerNote ?? '').isEmpty ? '' : ' — ${routes[i].answerNote}'}',
-                        style: appText(12, c: c.textMedium, h: 1.4),
+                        style: AppType.meta(context).copyWith(color: c.textMedium, height: 1.4),
                       ),
                   ]),
                 ),
@@ -380,14 +380,14 @@ class GovAgendaHistory extends StatelessWidget {
             const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(a.council?.name ?? t('المجلس', 'Council'), style: appText(13.5, w: FontWeight.w800, c: c.textDark)),
+                Text(a.council?.name ?? t('المجلس', 'Council'), style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
                 Text(
                   [
                     if (a.scheduledAt != null) govWhen(a.scheduledAt),
                     '✓ ${a.approve} · ✗ ${a.reject} · − ${a.abstain} / ${a.eligible}',
                     if (a.approvePct != null) '${a.approvePct!.toStringAsFixed(0)}%',
                   ].join(' · '),
-                  style: appText(12, c: c.textMedium),
+                  style: AppType.meta(context).copyWith(color: c.textMedium),
                 ),
               ]),
             ),
@@ -409,7 +409,7 @@ class GovTimeline extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     if (events.isEmpty) {
-      return AppCard(child: Text(t('لا أحداث بعد', 'No events yet'), textAlign: TextAlign.center, style: appText(13, c: c.textMedium)));
+      return AppCard(child: Text(t('لا أحداث بعد', 'No events yet'), textAlign: TextAlign.center, style: AppType.label(context).copyWith(color: c.textMedium)));
     }
     return AppCard(
       padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.sm, AppSpace.xxs),
@@ -430,11 +430,11 @@ class GovTimeline extends StatelessWidget {
               const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Wrap(spacing: 6, runSpacing: 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                    Text(e.actor?.name ?? t('النظام', 'System'), style: appText(13, w: FontWeight.w800, c: c.textDark)),
-                    Text(eventKindLabel(e.kind), style: appText(12, c: c.textMedium)),
+                  Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs / 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                    Text(e.actor?.name ?? t('النظام', 'System'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
+                    Text(eventKindLabel(e.kind), style: AppType.meta(context).copyWith(color: c.textMedium)),
                     if (e.internal) AppBadgePill(t('داخلي', 'Internal'), color: c.warning, icon: Icons.lock_outline_rounded),
-                    if (e.createdAt != null) Text(govWhen(e.createdAt), style: appText(11, c: c.textLight)),
+                    if (e.createdAt != null) Text(govWhen(e.createdAt), style: AppType.meta(context).copyWith(color: c.textLight)),
                   ]),
                   if ((e.body ?? '').trim().isNotEmpty) ...[
                     const SizedBox(height: AppSpace.xxs),
@@ -442,10 +442,10 @@ class GovTimeline extends StatelessWidget {
                       width: double.infinity,
                       padding: e.kind == 'comment' ? const EdgeInsets.all(AppSpace.sm) : EdgeInsets.zero,
                       decoration: e.kind == 'comment' ? BoxDecoration(color: (e.internal ? c.warning : c.primary).withValues(alpha: 0.06), borderRadius: BorderRadius.circular(AppRadius.control)) : null,
-                      child: Text(e.body!.trim(), style: appText(13, c: c.textDark, h: 1.5)),
+                      child: Text(e.body!.trim(), style: AppType.label(context).copyWith(color: c.textDark, height: 1.5)),
                     ),
                   ],
-                  if (_summary(e).isNotEmpty) Text(_summary(e), style: appText(12, c: c.textMedium, h: 1.4)),
+                  if (_summary(e).isNotEmpty) Text(_summary(e), style: AppType.meta(context).copyWith(color: c.textMedium, height: 1.4)),
                   for (final a in _attachments(e))
                     TextButton.icon(
                       style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 30), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
@@ -533,7 +533,7 @@ class _GovCommentComposerState extends State<GovCommentComposer> {
                 controller: _ctrl,
                 minLines: 1,
                 maxLines: 4,
-                style: appText(13.5, c: c.textDark),
+                style: AppType.row(context).copyWith(color: c.textDark),
                 decoration: InputDecoration(
                   hintText: _internal ? t('ملاحظة داخلية…', 'Internal note…') : t('اكتب تعليقاً…', 'Write a comment…'),
                   isDense: true,
@@ -645,12 +645,12 @@ class _GovItemScreenState extends State<GovItemScreen> {
           context: context,
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.block)),
-            title: Text(t('صدر القرار بالفعل', 'Already decided'), style: appText(16, w: FontWeight.w800)),
+            title: Text(t('صدر القرار بالفعل', 'Already decided'), style: AppType.section(ctx)),
             content: Text(
               d == null
                   ? govCodeTexts()['already_decided']!
                   : '${d.by?.name ?? t('شخص آخر', 'Someone else')} ${d.outcome == 'approved' ? t('اعتمد', 'approved') : t('رفض', 'rejected')} ${t('المعاملة', 'the item')}${d.at == null ? '' : ' · ${govWhen(d.at)}'}${(d.note ?? '').isEmpty ? '' : '\n${d.note}'}',
-              style: appText(13.5, h: 1.5),
+              style: AppType.row(ctx).copyWith(height: 1.5),
             ),
             actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t('حسناً', 'OK')))],
           ),
@@ -789,7 +789,7 @@ class _GovItemScreenState extends State<GovItemScreen> {
             padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 16 + MediaQuery.of(ctx).viewInsets.bottom),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               SheetHeader('${t('الرد على الإحالة', 'Answer the route')} · ${routeActionLabel(r.action)}'),
-              Wrap(spacing: 6, runSpacing: 6, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final a in answers) AppChoiceChip(label: routeAnswerLabel(a), selected: answer == a, onTap: () => set(() => answer = a)),
               ]),
               const SizedBox(height: AppSpace.sm),
@@ -837,9 +837,9 @@ class _GovItemScreenState extends State<GovItemScreen> {
                 ),
                 const SizedBox(height: AppSpace.sm),
               ],
-              Text(t('الأولوية', 'Priority'), style: appText(12, c: c.textLight)),
+              Text(t('الأولوية', 'Priority'), style: AppType.meta(ctx).copyWith(color: c.textLight)),
               const SizedBox(height: AppSpace.xs),
-              Wrap(spacing: 6, runSpacing: 6, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final p in priorities) AppChoiceChip(label: priorityLabelOf(p), selected: priority == p, onTap: () => set(() => priority = p)),
               ]),
               const SizedBox(height: AppSpace.sm),

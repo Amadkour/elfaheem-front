@@ -59,7 +59,7 @@ class GovCouncilCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 1),
                 decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(AppRadius.chip)),
-                child: Text(openVotes > 99 ? '99+' : '$openVotes', style: TextStyle(color: c.onHero, fontSize: 10.5, fontWeight: FontWeight.w800)),
+                child: Text(openVotes > 99 ? '99+' : '$openVotes', style: TextStyle(color: c.onHero, fontSize: 10.5, fontWeight: FontWeight.w600)),
               ),
             ),
         ]),
@@ -189,7 +189,7 @@ class _NewSessionSheetBodyState extends State<NewSessionSheetBody> {
     final c = context.colors;
     final regular = _regularAt;
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Wrap(spacing: 8, runSpacing: 6, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         AppChoiceChip(label: sessionKindLabel('regular'), icon: Icons.event_repeat_rounded, selected: _kind == 'regular', onTap: regular == null ? () {} : () => setState(() => _kind = 'regular')),
         AppChoiceChip(label: sessionKindLabel('extraordinary'), icon: Icons.bolt_rounded, selected: _kind == 'extraordinary', onTap: () => setState(() => _kind = 'extraordinary')),
       ]),
@@ -551,7 +551,7 @@ class _GovCouncilPageState extends State<GovCouncilPage> {
       if (_manager)
         Padding(
           padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
-          child: Wrap(spacing: 8, runSpacing: 8, children: [
+          child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             AppPill(icon: Icons.add_rounded, label: t('جلسة جديدة', 'New session'), color: c.success, onTap: _busy ? null : _newSession),
           ]),
         ),
@@ -703,7 +703,7 @@ class _CouncilTeamState extends State<_CouncilTeam> {
       if (widget.canEdit)
         Padding(
           padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
-          child: Wrap(spacing: 8, children: [AppPill(icon: Icons.person_add_alt_1_rounded, label: t('إضافة عضو', 'Add a member'), color: c.success, onTap: _add)]),
+          child: Wrap(spacing: AppSpace.xs, children: [AppPill(icon: Icons.person_add_alt_1_rounded, label: t('إضافة عضو', 'Add a member'), color: c.success, onTap: _add)]),
         ),
       if (rows.isEmpty)
         AppEmpty(

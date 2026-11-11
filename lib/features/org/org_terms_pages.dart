@@ -160,7 +160,7 @@ class _OrgTermsAdminPageState extends State<OrgTermsAdminPage> {
                               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                 Text('${it['title']}', style: AppType.bodyStrong(context)),
                                 const SizedBox(height: AppSpace.xxs),
-                                Wrap(spacing: 6, runSpacing: 4, children: [
+                                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                                   OrgPill(_kinds()['${it['kind']}'] ?? ''),
                                   if (it['requires_ack'] == true)
                                     OrgPill(t('${it['ack_count']} وافقوا', '${it['ack_count']} agreed'), icon: Icons.verified_rounded, color: c.success),

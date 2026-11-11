@@ -73,13 +73,13 @@ class GovItemCard extends StatelessWidget {
               ],
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Wrap(spacing: 6, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                    Text(it.ref, style: appText(11.5, w: FontWeight.w800, c: c.textLight)),
+                  Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                    Text(it.ref, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textLight)),
                     GovTypePill(it.type),
                     GovStatusPill(it.status),
                   ]),
                   const SizedBox(height: AppSpace.xxs),
-                  Text(it.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w800, c: c.textDark)),
+                  Text(it.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
                   const SizedBox(height: AppSpace.xxs / 2),
                   Text(
                     [
@@ -89,10 +89,10 @@ class GovItemCard extends StatelessWidget {
                     ].join(' · '),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: appText(12, c: c.textMedium),
+                    style: AppType.meta(context).copyWith(color: c.textMedium),
                   ),
                   const SizedBox(height: AppSpace.xs),
-                  Wrap(spacing: 6, runSpacing: 4, children: [
+                  Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                     GovPriorityPill(it.priority),
                     GovDuePill(dueAt: it.dueAt, overdue: it.overdue),
                     if (pr != null)
@@ -156,7 +156,7 @@ Future<WorkItem?> showGovNewItemSheet(BuildContext context, GovApi api, {require
           padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 16 + MediaQuery.of(ctx).viewInsets.bottom),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             SheetHeader(t('معاملة جديدة', 'New item')),
-            Wrap(spacing: 6, runSpacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final x in const ['memo', 'request', 'complaint', 'custom'])
                 AppChoiceChip(label: itemTypeLabel(x), icon: govTypeIcon(x), selected: type == x, onTap: () => set(() => type = x)),
             ]),
@@ -209,9 +209,9 @@ Future<WorkItem?> showGovNewItemSheet(BuildContext context, GovApi api, {require
             const SizedBox(height: AppSpace.sm),
             AppField(controller: body, label: t('التفاصيل', 'Details'), maxLines: 4),
             const SizedBox(height: AppSpace.sm),
-            Text(t('الأولوية', 'Priority'), style: appText(12, c: c.textLight)),
+            Text(t('الأولوية', 'Priority'), style: AppType.meta(ctx).copyWith(color: c.textLight)),
             const SizedBox(height: AppSpace.xs),
-            Wrap(spacing: 6, runSpacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final p in priorities) AppChoiceChip(label: priorityLabelOf(p), selected: priority == p, onTap: () => set(() => priority = p)),
             ]),
             const SizedBox(height: AppSpace.sm),
@@ -533,8 +533,8 @@ class _GovItemsPageState extends State<GovItemsPage> {
       ),
       Padding(
         padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xxs),
-        child: Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
-          if (!_loading) Text(t('$_total معاملة', '$_total items'), style: appText(12, w: FontWeight.w700, c: c.textMedium)),
+        child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          if (!_loading) Text(t('$_total معاملة', '$_total items'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
           for (final st in const ['open', 'in_review', 'pending_approval', 'in_council'])
             if (asInt(asMap(_facets['status'])[st]) > 0)
               AppBadgePill('${itemStatusLabel(st)} ${asInt(asMap(_facets['status'])[st])}', color: govStatusColor(context, st)),
@@ -639,8 +639,8 @@ class _BulkBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
       decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider)), boxShadow: c.cardShadow),
-      child: Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-        Text(t('$count محددة', '$count selected'), style: appText(13, w: FontWeight.w800, c: c.textDark)),
+      child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        Text(t('$count محددة', '$count selected'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
         AppPill(icon: Icons.alt_route_rounded, label: t('إحالة', 'Route'), onTap: onRoute),
         AppPill(icon: Icons.person_add_alt_1_rounded, label: t('إسناد', 'Assign'), onTap: onAssign, color: c.textMedium),
         AppPill(icon: Icons.check_circle_outline_rounded, label: t('إغلاق', 'Close'), onTap: onClose, color: c.danger),

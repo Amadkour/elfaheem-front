@@ -70,12 +70,12 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
                   style: AppType.display(context).copyWith(fontFamily: AppFonts.display, letterSpacing: 5, color: c.primary)),
             ),
             const SizedBox(height: AppSpace.xs),
-            Wrap(spacing: 6, runSpacing: 6, alignment: WrapAlignment.center, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.center, children: [
               AppBadgePill(_roleLabels()[row['default_role']] ?? t('طالب', 'Student'), icon: Icons.person_rounded),
               if (row['default_program_id'] != null) AppBadgePill(_programLabel(row['default_program_id']), icon: Icons.account_tree_rounded),
             ]),
             const SizedBox(height: AppSpace.sm),
-            Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.center, children: [
               AppButton.secondary(
                 onPressed: () async {
                   await Clipboard.setData(ClipboardData(text: code));
@@ -126,7 +126,7 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
               Field(controller: label, label: t('وصف داخلي (مثلاً: طلاب الفرقة الأولى 2026)', 'Internal label (e.g. Year 1 students 2026)')),
               Text(t('ينضم صاحب الكود بصفته', 'People who use it join as'), style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
               const SizedBox(height: AppSpace.xs),
-              Wrap(spacing: 6, runSpacing: 6, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final e in _roleLabels().entries) AppChoiceChip(label: e.value, selected: role == e.key, onTap: () => set(() => role = e.key)),
               ]),
               const SizedBox(height: AppSpace.sm),
@@ -136,7 +136,7 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
                         'Students are placed in it when they meet its rules; otherwise they join the organization only and see why.'),
                     style: AppType.meta(ctx).copyWith(color: c.textLight)),
                 const SizedBox(height: AppSpace.xs),
-                Wrap(spacing: 6, runSpacing: 6, children: [
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                   AppChoiceChip(label: t('بلا قسم', 'None'), selected: program == null, onTap: () => set(() => program = null)),
                   for (final p in _programs.where((x) => x['is_active'] != false))
                     AppChoiceChip(label: '${p['code']}', selected: program == asInt(p['id']), onTap: () => set(() => program = asInt(p['id']))),
@@ -344,7 +344,7 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
               Text('${r['hint'] ?? ''}${'${r['label'] ?? ''}'.isEmpty ? '' : ' · ${r['label']}'}',
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
               const SizedBox(height: AppSpace.xxs),
-              Wrap(spacing: 6, runSpacing: 4, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                 AppBadgePill(codeStateLabels()[state] ?? state, color: live ? c.success : (revoked ? c.danger : c.warning)),
                 AppBadgePill(_roleLabels()[r['default_role']] ?? t('طالب', 'Student'), icon: Icons.person_rounded),
                 if (r['default_program_id'] != null) AppBadgePill(_programLabel(r['default_program_id']).split(' · ').first, icon: Icons.account_tree_rounded),

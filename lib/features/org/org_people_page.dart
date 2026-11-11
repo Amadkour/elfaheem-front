@@ -25,7 +25,6 @@ import 'org_v3.dart';
 import 'org_page_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import '../admin/admin_table_export.dart' show exportPagedList, orgMembersExport;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_username.dart';
 
 /// Members of the organization (D-103 page anatomy, org_page_kit.dart): the kind as ONE segmented control
@@ -352,15 +351,15 @@ class OrgMemberRowView extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
               if (username != null) AppUsernameLine(username),
-              Text(email, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
+              Text(email, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: AppType.meta(context).copyWith(color: c.textMedium)),
               if (chips.isNotEmpty) ...[
                 const SizedBox(height: AppSpace.xs),
-                Wrap(spacing: 6, runSpacing: 4, children: chips),
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: chips),
               ],
               if (period != null && period!.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: AppSpace.xxs),
-                  child: Text(period!, style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: periodEnded ? c.danger : c.textLight)),
+                  child: Text(period!, style: AppType.meta(context).copyWith(color: periodEnded ? c.danger : c.textLight)),
                 ),
             ]),
           ),
@@ -402,7 +401,7 @@ Future<void> _permissions(BuildContext context, OrgMembersProvider p, Map<String
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(t('صلاحيات ${(row['user'] as Map)['name']}', 'Permissions · ${(row['user'] as Map)['name']}')),
             Text(t('اختر ما يستطيع المساعد الإداري فعله في كل قسم. "عرض" يُضاف تلقائياً مع أي صلاحية أخرى.', 'Choose what this assistant can do in each module. "View" is added automatically with any other right.'),
-                style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.textMedium)),
+                style: AppType.label(ctx).copyWith(color: c.textMedium)),
             const SizedBox(height: AppSpace.sm),
             for (final m in _modules)
               Container(
@@ -412,10 +411,10 @@ Future<void> _permissions(BuildContext context, OrgMembersProvider p, Map<String
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(modLabel[m]!, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
                   const SizedBox(height: AppSpace.xs),
-                  Wrap(spacing: 8, children: [
+                  Wrap(spacing: AppSpace.xs, children: [
                     for (final a in _actions)
                       FilterChip(
-                        label: Text(actLabel[a]!, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
+                        label: Text(actLabel[a]!, style: AppType.label(context).copyWith(color: context.colors.textDark)),
                         selected: cur[m]!.contains(a),
                         onSelected: (on) => set(() {
                           if (on) {

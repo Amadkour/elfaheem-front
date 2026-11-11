@@ -187,7 +187,7 @@ class _OrgPlatformSettingsPageState extends State<OrgPlatformSettingsPage> {
           for (final g in groups.entries) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpace.xxs, AppSpace.xs, AppSpace.xxs, AppSpace.xs),
-              child: Text(g.key, style: appText(12.5, w: FontWeight.w800, c: c.textMedium)),
+              child: Text(g.key, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
             ),
             AppCard(
               padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xxs),

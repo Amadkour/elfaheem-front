@@ -104,7 +104,7 @@ class _GovSettingsFormState extends State<GovSettingsForm> {
             for (var i = 0; i < s.rules.length; i++)
               Padding(
                 padding: const EdgeInsets.only(bottom: AppSpace.xs),
-                child: Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
                   SizedBox(
                     width: 180,
                     child: AppDropdown<String>(
@@ -161,7 +161,7 @@ class _GovSettingsFormState extends State<GovSettingsForm> {
       const SizedBox(height: AppSpace.md),
       AppSectionTitle(t('مهلة الرد (ساعات) لكل أولوية', 'SLA hours per priority')),
       AppCard(
-        child: Wrap(spacing: 12, runSpacing: 12, children: [
+        child: Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [
           for (final p in priorities)
             SizedBox(
               width: 150,

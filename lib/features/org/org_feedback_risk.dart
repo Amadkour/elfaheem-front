@@ -208,11 +208,11 @@ class RiskList extends StatelessWidget {
             margin: const EdgeInsets.only(bottom: AppSpace.sm),
             padding: const EdgeInsets.all(AppSpace.md),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(e.displayTitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w800, c: c.textDark)),
+              Text(e.displayTitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
               const SizedBox(height: AppSpace.xs),
               AppProgressBar(value: riskShare(e.maxRisk, top) * 100, color: e.needsReview > 0 ? c.warning : c.primary),
               const SizedBox(height: AppSpace.xs),
-              Wrap(spacing: 8, runSpacing: 6, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 AppBadgePill('${t('محاولات مشبوهة', 'Risky attempts')}: ${e.riskyAttempts}', icon: Icons.flag_outlined),
                 AppBadgePill('${t('أعلى درجة خطورة', 'Highest risk')}: ${e.maxRisk.toStringAsFixed(1)}', color: c.warning),
                 if (e.needsReview > 0) AppBadgePill('${t('تحتاج مراجعة', 'Need review')}: ${e.needsReview}', color: c.danger, icon: Icons.rate_review_outlined),

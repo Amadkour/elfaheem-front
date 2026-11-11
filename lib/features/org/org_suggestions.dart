@@ -119,10 +119,10 @@ class _OrgTermSuggestionsState extends State<OrgTermSuggestions> {
           padding: const EdgeInsets.all(AppSpace.md),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppSectionTitle(t('المقررات المطروحة', 'Courses to offer'), subtitle: t('اختر ما يُطرح في هذا الفصل', 'Pick what this term offers')),
-            Wrap(spacing: 6, runSpacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final id in all)
                 FilterChip(
-                  label: Text(_course(id), style: appText(12.5)),
+                  label: Text(_course(id), style: AppType.label(ctx).copyWith(color: ctx.colors.textDark)),
                   selected: sel.contains(id),
                   onSelected: (on) => set(() => on ? sel.add(id) : sel.remove(id)),
                 ),
@@ -187,7 +187,7 @@ class _OrgTermSuggestionsState extends State<OrgTermSuggestions> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Wrap(spacing: 8, runSpacing: 8, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         AppPill(icon: Icons.auto_fix_high_rounded, label: _busy ? t('جارٍ…', 'Working…') : t('توليد تلقائي', 'Auto-generate'),
             color: c.primary, onTap: _busy ? null : _generate),
         AppPill(icon: Icons.edit_calendar_rounded, label: t('إنشاء يدوي', 'Create manually'), onTap: widget.onCreateManually),
@@ -231,16 +231,16 @@ class _OrgTermSuggestionsState extends State<OrgTermSuggestions> {
         Row(children: [
           Icon(icon, color: c.primary, size: AppIconSize.md),
           const SizedBox(width: AppSpace.xs),
-          Expanded(child: Text(title, style: appText(14, w: FontWeight.w700), maxLines: 2, overflow: TextOverflow.ellipsis)),
+          Expanded(child: Text(title, style: AppType.bodyStrong(context), maxLines: 2, overflow: TextOverflow.ellipsis)),
           const SizedBox(width: AppSpace.xs),
           AppBadgePill(t('مسودة', 'Draft'), color: c.warning),
         ]),
         const SizedBox(height: AppSpace.xxs),
         for (final l in lines)
-          if (l.isNotEmpty) Text(l, style: appText(12, c: c.textMedium), maxLines: 4, overflow: TextOverflow.ellipsis),
-        Text('${t('ناقص', 'Missing')} · $why', style: appText(12, c: c.textLight)),
+          if (l.isNotEmpty) Text(l, style: AppType.meta(context).copyWith(color: c.textMedium), maxLines: 4, overflow: TextOverflow.ellipsis),
+        Text('${t('ناقص', 'Missing')} · $why', style: AppType.meta(context).copyWith(color: c.textLight)),
         const SizedBox(height: AppSpace.xs),
-        Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.end, children: [
           AppPill(icon: Icons.check_rounded, label: t('اعتماد', 'Approve'), color: c.success, onTap: () => _decide(d, 'accept')),
           AppPill(icon: Icons.edit_rounded, label: t('تعديل', 'Edit'), onTap: () => _edit(d)),
           AppPill(icon: Icons.close_rounded, label: t('رفض', 'Reject'), color: c.danger, onTap: () => _decide(d, 'reject')),

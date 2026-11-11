@@ -104,7 +104,7 @@ class _ImportResultSheet extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         SheetHeader(t('نتيجة الاستيراد', 'Import result')),
-        Wrap(spacing: 8, runSpacing: 8, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           InfoChip(Icons.add_circle_rounded, '${t('جديد', 'New')} ${r['created']}', c.success),
           InfoChip(Icons.link_rounded, '${t('مرتبط', 'Linked')} ${r['linked']}', c.primary),
           if (asInt(r['invited']) > 0) InfoChip(Icons.mark_email_unread_rounded, '${t('دعوات مرسلة', 'Invited')} ${r['invited']}', c.warning),
@@ -114,7 +114,7 @@ class _ImportResultSheet extends StatelessWidget {
         if (asInt(r['invited']) > 0) ...[
           const SizedBox(height: AppSpace.sm),
           Text(t('الحسابات الموجودة أصلاً تلقّت دعوة — تنضم إلى المؤسسة بعد قبولها.', 'Accounts that already exist received an invitation — they join once they accept.'),
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.textMedium)),
+              style: AppType.label(context).copyWith(color: c.textMedium)),
         ],
         if (errors.isNotEmpty) ...[
           const SizedBox(height: AppSpace.md),
@@ -124,7 +124,7 @@ class _ImportResultSheet extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs / 2),
               child: Text('${t('صف', 'Row')} ${e['row']}: ${e['error']}',
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.danger)),
+                  style: AppType.label(context).copyWith(color: c.danger)),
             ),
         ],
         if (creds.isNotEmpty) ...[
@@ -134,7 +134,7 @@ class _ImportResultSheet extends StatelessWidget {
           const SizedBox(height: AppSpace.xs),
           for (final u in creds.take(60))
             SelectableText('${u['email']}   ·   ${u['password']}',
-                textDirection: TextDirection.ltr, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.textDark)),
+                textDirection: TextDirection.ltr, style: AppType.label(context).copyWith(color: c.textDark)),
         ],
       ]),
     );
@@ -182,12 +182,12 @@ class OrgHero extends StatelessWidget {
             Text(OrgSession.nameOf(org),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontFamily: AppFonts.display, fontSize: 18, fontWeight: FontWeight.w800, color: context.colors.onHero)),
+                style: AppType.section(context).copyWith(color: context.colors.onHero)),
             if (subtitle != null)
               Padding(
                 padding: const EdgeInsets.only(top: AppSpace.xxs),
                 child: Text(subtitle!,
-                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: context.colors.onHero.withValues(alpha: 0.86))),
+                    style: AppType.label(context).copyWith(color: context.colors.onHero.withValues(alpha: 0.86))),
               ),
           ]),
         ),
@@ -212,7 +212,7 @@ Future<void> exportData(BuildContext context, String path, [Map<String, dynamic>
           ])
             ListTile(
               leading: Icon(icon),
-              title: Text(label, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
+              title: Text(label, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600)),
               onTap: () => Navigator.pop(ctx, f),
             ),
         ]),

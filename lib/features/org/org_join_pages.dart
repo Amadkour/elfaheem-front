@@ -114,7 +114,7 @@ class OrgUnitJoinHub extends StatelessWidget {
           labelColor: c.primary,
           indicatorColor: c.primary,
           unselectedLabelColor: c.textMedium,
-          labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
+          labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600),
           tabs: [for (final x in tabs) Tab(icon: Icon(x.$2, size: AppIconSize.md), text: x.$1)],
         ),
         Expanded(child: TabBarView(children: [for (final x in tabs) x.$3])),
@@ -245,7 +245,7 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
               Field(controller: label, label: t('السؤال / عنوان الحقل', 'Question / field label')),
               Text(t('ربط ببيانات المؤسسة الموثّقة', 'Link to the institution\'s trusted record'), style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
               const SizedBox(height: AppSpace.xs),
-              Wrap(spacing: 8, runSpacing: 6, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 ChoiceChip(label: Text(t('بدون ربط', 'Not linked')), selected: bind == null, onSelected: (_) => set(() => f.remove('bind'))),
                 for (final e in bindLabels().entries)
                   ChoiceChip(
@@ -267,7 +267,7 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
                       style: AppType.meta(ctx).copyWith(color: c.textLight)),
                 ),
               const SizedBox(height: AppSpace.sm),
-              Wrap(spacing: 8, runSpacing: 8, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final e in fieldTypes().entries)
                   if (bind == null || e.key == 'select' || e.key == 'multiselect')
                     ChoiceChip(
@@ -287,7 +287,7 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
                 if (bound.isEmpty)
                   Text(t('لا خيارات معرّفة في إعدادات المؤسسة بعد', 'No options are configured for the institution yet'),
                       style: AppType.meta(ctx).copyWith(color: c.warning)),
-                Wrap(spacing: 8, runSpacing: 6, children: [
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                   for (final e in bound.entries)
                     FilterChip(
                         label: Text(e.value), selected: allowed.contains(e.key), onSelected: (on) => set(() => on ? allowed.add(e.key) : allowed.remove(e.key))),
@@ -364,7 +364,7 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
                     'Pick one or more ways — manual add from the Members tab always works.'),
                 style: AppType.meta(context).copyWith(color: c.textMedium)),
             const SizedBox(height: AppSpace.xs),
-            Wrap(spacing: 8, runSpacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final e in joinPathLabels().entries)
                 FilterChip(label: Text(e.value), selected: d.paths.contains(e.key), onSelected: (on) => setState(() => d.togglePath(e.key, on))),
             ]),
@@ -387,7 +387,7 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
             icon: Icons.filter_alt_rounded,
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               label(t('الفئات', 'Groups')),
-              Wrap(spacing: 8, runSpacing: 6, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final e in joinRoleLabels().entries)
                   FilterChip(label: Text(e.value), selected: d.roles.contains(e.key),
                       onSelected: (on) => setState(() => on ? d.roles.add(e.key) : d.roles.remove(e.key))),
@@ -403,7 +403,7 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
                 else if (_levels.isEmpty)
                   Text(t('لم تُعرّف فرق / مستويات للمؤسسة بعد — أضفها من الهيكل الأكاديمي.', 'No years / levels are configured yet — add them in Academic structure.'),
                       style: AppType.meta(context).copyWith(color: c.textLight)),
-                Wrap(spacing: 8, runSpacing: 6, children: [
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                   for (final l in _levels)
                     FilterChip(
                         label: Text(orgOption(l).$2),
@@ -414,7 +414,7 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
               const SizedBox(height: AppSpace.sm),
               label(t('من الأقسام العلمية (فارغ = الكل)', 'From academic departments (none = all)')),
               if (_programs.isEmpty) Text(t('لا أقسام علمية', 'No academic departments'), style: AppType.meta(context).copyWith(color: c.textLight)),
-              Wrap(spacing: 8, runSpacing: 6, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final p in _programs)
                   FilterChip(
                       label: Text('${p['code']} · ${orgNameOf(p)}'),
@@ -446,7 +446,7 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
                 if (d.approver == 'assistants') ...[
                   const SizedBox(height: AppSpace.xs),
                   if (assistants.isEmpty) Text(t('لا يوجد هيئة معاونة أو إداريون', 'No staff members'), style: AppType.meta(context).copyWith(color: c.textLight)),
-                  Wrap(spacing: 8, runSpacing: 6, children: [
+                  Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                     for (final e in assistants.entries)
                       FilterChip(
                           label: Text(e.value),
@@ -557,7 +557,7 @@ class _CodesTabState extends State<_CodesTab> {
             SheetHeader(t('كود الانضمام الجديد', 'New join code')),
             SelectableText(code,
                 textDirection: TextDirection.ltr,
-                style: TextStyle(fontFamily: AppFonts.display, fontSize: 30, letterSpacing: 5, fontWeight: FontWeight.w800, color: c.primary)),
+                style: TextStyle(fontFamily: AppFonts.display, fontSize: 30, letterSpacing: 5, fontWeight: FontWeight.w600, color: c.primary)),
             const SizedBox(height: AppSpace.sm),
             OutlinedButton.icon(
               onPressed: () async {
@@ -732,7 +732,7 @@ class _CodesTabState extends State<_CodesTab> {
               Text('${r['hint'] ?? ''}${'${r['label'] ?? ''}'.isEmpty ? '' : ' · ${r['label']}'}', textDirection: TextDirection.ltr,
                   style: AppType.bodyStrong(context)),
               const SizedBox(height: AppSpace.xxs),
-              Wrap(spacing: 6, runSpacing: 4, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                 StatusChip(codeStateLabels()[state] ?? state, live ? c.success : (revoked ? c.danger : c.warning)),
                 OrgPill(r['max_uses'] == null ? t('${r['uses']} استخدام', '${r['uses']} uses') : '${r['uses']} / ${r['max_uses']}',
                     icon: Icons.how_to_reg_rounded),
@@ -880,7 +880,7 @@ class JoinRequestCard extends StatelessWidget {
           if (answers.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: AppSpace.xs),
-              child: Wrap(spacing: 6, runSpacing: 4, children: [
+              child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                 // the form field's own label (`answer_labels`, sent by the server); an older server sends only the key
                 for (final e in answers.entries)
                   OrgPill('${asMap(row['answer_labels'])[e.key] ?? e.key}: ${e.value is List ? (e.value as List).join('، ') : e.value}',
@@ -891,7 +891,7 @@ class JoinRequestCard extends StatelessWidget {
           if (pending)
             Padding(
               padding: const EdgeInsets.only(top: AppSpace.xs),
-              child: Wrap(spacing: 8, children: [
+              child: Wrap(spacing: AppSpace.xs, children: [
                 AppButton.secondary(size: AppButtonSize.sm, onPressed: () => _decide(context, true), icon: Icons.check_rounded, label: t('قبول', 'Accept')),
                 AppButton.ghost(size: AppButtonSize.sm, onPressed: () => _decide(context, false), icon: Icons.close_rounded, label: t('رفض', 'Reject')),
               ]),

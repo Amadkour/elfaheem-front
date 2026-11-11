@@ -167,9 +167,9 @@ class _CourseTile extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
-              Text(teacher == null ? t('بلا مدرس بعد', 'No teacher yet') : '$teacher', style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: teacher == null ? c.warning : c.textMedium)),
+              Text(teacher == null ? t('بلا مدرس بعد', 'No teacher yet') : '$teacher', style: AppType.meta(context).copyWith(color: teacher == null ? c.warning : c.textMedium)),
               const SizedBox(height: AppSpace.xs),
-              Wrap(spacing: 6, runSpacing: 4, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                 InfoChip(Icons.groups_rounded, t('${row['students']} طالب', '${row['students']} students'), c.textMedium),
                 InfoChip(Icons.payments_rounded, asDouble(row['fees']) == 0 ? t('مجاني', 'Free') : money(asDouble(row['fees'])), c.success),
                 if (row['members_only'] == true) InfoChip(Icons.lock_rounded, t('للأعضاء فقط', 'Members only'), context.colors.purple),
@@ -328,9 +328,9 @@ Future<Map<String, dynamic>?> showOrgCourseForm(BuildContext context, {Map<Strin
             ),
             if (options.isNotEmpty) ...[
               Text(t('المتطلبات السابقة (مقررات يجب اجتيازها أولاً)', 'Prerequisites (courses to complete first)'),
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.textLight)),
+                  style: AppType.label(ctx).copyWith(color: c.textLight)),
               const SizedBox(height: AppSpace.xs),
-              Wrap(spacing: 6, runSpacing: 6, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final o in options)
                   FilterChip(
                     label: Text(t('${o['name_ar'] ?? o['name_en']}', '${o['name_en'] ?? o['name_ar']}'), style: TextStyle(fontFamily: AppFonts.family)),

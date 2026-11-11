@@ -62,7 +62,7 @@ class GovEntityPickField extends StatelessWidget {
                     ListTile(
                       onTap: () => Navigator.pop(ctx, const _PickedDept(null)),
                       leading: Icon(Icons.block_rounded, color: c.textLight),
-                      title: Text(t('بدون', 'None'), style: appText(14, c: c.textMedium)),
+                      title: Text(t('بدون', 'None'), style: AppType.row(ctx).copyWith(color: c.textMedium)),
                     ),
                   for (final e in shown)
                     Material(
@@ -75,12 +75,12 @@ class GovEntityPickField extends StatelessWidget {
                           decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(AppRadius.control)),
                           child: Icon(govKindIcon(e.kind), color: c.primary, size: AppIconSize.md),
                         ),
-                        title: Text(e.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: value?.id == e.id ? FontWeight.w800 : FontWeight.w600, c: c.textDark)),
+                        title: Text(e.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: value?.id == e.id ? FontWeight.w600 : FontWeight.w600, c: c.textDark)),
                         subtitle: Text(
                           [entityKindLabel(e.kind), if (e.head != null) '${t('الرئيس', 'Head')}: ${e.head!.name}'].join(' · '),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: appText(12, c: c.textMedium),
+                          style: AppType.meta(ctx).copyWith(color: c.textMedium),
                         ),
                         trailing: value?.id == e.id ? Icon(Icons.check_circle_rounded, color: c.primary) : null,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
@@ -88,7 +88,7 @@ class GovEntityPickField extends StatelessWidget {
                       ),
                     ),
                   if (shown.isEmpty)
-                    Padding(padding: const EdgeInsets.all(AppSpace.lg), child: Text(t('لا نتائج', 'No results'), textAlign: TextAlign.center, style: appText(13, c: c.textMedium))),
+                    Padding(padding: const EdgeInsets.all(AppSpace.lg), child: Text(t('لا نتائج', 'No results'), textAlign: TextAlign.center, style: AppType.label(ctx).copyWith(color: c.textMedium))),
                 ]),
               ),
             ]),
@@ -115,7 +115,7 @@ class GovEntityPickField extends StatelessWidget {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.divider)),
           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.divider)),
         ),
-        child: Text(value?.name ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w600, c: c.textDark)),
+        child: Text(value?.name ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
       ),
     );
   }
@@ -170,7 +170,7 @@ class GovRouteForm extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(t('إلى مَن؟', 'To whom?'), style: appText(12, c: c.textLight)),
+      Text(t('إلى مَن؟', 'To whom?'), style: AppType.meta(context).copyWith(color: c.textLight)),
       const SizedBox(height: AppSpace.xs),
       Row(children: [
         Expanded(child: AppChoiceChip(label: t('جهة', 'An entity'), icon: Icons.apartment_rounded, selected: !toPerson, onTap: () => onToPerson(false))),
@@ -189,9 +189,9 @@ class GovRouteForm extends StatelessWidget {
           onChanged: onTargetDept,
         ),
       const SizedBox(height: AppSpace.md),
-      Text(t('ماذا تطلب؟', 'What do you ask for?'), style: appText(12, c: c.textLight)),
+      Text(t('ماذا تطلب؟', 'What do you ask for?'), style: AppType.meta(context).copyWith(color: c.textLight)),
       const SizedBox(height: AppSpace.xs),
-      Wrap(spacing: 6, runSpacing: 6, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final a in actions) AppChoiceChip(label: routeActionLabel(a), icon: govActionIcon(a), selected: action == a, onTap: () => onAction(a)),
       ]),
       const SizedBox(height: AppSpace.xs),
@@ -285,7 +285,7 @@ Future<WorkItem?> showGovRouteSheet(BuildContext context, GovApi api, WorkItem i
           padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 16 + MediaQuery.of(ctx).viewInsets.bottom),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             SheetHeader(title ?? '${t('إحالة', 'Route')} · ${item.ref}'),
-            Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: ctx.colors.textMedium)),
+            Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: ctx.colors.textMedium)),
             const SizedBox(height: AppSpace.sm),
             GovRouteForm(
               entities: list,

@@ -23,7 +23,6 @@ import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 const _pub = '$orgBase/public';
 
@@ -179,7 +178,7 @@ class _RuleSheetState extends State<_RuleSheet> {
       padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg), // the sheet already lifts above the keyboard
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         AppSheetHeader(widget.rule == null ? t('شرط جديد', 'New rule') : t('تعديل الشرط', 'Edit rule')),
-        Wrap(spacing: 6, runSpacing: 6, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final k in ruleTypes)
             AppChoiceChip(label: ruleTypeLabel(k), selected: _type == k, onTap: () => setState(() {
                   _type = k;
@@ -202,7 +201,7 @@ class _RuleSheetState extends State<_RuleSheet> {
           if (_type == 'level_courses') ...[
             Text(t('أي مستوى؟', 'Which level?'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
             const SizedBox(height: AppSpace.xs),
-            Wrap(spacing: 6, runSpacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               AppChoiceChip(label: t('المستوى السابق', 'The level below'), selected: _levelKey == null, onTap: () => setState(() => _levelKey = null)),
               for (final l in widget.levels) AppChoiceChip(label: l.label, selected: _levelKey == l.key, onTap: () => setState(() => _levelKey = l.key)),
             ]),
@@ -418,7 +417,7 @@ class _OrgLevelsTabState extends State<OrgLevelsTab> with AutomaticKeepAliveClie
         ),
       Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
-        child: Wrap(spacing: 8, runSpacing: 8, children: [
+        child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           AppPill(icon: Icons.add_rounded, label: t('مستوى جديد', 'New level'), onTap: _busy ? () {} : () => _edit()),
           if (_levels.length > 1)
             AppPill(icon: Icons.auto_mode_rounded, label: t('تحقق من الانتقال الآن', 'Check move-ups now'), onTap: _advance, color: c.success),
@@ -542,13 +541,13 @@ class _LevelCard extends StatelessWidget {
               if (!resolved.isGeneral)
                 Padding(
                   padding: const EdgeInsets.only(top: AppSpace.xxs),
-                  child: Wrap(spacing: 6, runSpacing: 4, children: [
+                  child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                     for (final id in resolved.programIds!)
                       AppBadgePill(programName(id), color: resolved.inherited ? c.textMedium : c.primary, icon: Icons.account_tree_rounded),
                   ]),
                 ),
               const SizedBox(height: AppSpace.xs),
-              Wrap(spacing: 6, runSpacing: 4, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                 for (final k in levelTermKinds)
                   if (k != 'summer' || l.hasSummer)
                     AppBadgePill('${termKindLabel(k)} · ${l.terms[k]!.length}', icon: Icons.menu_book_rounded,
@@ -691,7 +690,7 @@ class _LevelEditorState extends State<_LevelEditor> {
               t('الأقسام المتاحة في هذا المستوى', 'Departments open at this level'),
               help: t('ما تختاره هنا يصبح الافتراضي لكل المستويات الأعلى التي «ترث».', 'Your choice becomes the default for every higher level that "inherits".'),
               [
-                Wrap(spacing: 6, runSpacing: 6, children: [
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                   AppChoiceChip(
                     label: widget.index == 0 ? t('افتراضي (كل الأقسام)', 'Default (all)') : t('يرث: $inheritText', 'Inherit: $inheritText'),
                     icon: DirIcons.subArrowLeft,
@@ -712,10 +711,10 @@ class _LevelEditorState extends State<_LevelEditor> {
                     Text(t('لا أقسام علمية بعد — أنشئها من تبويب «الأقسام العلمية».', 'No academic departments yet — create them in "Departments".'),
                         style: AppType.meta(context).copyWith(color: c.warning))
                   else
-                    Wrap(spacing: 6, runSpacing: 6, children: [
+                    Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                       for (final p in widget.programs)
                         FilterChip(
-                          label: Text(_pname(asInt(p['id'])), style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
+                          label: Text(_pname(asInt(p['id'])), style: AppType.label(context).copyWith(color: context.colors.textDark)),
                           selected: _progs.contains(asInt(p['id'])),
                           onSelected: (on) => setState(() => on ? _progs.add(asInt(p['id'])) : _progs.remove(asInt(p['id']))),
                         ),
@@ -885,7 +884,7 @@ class _MyLevelCardState extends State<MyLevelCard> {
               ]),
       ),
       const SizedBox(height: AppSpace.sm),
-      Wrap(spacing: 8, runSpacing: 8, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         AppStatChip(icon: Icons.task_alt_rounded, value: '${stats['passed_courses'] ?? 0}', label: t('مقرر مجتاز', 'courses passed')),
         AppStatChip(icon: Icons.schedule_rounded, value: '${stats['hours'] ?? 0}', label: t('ساعة', 'hours')),
         if (stats['average'] != null) AppStatChip(icon: Icons.insights_rounded, value: '${stats['average']}%', label: t('المتوسط', 'average')),

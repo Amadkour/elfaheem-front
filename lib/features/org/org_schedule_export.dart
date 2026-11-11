@@ -1009,7 +1009,7 @@ class _ExportSheetState extends State<_ExportSheet> {
       Text('${widget.title} · ${widget.sourceLabel}', style: AppType.meta(context).copyWith(color: c.textMedium)),
       const SizedBox(height: AppSpace.sm),
       OrgSectionTitle(t('لمن؟', 'For whom?')),
-      Wrap(spacing: 6, runSpacing: 6, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final s in exportScopes)
           ChoiceChip(
             label: Text(exportScopeLabel(s)),
@@ -1022,7 +1022,7 @@ class _ExportSheetState extends State<_ExportSheet> {
       ]),
       if (scope == 'member') ...[
         const SizedBox(height: AppSpace.sm),
-        Wrap(spacing: 6, children: [
+        Wrap(spacing: AppSpace.xs, children: [
           for (final k in const ['teacher', 'assistant', 'room', 'group'])
             ChoiceChip(
               label: Text(memberKindLabel(k)),

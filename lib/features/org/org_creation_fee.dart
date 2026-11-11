@@ -211,16 +211,16 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(t('رسوم إنشاء المؤسسة', 'Organization fee'), maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: appText(15, w: FontWeight.w800, c: c.textDark)),
+                  style: AppType.section(context).copyWith(color: c.textDark)),
               Text(t('تُدفع مرة واحدة قبل إرسال الطلب', 'Paid once, before sending the request'),
-                  maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textLight)),
+                  maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight)),
             ]),
           ),
           const SizedBox(width: AppSpace.xs),
           Flexible(
             child: FittedBox(
               fit: BoxFit.scaleDown,
-              child: Text(price, style: appText(17, w: FontWeight.w900, c: c.primary)),
+              child: Text(price, style: AppType.section(context).copyWith(color: c.primary)),
             ),
           ),
         ]),
@@ -256,9 +256,9 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
                 text: t('لا توجد طريقة دفع متاحة الآن — تواصل مع إدارة المنصة.',
                     'No payment method is available right now — please contact the platform team.'))
           else ...[
-            Text(t('اختر طريقة الدفع', 'Choose how to pay'), style: appText(12.5, w: FontWeight.w700, c: c.textMedium)),
+            Text(t('اختر طريقة الدفع', 'Choose how to pay'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
             const SizedBox(height: AppSpace.xs),
-            Wrap(spacing: 8, runSpacing: 8, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final m in methods)
                 AppChoiceChip(
                   label: t('${m['label_ar']}', '${m['label_en']}'),
@@ -370,11 +370,11 @@ class _TransferSheetState extends State<_TransferSheet> {
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpace.xs),
             child: Row(children: [
-              Expanded(flex: 2, child: Text(r.$1, style: appText(12.5, c: c.textLight))),
-              Expanded(flex: 3, child: SelectableText(r.$2!, style: appText(13, w: FontWeight.w700, c: c.textDark))),
+              Expanded(flex: 2, child: Text(r.$1, style: AppType.label(context).copyWith(color: c.textLight))),
+              Expanded(flex: 3, child: SelectableText(r.$2!, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark))),
             ]),
           ),
-        if ((note ?? '').isNotEmpty) Text(note!, style: appText(12, c: c.textMedium, h: 1.5)),
+        if ((note ?? '').isNotEmpty) Text(note!, style: AppType.meta(context).copyWith(color: c.textMedium, height: 1.5)),
         const SizedBox(height: AppSpace.sm),
         AppField(controller: _name, label: t('اسم صاحب التحويل', 'Sender\'s name')),
         AppField(controller: _phone, label: t('هاتف المحوِّل (اختياري)', 'Sender\'s phone (optional)'), keyboard: TextInputType.phone, ltr: true),

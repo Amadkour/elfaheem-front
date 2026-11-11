@@ -148,7 +148,7 @@ class _DecisionsTabState extends State<_DecisionsTab> with _Loads {
         child: ListView(padding: const EdgeInsets.only(bottom: AppSpace.lg), children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
-            child: Wrap(spacing: 8, runSpacing: 8, children: [
+            child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final (k, label) in [('open', t('مفتوحة', 'Open')), ('accepted', t('مقبولة', 'Accepted')), ('edited', t('معدّلة', 'Edited')), ('rejected', t('مرفوضة', 'Rejected'))])
                 AppChoiceChip(label: '$label ${asInt(counts[k])}', selected: _status == k, onTap: () {
                   setState(() => _status = k);
@@ -165,17 +165,17 @@ class _DecisionsTabState extends State<_DecisionsTab> with _Loads {
               margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 // wraps on a phone (the risk text is long): a Row ran off a 320 px screen
-                Wrap(spacing: 6, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                  Text(decisionKindText('${d['kind']}'), style: appText(12, c: c.textMedium)),
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                  Text(decisionKindText('${d['kind']}'), style: AppType.meta(context).copyWith(color: c.textMedium)),
                   if (d['auto_applied'] == true) AppBadgePill(t('طُبّق تلقائياً', 'Applied automatically'), color: c.primary),
                   AppBadgePill(riskText('${d['risk']}'), color: d['risk'] == 'false_positive' ? c.danger : d['risk'] == 'false_negative' ? c.warning : c.success),
                 ]),
                 const SizedBox(height: AppSpace.xs),
-                Text('${d['title']}', style: appText(15, w: FontWeight.w700)),
+                Text('${d['title']}', style: AppType.section(context)),
                 if ('${d['description'] ?? ''}'.isNotEmpty)
-                  Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text('${d['description']}', style: appText(13, c: c.textMedium))),
+                  Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text('${d['description']}', style: AppType.label(context).copyWith(color: c.textMedium))),
                 const SizedBox(height: AppSpace.xs),
-                Wrap(spacing: 6, runSpacing: 6, children: [
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                   for (final u in (asMap(d['affected'])['students'] as List? ?? const []).take(8))
                     AppBadgePill('${asMap(users['$u'])['name'] ?? '#$u'}', icon: Icons.person_rounded),
                   for (final cid in (asMap(d['affected'])['courses'] as List? ?? const []))
@@ -188,14 +188,14 @@ class _DecisionsTabState extends State<_DecisionsTab> with _Loads {
                     text: '${t('التوصية', 'Recommended')}: ${decisionActionText(asMap(d['recommendation']))}'),
                 if (d['status'] == 'open') ...[
                   const SizedBox(height: AppSpace.xs),
-                  Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, children: [
+                  Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.end, children: [
                     AppPill(icon: Icons.check_rounded, label: t('قبول التوصية', 'Accept'), color: c.success, onTap: () => _decide(d, 'accept')),
                     for (final a in asMapList(d['alternatives']))
                       AppPill(icon: Icons.alt_route_rounded, label: decisionActionText(a), onTap: () => _decide(d, 'edit', action: a)),
                     AppPill(icon: Icons.close_rounded, label: t('رفض', 'Reject'), color: c.danger, onTap: () => _decide(d, 'reject')),
                   ]),
                 ] else if ('${d['note'] ?? ''}'.isNotEmpty)
-                  Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: Text('${d['note']}', style: appText(12, c: c.textLight))),
+                  Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: Text('${d['note']}', style: AppType.meta(context).copyWith(color: c.textLight))),
               ]),
             ),
         ]),
@@ -362,9 +362,9 @@ class _TermsTabState extends State<_TermsTab> with _Loads {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
                     child: Row(children: [
-                      Expanded(child: Text(milestoneLabel(k), style: appText(13))),
+                      Expanded(child: Text(milestoneLabel(k), style: AppType.label(context).copyWith(color: context.colors.textDark))),
                       Text('${cal[k] ?? preview[k] ?? '—'}',
-                          style: appText(13, w: FontWeight.w700, c: cal.isEmpty ? c.textLight : null)),
+                          style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: cal.isEmpty ? c.textLight : null)),
                       if (cal.isNotEmpty) ...[const SizedBox(width: AppSpace.xs), Icon(Icons.edit_calendar_rounded, size: AppIconSize.sm, color: c.textLight)],
                     ]),
                   ),
@@ -372,7 +372,7 @@ class _TermsTabState extends State<_TermsTab> with _Loads {
             ]),
           ),
           AppSectionTitle(t('الشعب', 'Sections'), subtitle: t('تُنشأ من الجدول الدراسي المعتمد للفصل', "Built from the term's active timetable"),
-              trailing: Wrap(spacing: 8, children: [
+              trailing: Wrap(spacing: AppSpace.xs, children: [
                 AppPill(icon: Icons.sync_rounded, label: t('مزامنة', 'Sync'), onTap: _sync),
                 AppPill(icon: Icons.groups_rounded, label: t('تسجيل الدفعات', 'Enrol cohorts'), onTap: () async {
                   final r = await orgCall(() => session.api.post('$reg/terms/$_termId/cohort-enrol', body: {}));
@@ -391,7 +391,7 @@ class _TermsTabState extends State<_TermsTab> with _Loads {
               margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 Row(children: [
-                  Expanded(child: Text(_courseTitle(asMap(_courses['${e.key}'])), style: appText(14, w: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  Expanded(child: Text(_courseTitle(asMap(_courses['${e.key}'])), style: AppType.bodyStrong(context), maxLines: 1, overflow: TextOverflow.ellipsis)),
                   AppPill(icon: Icons.grading_rounded, label: t('الدرجات', 'Grades'), onTap: () => Navigator.of(context)
                       .push(MaterialPageRoute(builder: (_) => staffGradesScreen(session.currentId!, _termId!, e.key)))),
                 ]),
@@ -559,9 +559,9 @@ class _CourseSheetState extends State<_CourseSheet> {
           Expanded(child: OrgNumberField(controller: _exp, label: t('العدد المتوقع', 'Expected students'), gap: false)),
         ]),
         const SizedBox(height: AppSpace.sm),
-        Text(t('يُطرح في', 'Offered in'), style: appText(13, c: c.textMedium)),
+        Text(t('يُطرح في', 'Offered in'), style: AppType.label(context).copyWith(color: c.textMedium)),
         const SizedBox(height: AppSpace.xs),
-        Wrap(spacing: 8, children: [
+        Wrap(spacing: AppSpace.xs, children: [
           for (final k in const ['term1', 'term2', 'summer'])
             AppChoiceChip(label: termKindText(k), selected: _terms.contains(k),
                 onTap: () => setState(() => _terms.contains(k) ? _terms.remove(k) : _terms.add(k))),
@@ -570,7 +570,7 @@ class _CourseSheetState extends State<_CourseSheet> {
           Padding(
             padding: const EdgeInsets.only(top: AppSpace.xs),
             child: Text(t('يُطرح مرة واحدة سنوياً — سيُنبَّه الطلاب المعرضون للتأخير', 'Offered once a year — students at risk of delay will be warned'),
-                style: appText(12, c: c.warning)),
+                style: AppType.meta(context).copyWith(color: c.warning)),
           ),
         AppSectionTitle(t('المتطلبات', 'Requisites'),
             trailing: AppPill(icon: Icons.add_rounded, label: t('إضافة', 'Add'), onTap: others.isEmpty ? null : () => setState(() =>
@@ -665,7 +665,7 @@ class _ProgramsTabState extends State<_ProgramsTab> with _Loads {
         return ListView(padding: const EdgeInsets.only(bottom: AppSpace.lg), children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
-            child: Wrap(spacing: 8, runSpacing: 8, children: [
+            child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               AppPill(icon: Icons.leaderboard_rounded, label: t('توزيع الطلبات بالجدارة', 'Allocate requests by merit'), onTap: _allocate),
               AppPill(icon: Icons.support_rounded, label: t('توزيع المرشدين تلقائياً', 'Assign advisors automatically'), onTap: () async {
                 final r = await orgCall(() => session.api.post('$reg/advisors/auto', body: {}));
@@ -813,7 +813,7 @@ class _ProgramSheetState extends State<_ProgramSheet> {
           const SizedBox(height: AppSpace.sm),
           OrgNumberField(controller: _carry, label: t('أقصى عدد مقررات متخلفة مع النقل (فارغ = اللائحة)', 'Max carry-over courses to still be promoted (empty = rules)'), gap: false),
           const SizedBox(height: AppSpace.xs),
-          Wrap(spacing: 8, runSpacing: 8, children: [
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             AppPill(icon: Icons.trending_up_rounded, label: t('ترحيل الطلاب للفرقة التالية', 'Promote students'), onTap: _promote),
             AppPill(icon: Icons.replay_rounded, label: t('الدور الثاني', 'Make-up round'), onTap: _makeup),
           ]),
@@ -833,8 +833,8 @@ class _ProgramSheetState extends State<_ProgramSheet> {
           AppCard(
             margin: const EdgeInsets.only(bottom: AppSpace.xs),
             child: Row(children: [
-              Expanded(child: Text('${t('${_groups[i]['label_ar'] ?? ''}', '${_groups[i]['label_en'] ?? ''}')} (${_groups[i]['key']})', style: appText(13, w: FontWeight.w700))),
-              Text('≥ ${asDouble(_groups[i]['min_credits']).toStringAsFixed(0)}', style: appText(13)),
+              Expanded(child: Text('${t('${_groups[i]['label_ar'] ?? ''}', '${_groups[i]['label_en'] ?? ''}')} (${_groups[i]['key']})', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark))),
+              Text('≥ ${asDouble(_groups[i]['min_credits']).toStringAsFixed(0)}', style: AppType.label(context).copyWith(color: context.colors.textDark)),
               IconButton(tooltip: t('حذف', 'Delete'), icon: Icon(Icons.delete_outline_rounded, color: c.danger), onPressed: () => setState(() => _groups.removeAt(i))),
             ]),
           ),
@@ -848,7 +848,7 @@ class _ProgramSheetState extends State<_ProgramSheet> {
                     ? _cur[asInt(course['id'])] = {'course_id': course['id'], 'required': true, 'group_key': keys.firstOrNull}
                     : _cur.remove(asInt(course['id'])))),
                 const SizedBox(width: AppSpace.xs),
-                Expanded(child: Text(_courseTitle(course), style: appText(13), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                Expanded(child: Text(_courseTitle(course), style: AppType.label(context).copyWith(color: context.colors.textDark), maxLines: 1, overflow: TextOverflow.ellipsis)),
               ]),
               if (_cur.containsKey(asInt(course['id']))) ...[
                 const SizedBox(height: AppSpace.xs),
@@ -1114,9 +1114,9 @@ class _RulesTabState extends State<_RulesTab> with _Loads {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
                   child: Row(children: [
-                    SizedBox(width: 48, child: Text('${asMapList(r['grade_scale'])[i]['letter']}', style: appText(14, w: FontWeight.w700))),
-                    Expanded(child: Text('≥ ${asMapList(r['grade_scale'])[i]['min']}%', style: appText(13))),
-                    Text('${asMapList(r['grade_scale'])[i]['points']}', style: appText(13, w: FontWeight.w700, c: c.primary)),
+                    SizedBox(width: 48, child: Text('${asMapList(r['grade_scale'])[i]['letter']}', style: AppType.bodyStrong(context))),
+                    Expanded(child: Text('≥ ${asMapList(r['grade_scale'])[i]['min']}%', style: AppType.label(context).copyWith(color: context.colors.textDark))),
+                    Text('${asMapList(r['grade_scale'])[i]['points']}', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.primary)),
                     if ('${r['pass_letter']}' == '${asMapList(r['grade_scale'])[i]['letter']}') ...[
                       const SizedBox(width: AppSpace.xs),
                       AppBadgePill(t('أدنى نجاح', 'Lowest pass'), color: c.success),

@@ -386,9 +386,9 @@ class _ExamCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: AppSpace.sm, horizontal: AppSpace.xs),
           decoration: BoxDecoration(color: accent.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(AppRadius.control)),
           child: Column(children: [
-            Text(AppTime.time(e.start!), textAlign: TextAlign.center, style: appText(13.5, w: FontWeight.w800, c: accent)),
+            Text(AppTime.time(e.start!), textAlign: TextAlign.center, style: AppType.bodyStrong(context).copyWith(color: accent)),
             const SizedBox(height: AppSpace.xxs / 2),
-            Text(AppTime.time(e.end ?? e.start!), textAlign: TextAlign.center, style: appText(11.5, c: c.textMedium)),
+            Text(AppTime.time(e.end ?? e.start!), textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textMedium)),
           ]),
         ),
         const SizedBox(width: AppSpace.sm),
@@ -397,13 +397,13 @@ class _ExamCard extends StatelessWidget {
             Row(children: [
               Expanded(
                 child: Text(e.courseName, maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: appText(15, w: FontWeight.w800, c: over ? c.textMedium : c.textDark)),
+                    style: AppType.section(context).copyWith(color: over ? c.textMedium : c.textDark)),
               ),
               const SizedBox(width: AppSpace.xs),
               AppTag(myExamKindLabel(e.kind), accent),
             ]),
             const SizedBox(height: AppSpace.xs),
-            Wrap(spacing: 6, runSpacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               if (running) AppTag(t('جارٍ الآن', 'On now'), c.success, icon: Icons.circle),
               if (e.invigilating) AppTag(t('أنت مراقب', 'You invigilate'), c.primaryDark, icon: Icons.visibility_rounded),
               if (e.teaching) AppTag(t('مقررك — اضغط لإنشاء الاختبار', 'Your course — tap to create the exam'), c.primary, icon: Icons.edit_note_rounded),
@@ -432,7 +432,7 @@ class _ExamCard extends StatelessWidget {
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Icon(icon, size: AppIconSize.xs, color: c.textLight),
         const SizedBox(width: AppSpace.xs),
-        Expanded(child: Text(text, style: appText(12.5, c: c.textMedium))),
+        Expanded(child: Text(text, style: AppType.label(context).copyWith(color: c.textMedium))),
       ]),
     );
   }

@@ -295,10 +295,10 @@ class _CoursesBody extends StatelessWidget {
                   const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(t('${row['name_ar'] ?? row['name_en']}', '${row['name_en'] ?? row['name_ar']}'), maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
+                      Text(t('${row['name_ar'] ?? row['name_en']}', '${row['name_en'] ?? row['name_ar']}'), maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, color: c.textDark)),
                       if (row['teacher'] != null) Text('${(row['teacher'] as Map)['name']}', style: AppType.meta(context)),
                       const SizedBox(height: AppSpace.xs),
-                      Wrap(spacing: 6, children: [
+                      Wrap(spacing: AppSpace.xs, children: [
                         InfoChip(Icons.payments_rounded, asDouble(row['fees']) == 0 ? t('مجاني', 'Free') : money(asDouble(row['fees'])), c.success),
                         if (row['is_enrolled'] == true) StatusChip(t('مشترك', 'Enrolled'), c.primary),
                       ]),

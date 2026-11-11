@@ -363,9 +363,9 @@ class _OrgRegistrationScreenState extends State<OrgRegistrationScreen> {
                         Expanded(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                             Text(t('${_cart.items.length} مقرر في السلة', '${_cart.items.length} course(s) in the cart'),
-                                style: appText(14, w: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                style: AppType.bodyStrong(context), maxLines: 1, overflow: TextOverflow.ellipsis),
                             Text(t('${after.load.toStringAsFixed(0)} ساعة من ${after.max}', '${after.load.toStringAsFixed(0)} of ${after.max} hours'),
-                                style: appText(12, c: after.over ? c.danger : c.textMedium), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                style: AppType.meta(context).copyWith(color: after.over ? c.danger : c.textMedium), maxLines: 1, overflow: TextOverflow.ellipsis),
                           ]),
                         ),
                         const SizedBox(width: AppSpace.xs),
@@ -399,9 +399,9 @@ class _SectionTile extends StatelessWidget {
         const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(sectionLabel(section), style: appText(14, w: FontWeight.w700)),
+            Text(sectionLabel(section), style: AppType.bodyStrong(context)),
             Text([for (final m in asMapList(section['meetings'])) meetingText(m)].join(' · '),
-                style: appText(12, c: c.textMedium), maxLines: 2, overflow: TextOverflow.ellipsis),
+                style: AppType.meta(context).copyWith(color: c.textMedium), maxLines: 2, overflow: TextOverflow.ellipsis),
           ]),
         ),
         const SizedBox(width: AppSpace.xs),
@@ -444,10 +444,10 @@ class _OfferingCard extends StatelessWidget {
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(_courseTitle(course), style: appText(15, w: FontWeight.w700), maxLines: 2, overflow: TextOverflow.ellipsis),
+              Text(_courseTitle(course), style: AppType.section(context), maxLines: 2, overflow: TextOverflow.ellipsis),
               const SizedBox(height: AppSpace.xxs / 2),
               Text('${asDouble(course['credits']).toStringAsFixed(0)} ${t('ساعات', 'credits')} · ${courseKindText('${course['kind']}')}',
-                  style: appText(12, c: c.textMedium)),
+                  style: AppType.meta(context).copyWith(color: c.textMedium)),
             ]),
           ),
           const SizedBox(width: AppSpace.xs),
@@ -463,7 +463,7 @@ class _OfferingCard extends StatelessWidget {
         if (secs.isNotEmpty) ...[
           const SizedBox(height: AppSpace.xs),
           Text([for (final s in secs.take(3)) '${sectionLabel(s)}: ${[for (final m in asMapList(s['meetings'])) meetingText(m)].join('، ')}'].join('\n'),
-              style: appText(12, c: c.textLight), maxLines: 3, overflow: TextOverflow.ellipsis),
+              style: AppType.meta(context).copyWith(color: c.textLight), maxLines: 3, overflow: TextOverflow.ellipsis),
         ],
         for (final b in blocks)
           Padding(
@@ -471,7 +471,7 @@ class _OfferingCard extends StatelessWidget {
             child: Row(children: [
               Icon(Icons.block_rounded, size: AppIconSize.sm, color: c.danger),
               const SizedBox(width: AppSpace.xs),
-              Expanded(child: Text(blockText(b, courseName: courseName), style: appText(12, c: c.danger))),
+              Expanded(child: Text(blockText(b, courseName: courseName), style: AppType.meta(context).copyWith(color: c.danger))),
             ]),
           ),
         for (final w in warnings)
@@ -480,7 +480,7 @@ class _OfferingCard extends StatelessWidget {
             child: Row(children: [
               Icon(Icons.info_outline_rounded, size: AppIconSize.sm, color: c.warning),
               const SizedBox(width: AppSpace.xs),
-              Expanded(child: Text(registrarCodeText('${w['code']}'), style: appText(12, c: c.textMedium))),
+              Expanded(child: Text(registrarCodeText('${w['code']}'), style: AppType.meta(context).copyWith(color: c.textMedium))),
             ]),
           ),
         if (asMapList(offering['alternatives']).isNotEmpty)
@@ -488,10 +488,10 @@ class _OfferingCard extends StatelessWidget {
             padding: const EdgeInsets.only(top: AppSpace.xs),
             child: Text(
                 '${t('بدائل متاحة', 'Available alternatives')}: ${[for (final a in asMapList(offering['alternatives'])) sectionLabel(a)].join('، ')}',
-                style: appText(12, c: c.primary)),
+                style: AppType.meta(context).copyWith(color: c.primary)),
           ),
         const SizedBox(height: AppSpace.xs),
-        Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.end, children: [
           if (live)
             AppPill(icon: Icons.remove_circle_outline_rounded, label: t('حذف / انسحاب', 'Drop / withdraw'), color: c.danger, onTap: onDrop)
           else if (inCart)
@@ -554,9 +554,9 @@ class RegResultSheet extends StatelessWidget {
         Icon(ok ? Icons.check_circle_rounded : Icons.error_outline_rounded, size: AppIconSize.hero, color: ok ? c.success : c.warning),
         const SizedBox(height: AppSpace.xs),
         Text(ok ? t('تم التسجيل', 'Registered') : t('راجع النتيجة', 'Check the result'),
-            textAlign: TextAlign.center, style: appText(16, w: FontWeight.w700)),
+            textAlign: TextAlign.center, style: AppType.section(context)),
         const SizedBox(height: AppSpace.xs),
-        for (final l in lines) Padding(padding: const EdgeInsets.only(bottom: AppSpace.xxs), child: Text(l, style: appText(13))),
+        for (final l in lines) Padding(padding: const EdgeInsets.only(bottom: AppSpace.xxs), child: Text(l, style: AppType.label(context).copyWith(color: context.colors.textDark))),
       ]),
     );
   }
@@ -668,9 +668,9 @@ class RecordView extends StatelessWidget {
             margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Row(children: [
-                Expanded(child: Text(t('${g['label_ar'] ?? g['key']}', '${g['label_en'] ?? g['key']}'), style: appText(14, w: FontWeight.w700))),
+                Expanded(child: Text(t('${g['label_ar'] ?? g['key']}', '${g['label_en'] ?? g['key']}'), style: AppType.bodyStrong(context))),
                 Text('${asDouble(g['have']).toStringAsFixed(0)} / ${asDouble(g['need']).toStringAsFixed(0)}',
-                    style: appText(13, w: FontWeight.w700, c: g['done'] == true ? c.success : c.textMedium)),
+                    style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: g['done'] == true ? c.success : c.textMedium)),
               ]),
               const SizedBox(height: AppSpace.xs),
               AppProgressBar(value: asDouble(g['have']), max: asDouble(g['need'], 1) <= 0 ? 1 : asDouble(g['need']),
@@ -679,7 +679,7 @@ class RecordView extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(top: AppSpace.xs),
                   child: Text(t('مقررات إجبارية متبقية: ${(g['missing_required'] as List).length}', 'Required courses left: ${(g['missing_required'] as List).length}'),
-                      style: appText(12, c: c.textMedium)),
+                      style: AppType.meta(context).copyWith(color: c.textMedium)),
                 ),
             ]),
           ),
@@ -692,7 +692,7 @@ class RecordView extends StatelessWidget {
           margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(children: [
-              Expanded(child: Text(termTitle(asMap(tr['term'])), style: appText(14, w: FontWeight.w700))),
+              Expanded(child: Text(termTitle(asMap(tr['term'])), style: AppType.bodyStrong(context))),
               if (tr['term_gpa'] != null) AppBadgePill('${t('معدل الفصل', 'Term GPA')} ${gpaText(tr['term_gpa'])}', color: c.primary),
             ]),
             const SizedBox(height: AppSpace.xs),
@@ -701,17 +701,17 @@ class RecordView extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
                 child: Row(children: [
                   Expanded(
-                    child: Text(_courseTitle(x), style: appText(13, c: x['counted'] == false && x['letter'] != null ? c.textLight : null),
+                    child: Text(_courseTitle(x), style: AppType.label(context).copyWith(color: x['counted'] == false && x['letter'] != null ? c.textLight : null),
                         maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
                   const SizedBox(width: AppSpace.xs),
-                  Text(asDouble(x['credits']).toStringAsFixed(0), style: appText(12, c: c.textMedium)),
+                  Text(asDouble(x['credits']).toStringAsFixed(0), style: AppType.meta(context).copyWith(color: c.textMedium)),
                   const SizedBox(width: AppSpace.sm),
                   SizedBox(
                     width: 56,
                     child: Text(x['letter'] != null ? '${x['letter']}' : regStatusText('${x['status']}'),
                         textAlign: TextAlign.end, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: appText(13, w: FontWeight.w700, c: x['denied'] == true ? c.danger : null)),
+                        style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: x['denied'] == true ? c.danger : null)),
                   ),
                 ]),
               ),
@@ -949,12 +949,12 @@ class _GradesScreenState extends State<_GradesScreen> {
                         child: Row(children: [
                           Expanded(
                             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Text('${asMap(i['student'])['name'] ?? ''}', style: appText(14, w: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              Text('${asMap(i['student'])['name'] ?? ''}', style: AppType.bodyStrong(context), maxLines: 1, overflow: TextOverflow.ellipsis),
                               Text([
                                 if (i['student_code'] != null) '${i['student_code']}',
                                 gradeStateText('${i['grade_state']}'),
                                 if (i['absence_pct'] != null) t('غياب ${i['absence_pct']}%', 'Absent ${i['absence_pct']}%'),
-                              ].join(' · '), style: appText(12, c: i['denied'] == true ? c.danger : c.textMedium), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              ].join(' · '), style: AppType.meta(context).copyWith(color: i['denied'] == true ? c.danger : c.textMedium), maxLines: 1, overflow: TextOverflow.ellipsis),
                             ]),
                           ),
                           const SizedBox(width: AppSpace.xs),
@@ -982,7 +982,7 @@ class _GradesScreenState extends State<_GradesScreen> {
               top: false,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
-                child: Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: [
+                child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.center, children: [
                   AppPrimaryButton(label: t('حفظ', 'Save'), icon: Icons.save_rounded, busy: _busy, onPressed: _save),
                   if (widget.canSubmit)
                     AppPill(icon: Icons.send_rounded, label: t('إرسال للاعتماد', 'Submit for approval'), onTap: _submit),
@@ -1122,18 +1122,18 @@ class _OrgAdvisingScreenState extends State<OrgAdvisingScreen> {
               AppCard(
                 margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Text(decisionKindText('${d['kind']}'), style: appText(12, c: c.textMedium)),
+                  Text(decisionKindText('${d['kind']}'), style: AppType.meta(context).copyWith(color: c.textMedium)),
                   const SizedBox(height: AppSpace.xxs),
                   Text([for (final u in (asMap(d['affected'])['students'] as List? ?? const [])) names[asInt(u)] ?? '#$u'].join('، '),
-                      style: appText(15, w: FontWeight.w700)),
-                  if ('${d['description'] ?? ''}'.isNotEmpty) Text('${d['description']}', style: appText(13, c: c.textMedium)),
-                  Wrap(spacing: 6, runSpacing: 6, children: [
+                      style: AppType.section(context)),
+                  if ('${d['description'] ?? ''}'.isNotEmpty) Text('${d['description']}', style: AppType.label(context).copyWith(color: c.textMedium)),
+                  Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                     for (final b in (asMap(d['affected'])['blocks'] as List? ?? const [])) AppBadgePill(registrarCodeText('$b'), color: c.warning),
                   ]),
                   const SizedBox(height: AppSpace.xs),
                   AppBanner(icon: Icons.recommend_rounded, text: '${t('التوصية', 'Recommended')}: ${decisionActionText(asMap(d['recommendation']))}'),
                   const SizedBox(height: AppSpace.xs),
-                  Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, children: [
+                  Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.end, children: [
                     AppPill(icon: Icons.check_rounded, label: t('قبول التوصية', 'Accept'), color: c.success, onTap: () => _decide(d, 'accept')),
                     AppPill(icon: Icons.close_rounded, label: t('رفض', 'Reject'), color: c.danger, onTap: () => _decide(d, 'reject')),
                   ]),
@@ -1280,13 +1280,13 @@ class _OrgConsentsScreenState extends State<OrgConsentsScreen> {
                   AppCard(
                     margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                      Text('${d['title']}', style: appText(14, w: FontWeight.w700)),
+                      Text('${d['title']}', style: AppType.bodyStrong(context)),
                       const SizedBox(height: AppSpace.xs),
                       Text([for (final x in asMapList(asMap(asMap(d['recommendation'])['params'])['cells'])) cell(x)].join(' · '),
-                          style: appText(13, c: c.textMedium)),
+                          style: AppType.label(context).copyWith(color: c.textMedium)),
                       const SizedBox(height: AppSpace.xs),
                       if (d['status'] == 'open')
-                        Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, children: [
+                        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.end, children: [
                           AppPill(icon: Icons.check_rounded, label: t('أوافق', 'I agree'), color: c.success, onTap: () => _answer(d, true)),
                           AppPill(icon: Icons.close_rounded, label: t('أعتذر', 'I decline'), color: c.danger, onTap: () => _answer(d, false)),
                         ])
@@ -1411,18 +1411,18 @@ class _OrgMyWeekScreenState extends State<OrgMyWeekScreen> {
                   SizedBox(
                     width: 72,
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(AppTime.clock('${x['start']}'), style: appText(13, w: FontWeight.w700)),
-                      Text(AppTime.clock('${x['end']}'), style: appText(12, c: c.textLight)),
+                      Text(AppTime.clock('${x['start']}'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
+                      Text(AppTime.clock('${x['end']}'), style: AppType.meta(context).copyWith(color: c.textLight)),
                     ]),
                   ),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(_courseTitle(asMap(x['course'])), style: appText(14, w: FontWeight.w700), maxLines: 2, overflow: TextOverflow.ellipsis),
+                      Text(_courseTitle(asMap(x['course'])), style: AppType.bodyStrong(context), maxLines: 2, overflow: TextOverflow.ellipsis),
                       Text([
                         sectionLabel(x),
                         if (x['room'] != null) '${x['room']}',
                         if (x['teacher'] != null) '${x['teacher']}',
-                      ].join(' · '), style: appText(12, c: c.textMedium), maxLines: 2, overflow: TextOverflow.ellipsis),
+                      ].join(' · '), style: AppType.meta(context).copyWith(color: c.textMedium), maxLines: 2, overflow: TextOverflow.ellipsis),
                     ]),
                   ),
                   const SizedBox(width: AppSpace.xs),

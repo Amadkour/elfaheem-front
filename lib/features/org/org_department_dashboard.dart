@@ -587,7 +587,7 @@ class _QuickActions extends StatelessWidget {
     if (actions.isEmpty) return const SizedBox(height: AppSpace.xxs);
     return Padding(
       padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xs),
-      child: Wrap(spacing: 8, runSpacing: 8, children: [
+      child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final a in actions) AppPill(icon: a.$1, label: a.$2, color: a.$3, onTap: a.$4),
       ]),
     );
@@ -875,7 +875,7 @@ class _RequestCard extends StatelessWidget {
         ]),
         if (tags.isNotEmpty) ...[
           const SizedBox(height: AppSpace.xs),
-          Wrap(spacing: 6, runSpacing: 6, children: [for (final tg in tags) AppBadgePill(tg.$1, color: tg.$2)]),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [for (final tg in tags) AppBadgePill(tg.$1, color: tg.$2)]),
         ],
         for (final l in lines)
           Padding(
@@ -897,7 +897,7 @@ class _RequestCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
                       shape: RoundedRectangleBorder(borderRadius: AppRadius.chipAll)),
                   icon: const Icon(Icons.close_rounded, size: AppIconSize.md),
-                  label: Text(t('رفض', 'Decline'), style: appText(13.5, w: FontWeight.w500, c: c.textMedium)),
+                  label: Text(t('رفض', 'Decline'), style: AppType.row(context).copyWith(color: c.textMedium)),
                 ),
               if (onApprove != null)
                 TextButton.icon(
@@ -909,7 +909,7 @@ class _RequestCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
                       shape: RoundedRectangleBorder(borderRadius: AppRadius.chipAll)),
                   icon: const Icon(Icons.check_rounded, size: AppIconSize.md),
-                  label: Text(t('قبول', 'Approve'), style: appText(13.5, w: FontWeight.w600, c: appInk(context, c.primary))),
+                  label: Text(t('قبول', 'Approve'), style: AppType.bodyStrong(context).copyWith(color: appInk(context, c.primary))),
                 ),
             ]),
         ],

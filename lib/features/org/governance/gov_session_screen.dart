@@ -155,7 +155,7 @@ class _MyVoteRowState extends State<MyVoteRow> {
       ]),
       if (widget.enabled || v != null) ...[
         const SizedBox(height: AppSpace.xs),
-        Wrap(spacing: 8, runSpacing: 6, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final opt in voteValues)
             _VoteChip(
               label: voteLabel(opt),
@@ -254,7 +254,7 @@ class VotersList extends StatelessWidget {
             const SizedBox(width: AppSpace.xs),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Wrap(spacing: 6, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
                   Text(v.user.name, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
                   AppBadgePill(voteLabel(v.vote), icon: voteIcon(v.vote), color: voteColor(context, v.vote)),
                   if (v.at != null) Text(govWhen(v.at), style: AppType.meta(context).copyWith(color: c.textLight)),
@@ -466,7 +466,7 @@ class AgendaRow extends StatelessWidget {
           ],
           if (manager && (onRemove != null || onPostpone != null || onEscalate != null) && open) ...[
             const SizedBox(height: AppSpace.xs),
-            Wrap(spacing: 4, children: [
+            Wrap(spacing: AppSpace.xxs, children: [
               if (onRemove != null && sessionStatus == 'draft')
                 TextButton.icon(
                   style: TextButton.styleFrom(visualDensity: VisualDensity.compact, foregroundColor: c.danger),
@@ -1054,7 +1054,7 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
     if (pills.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
-      child: Wrap(spacing: 8, runSpacing: 8, children: pills),
+      child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: pills),
     );
   }
 

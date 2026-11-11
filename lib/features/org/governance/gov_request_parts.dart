@@ -95,7 +95,7 @@ class GovForSection extends StatelessWidget {
     Widget field(TextEditingController ctrl, String key, String label, IconData icon, {bool ltr = false, TextInputType? keyboard, String? hint}) =>
         _GovTextField(controller: ctrl, label: label, icon: icon, ltr: ltr, keyboard: keyboard, hint: hint, error: errors[key]);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(t('لصالح من؟', 'Who is it for?'), style: appText(12, c: c.textLight)),
+      Text(t('لصالح من؟', 'Who is it for?'), style: AppType.meta(context).copyWith(color: c.textLight)),
       const SizedBox(height: AppSpace.xs - 2),
       Wrap(spacing: AppSpace.xs - 2, runSpacing: AppSpace.xs - 2, children: [
         AppChoiceChip(label: t('أنا', 'Me'), icon: Icons.person_rounded, selected: kind == 'self', onTap: () => onKind('self')),
@@ -163,15 +163,15 @@ class _GovTextField extends StatelessWidget {
         controller: controller,
         keyboardType: keyboard,
         textDirection: ltr ? TextDirection.ltr : null,
-        style: appText(14, c: c.textDark),
+        style: AppType.row(context).copyWith(color: c.textDark),
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
           errorText: error,
           errorMaxLines: 2,
           prefixIcon: Icon(icon, size: AppIconSize.md, color: c.textLight),
-          labelStyle: appText(13, c: c.textMedium),
-          hintStyle: appText(13, c: c.textLight),
+          labelStyle: AppType.label(context).copyWith(color: c.textMedium),
+          hintStyle: AppType.label(context).copyWith(color: c.textLight),
           filled: true,
           fillColor: c.inputBg,
           contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.md),
@@ -192,7 +192,7 @@ class _FieldError extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsetsDirectional.only(start: AppSpace.sm, top: AppSpace.xxs),
-        child: Text(text, style: appText(12, c: context.colors.danger)),
+        child: Text(text, style: AppType.meta(context).copyWith(color: context.colors.danger)),
       );
 }
 
@@ -254,7 +254,7 @@ class _BeneficiarySheetState extends State<_BeneficiarySheet> {
             _q = v;
             _debounce.run(_load);
           },
-          style: appText(14, c: c.textDark),
+          style: AppType.row(context).copyWith(color: c.textDark),
           decoration: InputDecoration(
             hintText: t('ابحث بالاسم أو اسم المستخدم…', 'Search by name or username…'),
             prefixIcon: const Icon(Icons.search_rounded),
@@ -329,7 +329,7 @@ class GovChainPreview extends StatelessWidget {
         Row(children: [
           Icon(Icons.account_tree_rounded, size: AppIconSize.md, color: appInk(context, c.primary)),
           const SizedBox(width: AppSpace.xs),
-          Expanded(child: Text(t('مراحل الاعتماد', 'Approval steps'), style: appText(12.5, w: FontWeight.w800, c: c.textDark))),
+          Expanded(child: Text(t('مراحل الاعتماد', 'Approval steps'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark))),
         ]),
         const SizedBox(height: AppSpace.xs),
         Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
@@ -368,7 +368,7 @@ class GovChainCard extends StatelessWidget {
         Row(children: [
           Icon(Icons.account_tree_rounded, size: AppIconSize.md, color: appInk(context, c.primary)),
           const SizedBox(width: AppSpace.xs),
-          Expanded(child: Text(t('مراحل الاعتماد', 'Approval steps'), style: appText(14, w: FontWeight.w800, c: c.textDark))),
+          Expanded(child: Text(t('مراحل الاعتماد', 'Approval steps'), style: AppType.bodyStrong(context).copyWith(color: c.textDark))),
           if (chain.round > 1) AppBadgePill('${t('الجولة', 'Round')} ${chain.round}', color: c.purple, icon: Icons.replay_rounded),
         ]),
         const SizedBox(height: AppSpace.sm),
@@ -380,14 +380,14 @@ class GovChainCard extends StatelessWidget {
             child: ExpansionTile(
               tilePadding: EdgeInsets.zero,
               childrenPadding: EdgeInsets.zero,
-              title: Text(t('الجولات السابقة (${chain.rounds.length})', 'Earlier rounds (${chain.rounds.length})'), style: appText(12.5, w: FontWeight.w700, c: c.textMedium)),
+              title: Text(t('الجولات السابقة (${chain.rounds.length})', 'Earlier rounds (${chain.rounds.length})'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
               children: [
                 for (final r in chain.rounds) ...[
                   Align(
                     alignment: AlignmentDirectional.centerStart,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
-                      child: Text('${t('الجولة', 'Round')} ${r.$1}', style: appText(12, w: FontWeight.w800, c: c.textLight)),
+                      child: Text('${t('الجولة', 'Round')} ${r.$1}', style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textLight)),
                     ),
                   ),
                   // an earlier round always ended (rejected, then resubmitted)
@@ -445,15 +445,15 @@ class GovChainStepRow extends StatelessWidget {
               padding: current ? const EdgeInsets.all(AppSpace.xs) : EdgeInsets.zero,
               decoration: current ? BoxDecoration(color: c.primary.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(AppRadius.chip)) : null,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Wrap(spacing: AppSpace.xs, runSpacing: 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                  Text('${index + 1}. ${step.label}', style: appText(13.5, w: FontWeight.w800, c: c.textDark)),
-                  Text(state, style: appText(11.5, w: FontWeight.w700, c: color)),
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs / 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                  Text('${index + 1}. ${step.label}', style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
+                  Text(state, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: color)),
                 ]),
-                if (who.isNotEmpty) Text(who, style: appText(12, c: c.textMedium)),
+                if (who.isNotEmpty) Text(who, style: AppType.meta(context).copyWith(color: c.textMedium)),
                 if ((note ?? '').isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: AppSpace.xxs / 2),
-                    child: Text('«$note»', style: appText(12.5, c: step.status == 'rejected' ? c.danger : c.textDark, h: 1.4)),
+                    child: Text('«$note»', style: AppType.label(context).copyWith(color: step.status == 'rejected' ? c.danger : c.textDark, height: 1.4)),
                   ),
               ]),
             ),
@@ -508,9 +508,9 @@ class GovChainEditor extends StatelessWidget {
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(children: [
-              CircleAvatar(radius: 13, backgroundColor: c.primary.withValues(alpha: 0.12), child: Text('${i + 1}', style: appText(12, w: FontWeight.w800, c: appInk(context, c.primary)))),
+              CircleAvatar(radius: 13, backgroundColor: c.primary.withValues(alpha: 0.12), child: Text('${i + 1}', style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: appInk(context, c.primary)))),
               const SizedBox(width: AppSpace.xs),
-              Expanded(child: Text(chainKindLabel(steps[i].kind), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w800, c: c.textDark))),
+              Expanded(child: Text(chainKindLabel(steps[i].kind), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark))),
               if (canEdit) ...[
                 IconButton(
                   tooltip: t('لأعلى', 'Move up'),
@@ -632,7 +632,7 @@ class _GovChainEditorPageState extends State<GovChainEditorPage> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text(t('ترتيب من يعتمد طلبات «${e.name}»: موافقة كل خطوة تنقل الطلب إلى التالية، والرفض في أي خطوة يحتاج سبباً.',
                   'Who approves requests of “${e.name}”, in order: each step\'s approval moves it on; a rejection at any step needs a reason.'),
-              style: appText(13, c: context.colors.textMedium, h: 1.5)),
+              style: AppType.label(context).copyWith(color: context.colors.textMedium, height: 1.5)),
           const SizedBox(height: AppSpace.sm),
           GovChainEditor(
             steps: _steps!,
@@ -733,7 +733,7 @@ class GovImagePreview extends StatelessWidget {
           Padding(
             padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.xs, AppSpace.xs, AppSpace.xs),
             child: Row(children: [
-              Expanded(child: Text(attachment.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w800, c: c.textDark))),
+              Expanded(child: Text(attachment.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark))),
               IconButton(
                 tooltip: t('تنزيل', 'Download'),
                 icon: const Icon(Icons.download_rounded),
@@ -753,7 +753,7 @@ class GovImagePreview extends StatelessWidget {
                 fit: BoxFit.contain,
                 errorBuilder: (_, _, _) => Padding(
                   padding: const EdgeInsets.all(AppSpace.lg),
-                  child: Text(t('تعذّرت المعاينة — استخدم التنزيل', 'Preview failed — use Download'), textAlign: TextAlign.center, style: appText(13, c: c.textMedium)),
+                  child: Text(t('تعذّرت المعاينة — استخدم التنزيل', 'Preview failed — use Download'), textAlign: TextAlign.center, style: AppType.label(context).copyWith(color: c.textMedium)),
                 ),
               ),
             ),
@@ -781,7 +781,7 @@ class GovAttachmentChips extends StatelessWidget {
             [a.name.isEmpty ? t('مرفق', 'Attachment') : a.name, if ((a.size ?? 0) > 0) fileSizeLabel(a.size)].join(' · '),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: appText(12, w: FontWeight.w600, c: c.textDark),
+            style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark),
           ),
           onPressed: onOpen == null ? null : () => onOpen!(a),
           onDeleted: onRemove == null ? null : () => onRemove!(a),
@@ -870,7 +870,7 @@ class _ResubmitSheetState extends State<_ResubmitSheet> {
         ],
         AppField(controller: _title, label: t('العنوان', 'Title')),
         AppField(controller: _body, label: t('التفاصيل', 'Details'), maxLines: 5),
-        Text(t('مرفقات', 'Attachments'), style: appText(12, c: c.textLight)),
+        Text(t('مرفقات', 'Attachments'), style: AppType.meta(context).copyWith(color: c.textLight)),
         const SizedBox(height: AppSpace.xs - 2),
         GovAttachmentChips(attachments: _files, onRemove: (a) => setState(() => _files.remove(a))),
         const SizedBox(height: AppSpace.xs - 2),
@@ -878,7 +878,7 @@ class _ResubmitSheetState extends State<_ResubmitSheet> {
           alignment: AlignmentDirectional.centerStart,
           child: ActionChip(
             avatar: _uploading ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.add_rounded, size: AppIconSize.sm, color: appInk(context, c.primary)),
-            label: Text(t('إضافة ملف', 'Add file'), style: appText(12, w: FontWeight.w700, c: appInk(context, c.primary))),
+            label: Text(t('إضافة ملف', 'Add file'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: appInk(context, c.primary))),
             onPressed: _uploading || _files.length >= 10 ? null : _add,
           ),
         ),

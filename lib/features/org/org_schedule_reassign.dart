@@ -180,7 +180,7 @@ class ReassignCompareSheet extends StatelessWidget {
         if (p.after.changes.length > 8) Text(t('+${p.after.changes.length - 8} أخرى', '+${p.after.changes.length - 8} more'), style: AppType.meta(context).copyWith(color: c.textLight)),
       ],
       const SizedBox(height: AppSpace.sm),
-      Wrap(spacing: 8, runSpacing: 8, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         FilledButton.icon(
           onPressed: onApply,
           icon: Icon(p.afterWins ? Icons.check_rounded : Icons.warning_amber_rounded, size: AppIconSize.md),
@@ -222,7 +222,7 @@ class ReassignCompareSheet extends StatelessWidget {
           child: LinearProgressIndicator(value: m.score / 100, minHeight: 6, color: top ? c.success : c.textLight, backgroundColor: c.textLight.withValues(alpha: 0.15)),
         ),
         const SizedBox(height: AppSpace.xs),
-        Wrap(spacing: 6, runSpacing: 4, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
           stat(t('تعارض إلزامي', 'hard'), m.hard, bad: true),
           stat(t('بلا مكان', 'unplaced'), m.unplaced, bad: true),
           stat(t('تنبيه', 'warnings'), m.warnings),

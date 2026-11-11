@@ -391,7 +391,7 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
               Text(t('ابدأ بإدارة جاهزة — أو اكتب اسماً خاصاً بالأسفل', 'Start from a ready-made one — or type your own below'),
                   style: AppType.label(ctx).copyWith(color: c.textMedium)),
               const SizedBox(height: AppSpace.xs),
-              Wrap(spacing: 8, runSpacing: 8, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final p in presets)
                   ChoiceChip(
                     avatar: Icon(deptIcon(p['icon']), size: AppIconSize.sm,
@@ -457,7 +457,7 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
             const SizedBox(height: AppSpace.sm),
             Text(t('أو أيقونة ولون', 'or an icon and colour'), style: AppType.label(ctx).copyWith(color: c.textLight)),
             const SizedBox(height: AppSpace.xs),
-            Wrap(spacing: 8, runSpacing: 8, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final e in deptIconChoices.entries)
                 InkWell(
                   borderRadius: BorderRadius.circular(AppRadius.control),
@@ -474,7 +474,7 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
                 ),
             ]),
             const SizedBox(height: AppSpace.sm),
-            Wrap(spacing: 10, children: [
+            Wrap(spacing: AppSpace.sm, children: [
               for (final h in palette)
                 GestureDetector(
                   onTap: () => set(() => color = h),
@@ -492,7 +492,7 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
             const SizedBox(height: AppSpace.md),
             Text(t('الخدمات المفعّلة', 'Services switched on'), style: AppType.label(ctx).copyWith(color: c.textLight)),
             const SizedBox(height: AppSpace.xs),
-            Wrap(spacing: 8, runSpacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final e in featureLabels().entries)
                 FilterChip(
                   avatar: Icon(_featureIcons[e.key], size: AppIconSize.sm),
@@ -646,7 +646,7 @@ class _OrgDepartmentHubState extends State<OrgDepartmentHub> {
             labelColor: col,
             indicatorColor: col,
             unselectedLabelColor: c.textMedium,
-            labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
+            labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600),
             tabs: [for (final tb in tabs) Tab(icon: Icon(tb.$2, size: AppIconSize.md), text: tb.$1)],
           ),
           Expanded(child: TabBarView(children: [for (final tb in tabs) tb.$3])),
@@ -766,7 +766,7 @@ class _TeamBodyState extends State<_TeamBody> {
                       ListTile(
                         onTap: () => set(() => picked = asInt(asMap(m['user'])['id'])),
                         leading: AdminAvatar(name: '${asMap(m['user'])['name']}', url: asMap(m['user'])['image_url'] as String?, size: 38),
-                        title: Text('${asMap(m['user'])['name']}', style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
+                        title: Text('${asMap(m['user'])['name']}', style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600)),
                         subtitle: Text('${asMap(m['user'])['email']}', textDirection: TextDirection.ltr),
                         trailing: Icon(
                             picked == asInt(asMap(m['user'])['id']) ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,

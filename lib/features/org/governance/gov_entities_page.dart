@@ -60,7 +60,7 @@ class GovEntityCard extends StatelessWidget {
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(e.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w800, c: c.textDark)),
+              Text(e.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
               const SizedBox(height: AppSpace.xxs / 2),
               Text(
                 [
@@ -71,16 +71,16 @@ class GovEntityCard extends StatelessWidget {
                 ].join(' · '),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: appText(12, c: c.textMedium),
+                style: AppType.meta(context).copyWith(color: c.textMedium),
               ),
               const SizedBox(height: AppSpace.xs),
               Row(children: [
                 if (e.head != null) ...[
                   AdminAvatar(name: e.head!.name, url: e.head!.avatar, size: 22),
                   const SizedBox(width: AppSpace.xs),
-                  Expanded(child: Text('${t('الرئيس', 'Head')}: ${e.head!.name}', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: c.textDark))),
+                  Expanded(child: Text('${t('الرئيس', 'Head')}: ${e.head!.name}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark))),
                 ] else
-                  Expanded(child: Text(t('بلا رئيس بعد', 'No head yet'), style: appText(12, c: c.warning))),
+                  Expanded(child: Text(t('بلا رئيس بعد', 'No head yet'), style: AppType.meta(context).copyWith(color: c.warning))),
               ]),
             ]),
           ),
@@ -88,7 +88,7 @@ class GovEntityCard extends StatelessWidget {
             IconButton(visualDensity: VisualDensity.compact, tooltip: t('تغيير النوع', 'Change kind'), onPressed: onChangeKind, icon: Icon(Icons.swap_vert_rounded, size: AppIconSize.md, color: c.textLight)),
         ]),
         const SizedBox(height: AppSpace.xs),
-        Wrap(spacing: 6, runSpacing: 4, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
           AppBadgePill('${t('مفتوحة', 'Open')} ${e.counts.open}', color: c.primary, icon: Icons.inbox_rounded),
           AppBadgePill('${t('بانتظار القرار', 'Pending decision')} ${e.counts.pendingDecision}', color: c.warning, icon: Icons.gavel_rounded),
           if (e.counts.overdue > 0) AppBadgePill('${t('متأخرة', 'Overdue')} ${e.counts.overdue}', color: c.danger, icon: Icons.timer_off_rounded),
@@ -106,8 +106,8 @@ class GovEntityCard extends StatelessWidget {
               child: Row(children: [
                 Icon(Icons.groups_2_rounded, size: AppIconSize.md, color: c.purple),
                 const SizedBox(width: AppSpace.xs),
-                Expanded(child: Text(council!.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w700, c: c.textDark))),
-                Text(t('${council!.members} عضو', '${council!.members} members'), style: appText(11.5, c: c.textMedium)),
+                Expanded(child: Text(council!.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark))),
+                Text(t('${council!.members} عضو', '${council!.members} members'), style: AppType.meta(context).copyWith(color: c.textMedium)),
                 if (onOpenCouncil != null) Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.textLight),
               ]),
             ),
@@ -134,9 +134,9 @@ Future<bool> showGovEntitySheet(BuildContext context, GovApi api, {List<Map<Stri
           padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 16 + MediaQuery.of(ctx).viewInsets.bottom),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             SheetHeader(t('جهة جديدة', 'New entity')),
-            Text(t('النوع', 'Kind'), style: appText(12, c: c.textLight)),
+            Text(t('النوع', 'Kind'), style: AppType.meta(ctx).copyWith(color: c.textLight)),
             const SizedBox(height: AppSpace.xs),
-            Wrap(spacing: 6, runSpacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final k in entityKinds.where((k) => k != 'council'))
                 AppChoiceChip(label: entityKindLabel(k), icon: govKindIcon(k), selected: kind == k, onTap: () => set(() => kind = k)),
             ]),
@@ -220,7 +220,7 @@ Future<bool> showGovKindSheet(BuildContext context, GovApi api, Entity e, {List<
           padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             SheetHeader('${t('نوع', 'Kind of')} ${e.name}'),
-            Wrap(spacing: 6, runSpacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final k in entityKinds.where((k) => k != 'council'))
                 AppChoiceChip(label: entityKindLabel(k), icon: govKindIcon(k), selected: kind == k, onTap: () => set(() => kind = k)),
             ]),
@@ -420,7 +420,7 @@ class GovEntityDetailPage extends StatelessWidget {
               labelColor: c.primary,
               unselectedLabelColor: c.textMedium,
               indicatorColor: c.primary,
-              labelStyle: appText(13, w: FontWeight.w800),
+              labelStyle: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark),
               tabs: [
                 Tab(text: t('المعاملات', 'Items')),
                 Tab(text: t('التصنيفات', 'Categories')),
@@ -466,14 +466,14 @@ class GovCategoryTile extends StatelessWidget {
         const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(cat.name, style: appText(14, w: FontWeight.w800, c: cat.isActive ? c.textDark : c.textLight)),
-            Wrap(spacing: 6, runSpacing: 4, children: [
+            Text(cat.name, style: AppType.bodyStrong(context).copyWith(color: cat.isActive ? c.textDark : c.textLight)),
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
               AppBadgePill(categoryKindLabel(cat.kind), color: c.textMedium),
               if (cat.formId != null) AppBadgePill(formTitle ?? '${t('نموذج', 'Form')} #${cat.formId}', color: c.primary, icon: Icons.assignment_rounded),
               if (!cat.isActive) AppBadgePill(t('موقوف', 'Inactive'), color: c.danger),
               if (cat.key.isNotEmpty) AppBadgePill(cat.key, color: c.textLight),
             ]),
-            if ((cat.description ?? '').isNotEmpty) Text(cat.description!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
+            if ((cat.description ?? '').isNotEmpty) Text(cat.description!, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
           ]),
         ),
         if (onDeactivate != null && cat.isActive)
@@ -496,7 +496,7 @@ Future<bool> showGovCategorySheet(BuildContext context, GovApi api, int deptId, 
           padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 16 + MediaQuery.of(ctx).viewInsets.bottom),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             SheetHeader(edit == null ? t('تصنيف جديد', 'New category') : t('تعديل التصنيف', 'Edit category')),
-            Wrap(spacing: 6, runSpacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final k in const ['complaint', 'request', 'other']) AppChoiceChip(label: categoryKindLabel(k), selected: kind == k, onTap: () => set(() => kind = k)),
             ]),
             const SizedBox(height: AppSpace.sm),
@@ -528,7 +528,7 @@ Future<bool> showGovCategorySheet(BuildContext context, GovApi api, int deptId, 
               AppSwitchTile(title: t('مفعّل', 'Active'), value: active, onChanged: (v) => set(() => active = v)),
             ],
             const SizedBox(height: AppSpace.xs),
-            if (edit != null) Text(t('يُمكن إيقاف تصنيف لا تعديل مفتاحه', 'A category can be switched off; its key stays'), style: appText(11.5, c: c.textLight)),
+            if (edit != null) Text(t('يُمكن إيقاف تصنيف لا تعديل مفتاحه', 'A category can be switched off; its key stays'), style: AppType.meta(ctx).copyWith(color: c.textLight)),
             const SizedBox(height: AppSpace.xs),
             AppPrimaryButton(
               label: edit == null ? t('إنشاء', 'Create') : t('حفظ', 'Save'),

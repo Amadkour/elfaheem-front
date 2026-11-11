@@ -144,7 +144,7 @@ class _CopiesPageState extends State<_CopiesPage> {
             subtitle: '${sch['name'] ?? ''} · ${t('الإصدار', 'version')} ${version ?? '—'} · ${sch['status'] == 'active' ? t('منشور', 'published') : t('مسودة', 'draft')}'),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
-          child: Wrap(spacing: 8, runSpacing: 6, children: [
+          child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             ActionChip(
                 avatar: Icon(Icons.download_rounded, size: AppIconSize.md, color: c.success),
                 label: Text(t('تصدير Excel (الخادم)', 'Export Excel (server)')),
@@ -305,7 +305,7 @@ class _CopyDetailState extends State<_CopyDetail> {
     ];
 
     return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl), children: [
-      Wrap(spacing: 6, runSpacing: 4, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
         OrgPill(sourceLabel(copy.source), color: c.textMedium),
         if (copy.version != null) OrgPill('${t('الإصدار', 'Version')} ${copy.version}', color: c.primary),
         OrgPill(t('${copy.slots.length} حصة', '${copy.slots.length} sessions'), color: c.accent2),
@@ -356,7 +356,7 @@ class _CopyDetailState extends State<_CopyDetail> {
           ),
       ],
       const SizedBox(height: AppSpace.xs),
-      Wrap(spacing: 8, runSpacing: 6, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         FilledButton.icon(
           onPressed: copy.slots.isEmpty
               ? null

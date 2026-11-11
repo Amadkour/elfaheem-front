@@ -459,7 +459,7 @@ class _CoursePlansPageState extends State<TimetableCoursesView> {
           RowCard(
               accent: c.purple,
               child: Text(t('وضع تجريبي (للتطوير فقط): التعديلات محفوظة في الذاكرة ولا تصل إلى الخادم.', 'Development mock: changes stay in memory and never reach the server.'))),
-        Wrap(spacing: 10, runSpacing: 10, children: [
+        Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [
           _stat(context, t('طلاب (تقديري)', 'Students (est.)'), '$students', Icons.groups_rounded, c.primary),
           _stat(context, t('مجموعات', 'Groups'), '$groups', Icons.workspaces_rounded, c.purple),
           _stat(context, t('فترات أسبوعياً', 'Periods / week'), '$periods', Icons.schedule_rounded, c.accent2),

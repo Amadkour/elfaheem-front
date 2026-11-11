@@ -84,13 +84,13 @@ class _OrgsUnavailablePageState extends State<OrgsUnavailablePage> {
                   ),
                   const SizedBox(height: AppSpace.md),
                   Text(t('المؤسسات غير متاحة حالياً', 'Organizations are currently unavailable'),
-                      textAlign: TextAlign.center, style: appText(19, w: FontWeight.w800, c: c.textDark)),
+                      textAlign: TextAlign.center, style: AppType.section(context).copyWith(color: c.textDark)),
                   const SizedBox(height: AppSpace.sm),
                   Text(
                     t('أوقفت إدارة المنصة خدمة المؤسسات مؤقتاً. بياناتك محفوظة بالكامل، وستعود لوحة مؤسستك كما هي فور إعادة تفعيل الخدمة.',
                         'The platform team has paused organizations for now. All your data is safe, and your dashboard comes back exactly as it was once the service is switched on again.'),
                     textAlign: TextAlign.center,
-                    style: appText(13.5, c: c.textMedium, h: 1.6),
+                    style: AppType.row(context).copyWith(color: c.textMedium, height: 1.6),
                   ),
                   const SizedBox(height: AppSpace.lg),
                   AppPrimaryButton(
@@ -102,7 +102,7 @@ class _OrgsUnavailablePageState extends State<OrgsUnavailablePage> {
                   TextButton.icon(
                     onPressed: _logout,
                     icon: Icon(DirIcons.logout, color: c.textMedium, size: AppIconSize.md),
-                    label: Text(t('تسجيل الخروج', 'Sign out'), style: appText(13.5, w: FontWeight.w700, c: c.textMedium)),
+                    label: Text(t('تسجيل الخروج', 'Sign out'), style: AppType.bodyStrong(context).copyWith(color: c.textMedium)),
                   ),
                 ]),
               ),

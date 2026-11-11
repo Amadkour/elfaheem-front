@@ -232,7 +232,7 @@ Future<List<String>?> askDataFixes(BuildContext context, DataFixPlan plan) {
             SheetHeader(t('إصلاحات البيانات قبل التوليد', 'Data fixes before generating')),
             DataFixPicker(plan: plan, selected: selected, onToggle: (k, on) => set(() => on ? selected.add(k) : selected.remove(k))),
             const SizedBox(height: AppSpace.sm),
-            Wrap(spacing: 8, runSpacing: 8, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               FilledButton.icon(onPressed: () => Navigator.pop(ctx, selected.toList()), icon: const Icon(Icons.auto_fix_high_rounded, size: AppIconSize.md), label: Text(t('ابدأ (${selected.length} إصلاح)', 'Start (${selected.length} fix(es))'))),
               OutlinedButton.icon(onPressed: () => Navigator.pop(ctx, const <String>[]), icon: const Icon(Icons.skip_next_rounded, size: AppIconSize.md), label: Text(t('بلا إصلاحات بيانات', 'Without data fixes'))),
               TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t('إلغاء', 'Cancel'))),
@@ -358,7 +358,7 @@ class AutopilotSummaryCard extends StatelessWidget {
         const SizedBox(height: AppSpace.xxs),
         Text(autopilotStopText(r.stopped), style: AppType.label(context).copyWith(color: c.textMedium)),
         const SizedBox(height: AppSpace.xs),
-        Wrap(spacing: 6, runSpacing: 6, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           delta(t('تعارض إلزامي', 'hard'), r.before.hard, r.after.hard),
           delta(t('بلا مكان', 'unplaced'), r.before.unplaced, r.after.unplaced),
           delta(t('تنبيه', 'warnings'), r.before.warnings, r.after.warnings),

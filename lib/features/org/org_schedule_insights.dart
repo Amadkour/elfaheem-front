@@ -204,7 +204,7 @@ class DataHealthCard extends StatelessWidget {
         const SizedBox(height: AppSpace.xs),
         // chips never grow past the card: each is bounded to the screen width (a Wrap gives none; a LayoutBuilder
         // is not allowed inside the card's intrinsic-height row)
-        Wrap(spacing: 8, runSpacing: 4, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
           _chip(context, Icons.event_note_rounded, t('${r.sessions} حصة', '${r.sessions} sessions'), wrapWidth(context)),
           _chip(context, Icons.grid_on_rounded, t('${asInt(s['cells'])} خانة × ${asInt(s['rooms'])} قاعة', '${asInt(s['cells'])} cells × ${asInt(s['rooms'])} rooms'), wrapWidth(context)),
           _chip(context, Icons.speed_rounded, t('استغلال القاعات ${r.utilizationPct}٪', 'Room use ${r.utilizationPct}%'), wrapWidth(context)),
@@ -288,7 +288,7 @@ class DataHealthCard extends StatelessWidget {
     final spinner = SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: c.textMedium));
     return Padding(
       padding: const EdgeInsets.only(top: AppSpace.xs),
-      child: Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+      child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
         if (f.automatic && onAccept != null)
           Tooltip(
             message: f.actionText,
@@ -382,7 +382,7 @@ class _RankedActionsState extends State<RankedActions> {
                   ),
                 ]),
                 const SizedBox(height: AppSpace.xxs),
-                Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
                   _scoreChip(context, a),
                   if (a.auto && widget.onAccept != null)
                     FilledButton.tonalIcon(
@@ -628,7 +628,7 @@ class QualityCard extends StatelessWidget {
           ),
         ]),
         const SizedBox(height: AppSpace.xs),
-        Wrap(spacing: 10, runSpacing: 4, children: [
+        Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs, children: [
             for (final w in <Widget>[
           Text(t('${r.sessions} حصة', '${r.sessions} sessions'), style: AppType.meta(context).copyWith(color: c.textMedium)),
           Text(t('${r.idle} فترة فراغ', '${r.idle} idle period(s)'), style: AppType.meta(context).copyWith(color: r.idle > 0 ? c.warning : c.textMedium)),

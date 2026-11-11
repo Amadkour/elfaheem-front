@@ -204,7 +204,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
                       const SizedBox(width: AppSpace.xs),
                       Flexible(
                         child: Text(steps[i], maxLines: 1, overflow: TextOverflow.ellipsis,
-                            style: orgText(context, size: 12.5, w: i == _step ? FontWeight.w800 : FontWeight.w500, color: i == _step ? c.textDark : c.textMedium)),
+                            style: orgText(context, size: 12.5, w: i == _step ? FontWeight.w600 : FontWeight.w500, color: i == _step ? c.textDark : c.textMedium)),
                       ),
                     ],
                   ]),
@@ -333,7 +333,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
     return AppRefresh(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.lg), children: [
-        Wrap(spacing: 8, runSpacing: 8, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final e in reportPeriodLabels().entries)
             AppChoiceChip(
               label: e.key == ReportPeriodKind.custom && _kind == ReportPeriodKind.custom ? _period.label : e.value,
@@ -543,7 +543,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
           ]),
         ),
         const SizedBox(height: AppSpace.xs),
-        Wrap(spacing: 8, runSpacing: 8, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           OutlinedButton.icon(onPressed: _uploadTemplate, icon: const Icon(Icons.upload_file_rounded), label: Text(t('رفع قالب Word / Excel', 'Upload Word / Excel template'))),
           OutlinedButton.icon(onPressed: () => _saveTemplate(), icon: const Icon(Icons.save_rounded), label: Text(_saved == null ? t('حفظ كقالب', 'Save as template') : t('حفظ التعديلات', 'Save changes'))),
           if (_saved != null)
@@ -591,7 +591,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
                 'Type the fields in double braces in your file, like {{org}}. The row holding {{item.subject}} repeats once per item. The file keeps its own look.'),
             style: AppType.meta(context).copyWith(color: c.textMedium)),
         const SizedBox(height: AppSpace.sm),
-        Wrap(spacing: 6, runSpacing: 6, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final k in keys)
             ActionChip(
               avatar: Icon(_found.contains(k) ? Icons.check_circle_rounded : Icons.content_copy_rounded, size: AppIconSize.sm, color: _found.contains(k) ? c.success : c.textLight),
@@ -629,7 +629,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
     final c = context.colors;
     final values = _previewValues;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Wrap(spacing: 8, runSpacing: 8, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final (kind, icon, label) in [
           ('text', Icons.text_fields_rounded, t('نص', 'Text')),
           ('logo', Icons.image_rounded, t('شعار', 'Logo')),
@@ -705,7 +705,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
           Expanded(child: _netImage(_layout.signatureUrl, Icons.draw_rounded, t('التوقيع', 'Signature'), al)),
           if (fillPlaceholders(b.text, values).trim().isNotEmpty)
             Text(fillPlaceholders(b.text, values), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: ta,
-                style: TextStyle(fontFamily: family, fontSize: fs, color: _ink, fontWeight: b.bold ? FontWeight.w800 : FontWeight.w500)),
+                style: TextStyle(fontFamily: family, fontSize: fs, color: _ink, fontWeight: b.bold ? FontWeight.w600 : FontWeight.w500)),
         ]);
       default:
         content = Align(
@@ -714,7 +714,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
             fillPlaceholders(b.text, values),
             textAlign: ta,
             overflow: TextOverflow.fade,
-            style: TextStyle(fontFamily: family, fontSize: fs, color: _ink, height: _layout.lineSpacing, fontWeight: b.bold ? FontWeight.w800 : FontWeight.w500),
+            style: TextStyle(fontFamily: family, fontSize: fs, color: _ink, height: _layout.lineSpacing, fontWeight: b.bold ? FontWeight.w600 : FontWeight.w500),
           ),
         );
     }
@@ -786,7 +786,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
     final rows = [for (var i = 0; i < _items.active.length && i < 6; i++) _items.active[i].row(i)];
     final cols = _layout.columns;
     TextStyle st({bool head = false}) =>
-        TextStyle(fontFamily: family, fontSize: fs, color: head ? c.cardBg : _ink, fontWeight: head ? FontWeight.w800 : FontWeight.w500);
+        TextStyle(fontFamily: family, fontSize: fs, color: head ? c.cardBg : _ink, fontWeight: head ? FontWeight.w600 : FontWeight.w500);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Container(
         color: c.primary,
@@ -847,7 +847,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
                 ),
               ),
               const SizedBox(height: AppSpace.xs),
-              Wrap(spacing: 4, runSpacing: 4, children: [
+              Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
                 for (final e in reportPlaceholderLabels().entries)
                   ActionChip(
                     label: Text(e.value, style: const TextStyle(fontSize: 11)),
@@ -901,7 +901,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
             ],
             if (b.kind == 'table') ...[
               label(t('الأعمدة', 'Columns')),
-              Wrap(spacing: 6, runSpacing: 6, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final e in reportColumnLabels().entries)
                   FilterChip(
                     label: Text(e.value, style: const TextStyle(fontSize: 12)),
@@ -1061,7 +1061,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
                 const SizedBox(height: AppSpace.md),
                 Text(t('صيغة الملف', 'File format'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
                 const SizedBox(height: AppSpace.xs),
-                Wrap(spacing: 8, runSpacing: 8, children: [
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                   for (final f in formats)
                     AppChoiceChip(
                       label: switch (f) { 'docx' => 'Word', 'xlsx' => 'Excel', _ => 'PDF' },
@@ -1096,7 +1096,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
                 const Divider(height: 24),
                 Text(t('التاريخ المطبوع', 'Printed date'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
                 const SizedBox(height: AppSpace.xs),
-                Wrap(spacing: 8, runSpacing: 8, children: [
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                   AppChoiceChip(label: t('تاريخ اليوم', 'Today'), selected: _todayDate, onTap: () => setState(() => _todayDate = true)),
                   AppChoiceChip(
                     label: _todayDate ? t('تاريخ آخر', 'Another date') : reportDay(_printDate),
@@ -1159,7 +1159,7 @@ class ReportItemTile extends StatelessWidget {
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Wrap(spacing: 6, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
                 AppBadgePill(reportKindLabels()[it.kind] ?? it.kind, color: color),
                 if (it.manual) AppBadgePill(t('يدوي', 'Manual'), color: c.purple),
                 if (it.status.isNotEmpty && !it.manual) AppBadgePill(reportStatusLabels()[it.status] ?? it.status, color: c.textMedium),
@@ -1266,7 +1266,7 @@ class _ShareSheetState extends State<_ShareSheet> {
             style: AppType.meta(context).copyWith(color: c.textLight)),
         const SizedBox(height: AppSpace.sm),
         if (_people.isNotEmpty || _teams.isNotEmpty || _orgs.isNotEmpty)
-          Wrap(spacing: 6, runSpacing: 6, children: [
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             for (final e in _people.entries)
               InputChip(avatar: const Icon(Icons.person_rounded, size: AppIconSize.sm), label: Text(e.value), onDeleted: () => setState(() => _people.remove(e.key))),
             for (final e in _teams.entries)
@@ -1451,7 +1451,7 @@ class _OrgReceivedReportsPageState extends State<OrgReceivedReportsPage> {
                                 Expanded(
                                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                     Text('${r['title']}',
-                                        maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, w: r['read'] == true ? FontWeight.w600 : FontWeight.w800)),
+                                        maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, w: r['read'] == true ? FontWeight.w600 : FontWeight.w600)),
                                     Text(
                                       [
                                         if (r['org'] != null) orgNameOf(asMap(r['org'])),

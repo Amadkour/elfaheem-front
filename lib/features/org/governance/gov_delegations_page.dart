@@ -100,9 +100,9 @@ class GovDelegationForm extends StatelessWidget {
         ),
         if (categories.isNotEmpty) ...[
           const SizedBox(height: AppSpace.sm),
-          Text(t('التصنيفات', 'Categories'), style: appText(12, c: c.textLight)),
+          Text(t('التصنيفات', 'Categories'), style: AppType.meta(context).copyWith(color: c.textLight)),
           const SizedBox(height: AppSpace.xs),
-          Wrap(spacing: 6, runSpacing: 6, children: [
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             for (final cat in categories)
               AppChoiceChip(
                 label: cat.name,
@@ -113,9 +113,9 @@ class GovDelegationForm extends StatelessWidget {
         ],
         if (forms.isNotEmpty) ...[
           const SizedBox(height: AppSpace.sm),
-          Text(t('النماذج', 'Forms'), style: appText(12, c: c.textLight)),
+          Text(t('النماذج', 'Forms'), style: AppType.meta(context).copyWith(color: c.textLight)),
           const SizedBox(height: AppSpace.xs),
-          Wrap(spacing: 6, runSpacing: 6, children: [
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             for (final f in forms)
               AppChoiceChip(
                 label: f.title,
@@ -207,10 +207,10 @@ class GovDelegationCard extends StatelessWidget {
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(d.to.name, style: appText(14, w: FontWeight.w800, c: c.textDark)),
-              if (showEntity && d.dept != null) Text(d.dept!.name, style: appText(12, c: c.textMedium)),
+              Text(d.to.name, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
+              if (showEntity && d.dept != null) Text(d.dept!.name, style: AppType.meta(context).copyWith(color: c.textMedium)),
               const SizedBox(height: AppSpace.xxs),
-              Wrap(spacing: 6, runSpacing: 4, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                 AppBadgePill(state, color: col),
                 AppBadgePill(delegationModeLabel(d.mode), color: d.isGlobal ? c.warning : c.primary, icon: d.isGlobal ? Icons.all_inclusive_rounded : Icons.tune_rounded),
                 if (!d.isGlobal) ...[
@@ -232,14 +232,14 @@ class GovDelegationCard extends StatelessWidget {
             if (d.startsAt != null || d.endsAt != null) '${d.startsAt == null ? '…' : govWhen(d.startsAt)} → ${d.endsAt == null ? t('مفتوح', 'open') : govWhen(d.endsAt)}',
             if ((d.note ?? '').isNotEmpty) d.note!,
           ].join(' · '),
-          style: appText(12, c: c.textMedium, h: 1.4),
+          style: AppType.meta(context).copyWith(color: c.textMedium, height: 1.4),
         ),
         Text(
           [
             '${t('أُنشئ', 'Created')} ${govWhen(d.createdAt)}${d.from == null ? '' : ' · ${d.from!.name}'}',
             if (d.revokedAt != null) '${t('أُلغي', 'Revoked')} ${govWhen(d.revokedAt)}',
           ].join(' — '),
-          style: appText(11.5, c: c.textLight),
+          style: AppType.meta(context).copyWith(color: c.textLight),
         ),
       ]),
     );
@@ -496,7 +496,7 @@ class _GovDelegationsPageState extends State<GovDelegationsPage> {
           if (canManage)
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xs),
-              child: Wrap(spacing: 8, runSpacing: 8, children: [
+              child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 AppPill(icon: Icons.tune_rounded, label: t('تفويض محدد', 'Delegate (scoped)'), onTap: () => _delegate('scoped')),
                 AppPill(icon: Icons.all_inclusive_rounded, label: t('تفويض كامل', 'Global delegation'), color: c.warning, onTap: () => _delegate('global')),
               ]),

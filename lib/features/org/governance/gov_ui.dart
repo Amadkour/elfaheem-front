@@ -217,8 +217,8 @@ class GovKV extends StatelessWidget {
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(icon, size: AppIconSize.sm, color: c.textLight),
           const SizedBox(width: AppSpace.xs),
-          Text('$label: ', style: appText(12.5, c: c.textLight)),
-          Expanded(child: Text(value, style: appText(12.5, w: FontWeight.w700, c: c.textDark))),
+          Text('$label: ', style: AppType.label(context).copyWith(color: c.textLight)),
+          Expanded(child: Text(value, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark))),
         ]),
       ),
     );
@@ -240,10 +240,10 @@ class GovChipSelect extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         if (icon != null) ...[Icon(icon, size: AppIconSize.xs, color: c.textLight), const SizedBox(width: AppSpace.xs)],
-        Flexible(child: Text(label, style: appText(12, c: c.textLight))),
+        Flexible(child: Text(label, style: AppType.meta(context).copyWith(color: c.textLight))),
       ]),
       const SizedBox(height: AppSpace.xs),
-      Wrap(spacing: 6, runSpacing: 6, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final e in options.entries)
           AppChoiceChip(
             label: e.value,
@@ -287,7 +287,7 @@ class GovDateField extends StatelessWidget {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.divider)),
           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.divider)),
         ),
-        child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w600, c: c.textDark)),
+        child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
       ),
     );
   }
@@ -337,7 +337,7 @@ class GovPeopleList extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.all(AppSpace.lg),
         child: Text(query.isEmpty ? t('اكتب اسماً للبحث', 'Type a name to search') : t('لا نتائج', 'No results'),
-            textAlign: TextAlign.center, style: appText(13, c: c.textMedium)),
+            textAlign: TextAlign.center, style: AppType.label(context).copyWith(color: c.textMedium)),
       );
     }
     return ListView(shrinkWrap: true, children: [
@@ -347,8 +347,8 @@ class GovPeopleList extends StatelessWidget {
           child: ListTile(
             onTap: () => onPick(p),
             leading: AdminAvatar(name: p.name, url: p.avatar, size: 38),
-            title: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark)),
-            subtitle: p.email == null ? null : Text(p.email!, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: appText(12, c: c.textMedium)),
+            title: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
+            subtitle: p.email == null ? null : Text(p.email!, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: AppType.meta(context).copyWith(color: c.textMedium)),
             trailing: selectedId == p.id ? Icon(Icons.check_circle_rounded, color: c.primary) : null,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
             tileColor: selectedId == p.id ? c.primary.withValues(alpha: 0.07) : null,
@@ -415,7 +415,7 @@ class _PeopleSheetState extends State<_PeopleSheet> {
             _q = v;
             _debounce.run(_load);
           },
-          style: appText(14, c: c.textDark),
+          style: AppType.row(context).copyWith(color: c.textDark),
           decoration: InputDecoration(
             hintText: t('ابحث بالاسم أو البريد…', 'Search by name or e-mail…'),
             prefixIcon: const Icon(Icons.search_rounded),
@@ -470,7 +470,7 @@ class GovPersonField extends StatelessWidget {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.divider)),
           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.divider)),
         ),
-        child: Text(person?.name ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w600, c: c.textDark)),
+        child: Text(person?.name ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
       ),
     );
   }
@@ -503,7 +503,7 @@ Future<String?> askGovNote(BuildContext context,
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Icon(Icons.error_outline_rounded, size: AppIconSize.sm, color: c.danger),
                   const SizedBox(width: AppSpace.xs),
-                  Expanded(child: Text(error!, style: appText(12.5, w: FontWeight.w600, c: c.danger))),
+                  Expanded(child: Text(error!, style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: c.danger))),
                 ]),
               ),
             const SizedBox(height: AppSpace.sm),
@@ -525,7 +525,7 @@ Future<String?> askGovNote(BuildContext context,
                 }
                 Navigator.pop(ctx, v);
               },
-              child: Text(confirmLabel ?? t('تأكيد', 'Confirm'), style: appText(14, w: FontWeight.w800, c: c.onHero)),
+              child: Text(confirmLabel ?? t('تأكيد', 'Confirm'), style: AppType.bodyStrong(ctx).copyWith(color: c.onHero)),
             ),
           ]),
         );

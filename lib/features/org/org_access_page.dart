@@ -60,7 +60,7 @@ class OrgAccessPage extends StatelessWidget {
           labelColor: c.primary,
           indicatorColor: c.primary,
           unselectedLabelColor: c.textMedium,
-          labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
+          labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600),
           tabs: [
             Tab(icon: const Icon(Icons.badge_rounded), text: t('الأدوار', 'Roles')),
             Tab(icon: const Icon(Icons.manage_accounts_rounded), text: t('الأشخاص والصلاحيات', 'People & access')),
@@ -264,7 +264,7 @@ class _OrgRoleEditorState extends State<OrgRoleEditor> {
             Field(controller: _ar, label: t('الاسم بالعربية — مثلاً: مسؤول القبول', 'Arabic name'), enabled: _editable),
             Field(controller: _en, label: t('الاسم بالإنجليزية', 'English name — e.g. Admission officer'), ltr: true, enabled: _editable),
             Field(controller: _desc, label: t('متى نستخدم هذا الدور؟', 'When is this role used?'), maxLines: 2, enabled: _editable),
-            Wrap(spacing: 10, children: [
+            Wrap(spacing: AppSpace.sm, children: [
               for (final h in const ['#0F7B5F', '#2563EB', '#7C3AED', '#DB2777', '#EA580C', '#0891B2', '#475569'])
                 GestureDetector(
                   onTap: _editable ? () => setState(() => _color = h) : null,
@@ -415,13 +415,13 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
           if (allowOrg)
             ListTile(
               leading: IconBadge(Icons.domain_rounded, c2.colors.primary, size: 38),
-              title: Text(t('كل المؤسسة (وما تحتها)', 'Whole organization (and below)'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
+              title: Text(t('كل المؤسسة (وما تحتها)', 'Whole organization (and below)'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600)),
               onTap: () => Navigator.pop(c2, 0),
             ),
           for (final d in _depts)
             ListTile(
               leading: IconBadge(deptIcon(d['icon']), hexColor(d['color'], c2.colors.primary), size: 38),
-              title: Text(orgNameOf(d), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
+              title: Text(orgNameOf(d), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600)),
               onTap: () => Navigator.pop(c2, asInt(d['id'])),
             ),
         ],
@@ -437,7 +437,7 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
               ListTile(
                 leading: IconBadge(Icons.badge_rounded, hexColor(r['color'], ctx.colors.primary), size: 38),
                 title: Text(t('${r['name_ar'] ?? r['name_en']}', '${r['name_en'] ?? r['name_ar']}'),
-                    style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
+                    style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600)),
                 subtitle: Text('${r['description'] ?? ''}', maxLines: 2),
                 onTap: () => Navigator.pop(ctx, r),
               ),
@@ -530,7 +530,7 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
                     trailing: canEdit ? TextButton.icon(onPressed: _assignRole, icon: const Icon(Icons.add_rounded), label: Text(t('منح', 'Give'))) : null,
                     child: asMapList(d['assignments']).isEmpty
                         ? Text(t('لا أدوار بعد', 'No roles yet'), style: AppType.row(context).copyWith(color: c.textMedium))
-                        : Wrap(spacing: 8, runSpacing: 8, children: [
+                        : Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                             for (final a in asMapList(d['assignments']))
                               InputChip(
                                 avatar: CircleAvatar(backgroundColor: hexColor(a['color'], c.primary), radius: 6),

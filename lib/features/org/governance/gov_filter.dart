@@ -412,7 +412,7 @@ Future<ItemFilter?> showItemFilterSheet(
             t('تصفية', 'Filters'),
             trailing: TextButton(
               onPressed: () => set(() => draft = draft.cleared(keepDept: !showEntity)),
-              child: Text(t('مسح', 'Clear'), style: appText(13, w: FontWeight.w700, c: c.danger)),
+              child: Text(t('مسح', 'Clear'), style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: c.danger)),
             ),
           ),
           Flexible(
@@ -597,10 +597,10 @@ class _ItemFilterBarState extends State<ItemFilterBar> {
         ],
         if (chips.isNotEmpty) ...[
           const SizedBox(height: AppSpace.xs),
-          Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
             for (final ch in chips)
               InputChip(
-                label: Text(ch.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: c.textDark)),
+                label: Text(ch.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
                 onDeleted: () => widget.onChanged(f.without(ch.key)),
                 deleteIconColor: c.textMedium,
                 backgroundColor: c.primary.withValues(alpha: 0.07),
@@ -611,7 +611,7 @@ class _ItemFilterBarState extends State<ItemFilterBar> {
             TextButton.icon(
               onPressed: () => widget.onChanged(f.cleared(keepDept: !widget.showEntity)),
               icon: Icon(Icons.filter_alt_off_rounded, size: AppIconSize.sm, color: c.danger),
-              label: Text(t('مسح الكل', 'Clear all'), style: appText(12, w: FontWeight.w700, c: c.danger)),
+              label: Text(t('مسح الكل', 'Clear all'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.danger)),
             ),
           ]),
         ],
@@ -670,7 +670,7 @@ class _FilterButton extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 1),
                 decoration: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(AppRadius.chip)),
-                child: Text('$count', style: appText(11, w: FontWeight.w800, c: c.onHero)),
+                child: Text('$count', style: AppType.overline(context).copyWith(color: c.onHero)),
               ),
             ],
           ]),
@@ -720,7 +720,7 @@ class _SearchFieldState extends State<_SearchField> {
       },
       onSubmitted: (v) => _debounce.flush(() => widget.onChanged(v.trim())),
       textInputAction: TextInputAction.search,
-      style: appText(14, c: c.textDark),
+      style: AppType.row(context).copyWith(color: c.textDark),
       decoration: InputDecoration(
         hintText: t('ابحث برقم المرجع أو العنوان…', 'Search by reference or title…'),
         prefixIcon: const Icon(Icons.search_rounded),

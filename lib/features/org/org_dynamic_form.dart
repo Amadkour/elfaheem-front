@@ -110,7 +110,7 @@ class OrgDynamicField extends StatelessWidget {
         input = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           title(),
           const SizedBox(height: AppSpace.xs),
-          Wrap(spacing: 8, runSpacing: 6, children: [
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             for (final (val, lbl) in opts)
               ChoiceChip(
                   label: Text(lbl, style: TextStyle(fontFamily: AppFonts.family)),
@@ -123,7 +123,7 @@ class OrgDynamicField extends StatelessWidget {
         input = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           title(),
           const SizedBox(height: AppSpace.xs),
-          Wrap(spacing: 8, runSpacing: 6, children: [
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             for (final (val, lbl) in opts)
               FilterChip(
                   label: Text(lbl, style: TextStyle(fontFamily: AppFonts.family)),
@@ -158,7 +158,7 @@ class OrgDynamicField extends StatelessWidget {
         final files = asMapList(v[k]);
         input = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           title(),
-          Wrap(spacing: 6, children: [
+          Wrap(spacing: AppSpace.xs, children: [
             for (final x in files) InputChip(label: Text('${x['name']}'), onDeleted: () => put(files.where((y) => y != x).toList())),
             if (onUpload != null)
               ActionChip(
