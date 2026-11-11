@@ -42,7 +42,8 @@ import '../../admin/admin_common.dart' show t;
 import '../guest/guest_live_api.dart' show guestPinValid;
 import '../../teacher/sessions/live/widgets/live_palette.dart';
 import 'live_room.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import '../../../design/app_display.dart' show syncMotionLoop;
+import '../../../design/app_motion_kit.dart' show AppBump, AppEase, AppPopIn;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Controller
@@ -579,33 +580,49 @@ class LobbyBody extends StatelessWidget {
           key: const ValueKey('lobby.refresh'),
           tooltip: t('تحديث', 'Refresh'),
           onPressed: loading ? null : onRefresh,
-          icon: Icon(Icons.refresh_rounded, color: c.primary),
+          icon: Icon(Icons.refresh_rounded, color: appInk(context, c.primary)),
         ),
       ),
       Flexible(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, 0, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            if (quickLink != null) ...[quickLink!, const SizedBox(height: 16)],
+            ?quickLink,
             // ── Waiting ──────────────────────────────────────────────────
-            Row(children: [
-              Expanded(
-                child: AppSectionTitle(
-                  waiting.isEmpty ? t('بانتظار الدخول', 'Waiting to join') : '${t('بانتظار الدخول', 'Waiting to join')} (${waiting.length})',
+            Padding(
+              padding: EdgeInsetsDirectional.only(top: quickLink == null ? AppSpace.xs : AppSpace.xl, bottom: AppSpace.xs),
+              child: Row(children: [
+                Expanded(
+                  child: Row(children: [
+                    Flexible(
+                      child: Text(
+                        t('بانتظار الدخول', 'Waiting to join'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppType.section(context),
+                      ),
+                    ),
+                    if (waiting.isNotEmpty) ...[
+                      const SizedBox(width: AppSpace.xs),
+                      AppBump(trigger: waiting.length, child: AppCountBadge(count: waiting.length)),
+                    ],
+                  ]),
                 ),
-              ),
-              if (waiting.length > 1)
-                AppPill(
-                  key: const ValueKey('lobby.admit_all'),
-                  icon: Icons.done_all_rounded,
-                  label: t('قبول الكل', 'Admit all'),
-                  color: c.success,
-                  onTap: allBusy || loading ? null : onAdmitAll,
-                ),
-            ]),
-            const SizedBox(height: 6),
+                if (waiting.length > 1)
+                  AppButton.tonal(
+                    key: const ValueKey('lobby.admit_all'),
+                    icon: Icons.done_all_rounded,
+                    label: t('قبول الكل', 'Admit all'),
+                    size: AppButtonSize.sm,
+                    onPressed: allBusy || loading ? null : onAdmitAll,
+                  ),
+              ]),
+            ),
             if (loading)
-              const SizedBox(height: 180, child: AppListSkeleton(items: 3, withAvatar: true, padding: EdgeInsets.zero))
+              const SizedBox(
+                height: AppSpace.xxxl * 3,
+                child: AppListSkeleton(items: 3, withAvatar: true, padding: EdgeInsets.zero),
+              )
             else if (error != null && waiting.isEmpty)
               AppBanner(
                 key: const ValueKey('lobby.error'),
@@ -623,8 +640,9 @@ class LobbyBody extends StatelessWidget {
               )
             else
               for (var i = 0; i < waiting.length; i++) ...[
-                if (i > 0) Divider(height: 1, color: c.divider),
+                if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
                 LobbyRequestRow(
+                  key: ValueKey('lobby.row.${waiting[i].id}'),
                   request: waiting[i],
                   busy: allBusy || busyIds.contains(waiting[i].id),
                   onAdmit: () => onAdmit(waiting[i].id),
@@ -632,13 +650,15 @@ class LobbyBody extends StatelessWidget {
                 ),
               ],
             if (error != null && waiting.isNotEmpty) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               AppBanner(icon: Icons.wifi_off_rounded, text: error!, color: c.textMedium),
             ],
 
             // ── Rules ────────────────────────────────────────────────────
-            const SizedBox(height: 18),
-            AppSectionTitle(t('من يدخل مباشرة؟', 'Who gets in without asking?')),
+            Padding(
+              padding: AppSpace.sectionHead,
+              child: Text(t('من يدخل مباشرة؟', 'Who gets in without asking?'), style: AppType.section(context)),
+            ),
             AppSwitchTile(
               key: const ValueKey('lobby.everyone_approval'),
               title: t('الجميع يحتاج موافقتي', 'Everyone needs my approval'),
@@ -662,7 +682,8 @@ class LobbyBody extends StatelessWidget {
   }
 }
 
-/// One waiting person: avatar / initials, name, member / guest, since when, Admit · Reject.
+/// One waiting person: avatar / initials, name, member / guest, since when, Reject · Admit (Admit is the row's
+/// primary: the solid emerald square).
 class LobbyRequestRow extends StatelessWidget {
   const LobbyRequestRow({super.key, required this.request, required this.onAdmit, required this.onReject, this.busy = false});
 
@@ -677,42 +698,47 @@ class LobbyRequestRow extends StatelessWidget {
     final r = request;
     final since = r.requestedAt == null ? '' : AppTime.time(r.requestedAt!);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
       child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-        AppAvatar(name: r.displayName, url: r.imageUrl, size: 38),
-        const SizedBox(width: 10),
+        AppAvatar(name: r.displayName, url: r.imageUrl, size: AppSpace.xl + AppSpace.xs),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(r.displayName, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark)),
-            const SizedBox(height: 2),
-            Wrap(spacing: 8, runSpacing: 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
-              AppBadgePill(
-                r.isGuest ? t('زائر', 'Guest') : t('عضو', 'Member'),
+            Text(r.displayName, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+            const SizedBox(height: AppSpace.xxs),
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              AppStatusBadge(
+                label: r.isGuest ? t('زائر', 'Guest') : t('عضو', 'Member'),
                 icon: r.isGuest ? Icons.link_rounded : Icons.school_rounded,
-                color: r.isGuest ? c.warning : c.primary,
+                tone: r.isGuest ? AppTone.warning : AppTone.neutral,
+                dense: true,
               ),
-              if (since.isNotEmpty) Text(since, style: appText(11.5, c: c.textLight)),
+              if (since.isNotEmpty) Text(since, style: AppType.meta(context)),
             ]),
           ]),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: AppSpace.xs),
         if (busy)
           const Padding(
-            padding: EdgeInsets.all(10),
-            child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+            padding: EdgeInsets.all(AppSpace.sm),
+            child: SizedBox.square(dimension: AppIconSize.sm, child: CircularProgressIndicator(strokeWidth: 2)),
           )
         else ...[
           IconButton(
             key: ValueKey('lobby.reject.${r.id}'),
             tooltip: t('رفض', 'Reject'),
             onPressed: onReject,
-            icon: Icon(Icons.close_rounded, color: c.danger),
+            icon: Icon(Icons.close_rounded, color: appInk(context, c.danger)),
           ),
           IconButton.filled(
             key: ValueKey('lobby.admit.${r.id}'),
             tooltip: t('قبول', 'Admit'),
             onPressed: onAdmit,
-            style: IconButton.styleFrom(backgroundColor: c.success, foregroundColor: c.onHero),
+            style: IconButton.styleFrom(
+              backgroundColor: c.primary,
+              foregroundColor: c.onHero,
+              shape: RoundedRectangleBorder(borderRadius: AppRadius.controlAll),
+            ),
             icon: const Icon(Icons.check_rounded),
           ),
         ],
@@ -726,7 +752,8 @@ class LobbyRequestRow extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// "Quick guest link" (plain values): no link or not direct → one primary button (create / let guests in directly);
-/// a link → its URL with Copy · Share · QR; direct → a switch that turns direct entry off again.
+/// a link → its URL with Copy · Share · QR; direct → a switch that turns direct entry off again. The lobby's one
+/// tinted block (sky: a thing to pass on), the waiting list on the sheet's paper under it.
 class QuickGuestLinkCard extends StatelessWidget {
   const QuickGuestLinkCard({
     super.key,
@@ -758,102 +785,93 @@ class QuickGuestLinkCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final bc = AppBlockColors.of(context, AppBlockTone.sky);
     final l = link;
     final direct = l != null && l.direct;
-    return AppCard(
+    return AppBlock(
       key: const ValueKey('lobby.quick_link'),
-      padding: const EdgeInsets.all(14),
+      tone: AppBlockTone.sky,
+      padding: const EdgeInsets.all(AppSpace.md),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
-            child: Icon(Icons.bolt_rounded, color: c.primary, size: 20),
+            width: AppSpace.xl + AppSpace.xs,
+            height: AppSpace.xl + AppSpace.xs,
+            decoration: BoxDecoration(color: c.cardBg, shape: BoxShape.circle),
+            child: Icon(Icons.bolt_rounded, color: bc.accentInk(c.primary), size: AppIconSize.md),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(t('رابط سريع للزوار', 'Quick guest link'), style: appText(14.5, w: FontWeight.w800, c: c.textDark)),
-              const SizedBox(height: 2),
+              Text(t('رابط سريع للزوار', 'Quick guest link'), style: AppType.section(context).copyWith(color: bc.ink)),
+              const SizedBox(height: AppSpace.xxs),
               Text(
                 direct
                     ? t('من يفتح الرابط يدخل مباشرة — دون انتظار.', 'Anyone who opens the link comes straight in — no waiting.')
                     : t('أنشئ رابطاً يدخل به الزوار مباشرة دون انتظار موافقتك.', 'Make a link that lets guests in directly, without waiting for you.'),
-                style: appText(12, c: c.textMedium, h: 1.4),
+                style: AppType.meta(context).copyWith(color: bc.muted, height: 1.45),
               ),
             ]),
           ),
         ]),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.md),
         if (loading)
-          const SizedBox(height: 64, child: AppListSkeleton(items: 1, withAvatar: false, padding: EdgeInsets.zero))
+          const SizedBox(
+            height: AppSpace.xxxl,
+            child: AppListSkeleton(items: 1, withAvatar: false, padding: EdgeInsets.zero),
+          )
         else if (error != null && l == null)
           AppBanner(
             key: const ValueKey('lobby.quick_link.error'),
             icon: Icons.error_outline_rounded,
             text: error!,
-            color: c.danger,
-            action: IconButton(tooltip: t('إعادة المحاولة', 'Retry'), onPressed: onRetry, icon: Icon(Icons.refresh_rounded, color: c.danger)),
+            color: bc.accentInk(c.danger),
+            action: IconButton(
+              tooltip: t('إعادة المحاولة', 'Retry'),
+              onPressed: onRetry,
+              icon: Icon(Icons.refresh_rounded, color: bc.accentInk(c.danger)),
+            ),
           )
         else ...[
           if (l != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.divider)),
-              child: Row(children: [
-                Icon(Icons.link_rounded, size: 16, color: c.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    l.url,
-                    key: const ValueKey('lobby.quick_link.url'),
-                    textDirection: TextDirection.ltr,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: appText(12, c: c.textDark, w: FontWeight.w600),
-                  ),
-                ),
-              ]),
+            LiveLinkWell(
+              child: Text(
+                l.url,
+                key: const ValueKey('lobby.quick_link.url'),
+                textDirection: TextDirection.ltr,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.row(context),
+              ),
             ),
           if (!direct) ...[
-            if (l != null) const SizedBox(height: 10),
-            AppPrimaryButton(
+            if (l != null) const SizedBox(height: AppSpace.sm),
+            AppButton.primary(
               key: const ValueKey('lobby.quick_link.create'),
               label: l == null ? t('إنشاء رابط سريع', 'Create quick link') : t('اسمح بالدخول المباشر', 'Let guests in directly'),
               icon: Icons.bolt_rounded,
               busy: busy,
+              expand: true,
               onPressed: busy ? null : onMakeDirect,
             ),
           ],
           if (l != null) ...[
-            const SizedBox(height: 10),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              AppPill(key: const ValueKey('lobby.quick_link.copy'), icon: Icons.copy_rounded, label: t('نسخ', 'Copy'), onTap: busy ? null : onCopy),
-              AppPill(key: const ValueKey('lobby.quick_link.share'), icon: Icons.ios_share_rounded, label: t('مشاركة', 'Share'), onTap: busy ? null : onShare),
-              AppPill(
-                key: const ValueKey('lobby.quick_link.qr'),
-                icon: Icons.qr_code_2_rounded,
-                label: t('رمز QR', 'QR code'),
-                onTap: busy ? null : onToggleQr,
-                color: showQr ? c.primary : null,
-              ),
-            ]),
+            const SizedBox(height: AppSpace.sm),
+            LiveLinkActions(
+              busy: busy,
+              showQr: showQr,
+              onCopy: onCopy,
+              onShare: onShare,
+              onToggleQr: onToggleQr,
+              keyPrefix: 'lobby.quick_link',
+            ),
             if (showQr) ...[
-              const SizedBox(height: 12),
-              Center(
-                child: Container(
-                  key: const ValueKey('lobby.quick_link.qr_image'),
-                  padding: const EdgeInsets.all(10),
-                  // Pure white in both themes: phone scanners need the contrast.
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
-                  child: QrImageView(data: l.url, version: QrVersions.auto, size: 168, backgroundColor: Colors.white),
-                ),
-              ),
+              const SizedBox(height: AppSpace.md),
+              LiveQrPlate(key: const ValueKey('lobby.quick_link.qr_image'), data: l.url, size: AppSpace.xxxl * 2 + AppSpace.xl + AppSpace.xs),
             ],
           ],
           if (direct) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpace.xxs),
             AppSwitchTile(
               key: const ValueKey('lobby.quick_link.direct'),
               title: t('الدخول المباشر', 'Direct entry'),
@@ -1080,16 +1098,19 @@ class ShareLinkBody extends StatelessWidget {
       AppSheetHeader(t('رابط المشاركة', 'Share link')),
       Flexible(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text(
               t('من يملك الرابط يطلب الانضمام باسمه — دون حساب. يدخل بعد موافقتك، أو تلقائياً إن سمحت بذلك من غرفة الانتظار.',
                   'Anyone with the link asks to join by name — no account needed. They come in after your approval, or automatically when the lobby allows it.'),
-              style: appText(12.5, c: c.textMedium, h: 1.5),
+              style: AppType.body(context).copyWith(height: 1.55),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpace.md),
             if (loading)
-              const SizedBox(height: 220, child: AppListSkeleton(items: 3, withAvatar: false, padding: EdgeInsets.zero))
+              const SizedBox(
+                height: AppSpace.xxxl * 3,
+                child: AppListSkeleton(items: 3, withAvatar: false, padding: EdgeInsets.zero),
+              )
             else if (error != null)
               AppBanner(
                 key: const ValueKey('share_link.error'),
@@ -1109,7 +1130,6 @@ class ShareLinkBody extends StatelessWidget {
   }
 
   Widget _options(BuildContext context, {bool hasPin = false}) {
-    final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       AppSwitchTile(
         key: const ValueKey('share_link.can_publish'),
@@ -1119,7 +1139,7 @@ class ShareLinkBody extends StatelessWidget {
         value: canPublish,
         onChanged: busy ? null : onCanPublishChanged,
       ),
-      const SizedBox(height: 6),
+      const SizedBox(height: AppSpace.xs),
       AppNumberField(
         controller: maxGuestsController,
         label: t('الحد الأقصى للزوار', 'Max guests'),
@@ -1144,7 +1164,7 @@ class ShareLinkBody extends StatelessWidget {
         hasPin
             ? t('الرمز الحالي محفوظ؛ اتركه فارغاً للإبقاء عليه.', 'The current PIN stays unless you type a new one.')
             : t('من يفتح الرابط يُسأل عن الرمز قبل طلب الانضمام.', 'Visitors are asked for the PIN before they can ask to join.'),
-        style: appText(11.5, c: c.textLight, h: 1.4),
+        style: AppType.meta(context).copyWith(height: 1.45),
       ),
     ]);
   }
@@ -1154,108 +1174,235 @@ class ShareLinkBody extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _options(context),
-          const SizedBox(height: 10),
-          AppPrimaryButton(
+          const SizedBox(height: AppSpace.md),
+          AppButton.primary(
             key: const ValueKey('share_link.create_button'),
             label: t('إنشاء الرابط', 'Create link'),
             icon: Icons.add_link_rounded,
             busy: busy,
+            expand: true,
             onPressed: onCreate,
           ),
         ],
       );
 
+  /// The link itself is the sheet's one block (sky: something to pass on), its facts and actions under it.
   Widget _present(BuildContext context, LiveLink l) {
     final c = context.colors;
+    final bc = AppBlockColors.of(context, AppBlockTone.sky);
     final cap = l.maxGuests == null ? '∞' : '${l.maxGuests}';
     return Column(key: const ValueKey('share_link.present'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: c.inputBg,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: c.divider),
-        ),
+      AppBlock(
+        tone: AppBlockTone.sky,
+        padding: const EdgeInsets.all(AppSpace.md),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Row(children: [
-            Icon(Icons.link_rounded, size: 18, color: c.primary),
-            const SizedBox(width: 10),
-            Expanded(
-              child: SelectableText(
-                l.url,
-                key: const ValueKey('share_link.url'),
-                textDirection: TextDirection.ltr,
-                maxLines: 3,
-                style: appText(12.5, c: c.textDark, w: FontWeight.w600),
-              ),
+          LiveLinkWell(
+            child: SelectableText(
+              l.url,
+              key: const ValueKey('share_link.url'),
+              textDirection: TextDirection.ltr,
+              minLines: 1,
+              maxLines: 3,
+              style: AppType.row(context),
             ),
-          ]),
+          ),
           if (l.hasPin) ...[
-            const SizedBox(height: 8),
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: AppBadgePill(t('محمي برمز دخول', 'PIN protected'), icon: Icons.lock_rounded, color: c.warning),
-            ),
+            const SizedBox(height: AppSpace.sm),
+            Row(children: [
+              Icon(Icons.lock_rounded, size: AppIconSize.sm, color: bc.accentInk(c.warning)),
+              const SizedBox(width: AppSpace.xxs),
+              Flexible(
+                child: Text(
+                  t('محمي برمز دخول', 'PIN protected'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.label(context).copyWith(color: bc.ink),
+                ),
+              ),
+            ]),
+          ],
+          const SizedBox(height: AppSpace.sm),
+          LiveLinkActions(
+            busy: busy,
+            showQr: showQr,
+            onCopy: onCopy,
+            onShare: onShare,
+            onToggleQr: onToggleQr,
+            keyPrefix: 'share_link',
+          ),
+          if (showQr) ...[
+            const SizedBox(height: AppSpace.md),
+            LiveQrPlate(key: const ValueKey('share_link.qr_image'), data: l.url, size: AppSpace.xxxl * 3),
           ],
         ]),
       ),
-      const SizedBox(height: 12),
-      Wrap(spacing: 8, runSpacing: 8, children: [
-        AppBadgePill('${t('الحد الأقصى', 'Max guests')}: $cap', icon: Icons.people_alt_rounded, color: c.primary),
-        AppBadgePill(
-          l.canPublish ? t('ميكروفون وكاميرا', 'Mic and camera') : t('مشاهدة واستماع فقط', 'Watch and listen only'),
+      const SizedBox(height: AppSpace.md),
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+        AppStatusBadge(label: '${t('الحد الأقصى', 'Max guests')}: $cap', icon: Icons.people_alt_rounded),
+        AppStatusBadge(
+          label: l.canPublish ? t('ميكروفون وكاميرا', 'Mic and camera') : t('مشاهدة واستماع فقط', 'Watch and listen only'),
           icon: l.canPublish ? Icons.mic_rounded : Icons.hearing_rounded,
-          color: l.canPublish ? c.success : c.textMedium,
+          tone: l.canPublish ? AppTone.success : AppTone.neutral,
         ),
         if (l.createdAt != null)
-          AppBadgePill('${t('أُنشئ', 'Created')}: ${AppTime.dateTime(l.createdAt!)}', icon: Icons.schedule_rounded, color: c.textMedium),
+          AppStatusBadge(label: '${t('أُنشئ', 'Created')}: ${AppTime.dateTime(l.createdAt!)}', icon: Icons.schedule_rounded),
       ]),
-      const SizedBox(height: 14),
-      Wrap(spacing: 8, runSpacing: 8, children: [
-        AppPill(key: const ValueKey('share_link.copy'), icon: Icons.copy_rounded, label: t('نسخ', 'Copy'), onTap: busy ? null : onCopy),
-        AppPill(key: const ValueKey('share_link.share'), icon: Icons.ios_share_rounded, label: t('مشاركة', 'Share'), onTap: busy ? null : onShare),
-        AppPill(
-          key: const ValueKey('share_link.qr'),
-          icon: Icons.qr_code_2_rounded,
-          label: t('رمز QR', 'QR code'),
-          onTap: busy ? null : onToggleQr,
-          color: showQr ? c.primary : null,
-        ),
-        AppPill(
-          key: const ValueKey('share_link.settings'),
-          icon: Icons.tune_rounded,
-          label: t('الإعدادات', 'Settings'),
-          onTap: busy ? null : onToggleSettings,
-          color: editing ? c.primary : null,
-        ),
-        AppPill(key: const ValueKey('share_link.revoke'), icon: Icons.link_off_rounded, label: t('إلغاء الرابط', 'Revoke'), onTap: busy ? null : onRevoke, color: c.danger),
-      ]),
-      if (showQr) ...[
-        const SizedBox(height: 16),
-        Center(
-          child: Container(
-            key: const ValueKey('share_link.qr_image'),
-            padding: const EdgeInsets.all(12),
-            // The QR's quiet zone stays pure white in both themes: phone scanners need the contrast.
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-            child: QrImageView(data: l.url, version: QrVersions.auto, size: 200, backgroundColor: Colors.white),
+      const SizedBox(height: AppSpace.md),
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+        if (editing)
+          AppButton.tonal(
+            key: const ValueKey('share_link.settings'),
+            icon: Icons.tune_rounded,
+            label: t('الإعدادات', 'Settings'),
+            size: AppButtonSize.sm,
+            onPressed: busy ? null : onToggleSettings,
+          )
+        else
+          AppButton.secondary(
+            key: const ValueKey('share_link.settings'),
+            icon: Icons.tune_rounded,
+            label: t('الإعدادات', 'Settings'),
+            size: AppButtonSize.sm,
+            onPressed: busy ? null : onToggleSettings,
           ),
+        AppButton.danger(
+          key: const ValueKey('share_link.revoke'),
+          icon: Icons.link_off_rounded,
+          label: t('إلغاء الرابط', 'Revoke'),
+          size: AppButtonSize.sm,
+          dangerOutline: true,
+          onPressed: busy ? null : onRevoke,
         ),
-      ],
+      ]),
       if (editing) ...[
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         AppCard(
-          padding: const EdgeInsets.all(14),
           child: Column(key: const ValueKey('share_link.settings_panel'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            AppSectionTitle(t('الإعدادات', 'Settings')),
-            const SizedBox(height: 6),
+            Text(t('الإعدادات', 'Settings'), style: AppType.section(context)),
+            const SizedBox(height: AppSpace.xs),
             _options(context, hasPin: l.hasPin),
-            const SizedBox(height: 8),
-            AppPrimaryButton(label: t('حفظ', 'Save'), icon: Icons.check_rounded, busy: busy, onPressed: onSaveSettings),
+            const SizedBox(height: AppSpace.md),
+            AppButton.primary(
+              label: t('حفظ', 'Save'),
+              icon: Icons.check_rounded,
+              busy: busy,
+              expand: true,
+              onPressed: onSaveSettings,
+            ),
           ]),
         ),
       ],
     ]);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The link's parts, shared by the quick link card and the share link sheet
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A link shown on a paper well (inside a tinted block): a link glyph and the URL, left to right in both languages.
+class LiveLinkWell extends StatelessWidget {
+  const LiveLinkWell({super.key, required this.child});
+
+  /// The URL's text (a Text or a SelectableText, keyed by the caller).
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.sm),
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        borderRadius: AppRadius.controlAll,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
+      ),
+      child: Row(children: [
+        Icon(Icons.link_rounded, size: AppIconSize.sm, color: appInk(context, c.primary)),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(child: child),
+      ]),
+    );
+  }
+}
+
+/// Copy · Share · QR for a link, as small secondary buttons (QR turns tonal while its code shows). The keys are
+/// `<keyPrefix>.copy`, `.share` and `.qr`.
+class LiveLinkActions extends StatelessWidget {
+  const LiveLinkActions({
+    super.key,
+    required this.busy,
+    required this.showQr,
+    required this.onCopy,
+    required this.onShare,
+    required this.onToggleQr,
+    required this.keyPrefix,
+  });
+
+  final bool busy;
+  final bool showQr;
+  final VoidCallback onCopy;
+  final VoidCallback onShare;
+  final VoidCallback onToggleQr;
+  final String keyPrefix;
+
+  @override
+  Widget build(BuildContext context) {
+    final qrLabel = t('رمز QR', 'QR code');
+    return Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+      AppButton.secondary(
+        key: ValueKey('$keyPrefix.copy'),
+        icon: Icons.copy_rounded,
+        label: t('نسخ', 'Copy'),
+        size: AppButtonSize.sm,
+        onPressed: busy ? null : onCopy,
+      ),
+      AppButton.secondary(
+        key: ValueKey('$keyPrefix.share'),
+        icon: Icons.ios_share_rounded,
+        label: t('مشاركة', 'Share'),
+        size: AppButtonSize.sm,
+        onPressed: busy ? null : onShare,
+      ),
+      if (showQr)
+        AppButton.tonal(
+          key: ValueKey('$keyPrefix.qr'),
+          icon: Icons.qr_code_2_rounded,
+          label: qrLabel,
+          size: AppButtonSize.sm,
+          onPressed: busy ? null : onToggleQr,
+        )
+      else
+        AppButton.secondary(
+          key: ValueKey('$keyPrefix.qr'),
+          icon: Icons.qr_code_2_rounded,
+          label: qrLabel,
+          size: AppButtonSize.sm,
+          onPressed: busy ? null : onToggleQr,
+        ),
+    ]);
+  }
+}
+
+/// A link's QR code on its own white plate, which opens with a short settle when it is asked for.
+class LiveQrPlate extends StatelessWidget {
+  const LiveQrPlate({super.key, required this.data, required this.size});
+
+  final String data;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: AppPopIn(
+        child: Container(
+          padding: const EdgeInsets.all(AppSpace.sm),
+          // Pure white in both themes: phone scanners need the contrast.
+          decoration: BoxDecoration(color: Colors.white, borderRadius: AppRadius.cardAll),
+          child: QrImageView(data: data, version: QrVersions.auto, size: size, backgroundColor: Colors.white),
+        ),
+      ),
+    );
   }
 }
 
@@ -1414,7 +1561,21 @@ class WaitingForHostScreen extends StatefulWidget {
 }
 
 class _WaitingForHostScreenState extends State<WaitingForHostScreen> with SingleTickerProviderStateMixin {
-  late final AnimationController _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))..repeat();
+  late final AnimationController _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600));
+
+  /// The measure of the page: a short centred column (about 55 characters a line).
+  static const double _maxWidth = 440;
+
+  /// The plate the rings grow from, and the room they grow into.
+  static const double _plate = AppSpace.xxxl + AppSpace.lg;
+  static const double _stage = _plate + AppSpace.xxxl + AppSpace.xs;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // The rings say "still waiting"; under Reduce motion they rest as two quiet circles.
+    syncMotionLoop(context, _pulse, rest: 0.5);
+  }
 
   @override
   void dispose() {
@@ -1425,6 +1586,7 @@ class _WaitingForHostScreenState extends State<WaitingForHostScreen> with Single
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final motion = AppMotion.of(context);
     final waiting = widget.state == WaitingState.waiting;
     final rejected = widget.state == WaitingState.rejected;
     final title = (widget.title ?? '').trim();
@@ -1441,69 +1603,101 @@ class _WaitingForHostScreenState extends State<WaitingForHostScreen> with Single
         : rejected
             ? t('لم يقبل المضيف طلب الانضمام هذه المرة.', 'The host did not admit you this time.')
             : t('لم يرد المضيف خلال عشر دقائق. يمكنك طلب الانضمام مرة أخرى.', 'The host did not answer within ten minutes. You can ask to join again.');
-    final color = waiting ? c.primary : (rejected ? c.danger : c.warning);
+    // Waiting is information (the sky block); a refusal speaks in danger, an expiry in warning.
+    final sky = AppBlockColors.of(context, AppBlockTone.sky);
+    final ink = waiting ? sky.accentInk(c.primary) : appInk(context, rejected ? c.danger : c.warning);
+    final plate = waiting ? sky.surface : (rejected ? c.dangerTint : c.warning.withValues(alpha: c.isDark ? 0.16 : 0.1));
+    final ring = waiting ? appInk(context, c.primary) : ink;
     final icon = waiting ? Icons.meeting_room_rounded : (rejected ? Icons.block_rounded : Icons.timer_off_rounded);
 
     return SafeArea(
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
+          constraints: const BoxConstraints(maxWidth: _maxWidth),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+            padding: const EdgeInsets.all(AppSpace.lg),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               SizedBox(
-                height: 150,
+                height: _stage,
                 child: Center(
                   child: AnimatedBuilder(
                     animation: _pulse,
                     builder: (_, child) => CustomPaint(
-                      painter: _PulsePainter(progress: waiting ? _pulse.value : 0, color: color),
+                      painter: _PulsePainter(progress: waiting ? _pulse.value : 0, color: ring, from: _plate / 2),
                       child: child,
                     ),
-                    child: Container(
-                      key: ValueKey('waiting_host.${widget.state.name}'),
-                      width: 84,
-                      height: 84,
-                      decoration: BoxDecoration(shape: BoxShape.circle, color: color.withValues(alpha: 0.14)),
-                      child: Icon(icon, size: 40, color: color),
+                    // A change of state (admitted elsewhere, refused, expired) settles in; the rings stop.
+                    child: AnimatedSwitcher(
+                      duration: motion.base,
+                      switchInCurve: AppEase.out,
+                      switchOutCurve: AppEase.out,
+                      transitionBuilder: (child, a) => FadeTransition(
+                        opacity: a,
+                        child: ScaleTransition(scale: Tween(begin: 0.94, end: 1.0).animate(a), child: child),
+                      ),
+                      child: Container(
+                        key: ValueKey('waiting_host.${widget.state.name}'),
+                        width: _plate,
+                        height: _plate,
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: plate),
+                        child: Icon(icon, size: AppIconSize.hero, color: ink),
+                      ),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(headline, textAlign: TextAlign.center, style: appText(20, w: FontWeight.w800, c: c.textDark, h: 1.25)),
+              const SizedBox(height: AppSpace.md),
+              Text(headline, textAlign: TextAlign.center, style: AppType.headline(context)),
               if (title.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(title, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w600, c: c.textMedium)),
+                const SizedBox(height: AppSpace.xs),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.bodyStrong(context).copyWith(color: c.textMedium),
+                ),
               ],
-              const SizedBox(height: 12),
-              Text(body, textAlign: TextAlign.center, style: appText(13.5, c: c.textMedium, h: 1.5)),
+              const SizedBox(height: AppSpace.sm),
+              Text(body, textAlign: TextAlign.center, style: AppType.body(context).copyWith(height: 1.55)),
               if (waiting) ...[
-                const SizedBox(height: 18),
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  for (var i = 0; i < 3; i++)
-                    AnimatedBuilder(
-                      animation: _pulse,
-                      builder: (_, _) {
-                        final ph = ((_pulse.value * 3) - i).clamp(0.0, 1.0);
-                        final a = 0.25 + 0.75 * math.sin(ph * math.pi);
-                        return Container(
-                          width: 8,
-                          height: 8,
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          decoration: BoxDecoration(shape: BoxShape.circle, color: color.withValues(alpha: a)),
-                        );
-                      },
-                    ),
-                ]),
+                const SizedBox(height: AppSpace.lg),
+                ExcludeSemantics(
+                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    for (var i = 0; i < 3; i++)
+                      AnimatedBuilder(
+                        animation: _pulse,
+                        builder: (_, _) {
+                          final ph = ((_pulse.value * 3) - i).clamp(0.0, 1.0);
+                          final a = 0.25 + 0.75 * math.sin(ph * math.pi);
+                          return Container(
+                            width: AppSpace.xs,
+                            height: AppSpace.xs,
+                            margin: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
+                            decoration: BoxDecoration(shape: BoxShape.circle, color: ring.withValues(alpha: a)),
+                          );
+                        },
+                      ),
+                  ]),
+                ),
               ],
-              const SizedBox(height: 28),
-              AppPrimaryButton(
-                key: const ValueKey('waiting_host.leave'),
-                label: waiting ? t('إلغاء', 'Cancel') : t('رجوع', 'Back'),
-                icon: waiting ? Icons.close_rounded : Icons.arrow_back_rounded,
-                onPressed: widget.onCancel,
-              ),
+              const SizedBox(height: AppSpace.xl),
+              if (waiting)
+                AppButton.secondary(
+                  key: const ValueKey('waiting_host.leave'),
+                  label: t('إلغاء', 'Cancel'),
+                  icon: Icons.close_rounded,
+                  expand: true,
+                  onPressed: widget.onCancel,
+                )
+              else
+                AppButton.primary(
+                  key: const ValueKey('waiting_host.leave'),
+                  label: t('رجوع', 'Back'),
+                  icon: Icons.arrow_back_rounded,
+                  expand: true,
+                  onPressed: widget.onCancel,
+                ),
             ]),
           ),
         ),
@@ -1512,12 +1706,13 @@ class _WaitingForHostScreenState extends State<WaitingForHostScreen> with Single
   }
 }
 
-/// Two expanding rings behind the icon.
+/// Two rings growing out of the plate (radius [from]) while the request waits.
 class _PulsePainter extends CustomPainter {
-  const _PulsePainter({required this.progress, required this.color});
+  const _PulsePainter({required this.progress, required this.color, required this.from});
 
   final double progress;
   final Color color;
+  final double from;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1525,17 +1720,17 @@ class _PulsePainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     for (var k = 0; k < 2; k++) {
       final p = ((progress + k * 0.5) % 1.0);
-      final r = 42 + p * 40;
+      final r = from + p * from;
       final paint = Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
-        ..color = color.withValues(alpha: (1 - p) * 0.45);
+        ..strokeWidth = AppBorder.strong
+        ..color = color.withValues(alpha: (1 - p) * 0.4);
       canvas.drawCircle(center, r, paint);
     }
   }
 
   @override
-  bool shouldRepaint(_PulsePainter old) => old.progress != progress || old.color != color;
+  bool shouldRepaint(_PulsePainter old) => old.progress != progress || old.color != color || old.from != from;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1571,6 +1766,9 @@ class LobbyBanner extends StatelessWidget {
   static Color get _glass => LivePalette.surface.withValues(alpha: 0.92);
   static const _border = LivePalette.glassBorder;
 
+  /// The widest the strip gets over a large room.
+  static const double maxWidth = 520;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -1579,58 +1777,62 @@ class LobbyBanner extends StatelessWidget {
     final more = othersWaiting > 0 ? ' · +$othersWaiting ${t('آخرون ينتظرون', 'more waiting')}' : '';
     return Material(
       key: const ValueKey('lobby.banner'),
-      color: Colors.transparent,
+      type: MaterialType.transparency,
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 520),
-        padding: const EdgeInsetsDirectional.fromSTEB(12, 10, 8, 10),
+        constraints: const BoxConstraints(maxWidth: maxWidth),
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xs, AppSpace.xs, AppSpace.xs),
         decoration: BoxDecoration(
           color: _glass,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _border),
-          boxShadow: [BoxShadow(color: LivePalette.shade(0.4), blurRadius: 20, offset: const Offset(0, 6))],
+          borderRadius: BorderRadius.circular(AppRadius.block),
+          border: Border.all(color: _border, width: AppBorder.hairline),
+          boxShadow: [BoxShadow(color: LivePalette.shade(0.4), blurRadius: AppSpace.lg, offset: const Offset(0, AppSpace.xs))],
         ),
         child: Row(children: [
-          AppAvatar(name: r.displayName, url: r.imageUrl, size: 36),
-          const SizedBox(width: 10),
+          AppAvatar(name: r.displayName, url: r.imageUrl, size: AppSpace.xl + AppSpace.xxs),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: InkWell(
               onTap: onOpen,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: AppRadius.chipAll,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                 Text(
                   '${r.displayName} ${t('يريد الانضمام', 'wants to join')}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 13.5, fontWeight: FontWeight.w800, color: _text),
+                  style: AppType.bodyStrong(context).copyWith(color: _text),
                 ),
                 Text(
                   '$who$more',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: _muted),
+                  style: AppType.meta(context).copyWith(color: _muted),
                 ),
               ]),
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: AppSpace.xxs),
           if (busy)
             const Padding(
-              padding: EdgeInsets.all(10),
-              child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: _text)),
+              padding: EdgeInsets.all(AppSpace.sm),
+              child: SizedBox.square(dimension: AppIconSize.sm, child: CircularProgressIndicator(strokeWidth: 2, color: _text)),
             )
           else ...[
             IconButton(
               key: const ValueKey('lobby.banner.reject'),
               tooltip: t('رفض', 'Reject'),
               onPressed: onReject,
-              icon: Icon(Icons.close_rounded, color: c.danger),
+              icon: Icon(Icons.close_rounded, color: LivePalette.ink(0.86)),
             ),
             IconButton.filled(
               key: const ValueKey('lobby.banner.admit'),
               tooltip: t('قبول', 'Admit'),
               onPressed: onAdmit,
-              style: IconButton.styleFrom(backgroundColor: c.success, foregroundColor: c.onHero),
-              icon: const Icon(Icons.check_rounded, size: 20),
+              style: IconButton.styleFrom(
+                backgroundColor: c.primary,
+                foregroundColor: c.onHero,
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.controlAll),
+              ),
+              icon: const Icon(Icons.check_rounded, size: AppIconSize.md),
             ),
           ],
           if (onDismiss != null)
@@ -1638,7 +1840,7 @@ class LobbyBanner extends StatelessWidget {
               key: const ValueKey('lobby.banner.dismiss'),
               tooltip: t('إخفاء', 'Hide'),
               onPressed: onDismiss,
-              icon: const Icon(Icons.expand_less_rounded, color: _muted, size: 20),
+              icon: const Icon(Icons.expand_less_rounded, color: _muted, size: AppIconSize.md),
             ),
         ]),
       ),
