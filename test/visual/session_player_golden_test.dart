@@ -4,12 +4,14 @@
 //   flutter test test/visual/session_player_golden_test.dart --update-goldens [--plain-name chrome]
 //
 // → test/visual/goldens/session_player_<scene>_<width>_<lang>_<light|dark>.png at 390×844 and 1440×900, ar / en,
-//   with the production theme (test/visual/fixtures/theme_production.json) and real fonts.
+//   with the built-in Warm Editorial palette and real fonts.
 //   chrome    the real VideoPlayerScreen over a paused lecture (top bar, play row, seek bar, chips)
 //   quality   the same with the quality sheet open
 //   speed     the same with the speed sheet open
 //   lectures  the lecture list sheet
 //   overlays  next up (counting down), resume chip, level HUD and a caption over a black frame
+//   gates     the course page's session pieces: track tabs, the exam gate in its states, action buttons
+//   add       the teacher's Add material sheet (phone sheet / wide card) with its header button
 @Tags(['visual'])
 library;
 
@@ -23,7 +25,12 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/media_focus.dart';
+import 'package:flutter_education_app/features/shared/session/material/components/add_material_sheet.dart';
+import 'package:flutter_education_app/features/shared/session/material/components/session_exam_tile.dart';
+import 'package:flutter_education_app/features/shared/session/material/components/session_shared_widgets.dart';
 import 'package:flutter_education_app/features/shared/session/material/session_material_model.dart';
+import 'package:flutter_education_app/features/shared/session/session_track_tabs.dart';
+import 'package:flutter_education_app/features/student/courses/details/session_exam_gate.dart';
 import 'package:flutter_education_app/features/shared/session/video/video_player_screen.dart';
 import 'package:flutter_education_app/features/shared/session/video/vod_listen.dart';
 import 'package:flutter_education_app/features/shared/session/video/vod_player_parts.dart';
@@ -88,8 +95,7 @@ List<SessionMaterialModel> _playlist() => [
 
 Widget _host(Widget Function(BuildContext) page, {required bool dark, required double statusBar}) {
   final theme = ThemeConfigProvider(api: ApiClient());
-  theme.debugUseColors(
-      jsonDecode(File('test/visual/fixtures/theme_production.json').readAsStringSync()) as Map<String, dynamic>);
+  // the built-in default palette: Warm Editorial (D-610)
   final rtl = AppConfig.lang == 'ar';
   return ThemeConfigScope(
     provider: theme,
@@ -243,6 +249,74 @@ void main() {
         ),
         dark: dark,
         statusBar: phone ? 44 : 0,
+      ),
+    );
+  });
+
+  testWidgets('gates', (t) async {
+    SessionExamInfo exam(Map<String, dynamic> j) => SessionExamInfo.fromJson({'question_count': 10, ...j});
+    final pending = exam({'id': 1, 'name': _tr('اختبار التكامل بالتجزئة', 'Integration by parts quiz'), 'passing_score': 60, 'remaining_submissions': 2});
+    final retried = exam({'id': 2, 'name': _tr('اختبار قصير', 'Short quiz'), 'passing_score': 50, 'attempted': true, 'best_percentage': 40, 'remaining_submissions': 1});
+    final passed = exam({'id': 3, 'name': _tr('اختبار الوحدة الأولى', 'Unit 1 test'), 'passing_score': 50, 'attempted': true, 'passed': true, 'best_percentage': 86});
+    final out = exam({'id': 4, 'name': _tr('اختبار الوحدة الثانية', 'Unit 2 test'), 'passing_score': 50, 'attempted': true, 'best_percentage': 30, 'remaining_submissions': 0});
+    await _render(
+      t,
+      'gates',
+      (phone, dark) => _host(
+        (context) => Scaffold(
+          backgroundColor: context.colors.background,
+          body: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: ListView(padding: const EdgeInsets.all(16), children: [
+                SessionTrackTabs(value: 'lecture', lectures: 16, sections: 9, onChanged: (_) {}),
+                const SizedBox(height: 24),
+                SessionExamTile(gate: SessionExamGate([pending]), isTeacher: false, onOpen: () {}),
+                SessionExamTile(gate: SessionExamGate([retried, pending]), isTeacher: false, onOpen: () {}),
+                SessionExamTile(gate: SessionExamGate([passed]), isTeacher: false, onOpen: () {}),
+                SessionExamTile(gate: SessionExamGate([out]), isTeacher: false, onOpen: () {}),
+                SessionExamTile(gate: SessionExamGate([pending]), isTeacher: true, onOpen: () {}),
+                const SizedBox(height: 16),
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  SessionActionBtn(icon: Icons.videocam_rounded, label: _tr('دخول الغرفة', 'Enter room'), color: context.colors.danger, filled: true, onTap: () {}),
+                  SessionActionBtn(icon: Icons.how_to_reg_rounded, label: _tr('الحضور', 'Attendance'), color: context.colors.primary, onTap: () {}),
+                  SessionActionBtn(icon: Icons.upload_rounded, label: 'Upload', color: context.colors.success, loading: true),
+                ]),
+              ]),
+            ),
+          ),
+        ),
+        dark: dark,
+        statusBar: phone ? 44 : 0,
+      ),
+    );
+  });
+
+  testWidgets('add', (t) async {
+    await _render(
+      t,
+      'add',
+      (phone, dark) => _host(
+        (context) => Scaffold(
+          backgroundColor: context.colors.background,
+          body: SafeArea(
+            child: Column(children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Align(alignment: AlignmentDirectional.centerEnd, child: AddMaterialButton(sessionId: 4)),
+              ),
+              const Spacer(),
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: AddMaterialSheet(sessionId: 4, isWide: !phone),
+                ),
+              ),
+            ]),
+          ),
+        ),
+        dark: dark,
+        statusBar: 0,
       ),
     );
   });

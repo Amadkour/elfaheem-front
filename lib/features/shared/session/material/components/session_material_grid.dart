@@ -643,12 +643,12 @@ class SessionMaterialGrid extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               SessionField(ctrl: nameCtrl, label: 'name_label'.tr),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               SessionField(ctrl: descCtrl, label: 'description_optional'.tr),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               AppNumberField(controller: orderCtrl, label: 'order_label'.tr, min: 0),
               if (m.type == SessionMaterialType.link) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.sm),
                 SessionField(ctrl: urlCtrl, label: 'url_label'.tr),
               ],
             ],
@@ -727,7 +727,7 @@ class SessionMaterialGrid extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text('captions_attached'.tr, style: context.colors.body),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             TextButton.icon(
               onPressed: () {
                 Navigator.pop(context);

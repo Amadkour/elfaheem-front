@@ -20,8 +20,10 @@ import '../../../../../config/app_config.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
 import '../../../../../utils/helpers.dart';
 import '../../../../teacher/sessions/sessions_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_buttons.dart';
+import 'package:flutter_education_app/design/app_inputs.dart' show appFieldDecoration, appFieldTextStyle, AppFieldLabel;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppPressScale;
+import 'package:flutter_education_app/design/app_tabs.dart' show AppTabs, AppTabItem;
 import 'package:flutter_education_app/design/app_tokens.dart';
 
 // Screens at/above this width get the centered "card" treatment instead of a
@@ -39,32 +41,12 @@ class AddMaterialButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => showAddMaterialSheet(context, sessionId: sessionId),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          gradient: context.colors.primaryGradient,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: context.colors.primaryShadow,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.add_rounded, size: 15, color: context.colors.onHero),
-            const SizedBox(width: 5),
-            Text(
-              'add_material'.tr,
-              style: TextStyle(
-                fontFamily: AppFonts.display,
-                fontSize: 12,
-                color: context.colors.onHero,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
+    // a tonal action in the panel header: the emerald tint with emerald ink (the gradient pill is gone, D-622)
+    return AppButton.tonal(
+      label: 'add_material'.tr,
+      icon: Icons.add_rounded,
+      size: AppButtonSize.sm,
+      onPressed: () => showAddMaterialSheet(context, sessionId: sessionId),
     );
   }
 }
@@ -81,12 +63,12 @@ Future<void> showAddMaterialSheet(
   if (isWide) {
     await showDialog(
       context: context,
-      barrierColor: context.colors.heroShade.withValues(alpha: 0.45),
+      barrierColor: appScrimColor(context),
       builder: (_) => ChangeNotifierProvider.value(
         value: provider,
         child: Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.all(24),
+          insetPadding: const EdgeInsets.all(AppSpace.lg),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
@@ -393,25 +375,25 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
         decoration: widget.isWide
             ? BoxDecoration(
                 color: context.colors.cardBg,
-                borderRadius: BorderRadius.circular(context.colors.radiusXL),
+                borderRadius: BorderRadius.circular(AppRadius.sheet),
                 boxShadow: AppElevation.of(context, 4),
               )
-            : null,
+            : BoxDecoration(color: context.colors.cardBg, borderRadius: AppRadius.sheetTop),
         child: Directionality(
           textDirection: Helpers.pageDirection,
           child: Padding(
             padding: EdgeInsets.fromLTRB(
-              20,
-              widget.isWide ? 20 : 12,
-              20,
-              20 + (widget.isWide ? 0 : bottomInset),
+              AppSpace.lg,
+              widget.isWide ? AppSpace.lg : AppSpace.md,
+              AppSpace.lg,
+              AppSpace.lg + (widget.isWide ? 0 : bottomInset),
             ),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _Header(isWide: widget.isWide, saving: _saving),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: AppSpace.lg),
 
                   // Mode toggle (file / link)
                   _ModeToggle(
@@ -425,7 +407,7 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
                       });
                     },
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: AppSpace.md),
 
                   if (_mode == 0) ...[
                     _FileTypeSelector(
@@ -436,7 +418,7 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
                         _pickedFile = null;
                       }),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: AppSpace.sm),
                     _FilePickerZone(
                       pickedFile: _pickedFile,
                       pickedSize: _pickedSize,
@@ -460,23 +442,21 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
                       trailing: TextButton(
                         onPressed: _pasteUrl,
                         style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+                          minimumSize: const Size(AppTouch.min, AppTouch.min),
+                          shape: RoundedRectangleBorder(borderRadius: AppRadius.chipAll),
                         ),
                         child: Text(
                           'paste_url'.tr,
-                          style: TextStyle(
-                            fontFamily: AppFonts.display,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: context.colors.primary,
+                          style: AppType.label(context).copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: context.colors.blockAccentInk(context.colors.primary, context.colors.inputBg),
                           ),
                         ),
                       ),
                     ),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpace.md),
                   _PremiumField(
                     controller: _nameCtrl,
                     label: 'name_label'.tr,
@@ -487,7 +467,7 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
                       if (_nameError != null) setState(() => _nameError = null);
                     },
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AppSpace.sm),
                   _PremiumField(
                     controller: _descCtrl,
                     label: 'description_optional'.tr,
@@ -497,11 +477,11 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
                   ),
 
                   if (_submitError != null) ...[
-                    const SizedBox(height: 14),
+                    const SizedBox(height: AppSpace.sm),
                     _ErrorBanner(message: _submitError!),
                   ],
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpace.lg),
 
                   _SubmitButton(
                     saving: _saving,
@@ -519,7 +499,7 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Header — icon avatar, title, subtitle, close button
+// Header — title in the editorial face, subtitle, close button
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
@@ -530,36 +510,26 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            gradient: context.colors.primaryGradient,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: context.colors.primaryShadow,
-          ),
-          child: Icon(
-            Icons.upload_file_rounded,
-            color: context.colors.onHero,
-            size: 20,
-          ),
+          width: AppSpace.xxl - AppSpace.xxs,
+          height: AppSpace.xxl - AppSpace.xxs,
+          decoration: BoxDecoration(color: c.blockEmerald, borderRadius: AppRadius.controlAll),
+          child: Icon(Icons.upload_file_rounded, color: c.blockAccentInk(c.primary, c.blockEmerald), size: AppIconSize.md),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('add_material_title'.tr, style: context.colors.h3),
+              Semantics(header: true, child: Text('add_material_title'.tr, style: AppType.pageTitle(context))),
               const SizedBox(height: 2),
               Text(
                 'add_material_subtitle'.tr,
-                style: context.colors.body.copyWith(
-                  fontSize: 12,
-                  color: context.colors.textLight,
-                ),
+                style: AppType.meta(context),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -568,15 +538,14 @@ class _Header extends StatelessWidget {
         ),
         IconButton(
           onPressed: saving ? null : () => Navigator.pop(context),
+          constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+          style: IconButton.styleFrom(backgroundColor: c.inputBg),
           icon: Icon(
             Icons.close_rounded,
-            size: 20,
-            color: saving
-                ? context.colors.textLight.withValues(alpha: 0.4)
-                : context.colors.textMedium,
+            size: AppIconSize.md,
+            color: saving ? c.textLight.withValues(alpha: 0.4) : c.textMedium,
           ),
           tooltip: 'close'.tr,
-          splashRadius: 20,
         ),
       ],
     );
@@ -584,7 +553,7 @@ class _Header extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// File / Link mode toggle — animated sliding pill
+// File / Link mode toggle — the kit's pill track
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ModeToggle extends StatelessWidget {
@@ -595,75 +564,20 @@ class _ModeToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 46,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: context.colors.background,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: context.colors.textLight.withValues(alpha: 0.15),
-        ),
-      ),
-      child: Row(
-        children: [
-          _segment('file_mode'.tr, 0, Icons.upload_file_rounded, context),
-          _segment('link_mode'.tr, 1, Icons.link_rounded, context),
-        ],
-      ),
-    );
-  }
-
-  Widget _segment(
-      String label,
-      int index,
-      IconData icon,
-      BuildContext context,
-      ) {
-    final sel = selected == index;
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => onChanged(index),
-        child: Container(
-          padding: EdgeInsets.all(5),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            gradient: sel ? context.colors.primaryGradient : null,
-          ),
-          child: AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 180),
-            textAlign: TextAlign.center,
-
-            style: TextStyle(
-              fontFamily: AppFonts.display,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: sel ? context.colors.onHero : context.colors.secondText,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  size: 15,
-                  color: sel ? context.colors.onHero : context.colors.secondText,
-                ),
-                const SizedBox(width: 5),
-                Text(label),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return AppTabs(
+      expand: true,
+      index: selected,
+      onChanged: onChanged,
+      items: [
+        AppTabItem('file_mode'.tr, icon: Icons.upload_file_rounded),
+        AppTabItem('link_mode'.tr, icon: Icons.link_rounded),
+      ],
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// File type selector chips (image / video / document)
+// File type selector (image / video / document): wells on the paper, the chosen one tinted with its type
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _FileTypeSelector extends StatelessWidget {
@@ -679,49 +593,55 @@ class _FileTypeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    final motion = AppMotion.of(context);
     return Row(
       children: List.generate(options.length, (i) {
         final opt = options[i];
         final selected = i == selectedIndex;
+        final surface = selected ? Color.alphaBlend(opt.color.withValues(alpha: 0.14), c.cardBg) : c.inputBg;
+        final ink = selected ? c.blockAccentInk(opt.color, surface) : c.textMedium;
         return Expanded(
-          child: GestureDetector(
-            onTap: () => onChanged(i),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOut,
-              margin: EdgeInsetsDirectional.only(end: i < options.length - 1 ? 8 : 0),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: selected
-                    ? opt.color.withValues(alpha: 0.22)
-                    : context.colors.background,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: selected
-                      ? opt.color
-                      : context.colors.textLight.withValues(alpha: 0.18),
-                  width: selected ? 1.4 : 1,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Icon(
-                    opt.icon,
-                    color: selected ? opt.color : context.colors.textLight,
-                    size: 22,
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    opt.labelKey.tr,
-                    style: TextStyle(
-                      fontFamily: AppFonts.display,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: selected ? opt.color : context.colors.textLight,
+          child: Padding(
+            padding: EdgeInsetsDirectional.only(end: i < options.length - 1 ? AppSpace.xs : 0),
+            child: Semantics(
+              button: true,
+              selected: selected,
+              child: AppPressScale(
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: AppRadius.cardAll,
+                    onTap: () => onChanged(i),
+                    child: AnimatedContainer(
+                      duration: motion.fast,
+                      curve: AppMotion.curve,
+                      constraints: const BoxConstraints(minHeight: AppTouch.primary + AppSpace.md),
+                      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm, horizontal: AppSpace.xxs),
+                      decoration: BoxDecoration(
+                        color: surface,
+                        borderRadius: AppRadius.cardAll,
+                        border: Border.all(
+                          color: selected ? opt.color : c.divider,
+                          width: selected ? AppBorder.strong : AppBorder.hairline,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(opt.icon, color: ink, size: AppIconSize.lg - 2),
+                          const SizedBox(height: AppSpace.xxs + 1),
+                          Text(
+                            opt.labelKey.tr,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: ink),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -756,104 +676,73 @@ class _FilePickerZone extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final picked = pickedFile != null;
     final borderColor = errorText != null
-        ? context.colors.danger
-        : (picked ? color : context.colors.textLight.withValues(alpha: 0.35));
+        ? c.danger
+        : (picked ? color : Color.lerp(c.divider, c.textLight, 0.5)!);
+    final well = Color.alphaBlend(color.withValues(alpha: 0.12), c.cardBg);
 
     Widget content;
     if (picked) {
       content = Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.xxs, AppSpace.sm),
         child: Row(
           children: [
             Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: color, size: 20),
+              width: AppSpace.xl + AppSpace.xs,
+              height: AppSpace.xl + AppSpace.xs,
+              decoration: BoxDecoration(color: well, borderRadius: AppRadius.chipAll),
+              child: Icon(icon, color: c.blockAccentInk(color, well), size: AppIconSize.md),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     pickedFile!.name,
-                    style: context.colors.body.copyWith(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: context.colors.textDark,
-                    ),
+                    style: AppType.row(context).copyWith(fontWeight: FontWeight.w600),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
                     _humanFileSize(pickedSize),
-                    style: context.colors.body.copyWith(
-                      fontSize: 11,
-                      color: context.colors.textLight,
-                    ),
+                    textDirection: TextDirection.ltr,
+                    style: AppType.meta(context).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
                   ),
                 ],
               ),
             ),
-            GestureDetector(
-              onTap: onTap,
-              child: Padding(
-                padding: const EdgeInsets.all(6),
-                child: Icon(
-                  Icons.autorenew_rounded,
-                  size: 18,
-                  color: context.colors.primary,
-                ),
-              ),
+            IconButton(
+              onPressed: onTap,
+              tooltip: 'tap_to_pick_file'.tr,
+              constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+              icon: Icon(Icons.autorenew_rounded, size: AppIconSize.md - 2, color: c.blockAccentInk(c.primary, c.cardBg)),
             ),
-            GestureDetector(
-              onTap: onClear,
-              child: Padding(
-                padding: const EdgeInsets.all(6),
-                child: Icon(
-                  Icons.close_rounded,
-                  size: 18,
-                  color: context.colors.danger,
-                ),
-              ),
+            IconButton(
+              onPressed: onClear,
+              tooltip: 'close'.tr,
+              constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+              icon: Icon(Icons.close_rounded, size: AppIconSize.md - 2, color: c.textMedium),
             ),
           ],
         ),
       );
     } else {
       content = Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20),
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.lg),
         child: Column(
           children: [
             Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: context.colors.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.cloud_upload_outlined,
-                size: 22,
-                color: context.colors.primary,
-              ),
+              width: AppSpace.xxl - AppSpace.xxs,
+              height: AppSpace.xxl - AppSpace.xxs,
+              decoration: BoxDecoration(color: c.cardBg, shape: BoxShape.circle),
+              child: Icon(Icons.cloud_upload_outlined, size: AppIconSize.lg - 2, color: c.blockAccentInk(c.primary, c.cardBg)),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'tap_to_pick_file'.tr,
-              style: context.colors.body.copyWith(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: context.colors.textMedium,
-              ),
-            ),
+            const SizedBox(height: AppSpace.xs),
+            Text('tap_to_pick_file'.tr, style: AppType.bodyStrong(context).copyWith(color: c.textMedium)),
           ],
         ),
       );
@@ -862,44 +751,34 @@ class _FilePickerZone extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        GestureDetector(
-          onTap: picked ? null : onTap,
-          child: CustomPaint(
-            painter: picked
-                ? null
-                : _DashedRRectPainter(
-              color: borderColor,
-              radius: context.colors.radiusMedium,
-            ),
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: picked
-                    ? color.withValues(alpha: 0.06)
-                    : context.colors.background,
-                borderRadius: BorderRadius.circular(
-                  context.colors.radiusMedium,
-                ),
-                border: picked
-                    ? Border.all(color: borderColor, width: 1.4)
-                    : null,
+        Semantics(
+          button: !picked,
+          child: GestureDetector(
+            onTap: picked ? null : onTap,
+            child: CustomPaint(
+              painter: picked
+                  ? null
+                  : _DashedRRectPainter(
+                color: borderColor,
+                radius: AppRadius.card,
               ),
-              child: content,
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: picked ? Color.alphaBlend(color.withValues(alpha: 0.05), c.cardBg) : c.inputBg,
+                  borderRadius: AppRadius.cardAll,
+                  border: picked ? Border.all(color: borderColor, width: AppBorder.hairline) : null,
+                ),
+                child: content,
+              ),
             ),
           ),
         ),
         if (errorText != null) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs - 2),
           Padding(
-            padding: const EdgeInsetsDirectional.only(start: 4),
-            child: Text(
-              errorText!,
-              style: TextStyle(
-                fontFamily: AppFonts.display,
-                fontSize: 11,
-                color: context.colors.danger,
-              ),
-            ),
+            padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs),
+            child: Text(errorText!, style: AppType.meta(context).copyWith(color: c.danger)),
           ),
         ],
       ],
@@ -911,7 +790,7 @@ class _FilePickerZone extends StatelessWidget {
 class _DashedRRectPainter extends CustomPainter {
   final Color color;
   final double radius;
-  final double strokeWidth = 1.4;
+  final double strokeWidth = AppBorder.strong;
   final double dashLength = 6;
   final double gapLength = 5;
 
@@ -969,7 +848,7 @@ String _humanFileSize(int bytes) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Premium text field
+// Text field: the kit's label above a warm well
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _PremiumField extends StatelessWidget {
@@ -997,79 +876,25 @@ class _PremiumField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasError = errorText != null;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontFamily: AppFonts.display,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: context.colors.textDark,
-          ),
+        AppFieldLabel(label),
+        TextField(
+          controller: controller,
+          maxLines: maxLines,
+          keyboardType: keyboardType,
+          onChanged: onChanged,
+          style: appFieldTextStyle(context),
+          decoration: appFieldDecoration(context, hint: hint, icon: icon, suffix: trailing, errorText: errorText),
         ),
-        const SizedBox(height: 6),
-        Container(
-          decoration: BoxDecoration(
-            color: context.colors.background,
-            borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-            border: Border.all(
-              color: hasError
-                  ? context.colors.danger
-                  : context.colors.textLight.withValues(alpha: 0.18),
-              width: hasError ? 1.4 : 1,
-            ),
-          ),
-          child: TextField(
-            controller: controller,
-            maxLines: maxLines,
-            keyboardType: keyboardType,
-            onChanged: onChanged,
-            style: TextStyle(
-              fontFamily: AppFonts.display,
-              fontSize: 13.5,
-              color: context.colors.textDark,
-            ),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: TextStyle(
-                fontFamily: AppFonts.display,
-                fontSize: 13,
-                color: context.colors.textLight.withValues(alpha: 0.7),
-              ),
-              prefixIcon: Icon(icon, size: 18, color: context.colors.textLight),
-              suffixIcon: trailing,
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(
-                vertical: 13,
-                horizontal: 4,
-              ),
-            ),
-          ),
-        ),
-        if (hasError) ...[
-          const SizedBox(height: 6),
-          Padding(
-            padding: const EdgeInsetsDirectional.only(start: 4),
-            child: Text(
-              errorText!,
-              style: TextStyle(
-                fontFamily: AppFonts.display,
-                fontSize: 11,
-                color: context.colors.danger,
-              ),
-            ),
-          ),
-        ],
       ],
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Submit button
+// Submit button — the sheet's one primary action
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SubmitButton extends StatelessWidget {
@@ -1085,50 +910,17 @@ class _SubmitButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: GestureDetector(
-        onTap: saving ? null : onPressed,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          decoration: BoxDecoration(
-            gradient: enabled ? context.colors.primaryGradient : null,
-            color: enabled
-                ? null
-                : context.colors.textLight.withValues(alpha: 0.25),
-            borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-            boxShadow: enabled ? context.colors.primaryShadow : null,
-          ),
-          child: Center(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 180),
-              child: saving
-                  ? AppLoadingIndicator(showLogo: false,)
-                  : Row(
-                key: const ValueKey('label'),
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.add_rounded,
-                    color: context.colors.onHero,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'add_material_btn'.tr,
-                    style: TextStyle(
-                      fontFamily: AppFonts.display,
-                      fontSize: 14,
-                      color: context.colors.onHero,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+    // a faded look while the form is incomplete; a tap still runs [onPressed] so its checks explain what is missing
+    return AnimatedOpacity(
+      opacity: enabled || saving ? 1 : 0.5,
+      duration: AppMotion.of(context).fast,
+      child: AppButton.primary(
+        label: 'add_material_btn'.tr,
+        icon: Icons.add_rounded,
+        size: AppButtonSize.lg,
+        expand: true,
+        busy: saving,
+        onPressed: saving ? null : onPressed,
       ),
     );
   }
@@ -1145,32 +937,21 @@ class _ErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    final tint = Color.alphaBlend(c.dangerTint, c.cardBg);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.sm - 2),
       decoration: BoxDecoration(
-        color: context.colors.danger.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: context.colors.danger.withValues(alpha: 0.3)),
+        color: tint,
+        borderRadius: AppRadius.controlAll,
+        border: Border.all(color: c.danger.withValues(alpha: 0.3), width: AppBorder.hairline),
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.error_outline_rounded,
-            size: 16,
-            color: context.colors.danger,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(
-                fontFamily: AppFonts.display,
-                fontSize: 12,
-                color: context.colors.danger,
-              ),
-            ),
-          ),
+          Icon(Icons.error_outline_rounded, size: AppIconSize.sm, color: c.blockAccentInk(c.danger, tint)),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: Text(message, style: AppType.label(context).copyWith(color: c.blockAccentInk(c.danger, tint)))),
         ],
       ),
     );

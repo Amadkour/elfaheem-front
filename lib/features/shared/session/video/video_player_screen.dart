@@ -1813,7 +1813,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
               ),
             ],
             const SizedBox(height: AppSpace.md),
-            _GlassPill(label: _activeVariant.fullLabel, icon: Icons.headphones_rounded),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
+              child: _GlassPill(label: _activeVariant.fullLabel, icon: Icons.headphones_rounded),
+            ),
           ]),
         ),
       ),
@@ -3055,7 +3058,12 @@ class _GlassPill extends StatelessWidget {
     child: Row(mainAxisSize: MainAxisSize.min, children: [
       Icon(icon, color: VodInk.textMid, size: AppIconSize.xs),
       const SizedBox(width: AppSpace.xs - 2),
-      Text(label, style: vodText(AppType.label(context), VodInk.textMid).copyWith(fontWeight: FontWeight.w600)),
+      Flexible(
+        child: Text(label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: vodText(AppType.label(context), VodInk.textMid).copyWith(fontWeight: FontWeight.w600)),
+      ),
     ]),
   );
 }

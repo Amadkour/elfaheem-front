@@ -3,13 +3,16 @@
 // The session exam, rendered as the LAST entry of a session's materials list.
 //   • It is built OUTSIDE the ReorderableListView, so it can never be dragged
 //     and nothing can be dropped after it (teacher view).
-//   • Pending → strong "attention" colour; passing it unlocks the next session.
-//   • Passed → green, exhausted / closed → red.
+//   • Pending → the peach block with the attention colour in its mark; passing it unlocks the next session.
+//   • Passed → the emerald block, exhausted / closed → paper with a danger hairline.
 
 import 'package:flutter/material.dart';
 
 import '../../../../../config/app_config.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
+import '../../../../../design/app_buttons.dart';
+import '../../../../../design/app_motion_kit.dart' show AppPressScale;
+import '../../../../../design/app_tokens.dart';
 import '../../../../../utils/helpers.dart';
 import '../../../../student/courses/details/session_exam_gate.dart';
 
@@ -70,13 +73,11 @@ class SessionExamTile extends StatelessWidget {
 
     final pending = isTeacher || !exam.passed;
 
-    // NOTE: hardcoded Arabic, same pattern as the locked-session message.
-    // Move to your translations file if you prefer.
     final note = isTeacher
-        ? 'على الطالب اجتياز هذا الاختبار لفتح الجلسة التالية'
+        ? 'session_exam_gate_note_teacher'.tr
         : exam.awaitingResults
             ? 'session_exam_awaiting_note'.tr
-            : 'اجتز هذا الاختبار لفتح الجلسة التالية';
+            : 'session_exam_gate_note_student'.tr;
 
     final details = <String>[
       if (exam.passingScore > 0)
@@ -89,169 +90,133 @@ class SessionExamTile extends StatelessWidget {
 
     final canAct = !isTeacher && enrolled && exam.canStart && !exam.awaitingResults;
 
+    // The tile is a tone, not a glow: a gate still to pass is the peach (learning) block, a passed one the emerald
+    // block, a closed / exhausted one paper with a danger hairline; the status colour lives in the icon and the
+    // status line (lifted to AA on the surface), never a wash or a coloured shadow.
+    final surface = !pending
+        ? c.blockEmerald
+        : (exam.attemptsExhausted || exam.isClosed) && !isTeacher
+            ? c.cardBg
+            : c.blockPeach;
+    final onPaper = surface == c.cardBg;
+    final ink = c.blockInk;
+    final muted = c.blockMuted(surface);
+    final toneInk = c.blockAccentInk(color, surface);
+
     return Directionality(
-      textDirection: Helpers.textDirOf(details.first),
-      child: GestureDetector(
-        onTap: onOpen,
-        child: Container(
-          margin: const EdgeInsets.only(top: 2, bottom: 8),
-          decoration: BoxDecoration(
-            color: Color.alphaBlend(
-              color.withValues(alpha: pending ? 0.08 : 0.05),
-              c.cardBg,
+      textDirection: Helpers.textDirOf(details.isEmpty ? exam.name : details.first),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 2, bottom: AppSpace.xs),
+        child: AppPressScale(
+          enabled: onOpen != null,
+          child: Material(
+            color: surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.cardAll,
+              side: onPaper ? BorderSide(color: c.danger.withValues(alpha: 0.45), width: AppBorder.hairline) : BorderSide.none,
             ),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: color.withValues(alpha: pending ? 0.75 : 0.35),
-              width: pending ? 1.6 : 1.2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: pending ? 0.22 : 0.08),
-                blurRadius: pending ? 12 : 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Column(
-              children: [
-                Container(
-                  height: 4,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [color, color.withValues(alpha: 0.45)],
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: color,
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                              color: color.withValues(alpha: 0.35),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Icon(icon, color: c.onHero, size: 20),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onOpen,
+              child: LayoutBuilder(builder: (context, box) {
+                // a narrow tile puts its action under the text, so the status and the note keep the row
+                final stack = box.maxWidth < 440;
+                final action = AppButton.primary(
+                  label: exam.attempted ? 'session_exam_retry'.tr : 'session_exam_start'.tr,
+                  size: AppButtonSize.sm,
+                  onPressed: onOpen,
+                );
+                return Padding(
+                padding: const EdgeInsets.all(AppSpace.sm),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: AppSpace.xxl - AppSpace.xxs,
+                      height: AppSpace.xxl - AppSpace.xxs,
+                      decoration: BoxDecoration(
+                        color: onPaper ? c.dangerTint : c.cardBg,
+                        borderRadius: BorderRadius.circular(AppRadius.control - 2),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    exam.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: c.body.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13,
-                                    ),
-                                  ),
+                      child: Icon(icon, color: toneInk, size: AppIconSize.md),
+                    ),
+                    const SizedBox(width: AppSpace.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  exam.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppType.row(context).copyWith(fontWeight: FontWeight.w600, color: ink),
                                 ),
-                                if (gate.exams.length > 1) ...[
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    '+${gate.exams.length - 1}',
-                                    style: c.caption.copyWith(
-                                      color: color,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ],
+                              ),
+                              if (gate.exams.length > 1) ...[
+                                const SizedBox(width: AppSpace.xs - 2),
+                                Text(
+                                  '+${gate.exams.length - 1}',
+                                  style: AppType.label(context).copyWith(color: muted, fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            status,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppType.label(context).copyWith(color: toneInk, fontWeight: FontWeight.w600),
+                          ),
+                          if (pending) ...[
+                            const SizedBox(height: AppSpace.xxs),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Icon(Icons.lock_open_rounded, size: AppIconSize.xs - 2, color: muted),
+                                ),
+                                const SizedBox(width: AppSpace.xxs),
+                                Expanded(child: Text(note, style: AppType.meta(context).copyWith(color: muted))),
                               ],
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              status,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: c.caption.copyWith(
-                                color: color,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            if (pending) ...[
-                              const SizedBox(height: 3),
-                              Row(
-                                children: [
-                                  Icon(Icons.lock_open_rounded, size: 12, color: color),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      note,
-                                      style: c.caption.copyWith(fontSize: 10.5),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                            if (details.isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Text(details.join('  •  '), style: c.caption),
-                            ],
                           ],
+                          if (details.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(details.join('  ·  '),
+                                style: AppType.meta(context).copyWith(color: muted, fontFeatures: const [FontFeature.tabularFigures()])),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (canAct && !stack) ...[
+                      const SizedBox(width: AppSpace.xs),
+                      // the action hugs its label at the end of the row
+                      ConstrainedBox(constraints: const BoxConstraints(maxWidth: 200), child: action),
+                    ] else if (isTeacher) ...[
+                      const SizedBox(width: AppSpace.xs - 2),
+                      Tooltip(
+                        message: 'session_exam_pinned_end'.tr,
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpace.xxs),
+                          child: Icon(Icons.push_pin_rounded, size: AppIconSize.md - 2, color: muted),
                         ),
                       ),
-                      if (canAct) ...[
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: FilledButton(
-                          onPressed: onOpen,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: color,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
-                            minimumSize: const Size(0, 36),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: Text(
-                            exam.attempted
-                                ? 'session_exam_retry'.tr
-                                : 'session_exam_start'.tr,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        ),
-                      ] else if (isTeacher) ...[
-                        const SizedBox(width: 6),
-                        Tooltip(
-                          message: 'مثبّت في نهاية الجلسة',
-                          child: Icon(
-                            Icons.push_pin_rounded,
-                            size: 20,
-                            color: c.textLight,
-                          ),
-                        ),
-                      ],
                     ],
-                  ),
+                  ],
                 ),
-              ],
+                if (canAct && stack) ...[
+                  const SizedBox(height: AppSpace.sm),
+                  Align(alignment: AlignmentDirectional.centerEnd, child: action),
+                ],
+                ]),
+                );
+              }),
             ),
           ),
         ),

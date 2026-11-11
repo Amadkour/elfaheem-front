@@ -189,7 +189,7 @@ class _Header extends StatelessWidget {
                 Icon(icon, size: AppIconSize.md, color: ink),
                 const SizedBox(width: AppSpace.xs),
                 Flexible(
-                  flex: 0,
+                  flex: 2,
                   child: Text(label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -197,7 +197,7 @@ class _Header extends StatelessWidget {
                           color: ink, fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()])),
                 ),
                 const SizedBox(width: AppSpace.sm),
-                Expanded(child: progress != null ? _Line(value: progress) : const SizedBox.shrink()),
+                Expanded(flex: 3, child: progress != null ? _Line(value: progress) : const SizedBox.shrink()),
                 // Red dot: something failed while other uploads are still running.
                 if (progress != null && failed > 0) ...[
                   const SizedBox(width: AppSpace.xs),
@@ -278,6 +278,7 @@ class _UploadRow extends StatelessWidget {
           Icon(icon, size: AppIconSize.sm, color: ink),
           const SizedBox(width: AppSpace.sm),
           Expanded(
+            flex: 3,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,9 +297,13 @@ class _UploadRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpace.sm),
-          Text(label,
-              style: AppType.meta(context)
-                  .copyWith(color: ink, fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()])),
+          Flexible(
+            child: Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.meta(context)
+                    .copyWith(color: ink, fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()])),
+          ),
           if (task.status == UploadStatus.uploading)
             _IconTap(icon: Icons.close_rounded, color: c.textLight, tooltip: 'cancel'.tr, onTap: () => onCancel(task)),
           if (task.status == UploadStatus.failed) ...[

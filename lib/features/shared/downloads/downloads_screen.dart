@@ -325,28 +325,36 @@ class _StatusCard extends StatelessWidget {
         borderRadius: AppRadius.cardAll,
         border: Border.all(color: danger ? c.danger.withValues(alpha: 0.35) : c.divider, width: AppBorder.hairline),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(children: [
-          Container(
-            width: AppSpace.xl + AppSpace.xs,
-            height: AppSpace.xl + AppSpace.xs,
-            decoration: BoxDecoration(color: tint, shape: BoxShape.circle),
-            child: Icon(icon, color: c.blockAccentInk(tone, Color.alphaBlend(tint, c.cardBg)), size: AppIconSize.md),
-          ),
-          const SizedBox(width: AppSpace.sm),
-          Expanded(child: Text(text, style: AppType.bodyStrong(context).copyWith(fontWeight: FontWeight.w500))),
-        ]),
-        const SizedBox(height: AppSpace.sm),
-        Align(
-          alignment: AlignmentDirectional.centerEnd,
-          child: AppButton.tonal(
-            label: actionLabel,
-            icon: actionIcon,
-            busy: loading,
-            onPressed: loading ? null : onAction,
-          ),
-        ),
-      ]),
+      child: LayoutBuilder(builder: (context, box) {
+        final mark = Container(
+          width: AppSpace.xl + AppSpace.xs,
+          height: AppSpace.xl + AppSpace.xs,
+          decoration: BoxDecoration(color: tint, shape: BoxShape.circle),
+          child: Icon(icon, color: c.blockAccentInk(tone, Color.alphaBlend(tint, c.cardBg)), size: AppIconSize.md),
+        );
+        final label = Text(text, style: AppType.bodyStrong(context).copyWith(fontWeight: FontWeight.w500));
+        final action = AppButton.tonal(
+          label: actionLabel,
+          icon: actionIcon,
+          busy: loading,
+          onPressed: loading ? null : onAction,
+        );
+        // wide: one line (mark, text, action at the end); a phone stacks the action under the text
+        if (box.maxWidth >= 560) {
+          return Row(children: [
+            mark,
+            const SizedBox(width: AppSpace.sm),
+            Expanded(child: label),
+            const SizedBox(width: AppSpace.md),
+            action,
+          ]);
+        }
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [mark, const SizedBox(width: AppSpace.sm), Expanded(child: label)]),
+          const SizedBox(height: AppSpace.sm),
+          Align(alignment: AlignmentDirectional.centerEnd, child: action),
+        ]);
+      }),
     );
   }
 }

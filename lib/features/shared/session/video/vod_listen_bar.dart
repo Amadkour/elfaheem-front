@@ -18,7 +18,7 @@ import 'package:flutter/material.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../design/app_display.dart' show syncMotionLoop;
-import '../../../../design/app_kit.dart' show appText;
+import '../../../../design/app_tokens.dart';
 import 'vod_player_parts.dart';
 
 class VodListenBar extends StatefulWidget {
@@ -130,7 +130,7 @@ class _VodListenBarState extends State<VodListenBar> {
                                 onTap: w.onExpand,
                                 child: InkWell(
                                   onTap: w.onExpand,
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: AppRadius.chipAll,
                                   child: SizedBox(
                                     height: 48,
                                     child: Column(
@@ -140,7 +140,8 @@ class _VodListenBarState extends State<VodListenBar> {
                                         Text(w.title,
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
-                                            style: appText(13.5, w: FontWeight.w600, c: c.textDark)),
+                                            // the bar is a fixed-height strip: the compact roles keep both lines whole at text x 1.3
+                                            style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
                                         const SizedBox(height: 2),
                                         Row(children: [
                                           _Equalizer(playing: w.playing, color: c.primary, size: 11),
@@ -151,18 +152,20 @@ class _VodListenBarState extends State<VodListenBar> {
                                                 if (word) ...[
                                                   TextSpan(
                                                       text: 'vod_listening'.tr,
-                                                      style: appText(11.5, w: FontWeight.w600, c: c.primary)),
+                                                      style: TextStyle(fontWeight: FontWeight.w600, color: c.blockAccentInk(c.primary, c.cardBg))),
                                                   TextSpan(
                                                       text: ' · ',
-                                                      style: appText(11.5, w: FontWeight.w400, c: c.textLight)),
+                                                      style: TextStyle(color: c.textLight)),
                                                 ],
                                                 // "12:03 / 45:10" reads the same way in Arabic
                                                 TextSpan(text: '$_lri$time$_pdi'),
                                               ]),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
-                                              style: appText(11.5, w: FontWeight.w400, c: c.textMedium)
-                                                  .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+                                              style: AppType.overline(context).copyWith(
+                                                  fontWeight: FontWeight.w400,
+                                                  letterSpacing: 0,
+                                                  fontFeatures: const [FontFeature.tabularFigures()]),
                                             ),
                                           ),
                                         ]),
@@ -232,10 +235,10 @@ class _SpeedChip extends StatelessWidget {
             child: Container(
               height: 26,
               constraints: const BoxConstraints(minWidth: 42),
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(13),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
                 color: on ? c.primary : c.primaryTint,
                 border: Border.all(color: c.primary.withValues(alpha: on ? 1 : 0.3)),
               ),
@@ -244,7 +247,7 @@ class _SpeedChip extends StatelessWidget {
                 maxLines: 1,
                 softWrap: false,
                 textDirection: TextDirection.ltr,
-                style: appText(12, w: FontWeight.w700, c: on ? c.onHero : c.primary)
+                style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: on ? c.onHero : c.blockAccentInk(c.primary, Color.alphaBlend(c.primaryTint, c.cardBg)))
                     .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
               ),
             ),

@@ -7,7 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
@@ -21,52 +21,69 @@ class SessionTrackTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final motion = AppMotion.of(context);
     return LayoutBuilder(builder: (context, box) {
     // narrow segments drop the icon so the label and its count stay whole (M14: "المحاضر…")
-    final perTab = (box.maxWidth - 8) / (showAll ? 3 : 2);
+    final perTab = (box.maxWidth - AppSpace.xs) / (showAll ? 3 : 2);
     final icons = perTab >= 130;
-    Widget tab(String key, IconData icon, String label, int? n, Color tone) {
+    // the kit's pill track (AppTabs): the input well, the chosen pill solid primary with the on-hero ink
+    Widget tab(String key, IconData icon, String label, int? n) {
       final on = value == key;
+      final ink = on ? c.onHero : c.textMedium;
       return Expanded(
-        child: GestureDetector(
-          onTap: () => onChanged(key),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color: on ? c.cardBg : Colors.transparent,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: on ? c.cardShadow : null,
+        child: Semantics(
+          button: true,
+          selected: on,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            onTap: () => onChanged(key),
+            child: AnimatedContainer(
+              duration: motion.base,
+              curve: AppMotion.curve,
+              constraints: const BoxConstraints(minHeight: AppSpace.xl + AppSpace.xs),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
+              decoration: BoxDecoration(
+                color: on ? c.primary : c.inputBg.withValues(alpha: 0),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+              ),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                if (icons) ...[
+                  Icon(icon, size: AppIconSize.sm, color: ink),
+                  const SizedBox(width: AppSpace.xs - 2),
+                ],
+                Flexible(
+                    child: Text(label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppType.label(context).copyWith(fontWeight: on ? FontWeight.w600 : FontWeight.w500, color: ink))),
+                if (n != null) ...[
+                  const SizedBox(width: AppSpace.xs - 2),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs - 1, vertical: 1),
+                    decoration: BoxDecoration(
+                        color: on ? c.heroGlass : c.cardBg, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                    child: Text('$n',
+                        style: AppType.overline(context)
+                            .copyWith(color: ink, fontFeatures: const [FontFeature.tabularFigures()])),
+                  ),
+                ],
+              ]),
             ),
-            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              if (icons) ...[
-                Icon(icon, size: 17, color: on ? tone : c.textLight),
-                const SizedBox(width: 6),
-              ],
-              Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: on ? FontWeight.w600 : FontWeight.w500, color: on ? c.textDark : c.textMedium))),
-              if (n != null) ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-                  decoration: BoxDecoration(color: (on ? tone : c.textLight).withValues(alpha: 0.14), borderRadius: BorderRadius.circular(10)),
-                  child: Text('$n', style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, fontWeight: FontWeight.w600, color: on ? tone : c.textMedium)),
-                ),
-              ],
-            ]),
           ),
         ),
       );
     }
 
     return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(18), border: Border.all(color: c.divider)),
+      padding: const EdgeInsets.all(AppSpace.xxs),
+      decoration: BoxDecoration(
+          color: c.inputBg,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          border: Border.all(color: c.divider, width: AppBorder.hairline)),
       child: Row(children: [
-        if (showAll) tab('all', Icons.view_agenda_rounded, _t('الكل', 'All'), null, c.primary),
-        tab('lecture', Icons.co_present_rounded, _t('المحاضرات', 'Lectures'), lectures, c.primary),
-        tab('section', Icons.science_rounded, _t('السكاشن', 'Sections'), sections, c.purple),
+        if (showAll) tab('all', Icons.view_agenda_rounded, _t('الكل', 'All'), null),
+        tab('lecture', Icons.co_present_rounded, _t('المحاضرات', 'Lectures'), lectures),
+        tab('section', Icons.science_rounded, _t('السكاشن', 'Sections'), sections),
       ]),
     );
     });

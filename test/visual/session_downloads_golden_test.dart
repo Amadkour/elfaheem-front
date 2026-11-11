@@ -90,8 +90,7 @@ void _seedOffline({required bool empty}) {
 
 Widget _host(Widget page, {required bool dark}) {
   final theme = ThemeConfigProvider(api: ApiClient());
-  theme.debugUseColors(
-      jsonDecode(File('test/visual/fixtures/theme_production.json').readAsStringSync()) as Map<String, dynamic>);
+  // the built-in default palette: Warm Editorial (D-610)
   final rtl = AppConfig.lang == 'ar';
   return ChangeNotifierProvider<ThemeConfigProvider>.value(
     value: theme,
