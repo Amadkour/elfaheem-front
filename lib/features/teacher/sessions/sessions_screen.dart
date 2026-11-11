@@ -410,14 +410,14 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
           icon: Icons.groups_rounded,
           label: _t('الطلاب', 'Students'),
           caption: _t('المسجّلون وتقدّمهم', 'Enrolled students and progress'),
-          color: c.primaryLight,
+          color: c.textMedium,
           onTap: _openStudents,
         ),
         CourseSpaceAction(                                   // the course's exams hub (online + paper / OMR)
           icon: Icons.quiz_rounded,
           label: _t('الاختبارات', 'Exams'),
           caption: _t('أنشئ واطبع وصحّح', 'Create, print and grade'),
-          color: c.accent,
+          color: c.textMedium,
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => deferredTeacherExamHub(courseId: course.id, courseTitle: title, orgId: course.org?.id)),
@@ -429,7 +429,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
             icon: Icons.science_rounded,
             label: 'dl_title'.tr,
             caption: 'dl_entry_sub'.tr,
-            color: c.success,
+            color: c.textMedium,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => deferredDataLab(courseId: course.id, courseTitle: title)),
@@ -442,7 +442,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
             caption: course.schedules.isEmpty
                 ? _t('لم تُضف مواعيد بعد', 'No times yet')
                 : _t('${course.schedules.length} مواعيد', '${course.schedules.length} times a week'),
-            color: c.accent2,
+            color: c.textMedium,
             onTap: _openSchedules,
           ),
         if (course.certificates.isNotEmpty)
@@ -450,7 +450,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
             icon: Icons.workspace_premium_rounded,
             label: 'certificates'.tr,
             caption: 'manage_certificate_btn'.tr,
-            color: c.warning,
+            color: c.accent2,
             onTap: () => course.certificates.length == 1
                 ? _openCertificate(course.certificates.first)
                 : _setTab(_tabDetails),
@@ -460,6 +460,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
             icon: Icons.edit_rounded,
             label: _t('تعديل الكورس', 'Edit course'),
             caption: _t('السعر، الوصف، النشر', 'Price, description, publishing'),
+            color: c.textMedium,
             onTap: _openEditCourse,
           ),
       ],

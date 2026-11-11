@@ -337,13 +337,13 @@ class GuestLinkBody extends StatelessWidget {
       AppSheetHeader('guest_link_title'.tr),
       Flexible(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: AppSheetContent.padding,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text('guest_link_intro'.tr, style: appText(12.5, c: c.textMedium, h: 1.5)),
-            const SizedBox(height: 14),
+            Text('guest_link_intro'.tr, style: AppType.body(context)),
+            const SizedBox(height: AppSpace.md),
             if (loading)
               // The skeleton is a ListView: it needs a height inside this scroll view.
-              const SizedBox(height: 240, child: AppListSkeleton(items: 3, withAvatar: false, padding: EdgeInsets.zero))
+              const SizedBox(height: _skeletonH, child: AppListSkeleton(items: 3, withAvatar: false, padding: EdgeInsets.zero))
             else if (error != null)
               AppBanner(
                 key: const ValueKey('guest_link.error'),
@@ -367,6 +367,12 @@ class GuestLinkBody extends StatelessWidget {
     ]);
   }
 
+  /// The loading skeleton's height (three rows).
+  static const double _skeletonH = 240;
+
+  /// The QR code's side: big enough for a phone across a classroom table.
+  static const double _qrSide = 200;
+
   // ── Options (shared by the create form and the settings panel) ───────────
   Widget _options(BuildContext context, {bool hasPin = false}) {
     final c = context.colors;
@@ -379,21 +385,23 @@ class GuestLinkBody extends StatelessWidget {
         value: canPublish,
         onChanged: busy ? null : onCanPublishChanged,
       ),
-      const SizedBox(height: 6),
+      const SizedBox(height: AppSpace.xs),
       AppNumberField(
         controller: maxGuestsController,
         label: 'guest_link_max'.tr,
         hint: 'guest_link_max_hint'.tr,
         min: 1,
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.md),
       AppField(
         key: const ValueKey('guest_link.pin'),
         controller: pinController,
         label: hasPin ? 'guest_link_pin_change'.tr : 'guest_link_pin'.tr,
         hint: 'guest_link_pin_hint'.tr,
+        icon: Icons.pin_rounded,
         keyboard: TextInputType.number,
         ltr: true,
+        helper: hasPin ? null : 'guest_link_pin_sub'.tr,
         onChanged: (v) => _digitsOnly(pinController, v, max: 8),
       ),
       if (hasPin)
@@ -406,13 +414,11 @@ class GuestLinkBody extends StatelessWidget {
             onTap: busy ? null : onRemovePin,
             color: c.warning,
           ),
-        )
-      else
-        Text('guest_link_pin_sub'.tr, style: appText(11.5, c: c.textLight, h: 1.4)),
+        ),
     ]);
   }
 
-  /// Keeps a controller to digits only, [max] long (AppField has no input formatters).
+  /// Keeps a controller to digits only, [max] long.
   static void _digitsOnly(TextEditingController ctrl, String v, {required int max}) {
     var d = v.replaceAll(RegExp(r'[^0-9]'), '');
     if (d.length > max) d = d.substring(0, max);
@@ -426,11 +432,12 @@ class GuestLinkBody extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _options(context),
-          const SizedBox(height: 10),
-          AppPrimaryButton(
+          const SizedBox(height: AppSpace.lg),
+          AppButton.primary(
             label: 'guest_link_create'.tr,
             icon: Icons.add_link_rounded,
             busy: busy,
+            expand: true,
             onPressed: onCreate,
           ),
         ],
@@ -440,123 +447,162 @@ class GuestLinkBody extends StatelessWidget {
   Widget _present(BuildContext context, GuestLink l) {
     final c = context.colors;
     final cap = l.maxGuests == null ? '∞' : '${l.maxGuests}';
+    // a pill's ink: the primary while its panel is open, the quiet ink otherwise
+    Color? open(bool on) => on ? c.primary : c.textMedium;
     return Column(key: const ValueKey('guest_link.present'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      // URL box
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: c.inputBg,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: c.divider),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Row(children: [
-            Icon(Icons.link_rounded, size: 18, color: c.primary),
-            const SizedBox(width: 10),
-            Expanded(
-              child: SelectableText(
-                l.url,
-                key: const ValueKey('guest_link.url'),
-                textDirection: TextDirection.ltr,
-                maxLines: 3,
-                style: appText(12.5, c: c.textDark, w: FontWeight.w600),
+      // the sheet's one memorable thing: the link itself, on a sky (information) block
+      AppBlock(
+        tone: AppBlockTone.sky,
+        padding: const EdgeInsets.all(AppSpace.md),
+        child: Builder(builder: (context) {
+          final b = AppBlock.colorsOf(context);
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpace.xxs / 2),
+                child: Icon(Icons.link_rounded, size: AppIconSize.md, color: b.muted),
               ),
-            ),
-          ]),
-          if (l.hasPin) ...[
-            const SizedBox(height: 8),
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: AppBadgePill(
-                'guest_link_pin_set'.tr,
-                key: const ValueKey('guest_link.pin_chip'),
-                icon: Icons.lock_rounded,
-                color: c.warning,
+              const SizedBox(width: AppSpace.sm),
+              Expanded(
+                child: SelectableText(
+                  l.url,
+                  key: const ValueKey('guest_link.url'),
+                  textDirection: TextDirection.ltr,
+                  maxLines: 3,
+                  style: AppType.row(context).copyWith(color: b.ink),
+                ),
               ),
-            ),
-          ],
-        ]),
+            ]),
+            if (l.hasPin) ...[
+              const SizedBox(height: AppSpace.xs),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: AppStatusBadge(
+                  key: const ValueKey('guest_link.pin_chip'),
+                  label: 'guest_link_pin_set'.tr,
+                  icon: Icons.lock_rounded,
+                  tone: AppTone.warning,
+                ),
+              ),
+            ],
+          ]);
+        }),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
 
-      // Facts
-      Wrap(spacing: 8, runSpacing: 8, children: [
-        AppBadgePill(
-          '${'guest_link_joined'.tr}: ${l.guestsJoined} / $cap',
+      // what the link is now: joined / cap · mode · created
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+        AppStatusBadge(
+          label: '${'guest_link_joined'.tr}: ${l.guestsJoined} / $cap',
           icon: Icons.people_alt_rounded,
-          color: c.primary,
         ),
-        AppBadgePill(
-          (l.canPublish ? 'guest_link_mode_publish' : 'guest_link_mode_listen').tr,
+        AppStatusBadge(
+          label: (l.canPublish ? 'guest_link_mode_publish' : 'guest_link_mode_listen').tr,
           icon: l.canPublish ? Icons.mic_rounded : Icons.hearing_rounded,
-          color: l.canPublish ? c.success : c.textMedium,
         ),
         if (l.createdAt != null)
-          AppBadgePill(
-            '${'guest_link_created'.tr}: ${AppTime.dateTime(l.createdAt!)}',
+          AppStatusBadge(
+            label: '${'guest_link_created'.tr}: ${AppTime.dateTime(l.createdAt!)}',
             icon: Icons.schedule_rounded,
-            color: c.textMedium,
           ),
       ]),
-      const SizedBox(height: 14),
+      const SizedBox(height: AppSpace.md),
 
-      // Actions
-      Wrap(spacing: 8, runSpacing: 8, children: [
-        AppPill(key: const ValueKey('guest_link.copy'), icon: Icons.copy_rounded, label: 'guest_link_copy'.tr, onTap: busy ? null : onCopy),
-        AppPill(key: const ValueKey('guest_link.share'), icon: Icons.ios_share_rounded, label: 'guest_link_share'.tr, onTap: busy ? null : onShare),
+      // the two things a teacher does with a link: copy it, share it
+      Row(children: [
+        Expanded(
+          child: AppButton.primary(
+            key: const ValueKey('guest_link.copy'),
+            label: 'guest_link_copy'.tr,
+            icon: Icons.copy_rounded,
+            expand: true,
+            onPressed: busy ? null : onCopy,
+          ),
+        ),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(
+          child: AppButton.secondary(
+            key: const ValueKey('guest_link.share'),
+            label: 'guest_link_share'.tr,
+            icon: Icons.ios_share_rounded,
+            expand: true,
+            onPressed: busy ? null : onShare,
+          ),
+        ),
+      ]),
+      const SizedBox(height: AppSpace.sm),
+
+      // the rest, quieter
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         AppPill(
           key: const ValueKey('guest_link.qr'),
           icon: Icons.qr_code_2_rounded,
           label: 'guest_link_qr'.tr,
           onTap: busy ? null : onToggleQr,
-          color: showQr ? c.primary : null,
+          color: open(showQr),
         ),
         AppPill(
           key: const ValueKey('guest_link.settings'),
           icon: Icons.tune_rounded,
           label: 'settings'.tr,
           onTap: busy ? null : onToggleSettings,
-          color: editing ? c.primary : null,
+          color: open(editing),
         ),
         AppPill(
           key: const ValueKey('guest_link.joins'),
           icon: Icons.groups_rounded,
           label: 'guest_link_joins'.tr,
           onTap: busy ? null : onToggleJoins,
-          color: joinsOpen ? c.primary : null,
+          color: open(joinsOpen),
         ),
-        AppPill(key: const ValueKey('guest_link.rotate'), icon: Icons.autorenew_rounded, label: 'guest_link_new'.tr, onTap: busy ? null : onRotate, color: c.warning),
-        AppPill(key: const ValueKey('guest_link.revoke'), icon: Icons.link_off_rounded, label: 'guest_link_revoke'.tr, onTap: busy ? null : onRevoke, color: c.danger),
+        AppPill(
+          key: const ValueKey('guest_link.rotate'),
+          icon: Icons.autorenew_rounded,
+          label: 'guest_link_new'.tr,
+          onTap: busy ? null : onRotate,
+          color: c.textMedium,
+        ),
+        AppPill(
+          key: const ValueKey('guest_link.revoke'),
+          icon: Icons.link_off_rounded,
+          label: 'guest_link_revoke'.tr,
+          onTap: busy ? null : onRevoke,
+          color: c.danger,
+        ),
       ]),
 
       if (showQr) ...[
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         Center(
           child: Container(
             key: const ValueKey('guest_link.qr_image'),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(16)),
-            child: QrImageView(data: l.url, version: QrVersions.auto, size: 200, backgroundColor: Colors.white),
+            padding: const EdgeInsets.all(AppSpace.sm),
+            decoration: BoxDecoration(
+              // a QR code needs pure white behind it to scan reliably, in dark mode too
+              color: Colors.white,
+              borderRadius: AppRadius.cardAll,
+              border: Border.all(color: c.divider, width: AppBorder.hairline),
+            ),
+            child: QrImageView(data: l.url, version: QrVersions.auto, size: _qrSide, backgroundColor: Colors.white),
           ),
         ),
       ],
 
       if (editing) ...[
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         AppCard(
-          padding: const EdgeInsets.all(14),
           child: Column(key: const ValueKey('guest_link.settings_panel'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            AppSectionTitle('settings'.tr),
-            const SizedBox(height: 6),
+            Text('settings'.tr, style: AppType.section(context)),
+            const SizedBox(height: AppSpace.sm),
             _options(context, hasPin: l.hasPin),
-            const SizedBox(height: 8),
-            AppPrimaryButton(label: 'save'.tr, icon: Icons.check_rounded, busy: busy, onPressed: onSaveSettings),
+            const SizedBox(height: AppSpace.md),
+            AppButton.primary(label: 'save'.tr, icon: Icons.check_rounded, busy: busy, expand: true, onPressed: onSaveSettings),
           ]),
         ),
       ],
 
       if (joinsOpen) ...[
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         _JoinsPanel(
           loading: joinsLoading,
           error: joinsError,
@@ -582,36 +628,52 @@ class _JoinsPanel extends StatelessWidget {
   final int total;
   final VoidCallback onRefresh;
 
+  /// The panel's skeleton height (three rows).
+  static const double _skeletonH = 160;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final title = total > items.length ? '${'guest_link_joins'.tr} ($total)' : '${'guest_link_joins'.tr} (${items.length})';
+    final count = total > items.length ? total : items.length;
     return AppCard(
-      padding: const EdgeInsets.all(14),
       child: Column(key: const ValueKey('guest_link.joins_panel'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Expanded(child: AppSectionTitle(title)),
+          Expanded(
+            child: Text.rich(
+              TextSpan(children: [
+                TextSpan(text: 'guest_link_joins'.tr, style: AppType.section(context)),
+                TextSpan(text: '  $count', style: AppType.meta(context)),
+              ]),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
           IconButton(
             key: const ValueKey('guest_link.joins_refresh'),
             tooltip: 'refresh'.tr,
+            constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
             onPressed: loading ? null : onRefresh,
             icon: loading
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : Icon(Icons.refresh_rounded, color: c.primary),
+                ? const SizedBox(
+                    width: AppIconSize.sm,
+                    height: AppIconSize.sm,
+                    child: CircularProgressIndicator(strokeWidth: AppBorder.focus),
+                  )
+                : Icon(Icons.refresh_rounded, size: AppIconSize.md, color: c.textMedium),
           ),
         ]),
         if (loading && items.isEmpty)
-          const SizedBox(height: 160, child: AppListSkeleton(items: 3, withAvatar: true, padding: EdgeInsets.zero))
+          const SizedBox(height: _skeletonH, child: AppListSkeleton(items: 3, withAvatar: true, padding: EdgeInsets.zero))
         else if (error != null)
           AppBanner(icon: Icons.wifi_off_rounded, text: error!, color: c.danger)
         else if (items.isEmpty)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Text('guest_link_joins_empty'.tr, textAlign: TextAlign.center, style: appText(12.5, c: c.textLight)),
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
+            child: Text('guest_link_joins_empty'.tr, textAlign: TextAlign.center, style: AppType.meta(context)),
           )
         else
           for (var i = 0; i < items.length; i++) ...[
-            if (i > 0) Divider(height: 1, color: c.divider),
+            if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
             _JoinRow(items[i]),
           ],
       ]),
@@ -624,25 +686,27 @@ class _JoinRow extends StatelessWidget {
 
   final GuestJoinRecord r;
 
+  /// The avatar's side in a dense row.
+  static const double _avatar = 36;
+
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final name = r.name.trim().isEmpty ? 'guest_live_title'.tr : r.name.trim();
     final when = r.joinedAt == null ? '' : AppTime.dateTime(r.joinedAt!);
+    final meta = AppType.meta(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        AppAvatar(name: name, size: 34),
-        const SizedBox(width: 10),
+        AppAvatar(name: name, size: _avatar),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
-            const SizedBox(height: 2),
-            Wrap(spacing: 10, runSpacing: 2, children: [
-              if (when.isNotEmpty)
-                Text(when, style: appText(11.5, c: c.textMedium)),
+            Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+            const SizedBox(height: AppSpace.xxs / 2),
+            Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs / 2, children: [
+              if (when.isNotEmpty) Text(when, style: meta),
               if (r.ipMasked != null)
-                Text(r.ipMasked!, textDirection: TextDirection.ltr, style: appText(11.5, c: c.textLight)),
+                Text(r.ipMasked!, textDirection: TextDirection.ltr, style: meta.copyWith(color: context.colors.textLight)),
             ]),
           ]),
         ),
