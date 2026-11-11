@@ -3,8 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_notice.dart';
-import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -125,8 +124,8 @@ class _MarkTemplatesPageState extends State<MarkTemplatesPage> {
           AppSpace.gapSm,
           if (_fixedKind == null)
             Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-              ChoiceChip(label: Text(t('الكل', 'All')), selected: _filter == null, onSelected: (_) => setState(() => _filter = null)),
-              for (final k in MarkKind.values) ChoiceChip(label: Text(k.label), selected: _filter == k, onSelected: (_) => setState(() => _filter = k)),
+              AppChoiceChip(label: t('الكل', 'All'), selected: _filter == null, onTap: () => setState(() => _filter = null)),
+              for (final k in MarkKind.values) AppChoiceChip(label: k.label, selected: _filter == k, onTap: () => setState(() => _filter = k)),
             ]),
           AppSpace.gapSm,
           if (shown.isEmpty)
@@ -141,15 +140,15 @@ class _MarkTemplatesPageState extends State<MarkTemplatesPage> {
               ),
             )
           else
-            for (final x in shown)
-              Padding(
+            for (final (i, x) in shown.indexed)
+              AppReveal(index: i, group: 'mark.templates', child: Padding(
                 padding: const EdgeInsets.only(bottom: AppSpace.sm),
                 child: MarkTemplateCard(
                   item: x,
                   onTap: () => widget.pick ? Navigator.of(context).pop(x) : _edit(x),
                   onDelete: widget.pick ? null : () => _retire(x),
                 ),
-              ),
+              )),
         ],
       ),
     );
@@ -168,7 +167,8 @@ class MarkTemplateCard extends StatelessWidget {
     return AppCard(
       onTap: onTap,
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(kindIcon(item.kind), color: c.primary, size: 28),
+        // Each sheet kind keeps its block tone everywhere: a stable tint behind its icon.
+        _KindTile(kind: item.kind),
         AppSpace.gapSm,
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -177,7 +177,7 @@ class MarkTemplateCard extends StatelessWidget {
             Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
               if (item.kind != null) AppBadgePill(item.kind!.label),
               AppBadgePill(t('${item.fieldsCount} حقول', '${item.fieldsCount} fields'), color: c.textMedium),
-              if (item.totalMax != null) AppBadgePill(t('المجموع ${numText(item.totalMax!)}', 'Total ${numText(item.totalMax!)}'), color: c.warning),
+              if (item.totalMax != null) AppBadgePill(t('المجموع ${numText(item.totalMax!)}', 'Total ${numText(item.totalMax!)}'), color: appInk(context, c.warning)),
               AppBadgePill(t('الإصدار ${item.version}', 'Version ${item.version}'), color: c.textMedium),
             ]),
             AppSpace.gapXs,
@@ -200,6 +200,28 @@ class MarkTemplateCard extends StatelessWidget {
             icon: Icon(Icons.delete_outline_rounded, color: c.textMedium),
           ),
       ]),
+    );
+  }
+}
+
+class _KindTile extends StatelessWidget {
+  const _KindTile({required this.kind});
+  final MarkKind? kind;
+
+  @override
+  Widget build(BuildContext context) {
+    final b = AppBlockColors.of(context, switch (kind) {
+      MarkKind.answerTable => AppBlockTone.sky,
+      MarkKind.markSheet => AppBlockTone.peach,
+      MarkKind.cover => AppBlockTone.emerald,
+      null => AppBlockTone.paper,
+    });
+    return Container(
+      width: AppTouch.min,
+      height: AppTouch.min,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: b.surface, borderRadius: AppRadius.controlAll),
+      child: Icon(kindIcon(kind), color: b.ink, size: AppIconSize.lg),
     );
   }
 }

@@ -25,6 +25,11 @@ import 'package:flutter_education_app/features/shared/exam_engine/marks/mark_ses
 import 'package:flutter_education_app/features/shared/exam_engine/marks/review/grade_review_rows.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/result/exam_get_result_screen.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/result/exam_result_data.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/hub/deliver/exam_deliver_screen.dart' show DeliverPreviewPane;
+import 'package:flutter_education_app/features/shared/exam_engine/hub/revision/revision_models.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/hub/revision/revision_result_panel.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/marks/mark_templates_api.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/marks/templates/mark_template_library.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -203,6 +208,7 @@ void main() {
   marksScenes();
   correctScenes();
   createScenes();
+  leftoverScenes();
   testWidgets('sheets', (t0) => _render(t0, 'sheets', sizes: const [Size(390, 844)], () => Builder(
       builder: (context) => _Sheet(
             title: AppConfig.lang == 'ar' ? 'لا درجات لهذا الاختبار بعد' : 'This exam has no degrees yet',
@@ -418,4 +424,41 @@ void createScenes() {
           ),
         );
       }));
+}
+
+void leftoverScenes() {
+  final session = MarkSession.fromJson({
+    'session': {'id': 7, 'course_id': 3, 'template_id': 2, 'mode': 'review', 'column_key': 'midterm', 'column_max': 20, 'paper_max': 20, 'status': 'open'},
+    'counts': {'match': 0, 'mismatch': 0, 'unreadable': 0, 'pending': 0, 'applied': 0, 'kept': 0},
+  });
+  final row = RevisionRow.fromJson({
+    'id': 1,
+    'page_id': 101,
+    'student': {'id': 11, 'name': 'Sara Ali'},
+    'identifier': {'value_masked': '2024***17', 'method': 'digits', 'conf': 0.99},
+    'marks': [
+      {'field_id': 'q1', 'question_no': 1, 'value': 8, 'conf': 0.97, 'max': 10, 'status': 'ok', 'crop_url': null},
+      {'field_id': 'q2', 'question_no': 2, 'value': 8, 'conf': 0.91, 'max': 10, 'status': 'ok', 'crop_url': null},
+    ],
+    'paper_total_written': 16,
+    'paper_total_computed': 16,
+    'paper_total_used': 16,
+    'scaled': 16,
+    'recorded': 14,
+    'diff': 2,
+    'issues': const <String>[],
+    'list': 'mismatch',
+    'status': 'open',
+  });
+  testWidgets('revision_panel', (t0) => _render(t0, 'revision_panel', () => RevisionResultPanel(row: row, session: session, behind: 2, onUpdate: () {}, onIgnore: () {}, onRetake: () {}, onLater: () {})));
+  testWidgets('deliver_preview', (t0) => _render(t0, 'deliver_preview', () => const Scaffold(body: SingleChildScrollView(padding: EdgeInsets.all(AppSpace.md), child: DeliverPreviewPane(pages: null, busy: false, studentName: 'Sara Ali', studentCount: 31, versions: ['A', 'B'], version: 'A')))));
+  testWidgets('mark_template_card', (t0) => _render(t0, 'mark_template_card', sizes: const [Size(390, 844)], () => Scaffold(
+        body: ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
+          for (final k in const ['answer_table', 'mark_sheet', 'cover'])
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.sm),
+              child: MarkTemplateCard(item: MarkTemplate.fromJson({'id': 7, 'family_id': 'f', 'version': 2, 'name': 'Midterm $k', 'kind': k, 'fields_count': 12, 'total_max': 20, 'owner_name': 'Sara', 'updated_at': '2026-11-01T10:00:00', 'has_image': true}), onTap: () {}, onDelete: () {}),
+            ),
+        ]),
+      )));
 }

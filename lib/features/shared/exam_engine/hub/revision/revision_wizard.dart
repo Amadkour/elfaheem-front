@@ -634,7 +634,7 @@ class RevisionStepHeader extends StatelessWidget {
       Row(children: [
         for (var i = 0; i < total; i++) ...[
           if (i > 0) const SizedBox(width: AppSpace.xxs),
-          Expanded(child: Container(height: 4, decoration: BoxDecoration(color: i <= index ? c.primary : c.divider, borderRadius: BorderRadius.circular(2)))),
+          Expanded(child: AnimatedContainer(duration: AppMotion.of(context).base, curve: AppMotion.curve, height: AppSpace.xxs, decoration: BoxDecoration(color: i <= index ? c.primary : c.divider, borderRadius: BorderRadius.circular(AppRadius.pill)))),
         ],
       ]),
       AppSpace.gapSm,

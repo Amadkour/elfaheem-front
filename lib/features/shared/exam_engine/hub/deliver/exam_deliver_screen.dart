@@ -543,13 +543,10 @@ class _Step extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Row(children: [
-            Container(
-              width: AppIconSize.lg, height: AppIconSize.lg, alignment: Alignment.center,
-              decoration: BoxDecoration(color: c.primary.withValues(alpha: .12), shape: BoxShape.circle),
-              child: Text('$n', style: AppType.meta(context).copyWith(color: appInk(context, c.primary), fontWeight: FontWeight.w600)),
-            ),
-            const SizedBox(width: AppSpace.xs),
+          // An editorial step numeral in the serif instead of a tinted dot: the steps read like a printed checklist.
+          Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+            Text('$n', style: AppType.headline(context).copyWith(color: appInk(context, c.primary))),
+            const SizedBox(width: AppSpace.sm),
             Expanded(child: Text(title, style: AppType.section(context))),
           ]),
           const SizedBox(height: AppSpace.sm),
@@ -635,7 +632,8 @@ class _DeliverPreviewPaneState extends State<DeliverPreviewPane> {
       ],
       const SizedBox(height: AppSpace.sm),
     ]);
-    return LayoutBuilder(builder: (context, box) {
+    // The paper lies on a sky "desk" block: the one memorable surface of this page, everything else is quiet paper cards.
+    return AppBlock(tone: AppBlockTone.sky, padding: const EdgeInsets.all(AppSpace.md), child: LayoutBuilder(builder: (context, box) {
       final body = pages == null
           ? AspectRatio(aspectRatio: 0.72, child: AppSkeletonBox(radius: AppRadius.card, height: double.infinity))
           : pages.isEmpty
@@ -664,10 +662,10 @@ class _DeliverPreviewPaneState extends State<DeliverPreviewPane> {
         AnimatedOpacity(opacity: w.busy ? .45 : 1, duration: AppMotion.of(context).base, child: body),
         if (w.busy && pages != null) ...[
           const SizedBox(height: AppSpace.xxs),
-          Text(t('جارٍ تحديث المعاينة ...', 'Updating the preview ...'), textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textLight)),
+          Text(t('جارٍ تحديث المعاينة ...', 'Updating the preview ...'), textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: AppBlock.colorsOf(context).faint)),
         ],
       ]);
-    });
+    }));
   }
 }
 

@@ -7,8 +7,6 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_notice.dart';
-import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -104,7 +102,7 @@ class _Start extends StatelessWidget {
     return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
       Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
+          constraints: BoxConstraints(maxWidth: AppWidth.form.max),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text(name, style: AppType.pageTitle(context)),
             AppSpace.gapXs,
@@ -266,7 +264,7 @@ class FieldCrop extends StatelessWidget {
       width: w,
       height: h,
       clipBehavior: Clip.hardEdge,
-      decoration: BoxDecoration(border: Border.all(color: context.colors.divider), borderRadius: BorderRadius.circular(4)),
+      decoration: BoxDecoration(border: Border.all(color: context.colors.divider), borderRadius: AppRadius.chipAll),
       child: Stack(clipBehavior: Clip.hardEdge, children: [
         Positioned(
           left: -box.left * fullW,
