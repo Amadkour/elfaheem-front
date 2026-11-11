@@ -1,6 +1,10 @@
 // The interactive guest search: "I want to learn [subject] for [level], studying [anywhere / online / at a center]"
 // with a live "N courses · M teachers" count, a primary "Show courses" (guest mode + the explorer) and Log in /
 // Create account underneath. Every landing call fails soft: no counts, the button still works.
+//
+// Warm Editorial (D-610 – D-629): the headline is editorial and start-aligned on the canvas; the search reads as a
+// sentence inside ONE peach block ("I want to learn" · "for" · "studying" in the editorial section role, each above its
+// well) and the live count glides when a choice changes it (AppCountUp). The emerald is only "Show courses".
 library;
 
 import 'dart:async';
@@ -10,7 +14,9 @@ import 'package:flutter/material.dart';
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../core/plural.dart';
-import '../../design/app_kit.dart' show AppDropdown, appText;
+import '../../design/app_blocks.dart';
+import '../../design/app_kit.dart' show AppDropdown;
+import '../../design/app_motion_kit.dart' show AppCountUp;
 import '../../design/app_tokens.dart';
 import '../../utils/widget/primary_button.dart';
 import 'explore_launcher.dart';
@@ -118,29 +124,33 @@ class _GuestSearchScreenState extends State<GuestSearchScreen> {
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
+            constraints: BoxConstraints(maxWidth: AppWidth.form.max),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(AppSpace.md),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                const SizedBox(height: AppSpace.md),
-                Center(
+                const SizedBox(height: AppSpace.xs),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
                   child: Container(
-                    width: 72,
-                    height: 72,
-                    padding: const EdgeInsets.all(AppSpace.md),
-                    decoration: BoxDecoration(color: c.primaryTint, shape: BoxShape.circle),
+                    width: AppTouch.min,
+                    height: AppTouch.min,
+                    padding: const EdgeInsets.all(AppSpace.xs),
+                    decoration: BoxDecoration(
+                      color: c.cardBg,
+                      borderRadius: AppRadius.controlAll,
+                      border: Border.all(color: c.divider, width: AppBorder.hairline),
+                    ),
                     child: Image.asset('assets/images/logo_mark.png',
-                        errorBuilder: (_, _, _) => Icon(Icons.school_outlined, size: 32, color: c.primary)),
+                        errorBuilder: (_, _, _) => Icon(Icons.school_rounded, size: AppIconSize.md, color: c.textDark)),
                   ),
                 ),
-                const SizedBox(height: AppSpace.md),
-                Text('ob_search_title'.tr, textAlign: TextAlign.center, style: AppType.pageTitle(context).copyWith(fontSize: 24)),
-                const SizedBox(height: AppSpace.xs),
-                Text('ob_search_sub'.tr, textAlign: TextAlign.center, style: AppType.meta(context).copyWith(fontSize: 14)),
                 const SizedBox(height: AppSpace.lg),
-                Container(
-                  padding: AppSpace.card,
-                  decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.cardAll, boxShadow: AppShadow.card(context)),
+                Semantics(header: true, child: Text('ob_search_title'.tr, style: AppType.display(context))),
+                const SizedBox(height: AppSpace.xs),
+                Text('ob_search_sub'.tr, style: AppType.body(context).copyWith(height: 1.5)),
+                const SizedBox(height: AppSpace.lg),
+                AppBlock(
+                  tone: AppBlockTone.peach,
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     _Label('ob_i_want'.tr),
                     AppDropdown<int>(
@@ -159,7 +169,7 @@ class _GuestSearchScreenState extends State<GuestSearchScreen> {
                         _scheduleMatch();
                       },
                     ),
-                    const SizedBox(height: AppSpace.md),
+                    const SizedBox(height: AppSpace.lg),
                     _Label('ob_for_level'.tr),
                     AppDropdown<int>(
                       value: _level,
@@ -174,7 +184,7 @@ class _GuestSearchScreenState extends State<GuestSearchScreen> {
                         _scheduleMatch();
                       },
                     ),
-                    const SizedBox(height: AppSpace.md),
+                    const SizedBox(height: AppSpace.lg),
                     _Label('ob_how'.tr),
                     Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                       for (final m in const ['any', 'online', 'center'])
@@ -193,11 +203,19 @@ class _GuestSearchScreenState extends State<GuestSearchScreen> {
                       child: line.isEmpty
                           ? const SizedBox(width: double.infinity)
                           : Padding(
-                              padding: const EdgeInsets.only(top: AppSpace.md),
-                              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                Icon(Icons.auto_stories_outlined, size: 18, color: c.primary),
+                              padding: const EdgeInsets.only(top: AppSpace.lg),
+                              child: Row(children: [
+                                Icon(Icons.auto_stories_rounded, size: AppIconSize.md, color: AppBlock.colorsOf(context).ink),
                                 const SizedBox(width: AppSpace.xs),
-                                Flexible(child: Text(line, textAlign: TextAlign.center, style: appText(14, w: FontWeight.w600, c: c.textDark))),
+                                // the live answer: its number glides when a choice changes it
+                                Flexible(
+                                  child: AppCountUp(
+                                    line,
+                                    memoryKey: 'guest.search.count',
+                                    maxLines: 2,
+                                    style: AppType.bodyStrong(context).copyWith(color: AppBlock.colorsOf(context).ink),
+                                  ),
+                                ),
                               ]),
                             ),
                     ),
@@ -241,6 +259,6 @@ class _Label extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: AppSpace.xs),
-        child: Text(text, style: AppType.meta(context).copyWith(fontSize: 13)),
+        child: Text(text, style: AppType.section(context).copyWith(color: AppBlock.colorsOf(context).ink)),
       );
 }

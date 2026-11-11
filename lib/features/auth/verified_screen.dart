@@ -35,6 +35,8 @@ import '../shared/profile/change_password_widget.dart';
 import 'additional_register_screen.dart';
 import 'auth_shell.dart';
 import 'auth_widgets.dart';
+import '../../design/app_charts.dart' show appInk;
+import '../../design/app_tokens.dart';
 import 'username.dart' show IdentifierKind, identifierKindOf;
 import 'verify_way.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
@@ -615,7 +617,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
           children: [
             if (_isReg) ...[
               const ProgressBar(currentStep: 1, totalSteps: 3),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpace.lg),
             ],
             _content(),
           ],
@@ -663,7 +665,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   };
 
   Widget _content() {
-    final c = context.colors;
     final way = _way ?? VerifyWay.email;
     final ways = _visibleWays;
     final link = _useLink;
@@ -678,34 +679,34 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
             pending: _pending,
             current: _channel,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpace.lg),
         ],
         Center(child: VerifyWayHero(way: way)),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpace.md),
         AnimatedSwitcher(
-          duration: const Duration(milliseconds: 250),
+          duration: AppMotion.of(context).base,
           child: Column(
             key: ValueKey('head-${way.name}-$link'),
             children: [
               Text(
                 link ? 'phone_link_title'.tr : 'enter_verification_code'.tr,
                 textAlign: TextAlign.center,
-                style: authText(22, w: FontWeight.w800, c: c.textDark, h: 1.25, ls: authTracking(-0.2)),
+                style: AppType.pageTitle(context),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               Text(
                 link ? 'phone_link_hint'.tr : (_destinationHidden ? _hiddenDestinationText : _sentHint),
                 textAlign: TextAlign.center,
-                style: authText(14.5, c: c.textMedium, h: 1.5),
+                style: AppType.body(context).copyWith(height: 1.5),
               ),
               if (!_destinationHidden) ...[
-                const SizedBox(height: 14),
+                const SizedBox(height: AppSpace.sm),
                 VerifyDestinationChip(way: way, text: _destination),
               ],
             ],
           ),
         ),
-        const SizedBox(height: 26),
+        const SizedBox(height: AppSpace.lg),
         if (ways.length > 1) ...[
           VerifyWaySwitcher(
             ways: ways,
@@ -716,14 +717,14 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
             },
             onChanged: _selectWay,
           ),
-          const SizedBox(height: 26),
+          const SizedBox(height: AppSpace.lg),
         ],
         AnimatedSize(
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOutCubic,
+          duration: AppMotion.of(context).slow,
+          curve: AppMotion.curve,
           alignment: Alignment.topCenter,
           child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 280),
+            duration: AppMotion.of(context).slow,
             transitionBuilder: (child, anim) => FadeTransition(
               opacity: anim,
               child: SlideTransition(
@@ -742,11 +743,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
           ),
         ),
 
-        const SizedBox(height: 22),
+        const SizedBox(height: AppSpace.lg),
         Text(
           'verify_try_another_way'.tr,
           textAlign: TextAlign.center,
-          style: c.body.copyWith(fontSize: 12.5),
+          style: AppType.meta(context),
         ),
       ],
     );
@@ -756,10 +757,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
   List<Widget> _buildCodeSection() => [
     AnimatedSize(
-      duration: const Duration(milliseconds: 200),
+      duration: AppMotion.of(context).base,
       child: _sending
           ? Padding(
-              padding: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.only(bottom: AppSpace.sm),
               child: VerifyWayStatusPill(
                 way: _way ?? VerifyWay.email,
                 label: 'verify_sending'.tr,
@@ -768,9 +769,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
           : const SizedBox(width: double.infinity),
     ),
     _buildOtpFields(),
-    const SizedBox(height: 20),
+    const SizedBox(height: AppSpace.md),
     _buildResendRow(),
-    const SizedBox(height: 24),
+    const SizedBox(height: AppSpace.lg),
     AuthButton(
       loading: _isLoading,
       label: 'confirm'.tr,
@@ -793,11 +794,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         label: 'enter_verification_code'.tr,
         child: Directionality(
           textDirection: TextDirection.ltr,
-          // On a phone the row reaches 12 px into the card's side padding and the gaps shrink before the boxes do, so
+          // On a phone the row reaches 4 px into the page gutter and the gaps shrink before the boxes do, so
           // every field keeps a 48 px tap target inside its border (Android guideline; test/ui/a11y_guidelines_test.dart).
           child: LayoutBuilder(
             builder: (context, outer) {
-              final width = math.min(380.0, outer.maxWidth + 24);
+              final width = math.min(380.0, outer.maxWidth + AppSpace.xs);
               final slot = width / otpLength;
               final gap = ((slot - 52) / 2).clamp(1.0, 4.0);
               return SizedBox(
@@ -883,38 +884,38 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     final w = _way;
     final left = _cooldown[w] ?? 0;
     final canResend = left == 0;
-    final ink = c.isDark ? c.primaryLight : c.primary;
+    final ink = appInk(context, c.primary);
     return Center(
       child: AnimatedSwitcher(
-        duration: authDuration(context, 200),
+        duration: AppMotion.of(context).base,
         child: canResend
             ? TextButton.icon(
                 key: const ValueKey('resend'),
                 onPressed: _onResend,
                 style: TextButton.styleFrom(
-                  minimumSize: const Size(48, 44),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  backgroundColor: c.primary.withValues(alpha: c.isDark ? 0.16 : 0.07),
+                  minimumSize: const Size(AppTouch.min, AppTouch.min),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+                  backgroundColor: c.primaryTint,
                   foregroundColor: ink,
-                  shape: const StadiumBorder(),
+                  shape: RoundedRectangleBorder(borderRadius: AppRadius.controlAll),
                 ),
-                icon: Icon(Icons.refresh_rounded, size: 18, color: ink),
-                label: Text('resend'.tr, style: authText(14, w: FontWeight.w700, c: ink)),
+                icon: Icon(Icons.refresh_rounded, size: AppIconSize.md, color: ink),
+                label: Text('resend'.tr, style: AppType.bodyStrong(context).copyWith(color: ink)),
               )
             : Container(
                 key: const ValueKey('timer'),
-                constraints: const BoxConstraints(minHeight: 44),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: ShapeDecoration(
+                constraints: const BoxConstraints(minHeight: AppTouch.min),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
+                decoration: BoxDecoration(
                   color: c.inputBg,
-                  shape: const StadiumBorder(),
+                  borderRadius: AppRadius.controlAll,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     SizedBox(
-                      width: 18,
-                      height: 18,
+                      width: AppIconSize.md,
+                      height: AppIconSize.md,
                       child: CircularProgressIndicator(
                         value: left / resendSeconds,
                         strokeWidth: 2.4,
@@ -922,12 +923,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                         backgroundColor: c.divider,
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: AppSpace.xs),
                     Flexible(
                       child: Text(
                         'resend_in'.tr + _timerText,
-                        style: authText(13.5, w: FontWeight.w600, c: c.textMedium)
-                            .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+                        style: AppType.label(context)
+                            .copyWith(fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()]),
                       ),
                     ),
                   ],

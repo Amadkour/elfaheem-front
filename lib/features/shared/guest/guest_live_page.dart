@@ -485,7 +485,7 @@ class GuestLiveContent extends StatelessWidget {
                 subtitle: liveTr('guest_live_subtitle', info?.ref.kind ?? LiveRoomKind.session),
                 icon: Icons.sensors_rounded,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpace.xxs),
               if (loading)
                 // The skeleton is a ListView: it needs a height inside this list.
                 const SizedBox(height: 260, child: AppListSkeleton(items: 3, withAvatar: false))
@@ -497,11 +497,11 @@ class GuestLiveContent extends StatelessWidget {
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                       AppBanner(icon: Icons.link_off_rounded, text: error!, color: c.danger),
                       if (rateLimitSeconds > 0) ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpace.sm),
                         _RateLimitBanner(seconds: rateLimitSeconds),
                       ],
                       if (!errorFinal) ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpace.sm),
                         AppPrimaryButton(
                           key: const ValueKey('guest_live.retry'),
                           label: 'retry'.tr,
@@ -641,9 +641,9 @@ class _SessionCardState extends State<_SessionCard> {
           if (info.isMeeting)
             AppBadgePill(t('اجتماع', 'Meeting'), key: const ValueKey('guest_live.meeting'), icon: Icons.groups_rounded, color: c.primary),
         ]),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.xs),
         Text(title, style: appText(18, w: FontWeight.w800, c: c.textDark, h: 1.2)),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         if (!quick && info.courseName.trim().isNotEmpty) AppInfoRow(Icons.menu_book_rounded, info.courseName),
         if (host.isNotEmpty) AppInfoRow(info.isMeeting ? Icons.person_rounded : Icons.school_rounded, host),
         if (!quick && info.startsAt != null) AppInfoRow(Icons.event_rounded, AppTime.dateTime(info.startsAt!)),
@@ -663,7 +663,7 @@ class _SessionCardState extends State<_SessionCard> {
         if (info.requiresPin) AppInfoRow(Icons.lock_rounded, 'guest_live_pin_protected'.tr),
 
         if (info.recordingEnabled) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           AppBanner(
             key: const ValueKey('guest_live.recorded'),
             icon: Icons.fiber_manual_record_rounded,
@@ -673,7 +673,7 @@ class _SessionCardState extends State<_SessionCard> {
         ],
 
         if (!live) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           AppBanner(
             key: const ValueKey('guest_live.waiting_banner'),
             icon: Icons.hourglass_top_rounded,
@@ -686,11 +686,11 @@ class _SessionCardState extends State<_SessionCard> {
           ),
         ],
         if (widget.transientError != null) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           AppBanner(icon: Icons.wifi_off_rounded, text: widget.transientError!, color: c.textMedium),
         ],
         if (live && full) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           AppBanner(
             key: const ValueKey('guest_live.full'),
             icon: Icons.people_alt_rounded,
@@ -699,13 +699,13 @@ class _SessionCardState extends State<_SessionCard> {
           ),
         ],
         if (limited) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           _RateLimitBanner(seconds: widget.rateLimitSeconds),
         ],
 
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         Divider(height: 1, color: c.divider),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
 
         Focus(
           key: const ValueKey('guest_live.name'),
@@ -746,7 +746,7 @@ class _SessionCardState extends State<_SessionCard> {
                       key: const ValueKey('guest_live.pin_error'),
                       children: [
                         Icon(Icons.error_outline_rounded, size: 16, color: c.danger),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: AppSpace.xs),
                         Expanded(child: Text(liveTr('guest_live_err_pin', kind), style: appText(12, c: c.danger, w: FontWeight.w600))),
                       ],
                     ),
@@ -775,7 +775,7 @@ class _SessionCardState extends State<_SessionCard> {
           onPressed: live && !full && !limited && !needsConsent ? widget.onJoin : null,
         ),
         if (accountJoin) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           Align(
             alignment: AlignmentDirectional.center,
             child: AppPill(
@@ -828,7 +828,7 @@ class _ConsentRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.controlAll,
         onTap: onChanged == null ? null : () => onChanged!(!value),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
@@ -841,11 +841,11 @@ class _ConsentRow extends StatelessWidget {
                 value: value,
                 activeColor: c.primary,
                 side: BorderSide(color: value ? c.primary : c.textLight, width: 1.6),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.chipAll),
                 onChanged: onChanged == null ? null : (v) => onChanged!(v ?? false),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.xs),
             Expanded(child: Text(liveTr('guest_live_consent', kind), style: appText(13, c: c.textDark, h: 1.4))),
           ]),
         ),

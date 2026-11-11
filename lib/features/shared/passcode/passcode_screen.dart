@@ -7,7 +7,9 @@ import 'package:flutter/services.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/design/app_gradients.dart';
+import 'package:flutter_education_app/design/app_blocks.dart';
+import 'package:flutter_education_app/design/app_charts.dart' show appInk;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase;
 import 'package:flutter_education_app/design/app_tokens.dart';
 
 /// Returns true when [code] is accepted.
@@ -83,8 +85,6 @@ class PasscodeSheet extends StatefulWidget {
       useSafeArea: true,
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: context.colors.heroShade.withValues(alpha: 0.6),
       builder: (_) => PasscodeSheet(
         title: title,
         hint: hint,
@@ -115,14 +115,13 @@ class _PasscodeSheetState extends State<PasscodeSheet>
   );
   final FocusNode _focus = FocusNode();
 
-  // ── design tokens (the live theme) ─────────────────────────────────────────
+  // ── design tokens (the live theme, Warm Editorial) ─────────────────────────
+  // The sheet is paper on the kit's warm scrim; the code is ink (a digit is not a success), the error is the
+  // danger's readable ink, the mark sits on the emerald block tint.
   ThemeConfigProvider get _c => context.colors;
-  Color get _bgColor => _c.onHero;
-  Color get _accentGold => _c.primary;
-  Color get _dotFilled => _c.primary;
-  Color get _dotEmpty => _c.divider;
-  Color get _errorRed => _c.danger;
-  Color get _textPrimary => _c.textDark;
+  Color get _dotFilled => _c.textDark;
+  Color get _dotEmpty => Color.lerp(_c.divider, _c.textDark, 0.3)!;
+  Color get _errorRed => appInk(context, _c.danger);
   Color get _textSecondary => _c.textMedium;
 
   @override
@@ -215,7 +214,7 @@ class _PasscodeSheetState extends State<PasscodeSheet>
               children: [
                 const SizedBox(height: AppSpace.sm),
                 _buildHeader(),
-                const SizedBox(height: 28),
+                const SizedBox(height: AppSpace.lg),
                 // PIN dots and keypad stay left-to-right in RTL locales.
                 Directionality(
                   textDirection: TextDirection.ltr,
@@ -223,12 +222,12 @@ class _PasscodeSheetState extends State<PasscodeSheet>
                     children: [
                       _buildDots(),
                       _buildStatus(),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpace.sm),
                       _buildKeypad(),
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.lg),
               ],
             ),
           ),
@@ -237,54 +236,36 @@ class _PasscodeSheetState extends State<PasscodeSheet>
     );
   }
 
-  Widget _buildHeader() => Padding(
-    padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-    child: Column(
-      children: [
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: AppGradients.blend(context, color: _accentGold),
-            boxShadow: [
-              BoxShadow(
-                color: _accentGold.withValues(alpha: 0.35),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
-            ],
+  Widget _buildHeader() {
+    final tone = AppBlockColors.of(context, AppBlockTone.emerald);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.md, AppSpace.lg, 0),
+      child: Column(
+        children: [
+          Container(
+            width: AppTouch.primary,
+            height: AppTouch.primary,
+            decoration: BoxDecoration(
+              color: tone.surface,
+              shape: BoxShape.circle,
+              border: tone.border == null ? null : Border.all(color: tone.border!, width: AppBorder.hairline),
+            ),
+            child: Icon(widget.icon, color: tone.accentInk(_c.primary), size: AppIconSize.lg),
           ),
-          child: Icon(widget.icon, color: _bgColor, size: 28),
-        ),
-        const SizedBox(height: 18),
-        Text(
-          widget.title,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: _textPrimary,
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.3,
-            fontFamily: 'Georgia',
+          const SizedBox(height: AppSpace.md),
+          Semantics(
+            header: true,
+            child: Text(widget.title, textAlign: TextAlign.center, style: AppType.headline(context)),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          widget.hint,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: _textSecondary,
-            fontSize: 14,
-            height: 1.55,
-            letterSpacing: 0.1,
-          ),
-        ),
-      ],
-    ),
-  );
+          const SizedBox(height: AppSpace.xs),
+          Text(widget.hint, textAlign: TextAlign.center, style: AppType.body(context).copyWith(height: 1.55)),
+        ],
+      ),
+    );
+  }
 
   Widget _buildDots() {
+    final motion = AppMotion.of(context);
     return AnimatedBuilder(
       animation: _shakeCtrl,
       builder: (context, child) {
@@ -294,26 +275,30 @@ class _PasscodeSheetState extends State<PasscodeSheet>
       },
       child: Wrap(
         alignment: WrapAlignment.center,
-        runSpacing: 8,
+        runSpacing: AppSpace.xs,
         children: List.generate(widget.pinLength, (i) {
           final filled = i < _entered.length;
           final hasError = _error != null;
-          return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 7),
-            width: filled ? 16 : 14,
-            height: filled ? 16 : 14,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: hasError ? _errorRed : (filled ? _dotFilled : _dotEmpty),
-              boxShadow: filled && !hasError
-                  ? [
-                      BoxShadow(
-                        color: _accentGold.withValues(alpha: 0.5),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                      ),
-                    ]
-                  : null,
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs - 1),
+            child: AnimatedScale(
+              scale: filled ? 1.15 : 1,
+              duration: motion.fast,
+              curve: AppEase.out,
+              child: AnimatedContainer(
+                duration: motion.fast,
+                curve: AppEase.out,
+                width: AppSpace.sm + 2,
+                height: AppSpace.sm + 2,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: hasError ? _errorRed : (filled ? _dotFilled : Colors.transparent),
+                  border: Border.all(
+                    color: hasError ? _errorRed : (filled ? _dotFilled : _dotEmpty),
+                    width: AppBorder.strong,
+                  ),
+                ),
+              ),
             ),
           );
         }),
@@ -325,31 +310,26 @@ class _PasscodeSheetState extends State<PasscodeSheet>
   /// after a failed attempt. Fixed height so the keypad never jumps.
   Widget _buildStatus() {
     return SizedBox(
-      height: 44,
+      height: AppSpace.xxl - AppSpace.xxs,
       child: Center(
         child: _checking
             ? SizedBox(
-                width: 18,
-                height: 18,
+                width: AppIconSize.sm + 2,
+                height: AppIconSize.sm + 2,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: _accentGold,
+                  color: appInk(context, _c.primary),
                 ),
               )
             : AnimatedOpacity(
                 opacity: _error == null ? 0 : 1,
-                duration: const Duration(milliseconds: 200),
+                duration: AppMotion.of(context).base,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
                   child: Text(
                     _error ?? '',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: _errorRed,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.2,
-                    ),
+                    style: AppType.label(context).copyWith(color: _errorRed),
                   ),
                 ),
               ),
@@ -366,14 +346,14 @@ class _PasscodeSheetState extends State<PasscodeSheet>
     ];
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xl),
       child: Column(
         children: keys.map((row) {
           return Row(
             children: row.map((key) {
               return Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(5),
+                  padding: const EdgeInsets.all(AppSpace.xxs + 1),
                   child: key == 'x'
                       ? _buildCloseKey()
                       : key == 'del'
@@ -390,38 +370,33 @@ class _PasscodeSheetState extends State<PasscodeSheet>
 
   Widget _buildDigitKey(String digit) => _KeyButton(
     onTap: () => _onKey(digit),
-    child: Text(
-      digit,
-      style: TextStyle(
-        color: _textPrimary,
-        fontSize: 24,
-        fontWeight: FontWeight.w300,
-        letterSpacing: 1,
-      ),
-    ),
+    child: Text(digit, style: AppType.figureLarge(context).copyWith(fontWeight: FontWeight.w500, height: 1)),
   );
 
   Widget _buildDeleteKey() => _KeyButton(
     onTap: _onDelete,
     semanticLabel: AppConfig.lang == 'ar' ? 'حذف' : 'Delete',
-    child: Icon(Icons.backspace_outlined, color: _textSecondary, size: 22),
+    quiet: true,
+    child: Icon(Icons.backspace_outlined, color: _textSecondary, size: AppIconSize.lg),
   );
 
   Widget _buildCloseKey() => _KeyButton(
     onTap: () => Navigator.of(context).pop(false),
     semanticLabel: AppConfig.lang == 'ar' ? 'إغلاق' : 'Close',
-    background: context.colors.danger,
-    child: Icon(Icons.clear, color: context.colors.onHero, size: 22),
+    quiet: true,
+    child: Icon(Icons.close_rounded, color: _textSecondary, size: AppIconSize.lg),
   );
 }
 
 // ── reusable key button ───────────────────────────────────────────────────────
 class _KeyButton extends StatefulWidget {
-  const _KeyButton({required this.child, required this.onTap, this.background, this.semanticLabel});
+  const _KeyButton({required this.child, required this.onTap, this.quiet = false, this.semanticLabel});
 
   final Widget child;
   final VoidCallback onTap;
-  final Color? background;
+
+  /// An action key (close, delete): no plate, only the glyph, so the ten digits read as the keypad.
+  final bool quiet;
 
   /// Read by screen readers on icon-only keys (delete, close).
   final String? semanticLabel;
@@ -436,7 +411,7 @@ class _KeyButtonState extends State<_KeyButton>
     vsync: this,
     duration: const Duration(milliseconds: 90),
     reverseDuration: const Duration(milliseconds: 160),
-    lowerBound: 0.88,
+    lowerBound: 0.96,
     upperBound: 1.0,
     value: 1.0,
   );
@@ -464,20 +439,16 @@ class _KeyButtonState extends State<_KeyButton>
       scale: _ctrl,
       child: GestureDetector(
         onTap: _press,
+        behavior: HitTestBehavior.opaque,
         child: Container(
-          height: 64,
-          decoration: BoxDecoration(
-            color: widget.background ?? c.inputBg,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: c.divider, width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: c.heroShade.withValues(alpha: 0.10),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
+          height: AppTouch.primary + AppSpace.xs,
+          decoration: widget.quiet
+              ? null
+              : BoxDecoration(
+                  color: c.cardBg,
+                  borderRadius: AppRadius.cardAll,
+                  border: Border.all(color: c.divider, width: AppBorder.hairline),
+                ),
           alignment: Alignment.center,
           child: widget.child,
         ),

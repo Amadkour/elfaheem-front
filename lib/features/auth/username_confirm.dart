@@ -31,6 +31,9 @@ import '../../design/app_kit.dart' show showAppSheet;
 import '../../design/app_notice.dart';
 import '../../utils/widget/view_as_state.dart';
 import 'auth_provider.dart';
+import '../../design/app_blocks.dart';
+import '../../design/app_charts.dart' show appInk;
+import '../../design/app_tokens.dart';
 import 'auth_widgets.dart';
 import 'username.dart';
 import 'username_field.dart';
@@ -141,34 +144,30 @@ class UsernameConfirmContent extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                gradient: authHeroGradient(c),
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(color: c.primary.withValues(alpha: c.isDark ? 0.25 : 0.22), blurRadius: 18, offset: const Offset(0, 8)),
-                ],
-              ),
-              child: Icon(Icons.alternate_email_rounded, color: c.onHero, size: 28),
-            ),
+            const AuthMark(icon: Icons.alternate_email_rounded, size: AppTouch.min),
             const Spacer(),
             IconButton(
               tooltip: 'username_confirm_later'.tr,
               onPressed: idle ? onLater : null,
-              style: IconButton.styleFrom(backgroundColor: c.inputBg),
-              icon: Icon(Icons.close_rounded, color: c.textMedium, size: 20),
+              style: IconButton.styleFrom(
+                backgroundColor: c.cardBg,
+                side: BorderSide(color: c.divider, width: AppBorder.hairline),
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.chipAll),
+              ),
+              icon: Icon(Icons.close_rounded, color: c.textDark, size: AppIconSize.md),
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        Text('username_confirm_title'.tr, style: authText(21, w: FontWeight.w800, c: c.textDark, h: 1.3)),
-        const SizedBox(height: 6),
-        Text('username_confirm_note'.tr, style: authText(14, c: c.secondText, h: 1.55)),
-        const SizedBox(height: 18),
+        const SizedBox(height: AppSpace.sm),
+        Semantics(
+          header: true,
+          child: Text('username_confirm_title'.tr, style: AppType.pageTitle(context)),
+        ),
+        const SizedBox(height: AppSpace.sm),
+        Text('username_confirm_note'.tr, style: AppType.body(context).copyWith(height: 1.55)),
+        const SizedBox(height: AppSpace.md),
         _HandleCard(username: username),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpace.md),
         AuthButton(
           label: 'username_confirm_keep'.tr,
           icon: Icons.check_rounded,
@@ -177,28 +176,31 @@ class UsernameConfirmContent extends StatelessWidget {
           enabled: idle,
           onPressed: onKeep,
         ),
-        const SizedBox(height: 12),
-        Wrap(
-          alignment: WrapAlignment.center,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            AuthTextAction(
-              icon: Icons.edit_rounded,
-              label: 'username_confirm_change'.tr,
-              onTap: idle ? onChange : null,
-            ),
-            _RemoveAction(busy: busy == UsernameConfirmAction.remove, onTap: idle ? onRemove : null),
-          ],
+        const SizedBox(height: AppSpace.sm),
+        // the two other choices side by side, equal weight (each label may take two lines)
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: AuthTextAction(
+                  icon: Icons.edit_rounded,
+                  label: 'username_confirm_change'.tr,
+                  onTap: idle ? onChange : null,
+                ),
+              ),
+              const SizedBox(width: AppSpace.sm),
+              Expanded(child: _RemoveAction(busy: busy == UsernameConfirmAction.remove, onTap: idle ? onRemove : null)),
+            ],
+          ),
         ),
-        if (error != null) ...[const SizedBox(height: 14), _ErrorLine(error!)],
-        const SizedBox(height: 8),
+        if (error != null) ...[const SizedBox(height: AppSpace.sm), _ErrorLine(error!)],
+        const SizedBox(height: AppSpace.xs),
         Center(
           child: TextButton(
             onPressed: idle ? onLater : null,
             style: TextButton.styleFrom(minimumSize: const Size(48, 44), foregroundColor: c.textMedium),
-            child: Text('username_confirm_later'.tr, style: authText(13.5, w: FontWeight.w600, c: c.textMedium)),
+            child: Text('username_confirm_later'.tr, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
           ),
         ),
       ],
@@ -215,19 +217,19 @@ class UsernameConfirmContent extends StatelessWidget {
         Row(
           children: [
             IgnorePointer(ignoring: !idle, child: AppBackButton(onPressed: onBack)),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Text(
                 'username_confirm_change_title'.tr,
-                style: authText(19, w: FontWeight.w800, c: c.textDark, h: 1.3),
+                style: AppType.pageTitle(context).copyWith(color: c.textDark),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: AppSpace.md),
         ?changeField,
-        if (error != null) ...[const SizedBox(height: 12), _ErrorLine(error!)],
-        const SizedBox(height: 20),
+        if (error != null) ...[const SizedBox(height: AppSpace.sm), _ErrorLine(error!)],
+        const SizedBox(height: AppSpace.md),
         AuthButton(
           label: 'username_confirm_save'.tr,
           icon: Icons.check_rounded,
@@ -248,27 +250,28 @@ class _HandleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final ink = c.isDark ? c.primaryLight : c.primary;
+    // the handle is the sheet's one memorable line: ink on the peach block tint (no brand wash)
+    final tone = AppBlockColors.of(context, AppBlockTone.peach);
+    final ink = tone.ink;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
       decoration: BoxDecoration(
-        color: c.primary.withValues(alpha: c.isDark ? 0.14 : 0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: c.primary.withValues(alpha: c.isDark ? 0.36 : 0.20), width: 1.2),
+        color: tone.surface,
+        borderRadius: AppRadius.cardAll,
+        border: tone.border == null ? null : Border.all(color: tone.border!, width: AppBorder.hairline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('username_confirm_current'.tr, style: authText(12.5, w: FontWeight.w600, c: c.textMedium)),
-          const SizedBox(height: 4),
+          Text('username_confirm_current'.tr, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: tone.muted)),
+          const SizedBox(height: AppSpace.xxs),
           // a handle always reads left to right, also inside Arabic
           Text(
             '@$username',
             textDirection: TextDirection.ltr,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: authText(20, w: FontWeight.w800, c: ink, h: 1.3),
+            style: AppType.section(context).copyWith(color: ink),
           ),
         ],
       ),
@@ -285,30 +288,36 @@ class _RemoveAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    // the kit's danger outline: paper, a danger hairline, the danger's readable ink (a twin of AuthTextAction)
+    final ink = appInk(context, c.danger);
     return Material(
-      color: c.danger.withValues(alpha: c.isDark ? 0.16 : 0.07),
-      shape: const StadiumBorder(),
+      color: c.cardBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.controlAll,
+        side: BorderSide(color: c.danger.withValues(alpha: 0.45), width: AppBorder.hairline),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        customBorder: const StadiumBorder(),
         onTap: onTap,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 44),
+          constraints: const BoxConstraints(minHeight: AppTouch.min),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (busy)
-                  SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: c.danger))
+                  SizedBox(width: AppIconSize.sm, height: AppIconSize.sm, child: CircularProgressIndicator(strokeWidth: 2, color: ink))
                 else
-                  Icon(Icons.person_remove_outlined, size: 18, color: c.danger),
-                const SizedBox(width: 8),
+                  Icon(Icons.person_remove_outlined, size: AppIconSize.sm, color: ink),
+                const SizedBox(width: AppSpace.xs),
                 Flexible(
                   child: Text(
                     'username_confirm_remove'.tr,
                     maxLines: 2,
                     textAlign: TextAlign.center,
-                    style: authText(13.5, w: FontWeight.w700, c: c.danger, h: 1.25),
+                    style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: ink, height: 1.25),
                   ),
                 ),
               ],
@@ -337,8 +346,8 @@ class _ErrorLine extends StatelessWidget {
             padding: const EdgeInsets.only(top: 1),
             child: Icon(Icons.error_outline_rounded, size: 16, color: c.danger),
           ),
-          const SizedBox(width: 6),
-          Expanded(child: Text(text, style: authText(13, w: FontWeight.w600, c: c.danger, h: 1.45))),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: Text(text, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.danger, height: 1.45))),
         ],
       ),
     );

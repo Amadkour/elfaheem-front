@@ -20,7 +20,6 @@ import 'package:flutter/material.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
-import '../../../core/display/app_fonts.dart';
 import '../../../core/get_app/get_app_service.dart';
 import '../../../core/release/app_downloads.dart' show AppDownloadsService;
 import '../../../design/app_notice.dart';
@@ -247,14 +246,14 @@ class GetAppBannerView extends StatelessWidget {
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppType.row(context).copyWith(fontFamily: AppFonts.family, fontSize: 13.5),
+                    style: AppType.row(context),
                   ),
                   if (meta.isNotEmpty)
                     Text(
                       meta,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppType.meta(context).copyWith(fontFamily: AppFonts.family, fontSize: 12),
+                      style: AppType.meta(context),
                     ),
                 ],
               );
@@ -311,7 +310,7 @@ class GetAppBannerView extends StatelessWidget {
                                 actionLabel,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, fontSize: 13),
+                                style: AppType.label(context).copyWith(fontWeight: FontWeight.w600),
                               ),
                             ),
                           ),
@@ -328,7 +327,7 @@ class GetAppBannerView extends StatelessWidget {
                                 detailsLabel!,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, fontSize: 13),
+                                style: AppType.label(context).copyWith(fontWeight: FontWeight.w600),
                               ),
                             ),
                           ],

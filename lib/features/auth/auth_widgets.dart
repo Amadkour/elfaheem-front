@@ -1,20 +1,18 @@
 // auth_widgets.dart
 // ─────────────────────────────────────────────────────────────────────────────
-// The auth design language (D-073): every sign-in screen is built from these
-// pieces, so one change here restyles login, register, forgot password, the
-// code screens and the teacher's profile step together. Colours come from the
-// live theme (`context.colors`), text from AppFonts, motion honours
-// MediaQuery.disableAnimations.
+// The auth design language (D-073, Warm Editorial D-610 – D-629): every sign-in screen is built from these pieces,
+// so one change here restyles login, register, forgot password, the code screens and the teacher's profile step
+// together. Colours come from the live theme (`context.colors`), headings are the editorial roles (`AppType`), the
+// wells and the field labels are the kit's (`appFieldDecoration`, system.md §3a), motion parks under Reduce motion.
 //
-//   authText / authTracking         the type scale (letter spacing for Latin only)
-//   authHeroGradient                the hero / brand panel: primary 70 % · accent 30 % (D-088)
-//   AuthHeroBackdrop · AuthLogoTile the hero surface and the app-icon style logo
-//   AuthSidebar                     the brand panel of the wide (web / tablet) layout
-//   AuthCard · AuthEntrance         the form surface and its entrance
-//   authInputDecoration             filled, rounded field with an animated focus ring
-//   IconTextField · IconPasswordField · AuthEmailField   the fields (label above)
-//   AuthButton                      gradient primary button: press, loading, haptic
-//   AuthTextAction · LinkRow        secondary actions
+//   authText / authTracking         the older auth type helper (the person's font; kept for callers outside)
+//   AuthLogoTile · AuthBrandName    the app-icon style logo on paper and the editorial wordmark
+//   AuthSidebar                     the brand panel of the wide layout: ONE peach block on the canvas
+//   AuthCard · AuthEntrance         the paper form surface and the page's one orchestrated entrance
+//   authInputDecoration             = the kit's well (appFieldDecoration)
+//   IconTextField · IconPasswordField · AuthEmailField · AuthDateField   the fields (label above)
+//   AuthButton                      the solid emerald primary: 56 high, press depth, busy, haptic
+//   AuthTextAction · LinkRow        secondary actions (paper chips, an inline link)
 //   AuthOrDivider                   "or" between the form and Google
 //   AuthPasswordStrength · AuthRequirement   password meter + checklist
 //   AuthOtpBox                      one code box (focus / filled / error)
@@ -23,15 +21,19 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'dart:ui' show lerpDouble;
-import 'package:flutter_education_app/design/app_gradients.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_identity.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_blocks.dart';
+import 'package:flutter_education_app/design/app_buttons.dart' show appFocusRing, appKeyboardFocus;
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
-import 'package:flutter_education_app/design/app_inputs.dart' show validateEmail, kEmailRegex;
+import 'package:flutter_education_app/design/app_inputs.dart'
+    show validateEmail, kEmailRegex, appFieldDecoration, appFieldTextStyle, appFieldFocusInk;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppEase, AppPressScale;
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
@@ -50,8 +52,9 @@ Duration authDuration(BuildContext context, int ms) =>
 /// Letter spacing for Latin text only (spacing breaks Arabic joining).
 double? authTracking(double v) => AppConfig.lang == 'ar' ? null : v;
 
-/// The auth type scale: the current language's font, explicit size / weight / line height.
-/// The other language's font is the fallback, so an Arabic word in English UI (and the reverse) still draws.
+/// The older auth type helper: the current language's font, explicit size / weight / line height. The other
+/// language's font is the fallback, so an Arabic word in English UI (and the reverse) still draws. New auth UI uses
+/// the `AppType` roles; this stays for the fields outside the module that still call it.
 TextStyle authText(double size, {FontWeight w = FontWeight.w500, Color? c, double? h, double? ls}) => TextStyle(
       fontFamily: AppFonts.family,
       fontFamilyFallback: AppFonts.fallback,
@@ -62,165 +65,9 @@ TextStyle authText(double size, {FontWeight w = FontWeight.w500, Color? c, doubl
       letterSpacing: ls,
     );
 
-/// WCAG contrast ratio of two opaque colours (1 … 21).
-double authContrast(Color a, Color b) {
-  final la = a.computeLuminance(), lb = b.computeLuminance();
-  final hi = la > lb ? la : lb, lo = la > lb ? lb : la;
-  return (hi + 0.05) / (lo + 0.05);
-}
-
-/// One stop of a hero gradient, deepened until even the MUTED on-hero ink (subtitles, the tagline: [ink] at 72 %)
-/// reads on it at 4.5:1 with a little margin for the glows drawn over it — and at a stricter 6.4:1 in dark mode, the
-/// step deeper a bright brand block needs there. The deepening keeps the stop's own hue and only lowers its
-/// lightness (saturation capped a little, so a vivid light tone does not turn garish), so a light accent becomes
-/// its own deep tone — a cream gold turns bronze — instead of greying toward the shade (D-088).
-Color authHeroStop(Color stop, Color ink, Color shade, {required bool dark}) {
-  // dark mode: the step deeper is a stricter target on the same hue path (a blend toward the shade greyed a light
-  // accent into taupe); [shade] stays for callers and older themes' sake
-  final target = dark ? 6.4 : 4.9;
-  return authDeepen(stop, (bg) => authContrast(Color.alphaBlend(ink.withValues(alpha: 0.72), bg), bg) >= target);
-}
-
-/// [color] with its lightness lowered (hue kept, saturation capped at 0.62) until [ok] holds; unchanged when it
-/// already does.
-Color authDeepen(Color color, bool Function(Color) ok) {
-  if (ok(color)) return color;
-  final hsl = HSLColor.fromColor(color);
-  final tone = hsl.withSaturation(hsl.saturation.clamp(0.0, 0.62));
-  var c = color;
-  var l = hsl.lightness;
-  for (var i = 0; i < 80 && !ok(c); i++) {
-    l = (l - 0.012).clamp(0.0, 1.0);
-    c = tone.withLightness(l).toColor();
-  }
-  return c;
-}
-
-/// The accent's share of the sign-in hero: the surface is a blend of the theme's primary (70 %) and accent (30 %),
-/// the two colours the super admin picks on the Theme page ("Primary", "Accent 1") — D-088.
-const authHeroAccentShare = 0.30;
-
-/// Where the run into the accent starts, so the gradient's mean colour is exactly [authHeroAccentShare] accent:
-/// pure primary over the first part of the surface, then a straight run into the accent whose area is half
-/// primary, half accent → (1 − s) / 2 = 0.30 → s = 0.40.
-const authHeroBlendStart = 1 - 2 * authHeroAccentShare;
-
-/// The raw 70 / 30 brand stops before any contrast guard: primary · primary · accent at 0 · 0.40 · 1 — or, when the
-/// accent is (almost) the primary itself (a monochrome palette), shades of the primary at even stops (null).
-(List<Color>, List<double>?) authBrandStops(ThemeConfigProvider c) {
-  final p = c.primary;
-  final a = c.accent;
-  if (authContrast(p, a) < 1.15) return ([c.heroTint(p, 0.14), p, c.heroEnd(p, 0.34)], null);
-  return ([p, p, a], const [0, authHeroBlendStart, 1]);
-}
-
-/// The brand gradient of the sign-in hero (D-088, amends D-082): the theme's primary over 70 % of the surface and its
-/// accent over 30 % — primary from the [begin] corner (top-start), running into the accent toward [end]
-/// (bottom-end; the short phone hero runs toward the end side, so its visible top keeps the accent). Every stop
-/// passes [authHeroStop]: deeper in dark mode, never too light for the on-hero ink.
-LinearGradient authHeroGradient(
-  ThemeConfigProvider c, {
-  AlignmentGeometry begin = AlignmentDirectional.topStart,
-  AlignmentGeometry end = AlignmentDirectional.bottomEnd,
-}) {
-  final (colors, stops) = authBrandStops(c);
-  return LinearGradient(
-    begin: begin,
-    end: end,
-    stops: stops,
-    colors: [for (final s in colors) authHeroStop(s, c.onHero, c.heroShade, dark: c.isDark)],
-  );
-}
-
-/// The hero surface, in the dashboard hero's language: the brand gradient, a soft top sheen, a brand glow, and the
-/// home hero's signature — one wide ring bleeding off the end edge — with a hairline echo. Fills its box. With a
-/// [radius] (the phone hero) it floats on a soft brand glow like HomeHeroCard.
-class AuthHeroBackdrop extends StatelessWidget {
-  const AuthHeroBackdrop({super.key, this.radius = 0, this.panel = false});
-
-  /// Bottom corner radius (the phone hero is rounded, the brand panel is not).
-  final double radius;
-
-  /// The wide layout's tall brand panel: one more soft glow half-way down, so the long surface keeps its depth.
-  final bool panel;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final r = BorderRadius.vertical(bottom: Radius.circular(radius));
-    final ink = c.onHero;
-    Widget glow(Color color, double size) => Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
-          ),
-        );
-    Widget ring(double size, double width, double alpha) => Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: ink.withValues(alpha: alpha), width: width),
-          ),
-        );
-    final brandGlow = c.heroTint(c.primary, 0.45).withValues(alpha: c.isDark ? 0.16 : 0.24);
-    // the tall panel runs corner to corner; the short phone hero runs toward its end side, so the accent's 30 % is in
-    // the part above the card instead of under it
-    final gradient = panel || radius <= 0
-        ? authHeroGradient(c)
-        : authHeroGradient(c, end: const AlignmentDirectional(1, 0.4));
-    final surface = ClipRRect(
-      borderRadius: r,
-      child: DecoratedBox(
-        decoration: BoxDecoration(gradient: gradient),
-        child: Stack(
-          clipBehavior: Clip.hardEdge,
-          children: [
-            // a soft top sheen: light falling on the surface
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.center,
-                    colors: [ink.withValues(alpha: c.isDark ? 0.03 : 0.05), ink.withValues(alpha: 0)],
-                  ),
-                ),
-              ),
-            ),
-            // the primary's glow sits on the primary side; the accent end keeps its own tone
-            PositionedDirectional(top: -150, start: -130, child: glow(brandGlow, 380)),
-            PositionedDirectional(bottom: -170, end: -140, child: glow(ink.withValues(alpha: 0.04), 360)),
-            if (panel)
-              PositionedDirectional(top: 280, start: -140, child: glow(c.heroTint(c.primary, 0.3).withValues(alpha: c.isDark ? 0.08 : 0.12), 340)),
-            // the home hero's signature ring (HomeHeroCard), scaled to the larger surface, and a hairline echo
-            PositionedDirectional(top: -96, end: -84, child: ring(260, 30, 0.08)),
-            PositionedDirectional(top: -170, end: -160, child: ring(420, 1, 0.10)),
-          ],
-        ),
-      ),
-    );
-    if (radius <= 0) return surface;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: r,
-        boxShadow: [
-          BoxShadow(
-            color: c.primary.withValues(alpha: c.isDark ? 0.22 : 0.28),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: surface,
-    );
-  }
-}
-
-/// The logo as an app icon: the admin's logo (or the bundled mark) on a light rounded tile with a soft shadow.
-/// [hero] gives it the shared `auth-logo` Hero tag, so it flies between the auth pages (one per page).
+/// The logo as an app icon: the admin's logo (or the bundled mark) on a paper tile with a warm hairline — it sits on
+/// the canvas or on a block, so it does not float (D-612). [hero] gives it the shared `auth-logo` Hero tag, so it
+/// flies between the auth pages (one per page).
 class AuthLogoTile extends StatelessWidget {
   const AuthLogoTile({super.key, this.size = 44, this.hero = false});
 
@@ -237,16 +84,14 @@ class AuthLogoTile extends StatelessWidget {
         return Container(
           width: size,
           height: size,
-          padding: EdgeInsets.all(size * 0.14),
+          padding: EdgeInsets.all(size * 0.16),
           decoration: BoxDecoration(
-            color: c.onHero,
-            borderRadius: BorderRadius.circular(size * 0.3),
-            boxShadow: [
-              BoxShadow(color: c.heroShade.withValues(alpha: 0.28), blurRadius: size * 0.4, offset: Offset(0, size * 0.12)),
-            ],
+            color: c.cardBg,
+            borderRadius: size > AppTouch.min ? AppRadius.cardAll : AppRadius.controlAll,
+            border: Border.all(color: c.divider, width: AppBorder.hairline),
           ),
           child: url != null && url.isNotEmpty
-              ? AppNetworkImage(url: url, fit: BoxFit.contain, color: c.onHero)
+              ? AppNetworkImage(url: url, fit: BoxFit.contain, color: c.cardBg)
               : Image.asset('assets/images/logo_mark.png', fit: BoxFit.contain),
         );
       },
@@ -259,7 +104,8 @@ class AuthLogoTile extends StatelessWidget {
   }
 }
 
-/// The app's name + tagline as the admin set them (fallbacks before the first fetch).
+/// The app's name as an editorial wordmark (the boot splash's) + its tagline, as the admin set them (fallbacks
+/// before the first fetch). Ink on the canvas or on a block; [onHero] is kept for older callers.
 class AuthBrandName extends StatelessWidget {
   const AuthBrandName({super.key, this.onHero = true, this.large = false});
 
@@ -281,14 +127,13 @@ class AuthBrandName extends StatelessWidget {
               id.name.isNotEmpty ? id.name : 'NextBrain',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: authText(large ? 20 : 15.5, w: FontWeight.w800, c: onHero ? c.onHero : c.textDark, h: 1.2),
+              style: (large ? AppType.pageTitle(context) : AppType.section(context)).copyWith(color: c.textDark, height: 1.1),
             ),
             Text(
               id.tagline.isNotEmpty ? id.tagline : 'learning_platform'.tr,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              // full on-hero ink: the muted one is under 4.5:1 on the gradient's light end at this size
-              style: authText(large ? 13 : 11.5, w: FontWeight.w500, c: onHero ? c.onHero : c.textLight, h: 1.3, ls: authTracking(0.3)),
+              style: AppType.meta(context),
             ),
           ],
         );
@@ -298,6 +143,10 @@ class AuthBrandName extends StatelessWidget {
 }
 
 // ── 1. Brand panel (wide layout) ──────────────────────────────────────────────
+
+/// The brand panel of the wide layout: ONE peach block inset on the warm canvas (D-613) — the logo and wordmark, the
+/// editorial headline as the page's memorable line, the mission, three things the platform does, and the admin's
+/// "About us" figures counting up once. No gradient, no glow: colour lives in the block.
 class AuthSidebar extends StatelessWidget {
   const AuthSidebar({super.key, this.width});
 
@@ -314,75 +163,75 @@ class AuthSidebar extends StatelessWidget {
   }
 
   Widget _buildPanel(BuildContext context, AppIdentity id) {
-    final c = context.colors;
     final w = width ?? (context.width / 3 > 400 ? 400 : context.width / 3);
-    final pad = w < 320 ? 16.0 : 40.0;
+    final narrow = w < 320;
+    final inner = narrow ? AppSpace.md : AppSpace.xl;
     return SizedBox(
       width: w,
-      child: Stack(
-        children: [
-          const Positioned.fill(child: AuthHeroBackdrop(panel: true)),
-          SafeArea(
-            child: CustomScrollView(
-              slivers: [
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: pad, vertical: 40),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, 0, AppSpace.md),
+          child: AppBlock(
+            tone: AppBlockTone.peach,
+            padding: EdgeInsets.all(inner),
+            child: Builder(builder: (context) {
+              final ink = AppBlock.colorsOf(context);
+              return CustomScrollView(
+                slivers: [
+                  SliverFillRemaining(
+                    hasScrollBody: false,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            const AuthLogoTile(size: 48, hero: true),
-                            const SizedBox(width: 14),
-                            const Expanded(child: AuthBrandName(large: true)),
+                            const AuthLogoTile(size: AppTouch.min, hero: true),
+                            // a very narrow panel (the password page's third of a phone) keeps the logo only
+                            if (!narrow) ...[
+                              const SizedBox(width: AppSpace.sm),
+                              const Expanded(child: AuthBrandName(large: true)),
+                            ],
                           ],
                         ),
                         const Spacer(),
-                        const SizedBox(height: 32),
-                        Container(
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: [c.onHero, c.heroTint(c.primary, 0.5)]),
-                            borderRadius: BorderRadius.circular(4),
+                        const SizedBox(height: AppSpace.xxl),
+                        Semantics(
+                          header: true,
+                          child: Text(
+                            'unlock_potential'.tr,
+                            style: AppType.display(context).copyWith(color: ink.ink),
                           ),
                         ),
-                        const SizedBox(height: 20),
-                        Text(
-                          'unlock_potential'.tr,
-                          style: authText(36, w: FontWeight.w800, c: c.onHero, h: 1.15, ls: authTracking(-0.6)),
-                        ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpace.md),
                         Text(
                           id.mission.isNotEmpty ? id.mission : 'join_students_hint'.tr,
                           maxLines: 4,
                           overflow: TextOverflow.ellipsis,
-                          style: authText(15, c: c.onHeroMuted, h: 1.65),
+                          style: AppType.body(context).copyWith(color: ink.muted, height: 1.6),
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: AppSpace.xl),
                         _SidebarFeature(icon: Icons.live_tv_rounded, text: 'feature_live_sessions'.tr),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpace.sm),
                         _SidebarFeature(icon: Icons.groups_rounded, text: 'feature_expert_teachers'.tr),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpace.sm),
                         _SidebarFeature(icon: Icons.insights_rounded, text: 'feature_assessments'.tr),
                         const Spacer(),
-                        const SizedBox(height: 32),
-                        // Statistics: the stats banner of the admin's "About us" page.
-                        // (Falls back to the old fixed badges until the admin adds some.)
+                        const SizedBox(height: AppSpace.xl),
+                        // the stats banner of the admin's "About us" page (the fixed badges until the admin adds some)
+                        Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: ink.border ?? ink.faint.withValues(alpha: 0.25)),
+                        const SizedBox(height: AppSpace.lg),
                         if (id.stats.isNotEmpty)
                           Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
+                            spacing: AppSpace.xl,
+                            runSpacing: AppSpace.md,
                             children: [
                               for (final st in id.stats.take(4)) _SidebarStat(value: st.value, label: st.label),
                             ],
                           )
                         else
                           Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
+                            spacing: AppSpace.lg,
+                            runSpacing: AppSpace.xs,
                             children: [
                               _TrustBadge(label: 'badge_students'.tr),
                               _TrustBadge(label: 'badge_teachers'.tr),
@@ -392,11 +241,11 @@ class AuthSidebar extends StatelessWidget {
                       ],
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              );
+            }),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -414,11 +263,12 @@ class Circle extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: context.colors.onHero.withValues(alpha: opacity),
+          color: context.colors.textDark.withValues(alpha: opacity),
         ),
       );
 }
 
+/// One thing the platform does: a paper well with the icon in the block's ink, the line beside it.
 class _SidebarFeature extends StatelessWidget {
   final IconData icon;
   final String text;
@@ -428,21 +278,18 @@ class _SidebarFeature extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final ink = AppBlock.colorsOf(context);
     return Row(
       children: [
         Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: c.heroGlass,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: c.heroGlassBorder),
-          ),
-          child: Icon(icon, size: 18, color: c.onHero),
+          width: AppTouch.min - AppSpace.xs,
+          height: AppTouch.min - AppSpace.xs,
+          decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.chipAll),
+          child: Icon(icon, size: AppIconSize.md, color: ink.ink),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
-          child: Text(text, style: authText(14.5, w: FontWeight.w600, c: c.onHero.withValues(alpha: 0.88), h: 1.4)),
+          child: Text(text, style: AppType.row(context).copyWith(color: ink.ink, height: 1.4)),
         ),
       ],
     );
@@ -475,6 +322,8 @@ String loginStatValue(String raw) {
   });
 }
 
+/// One figure of the admin's "About us" banner: the number counts up once in the block's ink (tabular, left to
+/// right), its label under it in the muted ink. No box around it: the block is the surface.
 class _SidebarStat extends StatelessWidget {
   final String value;
   final String label;
@@ -483,33 +332,25 @@ class _SidebarStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      constraints: const BoxConstraints(minWidth: 96, maxWidth: 160),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: c.heroGlass,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: c.heroGlassBorder),
-      ),
+    final ink = AppBlock.colorsOf(context);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 160),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          AppCountUp(
             loginStatValue(value),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            memoryKey: 'auth.stat.$label',
             textDirection: TextDirection.ltr,
-            style: authText(22, w: FontWeight.w800, c: c.onHero)
-                .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+            style: AppType.figureLarge(context).copyWith(color: ink.ink),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: AppSpace.xxs),
           Text(
             label,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: authText(11.5, c: c.onHeroMuted, h: 1.3),
+            style: AppType.meta(context).copyWith(color: ink.muted, height: 1.3),
           ),
         ],
       ),
@@ -517,6 +358,7 @@ class _SidebarStat extends StatelessWidget {
   }
 }
 
+/// A fixed promise (before the admin adds figures): a check in the success ink and the line in the block's ink.
 class _TrustBadge extends StatelessWidget {
   final String label;
 
@@ -525,21 +367,15 @@ class _TrustBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: c.heroGlass,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: c.heroGlassBorder),
-      ),
+    final ink = AppBlock.colorsOf(context);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.md),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.check_circle_rounded, size: 14, color: c.onHero),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(label, style: authText(12, w: FontWeight.w700, c: c.onHero)),
-          ),
+          Icon(Icons.check_rounded, size: AppIconSize.sm, color: ink.accentInk(c.success)),
+          const SizedBox(width: AppSpace.xs),
+          Flexible(child: Text(label, style: AppType.label(context).copyWith(color: ink.ink))),
         ],
       ),
     );
@@ -548,9 +384,10 @@ class _TrustBadge extends StatelessWidget {
 
 // ── 2. Surfaces ───────────────────────────────────────────────────────────────
 
-/// The form surface: the card colour, a large radius, a hairline border and a soft, wide shadow.
+/// The form surface of the wide layout: paper on the canvas with a warm hairline, radius `card`, no resting shadow
+/// (D-612: depth is tone first; dark mode keeps the hairline).
 class AuthCard extends StatelessWidget {
-  const AuthCard({super.key, required this.child, this.padding = const EdgeInsets.fromLTRB(20, 24, 20, 24)});
+  const AuthCard({super.key, required this.child, this.padding = const EdgeInsets.all(AppSpace.lg)});
 
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -562,46 +399,41 @@ class AuthCard extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: c.divider.withValues(alpha: c.isDark ? 0.7 : 0.55)),
-        boxShadow: [
-          BoxShadow(
-            color: c.heroShade.withValues(alpha: c.isDark ? 0.40 : 0.10),
-            blurRadius: 40,
-            spreadRadius: -8,
-            offset: const Offset(0, 18),
-          ),
-          BoxShadow(
-            color: c.heroShade.withValues(alpha: c.isDark ? 0.20 : 0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: child,
     );
   }
 }
 
-/// Fades the child in and lifts it 16 px on first build (nothing under reduced motion).
+/// The page's one orchestrated entrance (choreograph): the lead fades in and rises [rise] px on its first build;
+/// a supporting part passes a [delayFactor] (0..1 = up to 120 ms later) and a shorter rise, so the two read as one
+/// wave, never a queue. Nothing moves under Reduce motion, and the form is usable from its first frame.
 class AuthEntrance extends StatelessWidget {
-  const AuthEntrance({super.key, required this.child, this.delayFactor = 0});
+  const AuthEntrance({super.key, required this.child, this.delayFactor = 0, this.rise = 12});
 
   final Widget child;
 
-  /// 0..1: a later item starts a little later (staggered lists).
+  /// 0..1: a later part starts a little later.
   final double delayFactor;
+
+  /// How far the part rises into place.
+  final double rise;
 
   @override
   Widget build(BuildContext context) {
     if (authReduceMotion(context)) return child;
+    const run = 420;
+    final delay = (delayFactor.clamp(0.0, 1.0) * 120).round();
+    final total = run + delay;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: 460 + (delayFactor * 200).round()),
-      curve: Curves.easeOutCubic,
+      duration: Duration(milliseconds: total),
+      curve: Interval(delay / total, 1, curve: AppEase.out),
       builder: (context, t, child) => Opacity(
         opacity: t,
-        child: Transform.translate(offset: Offset(0, 16 * (1 - t)), child: child),
+        child: Transform.translate(offset: Offset(0, rise * (1 - t)), child: child),
       ),
       child: child,
     );
@@ -693,8 +525,9 @@ class AuthFieldBorder extends OutlineInputBorder {
   int get hashCode => Object.hash(borderSide, borderRadius, gapPadding, ring, ringWidth);
 }
 
-/// The auth field look: tinted fill that turns to the card colour on focus, hairline border, a primary stroke
-/// + halo on focus, a danger stroke on error; the prefix icon follows the state (muted → primary → danger).
+/// The auth field look = the kit's well (system.md §3a): the warm input fill, radius 14, a hairline at rest, the
+/// 2 px ring on focus, the danger hairline on an error; the prefix icon follows the state (muted → focus → danger).
+/// The label is drawn ABOVE the well by the field ([SectionLabel]).
 InputDecoration authInputDecoration(
   BuildContext context, {
   String? hint,
@@ -702,48 +535,13 @@ InputDecoration authInputDecoration(
   Widget? suffix,
   bool dense = false,
 }) {
-  final c = context.colors;
-  final r = BorderRadius.circular(16);
-  AuthFieldBorder b(Color color, {double w = 1.2, Color? ring}) => AuthFieldBorder(
-        borderRadius: r,
-        borderSide: BorderSide(color: color, width: w),
-        ring: ring ?? color.withValues(alpha: 0),
-        ringWidth: ring == null ? 0 : 4,
-      );
-  Color stateInk(Set<WidgetState> s, Color rest) {
-    if (s.contains(WidgetState.error)) return c.danger;
-    if (s.contains(WidgetState.focused)) return c.primary;
-    return rest;
-  }
-
-  return InputDecoration(
-    prefixIcon: icon == null ? null : Icon(icon, size: 20),
-    prefixIconColor: WidgetStateColor.resolveWith((s) => stateInk(s, c.textLight)),
-    prefixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-    suffixIcon: suffix,
-    suffixIconColor: WidgetStateColor.resolveWith((s) => s.contains(WidgetState.error) ? c.danger : c.textLight),
-    hintText: hint,
-    hintStyle: authText(15, c: c.textLight.withValues(alpha: 0.85)),
-    filled: true,
-    fillColor: WidgetStateColor.resolveWith(
-      (s) => s.contains(WidgetState.focused) && !c.isDark ? c.cardBg : c.inputBg,
-    ),
-    hoverColor: c.primary.withValues(alpha: 0.03),
-    isDense: dense,
-    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: dense ? 12 : 16),
-    border: b(c.divider),
-    enabledBorder: b(c.divider.withValues(alpha: c.isDark ? 0.9 : 0.75)),
-    disabledBorder: b(c.divider.withValues(alpha: 0.4)),
-    focusedBorder: b(c.primary, w: 1.6, ring: c.primary.withValues(alpha: c.isDark ? 0.30 : 0.14)),
-    errorBorder: b(c.danger.withValues(alpha: 0.7)),
-    focusedErrorBorder: b(c.danger, w: 1.6, ring: c.danger.withValues(alpha: c.isDark ? 0.26 : 0.12)),
-    errorStyle: authText(12, w: FontWeight.w600, c: c.danger, h: 1.35),
-    errorMaxLines: 3,
-  );
+  final base = appFieldDecoration(context, hint: hint, icon: icon, suffix: suffix, dense: dense);
+  // a validator's message can be long (an e-mail rule with an example): three lines before it ellipsizes
+  return base.copyWith(errorMaxLines: 3);
 }
 
-/// The style of what the person types.
-TextStyle authFieldText(BuildContext context) => authText(15.5, w: FontWeight.w500, c: context.colors.textDark, h: 1.3);
+/// The style of what the person types (the kit's field text).
+TextStyle authFieldText(BuildContext context) => appFieldTextStyle(context);
 
 class IconTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -1022,9 +820,11 @@ class AuthDateField extends StatelessWidget {
 
 // ── 4. Buttons and links ──────────────────────────────────────────────────────
 
-/// The primary action: brand gradient, 54 dp, a soft coloured shadow, a gentle press, a spinner while
-/// [loading], a light haptic. It is a FilledButton underneath, so the keyboard support (Enter on the last field)
-/// and screen readers treat it as the form's button.
+/// The primary action (system.md §4): the SOLID emerald, 56 high (the phone's hero action), radius 14, the label at
+/// 15 · 600 in the on-primary ink, no shadow and no gloss — a button does not float. A press sinks it to 0.97, the
+/// keyboard's focus draws the kit's 2 px ring outside it, [loading] swaps the label for a spinner (taps ignored),
+/// and a disabled button is a flat neutral well. It is a FilledButton underneath, so the keyboard support (Enter on
+/// the last field) and screen readers treat it as the form's button.
 class AuthButton extends StatefulWidget {
   const AuthButton({
     super.key,
@@ -1044,7 +844,7 @@ class AuthButton extends StatefulWidget {
   final bool enabled;
   final bool iconBefore;
 
-  /// null = the brand gradient; a colour paints the button in that colour instead.
+  /// null = the primary; a (deep) colour paints the button in that colour instead.
   final Color? tone;
 
   @override
@@ -1053,7 +853,7 @@ class AuthButton extends StatefulWidget {
 
 class _AuthButtonState extends State<AuthButton> {
   final _states = WidgetStatesController();
-  bool _pressed = false;
+  bool _focused = false;
 
   @override
   void initState() {
@@ -1062,8 +862,8 @@ class _AuthButtonState extends State<AuthButton> {
   }
 
   void _onStates() {
-    final p = _states.value.contains(WidgetState.pressed);
-    if (p != _pressed && mounted) setState(() => _pressed = p);
+    final f = _states.value.contains(WidgetState.focused);
+    if (f != _focused && mounted) setState(() => _focused = f);
   }
 
   @override
@@ -1079,54 +879,41 @@ class _AuthButtonState extends State<AuthButton> {
     final active = widget.enabled && !widget.loading && widget.onPressed != null;
     // a busy button keeps its colour (it is working, not disabled)
     final lit = active || widget.loading;
-    final tone = widget.tone;
-    // no tone: THE brand gradient (D-136, every stop AA under the label) with its glass sheen, like every primary
-    // button; a tone keeps a flat-ish two-stop fill. The hero keeps its own blend (M22).
-    final base = tone ?? authDeepen(c.primary, (bg) => authContrast(c.onHero, bg) >= 4.7);
-    final LinearGradient fill = tone == null
-        ? (_pressed ? c.primaryGradientPressed : c.primaryGradient)
-        : AppGradients.blend(context, color: base);
-    final fg = lit ? c.onHero : c.textLight;
-    const radius = 16.0;
+    final base = widget.tone ?? c.primary;
+    final deep = widget.tone == null ? c.primaryDark : Color.lerp(base, c.textDark, 0.3)!;
+    final fg = lit ? c.onHero : c.textMedium;
+    final radius = AppRadius.controlAll;
 
     final label = Text(
       widget.label,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       textAlign: TextAlign.center,
-      style: authText(16, w: FontWeight.w700, c: fg, h: 1.2, ls: authTracking(0.2)),
+      style: AppType.bodyStrong(context).copyWith(color: fg, fontSize: 15, height: 1.2),
     );
-    final icon = widget.icon == null
-        ? null
-        : Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: lit ? c.onHero.withValues(alpha: 0.18) : c.textLight.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(widget.icon, size: 17, color: fg),
-          );
+    final icon = widget.icon == null ? null : Icon(widget.icon, size: AppIconSize.md, color: fg);
     final content = AnimatedSwitcher(
-      duration: authDuration(context, 200),
+      duration: AppMotion.of(context).fast,
+      switchInCurve: AppEase.out,
+      switchOutCurve: AppEase.out,
       transitionBuilder: (child, a) => FadeTransition(
         opacity: a,
-        child: ScaleTransition(scale: Tween(begin: 0.92, end: 1.0).animate(a), child: child),
+        child: ScaleTransition(scale: Tween(begin: 0.94, end: 1.0).animate(a), child: child),
       ),
       child: widget.loading
           ? SizedBox(
               key: const ValueKey('busy'),
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2.4, color: c.onHero),
+              width: AppIconSize.md,
+              height: AppIconSize.md,
+              child: CircularProgressIndicator(strokeWidth: 2.2, color: c.onHero),
             )
           : Row(
               key: const ValueKey('label'),
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (icon != null && widget.iconBefore) ...[icon, const SizedBox(width: 10)],
+                if (icon != null && widget.iconBefore) ...[icon, const SizedBox(width: AppSpace.xs)],
                 Flexible(child: label),
-                if (icon != null && !widget.iconBefore) ...[const SizedBox(width: 10), icon],
+                if (icon != null && !widget.iconBefore) ...[const SizedBox(width: AppSpace.xs), icon],
               ],
             ),
     );
@@ -1134,24 +921,15 @@ class _AuthButtonState extends State<AuthButton> {
     return LayoutBuilder(
       builder: (context, box) => SizedBox(
         width: box.hasBoundedWidth ? double.infinity : null,
-        child: AnimatedScale(
-          scale: _pressed && !authReduceMotion(context) ? 0.98 : 1,
-          duration: const Duration(milliseconds: 120),
-          curve: Curves.easeOut,
+        child: AppPressScale(
+          scale: 0.97,
+          enabled: active,
           child: AnimatedContainer(
-            duration: authDuration(context, 220),
+            duration: AppMotion.of(context).fast,
+            curve: AppEase.out,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(radius),
-              boxShadow: lit
-                  ? [
-                      BoxShadow(
-                        color: fill.colors[fill.colors.length ~/ 2].withValues(alpha: c.isDark ? 0.38 : 0.32),
-                        blurRadius: _pressed ? 12 : 22,
-                        spreadRadius: -6,
-                        offset: Offset(0, _pressed ? 6 : 12),
-                      ),
-                    ]
-                  : const [],
+              borderRadius: radius,
+              boxShadow: _focused && active && appKeyboardFocus() ? appFocusRing(context) : const [],
             ),
             child: FilledButton(
               statesController: _states,
@@ -1161,33 +939,26 @@ class _AuthButtonState extends State<AuthButton> {
                       widget.onPressed!();
                     }
                   : null,
-              style: FilledButton.styleFrom(
-                padding: EdgeInsets.zero,
-                minimumSize: const Size(64, 54),
-                elevation: 0,
-                backgroundColor: Colors.transparent,
-                disabledBackgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                foregroundColor: c.onHero,
-                overlayColor: c.onHero,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
+              style: ButtonStyle(
+                padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: AppSpace.lg)),
+                minimumSize: const WidgetStatePropertyAll(Size(AppTouch.primary, AppTouch.primary)),
+                elevation: const WidgetStatePropertyAll(0),
+                shadowColor: const WidgetStatePropertyAll(Colors.transparent),
+                splashFactory: NoSplash.splashFactory,
+                overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+                foregroundColor: WidgetStatePropertyAll(fg),
+                backgroundColor: WidgetStateProperty.resolveWith((s) {
+                  if (!lit) return c.inputBg;
+                  if (s.contains(WidgetState.pressed)) return Color.lerp(base, deep, 0.5);
+                  if (s.contains(WidgetState.hovered)) return Color.lerp(base, deep, 0.22);
+                  return base;
+                }),
+                side: WidgetStatePropertyAll(lit ? BorderSide.none : BorderSide(color: c.divider, width: AppBorder.hairline)),
+                shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: radius)),
+                // the solid fill above, not the theme's brand-gradient painter for raw FilledButtons
+                backgroundBuilder: (context, states, child) => child ?? const SizedBox.shrink(),
               ),
-              child: Ink(
-                decoration: BoxDecoration(
-                  gradient: lit ? fill : null,
-                  color: lit ? null : (c.isDark ? c.inputBg : c.divider.withValues(alpha: 0.7)),
-                  borderRadius: BorderRadius.circular(radius),
-                ),
-                child: Container(
-                  foregroundDecoration: lit && tone == null
-                      ? BoxDecoration(gradient: c.primaryGloss, borderRadius: BorderRadius.circular(radius))
-                      : null,
-                  constraints: const BoxConstraints(minHeight: 54),
-                  alignment: Alignment.center,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  child: content,
-                ),
-              ),
+              child: content,
             ),
           ),
         ),
@@ -1196,7 +967,8 @@ class _AuthButtonState extends State<AuthButton> {
   }
 }
 
-/// A quiet secondary action: a tinted pill with an icon (guest mode, apply as an institution, …). 44 dp tall.
+/// A quiet secondary action (guest mode, apply as an institution, verify a certificate): a paper chip with a warm
+/// hairline, the icon muted and the label in ink — the emerald stays on the one primary action. 48 dp tall.
 class AuthTextAction extends StatelessWidget {
   const AuthTextAction({super.key, required this.icon, required this.label, required this.onTap});
 
@@ -1207,31 +979,37 @@ class AuthTextAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final ink = appInk(context, c.primary); // AA on its tint in both modes
-    return Material(
-      color: c.primary.withValues(alpha: c.isDark ? 0.16 : 0.07),
-      shape: const StadiumBorder(),
-      child: InkWell(
-        customBorder: const StadiumBorder(),
-        onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 48),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 18, color: ink),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 2,
-                    textAlign: TextAlign.center,
-                    style: authText(13.5, w: FontWeight.w700, c: ink, h: 1.25),
+    return AppPressScale(
+      enabled: onTap != null,
+      child: Material(
+        color: c.cardBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: AppRadius.controlAll,
+          side: BorderSide(color: c.divider, width: AppBorder.hairline),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppTouch.min),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: AppIconSize.sm, color: c.textMedium),
+                  const SizedBox(width: AppSpace.xs),
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 2,
+                      textAlign: TextAlign.center,
+                      style: AppType.label(context).copyWith(color: c.textDark, height: 1.25),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -1240,7 +1018,7 @@ class AuthTextAction extends StatelessWidget {
   }
 }
 
-/// "Message  Link" — wraps on a narrow phone; the link has a 48 dp target.
+/// "Message  Link" — wraps on a narrow phone; the link has a 48 dp target and the primary's readable ink.
 class LinkRow extends StatelessWidget {
   final String message;
   final String linkText;
@@ -1255,28 +1033,27 @@ class LinkRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final ink = c.isDark ? c.primaryLight : c.primary;
+    final ink = appInk(context, context.colors.primary);
     return Wrap(
       alignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Text(message, style: authText(14.5, c: c.textMedium, h: 1.4)),
+        Text(message, style: AppType.body(context)),
         TextButton(
           onPressed: onTap,
           style: TextButton.styleFrom(
-            minimumSize: const Size(48, 48),
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            minimumSize: const Size(AppTouch.min, AppTouch.min),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
             foregroundColor: ink,
           ),
-          child: Text(linkText, style: authText(14.5, w: FontWeight.w700, c: ink, h: 1.4)),
+          child: Text(linkText, style: AppType.bodyStrong(context).copyWith(color: ink)),
         ),
       ],
     );
   }
 }
 
-/// A hairline that fades out toward both ends, with a small label in the middle ("or").
+/// A warm hairline either side of a small label in the middle ("or").
 class AuthOrDivider extends StatelessWidget {
   const AuthOrDivider({super.key, required this.label});
 
@@ -1285,33 +1062,18 @@ class AuthOrDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    Widget line(bool toEnd) => Expanded(
-          child: Container(
-            height: 1,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: AlignmentDirectional.centerStart,
-                end: AlignmentDirectional.centerEnd,
-                colors: toEnd ? [c.divider.withValues(alpha: 0), c.divider] : [c.divider, c.divider.withValues(alpha: 0)],
-              ),
-            ),
-          ),
-        );
+    Widget line() => Expanded(child: Container(height: AppBorder.hairline, color: c.divider));
     return Row(
       children: [
-        line(true),
+        line(),
         Flexible(
           flex: 3,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: authText(12.5, w: FontWeight.w600, c: c.textLight, ls: authTracking(0.4)),
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+            child: Text(label, textAlign: TextAlign.center, style: AppType.meta(context)),
           ),
         ),
-        line(false),
+        line(),
       ],
     );
   }
@@ -1319,7 +1081,8 @@ class AuthOrDivider extends StatelessWidget {
 
 // ── 5. Password strength + requirements ───────────────────────────────────────
 
-/// Four segments that fill with the strength (0..4) and its word at the end. [color] is the strength's colour.
+/// Four segments that fill with the strength (0..4) and its word at the end. [color] is the strength's colour (the
+/// segments take it as is; the word takes its readable ink).
 class AuthPasswordStrength extends StatelessWidget {
   const AuthPasswordStrength({super.key, required this.strength, required this.label, required this.color, this.title});
 
@@ -1331,7 +1094,7 @@ class AuthPasswordStrength extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final d = authDuration(context, 260);
+    final d = AppMotion.of(context).slow;
     return Semantics(
       label: '${title ?? ''} $label',
       child: Column(
@@ -1341,29 +1104,29 @@ class AuthPasswordStrength extends StatelessWidget {
           Row(
             children: [
               for (var i = 0; i < 4; i++) ...[
-                if (i > 0) const SizedBox(width: 6),
+                if (i > 0) const SizedBox(width: AppSpace.xxs),
                 Expanded(
                   child: AnimatedContainer(
                     duration: d,
-                    curve: Curves.easeOutCubic,
-                    height: 5,
+                    curve: AppEase.out,
+                    height: AppSpace.xxs,
                     decoration: BoxDecoration(
-                      color: i < strength ? color : c.divider.withValues(alpha: c.isDark ? 0.9 : 0.7),
-                      borderRadius: BorderRadius.circular(3),
+                      color: i < strength ? color : c.divider,
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
                     ),
                   ),
                 ),
               ],
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           Row(
             children: [
               if (title != null)
-                Expanded(child: Text(title!, style: authText(12.5, c: c.textMedium, h: 1.3)))
+                Expanded(child: Text(title!, style: AppType.meta(context)))
               else
                 const Spacer(),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               Flexible(
                 child: Align(
                   alignment: AlignmentDirectional.centerEnd,
@@ -1373,7 +1136,7 @@ class AuthPasswordStrength extends StatelessWidget {
                       label,
                       key: ValueKey(label),
                       textAlign: TextAlign.end,
-                      style: authText(12.5, w: FontWeight.w700, c: color, h: 1.3),
+                      style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: appInk(context, color)),
                     ),
                   ),
                 ),
@@ -1386,7 +1149,7 @@ class AuthPasswordStrength extends StatelessWidget {
   }
 }
 
-/// One line of a requirement checklist: an empty ring that turns into a green check when [met].
+/// One line of a requirement checklist: an empty ring that turns into the success check when [met].
 class AuthRequirement extends StatelessWidget {
   const AuthRequirement({super.key, required this.met, required this.label});
 
@@ -1396,26 +1159,35 @@ class AuthRequirement extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final d = AppMotion.of(context).base;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           AnimatedSwitcher(
-            duration: authDuration(context, 220),
-            transitionBuilder: (child, a) => ScaleTransition(scale: a, child: child),
+            duration: d,
+            switchInCurve: AppEase.out,
+            transitionBuilder: (child, a) => FadeTransition(
+              opacity: a,
+              child: ScaleTransition(scale: Tween(begin: 0.6, end: 1.0).animate(a), child: child),
+            ),
             child: Icon(
               met ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
               key: ValueKey(met),
-              size: 18,
+              size: AppIconSize.sm + 2,
               color: met ? c.success : c.textLight,
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.xs),
           Expanded(
             child: AnimatedDefaultTextStyle(
-              duration: authDuration(context, 220),
-              style: authText(13, w: met ? FontWeight.w600 : FontWeight.w500, c: met ? c.textDark : c.textMedium, h: 1.4),
+              duration: d,
+              style: AppType.label(context).copyWith(
+                fontWeight: met ? FontWeight.w600 : FontWeight.w500,
+                color: met ? c.textDark : c.textMedium,
+                height: 1.4,
+              ),
               child: Text(label),
             ),
           ),
@@ -1427,8 +1199,9 @@ class AuthRequirement extends StatelessWidget {
 
 // ── 6. Code box ───────────────────────────────────────────────────────────────
 
-/// One box of a one-time code. The caller puts its TextField in [child]; the box draws the state:
-/// empty (tinted), filled (a primary hairline), focused (the card colour, a primary stroke and halo), error.
+/// One box of a one-time code. The caller puts its TextField in [child]; the box draws the state in the kit's well
+/// language: empty (the input fill, a hairline), filled (paper, an ink hairline), focused (the 2 px focus ring),
+/// error (the danger tint and a danger line).
 class AuthOtpBox extends StatelessWidget {
   const AuthOtpBox({
     super.key,
@@ -1443,10 +1216,8 @@ class AuthOtpBox extends StatelessWidget {
   final bool focused, filled, error;
   final double height;
 
-  /// The digit style: big, bold, tabular figures.
-  static TextStyle digitStyle(BuildContext context) =>
-      authText(28, w: FontWeight.w700, c: context.colors.textDark, h: 1.0)
-          .copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
+  /// The digit style: the large figure role (tabular digits).
+  static TextStyle digitStyle(BuildContext context) => AppType.figureLarge(context).copyWith(height: 1.0);
 
   @override
   Widget build(BuildContext context) {
@@ -1455,28 +1226,25 @@ class AuthOtpBox extends StatelessWidget {
     final Color bg;
     if (error) {
       border = c.danger;
-      bg = c.danger.withValues(alpha: c.isDark ? 0.14 : 0.06);
+      bg = c.dangerTint;
     } else if (focused) {
-      border = c.primary;
-      bg = c.isDark ? c.inputBg : c.cardBg;
+      border = appFieldFocusInk(context);
+      bg = c.inputBg;
     } else if (filled) {
-      border = c.primary.withValues(alpha: 0.45);
-      bg = c.primary.withValues(alpha: c.isDark ? 0.14 : 0.05);
+      border = Color.lerp(c.divider, c.textDark, 0.35)!;
+      bg = c.cardBg;
     } else {
-      border = c.divider.withValues(alpha: c.isDark ? 0.9 : 0.75);
+      border = c.divider;
       bg = c.inputBg;
     }
     return AnimatedContainer(
-      duration: authDuration(context, 180),
-      curve: Curves.easeOut,
+      duration: AppMotion.of(context).fast,
+      curve: AppEase.out,
       height: height,
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: border, width: focused || error ? 1.8 : 1.2),
-        boxShadow: focused || error
-            ? [BoxShadow(color: (error ? c.danger : c.primary).withValues(alpha: c.isDark ? 0.30 : 0.14), spreadRadius: 4)]
-            : const [],
+        borderRadius: AppRadius.controlAll,
+        border: Border.all(color: border, width: focused || error ? AppBorder.focus : AppBorder.hairline),
       ),
       child: child,
     );
@@ -1484,43 +1252,58 @@ class AuthOtpBox extends StatelessWidget {
 }
 
 // ── 7. Screen icon header ─────────────────────────────────────────────────────
+
+/// The mark at the top of a one-subject screen (the two-step code, re-entering the password): the icon in the
+/// primary's readable ink on the emerald block tint.
 class ScreenIcon extends StatelessWidget {
   final IconData icon;
 
   const ScreenIcon({super.key, required this.icon});
 
   @override
+  Widget build(BuildContext context) => AuthMark(icon: icon);
+}
+
+/// A subject's mark at any size (a sheet's header, a step's title): the emerald block tint, no shadow, the icon in
+/// the primary's readable ink; radius `card` from 56 up, `control` below.
+class AuthMark extends StatelessWidget {
+  const AuthMark({super.key, required this.icon, this.size = AppTouch.primary});
+
+  final IconData icon;
+  final double size;
+
+  @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final tone = AppBlockColors.of(context, AppBlockTone.emerald);
     return Container(
-      width: 56,
-      height: 56,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
-        gradient: authHeroGradient(c),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(color: c.primary.withValues(alpha: 0.30), blurRadius: 18, spreadRadius: -4, offset: const Offset(0, 8)),
-        ],
+        color: tone.surface,
+        borderRadius: size >= AppTouch.primary ? AppRadius.cardAll : AppRadius.controlAll,
+        border: tone.border == null ? null : Border.all(color: tone.border!, width: AppBorder.hairline),
       ),
-      child: Icon(icon, color: c.onHero, size: 26),
+      child: Icon(icon, color: tone.accentInk(c.primary), size: size >= AppTouch.primary ? AppIconSize.lg : AppIconSize.md),
     );
   }
 }
 
 // ── 8. Field label ────────────────────────────────────────────────────────────
+
+/// The label above a well (the kit's label role).
 class SectionLabel extends StatelessWidget {
   final String label;
 
   const SectionLabel({super.key, required this.label});
 
   @override
-  Widget build(BuildContext context) => Text(
-        label,
-        style: authText(13.5, w: FontWeight.w600, c: context.colors.textMedium, h: 1.3, ls: authTracking(0.1)),
-      );
+  Widget build(BuildContext context) => Text(label, style: AppType.label(context).copyWith(height: 1.3));
 }
 
 // ── 9. Progress bar (step indicator) ─────────────────────────────────────────
+
+/// The register steps: one slim segment per step, the done ones in the solid primary.
 class ProgressBar extends StatelessWidget {
   final int currentStep;
   final int totalSteps;
@@ -1541,14 +1324,13 @@ class ProgressBar extends StatelessWidget {
           final done = i <= currentStep;
           return Expanded(
             child: AnimatedContainer(
-              duration: authDuration(context, 320),
-              curve: Curves.easeOutCubic,
-              margin: EdgeInsetsDirectional.only(end: i < totalSteps - 1 ? 6 : 0),
-              height: 6,
+              duration: AppMotion.of(context).slow,
+              curve: AppEase.out,
+              margin: EdgeInsetsDirectional.only(end: i < totalSteps - 1 ? AppSpace.xxs : 0),
+              height: AppSpace.xxs + 2,
               decoration: BoxDecoration(
-                gradient: done ? AppGradients.brand(context) : null,
-                color: done ? null : c.divider.withValues(alpha: c.isDark ? 0.9 : 0.7),
-                borderRadius: BorderRadius.circular(3),
+                color: done ? c.primary : c.divider,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
               ),
             ),
           );
@@ -1559,6 +1341,9 @@ class ProgressBar extends StatelessWidget {
 }
 
 // ── 10. Role picker cards ─────────────────────────────────────────────────────
+
+/// Who is signing up: one paper card per role; the chosen one takes the primary tint, a 2 px primary edge, the icon
+/// on the solid primary and a check that settles in (from 60 %, never from nothing).
 class RolePicker extends StatelessWidget {
   final MyAuthProvider provider;
   final ExpansibleController rolController;
@@ -1572,6 +1357,7 @@ class RolePicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final d = AppMotion.of(context).base;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: provider.roles.map<Widget>((role) {
@@ -1579,76 +1365,86 @@ class RolePicker extends StatelessWidget {
         final teacher = role['text'] == 'teacher';
         return Expanded(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
             child: Semantics(
               button: true,
               selected: isSelected,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(18),
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    provider.onChangeRole(provider.roles.indexOf(role), rolController);
-                  },
-                  child: AnimatedContainer(
-                    duration: authDuration(context, 220),
-                    curve: Curves.easeOutCubic,
-                    padding: const EdgeInsets.fromLTRB(12, 16, 12, 14),
-                    decoration: BoxDecoration(
-                      color: isSelected ? c.primary.withValues(alpha: c.isDark ? 0.18 : 0.06) : c.inputBg,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: isSelected ? c.primary : c.divider.withValues(alpha: c.isDark ? 0.9 : 0.75),
-                        width: isSelected ? 1.6 : 1.2,
+              child: AppPressScale(
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: AppRadius.cardAll,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      provider.onChangeRole(provider.roles.indexOf(role), rolController);
+                    },
+                    child: AnimatedContainer(
+                      duration: d,
+                      curve: AppEase.out,
+                      padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.md, AppSpace.sm, AppSpace.sm),
+                      decoration: BoxDecoration(
+                        color: isSelected ? Color.alphaBlend(c.primaryTint, c.cardBg) : c.cardBg,
+                        borderRadius: AppRadius.cardAll,
+                        border: Border.all(
+                          color: isSelected ? c.primary : c.divider,
+                          width: isSelected ? AppBorder.focus : AppBorder.hairline,
+                        ),
                       ),
-                    ),
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              AnimatedContainer(
-                                duration: authDuration(context, 220),
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  gradient: isSelected ? authHeroGradient(c) : null,
-                                  color: isSelected ? null : c.textLight.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(14),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                AnimatedContainer(
+                                  duration: d,
+                                  curve: AppEase.out,
+                                  width: AppTouch.min - AppSpace.xxs,
+                                  height: AppTouch.min - AppSpace.xxs,
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? c.primary : c.inputBg,
+                                    borderRadius: AppRadius.controlAll,
+                                  ),
+                                  child: Icon(
+                                    teacher
+                                        ? Icons.cast_for_education_rounded
+                                        : role['text'] == 'parent'
+                                            ? Icons.family_restroom_rounded
+                                            : Icons.school_rounded,
+                                    color: isSelected ? c.onHero : c.textMedium,
+                                    size: AppIconSize.md + 2,
+                                  ),
                                 ),
-                                child: Icon(
-                                  teacher
-                                      ? Icons.cast_for_education_rounded
-                                      : role['text'] == 'parent'
-                                          ? Icons.family_restroom_rounded
-                                          : Icons.school_rounded,
-                                  color: isSelected ? c.onHero : c.textMedium,
-                                  size: 22,
+                                const SizedBox(height: AppSpace.xs),
+                                Text(
+                                  role['text'].toString().tr,
+                                  textAlign: TextAlign.center,
+                                  style: AppType.row(context).copyWith(
+                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                    color: isSelected ? c.textDark : c.textMedium,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                role['text'].toString().tr,
-                                textAlign: TextAlign.center,
-                                style: authText(14, w: FontWeight.w700, c: isSelected ? c.textDark : c.textMedium),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        PositionedDirectional(
-                          top: -6,
-                          end: -4,
-                          child: AnimatedScale(
-                            scale: isSelected ? 1 : 0,
-                            duration: authDuration(context, 220),
-                            curve: Curves.easeOutBack,
-                            child: Icon(Icons.check_circle_rounded, size: 20, color: c.primary),
+                          PositionedDirectional(
+                            top: -AppSpace.xs,
+                            end: -AppSpace.xxs,
+                            child: AnimatedOpacity(
+                              opacity: isSelected ? 1 : 0,
+                              duration: d,
+                              curve: AppEase.out,
+                              child: AnimatedScale(
+                                scale: isSelected ? 1 : 0.6,
+                                duration: d,
+                                curve: AppEase.out,
+                                child: Icon(Icons.check_circle_rounded, size: AppIconSize.md, color: appInk(context, c.primary)),
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1686,19 +1482,19 @@ class StyledDropdown extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: c.inputBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: c.divider.withValues(alpha: c.isDark ? 0.9 : 0.75), width: 1.2),
+        borderRadius: AppRadius.controlAll,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(14, 20, 0, 0),
-            child: Icon(icon, size: 20, color: c.textLight),
+            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm + 2, AppSpace.md + 4, 0, 0),
+            child: Icon(icon, size: AppIconSize.md, color: c.textLight),
           ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(10, 0, 10, 5),
+              padding: const EdgeInsets.fromLTRB(AppSpace.xs + 2, 0, AppSpace.xs + 2, AppSpace.xxs + 1),
               child: MyPrimaryMenu(
                 label: label,
                 controller: controller,
@@ -1812,7 +1608,7 @@ class LangDropdown extends StatelessWidget {
         children: [
           Icon(Icons.language, size: 20, color: context.colors.primary),
           const SizedBox(width: 5),
-          Text(AppConfig.lang.tr, style: const TextStyle(fontSize: 13)),
+          Text(AppConfig.lang.tr, style: AppType.label(context)),
           const SizedBox(width: 2),
           const Icon(Icons.keyboard_arrow_down, size: 18),
         ],

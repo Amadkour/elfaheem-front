@@ -61,7 +61,7 @@ class MfaCodeForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final ink = c.isDark ? c.primaryLight : c.primary;
+    final ink = appInk(context, c.primary);
     final body = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -69,28 +69,28 @@ class MfaCodeForm extends StatelessWidget {
         if (!embedded) ...[
           Row(children: [
             const ScreenIcon(icon: Icons.shield_rounded),
-            const SizedBox(width: 14),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
-              child: Text(t('التحقق بخطوتين', 'Two-step verification'),
-                  style: authText(19, w: FontWeight.w800, c: c.textDark, h: 1.25)),
+              child: Semantics(
+                header: true,
+                child: Text(t('التحقق بخطوتين', 'Two-step verification'), style: AppType.headline(context)),
+              ),
             ),
           ]),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
         ],
         AnimatedSwitcher(
-          duration: authDuration(context, 220),
+          duration: AppMotion.of(context).base,
           child: Row(
             key: ValueKey(useRecovery),
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (embedded) ...[
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(color: c.primary.withValues(alpha: c.isDark ? 0.20 : 0.10), shape: BoxShape.circle),
-                  child: Icon(useRecovery ? Icons.key_rounded : Icons.phonelink_lock_rounded, size: 20, color: ink),
+                AuthMark(
+                  icon: useRecovery ? Icons.key_rounded : Icons.phonelink_lock_rounded,
+                  size: AppTouch.min - AppSpace.xs,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpace.sm),
               ],
               Expanded(
                 child: Text(
@@ -99,13 +99,13 @@ class MfaCodeForm extends StatelessWidget {
                           'Type one of the recovery codes you saved when you turned this on. Each code works once.')
                       : t('افتح تطبيق المصادقة (Google Authenticator أو Microsoft Authenticator أو غيرهما) واكتب الرمز المكوّن من 6 أرقام.',
                           'Open your authenticator app (Google Authenticator, Microsoft Authenticator, …) and type the 6-digit code.'),
-                  style: authText(14, c: c.textMedium, h: 1.55),
+                  style: AppType.body(context).copyWith(height: 1.55),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpace.md),
         Directionality(
           textDirection: TextDirection.ltr,
           child: TextField(
@@ -122,8 +122,10 @@ class MfaCodeForm extends StatelessWidget {
             inputFormatters: useRecovery
                 ? [LengthLimitingTextInputFormatter(24)]
                 : [FilteringTextInputFormatter.allow(RegExp(r'[0-9٠-٩۰-۹ ]')), LengthLimitingTextInputFormatter(7)],
-            style: authText(useRecovery ? 18 : 26, w: FontWeight.w700, c: c.textDark, h: 1.2).copyWith(
-              letterSpacing: useRecovery ? 1.5 : 8,
+            // the code reads as one figure: the large figure role, spaced digits (the recovery code a step smaller)
+            style: (useRecovery ? AppType.figure(context) : AppType.figureLarge(context)).copyWith(
+              height: 1.2,
+              letterSpacing: useRecovery ? 1.5 : AppSpace.xs,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
             cursorColor: c.primary,
@@ -133,15 +135,16 @@ class MfaCodeForm extends StatelessWidget {
           ),
         ),
         if (error != null) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: error!),
         ],
         if (!dead && attemptsLeft != null && attemptsLeft! < 5) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           Text(t('المحاولات المتبقية: $attemptsLeft', 'Attempts left: $attemptsLeft'),
-              textAlign: TextAlign.center, style: authText(12.5, w: FontWeight.w700, c: c.warning)),
+              textAlign: TextAlign.center,
+              style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: appInk(context, c.warning))),
         ],
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpace.md),
         if (dead)
           AuthButton(label: t('تسجيل الدخول مرة أخرى', 'Sign in again'), icon: DirIcons.login, onPressed: onRestart)
         else
@@ -152,18 +155,18 @@ class MfaCodeForm extends StatelessWidget {
               loading: busy,
               onPressed: busy ? null : onSubmit),
         if (!dead) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           Align(
             alignment: AlignmentDirectional.center,
             child: TextButton(
               onPressed: busy ? null : onToggleRecovery,
-              style: TextButton.styleFrom(minimumSize: const Size(48, 48), foregroundColor: ink),
+              style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min), foregroundColor: ink),
               child: Text(
                 useRecovery
                     ? t('استخدام رمز تطبيق المصادقة', 'Use the authenticator code')
                     : t('لا أستطيع الوصول إلى التطبيق؟ استخدم رمز استرداد', 'No access to the app? Use a recovery code'),
                 textAlign: TextAlign.center,
-                style: authText(13.5, w: FontWeight.w700, c: ink, h: 1.4),
+                style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: ink, height: 1.4),
               ),
             ),
           ),
@@ -171,7 +174,8 @@ class MfaCodeForm extends StatelessWidget {
       ],
     );
     if (embedded) return body;
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 24), children: [AppCard(child: body)]);
+    return ListView(
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.lg), children: [AppCard(child: body)]);
   }
 }
 

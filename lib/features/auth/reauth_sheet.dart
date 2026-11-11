@@ -12,10 +12,8 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../config/app_config.dart';
-import '../../config/theme/theme_config_provider.dart';
-import '../../design/app_inputs.dart';
 import '../../design/app_kit.dart';
-import 'auth_widgets.dart' show ScreenIcon, authText;
+import 'auth_widgets.dart' show ScreenIcon;
 
 /// What the person typed: the password, and the two-step code when they gave one.
 class Reauth {
@@ -70,7 +68,7 @@ class _ReauthSheetBodyState extends State<ReauthSheetBody> {
         AppSheetHeader('reauth_title'.tr),
         Flexible(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -78,19 +76,18 @@ class _ReauthSheetBodyState extends State<ReauthSheetBody> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const ScreenIcon(icon: Icons.verified_user_rounded),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: AppSpace.sm),
                     Expanded(
-                      child: Text('reauth_body'.tr,
-                          style: authText(14, c: context.colors.textMedium, h: 1.55)),
+                      child: Text('reauth_body'.tr, style: AppType.body(context).copyWith(height: 1.55)),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpace.md),
                 // minLength 1: an existing password may predate the 8-character rule
                 AppPasswordField(controller: _password, label: 'current_password'.tr, minLength: 1),
                 if (widget.showMfa)
                   AppField(controller: _code, label: 'reauth_mfa_code'.tr, keyboard: TextInputType.number),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.xs),
                 AppPrimaryButton(label: 'confirm'.tr, onPressed: _submit),
               ],
             ),

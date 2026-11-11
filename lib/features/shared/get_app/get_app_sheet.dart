@@ -191,7 +191,7 @@ class _SectionLabel extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: AppSpace.xs),
         child: Semantics(
           header: true,
-          child: Text(text, style: AppType.section(context).copyWith(fontFamily: AppFonts.family, fontSize: 14)),
+          child: Text(text, style: AppType.bodyStrong(context)),
         ),
       );
 }
@@ -387,7 +387,7 @@ class _Step extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(color: c.primary, shape: BoxShape.circle),
             child: Text('$n',
-                style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, fontSize: 13, color: c.onHero)),
+                style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.onHero)),
           ),
         ),
         const SizedBox(width: AppSpace.sm),

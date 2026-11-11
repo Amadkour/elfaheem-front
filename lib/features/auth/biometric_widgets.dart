@@ -21,6 +21,7 @@ import '../../design/app_kit.dart' show showAppSheet;
 import '../../design/app_notice.dart';
 import '../../utils/widget/app_network_image.dart';
 import 'auth_provider.dart';
+import '../../design/app_tokens.dart';
 import 'auth_widgets.dart';
 import 'biometric.dart';
 
@@ -109,18 +110,8 @@ class BiometricGlyph extends StatelessWidget {
     final disc = Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: authHeroGradient(c),
-        boxShadow: [
-          BoxShadow(
-            color: c.primary.withValues(alpha: c.isDark ? 0.30 : 0.28),
-            blurRadius: size * 0.36,
-            spreadRadius: -size * 0.06,
-            offset: Offset(0, size * 0.14),
-          ),
-        ],
-      ),
+      // the solid primary: the fingerprint IS the sign-in action here (no gradient, no glow — D-612)
+      decoration: BoxDecoration(shape: BoxShape.circle, color: c.primary),
       child: Icon(biometricIcon(kind), color: c.onHero, size: size * 0.52),
     );
     if (!halo) return disc;
@@ -129,8 +120,8 @@ class BiometricGlyph extends StatelessWidget {
       padding: EdgeInsets.all(ring),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: c.primary.withValues(alpha: c.isDark ? 0.14 : 0.07),
-        border: Border.all(color: c.primary.withValues(alpha: c.isDark ? 0.28 : 0.14)),
+        color: c.primaryTint,
+        border: Border.all(color: c.primary.withValues(alpha: c.isDark ? 0.28 : 0.14), width: AppBorder.hairline),
       ),
       child: disc,
     );
@@ -154,7 +145,8 @@ class AuthAccountAvatar extends StatelessWidget {
       width: size,
       height: size,
       padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(shape: BoxShape.circle, gradient: authHeroGradient(c)),
+      // a warm ink hairline ring (the photo is the subject, not a brand colour)
+      decoration: BoxDecoration(shape: BoxShape.circle, color: Color.lerp(c.divider, c.textDark, 0.35)),
       child: Container(
         padding: const EdgeInsets.all(1),
         decoration: BoxDecoration(shape: BoxShape.circle, color: c.cardBg),
@@ -165,11 +157,11 @@ class AuthAccountAvatar extends StatelessWidget {
             child: url != null && url.isNotEmpty
                 ? AppNetworkImage(url: url, width: inner, height: inner, fit: BoxFit.cover)
                 : ColoredBox(
-                    color: c.primary.withValues(alpha: c.isDark ? 0.24 : 0.10),
+                    color: c.blockPeach,
                     child: Center(
                       child: Text(
                         initials,
-                        style: authText(inner * 0.36, w: FontWeight.w800, c: appInk(context, c.primary), h: 1),
+                        style: authText(inner * 0.36, w: FontWeight.w600, c: c.textDark, h: 1),
                       ),
                     ),
                   ),
@@ -215,7 +207,7 @@ class BiometricQuickSignIn extends StatelessWidget {
         Row(
           children: [
             AuthAccountAvatar(initials: initials, imageUrl: imageUrl),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,7 +217,7 @@ class BiometricQuickSignIn extends StatelessWidget {
                     name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: authText(17, w: FontWeight.w800, c: c.textDark, h: 1.25, ls: authTracking(-0.2)),
+                    style: AppType.section(context),
                   ),
                   if (identifier != null && identifier!.isNotEmpty) ...[
                     const SizedBox(height: 2),
@@ -235,37 +227,38 @@ class BiometricQuickSignIn extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       textDirection: TextDirection.ltr,
                       textAlign: AppConfig.lang == 'ar' ? TextAlign.right : TextAlign.left,
-                      style: authText(13, c: c.textMedium, h: 1.3),
+                      style: AppType.meta(context).copyWith(height: 1.3),
                     ),
                   ],
                 ],
               ),
             ),
             if (onForget != null) ...[
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               TextButton(
                 onPressed: onForget,
                 style: TextButton.styleFrom(
-                  minimumSize: const Size(48, 48),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: const Size(AppTouch.min, AppTouch.min),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
                   foregroundColor: link,
                 ),
-                child: Text('bio_not_you'.tr, style: authText(13.5, w: FontWeight.w700, c: link)),
+                child: Text('bio_not_you'.tr, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: link)),
               ),
             ],
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         BiometricSignInButton(kind: kind, busy: busy, onTap: onSignIn),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpace.lg),
         AuthOrDivider(label: 'bio_or_password'.tr),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
       ],
     );
   }
 }
 
-/// The large tinted button: the glyph, "Sign in with fingerprint", an arrow (a spinner while busy). 64 dp tall.
+/// The large quick sign-in: paper on a warm ink hairline (the kit's secondary), the glyph on its solid emerald disc,
+/// "Sign in with fingerprint" in ink, an arrow (a spinner while busy). 64 dp tall; a press sinks it.
 class BiometricSignInButton extends StatefulWidget {
   const BiometricSignInButton({super.key, required this.kind, required this.onTap, this.busy = false});
 
@@ -283,21 +276,22 @@ class _BiometricSignInButtonState extends State<BiometricSignInButton> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final ink = appInk(context, c.primary);
+    final ink = c.textDark;
     final label = biometricActionLabel(widget.kind);
-    final r = BorderRadius.circular(20);
+    final r = AppRadius.cardAll;
     return Semantics(
       button: true,
       label: label,
       excludeSemantics: true,
       child: AnimatedScale(
-        scale: _pressed ? 0.98 : 1,
-        duration: authDuration(context, 120),
+        scale: _pressed ? 0.97 : 1,
+        duration: AppMotion.of(context).fast,
+        curve: AppMotion.curve,
         child: Material(
-          color: c.primary.withValues(alpha: c.isDark ? 0.16 : 0.07),
+          color: _pressed ? Color.lerp(c.cardBg, c.textDark, 0.05) : c.cardBg,
           shape: RoundedRectangleBorder(
             borderRadius: r,
-            side: BorderSide(color: c.primary.withValues(alpha: c.isDark ? 0.36 : 0.20)),
+            side: BorderSide(color: Color.lerp(c.divider, c.textDark, 0.35)!, width: AppBorder.hairline),
           ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
@@ -309,30 +303,30 @@ class _BiometricSignInButtonState extends State<BiometricSignInButton> {
                   },
             onHighlightChanged: (v) => setState(() => _pressed = v),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 64),
+              constraints: const BoxConstraints(minHeight: AppTouch.primary + AppSpace.xs),
               child: Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(10, 10, 16, 10),
+                padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs + 2, AppSpace.xs + 2, AppSpace.md, AppSpace.xs + 2),
                 child: Row(
                   children: [
-                    BiometricGlyph(kind: widget.kind, size: 44, halo: false),
-                    const SizedBox(width: 14),
+                    BiometricGlyph(kind: widget.kind, size: AppTouch.min - AppSpace.xxs, halo: false),
+                    const SizedBox(width: AppSpace.sm),
                     Expanded(
                       child: Text(
                         label,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: authText(15.5, w: FontWeight.w700, c: ink, h: 1.3),
+                        style: AppType.bodyStrong(context).copyWith(fontSize: 15, height: 1.3),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpace.xs),
                     SizedBox(
-                      width: 22,
-                      height: 22,
+                      width: AppIconSize.md,
+                      height: AppIconSize.md,
                       child: AnimatedSwitcher(
-                        duration: authDuration(context, 180),
+                        duration: AppMotion.of(context).fast,
                         child: widget.busy
-                            ? CircularProgressIndicator(key: const ValueKey('busy'), strokeWidth: 2.4, color: ink)
-                            : Icon(Icons.arrow_forward_rounded, key: const ValueKey('go'), size: 22, color: ink),
+                            ? CircularProgressIndicator(key: const ValueKey('busy'), strokeWidth: 2.2, color: appInk(context, c.primary))
+                            : Icon(Icons.arrow_forward_rounded, key: const ValueKey('go'), size: AppIconSize.md, color: ink),
                       ),
                     ),
                   ],
@@ -369,19 +363,16 @@ class BiometricOfferSheetBody extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: c.success.withValues(alpha: c.isDark ? 0.20 : 0.10),
-              ),
-              child: Icon(icon, size: 16, color: appInk(context, c.success)),
+              width: AppIconSize.xl - AppSpace.xxs,
+              height: AppIconSize.xl - AppSpace.xxs,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: c.successTint),
+              child: Icon(icon, size: AppIconSize.sm, color: appInk(context, c.success)),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(text, style: authText(14, w: FontWeight.w500, c: c.textMedium, h: 1.45)),
+                padding: const EdgeInsets.only(top: AppSpace.xxs),
+                child: Text(text, style: AppType.body(context).copyWith(height: 1.45)),
               ),
             ),
           ],
@@ -389,32 +380,32 @@ class BiometricOfferSheetBody extends StatelessWidget {
     return SafeArea(
       top: false,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+        padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xs, AppSpace.lg, AppSpace.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Center(child: BiometricGlyph(kind: kind, size: 72)),
-            const SizedBox(height: 24),
+            Center(child: BiometricGlyph(kind: kind, size: AppTouch.primary + AppSpace.md)),
+            const SizedBox(height: AppSpace.lg),
             Semantics(
               header: true,
               child: Text(
                 biometricOfferTitle(kind),
                 textAlign: TextAlign.center,
-                style: authText(21, w: FontWeight.w800, c: c.textDark, h: 1.3, ls: authTracking(-0.3)),
+                style: AppType.headline(context),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             Text(
               'bio_offer_body'.tr,
               textAlign: TextAlign.center,
-              style: authText(14.5, c: c.textMedium, h: 1.55),
+              style: AppType.body(context).copyWith(height: 1.55),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpace.lg),
             point(Icons.lock_rounded, 'bio_offer_point_private'.tr),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             point(Icons.phone_android_rounded, 'bio_offer_point_device'.tr),
-            const SizedBox(height: 32),
+            const SizedBox(height: AppSpace.xl),
             AuthButton(
               label: 'bio_offer_enable'.tr,
               icon: biometricIcon(kind),
@@ -422,14 +413,14 @@ class BiometricOfferSheetBody extends StatelessWidget {
               loading: busy,
               onPressed: onEnable,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             TextButton(
               onPressed: busy ? null : onLater,
               style: TextButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
+                minimumSize: const Size.fromHeight(AppTouch.min),
                 foregroundColor: c.textMedium,
               ),
-              child: Text('bio_offer_later'.tr, style: authText(14.5, w: FontWeight.w700, c: c.textMedium)),
+              child: Text('bio_offer_later'.tr, style: AppType.bodyStrong(context).copyWith(color: c.textMedium)),
             ),
           ],
         ),

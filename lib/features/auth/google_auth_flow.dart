@@ -32,6 +32,10 @@ import 'username.dart';
 import 'username_field.dart';
 import 'mfa_verify_screen.dart';
 import 'auth_widgets.dart';
+import '../../design/app_blocks.dart';
+import '../../design/app_charts.dart' show appInk;
+import '../../design/app_motion_kit.dart' show AppEase, AppPressScale;
+import '../../design/app_tokens.dart';
 import 'verified_screen.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
@@ -428,12 +432,7 @@ class _GoogleAuthSectionState extends State<GoogleAuthSection>
                     'سريع وآمن. لا نطّلع على كلمة المرور أبداً.',
                   ),
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: AppFonts.family,
-                    fontSize: 11.5,
-                    color: c.textLight,
-                    height: 1.4,
-                  ),
+                  style: AppType.meta(context),
                 ),
               ),
             ],
@@ -444,8 +443,8 @@ class _GoogleAuthSectionState extends State<GoogleAuthSection>
   }
 }
 
-/// Register-screen hero: a tinted card with a "fastest way" header, the Google button
-/// and three benefit chips.
+/// Register-screen lead: a sky block (information, system.md §5) with "the fastest way" heading, the Google button and
+/// three short facts — vector checks in the success ink, no capsules.
 class _JoinCard extends StatelessWidget {
   const _JoinCard({required this.button});
 
@@ -454,125 +453,65 @@ class _JoinCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final dark = c.isDark;
 
-    Widget chip(IconData icon, String text) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: c.success.withValues(alpha: dark ? 0.16 : 0.10),
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: c.success),
-          const SizedBox(width: 5),
-          Text(
-            text,
-            style: TextStyle(
-              fontFamily: AppFonts.family,
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              color: c.textDark,
+    return AppBlock(
+      tone: AppBlockTone.sky,
+      padding: const EdgeInsets.all(AppSpace.md),
+      child: Builder(builder: (context) {
+        final ink = AppBlock.colorsOf(context);
+        Widget fact(IconData icon, String text) => Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: AppIconSize.sm, color: ink.accentInk(c.success)),
+                const SizedBox(width: AppSpace.xxs),
+                Flexible(child: Text(text, style: AppType.meta(context).copyWith(color: ink.ink, fontWeight: FontWeight.w500))),
+              ],
+            );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: AppTouch.min - AppSpace.xxs,
+                  height: AppTouch.min - AppSpace.xxs,
+                  decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.controlAll),
+                  child: Icon(Icons.bolt_rounded, color: ink.ink, size: AppIconSize.lg),
+                ),
+                const SizedBox(width: AppSpace.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _t('google_join_title', 'Join in one tap', 'انضم بضغطة واحدة'),
+                        style: AppType.section(context).copyWith(color: ink.ink),
+                      ),
+                      Text(
+                        _t('google_join_sub', 'The fastest way to create your account', 'أسرع طريقة لإنشاء حسابك'),
+                        style: AppType.meta(context).copyWith(color: ink.muted),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
-    );
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(26),
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: [
-            c.primary.withValues(alpha: dark ? 0.20 : 0.11),
-            const Color(0xFF4285F4).withValues(alpha: dark ? 0.10 : 0.05),
+            const SizedBox(height: AppSpace.md),
+            button,
+            const SizedBox(height: AppSpace.sm),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: AppSpace.md,
+              runSpacing: AppSpace.xs,
+              children: [
+                fact(Icons.verified_rounded, _t('google_chip_verified', 'Verified e-mail', 'بريد موثّق')),
+                fact(Icons.key_off_rounded, _t('google_chip_nopass', 'No password', 'بدون كلمة مرور')),
+                fact(Icons.touch_app_rounded, _t('google_chip_role', 'Pick your role', 'اختر دورك')),
+              ],
+            ),
           ],
-        ),
-        border: Border.all(color: c.primary.withValues(alpha: dark ? 0.30 : 0.20)),
-        boxShadow: [
-          BoxShadow(
-            color: c.primary.withValues(alpha: dark ? 0.12 : 0.10),
-            blurRadius: 28,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  gradient: authHeroGradient(c),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: c.primary.withValues(alpha: 0.35),
-                      blurRadius: 14,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: Icon(Icons.bolt_rounded, color: context.colors.onHero, size: 24),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _t('google_join_title', 'Join in one tap',
-                          'انضم بضغطة واحدة'),
-                      style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontSize: 16.5,
-                        fontWeight: FontWeight.w800,
-                        color: c.textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _t(
-                        'google_join_sub',
-                        'The fastest way to create your account',
-                        'أسرع طريقة لإنشاء حسابك',
-                      ),
-                      style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontSize: 12.5,
-                        color: c.textMedium, // AA on the card's primary tint (secondText was 3.8–4.2:1)
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          button,
-          const SizedBox(height: 14),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              chip(Icons.verified_rounded,
-                  _t('google_chip_verified', 'Verified e-mail', 'بريد موثّق')),
-              chip(Icons.key_off_rounded,
-                  _t('google_chip_nopass', 'No password', 'بدون كلمة مرور')),
-              chip(Icons.touch_app_rounded,
-                  _t('google_chip_role', 'Pick your role', 'اختر دورك')),
-            ],
-          ),
-        ],
-      ),
+        );
+      }),
     );
   }
 }
@@ -581,6 +520,9 @@ class _JoinCard extends StatelessWidget {
 //  Google button
 // ══════════════════════════════════════════════════════════════════════════════
 
+/// "Continue with Google" in the kit's secondary language (system.md §3a): paper, an ink hairline, radius 14, 48
+/// high, the G mark at the start and the label centred in ink. The emerald stays on the form's one primary action;
+/// no rainbow ring, no light sweep. A press sinks it to 0.97.
 class GoogleAuthButton extends StatefulWidget {
   const GoogleAuthButton({
     super.key,
@@ -597,155 +539,72 @@ class GoogleAuthButton extends StatefulWidget {
   State<GoogleAuthButton> createState() => _GoogleAuthButtonState();
 }
 
-class _GoogleAuthButtonState extends State<GoogleAuthButton>
-    with SingleTickerProviderStateMixin {
-  // Drives the soft light sweep that passes over the button every few seconds.
-  late final AnimationController _sheen = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 4200),
-  )..repeat();
-
+class _GoogleAuthButtonState extends State<GoogleAuthButton> {
   bool _down = false;
-
-  @override
-  void dispose() {
-    _sheen.dispose();
-    super.dispose();
-  }
+  bool _hover = false;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final dark = c.isDark;
-    const r = 16.0;
-    final surface = dark ? c.inputBg : context.colors.onHero;
-
-    return AnimatedScale(
-      scale: _down ? 0.975 : 1,
-      duration: const Duration(milliseconds: 130),
-      curve: Curves.easeOut,
-      child: Container(
-        // Hairline gradient border (Google blue → red → yellow → green, very soft)
-        padding: const EdgeInsets.all(1.4),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(r + 1.4),
-          gradient: LinearGradient(
-            begin: AlignmentDirectional.centerStart,
-            end: AlignmentDirectional.centerEnd,
-            colors: [
-              const Color(0xFF4285F4).withValues(alpha: dark ? 0.55 : 0.40),
-              const Color(0xFFEA4335).withValues(alpha: dark ? 0.45 : 0.30),
-              const Color(0xFFFBBC05).withValues(alpha: dark ? 0.45 : 0.34),
-              const Color(0xFF34A853).withValues(alpha: dark ? 0.55 : 0.40),
-            ],
+    final hairline = Color.lerp(c.divider, c.textDark, _down ? 0.6 : 0.35)!;
+    final fill = _down
+        ? Color.lerp(c.cardBg, c.textDark, 0.06)!
+        : _hover
+            ? Color.lerp(c.cardBg, c.textDark, 0.03)!
+            : c.cardBg;
+    return Semantics(
+      button: true,
+      enabled: !widget.loading,
+      label: widget.label,
+      excludeSemantics: true,
+      child: AppPressScale(
+        scale: 0.97,
+        enabled: !widget.loading,
+        child: Material(
+          color: fill,
+          shape: RoundedRectangleBorder(
+            borderRadius: AppRadius.controlAll,
+            side: BorderSide(color: hairline, width: AppBorder.hairline),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF4285F4).withValues(alpha: dark ? 0.16 : 0.14),
-              blurRadius: 24,
-              offset: const Offset(0, 10),
-            ),
-            BoxShadow(
-              color: context.colors.heroShade.withValues(alpha: dark ? 0.30 : 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(r),
-          child: Material(
-            color: surface,
-            child: InkWell(
-              onTap: widget.loading ? null : widget.onPressed,
-              onHighlightChanged: (v) => setState(() => _down = v),
-              splashColor: const Color(0xFF4285F4).withValues(alpha: 0.10),
-              highlightColor: const Color(0xFF4285F4).withValues(alpha: 0.05),
-              child: Stack(
-                children: [
-                  // Light sweep
-                  if (!widget.loading && !authReduceMotion(context))
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: AnimatedBuilder(
-                          animation: _sheen,
-                          builder: (_, __) {
-                            final t = _sheen.value;
-                            // Active for the first 35 % of the cycle, then rests.
-                            final slide = t < 0.35 ? -1 + 2 * (t / 0.35) : 2.0;
-                            return DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    context.colors.onHero.withValues(alpha: 0),
-                                    context.colors.onHero.withValues(alpha: dark ? 0.07 : 0.65),
-                                    context.colors.onHero.withValues(alpha: 0),
-                                  ],
-                                  stops: const [0.35, 0.5, 0.65],
-                                  transform: _SlideGradient(slide),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  SizedBox(
-                    height: 54,
-                    child: Padding(
-                      padding: const EdgeInsetsDirectional.only(start: 8, end: 8),
-                      child: widget.loading
-                          ? Center(
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: widget.loading ? null : widget.onPressed,
+            onHighlightChanged: (v) => setState(() => _down = v),
+            onHover: (v) => setState(() => _hover = v),
+            splashFactory: NoSplash.splashFactory,
+            highlightColor: Colors.transparent,
+            hoverColor: Colors.transparent,
+            child: SizedBox(
+              height: AppTouch.min + AppSpace.xxs,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+                child: widget.loading
+                    ? Center(
                         child: SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.4,
-                            color: c.primary,
-                          ),
+                          width: AppIconSize.md,
+                          height: AppIconSize.md,
+                          child: CircularProgressIndicator(strokeWidth: 2.2, color: appInk(context, c.primary)),
                         ),
                       )
-                          : Row(
+                    : Row(
                         children: [
-                          // Logo chip
-                          Container(
-                            width: 38,
-                            height: 38,
-                            decoration: BoxDecoration(
-                              color: context.colors.onHero,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: context.colors.heroShade.withValues(alpha: 0.10),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: const Center(child: _GoogleG(size: 22)),
-                          ),
+                          const _GoogleG(size: AppIconSize.md),
                           Expanded(
-                            child: Text(
-                              widget.label,
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontFamily: AppFonts.family,
-                                fontSize: 15.5,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.1,
-                                color: c.textDark,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
+                              child: Text(
+                                widget.label,
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppType.bodyStrong(context).copyWith(fontSize: 15, height: 1.2),
                               ),
                             ),
                           ),
-                          // Balances the logo chip so the label is truly centred
-                          const SizedBox(width: 38),
+                          // balances the mark so the label is truly centred
+                          const SizedBox(width: AppIconSize.md),
                         ],
                       ),
-                    ),
-                  ),
-                ],
               ),
             ),
           ),
@@ -755,8 +614,8 @@ class _GoogleAuthButtonState extends State<GoogleAuthButton>
   }
 }
 
-/// Icon-only Google button (login screen). Same look as [GoogleAuthButton]:
-/// gradient ring, soft glow, press feedback, plus a tooltip and screen-reader label.
+/// Icon-only Google button: the same paper and hairline as [GoogleAuthButton] on a circle, with a tooltip and a
+/// screen-reader label.
 class GoogleCircleButton extends StatefulWidget {
   const GoogleCircleButton({
     super.key,
@@ -781,72 +640,36 @@ class _GoogleCircleButtonState extends State<GoogleCircleButton> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final dark = c.isDark;
-
     return Tooltip(
       message: widget.tooltip,
       child: Semantics(
         button: true,
         label: widget.tooltip,
         child: AnimatedScale(
-          scale: _down ? 0.92 : 1,
-          duration: const Duration(milliseconds: 130),
-          curve: Curves.easeOut,
-          child: Container(
-            padding: const EdgeInsets.all(1.6),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: SweepGradient(
-                colors: [
-                  const Color(0xFF4285F4).withValues(alpha: dark ? 0.70 : 0.55),
-                  const Color(0xFFEA4335).withValues(alpha: dark ? 0.60 : 0.45),
-                  const Color(0xFFFBBC05).withValues(alpha: dark ? 0.60 : 0.50),
-                  const Color(0xFF34A853).withValues(alpha: dark ? 0.70 : 0.55),
-                  const Color(0xFF4285F4).withValues(alpha: dark ? 0.70 : 0.55),
-                ],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF4285F4).withValues(alpha: dark ? 0.20 : 0.18),
-                  blurRadius: 22,
-                  offset: const Offset(0, 8),
-                ),
-                BoxShadow(
-                  color: context.colors.heroShade.withValues(alpha: dark ? 0.30 : 0.06),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: ClipOval(
-              child: Material(
-                color: dark ? c.inputBg : context.colors.onHero,
-                child: InkWell(
-                  onTap: widget.loading ? null : widget.onPressed,
-                  onHighlightChanged: (v) => setState(() => _down = v),
-                  splashColor: const Color(0xFF4285F4).withValues(alpha: 0.12),
-                  child: SizedBox(
-                    width: widget.size,
-                    height: widget.size,
-                    child: Center(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        child: widget.loading
-                            ? SizedBox(
-                          key: const ValueKey('busy'),
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.4,
-                            color: c.primary,
-                          ),
-                        )
-                            : _GoogleG(
-                          key: const ValueKey('g'),
-                          size: widget.size * 0.5,
-                        ),
-                      ),
-                    ),
+          scale: _down ? 0.94 : 1,
+          duration: AppMotion.of(context).fast,
+          curve: AppEase.out,
+          child: Material(
+            color: c.cardBg,
+            shape: CircleBorder(side: BorderSide(color: Color.lerp(c.divider, c.textDark, 0.35)!, width: AppBorder.hairline)),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: widget.loading ? null : widget.onPressed,
+              onHighlightChanged: (v) => setState(() => _down = v),
+              child: SizedBox(
+                width: widget.size,
+                height: widget.size,
+                child: Center(
+                  child: AnimatedSwitcher(
+                    duration: AppMotion.of(context).base,
+                    child: widget.loading
+                        ? SizedBox(
+                            key: const ValueKey('busy'),
+                            width: AppIconSize.lg,
+                            height: AppIconSize.lg,
+                            child: CircularProgressIndicator(strokeWidth: 2.2, color: appInk(context, c.primary)),
+                          )
+                        : _GoogleG(key: const ValueKey('g'), size: widget.size * 0.42),
                   ),
                 ),
               ),
@@ -856,17 +679,6 @@ class _GoogleCircleButtonState extends State<GoogleCircleButton> {
       ),
     );
   }
-}
-
-/// Moves a gradient horizontally by [slide] × the box width (shimmer).
-class _SlideGradient extends GradientTransform {
-  const _SlideGradient(this.slide);
-
-  final double slide;
-
-  @override
-  Matrix4? transform(Rect bounds, {TextDirection? textDirection}) =>
-      Matrix4.translationValues(bounds.width * slide, 0, 0);
 }
 
 /// The official Google "G" (vector paths from the brand mark), drawn in code, no asset.

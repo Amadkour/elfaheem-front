@@ -268,7 +268,7 @@ class _Label extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: AppSpace.xs),
-        child: Semantics(header: true, child: Text(text, style: AppType.section(context).copyWith(fontFamily: AppFonts.family, fontSize: 14))),
+        child: Semantics(header: true, child: Text(text, style: AppType.bodyStrong(context))),
       );
 }
 
@@ -412,7 +412,7 @@ class _Step extends StatelessWidget {
             decoration: BoxDecoration(color: n == 0 ? c.warning : c.primary, shape: BoxShape.circle),
             child: n == 0
                 ? Icon(Icons.priority_high_rounded, size: 16, color: c.onHero)
-                : Text('$n', style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, fontSize: 13, color: c.onHero)),
+                : Text('$n', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.onHero)),
           ),
         ),
         const SizedBox(width: AppSpace.sm),
