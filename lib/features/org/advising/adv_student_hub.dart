@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 
@@ -37,28 +38,30 @@ import 'adv_threads.dart';
 // ═════════════════════════════════════════════════════════════════════════════
 
 class AdvAdvisorHubCard extends StatelessWidget {
-  const AdvAdvisorHubCard({super.key, required this.advisor, this.canBook = true, this.onBook, this.onMessage});
+  const AdvAdvisorHubCard({super.key, required this.advisor, this.canBook = true, this.onBook, this.onMessage, this.featured = false});
   final AdvHubAdvisor advisor;
   final bool canBook;
   final VoidCallback? onBook, onMessage;
+
+  /// The hub's hero: the student's (first) advisor on a peach block, the name in the editorial headline.
+  final bool featured;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final a = advisor;
     final lines = a.hours.lines;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpace.sm),
-      child: AppCard(
-        padding: AppSpace.card,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+    final bc = featured ? AppBlockColors.of(context, AppBlockTone.peach) : null;
+    final body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             AppAvatar(name: a.shown, size: AppTouch.primary),
             const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Semantics(header: true, child: Text(a.shown, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context))),
-                Text(a.typeLabel, style: AppType.meta(context)),
+                Semantics(
+                    header: true,
+                    child: Text(a.shown, maxLines: 2, overflow: TextOverflow.ellipsis, style: bc == null ? AppType.section(context) : AppType.headline(context).copyWith(color: bc.ink))),
+                Text(a.typeLabel, style: AppType.meta(context).copyWith(color: bc?.muted)),
               ]),
             ),
           ]),
@@ -68,8 +71,8 @@ class AdvAdvisorHubCard extends StatelessWidget {
             const SizedBox(height: AppSpace.xs),
             AdvTypedText(a.bio!, maxLines: 3, style: AppType.body(context)),
           ],
-          const SizedBox(height: AppSpace.sm),
-          Text(t('الساعات المكتبية', 'Office hours'), style: AppType.bodyStrong(context)),
+          const SizedBox(height: AppSpace.md),
+          Text(t('الساعات المكتبية', 'Office hours'), style: AppType.bodyStrong(context).copyWith(color: bc?.ink)),
           if (lines.isEmpty)
             AdvInfoLine(icon: Icons.schedule_rounded, text: t('لم تُحدد بعد — راسل مرشدك لتتفقا على موعد', 'Not set yet — message your advisor to agree on a time'))
           else ...[
@@ -77,26 +80,30 @@ class AdvAdvisorHubCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: AppSpace.xxs),
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  SizedBox(width: 92 * MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.4), child: Text(advWeekdayLabel(wd), style: AppType.meta(context).copyWith(color: c.textDark))),
-                  Expanded(child: Text(text, style: AppType.meta(context))),
+                  SizedBox(
+                      width: AppTouch.min * 2 * MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.4),
+                      child: Text(advWeekdayLabel(wd), style: AppType.meta(context).copyWith(color: bc?.ink ?? c.textDark, fontWeight: FontWeight.w600))),
+                  Expanded(child: Text(text, style: AppType.meta(context).copyWith(color: bc?.muted, fontFeatures: const [FontFeature.tabularFigures()]))),
                 ]),
               ),
             if (a.hours.modes.isNotEmpty) ...[
               const SizedBox(height: AppSpace.xs),
               Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
-                for (final m in a.hours.modes) AppBadgePill(advMeetingModeLabelShort(m), color: c.primary, icon: advModeIcon(m)),
+                for (final m in a.hours.modes) AppStatusBadge(label: advMeetingModeLabelShort(m), tone: AppTone.brand, icon: advModeIcon(m)),
               ]),
             ],
           ],
           if (a.nextFree != null)
-            AdvInfoLine(icon: Icons.event_available_rounded, color: c.success, text: t('أقرب موعد متاح: ${AppTime.date(a.nextFree!, pattern: 'EEE d MMM')} · ${AppTime.time(a.nextFree!)}', 'Next free: ${AppTime.date(a.nextFree!, pattern: 'EEE d MMM')} · ${AppTime.time(a.nextFree!)}')),
-          const SizedBox(height: AppSpace.sm),
+            AdvInfoLine(icon: Icons.event_available_rounded, color: bc?.accentInk(c.success) ?? c.success, text: t('أقرب موعد متاح: ${AppTime.date(a.nextFree!, pattern: 'EEE d MMM')} · ${AppTime.time(a.nextFree!)}', 'Next free: ${AppTime.date(a.nextFree!, pattern: 'EEE d MMM')} · ${AppTime.time(a.nextFree!)}')),
+          const SizedBox(height: AppSpace.md),
           Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             if (onBook != null && a.bookable) AppButton.primary(label: t('احجز موعداً', 'Book a meeting'), icon: Icons.event_available_rounded, onPressed: canBook ? onBook : null),
             if (onMessage != null) AppButton.secondary(label: t('راسله', 'Message'), icon: Icons.chat_bubble_outline_rounded, onPressed: onMessage),
           ]),
-        ]),
-      ),
+        ]);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
+      child: featured ? AppBlock(tone: AppBlockTone.peach, hero: true, child: body) : AppCard(padding: AppSpace.card, child: body),
     );
   }
 }
@@ -178,8 +185,8 @@ class AdvHubView extends StatelessWidget {
     ];
     final advisors = [
       AdvSectionTitle(h.advisors.length > 1 ? t('مرشدوك', 'Your advisors') : t('مرشدك', 'Your advisor'), first: true),
-      for (final a in h.advisors)
-        AdvAdvisorHubCard(advisor: a, canBook: blocked == null, onBook: onBook == null ? null : () => onBook!(a), onMessage: a.type == 'primary' || h.advisors.length == 1 ? (onMessage == null ? null : () => onMessage!(a)) : null),
+      for (final (i, a) in h.advisors.indexed)
+        AdvAdvisorHubCard(featured: i == 0, advisor: a, canBook: blocked == null, onBook: onBook == null ? null : () => onBook!(a), onMessage: a.type == 'primary' || h.advisors.length == 1 ? (onMessage == null ? null : () => onMessage!(a)) : null),
       if (blocked != null && h.bookable.isNotEmpty) AppBanner(icon: Icons.info_outline_rounded, text: blocked),
     ];
     final t0 = h.threads;
@@ -250,20 +257,29 @@ class AdvHubView extends StatelessWidget {
         return Align(
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1200),
+            constraints: BoxConstraints(maxWidth: AppWidth.content.max),
             child: ListView(padding: pad, children: [
               ...surveys,
               ...outreach,
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Expanded(flex: 5, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [...advisors, const SizedBox(height: AppSpace.sm), messages, support])),
+                Expanded(flex: 5, child: AppReveal(index: 0, group: 'adv.hub', child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [...advisors, const SizedBox(height: AppSpace.sm), messages, support]))),
                 const SizedBox(width: AppSpace.lg),
-                Expanded(flex: 6, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [...meetings, ...notes])),
+                Expanded(flex: 6, child: AppReveal(index: 1, group: 'adv.hub', child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [...meetings, ...notes]))),
               ]),
             ]),
           ),
         );
       }
-      return AdvPageFrame(maxWidth: 720, children: [...surveys, ...outreach, ...advisors, const SizedBox(height: AppSpace.xs), messages, support, const SizedBox(height: AppSpace.md), ...meetings, ...notes]);
+      // ONE orchestrated entrance: the advisor hero, then what follows it
+      return AdvPageFrame(children: [
+        ...surveys,
+        ...outreach,
+        AppReveal(index: 0, group: 'adv.hub', child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: advisors)),
+        const SizedBox(height: AppSpace.xs),
+        AppReveal(index: 1, group: 'adv.hub', child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [messages, support])),
+        const SizedBox(height: AppSpace.md),
+        AppReveal(index: 2, group: 'adv.hub', child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [...meetings, ...notes])),
+      ]);
     });
   }
 }
@@ -283,7 +299,7 @@ class AdvStudentHubPage extends StatelessWidget {
   Widget build(BuildContext context) => AdvCommScaffold(
         orgId: orgId,
         title: t('مرشدي الأكاديمي', 'My academic advisor'),
-        maxWidth: 1200,
+        maxWidth: AppWidth.content.max,
         child: _AdvHubBody(orgId: orgId, surveyToken: surveyToken),
       );
 }

@@ -16,7 +16,6 @@
 //   advOutreachOn             the kill switch `org.advising.outreach` (with the module's)
 library;
 
-import 'package:flutter_education_app/design/app_header.dart' show AppHeader;
 import 'dart:async';
 import 'dart:math' as math;
 

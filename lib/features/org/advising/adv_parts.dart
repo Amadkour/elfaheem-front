@@ -53,7 +53,10 @@ Color advLoadColor(BuildContext context, {required bool warn, required bool over
 /// The list every page draws its cards in: centred, at most [maxWidth] wide, padded; [fab] leaves room for the
 /// phone's floating primary action.
 class AdvPageFrame extends StatelessWidget {
-  const AdvPageFrame({super.key, required this.children, this.fab = false, this.maxWidth = 880, this.controller});
+  const AdvPageFrame({super.key, required this.children, this.fab = false, this.maxWidth = readingWidth, this.controller});
+
+  /// The default width: the reading role (AppWidth.reading, about 75 characters a line).
+  static const double readingWidth = 860;
   final List<Widget> children;
   final bool fab;
   final double maxWidth;
@@ -89,7 +92,8 @@ class AdvSectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final sub = subtitle;
     return Padding(
-      padding: EdgeInsets.only(top: first ? AppSpace.xs : AppSpace.lg, bottom: AppSpace.xs),
+      // the editorial rhythm: more room above a heading (32) than under it (12)
+      padding: EdgeInsets.only(top: first ? AppSpace.xs : AppSpace.xl, bottom: AppSpace.sm),
       child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -253,7 +257,7 @@ class AdvRowCard extends StatelessWidget {
         bottom: AppSpace.xs,
         child: IgnorePointer(
           child: DecoratedBox(
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(c.radiusLarge - 4), border: Border.all(color: c.primary, width: 2)),
+            decoration: BoxDecoration(borderRadius: AppRadius.cardAll, border: Border.all(color: c.primary, width: AppBorder.focus)),
           ),
         ),
       ),
@@ -276,7 +280,7 @@ class AdvSelectMark extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: selected ? c.primary : c.inputBg,
-        border: Border.all(color: selected ? c.primary : c.textLight, width: 2),
+        border: Border.all(color: selected ? c.primary : c.textLight, width: AppBorder.focus),
       ),
       child: selected ? Icon(Icons.check_rounded, size: AppIconSize.md, color: Theme.of(context).colorScheme.onPrimary) : null,
     );
@@ -313,14 +317,14 @@ class AdvStepper extends StatelessWidget {
       onIncrease: on == null || up == null ? null : () => on(up),
       onDecrease: on == null || down == null ? null : () => on(down),
       child: Container(
-        decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll, border: Border.all(color: c.divider)),
+        decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.controlAll, border: Border.all(color: c.divider)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           ExcludeSemantics(child: btn(Icons.remove_rounded, t('أقل', 'Less'), down)),
           ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 44),
+            constraints: const BoxConstraints(minWidth: AppTouch.min),
             child: ExcludeSemantics(
               child: Text('$value${suffix ?? ''}',
-                  textAlign: TextAlign.center, style: AppType.figure(context).copyWith(fontSize: 17, fontFeatures: const [FontFeature.tabularFigures()])),
+                  textAlign: TextAlign.center, style: AppType.figure(context).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
             ),
           ),
           ExcludeSemantics(child: btn(Icons.add_rounded, t('أكثر', 'More'), up)),
@@ -353,14 +357,14 @@ class AdvPersonField extends StatelessWidget {
       excludeSemantics: true,
       child: Material(
         color: c.inputBg,
-        borderRadius: AppRadius.chipAll,
+        borderRadius: AppRadius.controlAll,
         child: InkWell(
-          borderRadius: AppRadius.chipAll,
+          borderRadius: AppRadius.controlAll,
           onTap: onPick,
           child: Container(
             constraints: const BoxConstraints(minHeight: AppTouch.primary),
             padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xs, AppSpace.xxs, AppSpace.xs),
-            decoration: BoxDecoration(borderRadius: AppRadius.chipAll, border: Border.all(color: c.divider)),
+            decoration: BoxDecoration(borderRadius: AppRadius.controlAll, border: Border.all(color: c.divider)),
             child: Row(children: [
               has && avatar ? AppAvatar(name: name!, size: 32) : Icon(icon, color: has ? c.primary : c.textLight, size: AppIconSize.md),
               const SizedBox(width: AppSpace.sm),
