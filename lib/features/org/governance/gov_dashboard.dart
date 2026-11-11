@@ -10,6 +10,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppFill;
 import 'package:provider/provider.dart';
 
 import '../../admin/admin_common.dart' show asDouble, asInt, asMap, t;
@@ -61,30 +62,39 @@ class GovDashboardBody extends StatelessWidget {
     final s = stats;
     final statuses = itemStatuses.where((k) => (s.byStatus[k] ?? 0) > 0).toList();
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      AppGrid(padding: EdgeInsets.zero, minTile: compact ? 140 : 170, children: [
-        AppStatTile(icon: Icons.inbox_rounded, label: t('قيد المعالجة', 'Pending'), value: s.pending, color: c.primary, onTap: onTile == null ? null : () => onTile!('pending')),
-        AppStatTile(icon: Icons.gavel_rounded, label: t('بانتظار القرار', 'Pending decision'), value: s.pendingDecision, color: c.warning, onTap: onTile == null ? null : () => onTile!('pending_decision')),
-        AppStatTile(icon: Icons.timer_off_rounded, label: t('متأخرة', 'Overdue'), value: s.overdue, color: c.danger, onTap: onTile == null ? null : () => onTile!('overdue')),
-        AppStatTile(icon: Icons.task_alt_rounded, label: t('قرارات آخر 30 يوماً', 'Decided (30 d)'), value: s.decided30d, color: c.success, onTap: onTile == null ? null : () => onTile!('decided')),
+      // the queue is the page's one key figure: Pending is the sky block (information), the rest paper (D-612)
+      AppKpiGrid(children: [
+        AppKpiCard(icon: Icons.inbox_rounded, label: t('قيد المعالجة', 'Pending'), value: '${s.pending}', highlight: true, tone: AppBlockTone.sky, onTap: onTile == null ? null : () => onTile!('pending')),
+        AppKpiCard(icon: Icons.gavel_rounded, label: t('بانتظار القرار', 'Pending decision'), value: '${s.pendingDecision}', onTap: onTile == null ? null : () => onTile!('pending_decision')),
+        AppKpiCard(icon: Icons.timer_off_rounded, label: t('متأخرة', 'Overdue'), value: '${s.overdue}', onTap: onTile == null ? null : () => onTile!('overdue')),
+        AppKpiCard(icon: Icons.task_alt_rounded, label: t('قرارات آخر 30 يوماً', 'Decided (30 d)'), value: '${s.decided30d}', onTap: onTile == null ? null : () => onTile!('decided')),
       ]),
       if (statuses.isNotEmpty) ...[
-        const SizedBox(height: AppSpace.md),
-        Text(t('حسب الحالة', 'By status'), style: AppType.meta(context).copyWith(color: c.textLight)),
+        const SizedBox(height: AppSpace.lg),
+        Text(t('حسب الحالة', 'By status'), style: AppType.label(context)),
         const SizedBox(height: AppSpace.xs),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadius.chip),
-          child: SizedBox(
-            height: 12,
-            child: Row(children: [
-              for (final k in statuses) Expanded(flex: s.byStatus[k]!, child: Container(color: govStatusColor(context, k))),
-            ]),
+        // the split draws in once from the reading start (AppFill parks under Reduce motion)
+        AppFill(
+          value: 1,
+          builder: (context, v) => ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.chip),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              widthFactor: v.clamp(0.0, 1.0),
+              child: SizedBox(
+                height: AppSpace.sm,
+                child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  for (final k in statuses) Expanded(flex: s.byStatus[k]!, child: ColoredBox(color: govStatusColor(context, k))),
+                ]),
+              ),
+            ),
           ),
         ),
-        const SizedBox(height: AppSpace.xs),
-        Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xs, children: [
+        const SizedBox(height: AppSpace.sm),
+        Wrap(spacing: AppSpace.md, runSpacing: AppSpace.xs, children: [
           for (final k in statuses)
             Row(mainAxisSize: MainAxisSize.min, children: [
-              Container(width: 10, height: 10, decoration: BoxDecoration(color: govStatusColor(context, k), shape: BoxShape.circle)),
+              Container(width: AppSpace.xs, height: AppSpace.xs, decoration: BoxDecoration(color: govStatusColor(context, k), shape: BoxShape.circle)),
               const SizedBox(width: AppSpace.xxs),
               Flexible(child: Text('${itemStatusLabel(k)} ${s.byStatus[k]}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium))),
             ]),
@@ -161,7 +171,12 @@ class _GovDashboardCardState extends State<GovDashboardCard> {
     final c = context.colors;
     Widget body;
     if (_stats == null && !_failed) {
-      body = const AppShimmer(child: Column(children: [AppSkeletonBox(height: 70, width: double.infinity), SizedBox(height: AppSpace.sm), AppSkeletonBox(height: 12, width: double.infinity)]));
+      body = const AppShimmer(
+          child: Column(children: [
+        AppSkeletonBox(height: AppSpace.xxxl + AppSpace.lg, width: double.infinity),
+        SizedBox(height: AppSpace.lg),
+        AppSkeletonBox(height: AppSpace.sm, width: double.infinity),
+      ]));
     } else if (_missing) {
       body = Text(t('تحتاج تحديث الخادم', 'Needs a server update'), style: AppType.label(context).copyWith(color: c.textMedium));
     } else if (_stats == null) {
@@ -173,12 +188,15 @@ class _GovDashboardCardState extends State<GovDashboardCard> {
       margin: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(Icons.account_tree_rounded, size: AppIconSize.md, color: c.primary),
+          Icon(Icons.account_tree_rounded, size: AppIconSize.md, color: c.textMedium),
           const SizedBox(width: AppSpace.xs),
-          Expanded(child: Text(widget.title ?? t('الطلبات والمعاملات', 'Requests & workflow'), style: AppType.bodyStrong(context).copyWith(color: c.textDark))),
-          IconButton(tooltip: t('تحديث', 'Refresh'), visualDensity: VisualDensity.compact, onPressed: _load, icon: Icon(Icons.refresh_rounded, size: AppIconSize.md, color: c.textLight)),
+          Expanded(
+            child: Text(widget.title ?? t('الطلبات والمعاملات', 'Requests & workflow'),
+                maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+          ),
+          IconButton(tooltip: t('تحديث', 'Refresh'), onPressed: _load, icon: Icon(Icons.refresh_rounded, size: AppIconSize.md, color: c.textMedium)),
         ]),
-        const SizedBox(height: AppSpace.sm),
+        const SizedBox(height: AppSpace.md),
         body,
       ]),
     );
