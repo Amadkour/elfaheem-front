@@ -43,7 +43,9 @@ import 'package:flutter_education_app/features/shared/rag/rag_learning.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_learning_page.dart';
 import 'package:flutter_education_app/features/student/home/home_screen.dart';
 import 'package:flutter_education_app/features/teacher/courses/component/teacher_stats.dart';
+import 'package:flutter_education_app/features/teacher/home/go_live_sheet.dart' show GoLiveButton;
 import 'package:flutter_education_app/features/teacher/home/home_screen.dart';
+import 'package:flutter_education_app/features/teacher/todo/teacher_todo_models.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_extra.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -493,12 +495,36 @@ TeacherHomeExtra _teacherExtra() => TeacherHomeExtra.fromJson({
 /// [free]: a day without sessions (the next ones are tomorrow) and no live room — "Today's sessions" folds itself.
 Widget _teacherHome({bool free = false}) => SingleChildScrollView(
       child: _width(kHomeWideMax, Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        _header(
-            tr('أحمد حمدي', 'Ahmed Hamdy'),
-            free
-                ? homeDaySummary(sessions: 0, live: 0, todo: 28)
-                : homeDaySummary(sessions: 3, live: 2, todo: 28, nextAt: AppTime.time(_now.add(const Duration(hours: 3))))),
+        // the live hero: actions, the day ribbon, Go live (the context switcher needs the app's providers)
+        TeacherHomeHero(
+          name: tr('أحمد حمدي', 'Ahmed Hamdy'),
+          subtitle: free
+              ? homeDaySummary(sessions: 0, live: 0, todo: 28)
+              : homeDaySummary(sessions: 3, live: 2, todo: 28, nextAt: AppTime.time(_now.add(const Duration(hours: 3)))),
+          actions: const [QuickMeetingIcon()],
+          shellActions: const [CalendarEntryIcon(), NotificationIcon(unreadCount: 3)],
+          day: free
+              ? const []
+              : [
+                  HomeAgendaItem(start: '', end: '', title: tr('تراكيب البيانات', 'Data structures'), startMin: 8 * 60, endMin: 9 * 60 + 20),
+                  HomeAgendaItem(start: '', end: '', title: tr('معمل الشبكات', 'Networks lab'), startMin: 9 * 60 + 10, endMin: 10 * 60 + 40, live: true),
+                  HomeAgendaItem(start: '', end: '', title: tr('الذكاء الاصطناعي', 'Artificial intelligence'), startMin: 13 * 60, endMin: 14 * 60 + 30),
+                ],
+          nowMin: 10 * 60,
+          goLive: GoLiveButton(onTap: () {}),
+          helpPageId: null,
+        ),
         TeacherHomeBody(
+        todo: free
+            ? null
+            : TodoList(items: [
+                for (final (k, kind, pr, ar, en) in [
+                  ('a', 'grading', 'high', 'صحّح 18 تسليمًا', 'Grade 18 submissions'),
+                  ('b', 'attendance_missing', 'high', 'سجّل حضور معمل الشبكات', 'Take attendance: Networks lab'),
+                  ('c', 'materials_missing', 'medium', 'ارفع مواد المحاضرة 4', 'Upload lecture 4 materials'),
+                ])
+                  TodoItem(key: k, kind: kind, priority: pr, score: 1, titleAr: ar, titleEn: en, whyAr: 'منذ يومين', whyEn: 'Since 2 days', courseName: tr('معمل الشبكات', 'Networks lab')),
+              ]),
         liveNow: free ? const [] : _liveMeeting(),
         now: _now,
         loading: false,

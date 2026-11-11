@@ -908,11 +908,9 @@ class InboxEntry extends StatelessWidget {
                       Container(
                         width: AppIconSize.hero,
                         height: AppIconSize.hero,
-                        decoration: BoxDecoration(
-                          color: busy ? c.primary : c.blockEmerald,
-                          borderRadius: BorderRadius.circular(AppRadius.control),
-                        ),
-                        child: Icon(Icons.inbox_rounded, size: AppIconSize.md, color: busy ? c.onHero : c.blockAccentInk(c.primary, c.blockEmerald)),
+                        // tonal, never a solid emerald tile (D-630): the count pill says that something waits
+                        decoration: BoxDecoration(color: c.blockEmerald, borderRadius: BorderRadius.circular(AppRadius.control)),
+                        child: Icon(Icons.inbox_rounded, size: AppIconSize.md, color: c.blockAccentInk(c.primary, c.blockEmerald)),
                       ),
                       const SizedBox(width: AppSpace.sm),
                       Expanded(

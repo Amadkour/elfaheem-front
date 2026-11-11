@@ -82,29 +82,51 @@ void main() {
                   reason: '$tone accent $accent');
             }
           }
+          // the forest hero (D-630): cream ink at 7:1, muted / faint at AA, accents lifted to AA
+          final f = p.blockForest;
+          expect(contrastRatio(p.heroInk, f), greaterThanOrEqualTo(7), reason: 'forest ink');
+          expect(contrastRatio(p.heroInkMuted, f), greaterThanOrEqualTo(kWcagAaText), reason: 'forest muted');
+          expect(contrastRatio(p.heroInkFaint, f), greaterThanOrEqualTo(kWcagAaText), reason: 'forest faint');
+          for (final accent in [p.accent2, p.success, p.warning, p.danger, p.primary]) {
+            expect(contrastRatio(p.blockAccentInk(accent, f), f), greaterThanOrEqualTo(kWcagAaText), reason: 'forest accent $accent');
+          }
           p.dispose();
         });
       }
     }
   });
 
-  test('the editorial default is the system.md palette: sky and peach as given, dark blocks tinted', () {
+  test('the editorial default is the system.md palette: sage and peach as given, the forest hero, dark blocks tinted', () {
     final p = ThemeConfigProvider(api: ApiClient());
-    expect(p.accent3, const Color(0xFFDCE7F5));
+    expect(p.accent3, const Color(0xFFE4ECE3));
     expect(p.blockPeach, const Color(0xFFFBE2D3));
-    expect(p.blockSky, const Color(0xFFDCE7F5));
+    expect(p.blockSky, const Color(0xFFE4ECE3));
+    expect(AppBlockTone.sage, AppBlockTone.sky);
+    final forest = HSLColor.fromColor(p.blockForest);
+    expect(forest.hue, closeTo(162, 6), reason: 'about #0E3B2E');
+    expect(forest.lightness, lessThanOrEqualTo(0.15));
     p.isDark = true;
     // a dark surface with the block's hue, a step above the dark card (#241F19)
     expect(relativeLuminance(p.blockPeach), greaterThan(relativeLuminance(p.cardBg)));
-    expect(HSLColor.fromColor(p.blockSky).hue, closeTo(214, 4));
+    final sage = HSLColor.fromColor(p.blockSky);
+    expect(sage.saturation, lessThanOrEqualTo(0.17), reason: 'a quiet grey-green, about #1E2A23');
+    expect(sage.hue, inInclusiveRange(90, 150));
     p.dispose();
   });
 
-  test('a palette without accent3 gets a pale blue in its own light', () {
+  test('a server still sending the retired sky gets the sage', () {
+    final production = (jsonDecode(File('test/visual/fixtures/theme_production.json').readAsStringSync()) as Map)
+        .cast<String, dynamic>();
+    final p = ThemeConfigProvider(api: ApiClient())..debugUseColors({...production, 'accent3': '#DCE7F5'});
+    expect(HSLColor.fromColor(p.accent3).hue, inInclusiveRange(90, 150));
+    p.dispose();
+  });
+
+  test('a palette without accent3 gets a pale sage in its own light', () {
     final sky = ThemeConfigProvider.deriveAccent3(
         primary: const Color(0xFF0F7B5F), background: const Color(0xFFFBF7EC), ink: const Color(0xFF68756D));
     final h = HSLColor.fromColor(sky);
-    expect(h.hue, inInclusiveRange(195, 214));
+    expect(h.hue, inInclusiveRange(100, 150));
     expect(h.lightness, greaterThan(0.86));
     expect(contrastRatio(const Color(0xFF68756D), sky), greaterThanOrEqualTo(kWcagAaText));
   });

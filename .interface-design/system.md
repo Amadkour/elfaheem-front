@@ -34,13 +34,23 @@ from `context.colors`, never hex values, so other presets keep working.
 | `success` (completion, correct answer) | `#12805C` | | emerald = "done / right" |
 | `accent2` gold (streaks, achievements, top marks) | `#94691A` text-safe | | gold fills use its tint `#F6E7C4` |
 | block peach `accent1` | `#FBE2D3` | dark: tinted `#3A2A22` | learning / progress blocks |
-| block sky `accent3` (new optional key) | `#DCE7F5` | dark: `#1F2A38` | schedule / information blocks |
+| block sage `accent3` (optional key; tone `sky` = `sage`) | `#E4ECE3` | dark: `#1E2A23` | schedule / information / calm empty blocks (was the cool sky `#DCE7F5`, D-630) |
+| hero forest (derived, D-630) | `primary_dark` deepened to 7:1 under cream ≈ `#0E3B2E` | ≈ `#14392D` + cream hairline | THE home hero; ink = canvas cream, muted = cream 78 % |
 | `warning` | `#B7791F` | | |
 | `danger` | `#B42E3A` | | |
 
 Rules: emerald and gold are reserved — emerald for the primary action and for success / completion / correct; gold
-only for streaks, achievements, top scores. Never use them as decoration. Peach and sky are surfaces, never text.
+only for streaks, achievements, top scores. Never use them as decoration. Peach and sage are surfaces, never text.
 Every text role keeps ≥ 4.5:1 on every surface it sits on (large display text ≥ 3:1).
+
+**Distribution (D-630) — about 60 / 30 / 10.** 60: the cream canvas. 30: paper cards and tinted blocks (a peach band
+under key figures, a sage block for a calm empty state, gold for streaks). 10: accent — emerald carries the brand there
+(primary buttons, nav selection, links, success, progress fills; icon tiles are TONAL, emerald tint + emerald icon,
+never solid). Every home has ONE strong hero: the deep forest block. **Red only where it means something**: live now
+(dots, the live label, a ring), destructive actions, errors, unread count badges — never a primary action (Go live,
+Join, Enter room are emerald), never a to-do (urgent = an amber tint pill with dark amber ink; the kind icon in a
+neutral input-tone well). Chrome icon buttons on the canvas are ghosts (no plate, ink icon, hover / press wash, focus
+ring); on the forest hero they are translucent cream plates.
 
 ## 3. Type
 
@@ -78,9 +88,10 @@ a headline.
 
 ## 5. Blocks
 
-`AppBlock(tone: AppBlockTone.peach | sky | gold | emerald | paper, child:)` — a full-width tinted container (radius
-`block`, padding per §4) that groups one subject: today's lesson, your streak, the next session, a category. A screen
-uses at most two or three tones; a category keeps its tone everywhere (`AppBlockTone.forKey(key)` is stable).
+`AppBlock(tone: AppBlockTone.peach | sky (= sage) | gold | emerald | paper | forest, child:)` — a full-width tinted
+container (radius `block`, padding per §4) that groups one subject: today's lesson, your streak, the next session, a
+category. `forest` is reserved for THE home hero (one per screen; a second block under it is peach or sage). A screen
+uses at most two tones besides the hero; a category keeps its tone everywhere (`AppBlockTone.forKey(key)` is stable).
 Category / subject indicators are vector icons (Material rounded / `CupertinoIcons` / a small `CustomPainter`
 glyph), never emoji.
 

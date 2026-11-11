@@ -21,6 +21,7 @@
 //      theme accessor.
 
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
@@ -314,30 +315,37 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       : textDark.withValues(alpha: 0.08);
 
   // ══════════════════════════════════════════════════════════════════════
-  // BLOCKS (D-610, D-613) — the tinted containers that group one subject (AppBlock). Peach is `accent` (accent1),
-  // sky is `accent3` (derived when the theme sends none), gold is a tint of accent2, emerald a tint of the primary.
+  // BLOCKS (D-610, D-613, D-630) — the tinted containers that group one subject (AppBlock). Peach is `accent`
+  // (accent1), sky (now sage) is `accent3` (derived when the theme sends none), forest the one home hero, gold is a tint of accent2, emerald a tint of the primary.
   // Dark mode: each becomes a dark surface tinted with its hue. Ink on every block keeps WCAG AA: [blockInk] /
   // [blockMuted] / [blockFaint], and [blockAccentInk] darkens gold / success / warning until they read as text.
   // ══════════════════════════════════════════════════════════════════════
 
-  /// The sky block tone, light mode: the theme's `accent3`, else [deriveAccent3] from this palette.
+  /// The sage block tone (`accent3`, the API keeps the old name `sky`; D-630), light mode: the theme's `accent3`,
+  /// else [deriveAccent3] from this palette. The warm_editorial preset's first value, the cool sky #DCE7F5, clashed
+  /// with the warm canvas: a server that still sends exactly it gets the sage that replaced it.
   Color get accent3 {
     final m = _model;
     if (m == null) return AppTheme.accent3;
-    return m.accent3 ?? (_accent3Cache[m] ??= deriveAccent3(primary: m.primary, background: m.background, ink: m.textLight));
+    final sent = m.accent3;
+    if (sent != null && sent.toARGB32() != _retiredSky) return sent;
+    return _accent3Cache[m] ??= deriveAccent3(primary: m.primary, background: m.background, ink: m.textLight);
   }
+
+  /// The retired cool sky of the first warm_editorial preset (see [accent3]).
+  static const int _retiredSky = 0xFFDCE7F5;
 
   final Map<ThemeConfigModel, Color> _accent3Cache = {};
 
-  /// A sky block tone for a palette without `accent3`: a pale blue (hue 214, the editorial preset's) turned 15 %
-  /// toward the primary's hue and mixed 15 % into the canvas so it sits in the same light, then lightened until the
-  /// caption ink [ink] still reads at AA on it.
+  /// A sage block tone for a palette without `accent3`: a pale grey-green (hue 120, about the default preset's
+  /// #E4ECE3) turned 15 % toward the primary's hue and mixed 15 % into the canvas so it sits in the same warm light,
+  /// then lightened until the caption ink [ink] still reads at AA on it.
   static Color deriveAccent3({required Color primary, required Color background, required Color ink}) {
     final ph = HSLColor.fromColor(primary);
-    var d = ((ph.hue - 214 + 540) % 360) - 180; // the shortest way from 214° to the primary's hue
+    var d = ((ph.hue - 120 + 540) % 360) - 180; // the shortest way from 120° to the primary's hue
     if (ph.saturation < 0.12) d = 0; // a grey primary has no hue to lean toward
-    final sky = HSLColor.fromAHSL(1, (214 + d * 0.15) % 360, 0.6, 0.91).toColor();
-    return blockSurface(Color.lerp(sky, background, 0.15)!, ink);
+    final sage = HSLColor.fromAHSL(1, (120 + d * 0.15) % 360, 0.2, 0.9).toColor();
+    return blockSurface(Color.lerp(sage, background, 0.15)!, ink);
   }
 
   /// [c] made into a light block surface: at least 0.86 lightness, at most 0.85 saturation, and light enough for
@@ -367,10 +375,13 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     return isDark ? darkBlock(light) : light;
   }
 
-  /// Sky: schedule / information blocks (`accent3`).
+  /// Sage (the `sky` tone's new colour, D-630): schedule / information / calm empty blocks (`accent3`). Dark mode
+  /// keeps it a quiet grey-green (about #1E2A23), not the saturated step [darkBlock] gives the other tones.
   Color get blockSky {
     final light = blockSurface(accent3, _lightInk);
-    return isDark ? darkBlock(light) : light;
+    if (!isDark) return light;
+    final h = HSLColor.fromColor(light);
+    return HSLColor.fromAHSL(1, h.hue, math.min(h.saturation, 0.17), 0.145).toColor();
   }
 
   /// Gold: streaks, achievements, top marks (a tint of accent2; about #F6E7C4 for the editorial preset).
@@ -387,6 +398,37 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     final light = blockSurface(p.withSaturation(p.saturation.clamp(0.0, 0.42)).withLightness(0.9).toColor(), _lightInk);
     return isDark ? darkBlock(light) : light;
   }
+
+  /// The signature hero (D-630): ONE deep forest block per home, from the theme's `primary_dark` — its hue, the
+  /// saturation held at 0.62 and the lightness at most 0.145, then deepened until the cream ink reads at 7:1 (about
+  /// #0E3B2E for the default preset). Dark mode lifts it a step (about #14392D) so it still stands off the dark canvas.
+  Color get blockForest {
+    final light = _forestCache[(primaryDark, heroInk)] ??= deriveForest(primaryDark, heroInk);
+    if (!isDark) return light;
+    final h = HSLColor.fromColor(light);
+    return h.withSaturation(math.min(h.saturation, 0.48)).withLightness(math.max(h.lightness, 0.15)).toColor();
+  }
+
+  final Map<(Color, Color), Color> _forestCache = {};
+
+  /// [primaryDark] made into the forest hero for [ink] (see [blockForest]).
+  static Color deriveForest(Color primaryDark, Color ink) {
+    var h = HSLColor.fromColor(primaryDark.withValues(alpha: 1));
+    h = h.withSaturation(math.min(h.saturation, 0.62)).withLightness(math.min(h.lightness, 0.145));
+    while (contrastRatio(ink, h.toColor()) < 7 && h.lightness > 0.02) {
+      h = h.withLightness(h.lightness - 0.005);
+    }
+    return h.toColor();
+  }
+
+  /// Ink on the forest hero: the LIGHT canvas cream in both modes.
+  Color get heroInk => _model?.background ?? AppTheme.background;
+
+  /// Secondary ink on the forest hero: cream at 78 % (about 9:1), raised until it keeps AA.
+  Color get heroInkMuted => ensureContrast(Color.alphaBlend(heroInk.withValues(alpha: _hc ? 0.92 : 0.78), blockForest), [blockForest]);
+
+  /// Caption ink on the forest hero: cream at 66 %, at AA.
+  Color get heroInkFaint => ensureContrast(Color.alphaBlend(heroInk.withValues(alpha: _hc ? 0.85 : 0.66), blockForest), [blockForest]);
 
   /// Main ink on a block (titles, figures): `text_dark` / `dark_text_primary`.
   Color get blockInk => textDark;

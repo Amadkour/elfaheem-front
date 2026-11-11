@@ -209,8 +209,9 @@ class _Greeting extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // the home's ONE forest hero (D-630)
     return AppBlock(
-      tone: AppBlockTone.sky,
+      tone: AppBlockTone.forest,
       hero: true,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         _title(),
@@ -367,7 +368,7 @@ class _NeedsYou extends StatelessWidget {
           icon: Icons.pending_actions_rounded,
           title: 'admin_pending_transfers'.tr,
           count: data.pendingTransfers,
-          color: c.danger,
+          color: c.warning, // waiting work is amber (D-630)
           onTap: actions.openTransfers,
         ),
       if (pendingPayouts > 0)
@@ -409,7 +410,7 @@ class _NeedsYou extends StatelessWidget {
               title: 'home_todo'.tr,
               subtitle: 'home_todo_hint'.tr,
               count: todo,
-              color: c.danger,
+              color: c.warning, // waiting work is amber (D-630)
               onTap: () => showAttentionItems(context, todoTabKey),
             ),
         ];

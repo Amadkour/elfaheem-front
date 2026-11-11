@@ -456,8 +456,9 @@ class OrgAlertRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final tone = switch (spec.severity) { 'danger' => c.danger, 'warning' => c.warning, _ => c.primary };
-    final ink = appInk(context, tone);
+    // D-630: the icon sits in a neutral well; the severity speaks once, as a small dot on its corner (danger keeps
+    // its red only there)
+    final Color? dot = switch (spec.severity) { 'danger' => c.danger, 'warning' => c.warning, _ => null };
     return Semantics(
       button: true,
       hint: spec.action,
@@ -468,12 +469,24 @@ class OrgAlertRow extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
             child: Row(children: [
-              Container(
-                width: AppIconSize.hero,
-                height: AppIconSize.hero,
-                decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: AppRadius.chipAll),
-                child: Icon(spec.icon, size: AppIconSize.md, color: ink),
-              ),
+              Stack(clipBehavior: Clip.none, children: [
+                Container(
+                  width: AppIconSize.hero,
+                  height: AppIconSize.hero,
+                  decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll),
+                  child: Icon(spec.icon, size: AppIconSize.md, color: c.textMedium),
+                ),
+                if (dot != null)
+                  PositionedDirectional(
+                    top: -AppSpace.xxs / 2,
+                    end: -AppSpace.xxs / 2,
+                    child: Container(
+                      width: AppSpace.xs + AppSpace.xxs / 2,
+                      height: AppSpace.xs + AppSpace.xxs / 2,
+                      decoration: BoxDecoration(color: dot, shape: BoxShape.circle, border: Border.all(color: c.cardBg, width: AppBorder.focus)),
+                    ),
+                  ),
+              ]),
               const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [

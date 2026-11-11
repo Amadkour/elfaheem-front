@@ -35,13 +35,14 @@ IconData todoKindIcon(String kind) => switch (kind) {
       _ => Icons.task_alt_rounded,
     };
 
-/// The tone of a priority: urgent → danger, soon → warning, later → primary.
+/// The tone of a priority (D-630: red only where it means something — a to-do is work, not an error): urgent →
+/// warning (amber), soon → the primary, later → the quiet caption ink.
 Color todoTone(BuildContext context, String priority) {
   final c = context.colors;
   return switch (priority) {
-    'high' => c.danger,
-    'medium' => c.warning,
-    _ => c.primary,
+    'high' => c.warning,
+    'medium' => c.primary,
+    _ => c.textMedium,
   };
 }
 
@@ -108,8 +109,9 @@ class TodoRow extends StatelessWidget {
     final x = item;
     final hiddenRow = onRestore != null;
     final tone = hiddenRow ? c.textLight : todoTone(context, x.priority);
-    final well = appTintOn(context, tone);
-    final ink = appInkOn(context, tone, well);
+    // the kind icon sits in a NEUTRAL well (input tone, ink icon): the priority speaks once, through its pill
+    final well = c.inputBg;
+    final ink = hiddenRow ? c.textLight : c.textMedium;
     final chips = <Widget>[
       if (!compact || x.isHigh) _Chip(text: todoPriorityLabel(x.priority), color: tone, strong: true),
       if ((x.courseName ?? '').isNotEmpty) _Chip(text: x.courseName!, icon: Icons.auto_stories_outlined, color: c.textMedium),
@@ -356,7 +358,7 @@ class TeacherTodoCard extends StatelessWidget {
 }
 
 /// The full page's three counts in one row; a tap filters (null = clear). The page's one memorable element: while
-/// something is urgent its tile is the peach block with the figure rolling in (AppOdometer) in the danger ink — the
+/// something is urgent its tile is the peach block with the figure rolling in (AppOdometer) in the amber ink — the
 /// other two stay paper and count up once.
 class TodoSummary extends StatelessWidget {
   const TodoSummary({super.key, required this.items, this.selected, this.onSelect});

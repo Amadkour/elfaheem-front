@@ -227,7 +227,7 @@ class _ParentOverviewBodyState extends State<ParentOverviewBody> {
               icon: Icons.notifications_active_outlined,
               label: 'pl_tab_alerts'.tr,
               count: d.alertsTotal,
-              tone: c.danger,
+              tone: c.warning, // an alert asks for a look; red stays for errors / live (D-630)
               onTap: () => widget.onOpenAlerts(null),
             ),
             HomeStat(icon: Icons.link_rounded, label: 'pl_ov_requests'.tr, count: pending, tone: c.warning, onTap: widget.onOpenLink),

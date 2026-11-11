@@ -471,7 +471,7 @@ class _Sections extends StatelessWidget {
             // folded, the title still says how much waits (L8)
             foldedSummary: 'home_needs_folded'.tr.replaceAll('{n}', '${todo + unread + data.orgWaiting}'),
             child: HelpTourTarget(pageId: 'home.student', id: 'needs_you', child: HomeStatStrip(items: [
-              HomeStat(icon: Icons.task_alt_rounded, label: 'home_todo'.tr, count: todo, tone: c.danger, onTap: body.onOpenTodo),
+              HomeStat(icon: Icons.task_alt_rounded, label: 'home_todo'.tr, count: todo, tone: c.warning, onTap: body.onOpenTodo), // waiting work is amber (D-630)
               HomeStat(
                 icon: Icons.notifications_none_rounded,
                 label: 'notifications'.tr,

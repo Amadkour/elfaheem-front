@@ -386,7 +386,7 @@ List<HomeAgendaItem> teacherDayRibbonItems(List<ScheduleSession> schedule) => [
         ),
     ];
 
-/// The instructor's hero (D-622): the sky block with the greeting, the name in the editorial display face and the
+/// The instructor's hero (D-622, D-630): the forest block with the greeting, the name in the editorial display face and the
 /// day line; under them the day itself — today's sessions on a 07:00–22:00 ribbon with a "now" mark, drawn in once
 /// from the start edge (the home's one memorable element) — then the context switcher and Go live. Plain values:
 /// the screen hands in the live widgets, the renders and the layout harness draw it as it is.
@@ -434,7 +434,6 @@ class TeacherHomeHero extends StatelessWidget {
             ]),
           );
     return HomeHeader(
-      tone: AppBlockTone.sky, // an instructor runs a schedule: the sky block whatever the account's role string
       helpPageId: helpPageId,
       name: name,
       subtitle: subtitle,
