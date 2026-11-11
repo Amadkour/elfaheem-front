@@ -76,16 +76,16 @@ class BuilderStatusBanner extends StatelessWidget {
         final narrow = box.maxWidth < 520;
         final info = Row(children: [
           Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: AppRadius.chipAll),
-            child: Icon(online ? Icons.dns_rounded : Icons.cloud_off_rounded, color: col, size: 22),
+            width: AppIconSize.hero,
+            height: AppIconSize.hero,
+            decoration: BoxDecoration(color: appTintOn(context, col), borderRadius: AppRadius.controlAll),
+            child: Icon(online ? Icons.dns_rounded : Icons.cloud_off_rounded, color: appInkOn(context, col, appTintOn(context, col)), size: AppIconSize.md),
           ),
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Container(width: 8, height: 8, decoration: BoxDecoration(color: col, shape: BoxShape.circle)),
+                Container(width: AppSpace.xs, height: AppSpace.xs, decoration: BoxDecoration(color: col, shape: BoxShape.circle)),
                 const SizedBox(width: AppSpace.xs),
                 Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontFamily: AppFonts.family))),
               ]),
@@ -175,16 +175,16 @@ class CodemagicStatusBanner extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: AppRadius.chipAll),
-            child: Icon(cm.ready ? Icons.cloud_done_outlined : Icons.cloud_off_rounded, color: col, size: 22),
+            width: AppIconSize.hero,
+            height: AppIconSize.hero,
+            decoration: BoxDecoration(color: appTintOn(context, col), borderRadius: AppRadius.controlAll),
+            child: Icon(cm.ready ? Icons.cloud_done_outlined : Icons.cloud_off_rounded, color: appInkOn(context, col, appTintOn(context, col)), size: AppIconSize.md),
           ),
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Container(width: 8, height: 8, decoration: BoxDecoration(color: col, shape: BoxShape.circle)),
+                Container(width: AppSpace.xs, height: AppSpace.xs, decoration: BoxDecoration(color: col, shape: BoxShape.circle)),
                 const SizedBox(width: AppSpace.xs),
                 Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontFamily: AppFonts.family))),
               ]),
@@ -235,16 +235,16 @@ class RunnerStatusCard extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: AppRadius.chipAll),
-            child: Icon(Icons.computer_rounded, color: col, size: 22),
+            width: AppIconSize.hero,
+            height: AppIconSize.hero,
+            decoration: BoxDecoration(color: appTintOn(context, col), borderRadius: AppRadius.controlAll),
+            child: Icon(Icons.computer_rounded, color: appInkOn(context, col, appTintOn(context, col)), size: AppIconSize.md),
           ),
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Container(width: 8, height: 8, decoration: BoxDecoration(color: col, shape: BoxShape.circle)),
+                Container(width: AppSpace.xs, height: AppSpace.xs, decoration: BoxDecoration(color: col, shape: BoxShape.circle)),
                 const SizedBox(width: AppSpace.xs),
                 Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontFamily: AppFonts.family))),
               ]),
@@ -413,7 +413,7 @@ class _PlatformGroup extends StatelessWidget {
         padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs, bottom: AppSpace.xs),
         child: LayoutBuilder(
           builder: (context, box) => Row(children: [
-            Icon(releasePlatformIcon(platform), size: 20, color: c.primary),
+            Icon(releasePlatformIcon(platform), size: AppIconSize.md, color: c.textDark),
             const SizedBox(width: AppSpace.xs),
             Expanded(
               child: Text(releasePlatformName(platform),
@@ -463,7 +463,7 @@ class ReleaseRow extends StatelessWidget {
     ].join(' · ');
     final notes = (AppConfig.lang == 'ar' ? r.notesAr : r.notesEn).trim();
     return Material(
-      color: r.isLive ? c.success.withValues(alpha: 0.06) : Colors.transparent,
+      color: r.isLive ? c.successTint : Colors.transparent,
       child: InkWell(
         key: ValueKey('releases.row.${r.id}'),
         onTap: onTap,
@@ -471,10 +471,10 @@ class ReleaseRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: AppRadius.chipAll),
-              child: Icon(releaseStatusIcon(r.shownStatus), color: col, size: 21),
+              width: AppIconSize.hero,
+              height: AppIconSize.hero,
+              decoration: BoxDecoration(color: appTintOn(context, col), borderRadius: AppRadius.controlAll),
+              child: Icon(releaseStatusIcon(r.shownStatus), color: appInkOn(context, col, appTintOn(context, col)), size: AppIconSize.md),
             ),
             const SizedBox(width: AppSpace.sm),
             Expanded(
@@ -484,19 +484,19 @@ class ReleaseRow extends StatelessWidget {
                   releaseChipOf(r),
                   if (r.isLive && r.status != 'live') AppBadgePill(t('منشور', 'Live'), color: c.success, icon: Icons.check_circle_rounded),
                 ]),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpace.xxs),
                 Text(meta, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontFamily: AppFonts.family)),
                 if (r.active) ...[
                   const SizedBox(height: AppSpace.xs),
                   AppProgressBar(value: r.progress ?? 0, color: col, height: 6),
                   if (r.step != null)
                     Padding(
-                      padding: const EdgeInsets.only(top: 3),
-                      child: Text(r.step!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontFamily: AppFonts.family, fontSize: 11.5)),
+                      padding: const EdgeInsets.only(top: AppSpace.xxs),
+                      child: Text(r.step!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontFamily: AppFonts.family)),
                     ),
                 ] else if (notes.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 3),
+                    padding: const EdgeInsets.only(top: AppSpace.xxs),
                     child: Text(notes, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontFamily: AppFonts.family, color: c.textMedium)),
                   ),
               ]),

@@ -313,7 +313,7 @@ class NewAppReleasePageState extends State<NewAppReleasePage> {
             children: [
               Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 880),
+                  constraints: BoxConstraints(maxWidth: AppWidth.reading.max),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     _Section(
                       title: t('المنصة', 'Platform'),
@@ -712,19 +712,18 @@ class ReleaseReadinessBox extends StatelessWidget {
       child: Container(
         padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.sm, AppSpace.xs),
         decoration: BoxDecoration(
-          color: col.withValues(alpha: 0.07),
+          color: appTintOn(context, col),
           borderRadius: AppRadius.cardAll,
-          border: Border.all(color: col.withValues(alpha: 0.28)),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(Icons.block_rounded, size: 20, color: col),
+            Icon(Icons.block_rounded, size: AppIconSize.md, color: appInkOn(context, col, appTintOn(context, col))),
             const SizedBox(width: AppSpace.xs),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(t('غير جاهز بعد: $what', 'Not ready yet: $what'),
                     style: AppType.row(context).copyWith(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpace.xxs),
                 Text(t('زر الإنشاء متوقف حتى يُضبط ما يلي في ‎.env.production على الخادم (أو في Codemagic):',
                         'The Create button stays off until these are set in .env.production on the server (or in Codemagic):'),
                     style: meta),
@@ -738,17 +737,17 @@ class ReleaseReadinessBox extends StatelessWidget {
               padding: const EdgeInsetsDirectional.only(start: AppSpace.lg, bottom: AppSpace.xs),
               child: Wrap(
                 spacing: AppSpace.xs,
-                runSpacing: 2,
+                runSpacing: AppSpace.xxs,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Text(_text(r, m), style: AppType.row(context).copyWith(fontFamily: AppFonts.family, fontSize: 13.5, height: 1.4)),
+                  Text(_text(r, m), style: AppType.row(context).copyWith(fontFamily: AppFonts.family, height: 1.4)),
                   if (releaseMissingIsEnv(m))
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                      decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll, border: Border.all(color: c.divider)),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppBorder.focus),
+                      decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll),
                       child: Text(m,
                           textDirection: TextDirection.ltr,
-                          style: appText(12, w: FontWeight.w600, c: c.textDark).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+                          style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
                     ),
                 ],
               ),
@@ -837,7 +836,7 @@ class _Field extends StatelessWidget {
         keyboardType: maxLines > 1 ? TextInputType.multiline : keyboard,
         inputFormatters: digitsOnly ? [FilteringTextInputFormatter.digitsOnly] : null,
         textDirection: ltr ? TextDirection.ltr : (rtl ? TextDirection.rtl : null),
-        style: appText(14, c: c.textDark).copyWith(fontFamilyFallback: AppFonts.fallback), // Arabic notes in an English UI
+        style: AppType.row(context).copyWith(color: c.textDark).copyWith(fontFamilyFallback: AppFonts.fallback), // Arabic notes in an English UI
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
@@ -896,10 +895,10 @@ class _ChoiceCard extends StatelessWidget {
       selected: selected,
       button: true,
       child: Material(
-        color: selected ? col.withValues(alpha: 0.08) : c.cardBg,
+        color: selected ? appTintOn(context, col) : c.cardBg,
         shape: RoundedRectangleBorder(
           borderRadius: AppRadius.cardAll,
-          side: BorderSide(color: selected ? col : c.divider, width: selected ? 1.6 : 1),
+          side: BorderSide(color: selected ? col : c.divider, width: selected ? AppBorder.strong : AppBorder.hairline),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -907,17 +906,17 @@ class _ChoiceCard extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(AppSpace.sm),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Icon(icon, color: selected ? col : c.textMedium, size: 22),
+              Icon(icon, color: selected ? appInkOn(context, col, appTintOn(context, col)) : c.textMedium, size: AppIconSize.lg),
               const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(title, style: AppType.row(context).copyWith(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
                   if (badge != null) ...[
-                    const SizedBox(height: 3),
+                    const SizedBox(height: AppSpace.xxs),
                     AppBadgePill(badge!, color: c.textMedium),
                   ],
                   if (subtitle != null && subtitle!.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpace.xxs),
                     Text(subtitle!, style: AppType.meta(context).copyWith(fontFamily: AppFonts.family, height: 1.4)),
                   ],
                 ]),
@@ -994,7 +993,7 @@ class _SubmitBar extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 880),
+                constraints: BoxConstraints(maxWidth: AppWidth.reading.max),
                 child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   if (error != null) ...[
                     AppBanner(key: const ValueKey('release.error'), icon: Icons.error_outline_rounded, color: c.danger, text: error!),

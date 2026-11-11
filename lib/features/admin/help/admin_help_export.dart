@@ -60,7 +60,7 @@ class _HelpExportSheetState extends State<HelpExportSheet> {
 
   Widget _label(String s) => Padding(
         padding: const EdgeInsets.only(top: AppSpace.sm, bottom: AppSpace.xs),
-        child: Text(s, style: appText(13, w: FontWeight.w700, c: context.colors.textMedium)),
+        child: Text(s, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textMedium)),
       );
 
   HelpExportRequest? _request() {
@@ -123,7 +123,7 @@ class _HelpExportSheetState extends State<HelpExportSheet> {
         if (_what == 'flow') ...[
           _label(_t('المسار', 'Flow')),
           if (_roleFlows.isEmpty)
-            Text(_t('لا مسارات لهذا الدور', 'No flows for this role'), style: appText(13, c: context.colors.textLight))
+            Text(_t('لا مسارات لهذا الدور', 'No flows for this role'), style: AppType.body(context).copyWith(color: context.colors.textLight))
           else
             _chips<String?>([for (final f in _roleFlows) (f.key, f.title.of(AppConfig.lang))], _flowKey, (v) => setState(() => _flowKey = v)),
         ],

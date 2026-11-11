@@ -542,7 +542,7 @@ class AiModelsPageState extends State<AiModelsPage> {
       child: AppRefresh(
         onRefresh: _load,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 96),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xxl * 2),
           children: [
             Center(
               child: ConstrainedBox(

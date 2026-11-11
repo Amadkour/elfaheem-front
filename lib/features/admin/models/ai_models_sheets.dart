@@ -90,12 +90,12 @@ Widget _sheetBody(BuildContext context, {required String title, required List<Wi
     AppSheetHeader(title),
     Flexible(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(AppSpace.lg - 4, 0, AppSpace.lg - 4, AppSpace.sm),
+        padding: const EdgeInsets.fromLTRB(AppSpace.lg, 0, AppSpace.lg, AppSpace.sm),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
       ),
     ),
     Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.md),
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.sm, AppSpace.lg, AppSpace.lg),
       child: Wrap(alignment: WrapAlignment.end, spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: buttons),
     ),
   ]);
@@ -104,32 +104,36 @@ Widget _sheetBody(BuildContext context, {required String title, required List<Wi
 Widget _testBlock(BuildContext context, HubTest test) {
   final c = context.colors;
   final col = test.ok ? c.success : c.danger;
+  final tint = appTintOn(context, col);
   return Container(
-    padding: const EdgeInsets.all(AppSpace.sm),
-    decoration: BoxDecoration(
-      color: col.withValues(alpha: 0.07),
-      borderRadius: BorderRadius.circular(AppRadius.card),
-      border: Border.all(color: col.withValues(alpha: 0.25)),
-    ),
+    padding: const EdgeInsets.all(AppSpace.md),
+    decoration: BoxDecoration(color: tint, borderRadius: AppRadius.cardAll),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        Icon(test.ok ? Icons.verified_rounded : Icons.error_outline_rounded, color: col, size: 20),
+        Icon(test.ok ? Icons.verified_rounded : Icons.error_outline_rounded, color: appInkOn(context, col, tint), size: AppIconSize.md),
         const SizedBox(width: AppSpace.xs),
         Expanded(
           child: Text('${t('اختبار السلامة', 'Health test')}: ${hubTestLine(test)}',
-              style: appText(13, w: FontWeight.w700, c: c.textDark)),
+              style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
         ),
       ]),
       for (final ch in test.checks)
         Padding(
-          padding: const EdgeInsetsDirectional.only(start: 28, top: 2),
-          child: Text('${ch.ok ? '✓' : '✗'} ${ch.name}${ch.raw['text'] == null ? '' : ' — “${bidiIsolate('${ch.raw['text']}')}”'}',
-              style: appText(12, c: ch.ok ? c.textMedium : c.danger)),
+          padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs, top: AppSpace.xxs),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(ch.ok ? Icons.check_rounded : Icons.close_rounded,
+                size: AppIconSize.sm, color: ch.ok ? c.textMedium : appInkOn(context, c.danger, tint)),
+            AppSpace.gapXs,
+            Expanded(
+              child: Text('${ch.name}${ch.raw['text'] == null ? '' : ' — “${bidiIsolate('${ch.raw['text']}')}”'}',
+                  style: AppType.meta(context).copyWith(color: ch.ok ? c.textMedium : appInkOn(context, c.danger, tint))),
+            ),
+          ]),
         ),
       if (test.error != null)
         Padding(
-          padding: const EdgeInsetsDirectional.only(start: 28, top: 2),
-          child: AutoDirText(test.error!, style: appText(12, c: c.danger)),
+          padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs, top: AppSpace.xxs),
+          child: AutoDirText(test.error!, style: AppType.meta(context).copyWith(color: appInkOn(context, c.danger, tint))),
         ),
     ]),
   );
@@ -162,9 +166,9 @@ class ActivatePrompt extends StatelessWidget {
       context,
       title: t('تفعيل هذا النموذج لدور ${hubRoleName(role)}؟', 'Activate this model for ${hubRoleName(role)}?'),
       children: [
-        Text(model, style: appText(15, w: FontWeight.w800, c: c.textDark)),
+        Text(model, style: AppType.section(context).copyWith(color: c.textDark)),
         if (current != null) ...[
-          const SizedBox(height: 2),
+          const SizedBox(height: AppSpace.xxs),
           Text(t('المُفعّل الآن: $current — يبقى متاحاً للرجوع إليه.', 'Active now: $current — kept so you can roll back.'),
               style: AppType.meta(context)),
         ],
@@ -178,8 +182,8 @@ class ActivatePrompt extends StatelessWidget {
             text: embeddingWarningText(partial: reindex!.items < reindex!.chunks + reindex!.qa),
           ),
           const SizedBox(height: AppSpace.xs),
-          Text(reindexEstimateText(reindex!), key: const ValueKey('reindex_estimate'), style: appText(12, w: FontWeight.w600, c: c.textMedium)),
-          const SizedBox(height: 2),
+          Text(reindexEstimateText(reindex!), key: const ValueKey('reindex_estimate'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
+          const SizedBox(height: AppSpace.xxs),
           Text(
               t('يبقى البحث على النموذج الحالي حتى تكتمل المتجهات الجديدة، ثم يتحوّل الفهرس دفعة واحدة.',
                   'Search keeps the current model until the new vectors are all built; then the index switches at once.'),
@@ -226,21 +230,28 @@ class ActivateFailure extends StatelessWidget {
       context,
       title: t('لم يُفعَّل النموذج', 'The model was not activated'),
       children: [
-        Text(model, style: appText(15, w: FontWeight.w800, c: c.textDark)),
+        Text(model, style: AppType.section(context).copyWith(color: c.textDark)),
         const SizedBox(height: AppSpace.sm),
         if (message != null) ...[
           AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: bidiIsolate(message!)),
           const SizedBox(height: AppSpace.sm),
         ],
         for (final ch in failing)
-          Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('✗ ${hubCheckLine(ch)}', style: appText(13, c: c.danger))),
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpace.xxs),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(Icons.close_rounded, size: AppIconSize.sm, color: c.danger),
+              AppSpace.gapXs,
+              Expanded(child: Text(hubCheckLine(ch), style: AppType.body(context).copyWith(color: c.danger))),
+            ]),
+          ),
         if (test != null) _testBlock(context, test!),
         const SizedBox(height: AppSpace.sm),
         Text(
             current == null
                 ? t('لم يتغيّر شيء في دور ${hubRoleName(role)}.', 'Nothing changed for ${hubRoleName(role)}.')
                 : t('$current يبقى مُفعّلاً لدور ${hubRoleName(role)}.', '$current stays active for ${hubRoleName(role)}.'),
-            style: appText(13, w: FontWeight.w600, c: c.textMedium)),
+            style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
       ],
       buttons: [FilledButton(onPressed: () => Navigator.of(context).pop(), child: Text(t('حسناً', 'OK')))],
     );
@@ -262,7 +273,7 @@ class RamBudgetSheet extends StatelessWidget {
       context,
       title: t('لا تتسع الذاكرة لهذا النموذج', 'Not enough memory for this model'),
       children: [
-        Text(model, style: appText(15, w: FontWeight.w800, c: c.textDark)),
+        Text(model, style: AppType.section(context).copyWith(color: c.textDark)),
         const SizedBox(height: AppSpace.sm),
         AppBanner(
             icon: Icons.memory_rounded,
@@ -278,12 +289,12 @@ class RamBudgetSheet extends StatelessWidget {
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  AutoDirText(hubRefLabel(i.ref), style: appText(13, w: FontWeight.w700, c: c.textDark)),
+                  AutoDirText(hubRefLabel(i.ref), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
                   if (i.roles.isNotEmpty) Text(i.roles.map(hubRoleName).join(' · '), style: AppType.meta(context)),
                 ]),
               ),
               const SizedBox(width: AppSpace.sm),
-              Text(hubMb(i.ramMb), style: appText(13, w: FontWeight.w800, c: c.textDark)),
+              Text(hubMb(i.ramMb), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
             ]),
           ),
         const SizedBox(height: AppSpace.sm),
@@ -293,7 +304,7 @@ class RamBudgetSheet extends StatelessWidget {
                 (current == null
                     ? t('لم يتغيّر شيء في ${hubRoleName(role)}.', 'Nothing changed for ${hubRoleName(role)}.')
                     : t('$current يبقى مُفعّلاً.', '$current stays active.')),
-            style: appText(13, w: FontWeight.w600, c: c.textMedium)),
+            style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
       ],
       buttons: [FilledButton(onPressed: () => Navigator.of(context).pop(), child: Text(t('حسناً', 'OK')))],
     );
@@ -316,7 +327,7 @@ class _Stepper extends StatelessWidget {
       child: Row(children: [
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: appText(14, w: FontWeight.w700, c: c.textDark)),
+            Text(label, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
             if (hint != null) Text(hint!, style: AppType.meta(context)),
           ]),
         ),
@@ -325,7 +336,7 @@ class _Stepper extends StatelessWidget {
           onPressed: value > min ? () => onChanged(value - 1) : null,
           icon: const Icon(Icons.remove_circle_outline_rounded),
         ),
-        SizedBox(width: 36, child: Text('$value', textAlign: TextAlign.center, style: appText(16, w: FontWeight.w800, c: c.textDark))),
+        SizedBox(width: AppSpace.xl + AppSpace.xxs, child: Text('$value', textAlign: TextAlign.center, style: AppType.figure(context))),
         IconButton(
           tooltip: t('أكثر', 'More'),
           onPressed: value < max ? () => onChanged(value + 1) : null,
@@ -551,7 +562,7 @@ class _AddModelSheetState extends State<AddModelSheet> {
             AppNumberField(controller: _dim, label: t('حجم المتجه (اختياري)', 'Vector size (optional)'), hint: '384', min: 0),
           ],
         ],
-        if (_problem != null) Text(_problem!, style: appText(12, w: FontWeight.w600, c: c.danger)),
+        if (_problem != null) Text(_problem!, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.danger)),
       ],
       buttons: [
         OutlinedButton(onPressed: () => Navigator.of(context).pop(), child: Text(t('إلغاء', 'Cancel'))),

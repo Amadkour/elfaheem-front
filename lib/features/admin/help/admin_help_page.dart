@@ -146,7 +146,7 @@ class _AdminHelpPageState extends State<AdminHelpPage> {
         label: Text(_flowsTab ? _t('مسار جديد', 'New flow') : _t('مدخل جديد', 'New entry')),
       ),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 96),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl * 2),
         children: [
           Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             AppChoiceChip(label: _t('الصفحات', 'Pages'), selected: !_flowsTab, onTap: () => setState(() => _flowsTab = false)),
@@ -211,9 +211,9 @@ class _Row extends StatelessWidget {
             child: Row(children: [
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w700, c: c.textDark)),
+                  Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
                   const SizedBox(height: 2),
-                  Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textLight)),
+                  Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight)),
                 ]),
               ),
               const Icon(Icons.chevron_right_rounded),
@@ -386,7 +386,7 @@ class _AdminHelpEditPageState extends State<AdminHelpEditPage> {
               : ListView(
                   padding: const EdgeInsets.all(AppSpace.md),
                   children: [
-                    Text('${helpRoleLabel(widget.role, _ar)} · ${widget.pageId}', style: appText(13, c: context.colors.textLight)),
+                    Text('${helpRoleLabel(widget.role, _ar)} · ${widget.pageId}', style: AppType.body(context).copyWith(color: context.colors.textLight)),
                     AppSpace.gapSm,
                     HelpEntryForm(draft: d),
                     AppSpace.gapLg,
@@ -480,7 +480,7 @@ class _AdminHelpFlowPageState extends State<AdminHelpFlowPage> {
       child: ListView(
         padding: const EdgeInsets.all(AppSpace.md),
         children: [
-          Text(helpRoleLabel(widget.flow.role, _ar), style: appText(13, c: context.colors.textLight)),
+          Text(helpRoleLabel(widget.flow.role, _ar), style: AppType.body(context).copyWith(color: context.colors.textLight)),
           AppSpace.gapSm,
           HelpFlowForm(draft: _draft, pageIds: _ids),
           AppSpace.gapLg,

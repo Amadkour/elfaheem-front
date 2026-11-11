@@ -381,8 +381,8 @@ class _Header extends StatelessWidget {
       final running = busy == key;
       final child = Row(mainAxisSize: MainAxisSize.min, children: [
         running
-            ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: filled ? c.onHero : (color ?? c.primary)))
-            : Icon(icon, size: 18),
+            ? SizedBox(width: AppIconSize.sm, height: AppIconSize.sm, child: CircularProgressIndicator(strokeWidth: AppBorder.focus, color: filled ? c.onHero : (color ?? c.primary)))
+            : Icon(icon, size: AppIconSize.md),
         const SizedBox(width: AppSpace.xs),
         Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600))),
       ]);
@@ -407,16 +407,17 @@ class _Header extends StatelessWidget {
       if (onRollback != null) action('rollback', t('ارجع للسابق', 'Roll back'), Icons.history_rounded, onRollback, color: c.danger),
     ];
 
-    return AppCard(
+    // the page's one block (sky = information): the platform, the version as the headline, its state and actions
+    return AppBlock(
       key: const ValueKey('release.header'),
+      tone: AppBlockTone.sky,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.10), borderRadius: AppRadius.cardAll),
-            // the brand blue is too dark to read on the dark surface: its light shade there
-            child: Icon(releasePlatformIcon(r.platform), color: c.isDark ? c.primaryLight : c.primary, size: 26),
+            width: AppTouch.min,
+            height: AppTouch.min,
+            decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.controlAll),
+            child: Icon(releasePlatformIcon(r.platform), color: c.textDark, size: AppIconSize.lg),
           ),
           const SizedBox(width: AppSpace.sm),
           Expanded(
@@ -539,7 +540,7 @@ class _ReleaseLogCardState extends State<ReleaseLogCard> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final lines = widget.lines;
-    final style = appText(12, c: c.textDark, h: 1.45).copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
+    final style = AppType.meta(context).copyWith(color: c.textDark, height: 1.45).copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
     return AppCard(
       key: const ValueKey('release.log'),
       padding: const EdgeInsets.all(AppSpace.sm),
@@ -564,7 +565,7 @@ class _ReleaseLogCardState extends State<ReleaseLogCard> {
         const SizedBox(height: AppSpace.xs),
         Container(
           height: 340,
-          decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll, border: Border.all(color: c.divider)),
+          decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll),
           child: lines.isEmpty
               ? Center(
                   child: Padding(
@@ -657,9 +658,9 @@ class _FactRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(icon, size: 18, color: c.textLight),
+        Icon(icon, size: AppIconSize.sm, color: c.textLight),
         const SizedBox(width: AppSpace.xs),
         Expanded(flex: 2, child: Text(label, style: AppType.meta(context).copyWith(fontFamily: AppFonts.family))),
         const SizedBox(width: AppSpace.xs),
@@ -671,7 +672,7 @@ class _FactRow extends StatelessWidget {
             child: Text(value,
                 textDirection: ltr ? TextDirection.ltr : null,
                 textAlign: ltr ? TextAlign.left : TextAlign.end,
-                style: AppType.row(context).copyWith(fontFamily: AppFonts.family, fontSize: 13.5)),
+                style: AppType.row(context).copyWith(fontFamily: AppFonts.family)),
           ),
         ),
       ]),
@@ -697,7 +698,7 @@ class _Artifacts extends StatelessWidget {
         const SizedBox(height: AppSpace.xs),
         for (final a in release.artifacts)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3),
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
             child: Row(children: [
               Icon(
                   switch (a.kind) {
@@ -707,21 +708,21 @@ class _Artifacts extends StatelessWidget {
                     'deb' => Icons.terminal_rounded,
                     _ => Icons.insert_drive_file_outlined,
                   },
-                  size: 20,
-                  color: c.isDark ? c.primaryLight : c.primary),
+                  size: AppIconSize.md,
+                  color: c.textMedium),
               const SizedBox(width: AppSpace.xs),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(a.name, textDirection: TextDirection.ltr, maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: AppType.row(context).copyWith(fontFamily: AppFonts.family, fontSize: 13)),
+                      style: AppType.row(context).copyWith(fontFamily: AppFonts.family)),
                   if (a.size != null || a.sha256 != null)
                     Text([releaseBytes(a.size), if (a.sha256 != null) 'sha256 ${a.sha256!.substring(0, a.sha256!.length.clamp(0, 12))}…'].where((s) => s.isNotEmpty).join(' · '),
                         textDirection: TextDirection.ltr, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: AppType.meta(context).copyWith(fontFamily: AppFonts.family, fontSize: 11.5)),
+                        style: AppType.meta(context).copyWith(fontFamily: AppFonts.family)),
                 ]),
               ),
               busy == 'artifact:${a.name}'
-                  ? const Padding(padding: EdgeInsets.all(14), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
+                  ? const Padding(padding: EdgeInsets.all(AppSpace.sm + AppBorder.focus), child: SizedBox(width: AppIconSize.md, height: AppIconSize.md, child: CircularProgressIndicator(strokeWidth: AppBorder.focus)))
                   : IconButton(
                       key: ValueKey('release.download.${a.name}'),
                       tooltip: t('تنزيل', 'Download'),

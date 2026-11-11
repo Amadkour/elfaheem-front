@@ -127,7 +127,7 @@ class _HelpFlowFormState extends State<HelpFlowForm> {
       AppSpace.gapXs,
       AppField(controller: d.title.en, label: '${_t('العنوان', 'Title')} · English', ltr: true),
       AppSpace.gapMd,
-      Semantics(header: true, child: Text(_t('الخطوات', 'Steps'), style: appText(16, w: FontWeight.w700, c: c.textDark))),
+      Semantics(header: true, child: Text(_t('الخطوات', 'Steps'), style: AppType.section(context).copyWith(color: c.textDark))),
       AppSpace.gapXs,
       for (var i = 0; i < d.steps.length; i++) _step(d, i),
       Align(
@@ -152,7 +152,7 @@ class _HelpFlowFormState extends State<HelpFlowForm> {
       decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.divider)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Expanded(child: Text('${_t('الخطوة', 'Step')} ${i + 1}', style: appText(13, w: FontWeight.w700, c: c.textMedium))),
+          Expanded(child: Text('${_t('الخطوة', 'Step')} ${i + 1}', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium))),
           _icon(Icons.arrow_upward_rounded, _t('أعلى', 'Move up'), i == 0 ? null : () => _touch(() => d.steps.insert(i - 1, d.steps.removeAt(i)))),
           _icon(Icons.arrow_downward_rounded, _t('أسفل', 'Move down'),
               i == d.steps.length - 1 ? null : () => _touch(() => d.steps.insert(i + 1, d.steps.removeAt(i)))),

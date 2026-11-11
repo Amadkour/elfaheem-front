@@ -32,7 +32,7 @@ class _Metric extends StatelessWidget {
     return Row(mainAxisSize: MainAxisSize.min, children: [
       Icon(icon, size: 15, color: col),
       const SizedBox(width: AppSpace.xxs),
-      Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, c: col))),
+      Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: col))),
     ]);
   }
 }
@@ -64,15 +64,16 @@ class TrashAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final letter = name.trim().isEmpty ? '?' : String.fromCharCode(name.trim().runes.first);
-    final fallback = Center(child: Text(letter, style: appText(16, w: FontWeight.w600, c: appInk(context, c.primary))));
+    // a course without a cover keeps its subject's block tone (stable per name), the letter in the block's ink
+    final tone = AppBlockColors.of(context, AppBlockTone.forKey(name));
+    final fallback = Center(child: Text(letter, style: AppType.section(context).copyWith(color: tone.ink)));
     return ClipRRect(
-      borderRadius: AppRadius.chipAll,
+      borderRadius: AppRadius.controlAll,
       child: Container(
         width: size,
         height: size,
-        color: c.primary.withValues(alpha: 0.12),
+        color: tone.surface,
         child: imageUrl == null
             ? fallback
             : Image.network(imageUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback),
@@ -219,7 +220,7 @@ class _CountList extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
           child: Row(children: [
             Expanded(child: Text(trashTableLabel(x.key), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context))),
-            Text('${x.value}', style: appText(12.5, w: FontWeight.w600, c: context.colors.textDark)),
+            Text('${x.value}', style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
           ]),
         ),
     ]);

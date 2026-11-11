@@ -9,6 +9,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp;
 
 import '../admin_common.dart' show t;
 import 'landing_admin_api.dart';
@@ -48,17 +49,17 @@ class _SectionHead extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(AppRadius.chip + 4)),
-          child: Icon(icon, size: 21, color: c.primary),
+          width: AppTouch.min - AppSpace.xs,
+          height: AppTouch.min - AppSpace.xs,
+          decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.controlAll),
+          child: Icon(icon, size: AppIconSize.md, color: c.textDark),
         ),
         const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: appText(15.5, w: FontWeight.w800, c: c.textDark)),
-            const SizedBox(height: 2),
-            Text(subtitle, style: appText(12, c: c.textMedium, h: 1.45)),
+            Text(title, style: AppType.section(context)),
+            const SizedBox(height: AppSpace.xxs),
+            Text(subtitle, style: AppType.meta(context).copyWith(height: 1.45)),
           ]),
         ),
       ]),
@@ -73,17 +74,15 @@ Widget _subjectChip(BuildContext context, LandingReview r) {
   final c = context.colors;
   final color = r.kind == 'teacher' ? c.warning : c.primary;
   // AppTag's look, with the course / teacher name in its own language's direction and font (_ownText)
+  final tint = appTintOn(context, color);
+  final ink = appInkOn(context, color, tint);
   return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: color.withValues(alpha: 0.28)),
-    ),
+    padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
+    decoration: BoxDecoration(color: tint, borderRadius: const BorderRadius.all(Radius.circular(AppRadius.pill))),
     child: Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(r.kind == 'teacher' ? Icons.person_rounded : Icons.menu_book_rounded, size: 11, color: color),
-      const SizedBox(width: 3),
-      Flexible(child: _ownText(s, appText(10.5, w: FontWeight.w700, c: color), maxLines: 1)),
+      Icon(r.kind == 'teacher' ? Icons.person_rounded : Icons.menu_book_rounded, size: AppIconSize.xs, color: ink),
+      const SizedBox(width: AppSpace.xxs),
+      Flexible(child: _ownText(s, AppType.overline(context).copyWith(letterSpacing: 0, color: ink), maxLines: 1)),
     ]),
   );
 }
@@ -137,11 +136,11 @@ class LandingRateLimitCard extends StatelessWidget {
           opacity: value.enabled ? 1 : 0.45,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Wrap(crossAxisAlignment: WrapCrossAlignment.end, spacing: AppSpace.xs, children: [
-              Text('$v', style: appText(28, w: FontWeight.w800, c: c.textDark)),
+              AppCountUp('$v', memoryKey: 'landing.rate_limit', style: AppType.figureLarge(context)),
               Padding(
-                padding: const EdgeInsets.only(bottom: 5),
+                padding: const EdgeInsets.only(bottom: AppSpace.xxs),
                 child: Text(t('طلب في الدقيقة لكل زائر', 'requests per minute per visitor'),
-                    style: appText(12.5, c: c.textMedium)),
+                    style: AppType.meta(context).copyWith(color: c.textMedium)),
               ),
             ]),
             Slider(
@@ -152,8 +151,8 @@ class LandingRateLimitCard extends StatelessWidget {
               onChanged: (value.enabled && !saving) ? (x) => onChanged(value.copyWith(perMinute: x.round())) : null,
             ),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('$min', style: appText(11, c: c.textLight)),
-              Text('$max', style: appText(11, c: c.textLight)),
+              Text('$min', style: AppType.meta(context).copyWith(color: c.textLight)),
+              Text('$max', style: AppType.meta(context).copyWith(color: c.textLight)),
             ]),
           ]),
         ),
@@ -200,19 +199,18 @@ class LandingReviewPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.all(AppSpace.sm + 2),
+      padding: const EdgeInsets.all(AppSpace.md),
       decoration: BoxDecoration(
         color: c.inputBg,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: c.divider),
+        borderRadius: AppRadius.cardAll,
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         _StarRow(review.stars),
         const SizedBox(height: AppSpace.xs),
-        _ownText(review.text, appText(13, c: c.textDark, h: 1.55), maxLines: 8, fill: true),
+        _ownText(review.text, AppType.body(context).copyWith(color: c.textDark, height: 1.55), maxLines: 8, fill: true),
         const SizedBox(height: AppSpace.xs),
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
-          _ownText(review.displayName, appText(12.5, w: FontWeight.w800, c: c.textDark)),
+          _ownText(review.displayName, AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
           _subjectChip(context, review),
         ]),
       ]),
@@ -269,7 +267,7 @@ class LandingTestimonialsCard extends StatelessWidget {
                 t('لم تُختر أي تقييمات — يبقى هذا القسم مخفياً في الصفحة الرئيسية حتى تختار تقييمات حقيقية.',
                     'No reviews chosen — the section stays hidden on the landing page until you pick real reviews.'),
                 textAlign: TextAlign.center,
-                style: appText(12.5, c: c.textMedium, h: 1.5),
+                style: AppType.meta(context).copyWith(color: c.textMedium, height: 1.5),
               ),
             ]),
           )
@@ -319,7 +317,7 @@ class LandingTestimonialsCard extends StatelessWidget {
                   en: '${reviews.length} reviews chosen',
                   en0: 'No reviews chosen') +
               t(' (الحد الأقصى $kLandingMaxTestimonials)', ' (max $kLandingMaxTestimonials)'),
-          style: appText(11.5, c: c.textMedium),
+          style: AppType.meta(context).copyWith(color: c.textMedium),
         ),
         const SizedBox(height: AppSpace.sm),
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
@@ -482,7 +480,7 @@ class LandingCandidatesBody extends StatelessWidget {
       const SizedBox(height: AppSpace.xs),
       Text(
         t('$n من $kLandingMaxTestimonials مختار', '$n of $kLandingMaxTestimonials chosen'),
-        style: appText(11.5, w: FontWeight.w700, c: c.textMedium),
+        style: AppType.overline(context).copyWith(letterSpacing: 0, color: c.textMedium),
       ),
       const SizedBox(height: AppSpace.xs),
       if (loading)
@@ -497,7 +495,7 @@ class LandingCandidatesBody extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(vertical: AppSpace.lg),
           child: Text(t('لا توجد تقييمات مطابقة.', 'No matching reviews.'),
-              textAlign: TextAlign.center, style: appText(12.5, c: c.textMedium)),
+              textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textMedium)),
         )
       else ...[
         for (final r in items) _CandidateRow(review: r, selected: selectedIds.contains(r.id), onTap: () => onToggle(r)),
@@ -543,25 +541,25 @@ class _CandidateRow extends StatelessWidget {
               padding: const EdgeInsets.all(AppSpace.sm),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Padding(
-                  padding: const EdgeInsets.only(top: 2),
+                  padding: const EdgeInsets.only(top: AppBorder.focus),
                   child: Icon(selected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
                       color: selected ? c.primary : c.textLight),
                 ),
                 const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Wrap(spacing: AppSpace.xs, runSpacing: 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                      _ownText(r.displayName, appText(13, w: FontWeight.w800, c: c.textDark)),
+                    Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                      _ownText(r.displayName, AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
                       if (r.studentName.isNotEmpty)
-                        _ownText(r.studentName, appText(11, c: c.textMedium)),
+                        _ownText(r.studentName, AppType.meta(context).copyWith(color: c.textMedium)),
                     ]),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: AppSpace.xxs),
                     Wrap(spacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
                       _StarRow(r.stars),
-                      if (r.createdAt != null) Text(AppTime.date(r.createdAt!), style: appText(11, c: c.textLight)),
+                      if (r.createdAt != null) Text(AppTime.date(r.createdAt!), style: AppType.meta(context).copyWith(color: c.textLight)),
                     ]),
                     const SizedBox(height: AppSpace.xs),
-                    _ownText(r.text, appText(12.5, c: c.textDark, h: 1.5), maxLines: 5, fill: true),
+                    _ownText(r.text, AppType.meta(context).copyWith(color: c.textDark, height: 1.5), maxLines: 5, fill: true),
                     if (r.subject != null) ...[
                       const SizedBox(height: AppSpace.xs),
                       _subjectChip(context, r),
