@@ -22,7 +22,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_charts.dart' show AppSparkline, appChartPalette, appInk;
-import 'package:flutter_education_app/design/app_kit.dart' show AppShimmer, AppSkeletonBox, appText;
+import 'package:flutter_education_app/design/app_blocks.dart' show AppBlockColors, AppBlockTone;
+import 'package:flutter_education_app/design/app_kit.dart' show AppShimmer, AppSkeletonBox;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/home_kit.dart' show HomeSection;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
@@ -290,7 +292,10 @@ class OrgInsightsView extends StatelessWidget {
           if (cards.isEmpty)
             _InsightsNothing(period: d.period)
           else
-            _CardGrid(children: [for (final m in cards) OrgInsightCard(metric: m, period: d.period)]),
+            // the first card is the period's key figure: the one KPI drawn as a block
+            _CardGrid(children: [
+              for (var i = 0; i < cards.length; i++) OrgInsightCard(metric: cards[i], period: d.period, featured: i == 0),
+            ]),
           if (d.suggestions.isNotEmpty) ...[
             AppSpace.gapLg,
             Padding(
@@ -332,11 +337,11 @@ class OrgInsightsView extends StatelessWidget {
           height: AppSpace.sm,
           child: refreshing
               ? Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm / 2 - AppBorder.focus / 2),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(2),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
                     child: LinearProgressIndicator(
-                      minHeight: 2,
+                      minHeight: AppBorder.focus,
                       color: context.colors.primary,
                       backgroundColor: context.colors.divider,
                     ),
@@ -373,7 +378,7 @@ class _PeriodChips extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
       child: Row(children: [
         for (var i = 0; i < kinds.length; i++) ...[
-          if (i > 0) const SizedBox(width: AppSpace.xs - 2),
+          if (i > 0) const SizedBox(width: AppSpace.xs),
           _PeriodChip(
             label: kinds[i] == OrgPeriodKind.custom && narrow && selected != OrgPeriodKind.custom
                 ? null
@@ -412,24 +417,28 @@ class _PeriodChip extends StatelessWidget {
         child: Center(
           widthFactor: 1,
           child: Material(
-            color: Colors.transparent,
+            type: MaterialType.transparency,
             child: InkWell(
               onTap: onTap,
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
               child: AnimatedContainer(
                 duration: AppMotion.of(context).fast,
-                constraints: const BoxConstraints(minHeight: 36),
-                padding: EdgeInsets.symmetric(horizontal: label == null ? 10 : 14, vertical: 7),
+                curve: AppMotion.curve,
+                constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.sm),
+                padding: EdgeInsets.symmetric(horizontal: label == null ? AppSpace.sm - AppSpace.xxs / 2 : AppSpace.md, vertical: AppSpace.xs - 1),
+                // selected = the solid emerald pill (the kit's selected tab); the rest paper with a hairline
                 decoration: BoxDecoration(
-                  color: selected ? c.primary.withValues(alpha: c.isDark ? 0.22 : 0.10) : c.cardBg,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: selected ? c.primary.withValues(alpha: 0.55) : c.divider),
+                  color: selected ? c.primary : c.cardBg,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  border: Border.all(color: selected ? c.primary : c.divider, width: AppBorder.hairline),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  if (icon != null) Icon(icon, size: 16, color: ink),
-                  if (icon != null && label != null) const SizedBox(width: 6),
+                  if (icon != null) Icon(icon, size: AppIconSize.sm, color: selected ? c.onHero : ink),
+                  if (icon != null && label != null) const SizedBox(width: AppSpace.xxs + 2),
                   if (label != null)
-                    Text(label!, style: appText(13, w: selected ? FontWeight.w600 : FontWeight.w500, c: selected ? ink : c.textDark)),
+                    Text(label!,
+                        style: AppType.label(context).copyWith(
+                            fontWeight: selected ? FontWeight.w600 : FontWeight.w500, color: selected ? c.onHero : c.textDark)),
                 ]),
               ),
             ),
@@ -493,9 +502,12 @@ IconData orgInsightIcon(String key) => switch (key) {
     };
 
 class OrgInsightCard extends StatelessWidget {
-  const OrgInsightCard({super.key, required this.metric, required this.period});
+  const OrgInsightCard({super.key, required this.metric, required this.period, this.featured = false});
   final OrgInsightMetric metric;
   final OrgInsightPeriod period;
+
+  /// The period's key figure: drawn as a sky block (the ONE highlighted KPI, D-612), its figure in the editorial face.
+  final bool featured;
 
   @override
   Widget build(BuildContext context) {
@@ -505,26 +517,36 @@ class OrgInsightCard extends StatelessWidget {
     final change = orgInsightChange(m);
     final summary = orgInsightSummary(m, period);
     final points = m.points;
+    final b = featured ? AppBlockColors.of(context, AppBlockTone.sky) : null;
+    final surface = b?.surface ?? c.cardBg;
+    final ink = b?.ink ?? c.textDark;
+    final muted = b?.muted ?? c.textMedium;
     return Container(
-      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.md),
+      padding: featured
+          ? const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.md)
+          : const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.md),
       decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: AppRadius.cardAll,
-        border: Border.all(color: c.divider),
-        boxShadow: AppShadow.card(context),
+        color: surface,
+        borderRadius: featured ? BorderRadius.circular(AppRadius.block) : AppRadius.cardAll,
+        border: b != null
+            ? (b.border == null ? null : Border.all(color: b.border!, width: AppBorder.hairline))
+            : Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(color: tone.withValues(alpha: c.isDark ? 0.22 : 0.12), shape: BoxShape.circle),
-            child: Icon(orgInsightIcon(m.key), size: 16, color: appInk(context, tone)),
+            width: AppIconSize.xl - AppSpace.xxs,
+            height: AppIconSize.xl - AppSpace.xxs,
+            decoration: BoxDecoration(
+                color: featured ? c.cardBg : tone.withValues(alpha: c.isDark ? 0.22 : 0.12), shape: BoxShape.circle),
+            child: Icon(orgInsightIcon(m.key), size: AppIconSize.sm, color: appInk(context, tone)),
           ),
           const SizedBox(width: AppSpace.xs),
           Expanded(
             child: Text(orgInsightLabel(m.key),
-                maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w500)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.meta(context).copyWith(fontWeight: FontWeight.w500, color: muted)),
           ),
         ]),
         const SizedBox(height: AppSpace.xs),
@@ -536,20 +558,24 @@ class OrgInsightCard extends StatelessWidget {
             runSpacing: AppSpace.xxs,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text(orgInsightFigure(m),
+              AppCountUp(orgInsightFigure(m),
+                  memoryKey: 'org.insight.${m.key}',
                   textDirection: TextDirection.ltr,
-                  style: appText(28, w: FontWeight.w600, c: c.textDark, h: 1.1)),
+                  style: (featured ? AppType.display(context) : AppType.figureLarge(context)).copyWith(color: ink, height: 1.1)),
               if (change != null) _ChangePill(change: change),
             ],
           ),
         ),
         if (points.length >= 2) ...[
           const SizedBox(height: AppSpace.sm),
-          OrgInsightChart(metric: m, color: tone, granularity: period.granularity),
+          OrgInsightChart(metric: m, color: tone, granularity: period.granularity, surface: surface, ink: ink, muted: b?.faint),
         ],
         const SizedBox(height: AppSpace.sm),
         ExcludeSemantics(
-          child: Text(summary, maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w400, c: c.textMedium, h: 1.4)),
+          child: Text(summary,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: AppType.label(context).copyWith(fontWeight: FontWeight.w400, color: muted, height: 1.4)),
         ),
       ]),
     );
@@ -569,12 +595,15 @@ class _ChangePill extends StatelessWidget {
         : (change.direction < 0 ? Icons.arrow_downward_rounded : Icons.remove_rounded);
     final ink = change.good == null ? c.textMedium : appInk(context, tone);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: tone.withValues(alpha: c.isDark ? 0.20 : 0.12), borderRadius: BorderRadius.circular(999)),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2 + 1),
+      decoration: BoxDecoration(color: tone.withValues(alpha: c.isDark ? 0.20 : 0.12), borderRadius: BorderRadius.circular(AppRadius.pill)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 13, color: ink),
-        const SizedBox(width: 3),
-        Text(change.short, style: appText(12, w: FontWeight.w600, c: ink)),
+        Icon(icon, size: AppIconSize.xs, color: ink),
+        const SizedBox(width: AppSpace.xxs / 2 + 1),
+        Flexible(
+          child: Text(change.short,
+              maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: ink)),
+        ),
       ]),
     );
   }
@@ -583,9 +612,13 @@ class _ChangePill extends StatelessWidget {
 /// The metric's line (AppSparkline) made touchable: tap / hover / drag shows that day's value in the read-out above
 /// it (default: the last point) and marks the point with a guide and a dot. Days without data are left out.
 class OrgInsightChart extends StatefulWidget {
-  const OrgInsightChart({super.key, required this.metric, required this.color, this.granularity = 'day', this.height = 44});
+  const OrgInsightChart(
+      {super.key, required this.metric, required this.color, this.granularity = 'day', this.height = 44, this.surface, this.ink, this.muted});
   final OrgInsightMetric metric;
   final Color color;
+
+  /// The card's surface (the marked point's halo) and the read-out's inks; null = the paper card's.
+  final Color? surface, ink, muted;
   final String granularity;
   final double height;
 
@@ -622,14 +655,17 @@ class _OrgInsightChartState extends State<OrgInsightChart> {
     final hot = _hot == null || _hot! >= pts.length ? null : _hot;
     final shown = pts[hot ?? pts.length - 1];
     final (day, fig) = orgInsightPointParts(shown, widget.metric, granularity: widget.granularity);
+    final readout = AppType.meta(context).copyWith(
+        fontWeight: hot == null ? FontWeight.w400 : FontWeight.w600,
+        color: hot == null ? (widget.muted ?? c.textLight) : (widget.ink ?? c.textDark));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       Semantics(
         label: '$day · $fig',
         excludeSemantics: true,
         child: Row(children: [
-          Flexible(child: Text(day, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: hot == null ? FontWeight.w400 : FontWeight.w600, c: hot == null ? c.textLight : c.textDark))),
-          Text(' · ', style: appText(12, w: hot == null ? FontWeight.w400 : FontWeight.w600, c: hot == null ? c.textLight : c.textDark)),
-          Text(fig, textDirection: TextDirection.ltr, style: appText(12, w: hot == null ? FontWeight.w400 : FontWeight.w600, c: hot == null ? c.textLight : c.textDark)),
+          Flexible(child: Text(day, maxLines: 1, overflow: TextOverflow.ellipsis, style: readout)),
+          Text(' · ', style: readout),
+          Text(fig, textDirection: TextDirection.ltr, style: readout),
         ]),
       ),
       const SizedBox(height: AppSpace.xxs),
@@ -647,7 +683,8 @@ class _OrgInsightChartState extends State<OrgInsightChart> {
               if (hot != null)
                 IgnorePointer(
                   child: CustomPaint(
-                    painter: _HotPainter(index: hot, values: values, color: widget.color, surface: c.cardBg, guide: c.divider, rtl: rtl),
+                    painter: _HotPainter(
+                        index: hot, values: values, color: widget.color, surface: widget.surface ?? c.cardBg, guide: c.divider, rtl: rtl),
                   ),
                 ),
             ]),
@@ -700,13 +737,18 @@ class _RowsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.cardBg,
         borderRadius: AppRadius.cardAll,
-        border: Border.all(color: c.divider),
-        boxShadow: AppShadow.card(context),
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         for (var i = 0; i < children.length; i++) ...[
-          if (i > 0) Divider(height: 1, thickness: 1, indent: AppSpace.md, endIndent: AppSpace.md, color: c.divider),
+          if (i > 0)
+            Divider(
+                height: AppBorder.hairline,
+                thickness: AppBorder.hairline,
+                indent: AppSpace.md,
+                endIndent: AppSpace.md,
+                color: c.divider),
           children[i],
         ],
       ]),
@@ -726,23 +768,24 @@ class OrgSuggestionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final dot = Container(
-      width: 8,
-      height: 8,
-      margin: const EdgeInsets.only(top: 6),
+      width: AppSpace.xs,
+      height: AppSpace.xs,
+      margin: const EdgeInsets.only(top: AppSpace.xs - 2),
       decoration: BoxDecoration(color: risk ? c.danger : c.warning, shape: BoxShape.circle),
     );
-    final sentence = Text(text, style: appText(14, w: FontWeight.w500, c: c.textDark, h: 1.45));
+    final sentence = Text(text, style: AppType.body(context).copyWith(fontWeight: FontWeight.w500, color: c.textDark, height: 1.45));
     final button = onTap == null
         ? null
         : OutlinedButton(
             onPressed: onTap,
             style: OutlinedButton.styleFrom(
               foregroundColor: appInk(context, c.primary),
-              side: BorderSide(color: c.primary.withValues(alpha: 0.45)),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              minimumSize: const Size(0, 40),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-              textStyle: appText(13, w: FontWeight.w600),
+              side: BorderSide(color: c.divider, width: AppBorder.hairline),
+              backgroundColor: c.cardBg,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+              minimumSize: const Size(0, AppTouch.min),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
+              textStyle: AppType.label(context).copyWith(fontWeight: FontWeight.w600),
             ),
             child: Text(action, maxLines: 1, overflow: TextOverflow.ellipsis),
           );
@@ -763,7 +806,7 @@ class OrgSuggestionRow extends StatelessWidget {
             ]);
           }
           return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-            Padding(padding: const EdgeInsets.only(bottom: 6), child: dot),
+            Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs - 2), child: dot),
             const SizedBox(width: AppSpace.sm),
             Expanded(child: sentence),
             const SizedBox(width: AppSpace.sm),
@@ -818,12 +861,12 @@ class _InsightsError extends StatelessWidget {
       decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.cardAll, border: Border.all(color: c.divider)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(Icons.cloud_off_rounded, size: 22, color: c.textLight),
+          Icon(Icons.cloud_off_rounded, size: AppIconSize.lg, color: c.textLight),
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               Text(t('تعذّر تحميل المؤشرات الآن', 'Couldn\'t load the insights right now'), style: AppType.row(context)),
-              const SizedBox(height: 2),
+              const SizedBox(height: AppSpace.xxs / 2),
               Text(message, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
             ]),
           ),
@@ -833,7 +876,7 @@ class _InsightsError extends StatelessWidget {
             alignment: AlignmentDirectional.centerEnd,
             child: TextButton.icon(
               onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded, size: 18),
+              icon: const Icon(Icons.refresh_rounded, size: AppIconSize.sm),
               label: Text(t('إعادة المحاولة', 'Retry')),
             ),
           ),
@@ -854,7 +897,7 @@ class _InsightsNothing extends StatelessWidget {
       padding: AppSpace.card,
       decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.cardAll, border: Border.all(color: c.divider)),
       child: Row(children: [
-        Icon(Icons.insights_rounded, size: 22, color: c.textLight),
+        Icon(Icons.insights_rounded, size: AppIconSize.lg, color: c.textLight),
         const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Text(

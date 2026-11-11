@@ -267,11 +267,11 @@ class OrgTrendRow extends StatelessWidget {
     return HomeSection(
       id: 'org_admin.trends',
       title: t('الاتجاهات · 30 يوماً', 'Trends · 30 days'),
-      titlePadding: const EdgeInsets.fromLTRB(16, 8, 12, 4),
+      titlePadding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.xs, AppSpace.sm, AppSpace.xxs),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
         child: LayoutBuilder(builder: (context, box) {
-          const gap = 10.0;
+          const gap = AppSpace.sm;
           final cols = (box.maxWidth / 140).floor().clamp(1, 3);
           final w = (box.maxWidth - gap * (cols - 1)) / cols;
           return Wrap(spacing: gap, runSpacing: gap, children: [
@@ -609,9 +609,11 @@ class _LiveAttention extends StatelessWidget {
                 onTap: () => orgJump(context, 'academics', sub: 'registrar')));
           }
           if (cards.isEmpty) return baseEmpty ? const OrgAllCaughtUp() : const SizedBox.shrink();
+          // with rows above, these sit inside the attention block (its own inset); alone, they keep the page margin
           return Padding(
             padding: EdgeInsets.only(top: baseEmpty ? 0 : AppSpace.xs),
-            child: OrgRowsCard(children: [for (final x in cards) OrgAlertRow(spec: x)]),
+            child: OrgRowsCard(
+                margin: baseEmpty ? null : EdgeInsets.zero, children: [for (final x in cards) OrgAlertRow(spec: x)]),
           );
         },
       );

@@ -18,6 +18,8 @@
 //                            A desktop window: HomeDashboard like the student / teacher homes — today leads the main
 //                            column, the inbox entry the side one, and the rest keeps its order split between the
 //                            two at the most even cut (orgHomeColumnSplit); too little for two → one centred column.
+//   OrgMemberHero            the home's ONE hero: a sky block (organizations wear sky, D-613) with the logo on paper,
+//                            the name in the editorial face and my roles; it tilts a little under the mouse
 //   OrgMemberDashboardScreen standalone page (route '/org_member', e.g. org staff without a management dashboard)
 //   openOrgApproval          jump from an approval item to the page that decides it (rights checked server-side)
 //
@@ -51,7 +53,8 @@ import 'org_access_joining.dart' show openOrgJoin;
 import 'org_access_page.dart' show OrgAccessPage;
 import 'org_page_header.dart' show OrgPushedPage;
 import 'org_announcements.dart' show OrgAnnouncementFeed;
-import 'org_common.dart' show OrgHero, orgColor, orgTypeIcons;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppTilt;
+import 'org_common.dart' show orgColor, orgTypeIcons;
 import 'org_courses_page.dart' show OrgCoursesPage;
 import 'org_join_pages.dart' show OrgJoinInboxPage;
 import 'org_member_pages.dart' show OrgCoursesScreen, OrgTimetableScreen;
@@ -440,6 +443,69 @@ class OrgMemberHome extends StatelessWidget {
 }
 
 /// The member home, plain values in: the overview entry, today's events, the inbox preview rows.
+/// The member home's hero: a sky block — the organization's logo (or its type's icon) on a paper tile, its name in
+/// the editorial headline, my roles under it, and the switch when I belong to more than one.
+class OrgMemberHero extends StatelessWidget {
+  const OrgMemberHero({super.key, required this.org, this.subtitle, this.onSwitch});
+  final Map<String, dynamic> org;
+  final String? subtitle;
+  final VoidCallback? onSwitch;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final logo = (org['logo_url'] ?? '').toString();
+    final tile = AppIconSize.hero + AppSpace.md;
+    Widget fallback() => Icon(orgTypeIcons[org['type']] ?? Icons.domain_rounded,
+        color: appInk(context, orgColor(context, org)), size: AppIconSize.xl - AppSpace.xxs);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.sm),
+      child: AppTilt.subtle(
+        radius: AppRadius.block,
+        child: AppBlock(
+          tone: AppBlockTone.sky,
+          hero: true,
+          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.lg, AppSpace.lg, AppSpace.sm, AppSpace.lg),
+          child: Builder(builder: (context) {
+            final b = AppBlock.colorsOf(context);
+            return Row(children: [
+              Container(
+                width: tile,
+                height: tile,
+                decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.cardAll),
+                clipBehavior: Clip.antiAlias,
+                child: logo.isNotEmpty
+                    ? Image.network(logo, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback())
+                    : fallback(),
+              ),
+              AppSpace.gapMd,
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(OrgSession.nameOf(org),
+                      maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.headline(context).copyWith(color: b.ink)),
+                  if ((subtitle ?? '').isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSpace.xxs),
+                      child: Text(subtitle!,
+                          maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: b.muted)),
+                    ),
+                ]),
+              ),
+              if (onSwitch != null)
+                IconButton(
+                  tooltip: t('تبديل المؤسسة', 'Switch organization'),
+                  onPressed: onSwitch,
+                  constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+                  icon: Icon(Icons.swap_horiz_rounded, color: b.ink),
+                ),
+            ]);
+          }),
+        ),
+      ),
+    );
+  }
+}
+
 class OrgMemberHomeBody extends StatelessWidget {
   const OrgMemberHomeBody({
     super.key,
@@ -523,15 +589,10 @@ class OrgMemberHomeBody extends StatelessWidget {
 
     final top = <Widget>[
       if (showHero)
-        OrgHero(
+        OrgMemberHero(
           org: org,
           subtitle: orgRolesLine(entry),
-          trailing: showPicker
-              ? IconButton(
-                  tooltip: t('تبديل المؤسسة', 'Switch organization'),
-                  onPressed: onPick,
-                  icon: Icon(Icons.swap_horiz_rounded, color: c.onHero))
-              : null,
+          onSwitch: showPicker ? onPick : null,
         )
       else
         AppSpace.gapSm,

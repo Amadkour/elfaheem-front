@@ -11,6 +11,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show appInk;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppPressScale;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/home_kit.dart' show HomeSection;
 
@@ -96,20 +97,25 @@ class OrgDeptCard extends StatelessWidget {
     final u = unit;
     final waiting = asInt(u['waiting']) > 0;
     final program = u['unit_type'] == 'program';
+    // paper + a warm hairline (a resting card has no shadow); a press sinks it a little
     return Semantics(
       button: onTap != null,
-      child: Material(
+      child: AppPressScale(
+        enabled: onTap != null,
+        child: Material(
         color: c.cardBg,
-        borderRadius: AppRadius.cardAll,
+        shape: RoundedRectangleBorder(
+            borderRadius: AppRadius.cardAll, side: BorderSide(color: c.divider, width: AppBorder.hairline)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
           child: Container(
             constraints: const BoxConstraints(minHeight: AppTouch.primary + AppSpace.md),
-            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.sm),
-            decoration: BoxDecoration(borderRadius: AppRadius.cardAll, border: Border.all(color: c.divider)),
+            padding: const EdgeInsets.all(AppSpace.sm),
             child: Row(children: [
-              program ? IconBadge(Icons.school_rounded, c.purple, size: 40) : DeptLogo(d: u, size: 40),
+              program
+                  ? IconBadge(Icons.school_rounded, c.primary, size: AppIconSize.hero)
+                  : DeptLogo(d: u, size: AppIconSize.hero),
               const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
@@ -117,8 +123,11 @@ class OrgDeptCard extends StatelessWidget {
                   const SizedBox(height: AppSpace.xxs / 2),
                   Row(children: [
                     if (waiting) ...[
-                      Container(width: 6, height: 6, decoration: BoxDecoration(color: c.warning, shape: BoxShape.circle)),
-                      const SizedBox(width: AppSpace.xxs + 2),
+                      Container(
+                          width: AppSpace.xxs * 1.5,
+                          height: AppSpace.xxs * 1.5,
+                          decoration: BoxDecoration(color: c.warning, shape: BoxShape.circle)),
+                      const SizedBox(width: AppSpace.xs * 0.75),
                     ],
                     Flexible(
                       child: Text(orgDeptMeta(u), maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -128,10 +137,11 @@ class OrgDeptCard extends StatelessWidget {
                   ]),
                 ]),
               ),
-              Icon(Icons.chevron_right_rounded, color: c.textLight, size: 22),
+              Icon(Icons.chevron_right_rounded, color: c.textLight, size: AppIconSize.lg),
             ]),
           ),
         ),
+      ),
       ),
     );
   }

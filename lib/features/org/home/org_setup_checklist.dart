@@ -17,6 +17,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppFill;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
@@ -156,18 +157,22 @@ class OrgSetupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final next = data.next;
-    return AppCard(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+    // a sky block (information, first-run): the headline in the editorial face, the progress filling in once
+    return AppBlock(
+      tone: AppBlockTone.sky,
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.lg, AppSpace.lg, AppSpace.md, AppSpace.md),
+      child: Builder(builder: (context) {
+        final b = AppBlock.colorsOf(context);
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(t('جهّز مؤسستك', 'Set up your organization'), style: AppType.section(context)),
-              const SizedBox(height: 2),
+              Text(t('جهّز مؤسستك', 'Set up your organization'), style: AppType.headline(context).copyWith(color: b.ink)),
+              const SizedBox(height: AppSpace.xxs / 2),
               Text(
                   t('${data.doneCount} من ${data.steps.length} خطوات مكتملة', '${data.doneCount} of ${data.steps.length} steps done'),
-                  style: AppType.meta(context)),
+                  style: AppType.meta(context).copyWith(color: b.muted)),
             ]),
           ),
           AppButton.ghost(
@@ -178,20 +183,24 @@ class OrgSetupCard extends StatelessWidget {
             onPressed: dismissing ? null : onDismiss,
           ),
         ]),
-        AppSpace.gapXs,
-        ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadius.chip),
-          child: LinearProgressIndicator(
-            key: const ValueKey('setup.progress'),
-            value: data.progress,
-            minHeight: 6,
-            backgroundColor: c.divider,
-            color: c.success,
+        AppSpace.gapSm,
+        AppFill(
+          value: data.progress,
+          builder: (context, v) => ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            child: LinearProgressIndicator(
+              key: const ValueKey('setup.progress'),
+              value: v,
+              minHeight: AppSpace.xs * 0.75,
+              backgroundColor: context.colors.cardBg,
+              color: context.colors.success,
+            ),
           ),
         ),
         AppSpace.gapSm,
         for (final s in data.steps) _StepRow(step: s, highlight: s.key == next?.key, onOpen: () => onOpen(s)),
-      ]),
+      ]);
+      }),
     );
   }
 }
@@ -205,20 +214,24 @@ class _StepRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final b = AppBlock.colorsOf(context);
     final hint = orgSetupHint(step.key);
     return Padding(
       key: ValueKey('setup.step.${step.key}'),
       padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
       child: Row(children: [
         Icon(step.done ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-            size: AppIconSize.lg, color: step.done ? c.success : (highlight ? c.primary : c.textLight)),
+            size: AppIconSize.lg, color: step.done ? b.accentInk(c.success) : (highlight ? b.accentInk(c.primary) : b.faint)),
         AppSpace.gapSm,
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
                 step.count != null && step.count! > 0 && step.done ? '${orgSetupTitle(step.key)} · ${step.count}' : orgSetupTitle(step.key),
-                style: step.done ? AppType.row(context).copyWith(color: c.textLight, decoration: TextDecoration.lineThrough) : AppType.row(context)),
-            if (!step.done && hint.isNotEmpty) Text(hint, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                style: step.done
+                    ? AppType.row(context).copyWith(color: b.muted, decoration: TextDecoration.lineThrough)
+                    : AppType.row(context).copyWith(color: b.ink)),
+            if (!step.done && hint.isNotEmpty)
+              Text(hint, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: b.muted)),
             if (!step.done)
               Align(
                 alignment: AlignmentDirectional.centerStart,

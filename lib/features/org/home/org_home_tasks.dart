@@ -1,8 +1,10 @@
 // lib/features/org/home/org_home_tasks.dart
 //
 // "Needs your attention" on the organization home (D-103, spec §3) — plain values, so the layout harness pumps it:
-//   OrgNeedsYouSection   the section: ONE card of rows (tasks with one-tap Approve / Decline, then the
-//                        organization-wide alerts the tasks do not carry), "See all (n)", or "You're all caught up"
+//   OrgNeedsYouSection   the section: ONE peach block (the home's memorable element: the count in the editorial
+//                        face, how many are urgent) holding ONE paper card of rows (tasks with one-tap Approve /
+//                        Decline, then the organization-wide alerts the tasks do not carry), "See all (n)", or
+//                        "You're all caught up" (an emerald block: done)
 //   OrgTaskRow           one task: avatar / kind icon · title · "subtitle · 2 h ago" · Approve (primary, soft) and
 //                        Decline (quiet); a row without actions opens its link; a failed call shows its message and
 //                        Retry on the row itself
@@ -17,7 +19,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_bidi.dart' show AutoDirText;
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh, appInk, appText;
+import 'package:flutter_education_app/design/app_blocks.dart' show AppBlock, AppBlockTone;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh, appInk;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp;
 import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/home_kit.dart' show HomeSection;
@@ -115,10 +119,13 @@ class OrgNeedsYouSection extends StatelessWidget {
     // one number everywhere: with tasks, the decisions waiting (= "See all (n)"); an older server: its cards
     final count = onSeeAll != null ? total : ranked.length;
     final empty = ranked.isEmpty && live == null;
+    final urgent = shown.where((x) => x.urgent).length;
+    // the block's figure carries the count, so the title does not repeat it (folded, the summary says it)
+    final lead = ranked.isNotEmpty && count > 0;
     return HomeSection(
       id: 'org.attention',
       title: t('يحتاج انتباهك', 'Needs your attention'),
-      count: count,
+      count: lead ? null : count,
       foldedSummary: count == 0 ? null : t('$count بانتظارك', '$count waiting for you'),
       // only when the list holds more than the rows shown here
       actionLabel: onSeeAll != null && total > shown.length ? t('عرض الكل ($total)', 'See all ($total)') : null,
@@ -128,9 +135,68 @@ class OrgNeedsYouSection extends StatelessWidget {
         if (empty)
           const OrgAllCaughtUp()
         else if (ranked.isNotEmpty)
-          OrgRowsCard(children: [for (final r in ranked) r.$3]),
-        ?live,
+          _AttentionBlock(count: count, urgent: urgent, rows: [for (final r in ranked) r.$3], live: live)
+        else
+          ?live,
       ]),
+    );
+  }
+}
+
+/// The attention block: the waiting count large in the editorial face, a quiet "n urgent" beside it, then the rows
+/// on a paper card set into the block (and the live feed's rows under them).
+class _AttentionBlock extends StatelessWidget {
+  const _AttentionBlock({required this.count, required this.urgent, required this.rows, this.live});
+  final int count, urgent;
+  final List<Widget> rows;
+  final Widget? live;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+      child: AppBlock(
+        tone: AppBlockTone.peach,
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs, AppSpace.md, AppSpace.xs, AppSpace.xs),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (count > 0)
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
+              child: Builder(builder: (context) {
+                final b = AppBlock.colorsOf(context);
+                final danger = b.accentInk(context.colors.danger);
+                return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  AppCountUp('$count',
+                      memoryKey: 'org.attention.count',
+                      textDirection: TextDirection.ltr,
+                      style: AppType.display(context).copyWith(color: b.ink, height: 1)),
+                  AppSpace.gapXs,
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpace.xxs),
+                      child: Text.rich(
+                        TextSpan(children: [
+                          TextSpan(text: t('بانتظار قرارك', 'waiting for you')),
+                          if (urgent > 0) ...[
+                            const TextSpan(text: ' · '),
+                            TextSpan(
+                                text: t('$urgent عاجل', '$urgent urgent'),
+                                style: TextStyle(color: danger, fontWeight: FontWeight.w600)),
+                          ],
+                        ]),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppType.body(context).copyWith(color: b.muted),
+                      ),
+                    ),
+                  ),
+                ]);
+              }),
+            ),
+          OrgRowsCard(margin: EdgeInsets.zero, children: rows),
+          ?live,
+        ]),
+      ),
     );
   }
 }
@@ -149,15 +215,20 @@ class OrgRowsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.cardBg,
         borderRadius: AppRadius.cardAll,
-        border: Border.all(color: c.divider),
-        boxShadow: AppShadow.card(context),
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       clipBehavior: Clip.antiAlias,
       child: Material(
         type: MaterialType.transparency,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           for (var i = 0; i < children.length; i++) ...[
-            if (i > 0) Divider(height: 1, thickness: 1, indent: AppSpace.md, endIndent: AppSpace.md, color: c.divider),
+            if (i > 0)
+              Divider(
+                  height: AppBorder.hairline,
+                  thickness: AppBorder.hairline,
+                  indent: AppSpace.md,
+                  endIndent: AppSpace.md,
+                  color: c.divider),
             children[i],
           ],
         ]),
@@ -166,35 +237,38 @@ class OrgRowsCard extends StatelessWidget {
   }
 }
 
-/// The empty queue: calm, one check, one line.
+/// The empty queue: an emerald block (done), one check, one line.
 class OrgAllCaughtUp extends StatelessWidget {
   const OrgAllCaughtUp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final ink = appInk(context, c.success);
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpace.md),
-      padding: AppSpace.card,
-      decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.cardAll, border: Border.all(color: c.divider)),
-      child: Row(children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(color: c.success.withValues(alpha: 0.12), shape: BoxShape.circle),
-          child: Icon(Icons.check_rounded, color: ink, size: 22),
-        ),
-        const SizedBox(width: AppSpace.sm),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(t('لا شيء ينتظرك', "You're all caught up"), style: AppType.row(context)),
-            const SizedBox(height: AppSpace.xxs / 2),
-            Text(t('ستظهر هنا الطلبات التي تحتاج قرارك.', 'Anything that needs your decision will show up here.'),
-                style: AppType.meta(context)),
-          ]),
-        ),
-      ]),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+      child: AppBlock(
+        tone: AppBlockTone.emerald,
+        padding: AppSpace.card,
+        child: Builder(builder: (context) {
+          final b = AppBlock.colorsOf(context);
+          return Row(children: [
+            Container(
+              width: AppIconSize.hero,
+              height: AppIconSize.hero,
+              decoration: BoxDecoration(color: context.colors.cardBg, shape: BoxShape.circle),
+              child: Icon(Icons.check_rounded, color: appInk(context, context.colors.success), size: AppIconSize.md),
+            ),
+            AppSpace.gapSm,
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(t('لا شيء ينتظرك', "You're all caught up"), style: AppType.section(context).copyWith(color: b.ink)),
+                const SizedBox(height: AppSpace.xxs / 2),
+                Text(t('ستظهر هنا الطلبات التي تحتاج قرارك.', 'Anything that needs your decision will show up here.'),
+                    style: AppType.meta(context).copyWith(color: b.muted)),
+              ]),
+            ),
+          ]);
+        }),
+      ),
     );
   }
 }
@@ -222,7 +296,8 @@ class OrgPersonAvatar extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(shape: BoxShape.circle, color: c.primary.withValues(alpha: 0.12)),
       child: Text(n.isEmpty ? '?' : n.characters.first.toUpperCase(),
-          style: appText(size * 0.4, w: FontWeight.w600, c: appInk(context, c.primary))),
+          style: AppType.label(context).copyWith(
+              fontSize: size * 0.4, fontWeight: FontWeight.w600, color: appInk(context, c.primary))),
     );
   }
 }
@@ -245,10 +320,10 @@ class OrgTaskRow extends StatelessWidget {
     final leading = x.person != null
         ? OrgPersonAvatar(name: x.person!.name, url: x.person!.avatarUrl)
         : Container(
-            width: 40,
-            height: 40,
+            width: AppIconSize.hero,
+            height: AppIconSize.hero,
             decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.10), borderRadius: AppRadius.chipAll),
-            child: Icon(orgTaskKindIcon(x.kind), size: 20, color: appInk(context, c.primary)),
+            child: Icon(orgTaskKindIcon(x.kind), size: AppIconSize.md, color: appInk(context, c.primary)),
           );
     final text = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
       // people write titles in either language: an English one keeps its own direction in Arabic (app_bidi.dart)
@@ -273,8 +348,8 @@ class OrgTaskRow extends StatelessWidget {
         const SizedBox(height: AppSpace.xxs),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Icon(Icons.error_outline_rounded, size: 16, color: appInk(context, c.danger)),
+            padding: const EdgeInsets.only(top: AppSpace.xxs / 2),
+            child: Icon(Icons.error_outline_rounded, size: AppIconSize.sm, color: appInk(context, c.danger)),
           ),
           const SizedBox(width: AppSpace.xxs),
           Expanded(
@@ -288,8 +363,9 @@ class OrgTaskRow extends StatelessWidget {
             onPressed: onRetry,
             style: TextButton.styleFrom(
                 minimumSize: const Size(AppTouch.min, AppTouch.min), padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs)),
-            icon: Icon(Icons.refresh_rounded, size: 18, color: appInk(context, c.primary)),
-            label: Text(t('إعادة المحاولة', 'Retry'), style: appText(13, w: FontWeight.w600, c: appInk(context, c.primary))),
+            icon: Icon(Icons.refresh_rounded, size: AppIconSize.sm, color: appInk(context, c.primary)),
+            label: Text(t('إعادة المحاولة', 'Retry'),
+                style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: appInk(context, c.primary))),
           ),
       ],
     ]);
@@ -305,7 +381,7 @@ class OrgTaskRow extends StatelessWidget {
           const SizedBox(width: AppSpace.xs),
           Padding(
             padding: const EdgeInsets.only(top: AppSpace.xs),
-            child: Icon(Icons.chevron_right_rounded, color: c.textLight, size: 22),
+            child: Icon(Icons.chevron_right_rounded, color: c.textLight, size: AppIconSize.lg),
           ),
         ],
       ]);
@@ -346,10 +422,10 @@ class _TaskButtons extends StatelessWidget {
             foregroundColor: c.textMedium,
             minimumSize: const Size(AppTouch.min, AppTouch.min),
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.chipAll),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
           ),
-          icon: Icon(a.id == 'reject' || a.id == 'decline' ? Icons.close_rounded : Icons.more_horiz_rounded, size: 18),
-          label: Text(a.label!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w500, c: c.textMedium)),
+          icon: Icon(a.id == 'reject' || a.id == 'decline' ? Icons.close_rounded : Icons.more_horiz_rounded, size: AppIconSize.sm),
+          label: Text(a.label!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: c.textMedium)),
         ),
       if (primary != null)
         // soft fill: one row of many — the page keeps one strong accent (D-102)
@@ -360,10 +436,13 @@ class _TaskButtons extends StatelessWidget {
             foregroundColor: primaryInk,
             minimumSize: const Size(AppTouch.min, AppTouch.min),
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.chipAll),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
           ),
-          icon: const Icon(Icons.check_rounded, size: 18),
-          label: Text(primary.label!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w600, c: primaryInk)),
+          icon: const Icon(Icons.check_rounded, size: AppIconSize.sm),
+          label: Text(primary.label!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: primaryInk)),
         ),
     ]);
   }
@@ -390,10 +469,10 @@ class OrgAlertRow extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
             child: Row(children: [
               Container(
-                width: 40,
-                height: 40,
+                width: AppIconSize.hero,
+                height: AppIconSize.hero,
                 decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: AppRadius.chipAll),
-                child: Icon(spec.icon, size: 20, color: ink),
+                child: Icon(spec.icon, size: AppIconSize.md, color: ink),
               ),
               const SizedBox(width: AppSpace.sm),
               Expanded(
@@ -409,11 +488,11 @@ class OrgAlertRow extends StatelessWidget {
               // the verb only where there is room; on a phone the whole row is the button and the chevron says so
               if (MediaQuery.sizeOf(context).width >= 600)
                 ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 160),
+                  constraints: const BoxConstraints(maxWidth: AppTouch.min * 3 + AppSpace.md),
                   child: Text(spec.action, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.end,
-                      style: appText(13.5, w: FontWeight.w600, c: appInk(context, c.primary))),
+                      style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: appInk(context, c.primary))),
                 ),
-              Icon(Icons.chevron_right_rounded, color: c.textLight, size: 22),
+              Icon(Icons.chevron_right_rounded, color: c.textLight, size: AppIconSize.lg),
             ]),
           ),
         ),
@@ -451,7 +530,7 @@ Future<String?> askOrgTaskReason(BuildContext context) {
             FilledButton(
               onPressed: ok ? () => Navigator.pop(ctx, ctl.text.trim()) : null,
               style: FilledButton.styleFrom(backgroundColor: c.primary, minimumSize: const Size.fromHeight(AppTouch.min)),
-              child: Text(t('رفض الطلب', 'Decline'), style: appText(14, w: FontWeight.w600, c: c.onHero)),
+              child: Text(t('رفض الطلب', 'Decline'), style: AppType.bodyStrong(context).copyWith(color: c.onHero)),
             ),
           ]),
         );
@@ -580,7 +659,7 @@ class _OrgTasksPageState extends State<OrgTasksPage> {
                 padding: const EdgeInsets.all(AppSpace.md),
                 child: Center(
                   child: _more
-                      ? const SizedBox(width: 160, child: LinearProgressIndicator())
+                      ? const SizedBox(width: AppTouch.min * 3, child: LinearProgressIndicator())
                       : OutlinedButton(
                           onPressed: () => _load(next: true),
                           style: OutlinedButton.styleFrom(minimumSize: const Size(AppTouch.min * 3, AppTouch.min)),
