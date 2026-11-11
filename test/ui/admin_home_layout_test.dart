@@ -97,6 +97,34 @@ void main() {
     await expectNoLayoutErrors(tester, () => AdminHomeBody(data: data, name: '', notice: 'x' * 120));
   });
 
+  testWidgets('worst case: huge figures, long alert texts, many currencies (premium layout)', (tester) async {
+    final p = fullPayload();
+    p['students'] = 2147483647;
+    p['teachers'] = 999999999;
+    p['courses'] = 88888888;
+    p['published_courses'] = 77777777;
+    p['active_subscriptions'] = 123456789;
+    p['organizations'] = {'total': 999999, 'active': 999998, 'pending_approval': 99999, 'by_type': {'faculty': 999999}};
+    p['series'] = [
+      for (var i = 0; i < 30; i++)
+        {
+          'date': '2026-10-${(i + 1).toString().padLeft(2, '0')}',
+          'signups': 9999999,
+          'enrollments': 99999999,
+          'revenue': {'EGP': 987654321987.55, 'SAR': 1.0, 'USD': 2.0, 'EUR': 3.0, 'KWD': 4.0},
+          'live_sessions': 99999,
+          'complaints': 99999,
+        },
+    ];
+    p['alerts'] = [
+      for (var i = 0; i < 12; i++)
+        {'key': 'k$i', 'severity': i.isEven ? 'danger' : 'warning', 'count': 99999 * (i + 1), 'title': longName * 2, 'hint': longName * 3},
+    ];
+    p['realtime'] = {'events_24h': 9999999999};
+    final data = AdminHomeData.fromOverview(p);
+    await expectNoLayoutErrors(tester, () => AdminHomeBody(data: data, name: longName * 3, pendingPayouts: 999999, notice: 'x ' * 200));
+  });
+
   testWidgets('a count the alerts already carry is drawn once', (tester) async {
     AppConfig.lang = 'en';
     final data = AdminHomeData.fromOverview(fullPayload());
