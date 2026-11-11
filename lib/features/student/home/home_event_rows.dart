@@ -22,6 +22,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/org/org_member_pages.dart' show OrgTimetableScreen;
 import 'package:flutter_education_app/features/org/org_my_exams.dart' show openMyExams;
@@ -82,9 +83,10 @@ HomeAgendaItem homeAgendaItemOf(BuildContext context, CalEvent e, DateTime nowUt
     ].join(' · '),
     place: e.location,
     tag: homeEventTag(e),
+    // gold is kept for streaks and achievements (system.md §2): a meeting is a quiet ink tag
     tone: switch (e.source) {
       'exam' => c.danger,
-      'meeting' => c.accent2,
+      'meeting' => c.textMedium,
       _ => e.kind == 'lab' ? c.purple : null,
     },
     onTap: onTap,
@@ -137,10 +139,10 @@ class _UpcomingListState extends State<UpcomingList> {
     return Padding(
       padding: widget.padding,
       child: AppCard(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
         child: AnimatedSize(
-          duration: (MediaQuery.maybeDisableAnimationsOf(context) ?? false) ? Duration.zero : const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
+          duration: AppMotion.of(context).base,
+          curve: AppEase.out,
           alignment: AlignmentDirectional.topCenter,
           child: Column(children: [
             for (final e in shown) _UpcomingLine(e: e, tone: _tone(c, e), onTap: widget.onTap == null ? null : () => widget.onTap!(e)),
@@ -153,7 +155,7 @@ class _UpcomingListState extends State<UpcomingList> {
 
   static Color _tone(ThemeConfigProvider c, CalEvent e) => switch (e.source) {
         'exam' => c.danger,
-        'meeting' => c.accent2,
+        'meeting' => c.textMedium,
         _ => e.kind == 'lab' ? c.purple : c.primary,
       };
 }
@@ -177,39 +179,43 @@ class _UpcomingLine extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 52),
+          constraints: const BoxConstraints(minHeight: AppTouch.min),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
             child: Row(children: [
               SizedBox(
-                width: 64,
+                width: AppTouch.primary + AppSpace.xs,
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                   FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: AlignmentDirectional.centerStart,
-                      child: Text(day, maxLines: 1, style: appText(12.5, w: FontWeight.w600, c: c.textDark))),
+                      child: Text(day, maxLines: 1, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark))),
                   FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: AlignmentDirectional.centerStart,
-                      child: Text(time, maxLines: 1, style: appText(11.5, c: c.textMedium))),
+                      child: Text(time, maxLines: 1, style: AppType.meta(context))),
                 ]),
               ),
               SizedBox(
-                width: 16,
-                child: Center(child: Container(width: 8, height: 8, decoration: BoxDecoration(color: tone, shape: BoxShape.circle))),
+                width: AppSpace.md,
+                child: Center(
+                    child: Container(width: AppSpace.xs, height: AppSpace.xs, decoration: BoxDecoration(color: tone, shape: BoxShape.circle))),
               ),
-              const SizedBox(width: 8),
+              AppSpace.gapXs,
               Expanded(
-                child: Text(e.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w500, c: c.textDark, h: 1.3)),
+                child: Text(e.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
               ),
               if (tag != null) ...[
-                const SizedBox(width: 8),
-                Container(
-                  constraints: const BoxConstraints(maxWidth: 112), // a long tag never squeezes the title out
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-                  child: Text(tag,
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w500, c: appInk(context, tone))),
+                AppSpace.gapXs,
+                // a long tag never squeezes the title out
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: AppTouch.min * 2 + AppSpace.md),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
+                    decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.pill)),
+                    child: Text(tag,
+                        maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w500, color: appInk(context, tone))),
+                  ),
                 ),
               ],
             ]),
@@ -290,8 +296,12 @@ String homeNextLectureLine(MeCourseProgress x, {CalEvent? event, CalEvent? last,
 /// lecture and progress — the count sits in the section title, the totals on the courses tab; tap → the course,
 /// the foot → the courses tab.
 class StudentCourseSummary extends StatelessWidget {
-  const StudentCourseSummary({super.key, required this.courses, this.events = const [], this.onOpen, this.onShowAll});
+  const StudentCourseSummary({super.key, required this.courses, this.events = const [], this.onOpen, this.onShowAll, this.featuredId});
   final List<MeCourseProgress> courses;
+
+  /// The course the "Continue learning" block above already shows (StudentContinueBlock): left out of the lines,
+  /// still counted in "All n courses".
+  final int? featuredId;
 
   /// The home's today + upcoming rows: a course's next class when it has no recorded lecture coming.
   final List<CalEvent> events;
@@ -300,7 +310,8 @@ class StudentCourseSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final top = homeCourseFocus(courses, events: events).take(3).toList();
+    final top = homeCourseFocus(courses, events: events).where((x) => x.courseId != featuredId).take(3).toList();
+    final shown = top.length + (featuredId != null && courses.any((x) => x.courseId == featuredId) ? 1 : 0);
     final next = homeCourseNextEvents(events);
     final last = homeCourseLastEvents(events);
     return HomeCourseSummary(
@@ -316,7 +327,7 @@ class StudentCourseSummary extends StatelessWidget {
             onTap: onOpen == null ? null : () => onOpen!(x.courseId),
           ),
       ],
-      moreLabel: courses.length > top.length ? 'home_courses_all'.tr.replaceAll('{n}', '${courses.length}') : null,
+      moreLabel: courses.length > shown ? 'home_courses_all'.tr.replaceAll('{n}', '${courses.length}') : null,
       onMore: onShowAll,
     );
   }

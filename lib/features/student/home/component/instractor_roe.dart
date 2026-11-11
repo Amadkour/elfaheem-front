@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/shared/profile/course_instractor_profile.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../home_provider.dart';
 
@@ -19,43 +20,36 @@ class InstructorsRow extends StatelessWidget {
     return SizedBox(
       height: 150 * MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.4),
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md + AppSpace.xxs),
         scrollDirection: Axis.horizontal,
         itemCount: instructors.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 16),
+        separatorBuilder: (_, _) => AppSpace.gapMd,
         itemBuilder: (_, i) {
           final ins = instructors[i];
           return SizedBox(
-            width: 92,
+            width: AppTouch.min * 2,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (ins.teacher != null)
                   InstructorAvatar(
                     teacher: ins.teacher!,
-                    size: 50,
+                    size: AppTouch.min + AppSpace.xxs,
                     canOpen: true,
                     showTitle: false,
                   ),
-                const SizedBox(height: 9),
+                AppSpace.gapXs,
                 Text(
                   ins.teacher?.name ?? 'T',
-                  style: context.colors.h3.copyWith(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w500,
-                    height: 1.2,
-                  ),
+                  style: AppType.label(context).copyWith(color: context.colors.textDark, height: 1.2),
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpace.xxs / 2),
                 if (ins.teacher?.teacherProfile?.specialization != null)
                   Text(AppConfig.lang=='ar'? ins.teacher!.teacherProfile!.specialization!.nameAr:ins.teacher!.teacherProfile!.specialization!.nameEn,
-                    style: context.colors.caption.copyWith(
-                      fontSize: 10,
-                      color: context.colors.textLight,
-                    ),
+                    style: AppType.meta(context),
                     textAlign: TextAlign.center,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

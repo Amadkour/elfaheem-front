@@ -804,7 +804,7 @@ void main() {
                 kHomeWideMax,
                 Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   _header(tr('سارة محمود', 'Sara Mahmoud'), studentDaySummary(_studentHome(), 1, _now)),
-                  StudentHomeBody(data: StudentHomeData(home: _studentHome(), now: _now, liveNow: _liveSession()), onTab: (_) {}),
+                  StudentHomeBody(data: StudentHomeData(home: _studentHome(), now: _now, liveNow: _liveSession()), onTab: (_) {}, onOpenCourse: (_) {}),
                 ]))));
   });
 
@@ -816,7 +816,7 @@ void main() {
                 kHomeWideMax,
                 Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   _header(tr('سارة محمود', 'Sara Mahmoud'), studentDaySummary(_studentFreeDay(), 0, _now)),
-                  StudentHomeBody(data: StudentHomeData(home: _studentFreeDay(), now: _now), onTab: (_) {}),
+                  StudentHomeBody(data: StudentHomeData(home: _studentFreeDay(), now: _now), onTab: (_) {}, onOpenCourse: (_) {}),
                 ]))));
   });
 
