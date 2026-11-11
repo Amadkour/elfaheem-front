@@ -1226,7 +1226,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(AppSpace.md),
-          child: Text(_playError!, textAlign: TextAlign.center, style: appText(13, c: c.onHeroMuted, h: 1.4)),
+          child: Text(_playError!, textAlign: TextAlign.center, style: AppType.body(context).copyWith(color: c.onHeroMuted)),
         ),
       );
     }
@@ -1331,7 +1331,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
           ),
           const SizedBox(height: AppSpace.sm),
           Text(t('حرّك المؤشر إلى حيث تريد القسمة. تشمل الملفّان كل تعديلاتك ونصوصك وصورك.', 'Move the playhead to where it should split. Both files carry all your edits, texts and pictures.'),
-              style: appText(12, c: context.colors.textMedium, h: 1.45)),
+              style: AppType.meta(context).copyWith(color: context.colors.textMedium)),
         ]);
       case StudioTool.quality:
       case StudioTool.cover:

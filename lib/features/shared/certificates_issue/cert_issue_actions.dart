@@ -206,7 +206,7 @@ Future<void> certShowImage(BuildContext context, IssuedCert cert) {
                   child: Image.network(url, fit: BoxFit.contain,
                       errorBuilder: (_, _, _) => const Padding(
                             padding: EdgeInsets.all(AppSpace.xl),
-                            child: Icon(Icons.broken_image_outlined, size: 40),
+                            child: Icon(Icons.broken_image_outlined, size: AppIconSize.hero),
                           )),
                 ),
               ),
@@ -214,13 +214,13 @@ Future<void> certShowImage(BuildContext context, IssuedCert cert) {
               Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 OutlinedButton.icon(
                   onPressed: () => certOpenUrl(url),
-                  icon: const Icon(Icons.download_rounded, size: 18),
+                  icon: const Icon(Icons.download_rounded, size: AppIconSize.md),
                   label: Text('ci_download_image'.tr),
                 ),
                 if (cert.verifyUrl != null)
                   OutlinedButton.icon(
                     onPressed: () => certCopy(cert.verifyUrl),
-                    icon: const Icon(Icons.link_rounded, size: 18),
+                    icon: const Icon(Icons.link_rounded, size: AppIconSize.md),
                     label: Text('ci_copy_link'.tr),
                   ),
               ]),

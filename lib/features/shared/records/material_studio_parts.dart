@@ -51,25 +51,25 @@ class MaterialDraftTile extends StatelessWidget {
           Icon(d.pendingReplace ? Icons.swap_horiz_rounded : Icons.auto_fix_high_rounded, size: AppIconSize.md, color: tone),
           const SizedBox(width: AppSpace.xs),
           Expanded(
-            child: Text(r.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
+            child: Text(r.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
           ),
           if (r.durationSeconds > 0) ...[
             const SizedBox(width: AppSpace.xs),
-            Text(mmss(r.durationSeconds), textDirection: TextDirection.ltr, style: appText(12, c: c.textMedium)),
+            Text(mmss(r.durationSeconds), textDirection: TextDirection.ltr, style: AppType.meta(context).copyWith(color: c.textMedium)),
           ],
         ]),
         const SizedBox(height: 2),
         Text(
           [if (r.operation != null && !d.pendingReplace) r.operation!.madeBy, d.status()].join(' · '),
-          style: appText(12, c: r.isFailed ? c.danger : c.textMedium, h: 1.4),
+          style: AppType.meta(context).copyWith(color: r.isFailed ? c.danger : c.textMedium),
         ),
         if (r.inProgress) ...[
           const SizedBox(height: AppSpace.xxs),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(AppRadius.pill),
             child: LinearProgressIndicator(
               value: r.progress == null ? null : (r.progress! / 100).clamp(0.0, 1.0),
-              minHeight: 5,
+              minHeight: AppSpace.xxs,
               color: c.primary,
               backgroundColor: c.primary.withValues(alpha: 0.12),
             ),
@@ -119,7 +119,7 @@ class MaterialDraftsStrip extends StatelessWidget {
           Expanded(
             child: Text(
               t('مسودات الاستوديو — يراها فريق الكورس فقط', 'Studio drafts — only the course staff see them'),
-              style: appText(12.5, w: FontWeight.w700, c: c.textMedium),
+              style: AppType.label(context).copyWith(color: c.textMedium, fontWeight: FontWeight.w600),
             ),
           ),
         ]),
@@ -164,9 +164,9 @@ class _Choice extends StatelessWidget {
             const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(mode.label, style: appText(14, w: FontWeight.w700, c: selected ? c.primary : c.textDark)),
+                Text(mode.label, style: AppType.bodyStrong(context).copyWith(color: selected ? c.primary : c.textDark)),
                 const SizedBox(height: 2),
-                Text(mode.hint, style: appText(12.5, c: c.textMedium, h: 1.45)),
+                Text(mode.hint, style: AppType.meta(context).copyWith(color: c.textMedium)),
               ]),
             ),
             if (selected) ...[const SizedBox(width: AppSpace.xs), Icon(Icons.check_circle_rounded, color: c.primary)],

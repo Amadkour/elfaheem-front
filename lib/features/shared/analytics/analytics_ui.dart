@@ -13,6 +13,8 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import '../../teacher/data_lab/data_lab_models.dart';
 import 'analytics_summary.dart' show anIsolate;
 import 'package:flutter_education_app/design/app_gradients.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show appMotionOff, AppEase;
 
 String get anFont => AppFonts.display;
 
@@ -71,7 +73,7 @@ String anInsightSentence(double? prog, double? att, double? ex, {required bool m
 // ── surfaces ─────────────────────────────────────────────────────────────────
 
 class AnCard extends StatelessWidget {
-  const AnCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.margin, this.onTap, this.borderColor});
+  const AnCard({super.key, required this.child, this.padding = AppSpace.card, this.margin, this.onTap, this.borderColor});
 
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -82,14 +84,14 @@ class AnCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final r = BorderRadius.circular(18);
+    final r = AppRadius.cardAll;
+    // paper (D-612): the card surface on a warm hairline, no resting shadow
     return Container(
       margin: margin,
       decoration: BoxDecoration(
         color: c.cardBg,
         borderRadius: r,
-        border: Border.all(color: borderColor ?? c.divider.withValues(alpha: 0.6), width: borderColor == null ? 0.6 : 1),
-        boxShadow: c.cardShadow,
+        border: Border.all(color: borderColor ?? c.divider, width: borderColor == null ? AppBorder.hairline : AppBorder.strong),
       ),
       child: Material(
         color: Colors.transparent,
@@ -113,21 +115,16 @@ class AnSectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 18, 2, 10),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xxs / 2, AppSpace.lg, AppSpace.xxs / 2, AppSpace.sm),
       child: Row(children: [
         if (icon != null) ...[
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, size: 16, color: c.primary),
-          ),
-          const SizedBox(width: 10),
+          Icon(icon, size: AppIconSize.sm, color: c.textMedium),
+          const SizedBox(width: AppSpace.xs),
         ],
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: anText(15, w: FontWeight.w800, c: c.textDark)),
-            if (subtitle != null) Text(subtitle!, style: anText(11.5, c: c.textMedium, h: 1.4)),
+            Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+            if (subtitle != null) Text(subtitle!, style: AppType.meta(context)),
           ]),
         ),
         ?trailing,
@@ -155,9 +152,9 @@ class AnRing extends StatelessWidget {
     final track = onColor ? context.colors.onHero.withValues(alpha: 0.18) : col.withValues(alpha: 0.13);
     return Column(mainAxisSize: MainAxisSize.min, children: [
       TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: ((value ?? 0) / 100).clamp(0.0, 1.0)),
-        duration: const Duration(milliseconds: 900),
-        curve: Curves.easeOutCubic,
+        tween: Tween(begin: appMotionOff(context) ? ((value ?? 0) / 100).clamp(0.0, 1.0) : 0, end: ((value ?? 0) / 100).clamp(0.0, 1.0)),
+        duration: appMotionOff(context) ? Duration.zero : const Duration(milliseconds: 900),
+        curve: AppEase.out,
         builder: (_, v, __) => SizedBox(
           width: size,
           height: size,
@@ -172,9 +169,9 @@ class AnRing extends StatelessWidget {
         ),
       ),
       if (label != null) ...[
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         Text(label!, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: anText(11.5, w: FontWeight.w600, c: onColor ? context.colors.onHeroMuted : c.textMedium)),
+            style: AppType.meta(context).copyWith(color: onColor ? context.colors.onHeroMuted : c.textMedium)),
       ],
     ]);
   }
@@ -202,9 +199,9 @@ class AnBar extends StatelessWidget {
         child: Stack(alignment: AlignmentDirectional.centerStart, children: [
           Container(height: height, decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(height))),
           TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: pct),
-            duration: const Duration(milliseconds: 700),
-            curve: Curves.easeOutCubic,
+            tween: Tween(begin: appMotionOff(context) ? pct : 0, end: pct),
+            duration: appMotionOff(context) ? Duration.zero : const Duration(milliseconds: 700),
+            curve: AppEase.out,
             builder: (_, t, __) => Container(
               width: w * t,
               height: height,
@@ -248,7 +245,7 @@ class AnGlassIcon extends StatelessWidget {
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onTap,
-        child: SizedBox(width: 40, height: 40, child: Icon(icon, color: context.colors.onHero, size: 19)),
+        child: SizedBox(width: AppTouch.min, height: AppTouch.min, child: Icon(icon, color: context.colors.onHero, size: AppIconSize.md)),
       ),
     );
     return tooltip == null ? b : Tooltip(message: tooltip!, child: b);
@@ -265,23 +262,26 @@ class AnHeroStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Expanded(
     child: Material(
-      color: context.colors.onHero.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(16),
+      color: context.colors.heroGlass,
+      borderRadius: AppRadius.cardAll,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.cardAll,
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.sm, horizontal: AppSpace.xs),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: context.colors.onHero.withValues(alpha: 0.18)),
+            borderRadius: AppRadius.cardAll,
+            border: Border.all(color: context.colors.heroGlassBorder, width: AppBorder.hairline),
           ),
           child: Column(children: [
-            Icon(icon, color: context.colors.onHero, size: 19),
-            const SizedBox(height: 6),
-            Text(value, maxLines: 1, style: anText(16, w: FontWeight.w800, c: context.colors.onHero)),
-            const SizedBox(height: 2),
-            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(10, c: context.colors.onHeroMuted)),
+            Icon(icon, color: context.colors.onHero, size: AppIconSize.md),
+            const SizedBox(height: AppSpace.xs),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(value, maxLines: 1, style: AppType.figure(context).copyWith(color: context.colors.onHero)),
+            ),
+            const SizedBox(height: AppSpace.xxs / 2),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.overline(context).copyWith(color: context.colors.onHeroMuted, letterSpacing: 0, fontWeight: FontWeight.w500)),
           ]),
         ),
       ),
@@ -305,11 +305,11 @@ class AnGlassPill extends StatelessWidget {
       customBorder: const StadiumBorder(),
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          if (icon != null) ...[Icon(icon, size: 15, color: context.colors.onHero), const SizedBox(width: 6)],
-          Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(12.5, w: FontWeight.w700, c: context.colors.onHero))),
-          if (onTap != null) ...[const SizedBox(width: 4), Icon(Icons.chevron_right_rounded, size: 16, color: context.colors.onHero)],
+          if (icon != null) ...[Icon(icon, size: AppIconSize.sm, color: context.colors.onHero), const SizedBox(width: AppSpace.xs)],
+          Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: context.colors.onHero, fontWeight: FontWeight.w600))),
+          if (onTap != null) ...[const SizedBox(width: AppSpace.xxs), Icon(Icons.chevron_right_rounded, size: AppIconSize.sm, color: context.colors.onHero)],
         ]),
       ),
     ),
@@ -328,30 +328,37 @@ class AnChip extends StatelessWidget {
   final int? badge;
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: color.withValues(alpha: 0.08),
-    shape: StadiumBorder(side: BorderSide(color: color.withValues(alpha: 0.25))),
-    child: InkWell(
-      customBorder: const StadiumBorder(),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 5),
-          Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(11.5, w: FontWeight.w700, c: color))),
-          if (badge != null && badge! > 0) ...[
-            const SizedBox(width: 5),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)),
-              child: Text('$badge', style: anText(10, w: FontWeight.w800, c: context.colors.onHero)),
-            ),
-          ],
-        ]),
+  Widget build(BuildContext context) {
+    // the label reads at AA on its tint (gold / success / warning are never small text as they are)
+    final ink = appInk(context, color);
+    return Material(
+      color: appTintOn(context, color),
+      shape: StadiumBorder(side: BorderSide(color: color.withValues(alpha: 0.25), width: AppBorder.hairline)),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: onTap == null ? 0 : AppTouch.min - AppSpace.xs),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(icon, size: AppIconSize.xs, color: ink),
+              const SizedBox(width: AppSpace.xxs + AppSpace.xxs / 2),
+              Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: ink, fontWeight: FontWeight.w600))),
+              if (badge != null && badge! > 0) ...[
+                const SizedBox(width: AppSpace.xxs + AppSpace.xxs / 2),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs - AppSpace.xxs / 2, vertical: AppSpace.xxs / 4),
+                  decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                  child: Text('$badge', style: AppType.overline(context).copyWith(color: context.colors.onHero, letterSpacing: 0)),
+                ),
+              ],
+            ]),
+          ),
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class AnTag extends StatelessWidget {
@@ -362,18 +369,20 @@ class AnTag extends StatelessWidget {
   final IconData? icon;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: color.withValues(alpha: 0.3)),
-    ),
-    child: Row(mainAxisSize: MainAxisSize.min, children: [
-      if (icon != null) ...[Icon(icon, size: 12, color: color), const SizedBox(width: 4)],
-      Text(label, style: anText(11, w: FontWeight.w700, c: color)),
-    ]),
-  );
+  Widget build(BuildContext context) {
+    final ink = appInk(context, color);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
+      decoration: BoxDecoration(color: appTintOn(context, color), borderRadius: BorderRadius.circular(AppRadius.pill)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        if (icon != null) ...[Icon(icon, size: AppIconSize.xs, color: ink), const SizedBox(width: AppSpace.xxs)],
+        Flexible(
+          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: AppType.overline(context).copyWith(color: ink, letterSpacing: 0)),
+        ),
+      ]),
+    );
+  }
 }
 
 class AnEmpty extends StatelessWidget {
@@ -386,28 +395,22 @@ class AnEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 88,
-            height: 88,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(colors: [c.primary.withValues(alpha: 0.16), c.primary.withValues(alpha: 0.04)]),
-            ),
-            child: Icon(icon, size: 40, color: c.primary),
-          ),
-          const SizedBox(height: 16),
-          Text(title, textAlign: TextAlign.center, style: anText(16, w: FontWeight.w800, c: c.textDark)),
-          if (sub != null) ...[
-            const SizedBox(height: 6),
-            Text(sub!, textAlign: TextAlign.center, style: anText(13, c: c.textMedium, h: 1.55)),
-          ],
-          if (action != null) ...[const SizedBox(height: 16), action!],
-        ]),
+        padding: const EdgeInsets.all(AppSpace.xl),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: AppWidth.form.max),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            AppStatePlate(icon: icon, size: 104),
+            AppSpace.gapLg,
+            Text(title, textAlign: TextAlign.center, style: AppType.section(context)),
+            if (sub != null) ...[
+              AppSpace.gapXs,
+              Text(sub!, textAlign: TextAlign.center, style: AppType.body(context)),
+            ],
+            if (action != null) ...[AppSpace.gapLg, action!],
+          ]),
+        ),
       ),
     );
   }
@@ -421,20 +424,11 @@ class AnErrorRetry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return AnEmpty(
       icon: Icons.wifi_off_rounded,
       title: anTr('an_error_title', 'Something went wrong'),
       sub: message,
-      action: FilledButton.icon(
-        style: FilledButton.styleFrom(
-          backgroundColor: c.primary,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        ),
-        onPressed: onRetry,
-        icon: const Icon(Icons.refresh_rounded),
-        label: Text('retry'.tr, style: anText(13.5, w: FontWeight.w700, c: context.colors.onHero)),
-      ),
+      action: AppButton.primary(label: 'retry'.tr, icon: Icons.refresh_rounded, onPressed: onRetry),
     );
   }
 }
@@ -458,31 +452,40 @@ class AnMarkRow extends StatelessWidget {
     final diff = (n != null && avg != null) ? n - avg : null;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        Expanded(child: Text(col.label, style: anText(13.5, w: FontWeight.w700, c: c.textDark))),
+        Expanded(child: Text(col.label, style: AppType.row(context))),
         if (teacherMode && !col.visibleToStudents)
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 8),
-            child: Tooltip(message: 'dl_hidden_from_student'.tr, child: Icon(Icons.visibility_off_rounded, size: 15, color: c.textLight)),
+            child: Tooltip(message: 'dl_hidden_from_student'.tr, child: Icon(Icons.visibility_off_rounded, size: AppIconSize.sm, color: c.textLight)),
           ),
-        Text(dlFmt(col.value), style: anText(16, w: FontWeight.w800, c: col.isNumber ? anScoreColor(context, pct) : c.textDark)),
-        if (col.isNumber && n != null) Text(' / ${dlFmt(mx)}', style: anText(11.5, c: c.textLight)),
+        Text(dlFmt(col.value), style: AppType.figure(context).copyWith(color: col.isNumber ? appInk(context, anScoreColor(context, pct)) : c.textDark)),
+        if (col.isNumber && n != null) Text(' / ${dlFmt(mx)}', style: AppType.meta(context)),
       ]),
       if (col.isNumber && n != null) ...[
-        const SizedBox(height: 6),
+        AppSpace.gapXs,
         AnBar(value: n, max: mx, marker: avg),
         if (avg != null)
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: AppSpace.xxs),
             child: Row(children: [
-              Text('${'dl_class_avg'.tr}: ${dlFmt(avg)}', style: anText(11, c: c.textLight)),
-              const Spacer(),
-              if (diff != null && diff.abs() >= 0.5)
-                Text(
-                  diff > 0
-                      ? '▲ ${dlFmt(diff)} ${anTr('an_above_avg', 'above average')}'
-                      : '▼ ${dlFmt(-diff)} ${anTr('an_below_avg', 'below average')}',
-                  style: anText(11, w: FontWeight.w700, c: diff > 0 ? c.success : c.warning),
+              Flexible(child: Text('${'dl_class_avg'.tr}: ${dlFmt(avg)}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context))),
+              AppSpace.gapXs,
+              if (diff != null && diff.abs() >= 0.5) ...[
+                const Spacer(),
+                Icon(diff > 0 ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                    size: AppIconSize.xs, color: appInk(context, diff > 0 ? c.success : c.warning)),
+                const SizedBox(width: AppSpace.xxs / 2),
+                Flexible(
+                  child: Text(
+                    diff > 0
+                        ? '${dlFmt(diff)} ${anTr('an_above_avg', 'above average')}'
+                        : '${dlFmt(-diff)} ${anTr('an_below_avg', 'below average')}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: appInk(context, diff > 0 ? c.success : c.warning)),
+                  ),
                 ),
+              ],
             ]),
           ),
       ],
@@ -517,23 +520,23 @@ class AnVsClassCard extends StatelessWidget {
               : above == 0
               ? anTr('an_vs_all_below', 'Below the class average for now — a little extra effort will close the gap.')
               : anTr('an_vs_mixed', 'Ahead of the class in some areas, with room to grow in others.'),
-          style: anText(12.5, c: c.textMedium, h: 1.5),
+          style: AppType.body(context),
         ),
         for (final r in shown) ...[
-          const SizedBox(height: 12),
+          AppSpace.gapSm,
           Row(children: [
-            Expanded(child: Text(r.$1, style: anText(12.5, w: FontWeight.w700, c: c.textDark))),
-            Text(anPct(r.$2), style: anText(13, w: FontWeight.w800, c: anScoreColor(context, r.$2))),
-            Text('  ·  ${anTr('an_class', 'class')} ${anIsolate(anPct(r.$3))}', style: anText(11.5, c: c.textLight)),
+            Expanded(child: Text(r.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context))),
+            Text(anPct(r.$2), style: AppType.bodyStrong(context).copyWith(color: appInk(context, anScoreColor(context, r.$2)))),
+            Text('  ·  ${anTr('an_class', 'class')} ${anIsolate(anPct(r.$3))}', style: AppType.meta(context)),
           ]),
-          const SizedBox(height: 5),
-          AnBar(value: r.$2, marker: r.$3, height: 7),
+          const SizedBox(height: AppSpace.xxs + AppSpace.xxs / 2),
+          AnBar(value: r.$2, marker: r.$3, height: AppSpace.xs),
         ],
-        const SizedBox(height: 8),
+        AppSpace.gapXs,
         Row(children: [
-          Container(width: 2.5, height: 12, color: c.textDark.withValues(alpha: 0.6)),
-          const SizedBox(width: 6),
-          Text(anTr('an_marker_hint', 'the line marks the class average'), style: anText(10.5, c: c.textLight)),
+          Container(width: 2.5, height: AppSpace.sm, color: c.textDark.withValues(alpha: 0.6)),
+          const SizedBox(width: AppSpace.xs),
+          Flexible(child: Text(anTr('an_marker_hint', 'the line marks the class average'), style: AppType.meta(context))),
         ]),
       ]);
     return bare ? body : AnCard(child: body);
@@ -550,29 +553,31 @@ class AnFlagTile extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: color.withValues(alpha: 0.10),
-    borderRadius: BorderRadius.circular(18),
-    child: InkWell(
-      borderRadius: BorderRadius.circular(18),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: color.withValues(alpha: 0.25))),
-        child: Row(children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('$value', style: anText(20, w: FontWeight.w800, c: color)),
-              Text(label, style: anText(11, c: context.colors.textMedium, h: 1.3)),
-            ]),
-          ),
-          if (onTap != null) Icon(Icons.chevron_right_rounded, color: color),
-        ]),
+  Widget build(BuildContext context) {
+    final ink = appInk(context, color);
+    return Material(
+      color: appTintOn(context, color),
+      borderRadius: AppRadius.cardAll,
+      child: InkWell(
+        borderRadius: AppRadius.cardAll,
+        onTap: onTap,
+        child: Padding(
+          padding: AppSpace.card,
+          child: Row(children: [
+            Icon(icon, color: ink, size: AppIconSize.lg),
+            AppSpace.gapSm,
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('$value', style: AppType.figure(context).copyWith(color: ink)),
+                Text(label, style: AppType.meta(context)),
+              ]),
+            ),
+            if (onTap != null) Icon(Icons.chevron_right_rounded, color: ink, size: AppIconSize.md),
+          ]),
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 /// Round avatar: photo, or the first letter on a tinted circle.
@@ -590,14 +595,18 @@ class AnAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final col = color ?? c.primary;
     final letter = name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase();
+    final tone = AppBlockColors.of(context, AppBlockTone.forKey(name));
+    final col = color ?? c.primary;
     final fallback = Container(
       width: size,
       height: size,
       alignment: Alignment.center,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: onColor ? context.colors.onHero : col.withValues(alpha: 0.14)),
-      child: Text(letter, style: anText(size * 0.42, w: FontWeight.w800, c: col)),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: onColor ? context.colors.onHero : (color == null ? tone.surface : col.withValues(alpha: 0.14)),
+      ),
+      child: Text(letter, style: anText(size * 0.42, w: FontWeight.w600, c: color == null && !onColor ? tone.ink : appInk(context, col))),
     );
     if (url == null || url!.isEmpty) return fallback;
     return ClipOval(
@@ -620,39 +629,40 @@ class AnAttentionChip extends StatelessWidget {
     final c = context.colors;
     Widget metric(IconData icon, double? v, double limit) {
       final low = v != null && v < limit;
+      final ink = low ? appInk(context, c.danger) : c.textMedium;
       return Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 12, color: low ? c.danger : c.textLight),
-        const SizedBox(width: 3),
-        Text(anPct(v), style: anText(11, w: FontWeight.w800, c: low ? c.danger : c.textMedium)),
+        Icon(icon, size: AppIconSize.xs, color: ink),
+        const SizedBox(width: AppSpace.xxs),
+        Text(anPct(v), style: AppType.meta(context).copyWith(color: ink, fontWeight: FontWeight.w600)),
       ]);
     }
 
     return Material(
       color: c.cardBg,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: AppRadius.cardAll,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.cardAll,
         onTap: onTap,
         child: Container(
           width: 196,
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(AppSpace.sm),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: c.warning.withValues(alpha: 0.35)),
+            borderRadius: AppRadius.cardAll,
+            border: Border.all(color: c.warning.withValues(alpha: 0.35), width: AppBorder.hairline),
           ),
           child: Row(children: [
-            AnAvatar(name: name, size: 38, color: c.warning),
-            const SizedBox(width: 9),
+            AnAvatar(name: name, size: 38),
+            AppSpace.gapSm,
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(13, w: FontWeight.w800, c: c.textDark)),
+                Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
                 if (subtitle != null)
-                  Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(10.5, c: c.textLight)),
-                const SizedBox(height: 3),
+                  Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                const SizedBox(height: AppSpace.xxs),
                 Row(children: [
-                  metric(Icons.event_available_rounded, attendance, 60),
-                  const SizedBox(width: 10),
-                  metric(Icons.bar_chart_rounded, exams, 50),
+                  Flexible(child: metric(Icons.event_available_rounded, attendance, 60)),
+                  AppSpace.gapSm,
+                  Flexible(child: metric(Icons.bar_chart_rounded, exams, 50)),
                 ]),
               ]),
             ),

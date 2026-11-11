@@ -97,11 +97,11 @@ class ExportTintPill extends StatelessWidget {
     final ink = ensureContrast(color, [Color.alphaBlend(tint, c.cardBg)]);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
-      decoration: BoxDecoration(color: tint, borderRadius: AppRadius.chipAll),
+      decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(AppRadius.pill)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        if (icon != null) ...[Icon(icon, size: 14, color: ink), const SizedBox(width: AppSpace.xxs)],
+        if (icon != null) ...[Icon(icon, size: AppIconSize.xs, color: ink), const SizedBox(width: AppSpace.xxs)],
         Flexible(
-          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: ink)),
+          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: ink, fontWeight: FontWeight.w600)),
         ),
       ]),
     );
@@ -137,13 +137,13 @@ class ExportActionButton extends StatelessWidget {
         foregroundColor: col,
         minimumSize: const Size(AppTouch.min, AppTouch.min),
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.chipAll),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.controlAll),
       ),
       onPressed: busy ? null : onPressed,
       icon: busy
-          ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: col))
-          : Icon(icon, size: 18),
-      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w600, c: col)),
+          ? SizedBox(width: AppIconSize.sm, height: AppIconSize.sm, child: CircularProgressIndicator(strokeWidth: AppBorder.focus, color: col))
+          : Icon(icon, size: AppIconSize.md),
+      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: col, fontWeight: FontWeight.w600)),
     );
   }
 }
@@ -171,12 +171,7 @@ class ExportsLoadError extends StatelessWidget {
     return Column(mainAxisSize: MainAxisSize.min, children: [
       AppEmpty(icon: Icons.cloud_off_rounded, title: tx('exs_load_failed', 'Could not load this page', 'تعذّر تحميل الصفحة'), message: message),
       if (onRetry != null)
-        OutlinedButton.icon(
-          style: OutlinedButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
-          onPressed: onRetry,
-          icon: const Icon(Icons.refresh_rounded),
-          label: Text(tx('exs_retry', 'Try again', 'أعد المحاولة'), style: appText(14, w: FontWeight.w600, c: c.primary)),
-        ),
+        AppButton.secondary(label: tx('exs_retry', 'Try again', 'أعد المحاولة'), icon: Icons.refresh_rounded, onPressed: onRetry),
     ]);
   }
 }

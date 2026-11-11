@@ -27,7 +27,7 @@ class RecordGuestBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 2),
       decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(AppRadius.chip)),
-      child: Text(t('ضيف', 'Guest'), style: appText(11, w: FontWeight.w700, c: appInk(context, c.warning))),
+      child: Text(t('ضيف', 'Guest'), style: AppType.overline(context).copyWith(color: appInk(context, c.warning), letterSpacing: 0)),
     );
   }
 }
@@ -70,7 +70,7 @@ class RecordGuestRow extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textDirection: TextDirection.ltr,
-                      style: appText(13.5, w: FontWeight.w600, c: c.textDark)),
+                      style: AppType.row(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
                 ),
                 const SizedBox(width: AppSpace.xxs),
                 const RecordGuestBadge(),
@@ -78,7 +78,7 @@ class RecordGuestRow extends StatelessWidget {
               Text([status, ?until].where((s) => s.isNotEmpty).join(' · '),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: appText(12, c: g.expired || g.emailStatus == 'failed' ? c.danger : c.textMedium, h: 1.35)),
+                  style: AppType.meta(context).copyWith(color: g.expired || g.emailStatus == 'failed' ? c.danger : c.textMedium)),
             ]),
           ),
           IconButton(
@@ -150,18 +150,18 @@ class RecordGuestsInvite extends StatelessWidget {
       Text(
         t('لمن ليس لديه حساب: يصله بريد برابط شخصي يشغّل التسجيل في المتصفح دون تسجيل دخول.',
             'For people without an account: each gets an e-mail with a personal link that plays it in the browser, no sign-in.'),
-        style: appText(12.5, c: c.textMedium, h: 1.45),
+        style: AppType.meta(context).copyWith(color: c.textMedium),
       ),
       const SizedBox(height: AppSpace.xs),
       emails,
       if (problem != null) ...[
         const SizedBox(height: 2),
-        Text(problem!, key: const ValueKey('records.share.guests.problem'), style: appText(12, c: c.danger, h: 1.35)),
+        Text(problem!, key: const ValueKey('records.share.guests.problem'), style: AppType.meta(context).copyWith(color: c.danger)),
       ],
       const SizedBox(height: AppSpace.xs),
       message,
       const SizedBox(height: AppSpace.xs),
-      Text(t('صلاحية الرابط', 'The link works for'), style: appText(12.5, w: FontWeight.w600, c: c.textDark)),
+      Text(t('صلاحية الرابط', 'The link works for'), style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
       const SizedBox(height: AppSpace.xxs),
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final d in recordGuestExpiries)
@@ -251,7 +251,7 @@ class GuestRecordView extends StatelessWidget {
                                     width: 72,
                                     height: 72,
                                     decoration: BoxDecoration(color: c.heroGlass, shape: BoxShape.circle, border: Border.all(color: c.heroGlassBorder)),
-                                    child: Icon(r.audio ? Icons.graphic_eq_rounded : Icons.play_arrow_rounded, color: c.onHero, size: 40),
+                                    child: Icon(r.audio ? Icons.graphic_eq_rounded : Icons.play_arrow_rounded, color: c.onHero, size: AppIconSize.hero),
                                   ),
                                 ),
                               ),
@@ -262,14 +262,14 @@ class GuestRecordView extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpace.md),
-        Text(r.title, style: appText(19, w: FontWeight.w700, c: c.textDark, h: 1.3)),
+        Text(r.title, style: AppType.section(context).copyWith(color: c.textDark)),
         const SizedBox(height: AppSpace.xxs),
         Text(
           [
             if (r.ownerName.isNotEmpty) t('شاركه معك ${r.ownerName}', 'Shared with you by ${r.ownerName}'),
             if (r.durationSeconds > 0) mmss(r.durationSeconds),
           ].join(' · '),
-          style: appText(13, c: c.textMedium, h: 1.4),
+          style: AppType.body(context).copyWith(color: c.textMedium),
         ),
         if (r.message != null) ...[
           const SizedBox(height: AppSpace.sm),
@@ -280,7 +280,7 @@ class GuestRecordView extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppRadius.card),
               border: Border.all(color: c.divider),
             ),
-            child: Text(r.message!, style: appText(13.5, c: c.textDark, h: 1.5)),
+            child: Text(r.message!, style: AppType.body(context).copyWith(color: c.textDark)),
           ),
         ],
         const SizedBox(height: AppSpace.sm),
@@ -288,7 +288,7 @@ class GuestRecordView extends StatelessWidget {
           r.expiresAt == null
               ? t('هذا الرابط شخصي لك — لا تشاركه.', "This link is personal — please don't forward it.")
               : t('الرابط شخصي لك وصالح حتى ${AppTime.date(r.expiresAt!)}.', 'This personal link works until ${AppTime.date(r.expiresAt!)}.'),
-          style: appText(12, c: c.textLight, h: 1.4),
+          style: AppType.meta(context).copyWith(color: c.textLight),
         ),
       ]);
     }

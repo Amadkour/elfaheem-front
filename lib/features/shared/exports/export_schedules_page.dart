@@ -385,7 +385,7 @@ class ExportScheduleCard extends StatelessWidget {
     Widget line(IconData icon, String text, {int maxLines = 1, TextDirection? dir}) => Padding(
           padding: const EdgeInsets.only(top: AppSpace.xxs),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Padding(padding: const EdgeInsets.only(top: 2), child: Icon(icon, size: 16, color: c.textLight)),
+            Padding(padding: const EdgeInsets.only(top: 2), child: Icon(icon, size: AppIconSize.sm, color: c.textLight)),
             const SizedBox(width: AppSpace.xs),
             Expanded(child: Text(text, maxLines: maxLines, overflow: TextOverflow.ellipsis, textDirection: dir, style: meta)),
           ]),
@@ -400,7 +400,7 @@ class ExportScheduleCard extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(color: fmtColor.withValues(alpha: 0.12), borderRadius: AppRadius.chipAll),
-              child: Icon(exportFormatIcon(s.format), color: fmtColor, size: 20),
+              child: Icon(exportFormatIcon(s.format), color: fmtColor, size: AppIconSize.md),
             ),
             const SizedBox(width: AppSpace.sm),
             Expanded(
@@ -1036,7 +1036,7 @@ class _ExportScheduleFormBodyState extends State<ExportScheduleFormBody> {
 
   Widget _label(String text) => Padding(
         padding: const EdgeInsets.only(top: AppSpace.xs, bottom: AppSpace.xs),
-        child: Text(text, style: AppType.section(context).copyWith(fontSize: 14)),
+        child: Text(text, style: AppType.bodyStrong(context)),
       );
 
   Widget _chips(List<Widget> children) => Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: children);
@@ -1153,7 +1153,7 @@ class _ExportScheduleFormBodyState extends State<ExportScheduleFormBody> {
           ),
           onPressed: _pickTime,
           icon: const Icon(Icons.schedule_rounded),
-          label: Text(AppTime.clockMinutes(d.hour * 60 + d.minute), style: appText(14, w: FontWeight.w600, c: c.textDark)),
+          label: Text(AppTime.clockMinutes(d.hour * 60 + d.minute), style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
         ),
       ),
       Padding(
@@ -1204,13 +1204,13 @@ class _ExportScheduleFormBodyState extends State<ExportScheduleFormBody> {
         if (_recipientError != null)
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpace.xs),
-            child: Text(_recipientError!, style: appText(12, w: FontWeight.w600, c: c.danger)),
+            child: Text(_recipientError!, style: AppType.label(context).copyWith(color: c.danger, fontWeight: FontWeight.w600)),
           ),
         if (d.recipients.isNotEmpty)
           Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             for (final r in d.recipients)
               InputChip(
-                label: Text(r, textDirection: TextDirection.ltr, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textDark)),
+                label: Text(r, textDirection: TextDirection.ltr, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textDark)),
                 onDeleted: () => _changed(() => d.recipients.remove(r)),
                 deleteButtonTooltipMessage: tx('exs_remove', 'Remove', 'إزالة'),
                 materialTapTargetSize: MaterialTapTargetSize.padded,

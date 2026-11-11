@@ -94,7 +94,7 @@ class _RecordPlayerPageState extends State<RecordPlayerPage> {
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.videocam_off_rounded, color: c.onHeroMuted, size: AppIconSize.hero),
                     const SizedBox(height: AppSpace.sm),
-                    Text(_error!, textAlign: TextAlign.center, style: appText(14, c: c.onHero, h: 1.45)),
+                    Text(_error!, textAlign: TextAlign.center, style: AppType.body(context).copyWith(color: c.onHero)),
                     const SizedBox(height: AppSpace.md),
                     Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.center, children: [
                       AppButton.secondary(label: t('رجوع', 'Back'), onPressed: () => Navigator.maybePop(context)),

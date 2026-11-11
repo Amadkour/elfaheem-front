@@ -44,9 +44,9 @@ class SharePersonRow extends StatelessWidget {
             const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(person.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w600, c: c.textDark)),
+                Text(person.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
                 if (sub != null)
-                  Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
+                  Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
               ]),
             ),
             if (trailing != null) ...[const SizedBox(width: AppSpace.xs), trailing!],
@@ -91,9 +91,9 @@ class _ModeCard extends StatelessWidget {
             const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(mode.label, style: appText(14, w: FontWeight.w700, c: c.textDark)),
+                Text(mode.label, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
                 const SizedBox(height: 2),
-                Text(mode.hint, style: appText(12, c: c.textMedium, h: 1.4)),
+                Text(mode.hint, style: AppType.meta(context).copyWith(color: c.textMedium)),
               ]),
             ),
             const SizedBox(width: AppSpace.xs),
@@ -201,7 +201,7 @@ class RecordShareLayout extends StatelessWidget {
             mode == RecordShareMode.link
                 ? t('يصل الرابط لمن ترسله إليه. أضف أشخاصاً ليصلهم إشعار.', 'The link reaches whoever you send it to. Add people to notify them.')
                 : t('لم تختر أحداً بعد.', 'Nobody chosen yet.'),
-            style: appText(12.5, c: c.textMedium, h: 1.45),
+            style: AppType.meta(context).copyWith(color: c.textMedium),
           ),
         )
       else
@@ -237,7 +237,7 @@ class RecordShareLayout extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textDirection: TextDirection.ltr,
-              style: appText(12.5, w: FontWeight.w600, c: c.textDark)),
+              style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
         ),
         const SizedBox(height: AppSpace.xs),
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
@@ -261,12 +261,12 @@ class RecordShareLayout extends StatelessWidget {
         ]),
         if (views > 0) ...[
           const SizedBox(height: AppSpace.xs),
-          Text(t('$views مشاهدة', '$views views'), style: appText(12, c: c.textMedium)),
+          Text(t('$views مشاهدة', '$views views'), style: AppType.meta(context).copyWith(color: c.textMedium)),
         ],
       ],
       if (error != null) ...[
         const SizedBox(height: AppSpace.sm),
-        Text(error!, style: appText(12.5, w: FontWeight.w600, c: c.danger, h: 1.4)),
+        Text(error!, style: AppType.label(context).copyWith(color: c.danger, fontWeight: FontWeight.w600)),
       ],
       const SizedBox(height: AppSpace.md),
       AppButton.primary(
@@ -374,25 +374,21 @@ class _SharedCover extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     const w = 112.0, h = w * 9 / 16;
-    final mark = DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: [c.primary.withValues(alpha: 0.24), c.accent.withValues(alpha: 0.10)],
-        ),
-      ),
-      child: Center(child: Icon(item.audio ? Icons.graphic_eq_rounded : Icons.play_circle_outline_rounded, color: c.primary, size: 30)),
+    // the same tinted mark as My recordings: video peach, audio sky, the glyph in the block's muted ink
+    final tone = AppBlockColors.of(context, item.audio ? AppBlockTone.sky : AppBlockTone.peach);
+    final mark = ColoredBox(
+      color: tone.surface,
+      child: Center(child: Icon(item.audio ? Icons.graphic_eq_rounded : Icons.play_circle_outline_rounded, color: tone.muted, size: AppIconSize.xl)),
     );
     final url = item.coverUrl;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.chip),
+      borderRadius: AppRadius.chipAll,
       child: SizedBox(
         width: w,
         height: h,
         child: Stack(fit: StackFit.expand, children: [
           if (showImage && url != null && url.startsWith('http'))
-            Image.network(url, fit: BoxFit.cover, errorBuilder: (_, _, _) => mark)
+            AppParallaxImage(image: Image.network(url, fit: BoxFit.cover, errorBuilder: (_, _, _) => mark))
           else
             mark,
           if (item.durationSeconds > 0)
@@ -400,10 +396,10 @@ class _SharedCover extends StatelessWidget {
               end: AppSpace.xxs,
               bottom: AppSpace.xxs,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                decoration: BoxDecoration(color: c.heroShade.withValues(alpha: 0.78), borderRadius: BorderRadius.circular(6)),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs + AppSpace.xxs / 4, vertical: AppSpace.xxs / 4),
+                decoration: BoxDecoration(color: c.heroShade.withValues(alpha: 0.78), borderRadius: BorderRadius.circular(AppRadius.pill)),
                 child: Text(mmss(item.durationSeconds),
-                    textDirection: TextDirection.ltr, style: appText(10.5, w: FontWeight.w700, c: c.onHero)),
+                    textDirection: TextDirection.ltr, style: AppType.overline(context).copyWith(color: c.onHero, letterSpacing: 0)),
               ),
             ),
         ]),
@@ -433,13 +429,13 @@ class SharedRecordTile extends StatelessWidget {
         const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text(r.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark, h: 1.3)),
+            Text(r.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
             const SizedBox(height: 2),
             Text(
               [?from, if (r.sharedAt != null) AppTime.date(r.sharedAt!)].join(' · '),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: appText(12, c: c.textMedium, h: 1.35),
+              style: AppType.meta(context).copyWith(color: c.textMedium),
             ),
           ]),
         ),

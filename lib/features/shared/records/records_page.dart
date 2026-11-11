@@ -304,7 +304,7 @@ class _RecordsPageState extends State<RecordsPage> {
             key: ValueKey('records.sheet.$id'),
             minTileHeight: AppTouch.min,
             leading: Icon(icon, color: color ?? c.textDark),
-            title: Text(label, style: appText(14, w: FontWeight.w600, c: color ?? c.textDark)),
+            title: Text(label, style: AppType.bodyStrong(context).copyWith(color: color ?? c.textDark)),
             onTap: () => Navigator.of(ctx).pop(id),
           );
       return AppSheetContent(title: r.title, children: [
@@ -404,7 +404,7 @@ class _RecordsPageState extends State<RecordsPage> {
               onDrive
                   ? t('اختر ما يُحذف. حذف الملف من السحابة يرسله إلى سلة المهملات فيها.', 'Choose what goes. Deleting from the drive moves the file to its bin.')
                   : t('يُحذف من القائمة.', 'It is removed from the list.'),
-              style: appText(13, c: c.textMedium, h: 1.45),
+              style: AppType.body(context).copyWith(color: c.textMedium),
             ),
             const SizedBox(height: AppSpace.sm),
             if (onDrive) ...[
