@@ -19,6 +19,7 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show toa
 import 'data_lab_api.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show showAppSideSheet;
 import 'package:flutter_education_app/core/api_error_text.dart';
 
@@ -152,7 +153,7 @@ class _ExportSheetState extends State<_ExportSheet> {
       Flexible(
         child: ListView(
           shrinkWrap: true,
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          padding: const EdgeInsets.fromLTRB(20, 0, AppSpace.lg, 24),
           children: [
             if (p.selected.isNotEmpty)
               Padding(
@@ -176,13 +177,13 @@ class _ExportSheetState extends State<_ExportSheet> {
               _Dest(Icons.groups_rounded, 'dl_exp_students'.tr, 'dl_exp_students_sub'.tr, _delivery == 'student_email', () => setState(() => _delivery = 'student_email')),
             _Dest(Icons.badge_rounded, 'dl_exp_profile'.tr, 'dl_exp_profile_sub'.tr, _delivery == 'student_profile', () => setState(() => _delivery = 'student_profile')),
             if (_delivery == 'email') ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               DlField(controller: _emailTo, label: 'dl_exp_email_to'.tr, hint: 'dl_exp_email_to_hint'.tr, keyboard: TextInputType.emailAddress, ltr: true),
             ],
             if (_delivery != 'download') DlField(controller: _note, label: 'dl_exp_note'.tr, maxLines: 2),
             if (_delivery != 'student_profile') ...[
               DlSectionTitle('dl_exp_format'.tr),
-              Wrap(spacing: 8, children: [
+              Wrap(spacing: AppSpace.xs, children: [
                 for (final f in cfg.exportFormats)
                   DlChoiceChip(
                     label: f == 'xlsx' ? 'Excel' : f.toUpperCase(),
@@ -196,10 +197,10 @@ class _ExportSheetState extends State<_ExportSheet> {
                   padding: const EdgeInsets.only(top: 8),
                   child: Row(children: [
                     Icon(Icons.palette_rounded, size: 15, color: c.accent2),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: AppSpace.xs),
                     Expanded(
                       child: Text(_tr('dl_exp_same_look', 'Same look as your sheet: colours, highlights, averages, widths and pinned columns.'),
-                          style: dlText(11.5, c: c.textMedium, h: 1.4)),
+                          style: AppType.meta(context).copyWith(color: c.textMedium)),
                     ),
                   ]),
                 ),
@@ -208,27 +209,27 @@ class _ExportSheetState extends State<_ExportSheet> {
             if (!forStudents) ...[
               DlSectionTitle(_tr('dl_exp_pinned', 'Always included (pinned)'),
                   subtitle: _tr('dl_exp_pinned_sub', 'Pinned columns open the file, in their order.')),
-              Wrap(spacing: 8, runSpacing: 8, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final k in pinned)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 8),
                     decoration: BoxDecoration(
                       color: c.primary.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(AppRadius.control),
                       border: Border.all(color: c.primary.withValues(alpha: 0.35)),
                     ),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Icon(Icons.push_pin_rounded, size: 14, color: c.primary),
-                      const SizedBox(width: 6),
-                      Text(p.frozenLabel(k, (x) => x.tr), style: dlText(12.5, w: FontWeight.w800, c: c.primary)),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: AppSpace.xs),
+                      Text(p.frozenLabel(k, (x) => x.tr), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.primary)),
+                      const SizedBox(width: AppSpace.xs),
                       Icon(Icons.lock_rounded, size: 12, color: c.primary.withValues(alpha: 0.6)),
                     ]),
                   ),
               ]),
               if (extraIdentity.isNotEmpty) ...[
                 DlSectionTitle(_tr('dl_exp_more_details', 'More student details')),
-                Wrap(spacing: 8, runSpacing: 8, children: [
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                   for (final k in extraIdentity)
                     DlChoiceChip(
                       label: p.frozenLabel(k, (x) => x.tr),
@@ -247,7 +248,7 @@ class _ExportSheetState extends State<_ExportSheet> {
                   onPressed: () => setState(() => _cols.length == all.length ? _cols.clear() : _cols.addAll(all.map((e) => e.key))),
                   child: Text(_cols.length == all.length ? 'dl_none'.tr : 'dl_all'.tr),
                 )),
-            Wrap(spacing: 8, runSpacing: 8, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final col in all)
                 DlChoiceChip(
                   label: col.label,
@@ -256,7 +257,7 @@ class _ExportSheetState extends State<_ExportSheet> {
                   onTap: () => setState(() => _cols.contains(col.key) ? _cols.remove(col.key) : _cols.add(col.key)),
                 ),
             ]),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpace.lg),
             DlPrimaryButton(
               label: switch (_delivery) {
                 'download' => _tr('dl_exp_btn_prepare', 'Prepare the file'),
@@ -289,23 +290,23 @@ class _Dest extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(AppSpace.sm),
           decoration: BoxDecoration(
             color: selected ? c.primary.withValues(alpha: 0.08) : c.inputBg,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(color: selected ? c.primary : c.divider, width: selected ? 1.6 : 1),
           ),
           child: Row(children: [
             Icon(icon, color: selected ? c.primary : c.textMedium),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: dlText(13.5, w: FontWeight.w800, c: c.textDark)),
-                Text(sub, style: dlText(11.5, c: c.textMedium, h: 1.4)),
+                Text(title, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
+                Text(sub, style: AppType.meta(context).copyWith(color: c.textMedium)),
               ]),
             ),
             if (selected) Icon(Icons.check_circle_rounded, color: c.primary),
@@ -366,32 +367,32 @@ class _FileReadyState extends State<_FileReady> {
     final direct = DlExportFile.canSaveDirectly;
     final desktopPath = _savedPath != null && (_savedPath!.contains('/') || _savedPath!.contains(r'\'));
     return Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            padding: const EdgeInsets.fromLTRB(20, AppSpace.sm, AppSpace.lg, 20),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: c.divider, borderRadius: BorderRadius.circular(4))),
-              const SizedBox(height: 18),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: c.divider, borderRadius: BorderRadius.circular(AppRadius.chip))),
+              const SizedBox(height: AppSpace.md),
               Container(
                 width: 76,
                 height: 76,
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(24)),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.block)),
                 child: Icon(_savedPath != null ? Icons.check_circle_rounded : icon, size: 40, color: _savedPath != null ? c.success : color),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               Text(_savedPath != null ? _tr('dl_file_saved_title', 'Saved') : _tr('dl_file_ready', 'Your file is ready'),
-                  style: dlText(18, w: FontWeight.w800, c: c.textDark)),
-              const SizedBox(height: 4),
-              Text(f.name, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: dlText(13, w: FontWeight.w700, c: c.textMedium)),
-              const SizedBox(height: 6),
-              Wrap(alignment: WrapAlignment.center, spacing: 6, children: [
+                  style: AppType.section(context).copyWith(color: c.textDark)),
+              const SizedBox(height: AppSpace.xxs),
+              Text(f.name, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
+              const SizedBox(height: AppSpace.xs),
+              Wrap(alignment: WrapAlignment.center, spacing: AppSpace.xs, children: [
                 DlTag(kind, color),
                 DlTag(f.sizeLabel, c.textMedium),
                 if (f.rows > 0) DlTag('${f.rows} ${'dl_students'.tr}', c.primary),
               ]),
               if (desktopPath) ...[
-                const SizedBox(height: 10),
-                Text(_savedPath!, textAlign: TextAlign.center, textDirection: TextDirection.ltr, style: dlText(11, c: c.textLight)),
+                const SizedBox(height: AppSpace.sm),
+                Text(_savedPath!, textAlign: TextAlign.center, textDirection: TextDirection.ltr, style: AppType.meta(context).copyWith(color: c.textLight)),
               ],
-              const SizedBox(height: 18),
+              const SizedBox(height: AppSpace.md),
               DlPrimaryButton(
                 label: direct
                     ? (_savedPath != null ? _tr('dl_file_save_again', 'Save again') : _tr('dl_file_save', 'Save / Download'))
@@ -400,45 +401,45 @@ class _FileReadyState extends State<_FileReady> {
                 busy: _saving,
                 onPressed: _save,
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
               Row(children: [
                 Expanded(
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size.fromHeight(46),
                       side: BorderSide(color: c.divider),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
                     ),
                     onPressed: () => f.share().catchError((Object e) => toast(apiErrorText(ApiException.from(e)), error: true)),
                     icon: const Icon(Icons.share_rounded, size: 18),
-                    label: Text(_tr('dl_file_share', 'Share'), style: dlText(13, w: FontWeight.w700, c: c.textDark)),
+                    label: Text(_tr('dl_file_share', 'Share'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
                   ),
                 ),
                 if (desktopPath) ...[
-                  const SizedBox(width: 10),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(46),
                         side: BorderSide(color: c.divider),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
                       ),
                       onPressed: () => DlExportFile.open(_savedPath!),
                       icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                      label: Text(_tr('dl_file_open', 'Open'), style: dlText(13, w: FontWeight.w700, c: c.textDark)),
+                      label: Text(_tr('dl_file_open', 'Open'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(46),
                         side: BorderSide(color: c.divider),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
                       ),
                       onPressed: () => DlExportFile.reveal(_savedPath!),
                       icon: const Icon(Icons.folder_open_rounded, size: 18),
-                      label: Text(_tr('dl_file_folder', 'Folder'), style: dlText(13, w: FontWeight.w700, c: c.textDark)),
+                      label: Text(_tr('dl_file_folder', 'Folder'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
                     ),
                   ),
                 ],

@@ -48,9 +48,13 @@ import 'data_lab_provider.dart';
 import 'data_lab_requests.dart';
 import 'data_lab_style_sheet.dart';
 import 'data_lab_widgets.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppBackButton, AppGradients, showAppSideSheet;
+import 'package:flutter_education_app/design/app_kit.dart'
+    show AppBackButton, AppGradients, showAppSideSheet, AppHeaderStrip, AppWidthBox, AppWidth, AppBlock, AppBlockTone, AppBlockColors,
+        AppButton, AppElevation, AppType, AppSpace, AppRadius, AppTouch, AppIconSize, AppBorder,
+        AppMotion, appFieldDecoration, appFieldTextStyle, appInk;
 import '../../shared/exam_engine/marks/marks_links.dart' show markTemplatePicker;
 import '../../shared/exam_engine/marks/review/grade_review_entry.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal, AppCountUp, AppPressScale;
 import '../../shared/exam_engine/marks/review/grade_review_start.dart' show GradeColumn;
 import 'package:flutter_education_app/core/api_error_text.dart';
 
@@ -196,18 +200,21 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
       child: Directionality(
         textDirection: pageDirection,
         child: Scaffold(
-          backgroundColor: c.cardBg,
+          backgroundColor: c.background,
           body: SafeArea(
             child: Column(children: [
               AnimatedSize(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
+                duration: AppMotion.of(context).base,
+                curve: AppMotion.curve,
                 alignment: Alignment.topCenter,
                 child: Container(
                   width: double.infinity,
-                  decoration: BoxDecoration(color: c.cardBg, border: Border(bottom: BorderSide(color: c.divider))),
+                  decoration: BoxDecoration(
+                    color: c.background,
+                    border: Border(bottom: BorderSide(color: c.divider, width: AppBorder.hairline)),
+                  ),
                   child: _barVisible
-                      ? Column(children: [_topBar(context, p), _panel(context, p)])
+                      ? Column(children: [const AppHeaderStrip(), _topBar(context, p), _panel(context, p)])
                       : _miniBar(context, p),
                 ),
               ),
@@ -217,18 +224,18 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
                   Positioned.fill(child: content),
                   // Floating actions for the selected students.
                   PositionedDirectional(
-                    start: 12,
-                    end: 12,
-                    bottom: 14,
+                    start: AppSpace.sm,
+                    end: AppSpace.sm,
+                    bottom: AppSpace.md,
                     child: IgnorePointer(
                       ignoring: p.selected.isEmpty,
                       child: AnimatedSlide(
                         offset: p.selected.isEmpty ? const Offset(0, 1.6) : Offset.zero,
-                        duration: const Duration(milliseconds: 260),
-                        curve: Curves.easeOutCubic,
+                        duration: AppMotion.of(context).slow,
+                        curve: AppMotion.curve,
                         child: AnimatedOpacity(
                           opacity: p.selected.isEmpty ? 0 : 1,
-                          duration: const Duration(milliseconds: 200),
+                          duration: AppMotion.of(context).base,
                           child: _SelectionBar(p: p),
                         ),
                       ),
@@ -245,14 +252,14 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
 
   // The two buttons that are always reachable (in the toolbar and in the slim strip).
   List<Widget> _modeButtons(DataLabProvider p) => [
-    _BarButton(
+    _ToolButton(
       icon: _fullScreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
       tooltip: _fullScreen ? _tr('dl_exit_full', 'Exit full screen') : _tr('dl_full', 'Full screen'),
       active: _fullScreen,
       onTap: _toggleFull,
     ),
-    const SizedBox(width: 8),
-    _BarButton(
+    const SizedBox(width: AppSpace.xxs),
+    _ToolButton(
       icon: _barVisible ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
       tooltip: _barVisible ? _tr('dl_hide_bar', 'Hide toolbar') : _tr('dl_show_bar', 'Show toolbar'),
       badge: _barVisible ? 0 : p.hiddenCount,
@@ -260,70 +267,69 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
     ),
   ];
 
-  // ── header: course, live numbers, mode buttons ───────────────────────────
+  // ── masthead: course in the editorial page title, live numbers, mode buttons ──
   Widget _topBar(BuildContext context, DataLabProvider p) {
     final c = context.colors;
     final prog = p.stat('progress')?.avg, att = p.stat('attendance')?.avg;
     final students = p.grid?.studentsTotal ?? 0;
+    // the live numbers: the screen's one orchestrated entrance (they rise in once, one after another)
+    final stats = <Widget>[
+      DlStatChip(icon: Icons.groups_rounded, value: '$students', label: 'dl_students'.tr),
+      if (prog != null)
+        DlStatChip(icon: Icons.trending_up_rounded, value: '${prog.round()}%', label: 'dl_progress'.tr, color: dlScoreColor(context, prog)),
+      if (att != null)
+        DlStatChip(icon: Icons.event_available_rounded, value: '${att.round()}%', label: 'dl_attendance'.tr, color: dlScoreColor(context, att)),
+      if (p.lockedCount > 0)
+        DlStatChip(
+          icon: Icons.lock_rounded,
+          value: '${p.lockedCount}',
+          label: _tr('dl_locked_cols', 'locked'),
+          color: c.warning,
+          tooltip: _tr('dl_locked_cols_hint', 'Approved columns: they cannot be edited until you unlock them'),
+        ),
+      if (p.hiddenCount > 0)
+        Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            customBorder: const StadiumBorder(),
+            onTap: () => showColumnsSheet(context, p),
+            child: DlStatChip(icon: Icons.visibility_off_rounded, value: '${p.hiddenCount}', label: _tr('dl_hidden_cols', 'hidden'), color: c.textMedium),
+          ),
+        ),
+    ];
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.sm, AppSpace.xs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           const AppBackButton(),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.xs),
+          // the Data Lab's mark: a sky tile (an information surface), never a gradient
           Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              gradient: AppGradients.blend(context),
-              boxShadow: c.primaryShadow,
-            ),
-            child: Icon(Icons.science_rounded, color: c.onHero, size: 20),
+            width: AppTouch.min - AppSpace.xs,
+            height: AppTouch.min - AppSpace.xs,
+            decoration: BoxDecoration(color: c.blockSky, borderRadius: BorderRadius.circular(AppRadius.control)),
+            child: Icon(Icons.science_rounded, color: AppBlockColors.of(context, AppBlockTone.sky).accentInk(c.primary), size: AppIconSize.md),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(widget.courseTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(15, w: FontWeight.w800, c: c.textDark)),
+              Text(widget.courseTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context)),
               Text(_tr('dl_header_sub', 'Grades, attendance and everything you track — in one sheet'),
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(11.5, c: c.textMedium)),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
             ]),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           const HelpInfoButton(pageId: 'teacher.data_lab'),
           ..._modeButtons(p),
         ]),
         if (p.grid != null) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(children: [
-              DlStatChip(icon: Icons.groups_rounded, value: '$students', label: 'dl_students'.tr),
-              if (prog != null) ...[
-                const SizedBox(width: 8),
-                DlStatChip(icon: Icons.trending_up_rounded, value: '${prog.round()}%', label: 'dl_progress'.tr, color: dlScoreColor(context, prog)),
-              ],
-              if (att != null) ...[
-                const SizedBox(width: 8),
-                DlStatChip(icon: Icons.event_available_rounded, value: '${att.round()}%', label: 'dl_attendance'.tr, color: dlScoreColor(context, att)),
-              ],
-              if (p.lockedCount > 0) ...[
-                const SizedBox(width: 8),
-                DlStatChip(
-                  icon: Icons.lock_rounded,
-                  value: '${p.lockedCount}',
-                  label: _tr('dl_locked_cols', 'locked'),
-                  color: c.warning,
-                  tooltip: _tr('dl_locked_cols_hint', 'Approved columns: they cannot be edited until you unlock them'),
-                ),
-              ],
-              if (p.hiddenCount > 0) ...[
-                const SizedBox(width: 8),
-                InkWell(
-                  borderRadius: BorderRadius.circular(30),
-                  onTap: () => showColumnsSheet(context, p),
-                  child: DlStatChip(icon: Icons.visibility_off_rounded, value: '${p.hiddenCount}', label: _tr('dl_hidden_cols', 'hidden'), color: c.textMedium),
-                ),
+              for (var i = 0; i < stats.length; i++) ...[
+                if (i > 0) const SizedBox(width: AppSpace.xs),
+                AppReveal(index: i, group: 'dl.stats', child: stats[i]),
               ],
             ]),
           ),
@@ -334,14 +340,13 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
 
   // ── slim strip shown while the toolbar is hidden ─────────────────────────
   Widget _miniBar(BuildContext context, DataLabProvider p) {
-    final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
       child: Row(children: [
         const AppBackButton(),
-        const SizedBox(width: 10),
+        const SizedBox(width: AppSpace.xs),
         Expanded(
-          child: Text(widget.courseTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(13, w: FontWeight.w800, c: c.textDark)),
+          child: Text(widget.courseTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
         ),
         ..._modeButtons(p),
       ]),
@@ -351,74 +356,61 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
   // ── tools: search, columns, history, more, how numbers look, zoom ────────
   Widget _panel(BuildContext context, DataLabProvider p) {
     final c = context.colors;
-    OutlineInputBorder b(Color col, [double w = 1]) =>
-        OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: col, width: w));
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xxs, AppSpace.sm, AppSpace.sm),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(
-            child: SizedBox(
-              height: 48,
-              child: TextField(
-                controller: _searchCtrl,
-                onChanged: p.setSearch, // the provider waits until typing stops
-                textInputAction: TextInputAction.search,
-                style: dlText(14, c: c.textDark),
-                decoration: InputDecoration(
-                  hintText: 'dl_search_hint'.tr,
-                  hintStyle: dlText(13, c: c.textLight),
-                  prefixIcon: Icon(Icons.search_rounded, color: c.textMedium),
-                  // Only this little button rebuilds while typing — not the whole sheet.
-                  suffixIcon: ListenableBuilder(
-                    listenable: _searchCtrl,
-                    builder: (_, __) => _searchCtrl.text.isEmpty
-                        ? const SizedBox.shrink()
-                        : IconButton(
-                      tooltip: AppConfig.lang == 'ar' ? 'مسح البحث' : 'Clear search',
-                      icon: Icon(Icons.close_rounded, color: c.textMedium, size: 18),
-                      onPressed: () {
-                        _searchCtrl.clear();
-                        p.setSearch('');
-                      },
-                    ),
-                  ),
-                  filled: true,
-                  fillColor: c.inputBg,
-                  contentPadding: EdgeInsets.zero,
-                  border: b(c.divider),
-                  enabledBorder: b(c.divider),
-                  focusedBorder: b(c.primary, 1.6),
+            child: TextField(
+              controller: _searchCtrl,
+              onChanged: p.setSearch, // the provider waits until typing stops
+              textInputAction: TextInputAction.search,
+              style: appFieldTextStyle(context),
+              decoration: appFieldDecoration(
+                context,
+                hint: 'dl_search_hint'.tr,
+                icon: Icons.search_rounded,
+                dense: true,
+                // Only this little button rebuilds while typing — not the whole sheet.
+                suffix: ListenableBuilder(
+                  listenable: _searchCtrl,
+                  builder: (_, _) => _searchCtrl.text.isEmpty
+                      ? const SizedBox.shrink()
+                      : IconButton(
+                          tooltip: AppConfig.lang == 'ar' ? 'مسح البحث' : 'Clear search',
+                          icon: Icon(Icons.close_rounded, color: c.textMedium, size: AppIconSize.md),
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            p.setSearch('');
+                          },
+                        ),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          _SquareButton(icon: Icons.view_column_rounded, tooltip: 'dl_columns'.tr, badge: p.hiddenCount, onTap: () => showColumnsSheet(context, p)),
-          const SizedBox(width: 8),
-          _SquareButton(
+          const SizedBox(width: AppSpace.xs),
+          _ToolButton(icon: Icons.view_column_rounded, tooltip: 'dl_columns'.tr, badge: p.hiddenCount, onTap: () => showColumnsSheet(context, p)),
+          _ToolButton(
             icon: Icons.push_pin_rounded,
             tooltip: _tr('dl_pinned_title', 'Pinned columns'),
             badge: p.frozenKeys.length > 1 ? p.frozenKeys.length : 0,
             onTap: () => showPinSheet(context, p),
           ),
-          const SizedBox(width: 8),
-          _SquareButton(
+          _ToolButton(
             icon: Icons.format_paint_rounded,
             tooltip: _tr('dl_look_title', 'Sheet look'),
             onTap: () => showSheetLookSheet(context, p),
           ),
-          const SizedBox(width: 8),
-          _SquareButton(
+          _ToolButton(
             icon: Icons.history_rounded,
             tooltip: _tr('dl_history', 'Change history'),
             onTap: () => showHistorySheet(context, p),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xxs),
           _moreMenu(context, p),
         ]),
-        const SizedBox(height: 10),
-        Wrap(spacing: 10, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        const SizedBox(height: AppSpace.sm),
+        Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
           Tooltip(
             message: _tr('dl_view_all_hint', 'Applies to every column. Press and hold a column title to set just that column.'),
             child: _ViewToggle(p: p),
@@ -426,39 +418,47 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
           _ZoomControl(zoom: _zoom, onChanged: _setZoom),
           _Legend(),
           if (p.loading && p.grid != null)
-            SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: c.primary)),
+            SizedBox(
+              width: AppIconSize.sm,
+              height: AppIconSize.sm,
+              child: CircularProgressIndicator(strokeWidth: AppBorder.focus, color: c.primary),
+            ),
         ]),
       ]),
     );
   }
 
+
   Widget _moreMenu(BuildContext context, DataLabProvider p) {
     final c = context.colors;
     final cfg = p.config;
     bool on(String key) => !AppConfig.disableList.contains(key);
-    PopupMenuEntry<String> item(String value, IconData icon, String label, {String? sub, bool enabled = true, Color? color}) =>
-        PopupMenuItem<String>(
-          value: value,
-          enabled: enabled,
-          child: Row(children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(color: (enabled ? (color ?? c.primary) : c.textLight).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(11)),
-              child: Icon(icon, size: 18, color: enabled ? (color ?? c.primary) : c.textLight),
-            ),
-            const SizedBox(width: 12),
-            Flexible(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(label, style: dlText(13.5, w: FontWeight.w700, c: enabled ? c.textDark : c.textLight)),
-                if (sub != null) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(11, c: c.textLight)),
-              ]),
-            ),
-          ]),
-        );
+    PopupMenuEntry<String> item(String value, IconData icon, String label, {String? sub, bool enabled = true, Color? color}) {
+      final tone = enabled ? (color ?? c.primary) : c.textLight;
+      return PopupMenuItem<String>(
+        value: value,
+        enabled: enabled,
+        child: Row(children: [
+          Container(
+            width: AppIconSize.xl,
+            height: AppIconSize.xl,
+            decoration: BoxDecoration(color: tone.withValues(alpha: c.isDark ? 0.20 : 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)),
+            child: Icon(icon, size: AppIconSize.sm, color: enabled ? appInk(context, tone) : c.textLight),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          Flexible(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Text(label, style: AppType.row(context).copyWith(color: enabled ? c.textDark : c.textLight)),
+              if (sub != null) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+            ]),
+          ),
+        ]),
+      );
+    }
+
     return PopupMenuButton<String>(
       tooltip: 'dl_more'.tr,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: BorderSide(color: c.divider, width: AppBorder.hairline)),
       color: c.cardBg,
       onSelected: (v) {
         switch (v) {
@@ -497,15 +497,12 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
         const PopupMenuDivider(),
         item('refresh', Icons.refresh_rounded, _tr('dl_refresh', 'Refresh'), color: c.textMedium),
       ],
+      // the toolbar's one primary action: solid emerald, radius control, no shadow (D-614)
       child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          gradient: AppGradients.blend(context),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: c.primaryShadow,
-        ),
-        child: Icon(Icons.auto_awesome_motion_rounded, color: c.onHero, size: 22),
+        width: AppTouch.min,
+        height: AppTouch.min,
+        decoration: BoxDecoration(color: c.primary, borderRadius: AppRadius.controlAll),
+        child: Icon(Icons.auto_awesome_motion_rounded, color: c.onHero, size: AppIconSize.md),
       ),
     );
   }
@@ -516,57 +513,65 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
     final searching = p.search.isNotEmpty;
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(28),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(colors: [c.primary.withValues(alpha: 0.16), c.primary.withValues(alpha: 0.04)]),
-              ),
-              child: Icon(searching ? Icons.search_off_rounded : Icons.table_chart_rounded, size: 44, color: c.primary),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              searching ? 'dl_no_match'.tr : _tr('dl_empty_title', 'Your sheet is ready'),
-              textAlign: TextAlign.center,
-              style: dlText(18, w: FontWeight.w800, c: c.textDark),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              searching
-                  ? _tr('dl_no_match_sub', 'Try another name, e-mail, phone or ID.')
-                  : _tr('dl_empty_sub', 'Students appear here as soon as they enrol. You can also bring in a sheet you already have.'),
-              textAlign: TextAlign.center,
-              style: dlText(13, c: c.textMedium, h: 1.55),
-            ),
-            const SizedBox(height: 18),
-            if (searching)
-              DlActionPill(
-                icon: Icons.close_rounded,
-                label: _tr('dl_clear_search', 'Clear the search'),
-                onTap: () {
-                  _searchCtrl.clear();
-                  p.setSearch('');
-                },
-              )
-            else
-              Wrap(alignment: WrapAlignment.center, spacing: 10, runSpacing: 10, children: [
-                if (p.config.allowImport)
-                  DlActionPill(icon: Icons.upload_file_rounded, label: 'dl_import'.tr, onTap: () => showImportWizard(context, p)),
-                DlActionPill(icon: Icons.add_chart_rounded, label: 'dl_new_column'.tr, color: c.purple, onTap: () => showColumnEditor(context, p)),
+        padding: const EdgeInsets.all(AppSpace.lg),
+        child: AppWidthBox(
+          width: AppWidth.form,
+          child: AppReveal(
+            index: 0,
+            group: 'dl.empty',
+            // a sky block (the sheet is an information surface) with the editorial headline
+            child: AppBlock(
+              tone: AppBlockTone.sky,
+              hero: true,
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Container(
+                  width: AppTouch.primary + AppSpace.md,
+                  height: AppTouch.primary + AppSpace.md,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: c.cardBg),
+                  child: Icon(searching ? Icons.search_off_rounded : Icons.table_chart_rounded,
+                      size: AppIconSize.hero, color: AppBlockColors.of(context, AppBlockTone.sky).accentInk(c.primary)),
+                ),
+                const SizedBox(height: AppSpace.md),
+                Text(
+                  searching ? 'dl_no_match'.tr : _tr('dl_empty_title', 'Your sheet is ready'),
+                  textAlign: TextAlign.center,
+                  style: AppType.headline(context),
+                ),
+                const SizedBox(height: AppSpace.xs),
+                Text(
+                  searching
+                      ? _tr('dl_no_match_sub', 'Try another name, e-mail, phone or ID.')
+                      : _tr('dl_empty_sub', 'Students appear here as soon as they enrol. You can also bring in a sheet you already have.'),
+                  textAlign: TextAlign.center,
+                  style: AppType.body(context).copyWith(color: AppBlockColors.of(context, AppBlockTone.sky).muted),
+                ),
+                const SizedBox(height: AppSpace.lg),
+                if (searching)
+                  AppButton.secondary(
+                    icon: Icons.close_rounded,
+                    label: _tr('dl_clear_search', 'Clear the search'),
+                    onPressed: () {
+                      _searchCtrl.clear();
+                      p.setSearch('');
+                    },
+                  )
+                else
+                  Wrap(alignment: WrapAlignment.center, spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [
+                    if (p.config.allowImport)
+                      AppButton.primary(icon: Icons.upload_file_rounded, label: 'dl_import'.tr, onPressed: () => showImportWizard(context, p)),
+                    AppButton.secondary(icon: Icons.add_chart_rounded, label: 'dl_new_column'.tr, onPressed: () => showColumnEditor(context, p)),
+                  ]),
               ]),
-          ]),
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-/// Floating bar shown while students are selected: what can be done for just them.
+/// Floating bar shown while students are selected: what can be done for just them. Solid emerald (selection is the
+/// primary's job), it floats, so it is the one thing on the page with a clear shadow.
 class _SelectionBar extends StatelessWidget {
   const _SelectionBar({required this.p});
 
@@ -577,41 +582,46 @@ class _SelectionBar extends StatelessWidget {
     final c = context.colors;
     final cfg = p.config;
     Widget action(IconData icon, String label, VoidCallback? onTap) => Padding(
-      padding: const EdgeInsetsDirectional.only(start: 6),
+      padding: const EdgeInsetsDirectional.only(start: AppSpace.xs),
       child: TextButton.icon(
         style: TextButton.styleFrom(
           foregroundColor: c.onHero,
-          backgroundColor: c.onHero.withValues(alpha: 0.14),
+          backgroundColor: c.heroGlass,
           disabledForegroundColor: c.onHeroMuted,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          minimumSize: const Size(AppTouch.min, AppTouch.min),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.controlAll),
         ),
         onPressed: onTap,
-        icon: Icon(icon, size: 17),
-        label: Text(label, style: dlText(12.5, w: FontWeight.w800, c: c.onHero)),
+        icon: Icon(icon, size: AppIconSize.sm),
+        label: Text(label, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.onHero)),
       ),
     );
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 640),
+      child: AppWidthBox(
+        width: AppWidth.form,
         child: Material(
-          color: Colors.transparent,
+          type: MaterialType.transparency,
           child: Container(
-            padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 8, 8),
+            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xs, AppSpace.xxs, AppSpace.xs),
             decoration: BoxDecoration(
-              gradient: AppGradients.blend(context),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: c.primaryShadow,
+              color: c.primary,
+              borderRadius: BorderRadius.circular(AppRadius.block),
+              boxShadow: AppElevation.of(context, 3),
             ),
             child: Row(children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(20)),
-                child: Text('${p.selected.length}', style: dlText(13, w: FontWeight.w800, c: c.primary)),
+                constraints: const BoxConstraints(minWidth: AppSpace.xl),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                child: AppCountUp('${p.selected.length}', memoryKey: 'dl.selected',
+                    style: AppType.bodyStrong(context).copyWith(color: appInk(context, c.primary), fontFeatures: dlTabular)),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               Expanded(
-                child: Text('dl_selected'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(13, w: FontWeight.w700, c: c.onHero)),
+                child: Text('dl_selected'.tr, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.onHero)),
               ),
               Flexible(
                 flex: 3,
@@ -643,9 +653,10 @@ class _SelectionBar extends StatelessWidget {
 // Small controls
 // ─────────────────────────────────────────────────────────────────────────────
 
-
-class _BarButton extends StatelessWidget {
-  const _BarButton({required this.icon, required this.tooltip, required this.onTap, this.active = false, this.badge = 0});
+/// A toolbar button: a 40 px paper plate on a hairline inside a 48 px target, the icon in the muted ink (the primary
+/// when [active]); a small ink count pill in the corner. Presses in.
+class _ToolButton extends StatelessWidget {
+  const _ToolButton({required this.icon, required this.tooltip, required this.onTap, this.active = false, this.badge = 0});
 
   final IconData icon;
   final String tooltip;
@@ -656,73 +667,52 @@ class _BarButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final r = AppRadius.controlAll;
+    const plate = AppTouch.min - AppSpace.xs;
     return Tooltip(
       message: tooltip,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Stack(clipBehavior: Clip.none, children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: active ? c.primary.withValues(alpha: 0.12) : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: active ? c.primary.withValues(alpha: 0.35) : c.divider),
-            ),
-            child: Icon(icon, size: 20, color: active ? c.primary : c.textMedium),
-          ),
-          if (badge > 0)
-            PositionedDirectional(
-              top: -4,
-              end: -4,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                decoration: BoxDecoration(color: c.warning, borderRadius: BorderRadius.circular(10)),
-                child: Text('$badge', style: dlText(9.5, w: FontWeight.w800, c: c.onHero)),
+      child: Semantics(
+        button: true,
+        toggled: active ? true : null,
+        child: AppPressScale(
+          child: SizedBox(
+            width: AppTouch.min,
+            height: AppTouch.min,
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                customBorder: RoundedRectangleBorder(borderRadius: r),
+                onTap: onTap,
+                child: Center(
+                  child: Stack(clipBehavior: Clip.none, children: [
+                    AnimatedContainer(
+                      duration: AppMotion.of(context).fast,
+                      curve: AppMotion.curve,
+                      width: plate,
+                      height: plate,
+                      decoration: BoxDecoration(
+                        color: active ? c.primary.withValues(alpha: c.isDark ? 0.22 : 0.12) : c.cardBg,
+                        borderRadius: r,
+                        border: Border.all(color: active ? c.primary : c.divider, width: AppBorder.hairline),
+                      ),
+                      child: Icon(icon, size: AppIconSize.md, color: active ? appInk(context, c.primary) : c.textMedium),
+                    ),
+                    if (badge > 0)
+                      PositionedDirectional(
+                        top: -AppSpace.xxs,
+                        end: -AppSpace.xxs,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs + 1, vertical: 1),
+                          decoration: BoxDecoration(color: c.textDark, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                          child: Text('$badge', style: AppType.overline(context).copyWith(color: c.background, fontFeatures: dlTabular)),
+                        ),
+                      ),
+                  ]),
+                ),
               ),
             ),
-        ]),
-      ),
-    );
-  }
-}
-
-class _SquareButton extends StatelessWidget {
-  const _SquareButton({required this.icon, required this.tooltip, required this.onTap, this.badge = 0});
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onTap;
-  final int badge;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Stack(clipBehavior: Clip.none, children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.divider)),
-            child: Icon(icon, color: c.primary),
           ),
-          if (badge > 0)
-            PositionedDirectional(
-              top: -4,
-              end: -4,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: c.warning, borderRadius: BorderRadius.circular(10)),
-                child: Text('$badge', style: dlText(10, w: FontWeight.w800, c: c.onHero)),
-              ),
-            ),
-        ]),
+        ),
       ),
     );
   }
@@ -733,17 +723,29 @@ class _Legend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final ink = appInk(context, c.success);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(color: c.success.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(20)),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+      decoration: BoxDecoration(color: c.success.withValues(alpha: c.isDark ? 0.18 : 0.10), borderRadius: BorderRadius.circular(AppRadius.pill)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 16, height: 3, decoration: BoxDecoration(color: c.success, borderRadius: BorderRadius.circular(3))),
-        const SizedBox(width: 7),
-        Text(_tr('dl_legend_students', 'Shown to students'), style: dlText(11.5, w: FontWeight.w700, c: c.success)),
+        Container(
+          width: AppIconSize.sm,
+          height: AppSpace.xxs - 1,
+          decoration: BoxDecoration(color: c.success, borderRadius: BorderRadius.circular(AppRadius.pill)),
+        ),
+        const SizedBox(width: AppSpace.xs),
+        Flexible(child: Text(_tr('dl_legend_students', 'Shown to students'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: ink))),
       ]),
     );
   }
 }
+
+/// A segmented track in the input well (like `AppTabs`): shared by the zoom control and the view toggle.
+BoxDecoration _trackDecoration(BuildContext context) => BoxDecoration(
+  color: context.colors.inputBg,
+  borderRadius: AppRadius.controlAll,
+  border: Border.all(color: context.colors.divider, width: AppBorder.hairline),
+);
 
 /// − 100% +   (tap the percentage to go back to 100%)
 class _ZoomControl extends StatelessWidget {
@@ -755,23 +757,34 @@ class _ZoomControl extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final r = BorderRadius.circular(AppRadius.chip);
     Widget btn(IconData icon, bool enabled, VoidCallback onTap) => InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: r,
       onTap: enabled ? onTap : null,
-      child: SizedBox(width: 34, height: 32, child: Icon(icon, size: 18, color: enabled ? c.textMedium : c.textLight.withValues(alpha: 0.5))),
+      child: SizedBox(
+        width: AppSpace.xl + AppSpace.xxs,
+        height: AppSpace.xl + AppSpace.xxs,
+        child: Icon(icon, size: AppIconSize.sm, color: enabled ? c.textMedium : c.textLight.withValues(alpha: 0.5)),
+      ),
     );
     return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(15), border: Border.all(color: c.divider)),
+      padding: const EdgeInsets.all(AppSpace.xxs / 2),
+      decoration: _trackDecoration(context),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         btn(Icons.remove_rounded, zoom > _minZoom + 0.001, () => onChanged(zoom - 0.1)),
         InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: r,
           onTap: () => onChanged(1.0),
           child: SizedBox(
-            width: 46,
-            height: 32,
-            child: Center(child: Text('${(zoom * 100).round()}%', style: dlText(12, w: FontWeight.w800, c: c.textDark))),
+            width: AppSpace.xxl,
+            height: AppSpace.xl + AppSpace.xxs,
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text('${(zoom * 100).round()}%',
+                    style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark, fontFeatures: dlTabular)),
+              ),
+            ),
           ),
         ),
         btn(Icons.add_rounded, zoom < _maxZoom - 0.001, () => onChanged(zoom + 0.1)),
@@ -789,30 +802,38 @@ class _ViewToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final r = BorderRadius.circular(AppRadius.chip);
     Widget seg(DlView v, IconData icon, String label) {
       final on = p.view == v && p.columns.every((col) => p.viewOf(col) == v || !col.isNumber);
-      return InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => p.setView(v),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          height: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(color: on ? c.primary : Colors.transparent, borderRadius: BorderRadius.circular(12)),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 16, color: on ? c.onHero : c.textMedium),
-            if (on) ...[
-              const SizedBox(width: 5),
-              Text(label, style: dlText(11.5, w: FontWeight.w700, c: c.onHero)),
-            ],
-          ]),
+      return Semantics(
+        button: true,
+        selected: on,
+        label: label,
+        excludeSemantics: true,
+        child: InkWell(
+          borderRadius: r,
+          onTap: () => p.setView(v),
+          child: AnimatedContainer(
+            duration: AppMotion.of(context).fast,
+            curve: AppMotion.curve,
+            height: AppSpace.xl + AppSpace.xxs,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+            decoration: BoxDecoration(color: on ? c.primary : c.inputBg.withValues(alpha: 0), borderRadius: r),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(icon, size: AppIconSize.sm, color: on ? c.onHero : c.textMedium),
+              if (on) ...[
+                const SizedBox(width: AppSpace.xxs),
+                Text(label, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.onHero)),
+              ],
+            ]),
+          ),
         ),
       );
     }
 
     return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(15), border: Border.all(color: c.divider)),
+      padding: const EdgeInsets.all(AppSpace.xxs / 2),
+      decoration: _trackDecoration(context),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         seg(DlView.value, Icons.pin_rounded, _tr('dl_pres_numbers', 'Numbers')),
         seg(DlView.bar, Icons.align_horizontal_left_rounded, _tr('dl_pres_progress', 'Progress')),
@@ -832,49 +853,57 @@ class _PresentationPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final pill = BorderRadius.circular(AppRadius.pill);
     Widget bar(Color col) => Container(
-      width: 38,
-      height: 6,
+      width: AppSpace.xl + AppSpace.xxs,
+      height: AppSpace.xxs + 2,
       alignment: AlignmentDirectional.centerStart,
-      decoration: BoxDecoration(color: col.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(6)),
+      decoration: BoxDecoration(color: col.withValues(alpha: 0.18), borderRadius: pill),
       child: FractionallySizedBox(
         widthFactor: 0.7,
-        child: Container(decoration: BoxDecoration(color: col, borderRadius: BorderRadius.circular(6))),
+        child: Container(decoration: BoxDecoration(color: col, borderRadius: pill)),
       ),
     );
+    final figure = AppType.figure(context);
     Widget tile(DlView v, String label, Widget Function(Color) preview) {
       final on = value == v;
-      final col = on ? c.primary : c.textMedium;
+      final col = on ? appInk(context, c.primary) : c.textMedium;
       return Expanded(
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => onChanged(v),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-            decoration: BoxDecoration(
-              color: on ? c.primary.withValues(alpha: 0.10) : Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: on ? c.primary : c.divider, width: on ? 1.6 : 1),
+        child: Semantics(
+          button: true,
+          selected: on,
+          child: InkWell(
+            borderRadius: AppRadius.cardAll,
+            onTap: () => onChanged(v),
+            child: AnimatedContainer(
+              duration: AppMotion.of(context).fast,
+              curve: AppMotion.curve,
+              padding: const EdgeInsets.symmetric(vertical: AppSpace.sm, horizontal: AppSpace.xxs),
+              decoration: BoxDecoration(
+                color: on ? c.primary.withValues(alpha: c.isDark ? 0.18 : 0.08) : c.cardBg,
+                borderRadius: AppRadius.cardAll,
+                border: Border.all(color: on ? c.primary : c.divider, width: on ? AppBorder.strong : AppBorder.hairline),
+              ),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                SizedBox(height: AppSpace.xl, child: Center(child: preview(col))),
+                const SizedBox(height: AppSpace.xxs),
+                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: col)),
+              ]),
             ),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              SizedBox(height: 28, child: Center(child: preview(col))),
-              const SizedBox(height: 6),
-              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(11.5, w: FontWeight.w800, c: col)),
-            ]),
           ),
         ),
       );
     }
 
     return Row(children: [
-      tile(DlView.value, _tr('dl_pres_numbers', 'Numbers'), (col) => Text('83', style: dlText(16, w: FontWeight.w800, c: col))),
-      const SizedBox(width: 8),
+      tile(DlView.value, _tr('dl_pres_numbers', 'Numbers'), (col) => Text('83', style: figure.copyWith(color: col))),
+      const SizedBox(width: AppSpace.xs),
       tile(DlView.bar, _tr('dl_pres_progress', 'Progress'), bar),
-      const SizedBox(width: 8),
+      const SizedBox(width: AppSpace.xs),
       tile(DlView.both, _tr('dl_pres_both', 'Both'), (col) => Column(mainAxisSize: MainAxisSize.min, children: [
-        Text('83', style: dlText(12, w: FontWeight.w800, c: col)),
-        const SizedBox(height: 3),
+        Text('83', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: col, fontFeatures: dlTabular)),
+        const SizedBox(height: AppSpace.xxs),
         bar(col),
       ])),
     ]);
@@ -1436,8 +1465,8 @@ Future<void> _rowActions(BuildContext context, DataLabProvider p, DlRow row) asy
           decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
           child: Icon(icon, color: color, size: 20),
         ),
-        title: Text(title, style: dlText(14, w: FontWeight.w800, c: c.textDark)),
-        subtitle: Text(sub, style: dlText(11.5, c: c.textMedium, h: 1.35)),
+        title: Text(title, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
+        subtitle: Text(sub, style: AppType.meta(context).copyWith(color: c.textMedium)),
         onTap: () => Navigator.pop(ctx, v),
       );
       return Directionality(
@@ -1454,7 +1483,7 @@ Future<void> _rowActions(BuildContext context, DataLabProvider p, DlRow row) asy
                 child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                    child: Text(row.name.isEmpty ? '—' : row.name, style: dlText(16, w: FontWeight.w800, c: c.textDark)),
+                    child: Text(row.name.isEmpty ? '—' : row.name, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
                   ),
                   tile('history', Icons.history_rounded, _tr('dl_history_short', 'History'),
                       _tr('dl_row_history_sub', 'Every change on this line'), c.purple),
@@ -1497,7 +1526,7 @@ Future<void> _showLoginDetails(BuildContext context, Map<String, dynamic> r, Str
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(14), border: Border.all(color: c.divider)),
       child: Row(children: [
-        Expanded(child: Text(label, style: dlText(12, c: c.textMedium))),
+        Expanded(child: Text(label, style: AppType.meta(context).copyWith(color: c.textMedium))),
         SelectableText(value, textDirection: TextDirection.ltr,
             style: dlText(big ? 17 : 13.5, w: FontWeight.w800, c: big ? c.primary : c.textDark).copyWith(letterSpacing: big ? 1 : 0)),
       ]),
@@ -1521,14 +1550,14 @@ Future<void> _showLoginDetails(BuildContext context, Map<String, dynamic> r, Str
                   child: Icon(Icons.key_rounded, size: 32, color: c.primary),
                 ),
                 const SizedBox(height: 10),
-                Text('${r['name']}', style: dlText(17, w: FontWeight.w800, c: c.textDark)),
+                Text('${r['name']}', style: AppType.section(context).copyWith(color: c.textDark)),
                 const SizedBox(height: 4),
                 Text(
                   r['emailed'] == true
                       ? _tr('dl_login_emailed', 'Also sent to the student by e-mail.')
                       : _tr('dl_login_give', 'Give these to the student — they are shown only now.'),
                   textAlign: TextAlign.center,
-                  style: dlText(12, c: r['emailed'] == true ? c.success : c.warning, h: 1.4),
+                  style: AppType.meta(context).copyWith(color: r['emailed'] == true ? c.success : c.warning),
                 ),
                 const SizedBox(height: 14),
                 line(_tr('dl_login_login', 'Login'), '${r['login']}'),
@@ -1548,7 +1577,7 @@ Future<void> _showLoginDetails(BuildContext context, Map<String, dynamic> r, Str
                         toast('dl_copied'.tr);
                       },
                       icon: const Icon(Icons.copy_rounded, size: 18),
-                      label: Text(_tr('dl_copy', 'Copy'), style: dlText(13, w: FontWeight.w700, c: c.textDark)),
+                      label: Text(_tr('dl_copy', 'Copy'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1561,7 +1590,7 @@ Future<void> _showLoginDetails(BuildContext context, Map<String, dynamic> r, Str
                       ),
                       onPressed: () => SharePlus.instance.share(ShareParams(text: msg)),
                       icon: const Icon(Icons.share_rounded, size: 18),
-                      label: Text(_tr('dl_file_share', 'Share'), style: dlText(13, w: FontWeight.w800, c: context.colors.onHero)),
+                      label: Text(_tr('dl_file_share', 'Share'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.onHero)),
                     ),
                   ),
                 ]),
@@ -1604,14 +1633,14 @@ void showPinSheet(BuildContext context, DataLabProvider p) {
                     child: Row(children: [
                       Icon(icon, size: 19, color: on ? c.primary : c.textMedium),
                       const SizedBox(width: 10),
-                      Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(13.5, w: FontWeight.w700, c: c.textDark))),
+                      Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark))),
                       if (order != null)
                         Container(
                           width: 22,
                           height: 22,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(color: c.primary, shape: BoxShape.circle),
-                          child: Text('$order', style: dlText(11, w: FontWeight.w800, c: context.colors.onHero)),
+                          child: Text('$order', style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.onHero)),
                         )
                       else
                         Icon(Icons.push_pin_outlined, size: 18, color: c.textLight),
@@ -1631,12 +1660,12 @@ void showPinSheet(BuildContext context, DataLabProvider p) {
                       Row(children: [
                         Icon(Icons.push_pin_rounded, color: c.primary),
                         const SizedBox(width: 8),
-                        Expanded(child: Text(_tr('dl_pinned_title', 'Pinned columns'), style: dlText(17, w: FontWeight.w800, c: c.textDark))),
+                        Expanded(child: Text(_tr('dl_pinned_title', 'Pinned columns'), style: AppType.section(context).copyWith(color: c.textDark))),
                       ]),
                       const SizedBox(height: 4),
                       Text(
                         _tr('dl_pinned_sub', 'Pinned columns stay on the side while the rest of the sheet scrolls. Tap to pin or unpin — the number is their order. Drag the edge of a title to change its width.'),
-                        style: dlText(12, c: c.textMedium, h: 1.5),
+                        style: AppType.meta(context).copyWith(color: c.textMedium),
                       ),
                       DlSectionTitle(_tr('dl_pinned_student', 'Student details')),
                       tile(DataLabProvider.idName, 'dl_student'.tr, Icons.person_rounded),
@@ -1655,7 +1684,7 @@ void showPinSheet(BuildContext context, DataLabProvider p) {
                         ),
                         onPressed: p.resetWidths,
                         icon: const Icon(Icons.width_normal_rounded, size: 18),
-                        label: Text(_tr('dl_reset_widths', 'Reset all widths'), style: dlText(12.5, w: FontWeight.w700, c: c.textDark)),
+                        label: Text(_tr('dl_reset_widths', 'Reset all widths'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
                       ),
                     ],
                   ),
@@ -1732,7 +1761,7 @@ class _HeadCell extends StatelessWidget {
                             child: Row(mainAxisSize: MainAxisSize.min, children: [
                               Icon(Icons.drag_indicator_rounded, size: 16, color: c.onHero),
                               const SizedBox(width: 6),
-                              Text(col.label, style: dlText(12.5, w: FontWeight.w800, c: c.onHero)),
+                              Text(col.label, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.onHero)),
                             ]),
                           ),
                         ),
@@ -1913,7 +1942,7 @@ class _ColumnSheetState extends State<_ColumnSheet> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(col.label, maxLines: 2, overflow: TextOverflow.ellipsis, style: dlText(17, w: FontWeight.w800, c: c.textDark, h: 1.25)),
+                      Text(col.label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.textDark)),
                       const SizedBox(height: 5),
                       Wrap(spacing: 6, runSpacing: 4, children: [
                         if (col.isCalculated)
@@ -1938,7 +1967,7 @@ class _ColumnSheetState extends State<_ColumnSheet> {
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                         textDirection: TextDirection.ltr,
-                        style: dlText(12, w: FontWeight.w700, c: c.purple).copyWith(fontFamily: 'monospace')),
+                        style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.purple).copyWith(fontFamily: 'monospace')),
                   ),
                 // ── class insights ──
                 if (st != null && st.filled > 0) ...[
@@ -1948,7 +1977,7 @@ class _ColumnSheetState extends State<_ColumnSheet> {
                 const SizedBox(height: 16),
                 // ── how this column is drawn ──
                 if (col.isNumber) ...[
-                  Text(_tr('dl_pres_title', 'How this column looks'), style: dlText(12.5, w: FontWeight.w800, c: c.textMedium)),
+                  Text(_tr('dl_pres_title', 'How this column looks'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
                   const SizedBox(height: 8),
                   _PresentationPicker(value: _pres, onChanged: _setPres),
                   const SizedBox(height: 14),
@@ -2058,9 +2087,9 @@ class _Insights extends StatelessWidget {
     final counts = col.source == 'read_flags' || col.source == 'review_flags';
     Widget cell(String label, String value, {Color? color}) => Expanded(
       child: Column(children: [
-        Text(value, maxLines: 1, style: dlText(16, w: FontWeight.w800, c: color ?? c.textDark)),
+        Text(value, maxLines: 1, style: AppType.bodyStrong(context).copyWith(color: color ?? c.textDark)),
         const SizedBox(height: 2),
-        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(10.5, c: c.textMedium)),
+        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.overline(context).copyWith(color: c.textMedium)),
       ]),
     );
     return Container(
@@ -2074,8 +2103,8 @@ class _Insights extends StatelessWidget {
         Row(children: [
           Icon(Icons.insights_rounded, size: 18, color: c.primary),
           const SizedBox(width: 6),
-          Expanded(child: Text(_tr('dl_insights', 'Class insights'), style: dlText(13, w: FontWeight.w800, c: c.textDark))),
-          Text('${stat.filled} / $total ${_tr('dl_filled', 'filled')}', style: dlText(11, c: c.textMedium)),
+          Expanded(child: Text(_tr('dl_insights', 'Class insights'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark))),
+          Text('${stat.filled} / $total ${_tr('dl_filled', 'filled')}', style: AppType.meta(context).copyWith(color: c.textMedium)),
         ]),
         const SizedBox(height: 12),
         Row(children: [
@@ -2096,7 +2125,7 @@ class _Insights extends StatelessWidget {
             (stat.std! / mx * 100) > 25
                 ? _tr('dl_spread_wide', 'Results are spread widely — some students may need extra support.')
                 : _tr('dl_spread_tight', 'Results are close together across the class.'),
-            style: dlText(11.5, c: c.textMedium, h: 1.4),
+            style: AppType.meta(context).copyWith(color: c.textMedium),
           ),
         ],
       ]),
@@ -2137,9 +2166,9 @@ class _ToggleTile extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: dlText(13.5, w: FontWeight.w800, c: c.textDark)),
+            Text(title, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
             const SizedBox(height: 2),
-            Text(sub, style: dlText(11.5, c: c.textMedium, h: 1.4)),
+            Text(sub, style: AppType.meta(context).copyWith(color: c.textMedium)),
           ]),
         ),
         const SizedBox(width: 8),
@@ -2181,7 +2210,7 @@ class _ActionTile extends StatelessWidget {
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: AlignmentDirectional.centerStart,
-                child: Text(label, maxLines: 1, style: dlText(13, w: FontWeight.w800, c: color)),
+                child: Text(label, maxLines: 1, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: color)),
               ),
             ),
           ]),
@@ -2331,12 +2360,12 @@ class _ValueCell extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text('${row.name.isEmpty ? '—' : row.name} · ${col.label}',
-                            maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(14.5, w: FontWeight.w800, c: c.textDark)),
+                            maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
                       ),
                     ]),
                     const SizedBox(height: 4),
                     Text(_tr('dl_hl_cell_sub', 'Highlight this cell by hand. Everyone who opens the sheet sees it.'),
-                        style: dlText(12, c: c.textMedium, h: 1.4)),
+                        style: AppType.meta(context).copyWith(color: c.textMedium)),
                     const SizedBox(height: 14),
                     DlSwatches(value: current, size: 34, onChanged: (t) => Navigator.pop(ctx, (t,))),
                   ]),
@@ -2454,8 +2483,8 @@ class _CellEditorState extends State<_CellEditor> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(r.name.isEmpty ? '—' : r.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(15.5, w: FontWeight.w800, c: c.textDark)),
-                      Text(col.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(12.5, w: FontWeight.w600, c: c.primary)),
+                      Text(r.name.isEmpty ? '—' : r.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
+                      Text(col.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.primary)),
                     ]),
                   ),
                   IconButton(
@@ -2489,12 +2518,12 @@ class _CellEditorState extends State<_CellEditor> {
                       if (_error != null) setState(() => _error = null);
                     },
                     onSubmitted: (_) => _save(),
-                    style: col.isNumber ? dlText(30, w: FontWeight.w800, c: c.textDark) : dlText(15, c: c.textDark),
+                    style: col.isNumber ? AppType.figureLarge(context).copyWith(color: c.textDark) : AppType.body(context).copyWith(color: c.textDark),
                     decoration: InputDecoration(
                       hintText: col.isNumber ? '0 – ${dlFmt(col.maxValue)}' : 'dl_value'.tr,
-                      hintStyle: col.isNumber ? dlText(26, w: FontWeight.w700, c: c.textLight) : dlText(14, c: c.textLight),
+                      hintStyle: col.isNumber ? AppType.figureLarge(context).copyWith(color: c.textLight) : AppType.body(context).copyWith(color: c.textLight),
                       suffixText: col.isNumber && !_counts ? '/ ${dlFmt(col.maxValue)}' : null,
-                      suffixStyle: dlText(14, w: FontWeight.w700, c: c.textMedium),
+                      suffixStyle: AppType.bodyStrong(context).copyWith(color: c.textMedium),
                       errorText: _error,
                       filled: true,
                       fillColor: c.inputBg,
@@ -2506,13 +2535,13 @@ class _CellEditorState extends State<_CellEditor> {
                   ),
                 if (col.isNumber && widget.p.avgOf(col) != null) ...[
                   const SizedBox(height: 8),
-                  Text('${'dl_class_avg'.tr}: ${dlFmt(widget.p.avgOf(col))}', textAlign: TextAlign.center, style: dlText(11.5, c: c.textMedium)),
+                  Text('${'dl_class_avg'.tr}: ${dlFmt(widget.p.avgOf(col))}', textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textMedium)),
                 ],
                 const SizedBox(height: 14),
                 Row(children: [
                   Icon(Icons.format_color_fill_rounded, size: 16, color: c.textMedium),
                   const SizedBox(width: 6),
-                  Text(_tr('dl_hl_cell', 'Highlight this cell'), style: dlText(12, w: FontWeight.w800, c: c.textMedium)),
+                  Text(_tr('dl_hl_cell', 'Highlight this cell'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
                 ]),
                 const SizedBox(height: 8),
                 DlSwatches(value: _hl, size: 28, onChanged: _setHighlight),
@@ -2528,7 +2557,7 @@ class _CellEditorState extends State<_CellEditor> {
                         ),
                         onPressed: () => Navigator.pop(context, ''),
                         icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-                        label: Text('dl_auto_value'.tr, style: dlText(12.5, w: FontWeight.w700, c: c.textDark)),
+                        label: Text('dl_auto_value'.tr, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
                       ),
                     )
                   else if (col.isCustom && widget.current != null)
@@ -2541,7 +2570,7 @@ class _CellEditorState extends State<_CellEditor> {
                         ),
                         onPressed: () => Navigator.pop(context, ''),
                         icon: Icon(Icons.backspace_outlined, size: 18, color: c.danger),
-                        label: Text('dl_clear_value'.tr, style: dlText(12.5, w: FontWeight.w700, c: c.danger)),
+                        label: Text('dl_clear_value'.tr, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.danger)),
                       ),
                     ),
                   if ((widget.manual && !col.isCustom) || (col.isCustom && widget.current != null)) const SizedBox(width: 10),

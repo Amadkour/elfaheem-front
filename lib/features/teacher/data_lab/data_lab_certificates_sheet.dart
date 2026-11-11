@@ -18,6 +18,7 @@ import 'data_lab_api.dart';
 import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
@@ -132,21 +133,21 @@ class _CertSheetState extends State<_CertSheet> {
             ? const AppListSkeleton(items: 4, withAvatar: false)
             : ListView(
           shrinkWrap: true,
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          padding: const EdgeInsets.fromLTRB(20, 0, AppSpace.lg, 24),
           children: [
-            Text('dl_cert_explain'.tr, style: dlText(12.5, c: c.textMedium, h: 1.55)),
+            Text('dl_cert_explain'.tr, style: AppType.meta(context).copyWith(color: c.textMedium)),
             if (_certs.isEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 18),
                 child: DlCard(child: Row(children: [
                   Icon(Icons.info_outline_rounded, color: c.warning),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text('dl_cert_none'.tr, style: dlText(13, c: c.textDark, h: 1.5))),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(child: Text('dl_cert_none'.tr, style: AppType.label(context).copyWith(color: c.textDark))),
                 ])),
               )
             else ...[
               DlSectionTitle('dl_cert_which'.tr),
-              Wrap(spacing: 8, runSpacing: 8, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final ct in _certs)
                   DlChoiceChip(
                     label: '${ct['title']}',
@@ -159,7 +160,7 @@ class _CertSheetState extends State<_CertSheet> {
                   ),
               ]),
               DlSectionTitle('dl_cert_passed_by'.tr, subtitle: 'dl_cert_passed_by_sub'.tr),
-              Wrap(spacing: 8, runSpacing: 8, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final col in _numeric)
                   DlChoiceChip(
                     label: col.label,
@@ -171,9 +172,9 @@ class _CertSheetState extends State<_CertSheet> {
                     },
                   ),
               ]),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               Row(children: [
-                Expanded(child: Text('${'dl_cert_pass_mark'.tr}: ${_mark.round()}%', style: dlText(13.5, w: FontWeight.w800, c: c.textDark))),
+                Expanded(child: Text('${'dl_cert_pass_mark'.tr}: ${_mark.round()}%', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark))),
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   tooltip: AppConfig.lang == 'ar' ? 'إنقاص' : 'Decrease',
@@ -198,53 +199,53 @@ class _CertSheetState extends State<_CertSheet> {
                 onChangeEnd: (_) => _check(),
               ),
               DlCard(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(AppSpace.md),
                 child: _checking
-                    ? const Center(child: Padding(padding: EdgeInsets.all(6), child: CircularProgressIndicator(strokeWidth: 2.4)))
+                    ? const Center(child: Padding(padding: EdgeInsets.all(AppSpace.xs), child: CircularProgressIndicator(strokeWidth: 2.4)))
                     : Row(children: [
                   Container(
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(color: c.success.withValues(alpha: 0.12), shape: BoxShape.circle),
-                    child: Center(child: Text('$eligible', style: dlText(20, w: FontWeight.w800, c: c.success))),
+                    child: Center(child: Text('$eligible', style: AppType.pageTitle(context).copyWith(color: c.success))),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('dl_cert_reached'.tr, style: dlText(13.5, w: FontWeight.w800, c: c.textDark)),
+                      Text('dl_cert_reached'.tr, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
                       Text(
                         [
                           if (p.selected.isNotEmpty) '${'dl_exp_only'.tr} ${p.selected.length}',
                           if (already > 0) '$already ${'dl_cert_already'.tr}',
                           if ((_plan?['preview'] as List?)?.isNotEmpty == true) (_plan!['preview'] as List).take(3).join('، '),
                         ].join(' · '),
-                        style: dlText(11.5, c: c.textMedium, h: 1.4),
+                        style: AppType.meta(context).copyWith(color: c.textMedium),
                       ),
                     ]),
                   ),
                 ]),
               ),
               if (already > 0) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpace.sm),
                 Container(
-                  padding: const EdgeInsetsDirectional.fromSTEB(14, 6, 6, 6),
+                  padding: const EdgeInsetsDirectional.fromSTEB(14, AppSpace.xs, AppSpace.xs, 6),
                   decoration: BoxDecoration(
                     color: c.warning.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(AppRadius.card),
                     border: Border.all(color: c.warning.withValues(alpha: 0.25)),
                   ),
                   child: Row(children: [
                     Icon(Icons.replay_rounded, color: c.warning, size: 20),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: AppSpace.sm),
                     Expanded(
                       child: Text(
                         _resend
                             ? dlTr('dl_cert_resend_on', 'They will receive it again (the same certificate, not a new one).')
                             : '$already ${dlTr('dl_cert_resend_off', 'already have it and will be skipped. Switch on to send it again.')}',
-                        style: dlText(12, w: FontWeight.w600, c: c.textDark, h: 1.4),
+                        style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpace.xs),
                     AppSwitch(
                       value: _resend,
                       activeColor: c.warning,
@@ -257,14 +258,14 @@ class _CertSheetState extends State<_CertSheet> {
                 ),
               ],
               DlSectionTitle('dl_cert_how'.tr),
-              Wrap(spacing: 8, runSpacing: 8, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 DlChoiceChip(label: 'dl_cert_notification'.tr, icon: Icons.notifications_active_rounded, selected: _delivery == 'notification', onTap: () => setState(() => _delivery = 'notification')),
                 if (emailOk) DlChoiceChip(label: 'dl_cert_email'.tr, icon: Icons.mail_rounded, selected: _delivery == 'email', onTap: () => setState(() => _delivery = 'email')),
                 if (emailOk) DlChoiceChip(label: 'dl_cert_both'.tr, icon: Icons.done_all_rounded, selected: _delivery == 'both', onTap: () => setState(() => _delivery = 'both')),
               ]),
-              const SizedBox(height: 6),
-              Text('dl_cert_note'.tr, style: dlText(11.5, c: c.textLight, h: 1.5)),
-              const SizedBox(height: 18),
+              const SizedBox(height: AppSpace.xs),
+              Text('dl_cert_note'.tr, style: AppType.meta(context).copyWith(color: c.textLight)),
+              const SizedBox(height: AppSpace.md),
               DlPrimaryButton(
                 label: '${'dl_cert_send'.tr} ($eligible)',
                 icon: Icons.workspace_premium_rounded,

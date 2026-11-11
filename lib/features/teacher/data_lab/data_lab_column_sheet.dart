@@ -16,6 +16,7 @@ import 'data_lab_formula.dart';
 import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppNumberField;
 
 /// Translation with a friendly English fallback while a key is not in the language files yet.
@@ -279,12 +280,12 @@ class _ColumnEditorState extends State<_ColumnEditor> {
       SheetHeader(_isNew ? 'dl_new_column'.tr : 'dl_edit_column'.tr),
       Flexible(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(20, AppSpace.xxs, AppSpace.lg, 24),
           shrinkWrap: true,
           children: [
             if (_isNew) ...[
-              Text('dl_column_kind'.tr, style: dlText(12.5, w: FontWeight.w700, c: c.textMedium)),
-              const SizedBox(height: 8),
+              Text('dl_column_kind'.tr, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
+              const SizedBox(height: AppSpace.xs),
               Row(children: [
                 Expanded(
                   child: _KindCard(
@@ -295,7 +296,7 @@ class _ColumnEditorState extends State<_ColumnEditor> {
                     onTap: () => setState(() => _mode = 'manual'),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: _KindCard(
                     icon: Icons.functions_rounded,
@@ -306,14 +307,14 @@ class _ColumnEditorState extends State<_ColumnEditor> {
                   ),
                 ),
               ]),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpace.md),
             ],
             DlField(controller: _label, label: 'dl_column_name'.tr, hint: 'dl_column_name_hint'.tr),
             if (!_calc && (_isNew || _col!.isCustom || _col!.isBuiltin)) ...[
               if (_isNew)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: Wrap(spacing: 8, children: [
+                  child: Wrap(spacing: AppSpace.xs, children: [
                     DlChoiceChip(label: 'dl_type_number'.tr, icon: Icons.pin_rounded, selected: _type == 'number', onTap: () => setState(() => _type = 'number')),
                     DlChoiceChip(label: 'dl_type_text'.tr, icon: Icons.text_fields_rounded, selected: _type == 'text', onTap: () => setState(() => _type = 'text')),
                   ]),
@@ -324,7 +325,7 @@ class _ColumnEditorState extends State<_ColumnEditor> {
                 DlField(controller: _options, label: 'dl_options'.tr, hint: 'dl_options_hint'.tr),
             ],
             if (_calc) ..._calcSection(c),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpace.xxs),
             _SwitchTile(
               icon: Icons.visibility_rounded,
               title: 'dl_visible_to_students'.tr,
@@ -348,7 +349,7 @@ class _ColumnEditorState extends State<_ColumnEditor> {
                 value: _locked,
                 onChanged: (v) => setState(() => _locked = v),
               ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpace.md),
             DlPrimaryButton(label: 'save'.tr, icon: Icons.check_rounded, busy: _busy, onPressed: _save),
             if (!_isNew && !_col!.isBuiltin && !_locked)
               Padding(
@@ -356,7 +357,7 @@ class _ColumnEditorState extends State<_ColumnEditor> {
                 child: TextButton.icon(
                   onPressed: _busy ? null : _delete,
                   icon: Icon(Icons.delete_outline_rounded, color: c.danger),
-                  label: Text('dl_delete_column'.tr, style: dlText(13, w: FontWeight.w700, c: c.danger)),
+                  label: Text('dl_delete_column'.tr, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.danger)),
                 ),
               ),
           ],
@@ -370,7 +371,7 @@ class _ColumnEditorState extends State<_ColumnEditor> {
   List<Widget> _calcSection(ThemeConfigProvider c) => [
     Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Wrap(spacing: 8, children: [
+      child: Wrap(spacing: AppSpace.xs, children: [
         DlChoiceChip(
           label: _tr('dl_how_formula', 'Formula'),
           icon: Icons.functions_rounded,
@@ -387,11 +388,11 @@ class _ColumnEditorState extends State<_ColumnEditor> {
     ),
     if (_how == 'formula') ..._formulaSection(c) else ..._weightsSection(c),
     DlSectionTitle('dl_missing_values'.tr, subtitle: 'dl_missing_values_sub'.tr),
-    Wrap(spacing: 8, children: [
+    Wrap(spacing: AppSpace.xs, children: [
       DlChoiceChip(label: 'dl_missing_zero'.tr, selected: _missing == 'zero', onTap: () => setState(() => _missing = 'zero')),
       DlChoiceChip(label: 'dl_missing_skip'.tr, selected: _missing == 'skip', onTap: () => setState(() => _missing = 'skip')),
     ]),
-    const SizedBox(height: 8),
+    const SizedBox(height: AppSpace.xs),
   ];
 
   /// Live line under the formula box: the result for one real student, or what is wrong.
@@ -436,8 +437,8 @@ class _ColumnEditorState extends State<_ColumnEditor> {
     final src = _formulaSources;
     final pv = _preview();
     OutlineInputBorder b(Color col, [double w = 1]) =>
-        OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: col, width: w));
-    final mono = dlText(14, w: FontWeight.w700, c: c.textDark).copyWith(fontFamily: 'monospace');
+        OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.card), borderSide: BorderSide(color: col, width: w));
+    final mono = AppType.bodyStrong(context).copyWith(color: c.textDark).copyWith(fontFamily: 'monospace');
     final nums = src.where((x) => x.isNumber).toList();
     final a = nums.isNotEmpty ? '[${nums[0].label}]' : '[Quiz]';
     final bb = nums.length > 1 ? '[${nums[1].label}]' : '[Exam]';
@@ -463,7 +464,7 @@ class _ColumnEditorState extends State<_ColumnEditor> {
           prefixText: '=  ',
           prefixStyle: mono.copyWith(color: c.primary),
           hintText: 'IF($a >= 50, "Pass", "Fail")',
-          hintStyle: dlText(13, c: c.textLight).copyWith(fontFamily: 'monospace'),
+          hintStyle: AppType.label(context).copyWith(color: c.textLight).copyWith(fontFamily: 'monospace'),
           filled: true,
           fillColor: c.inputBg,
           border: b(c.divider),
@@ -475,24 +476,24 @@ class _ColumnEditorState extends State<_ColumnEditor> {
         AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           margin: const EdgeInsets.only(top: 8),
-          padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 6, 8),
+          padding: const EdgeInsetsDirectional.fromSTEB(12, AppSpace.xs, AppSpace.xs, 8),
           decoration: BoxDecoration(
             color: (pv.error != null ? c.danger : c.success).withValues(alpha: 0.09),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppRadius.control),
           ),
           child: Row(children: [
             Icon(pv.error != null ? Icons.error_outline_rounded : Icons.check_circle_rounded,
                 size: 18, color: pv.error != null ? c.danger : c.success),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.xs),
             Expanded(
               child: Text(pv.error ?? pv.text!,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: dlText(12.5, w: FontWeight.w700, c: pv.error != null ? c.danger : c.textDark)),
+                  style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: pv.error != null ? c.danger : c.textDark)),
             ),
             if (pv.isText) ...[
               DlTag(_tr('dl_text_result', 'Text result'), c.accent2, icon: Icons.text_fields_rounded),
-              const SizedBox(width: 4),
+              const SizedBox(width: AppSpace.xxs),
             ],
             if (pv.error == null && widget.p.rows.length > 1)
               IconButton(
@@ -503,12 +504,12 @@ class _ColumnEditorState extends State<_ColumnEditor> {
               ),
           ]),
         ),
-      const SizedBox(height: 14),
+      const SizedBox(height: AppSpace.md),
       _keysTitle(c, Icons.view_column_rounded, _tr('dl_formula_columns', 'Columns'), colColor),
       if (src.isEmpty)
-        Text(_tr('dl_formula_no_sources', 'There are no columns to use yet.'), style: dlText(12, c: c.textMedium))
+        Text(_tr('dl_formula_no_sources', 'There are no columns to use yet.'), style: AppType.meta(context).copyWith(color: c.textMedium))
       else
-        Wrap(spacing: 8, runSpacing: 8, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final s in src)
             _InsertChip(
               label: s.label,
@@ -518,34 +519,34 @@ class _ColumnEditorState extends State<_ColumnEditor> {
               onTap: () => _insert('[${s.label}]'),
             ),
         ]),
-      const SizedBox(height: 14),
+      const SizedBox(height: AppSpace.md),
       _keysTitle(c, Icons.calculate_rounded, _tr('dl_formula_operators', 'Operators'), opColor),
-      Wrap(spacing: 8, runSpacing: 8, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final o in _operators)
           _InsertChip(label: o.label, color: opColor, selected: identical(_help, o), onTap: () => _tapPiece(o, fn: false)),
       ]),
-      const SizedBox(height: 14),
+      const SizedBox(height: AppSpace.md),
       _keysTitle(c, Icons.functions_rounded, _tr('dl_formula_functions', 'Functions'), fnColor),
-      Wrap(spacing: 8, runSpacing: 8, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final f in _functions)
           _InsertChip(label: f.label, color: fnColor, selected: identical(_help, f), onTap: () => _tapPiece(f, fn: true)),
       ]),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       // ── help of the piece tapped last (only that one) ──
       AnimatedSwitcher(
         duration: const Duration(milliseconds: 200),
         child: _help == null
             ? Row(key: const ValueKey('hint'), children: [
           Icon(Icons.touch_app_rounded, size: 16, color: c.textLight),
-          const SizedBox(width: 6),
+          const SizedBox(width: AppSpace.xs),
           Expanded(
             child: Text(_tr('dl_formula_tap_hint', 'Tap any operator or function to see what it does, with an example.'),
-                style: dlText(11.5, c: c.textLight, h: 1.4)),
+                style: AppType.meta(context).copyWith(color: c.textLight)),
           ),
         ])
             : _helpCard(c, _help!, _helpIsFn ? fnColor : opColor, a, bb),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       if (!pv.isText)
         AppNumberField(
           controller: _max,
@@ -560,8 +561,8 @@ class _ColumnEditorState extends State<_ColumnEditor> {
     padding: const EdgeInsets.only(bottom: 6),
     child: Row(children: [
       Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-      const SizedBox(width: 6),
-      Text(text, style: dlText(12, w: FontWeight.w800, c: c.textMedium)),
+      const SizedBox(width: AppSpace.xs),
+      Text(text, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
     ]),
   );
 
@@ -571,18 +572,18 @@ class _ColumnEditorState extends State<_ColumnEditor> {
     return Container(
       key: ValueKey(piece.key),
       width: double.infinity,
-      padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 8, 12),
+      padding: const EdgeInsetsDirectional.fromSTEB(14, AppSpace.sm, AppSpace.xs, 12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)),
-            child: Text(piece.label, style: dlText(12, w: FontWeight.w800, c: context.colors.onHero).copyWith(fontFamily: 'monospace')),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 3),
+            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(AppRadius.chip)),
+            child: Text(piece.label, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.onHero).copyWith(fontFamily: 'monospace')),
           ),
           const Spacer(),
           IconButton(
@@ -592,11 +593,11 @@ class _ColumnEditorState extends State<_ColumnEditor> {
             onPressed: () => setState(() => _help = null),
           ),
         ]),
-        const SizedBox(height: 4),
-        Text(_tr('dl_help_${piece.key}', piece.desc), style: dlText(12.5, c: c.textDark, h: 1.5)),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xxs),
+        Text(_tr('dl_help_${piece.key}', piece.desc), style: AppType.meta(context).copyWith(color: c.textDark)),
+        const SizedBox(height: AppSpace.xs),
         InkWell(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(AppRadius.chip),
           onTap: () {
             _expr.text = example;
             _expr.selection = TextSelection.collapsed(offset: example.length);
@@ -604,19 +605,19 @@ class _ColumnEditorState extends State<_ColumnEditor> {
           },
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(10), border: Border.all(color: c.divider)),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 8),
+            decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.chip), border: Border.all(color: c.divider)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Text(_tr('dl_example', 'Example'), style: dlText(10.5, w: FontWeight.w800, c: c.textLight)),
+                Text(_tr('dl_example', 'Example'), style: AppType.overline(context).copyWith(color: c.textLight)),
                 const Spacer(),
-                Text(_tr('dl_use_example', 'Tap to use'), style: dlText(10.5, w: FontWeight.w700, c: color)),
+                Text(_tr('dl_use_example', 'Tap to use'), style: AppType.overline(context).copyWith(color: color)),
               ]),
               const SizedBox(height: 3),
-              Text('= $example', textDirection: TextDirection.ltr, style: dlText(12, w: FontWeight.w700, c: c.textDark).copyWith(fontFamily: 'monospace')),
+              Text('= $example', textDirection: TextDirection.ltr, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark).copyWith(fontFamily: 'monospace')),
               if (result != null) ...[
                 const SizedBox(height: 3),
-                Text(result, style: dlText(11, c: c.textMedium)),
+                Text(result, style: AppType.meta(context).copyWith(color: c.textMedium)),
               ],
             ]),
           ),
@@ -633,15 +634,15 @@ class _ColumnEditorState extends State<_ColumnEditor> {
       for (final s in _sources)
         Container(
           margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsetsDirectional.fromSTEB(6, 4, 10, 4),
+          padding: const EdgeInsetsDirectional.fromSTEB(6, AppSpace.xxs, AppSpace.sm, 4),
           decoration: BoxDecoration(
             color: _picked.contains(s.key) ? c.primary.withValues(alpha: 0.07) : c.inputBg,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppRadius.control),
             border: Border.all(color: _picked.contains(s.key) ? c.primary.withValues(alpha: 0.4) : c.divider),
           ),
           child: Row(children: [
             Checkbox(value: _picked.contains(s.key), activeColor: c.primary, onChanged: (v) => _toggle(s.key, v == true)),
-            Expanded(child: Text(s.label, style: dlText(13, w: FontWeight.w700, c: c.textDark))),
+            Expanded(child: Text(s.label, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark))),
             if (_picked.contains(s.key))
               SizedBox(
                 width: 78,
@@ -651,13 +652,13 @@ class _ColumnEditorState extends State<_ColumnEditor> {
                   onChanged: (_) => setState(() {}),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   textAlign: TextAlign.center,
-                  style: dlText(13, w: FontWeight.w800, c: c.textDark),
+                  style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark),
                   decoration: InputDecoration(
                     suffixText: '%',
                     isDense: true,
                     filled: true,
                     fillColor: c.cardBg,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: c.divider)),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.chip), borderSide: BorderSide(color: c.divider)),
                   ),
                 ),
               ),
@@ -671,13 +672,13 @@ class _ColumnEditorState extends State<_ColumnEditor> {
           TextButton.icon(
             onPressed: () => setState(_equalWeights),
             icon: const Icon(Icons.balance_rounded, size: 18),
-            label: Text('dl_equal_weights'.tr, style: dlText(12.5, w: FontWeight.w700)),
+            label: Text('dl_equal_weights'.tr, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600)),
           ),
         ]),
       if (_picked.isNotEmpty && !ok)
         Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: Text('dl_weights_scaled'.tr, style: dlText(11.5, c: c.textMedium, h: 1.4)),
+          child: Text('dl_weights_scaled'.tr, style: AppType.meta(context).copyWith(color: c.textMedium)),
         ),
     ];
   }
@@ -696,20 +697,20 @@ class _InsertChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fg = selected ? context.colors.onHero : color;
-    final style = dlText(12.5, w: FontWeight.w800, c: fg);
+    final style = AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: fg);
     final chip = InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppRadius.control),
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 8),
         decoration: BoxDecoration(
           color: selected ? color : color.withValues(alpha: 0.09),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.control),
           border: Border.all(color: color.withValues(alpha: selected ? 1 : 0.28)),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          if (icon != null) ...[Icon(icon, size: 13, color: fg), const SizedBox(width: 4)],
+          if (icon != null) ...[Icon(icon, size: 13, color: fg), const SizedBox(width: AppSpace.xxs)],
           Text(label, style: mono ? style.copyWith(fontFamily: 'monospace') : style),
         ]),
       ),
@@ -730,22 +731,22 @@ class _KindCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return InkWell(
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(AppRadius.card),
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AppSpace.sm),
         decoration: BoxDecoration(
           color: selected ? c.primary.withValues(alpha: 0.09) : c.inputBg,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AppRadius.card),
           border: Border.all(color: selected ? c.primary : c.divider, width: selected ? 1.6 : 1),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(icon, color: selected ? c.primary : c.textMedium),
-          const SizedBox(height: 8),
-          Text(title, style: dlText(13.5, w: FontWeight.w800, c: c.textDark)),
+          const SizedBox(height: AppSpace.xs),
+          Text(title, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
           const SizedBox(height: 2),
-          Text(sub, style: dlText(11, c: c.textMedium, h: 1.35)),
+          Text(sub, style: AppType.meta(context).copyWith(color: c.textMedium)),
         ]),
       ),
     );
@@ -765,20 +766,20 @@ class _SwitchTile extends StatelessWidget {
     final c = context.colors;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 8, 8),
-      decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.divider)),
+      padding: const EdgeInsetsDirectional.fromSTEB(12, AppSpace.xs, AppSpace.xs, 8),
+      decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.divider)),
       child: Row(children: [
         Icon(icon, color: c.primary, size: 22),
-        const SizedBox(width: 10),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: dlText(13, w: FontWeight.w800, c: c.textDark)),
-            Text(sub, style: dlText(11, c: c.textMedium, h: 1.35)),
+            Text(title, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
+            Text(sub, style: AppType.meta(context).copyWith(color: c.textMedium)),
           ]),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpace.xs),
         AppSwitch(value: value, activeColor: c.primary, onChanged: onChanged, semanticLabel: title),
-        const SizedBox(width: 4),
+        const SizedBox(width: AppSpace.xxs),
       ]),
     );
   }

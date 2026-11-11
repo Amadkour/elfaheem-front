@@ -18,6 +18,7 @@ import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_screen.dart' show showPinSheet;
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 Future<void> showColumnsSheet(BuildContext context, DataLabProvider p) =>
     showAdminSheet(context, (_) => _ColumnsSheet(p: p));
@@ -50,7 +51,7 @@ class _ColumnsSheet extends StatelessWidget {
             child: ReorderableListView.builder(
               shrinkWrap: true,
               buildDefaultDragHandles: false,
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+              padding: const EdgeInsets.fromLTRB(20, 0, AppSpace.lg, 24),
               itemCount: cols.length,
               onReorder: _move,
               proxyDecorator: (child, _, anim) => AnimatedBuilder(
@@ -59,43 +60,43 @@ class _ColumnsSheet extends StatelessWidget {
                   color: Colors.transparent,
                   elevation: 8 * anim.value,
                   shadowColor: c.heroShade.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(AppRadius.card),
                   child: child,
                 ),
               ),
               header: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('dl_columns_sub'.tr, style: dlText(12.5, c: c.textMedium, h: 1.55)),
-                const SizedBox(height: 6),
+                Text('dl_columns_sub'.tr, style: AppType.meta(context).copyWith(color: c.textMedium)),
+                const SizedBox(height: AppSpace.xs),
                 Row(children: [
                   Icon(Icons.drag_indicator_rounded, size: 15, color: c.textLight),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AppSpace.xxs),
                   Expanded(
                     child: Text(dlTr('dl_columns_drag', 'Drag the handle to change the order.'),
-                        style: dlText(11.5, c: c.textLight)),
+                        style: AppType.meta(context).copyWith(color: c.textLight)),
                   ),
                 ]),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpace.sm),
                 // column captions
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Row(children: [
                     const Expanded(child: SizedBox()),
-                    SizedBox(width: 70, child: Center(child: Text('dl_col_in_table'.tr, style: dlText(11, w: FontWeight.w800, c: c.textMedium)))),
-                    SizedBox(width: 70, child: Center(child: Text('dl_col_students'.tr, style: dlText(11, w: FontWeight.w800, c: c.textMedium)))),
+                    SizedBox(width: 70, child: Center(child: Text('dl_col_in_table'.tr, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)))),
+                    SizedBox(width: 70, child: Center(child: Text('dl_col_students'.tr, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)))),
                     const SizedBox(width: 72),
                   ]),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: AppSpace.xs),
               ]),
               itemBuilder: (context, i) {
                 final col = cols[i];
                 return Container(
                   key: ValueKey(col.key),
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsetsDirectional.only(start: 2, end: 2, top: 4, bottom: 4),
+                  padding: const EdgeInsetsDirectional.only(start: 2, end: 2, top: AppSpace.xxs, bottom: 4),
                   decoration: BoxDecoration(
                     color: col.isHidden ? c.inputBg : c.cardBg,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(AppRadius.card),
                     border: Border.all(color: c.divider),
                   ),
                   child: Row(children: [
@@ -104,7 +105,7 @@ class _ColumnsSheet extends StatelessWidget {
                       child: MouseRegion(
                         cursor: SystemMouseCursors.grab,
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 10),
                           child: Icon(Icons.drag_indicator_rounded, size: 20, color: c.textLight),
                         ),
                       ),
@@ -114,7 +115,7 @@ class _ColumnsSheet extends StatelessWidget {
                         Text(col.label,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: dlText(13.5, w: FontWeight.w800, c: col.isHidden ? c.textLight : c.textDark)),
+                            style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: col.isHidden ? c.textLight : c.textDark)),
                         const SizedBox(height: 2),
                         Row(children: [
                           Icon(
@@ -122,17 +123,17 @@ class _ColumnsSheet extends StatelessWidget {
                             size: 12,
                             color: c.textLight,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: AppSpace.xxs),
                           Flexible(
                             child: Text(
                               col.isCalculated ? 'dl_kind_calc'.tr : (col.isBuiltin ? 'dl_kind_auto'.tr : 'dl_kind_manual_short'.tr),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: dlText(10.5, c: c.textLight),
+                              style: AppType.overline(context).copyWith(color: c.textLight),
                             ),
                           ),
                           if (col.isLocked) ...[
-                            const SizedBox(width: 6),
+                            const SizedBox(width: AppSpace.xs),
                             Icon(Icons.lock_rounded, size: 12, color: c.warning),
                           ],
                         ]),
@@ -181,7 +182,7 @@ class _ColumnsSheet extends StatelessWidget {
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(46),
                         side: BorderSide(color: c.divider),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
                       ),
                       onPressed: p.hiddenCount == 0
                           ? null
@@ -191,33 +192,33 @@ class _ColumnsSheet extends StatelessWidget {
                         }
                       },
                       icon: const Icon(Icons.visibility_rounded, size: 18),
-                      label: Text('dl_show_all'.tr, style: dlText(12.5, w: FontWeight.w700, c: c.textDark)),
+                      label: Text('dl_show_all'.tr, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(46),
                         side: BorderSide(color: c.divider),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
                       ),
                       onPressed: () => showPinSheet(context, p),
                       icon: const Icon(Icons.push_pin_rounded, size: 18),
-                      label: Text(dlTr('dl_pinned_title', 'Pinned columns'), style: dlText(12.5, w: FontWeight.w700, c: c.textDark)),
+                      label: Text(dlTr('dl_pinned_title', 'Pinned columns'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
                     ),
                   ),
                 ]),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpace.sm),
                 FilledButton.icon(
                   style: FilledButton.styleFrom(
                     minimumSize: const Size.fromHeight(48),
                     backgroundColor: c.primary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
                   ),
                   onPressed: () => showColumnEditor(context, p),
                   icon: const Icon(Icons.add_rounded, size: 18),
-                  label: Text('dl_new_column'.tr, style: dlText(13, w: FontWeight.w800, c: c.onHero)),
+                  label: Text('dl_new_column'.tr, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.onHero)),
                 ),
                 ]),
               ),
