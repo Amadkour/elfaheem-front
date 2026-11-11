@@ -164,7 +164,7 @@ class AdminHomeBody extends StatelessWidget {
         label: 'admin_active_subscribers'.tr,
         value: appCompactNumber(data.activeSubscriptions),
         icon: Icons.card_membership_rounded,
-        tone: AppBlockTone.sky,
+        tone: AppBlockTone.sage,
         onTap: actions.openSubscriptions,
       );
       final ai = showAi
@@ -345,7 +345,7 @@ class _Kpis extends StatelessWidget {
         label: 'teachers'.tr,
         value: appCompactNumber(data.teachers),
         icon: Icons.co_present_rounded,
-        tone: AppBlockTone.sky,
+        tone: AppBlockTone.sage,
         onTap: actions.openTeachers,
       ),
       AppStatCard(

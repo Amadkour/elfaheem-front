@@ -130,7 +130,7 @@ class OrgMembersOverview extends StatelessWidget {
           const SizedBox(width: AppSpace.md),
           figure(t('عضو هيئة تدريس', 'Teachers'), teachers, Icons.co_present_rounded, AppBlockTone.peach),
           const SizedBox(width: AppSpace.md),
-          figure(t('فريق العمل', 'Staff'), staff, Icons.badge_rounded, AppBlockTone.sky),
+          figure(t('فريق العمل', 'Staff'), staff, Icons.badge_rounded, AppBlockTone.sage),
         ]),
         // the mix in one bar, the figures' tones in the same order (decorative: the figures above say it)
         if (all > 0) ...[
@@ -141,7 +141,7 @@ class OrgMembersOverview extends StatelessWidget {
               child: SizedBox(
                 height: AppSpace.xs,
                 child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  for (final (n, tone) in [(students, AppBlockTone.emerald), (teachers, AppBlockTone.peach), (staff, AppBlockTone.sky)])
+                  for (final (n, tone) in [(students, AppBlockTone.emerald), (teachers, AppBlockTone.peach), (staff, AppBlockTone.sage)])
                     if (n > 0)
                       Expanded(
                         // a share too small to see still gets a sliver
@@ -228,7 +228,7 @@ List<Widget> orgHomeStats(
       icon: Icons.apartment_rounded,
       value: _figure(data.units.length),
       label: t('الإدارات والأقسام', 'Departments'),
-      tone: AppBlockTone.sky,
+      tone: AppBlockTone.sage,
       footer: unitsWaiting > 0
           ? countText(unitsWaiting,
               ar1: 'طلب واحد ينتظر في الأقسام', ar2: 'طلبان ينتظران في الأقسام', arFew: '{n} طلبات تنتظر في الأقسام',
@@ -252,7 +252,7 @@ List<Widget> orgHomeStats(
           icon: Icons.account_tree_rounded,
           value: _figure(data.kpi('sub_organizations')),
           label: t('مؤسسات فرعية', 'Sub-organizations'),
-          tone: AppBlockTone.sky,
+          tone: AppBlockTone.sage,
           footer: t('تتبع مؤسستك', 'Under your organization'),
         ),
     ] else ...[

@@ -571,7 +571,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
   /// The phone's shortcut tiles: the first sub-page of each section I hold, then the rest of Services (on a phone it
   /// folds into "More", so its pages are the ones a tile saves most taps for) — four at most, one tap each (orgJump).
   static List<OrgHomeShortcut> _shortcuts(BuildContext context, OrgTabs tabs) {
-    const tones = [AppBlockTone.emerald, AppBlockTone.peach, AppBlockTone.sky, AppBlockTone.emerald];
+    const tones = [AppBlockTone.emerald, AppBlockTone.peach, AppBlockTone.sage, AppBlockTone.emerald];
     final picks = <(String, OrgSub)>[
       for (final k in const ['people', 'academics', 'services'])
         if ((tabs.sections[k] ?? const []).isNotEmpty) (k, tabs.sections[k]!.first),

@@ -225,7 +225,7 @@ class StudentFreeDayBlock extends StatelessWidget {
     final when = e == null ? null : '${AppTime.date(e.start, pattern: 'EEE d MMM')} · ${AppTime.time(e.start)}';
     return AppBlock(
       key: const ValueKey('student_home.free_day'),
-      tone: AppBlockTone.sky,
+      tone: AppBlockTone.sage,
       onTap: e == null ? onTimetable : onOpenNext,
       child: Builder(builder: (context) {
         final ink = AppBlock.colorsOf(context);

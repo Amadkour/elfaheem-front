@@ -29,12 +29,12 @@ List<HomeAgendaItem> _day() => const [
 void main() {
   setUp(() => AppConfig.lang = 'ar');
 
-  test('the hero tone follows the role: students and parents on peach, every other role on sky', () {
+  test('the hero tone follows the role: students and parents on peach, every other role on sage (D-630)', () {
     for (final r in [null, '', 'student', 'parent']) {
       expect(HomeHeader.toneForRole(r), AppBlockTone.peach, reason: '$r');
     }
     for (final r in ['teacher', 'admin', 'super-admin', 'developer', 'org-admin', 'org-staff']) {
-      expect(HomeHeader.toneForRole(r), AppBlockTone.sky, reason: r);
+      expect(HomeHeader.toneForRole(r), AppBlockTone.sage, reason: r);
     }
   });
 

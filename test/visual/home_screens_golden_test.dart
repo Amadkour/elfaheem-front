@@ -466,6 +466,7 @@ Widget _studentHeader(String name, String? summary, MeHome home) => HomeHeader(
       ring: studentAverageProgress(home),
       cta: AppGreetingHeroButton(label: 'home_full_timetable'.tr, icon: Icons.calendar_month_rounded, onTap: () {}),
       wideTrailing: AppSearchField(hint: 'search'.tr, onChanged: (_) {}),
+      wideSide: StudentHomeStats(home: home, onTab: (_) {}),
       actions: const [QuickMeetingIcon()],
       shellActions: const [CalendarEntryIcon(), NotificationIcon(unreadCount: 0)],
     );

@@ -464,7 +464,7 @@ class OrgMemberHero extends StatelessWidget {
       child: AppTilt.subtle(
         radius: AppRadius.block,
         child: AppBlock(
-          tone: AppBlockTone.sky,
+          tone: AppBlockTone.sage,
           hero: true,
           padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.lg, AppSpace.lg, AppSpace.sm, AppSpace.lg),
           child: Builder(builder: (context) {
@@ -592,7 +592,7 @@ class OrgMemberHomeBody extends StatelessWidget {
           icon: Icons.schedule_rounded,
           label: t('قريب الموعد', 'Due soon'),
           value: '$soon',
-          tone: AppBlockTone.sky,
+          tone: AppBlockTone.sage,
           footer: t('خلال الأيام القادمة', 'In the coming days'))),
       if (manage != null)
         (asInt(ap['total']), AppStatCard(
@@ -607,7 +607,7 @@ class OrgMemberHomeBody extends StatelessWidget {
           icon: Icons.campaign_rounded,
           label: t('أخبار جديدة', 'New news'),
           value: '${asInt(entry['news'])}',
-          tone: AppBlockTone.sky,
+          tone: AppBlockTone.sage,
           footer: t('من مؤسستك', 'From your organization'),
           onTap: () => _space(context, org, 0))),
     ];

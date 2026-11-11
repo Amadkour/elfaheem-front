@@ -32,6 +32,9 @@ enum AppBlockTone {
   /// Schedule / information blocks (`accent3`).
   sky,
 
+  /// The warm green-grey of dashboards and book covers (D-630: sage takes sky's place there).
+  sage,
+
   /// Streaks, achievements, top marks only.
   gold,
 
@@ -41,8 +44,13 @@ enum AppBlockTone {
   /// The card surface with a warm hairline: a block without colour.
   paper;
 
-  /// The tones a category may wear (gold and emerald carry meaning and are never handed out by a hash).
-  static const categoryTones = [peach, sky];
+  /// The tones a category may wear (gold and emerald carry meaning and are never handed out by a hash). D-630: the
+  /// warm pair, peach and sage (sky stays for the schedule blocks a screen picks on purpose).
+  static const categoryTones = [peach, sage];
+
+  /// The tones of a book cover (a course with no picture, CourseCoverArt): sage, peach and amber, so a shelf of
+  /// covers reads warm and varied. A cover is a picture, not a mark, so amber may appear here.
+  static const coverTones = [sage, peach, gold];
 
   /// The same tone for the same [key] on every screen, run and platform (FNV-1a over the UTF-16 code units, not
   /// `String.hashCode`, which differs between the VM and the web).
@@ -96,6 +104,7 @@ class AppBlockColors {
     final surface = switch (tone) {
       AppBlockTone.peach => c.blockPeach,
       AppBlockTone.sky => c.blockSky,
+      AppBlockTone.sage => c.blockSage,
       AppBlockTone.gold => c.blockGold,
       AppBlockTone.emerald => c.blockEmerald,
       AppBlockTone.paper => c.cardBg,

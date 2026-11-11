@@ -124,6 +124,7 @@ class HomeHeader extends StatelessWidget {
     this.contextSwitcher,
     this.subtitle,
     this.wideTrailing,
+    this.wideSide,
     this.padding = const EdgeInsets.fromLTRB(20, 20, 20, 8),
     this.helpPageId,
     this.tone,
@@ -152,6 +153,10 @@ class HomeHeader extends StatelessWidget {
   /// On the desktop dashboard: drawn at the end of the header, as wide as the side column's cards (the student's
   /// search). Below it the screen draws it under the header itself ([HomeNarrowOnly]).
   final Widget? wideTrailing;
+
+  /// [greetingHero] on the desktop dashboard only: drawn in the side column under the [wideTrailing] toolbar, beside
+  /// the hero (the student's figures), so the column is not an empty strip down to the dashboard. Never on a phone.
+  final Widget? wideSide;
   final Widget? leading;
 
   /// Buttons only the home offers (Meet now …): always drawn.
@@ -168,10 +173,10 @@ class HomeHeader extends StatelessWidget {
   /// an organization's. Null = from the signed-in role ([toneOf]); peach without one (a guest).
   final AppBlockTone? tone;
 
-  /// The hero tone of a role: students and parents learn (peach), everyone else runs a schedule (sky).
+  /// The hero tone of a role: students and parents learn (peach), everyone else runs a schedule (sage, D-630).
   static AppBlockTone toneForRole(String? role) => switch (role) {
         null || '' || 'student' || 'parent' => AppBlockTone.peach,
-        _ => AppBlockTone.sky,
+        _ => AppBlockTone.sage,
       };
 
   /// [toneForRole] of the signed-in user, when an auth provider is in scope (a preview without one is peach).
@@ -222,9 +227,12 @@ class HomeHeader extends StatelessWidget {
                     const SizedBox(width: AppSpace.lg),
                     SizedBox(
                       width: HomeDashboard.sideWidthFor(box.maxWidth) - 40,
-                      child: Row(children: [
-                        Expanded(child: wideTrailing!),
-                        for (final b in buttons) ...[const SizedBox(width: AppSpace.xs), b],
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                        Row(children: [
+                          Expanded(child: wideTrailing!),
+                          for (final b in buttons) ...[const SizedBox(width: AppSpace.xs), b],
+                        ]),
+                        if (wideSide != null) ...[const SizedBox(height: AppSpace.md), wideSide!],
                       ]),
                     ),
                   ]),

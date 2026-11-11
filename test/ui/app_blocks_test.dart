@@ -121,7 +121,7 @@ void main() {
   test('forKey: stable, and only the category tones', () {
     expect(AppBlockTone.forKey('course-42'), AppBlockTone.forKey('course-42'));
     final seen = {for (var i = 0; i < 200; i++) AppBlockTone.forKey('category-$i')};
-    expect(seen, {AppBlockTone.peach, AppBlockTone.sky});
+    expect(seen, {AppBlockTone.peach, AppBlockTone.sage});
     expect(AppBlockTone.forKey('x', among: const [AppBlockTone.gold]), AppBlockTone.gold);
     // FNV-1a of "math" is fixed, so this tone never moves between runs, platforms or app versions
     expect(AppBlockTone.forKey('math'), AppBlockTone.forKey(String.fromCharCodes('math'.codeUnits)));

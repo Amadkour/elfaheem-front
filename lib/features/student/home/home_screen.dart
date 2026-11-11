@@ -194,6 +194,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       : studentDaySummary(MeHomeService.instance.home, MeHomeService.instance.liveNow.length, null,
                           contextSwitchVisible(AppModeController.instance) ? AppModeController.instance.pendingTotal : 0),
               wideTrailing: search(padding: EdgeInsets.zero),
+              // the four figures beside the hero on a desktop (the same /me/home payload, no request of their own)
+              wideSide: AppModeController.instance.isOrg || MeHomeService.instance.home == null
+                  ? null
+                  : StudentHomeStats(home: MeHomeService.instance.home!, onTab: _tab),
               leading: user == null ? null : UserChipButton(user: user, showLabel: false),
               // the counts are drawn once, by the inbox entry / the "Needs you" strip — the bell stays plain here
               actions: [if (!guest) const QuickMeetingIcon()],
@@ -610,12 +614,8 @@ class _Sections extends StatelessWidget {
 
       // phone: needs you · today · courses · inbox. The desktop dashboard: what happens (today, my courses) beside
       // what waits (needs you as a list, the inbox); with nothing waiting the courses card takes the side column
-      // the desktop's stat row (D-631: four figures from the same payload, coloured by meaning) over the dashboard;
-      // a phone gets the shortcut grid under the hero instead
-      if (wide) ...[
-        Padding(padding: const EdgeInsets.symmetric(horizontal: kStudentHomeInset), child: _StudentStats(home: home, onTab: body.onTab)),
-        const SizedBox(height: AppSpace.lg),
-      ],
+      // the desktop's four figures (D-631, StudentHomeStats) sit in the header's side column beside the hero; a phone
+      // gets the shortcut grid under the hero instead
       HomeDashboard(
         narrow: [
           Padding(padding: EdgeInsets.fromLTRB(kStudentHomeInset, live.isEmpty ? AppSpace.sm : 0, kStudentHomeInset, 0), child: _StudentShortcuts(onTab: body.onTab, onOpenInbox: body.onOpenInbox)),
@@ -639,11 +639,13 @@ class _Sections extends StatelessWidget {
   }
 }
 
-/// The desktop stat row (D-631): my courses · today · average progress · courses finished — every figure from the
-/// /me/home payload already on screen, coloured by meaning (emerald courses, sky schedule, peach learning, gold the
+/// The desktop figures (D-631): my courses · today · average progress · courses finished — every figure from the
+/// /me/home payload already on screen, coloured by meaning (emerald courses, sage schedule, peach learning, gold the
 /// one achievement). The counts that wait for me (to do, unread) stay in "Needs you" / the inbox: each count once.
-class _StudentStats extends StatelessWidget {
-  const _StudentStats({required this.home, required this.onTab});
+/// A 2×2 grid in the header's side column, beside the hero (HomeHeader.wideSide), so that column holds the figures
+/// instead of an empty strip under the toolbar; an odd count lets the last figure span its row.
+class StudentHomeStats extends StatelessWidget {
+  const StudentHomeStats({super.key, required this.home, required this.onTab});
   final MeHome home;
   final ValueChanged<String> onTab;
 
@@ -654,7 +656,7 @@ class _StudentStats extends StatelessWidget {
     final done = cp.where((x) => x.progress >= 100).length;
     // a figure that opens a tab the super admin switched off stays out (the shell drops the same tabs)
     final courses = _studentTabOn('my_courses');
-    return AppKpiGrid(children: [
+    return AppShortcutGrid(maxColumns: 2, children: [
       if (courses)
         AppStatCard(
           icon: Icons.auto_stories_rounded,
@@ -668,7 +670,7 @@ class _StudentStats extends StatelessWidget {
           icon: Icons.event_note_rounded,
           value: '${home.today.where((e) => !e.declined).length}',
           label: 'home_s_today_items'.tr,
-          tone: AppBlockTone.sky,
+          tone: AppBlockTone.sage,
           onTap: () => onTab('my_schedule'),
         ),
       if (_studentTabOn('analysis'))
@@ -706,11 +708,11 @@ class _StudentShortcuts extends StatelessWidget {
         if (_studentTabOn('my_courses'))
           AppShortcutTile(icon: Icons.auto_stories_rounded, label: 'my_courses'.tr, tone: AppBlockTone.emerald, onTap: () => onTab('my_courses')),
         if (_studentTabOn('my_schedule'))
-          AppShortcutTile(icon: Icons.calendar_month_rounded, label: 'my_schedule'.tr, tone: AppBlockTone.sky, onTap: () => onTab('my_schedule')),
+          AppShortcutTile(icon: Icons.calendar_month_rounded, label: 'my_schedule'.tr, tone: AppBlockTone.sage, onTap: () => onTab('my_schedule')),
         if (_studentTabOn('analysis'))
           AppShortcutTile(icon: Icons.insights_rounded, label: 'analysis'.tr, tone: AppBlockTone.peach, onTap: () => onTab('analysis')),
         if (onOpenInbox != null && !AppConfig.disableList.contains(kInboxFeatureKey))
-          AppShortcutTile(icon: Icons.inbox_rounded, label: 'inbox_title'.tr, tone: AppBlockTone.sky, onTap: onOpenInbox),
+          AppShortcutTile(icon: Icons.inbox_rounded, label: 'inbox_title'.tr, tone: AppBlockTone.sage, onTap: onOpenInbox),
       ]);
 }
 

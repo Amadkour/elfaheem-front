@@ -44,6 +44,7 @@ Color appToneStrong(BuildContext context, AppBlockTone tone) {
   final raw = switch (tone) {
     AppBlockTone.peach => c.accent,
     AppBlockTone.sky => c.accent3,
+    AppBlockTone.sage => c.sage,
     AppBlockTone.gold => c.accent2,
     AppBlockTone.emerald => c.primary,
     AppBlockTone.paper => c.textDark,
@@ -745,7 +746,8 @@ class AppShortcutTile extends StatelessWidget {
   }
 }
 
-/// Shortcut tiles in equal columns: 2 on phones, 3 on tablets, 4 wide; each row as tall as its tallest tile.
+/// Shortcut tiles in equal columns: 2 on phones, 3 on tablets, 4 wide; each row as tall as its tallest tile. A
+/// short last row stretches its tiles across the full width, so no slot is ever left empty.
 class AppShortcutGrid extends StatelessWidget {
   const AppShortcutGrid({super.key, required this.children, this.maxColumns = 4, this.gap = AppSpace.sm});
 
@@ -758,13 +760,17 @@ class AppShortcutGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
-        final cols = columnsFor(box.maxWidth, maxColumns);
+        // fewer tiles than columns (gating hid some): one row of equal tiles, never empty slots
+        final cols = math.min(columnsFor(box.maxWidth, maxColumns), math.max(1, children.length));
         final rows = <Widget>[];
         for (var i = 0; i < children.length; i += cols) {
+          // a short last row shares the full width (3 tiles on a phone: the third spans the row), so an odd count
+          // looks intended rather than leaving a hole
+          final n = math.min(cols, children.length - i);
           final cells = <Widget>[];
-          for (var j = 0; j < cols; j++) {
+          for (var j = 0; j < n; j++) {
             if (j > 0) cells.add(SizedBox(width: gap));
-            cells.add(Expanded(child: i + j < children.length ? children[i + j] : const SizedBox.shrink()));
+            cells.add(Expanded(child: children[i + j]));
           }
           if (rows.isNotEmpty) rows.add(SizedBox(height: gap));
           rows.add(IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: cells)));

@@ -24,7 +24,7 @@
 // Editorial theme (D-610 – D-629): paper on a warm hairline, radius `card`, no resting shadow; the title in the
 // editorial serif (AppType.section), meta in the UI sans; the card leans a little under the pointer (AppTilt.subtle)
 // and its cover drifts against the scroll (AppParallaxImage). A course with no picture gets a BOOK cover: a block
-// tone picked by its title (AppBlockTone.forKey, the same tone on every screen), a spine on the start edge and the
+// tone picked by its title (AppBlockTone.forKey over coverTones: sage / peach / amber, D-630; the same tone on every screen), a spine on the start edge and the
 // title's first letter set large in the editorial face. One accent per card. Premium dashboard (D-631): a tile's cover
 // is an inset picture with its own rounded corners inside the paper card (the reference's course cards), and the
 // price reads in the primary ink. The header
@@ -127,7 +127,7 @@ class CourseCoverArt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tone = AppBlockTone.forKey(toneKey ?? 'course-$seed');
+    final tone = AppBlockTone.forKey(toneKey ?? 'course-$seed', among: AppBlockTone.coverTones);
     final b = AppBlockColors.of(context, tone);
     final initial = label == null ? '' : courseInitialOf(label!);
     final spine = Color.lerp(b.surface, b.ink, context.colors.isDark ? 0.10 : 0.08)!;

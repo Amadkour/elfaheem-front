@@ -165,7 +165,7 @@ class PremiumHero extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpace.lg),
       child: AppBlock(
-        tone: AppBlockTone.sky,
+        tone: AppBlockTone.sage,
         hero: true,
         child: Builder(builder: (context) {
           final b = AppBlock.colorsOf(context);

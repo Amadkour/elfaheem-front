@@ -275,7 +275,7 @@ class _ParentOverviewBodyState extends State<ParentOverviewBody> {
         AppShortcutTile(
           icon: Icons.forum_outlined,
           label: 'pp_act_message'.tr,
-          tone: AppBlockTone.sky,
+          tone: AppBlockTone.sage,
           onTap: () => _message(ch, null),
         ),
       ],
@@ -426,7 +426,7 @@ class _ParentOverviewBodyState extends State<ParentOverviewBody> {
           value: att == null ? '—' : '$att%',
           values: attSpark,
           icon: Icons.how_to_reg_rounded,
-          tone: AppBlockTone.sky,
+          tone: AppBlockTone.sage,
         ),
       if (gradeSpark.isNotEmpty)
         AppKpiSpark(

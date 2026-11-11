@@ -373,6 +373,22 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     return isDark ? darkBlock(light) : light;
   }
 
+  /// Sage (D-630): the warm green-grey that takes sky's place on dashboards and book covers: the primary's hue
+  /// turned 70 % toward a leaf green (95°), muted. [sage] is its strong colour (figures, icons, rings).
+  Color get sage {
+    final p = HSLColor.fromColor(primary);
+    final d = ((95 - p.hue + 540) % 360) - 180;
+    final hue = p.saturation < 0.12 ? 95.0 : (p.hue + d * 0.7) % 360;
+    return HSLColor.fromAHSL(1, hue, 0.26, 0.38).toColor();
+  }
+
+  /// Sage as a block surface (about #E3E9DC for the editorial preset).
+  Color get blockSage {
+    final s = HSLColor.fromColor(sage);
+    final light = blockSurface(s.withSaturation(0.2).withLightness(0.89).toColor(), _lightInk);
+    return isDark ? darkBlock(light) : light;
+  }
+
   /// Gold: streaks, achievements, top marks (a tint of accent2; about #F6E7C4 for the editorial preset).
   Color get blockGold {
     final g = HSLColor.fromColor(accent2);

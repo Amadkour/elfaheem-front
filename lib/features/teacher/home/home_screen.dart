@@ -842,7 +842,7 @@ class TeacherHomeBody extends StatelessWidget {
         AppStatCard(icon: Icons.payments_outlined, value: appCompactNumber(earnings), label: 'home_t_earnings_month'.tr, tone: AppBlockTone.emerald, onTap: toAnalysis)
       else
         AppStatCard(icon: Icons.public_rounded, value: '$published', label: 'home_t_published'.tr, tone: AppBlockTone.emerald, onTap: toAnalysis),
-      AppStatCard(icon: Icons.event_note_rounded, value: '${items.length}', label: 'home_today_sessions'.tr, tone: AppBlockTone.sky, onTap: teacherTabOn(2) ? () => onTab(2) : null),
+      AppStatCard(icon: Icons.event_note_rounded, value: '${items.length}', label: 'home_today_sessions'.tr, tone: AppBlockTone.sage, onTap: teacherTabOn(2) ? () => onTab(2) : null),
     ]);
 
     final stale = staleError == null
@@ -878,7 +878,7 @@ class TeacherHomeBody extends StatelessWidget {
           if (teacherTabOn(1))
             AppShortcutTile(icon: Icons.auto_stories_rounded, label: 'my_courses'.tr, tone: AppBlockTone.emerald, onTap: () => onTab(1)),
           if (teacherTabOn(2))
-            AppShortcutTile(icon: Icons.calendar_month_rounded, label: 'my_schedule'.tr, tone: AppBlockTone.sky, onTap: () => onTab(2)),
+            AppShortcutTile(icon: Icons.calendar_month_rounded, label: 'my_schedule'.tr, tone: AppBlockTone.sage, onTap: () => onTab(2)),
           if (teacherTabOn(3))
             AppShortcutTile(icon: Icons.insights_rounded, label: 'analysis'.tr, tone: AppBlockTone.peach, onTap: () => onTab(3)),
           if (onOpenEarnings != null)
@@ -1037,7 +1037,7 @@ class _TodayCardState extends State<_TodayCard> {
       subtitle: w.date,
       actions: [AppButton.ghost(label: 'home_full_timetable'.tr, size: AppButtonSize.sm, onPressed: w.onTimetable)],
       child: w.items.isEmpty
-          ? AppEmpty(icon: Icons.event_available_rounded, title: 'home_no_sessions_today'.tr, message: w.freeDay, tone: AppBlockTone.sky)
+          ? AppEmpty(icon: Icons.event_available_rounded, title: 'home_no_sessions_today'.tr, message: w.freeDay, tone: AppBlockTone.sage)
           : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               if (w.ribbon.isNotEmpty) ...[
                 _DayRibbon(items: w.ribbon, nowMin: w.nowMin),

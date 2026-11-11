@@ -360,7 +360,7 @@ class ParentPulseHero extends StatelessWidget {
         icon: Icons.how_to_reg_rounded,
         label: 'pp_m_attendance'.tr,
         value: att == null ? '—' : '$att%',
-        tone: AppBlockTone.sky,
+        tone: AppBlockTone.sage,
         footer: w.scheduled == 0 ? 'pp_m_attendance_none'.tr : _fmt('pp_m_attendance_sub', {'a': w.attended, 's': w.scheduled}),
       ),
       AppStatCard(
