@@ -20,7 +20,6 @@ import 'package:flutter/material.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
 import '../../../design/app_kit.dart';
-import '../../../design/app_notice.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/app_navigator.dart' show AppNavigator;
 import '../../../utils/widget/app_network_image.dart';
@@ -144,7 +143,6 @@ class RecommendationsSectionView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final p = page;
     if (p != null && p.hidden) {
       return _SlimRow(
@@ -177,24 +175,26 @@ class RecommendationsSectionView extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(child: Text(t('مقترح لك', 'Recommended for you'), style: appText(16, w: FontWeight.w600, c: c.textDark))),
-            TextButton.icon(
+            Expanded(
+              child: Semantics(header: true, child: Text(t('مقترح لك', 'Recommended for you'), style: AppType.section(context))),
+            ),
+            AppButton.ghost(
               onPressed: onInterests,
-              style: TextButton.styleFrom(minimumSize: const Size(48, 44)),
-              icon: const Icon(Icons.tune_rounded, size: 18),
-              label: Text(t('اهتماماتي', 'My interests')),
+              size: AppButtonSize.sm,
+              icon: Icons.tune_rounded,
+              label: t('اهتماماتي', 'My interests'),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         body,
         if (p != null && p.total > 3 && onSeeAll != null)
           Align(
             alignment: AlignmentDirectional.centerStart,
-            child: TextButton(
+            child: AppButton.ghost(
               onPressed: onSeeAll,
-              style: TextButton.styleFrom(minimumSize: const Size(48, 44)),
-              child: Text(t('عرض الكل (${p.total})', 'See all (${p.total})')),
+              size: AppButtonSize.sm,
+              label: t('عرض الكل (${p.total})', 'See all (${p.total})'),
             ),
           ),
       ],
@@ -213,18 +213,22 @@ class _SlimRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 14, 4),
-      decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(14), border: Border.all(color: c.divider)),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxs),
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: c.textMedium),
-          const SizedBox(width: 10),
+          Icon(icon, size: AppIconSize.md, color: c.textMedium),
+          const SizedBox(width: AppSpace.sm - 2),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(text, style: appText(13, w: FontWeight.w400, c: c.textMedium)),
+                Text(text, style: AppType.body(context)),
                 TextButton(
                   onPressed: onTap,
                   style: TextButton.styleFrom(minimumSize: const Size(48, 44), padding: const EdgeInsets.symmetric(horizontal: 0)),
@@ -261,44 +265,47 @@ class RecommendationRow extends StatelessWidget {
     final c = context.colors;
     final co = item.course;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: Material(
         color: c.cardBg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: c.divider)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          side: BorderSide(color: c.divider, width: AppBorder.hairline),
+        ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onOpen,
           child: Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(12, 12, 4, 12),
+            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.xxs, AppSpace.sm),
             child: Row(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
                   child: SizedBox(
                     width: 52,
                     height: 52,
                     child: co.imageUrl == null
-                        ? ColoredBox(color: c.primaryTint, child: Icon(Icons.menu_book_rounded, color: appInk(context, c.primary)))
+                        ? ColoredBox(color: c.inputBg, child: Icon(Icons.menu_book_rounded, color: c.textLight))
                         : AppNetworkImage(url: co.imageUrl!, width: 52, height: 52, fit: BoxFit.cover, borderRadius: BorderRadius.zero),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(co.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w600, c: c.textDark, h: 1.3)),
-                      const SizedBox(height: 4),
+                      Text(co.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+                      const SizedBox(height: AppSpace.xxs),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
-                            child: Icon(_icon(item.reason), size: 14, color: appInk(context, c.primary)),
+                            child: Icon(_icon(item.reason), size: AppIconSize.xs, color: appInk(context, c.primary)),
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: AppSpace.xxs),
                           Expanded(
-                            child: Text(item.reasonText, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w400, c: c.textMedium)),
+                            child: Text(item.reasonText, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
                           ),
                         ],
                       ),
@@ -309,7 +316,7 @@ class RecommendationRow extends StatelessWidget {
                   IconButton(
                     onPressed: onDismiss,
                     tooltip: t('غير مهتم', 'Not interested'),
-                    icon: Icon(Icons.close_rounded, size: 18, color: c.textLight),
+                    icon: Icon(Icons.close_rounded, size: AppIconSize.md, color: c.textLight),
                   ),
               ],
             ),
@@ -549,7 +556,7 @@ class InterestsForm extends StatelessWidget {
   Widget _chip(BuildContext context, RmField f) {
     final c = context.colors;
     return FilterChip(
-      label: Text(f.name, style: appText(13, c: picked.contains(f.id) ? appInk(context, c.primary) : c.textDark)),
+      label: Text(f.name, style: AppType.label(context).copyWith(color: picked.contains(f.id) ? appInk(context, c.primary) : c.textDark)),
       selected: picked.contains(f.id),
       onSelected: (_) => onToggle(f.id),
       showCheckmark: true,
@@ -559,7 +566,6 @@ class InterestsForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return ListView(
       shrinkWrap: true,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -571,17 +577,17 @@ class InterestsForm extends StatelessWidget {
           onChanged: onShow,
         ),
         const SizedBox(height: 12),
-        Text(t('المجالات التي تهمك', 'Fields you care about'), style: appText(16, w: FontWeight.w600, c: c.textDark)),
+        Text(t('المجالات التي تهمك', 'Fields you care about'), style: AppType.section(context)),
         const SizedBox(height: 2),
         Text(
           inferred
               ? t('اخترناها من كورساتك. غيّرها كما تحب.', 'We picked these from your courses. Change them as you like.')
               : t('اختر ما يناسبك، أو لا شيء لنختار من كورساتك.', 'Pick what suits you, or none and we’ll go by your courses.'),
-          style: appText(12.5, w: FontWeight.w400, c: c.textMedium),
+          style: AppType.meta(context),
         ),
         const SizedBox(height: 12),
         if (fields.isEmpty)
-          Text(t('لا مجالات بعد', 'No fields yet'), style: appText(13, w: FontWeight.w400, c: c.textLight))
+          Text(t('لا مجالات بعد', 'No fields yet'), style: AppType.body(context))
         else ...[
           // the fields without sub-fields share one wrapped row; a field with sub-fields gets its own block
           if (interestGroups(fields).any((g) => g.$2.isEmpty))

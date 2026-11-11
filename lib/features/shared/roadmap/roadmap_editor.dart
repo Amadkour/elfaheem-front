@@ -12,7 +12,6 @@ import 'package:flutter/semantics.dart' show CustomSemanticsAction;
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
 import '../../../design/app_kit.dart';
-import '../../../design/app_notice.dart';
 import '../../admin/admin_common.dart' show t;
 import 'roadmap_api.dart';
 
@@ -166,7 +165,7 @@ class _RoadmapEditorFormState extends State<RoadmapEditorForm> {
                   key: ValueKey('next-${d.next[i].id}'),
                   index: i,
                   course: d.next[i],
-                  leading: Text('${i + 1}', style: appText(13, w: FontWeight.w600, c: c.textMedium)),
+                  leading: Text('${i + 1}', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()])),
                   draggable: d.next.length > 1,
                   onMoveUp: i > 0
                       ? () {
@@ -301,7 +300,7 @@ class _RoadmapTagsInputState extends State<RoadmapTagsInput> {
               children: [
                 for (final tag in widget.tags)
                   InputChip(
-                    label: Text(tag, style: appText(12.5, c: c.textDark)),
+                    label: Text(tag, style: AppType.label(context).copyWith(color: c.textDark)),
                     onDeleted: () => widget.onRemove(tag),
                     deleteButtonTooltipMessage: t('حذف', 'Remove'),
                   ),
@@ -337,16 +336,15 @@ class _Head extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: appText(16, w: FontWeight.w600, c: c.textDark)),
+          Text(title, style: AppType.section(context)),
           if (subtitle != null) ...[
             const SizedBox(height: 2),
-            Text(subtitle!, style: appText(12.5, w: FontWeight.w400, c: c.textMedium)),
+            Text(subtitle!, style: AppType.meta(context)),
           ],
         ],
       ),
@@ -362,7 +360,7 @@ class _Hint extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 4),
-    child: Text(text, style: appText(13, w: FontWeight.w400, c: context.colors.textLight)),
+    child: Text(text, style: AppType.body(context)),
   );
 }
 
@@ -422,7 +420,7 @@ class _CourseRow extends StatelessWidget {
         padding: const EdgeInsetsDirectional.only(start: 12),
         decoration: BoxDecoration(
           color: c.cardBg,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.control),
           border: Border.all(color: c.divider),
         ),
         child: Row(
@@ -435,11 +433,11 @@ class _CourseRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(course.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w500, c: c.textDark)),
+                    Text(course.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
                     if (draft || course.level != null)
                       Text(
                         [if (draft) t('مسودة', 'Draft'), if (course.level != null) roadmapLevelLabel(course.level)].join(' · '),
-                        style: appText(12, w: FontWeight.w400, c: draft ? appInk(context, c.warning) : c.textMedium),
+                        style: AppType.meta(context).copyWith(color: draft ? appInk(context, c.warning) : c.textMedium),
                       ),
                   ],
                 ),
@@ -539,8 +537,8 @@ class _CoursePickerState extends State<_CoursePicker> {
                       ListTile(
                         minVerticalPadding: 12,
                         leading: Icon(Icons.menu_book_rounded, color: appInk(context, c.primary)),
-                        title: Text(x.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, c: c.textDark)),
-                        subtitle: !x.isPublished ? Text(t('مسودة', 'Draft'), style: appText(12, w: FontWeight.w400, c: appInk(context, c.warning))) : null,
+                        title: Text(x.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+                        subtitle: !x.isPublished ? Text(t('مسودة', 'Draft'), style: AppType.meta(context).copyWith(color: appInk(context, c.warning))) : null,
                         onTap: () => Navigator.of(context).pop(x),
                       ),
                   ],

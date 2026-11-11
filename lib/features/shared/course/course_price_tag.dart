@@ -10,6 +10,10 @@
 // `.forCourse(course: ...)` factory that pulls everything straight off a
 // DiscountInfo model instead of manually unpacking price / finalPrice /
 // discountActive at every call site.
+//
+// Warm Editorial: a price is a figure in ink (tabular digits, the UI sans), free is the success emerald; the
+// discount marks are opaque tints with their ink darkened to read (a white label on the warning fill fell under
+// AA), never a glow.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
@@ -17,8 +21,9 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'discount_info.dart';
 import 'package:flutter_education_app/features/student/models.dart' show AppCurrency, AppCurrencyX;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
+import 'package:flutter_education_app/design/app_kit.dart'
+    show AppSpace, AppRadius, AppType, AppIconSize, appInk, appInkOn, appTintOn;
 
 /// Compact price block: shows the discounted price, with the original price
 /// struck through above/beside it when a discount is active. Falls back to
@@ -82,24 +87,18 @@ class CoursePriceTag extends StatelessWidget {
   );
 
   Widget _featureContent(BuildContext context) {
+    final c = context.colors;
     final priceColor = onColoredBackground
-        ? context.colors.onHero
-        : color ??
-        (finalPrice == 0 ? context.colors.success : context.colors.primary);
-    final strikeColor = onColoredBackground
-        ? context.colors.onHero.withValues(alpha: 0.75)
-        : context.colors.textLight;
+        ? c.onHero
+        : color ?? (finalPrice == 0 || (!discountActive && originalPrice == 0) ? appInk(context, c.success) : c.textDark);
+    final strikeColor = onColoredBackground ? c.onHero.withValues(alpha: 0.75) : c.textLight;
+    final figure = AppType.figure(context).copyWith(
+      fontWeight: FontWeight.w600,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
 
     if (!discountActive) {
-      return Text(
-        format(originalPrice),
-        style: TextStyle(
-          color: priceColor,
-          fontWeight: FontWeight.w600,
-          fontSize: fontSize,
-          fontFamily: AppFonts.display,
-        ),
-      );
+      return Text(format(originalPrice), style: figure.copyWith(color: priceColor, fontSize: fontSize));
     }
 
     return Column(
@@ -108,24 +107,15 @@ class CoursePriceTag extends StatelessWidget {
       children: [
         Text(
           format(originalPrice),
-          style: TextStyle(
+          style: figure.copyWith(
             color: strikeColor,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
             fontSize: originalFontSize,
-            fontFamily: AppFonts.display,
             decoration: TextDecoration.lineThrough,
-            decorationColor: context.colors.danger,
+            decorationColor: strikeColor,
           ),
         ),
-        Text(
-          format(finalPrice),
-          style: TextStyle(
-            color: priceColor,
-            fontWeight: FontWeight.w600,
-            fontSize: fontSize,
-            fontFamily: AppFonts.display,
-          ),
-        ),
+        Text(format(finalPrice), style: figure.copyWith(color: priceColor, fontSize: fontSize)),
       ],
     );
   }
@@ -155,26 +145,16 @@ class DiscountRibbon extends StatelessWidget {
 
   Widget _featureContent(BuildContext context) {
     if (percentage <= 0) return const SizedBox.shrink();
+    final fill = appTintOn(context, context.colors.danger);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: context.colors.danger,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: context.colors.danger.withValues(alpha: 0.35),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
+      decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(AppRadius.pill)),
       child: Text(
         '-${percentage.toStringAsFixed(0)}%',
-        style: TextStyle(
-          color: context.colors.onHero,
+        style: AppType.meta(context).copyWith(
+          color: appInkOn(context, context.colors.danger, fill),
           fontWeight: FontWeight.w600,
-          fontSize: 10,
-          fontFamily: AppFonts.display,
+          fontFeatures: const [FontFeature.tabularFigures()],
         ),
       ),
     );
@@ -203,12 +183,7 @@ class DiscountCountdown extends StatelessWidget {
         : 'discount_ends_today'.tr;
     return Text(
       label,
-      style: TextStyle(
-        fontSize: 11,
-        fontFamily: AppFonts.family,
-        color: context.colors.danger,
-        fontWeight: FontWeight.w600,
-      ),
+      style: AppType.meta(context).copyWith(color: appInk(context, context.colors.danger), fontWeight: FontWeight.w600),
     );
   }
 }
@@ -289,24 +264,17 @@ class _DiscountCountdownBadgeState extends State<DiscountCountdownBadge>
         ? '${'discount_ends_in'.tr} $hours${'hour'.tr}'
         : '${'discount_ends_in'.tr} $days${'day_unit'.tr}';
 
-    final bg = urgent ? context.colors.danger : context.colors.warning;
+    final tone = urgent ? context.colors.danger : context.colors.warning;
+    final fill = appTintOn(context, tone);
+    final ink = appInkOn(context, tone, fill);
+    final text = widget.compact ? AppType.overline(context).copyWith(letterSpacing: 0) : AppType.meta(context);
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: widget.compact ? 6 : 9,
-        vertical: widget.compact ? 2 : 4,
+        horizontal: widget.compact ? AppSpace.xs - 2 : AppSpace.xs + 1,
+        vertical: widget.compact ? AppSpace.xxs / 2 : AppSpace.xxs,
       ),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: bg.withValues(alpha: 0.4),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(AppRadius.pill)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -316,18 +284,17 @@ class _DiscountCountdownBadgeState extends State<DiscountCountdownBadge>
                 : const AlwaysStoppedAnimation(1.0),
             child: Icon(
               Icons.local_fire_department_rounded,
-              color: context.colors.onHero,
-              size: widget.compact ? 11 : 13,
+              color: ink,
+              size: widget.compact ? AppIconSize.xs - 3 : AppIconSize.xs - 1,
             ),
           ),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: context.colors.onHero,
-              fontWeight: FontWeight.w600,
-              fontSize: widget.compact ? 9 : 10.5,
-              fontFamily: AppFonts.family,
+          const SizedBox(width: AppSpace.xxs),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: text.copyWith(color: ink, fontWeight: FontWeight.w600),
             ),
           ),
         ],

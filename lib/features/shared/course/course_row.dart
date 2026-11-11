@@ -3,9 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/student/models.dart' show CourseModel, DiscountInfoX;
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'course_list_card.dart';
 import 'course_price_tag.dart' show coursePriceLabel;
+import 'package:flutter_education_app/design/app_kit.dart' show AppSpace, AppIconSize, AppType, appInk, appTintOn;
 
 class CoursesRow extends StatelessWidget {
   final List<CourseModel> courses;
@@ -36,7 +36,7 @@ class CoursesRow extends StatelessWidget {
       return SizedBox(
         height: 100,
         child: Center(
-          child: Text('no_courses_yet'.tr, style: context.colors.body),
+          child: Text('no_courses_yet'.tr, style: AppType.body(context)),
         ),
       );
     }
@@ -47,10 +47,10 @@ class CoursesRow extends StatelessWidget {
         height: context.height / 2 > 300 ? 300 : context.height / 3,
         child: ListView.separated(
           controller: controller,
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
           scrollDirection: isFullScreen ? Axis.vertical : Axis.horizontal,
           itemCount: courses.length,
-          separatorBuilder: (_, _) => const SizedBox(width: 14),
+          separatorBuilder: (_, _) => const SizedBox(width: AppSpace.sm),
           itemBuilder: (_, i) => CourseCard(
             course: courses[i],
             fixedWidth: 188,
@@ -65,12 +65,12 @@ class CoursesRow extends StatelessWidget {
         height: context.height / 2 > 600 ? 600 : context.height / 3,
         child: GridView.builder(
           controller: controller,
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
           scrollDirection: Axis.horizontal,
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2, // 2 items vertically
-            crossAxisSpacing: 14,
-            mainAxisSpacing: 14,
+            crossAxisSpacing: AppSpace.sm,
+            mainAxisSpacing: AppSpace.sm,
             childAspectRatio: 3 / 2,
           ),
           itemCount: courses.length,
@@ -90,7 +90,7 @@ class CoursesRow extends StatelessWidget {
       thumbVisibility: true, // This keeps the 'cursor' visible
       trackVisibility: true, // Optional: shows the path of the scrollbar
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(15, 0, 15, 12),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
         child: list,
       ),
     );
@@ -198,13 +198,13 @@ class IconColored extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 20,
-      height: 20,
+      width: AppIconSize.md,
+      height: AppIconSize.md,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(5),
+        color: appTintOn(context, color),
+        borderRadius: BorderRadius.circular(AppSpace.xxs + 1),
       ),
-      child: Icon(icon, size: 13, color: color),
+      child: Icon(icon, size: AppIconSize.xs - 1, color: appInk(context, color)),
     );
   }
 }

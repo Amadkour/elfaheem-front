@@ -8,6 +8,7 @@ import 'package:flutter_education_app/utils/widget/paged_progress.dart';
 import 'course_list_card.dart';
 import 'course_row.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppSpace;
 import 'package:flutter_education_app/design/app_infinite_scroll.dart';
 
 class HomeCourseList extends StatefulWidget {
@@ -86,7 +87,7 @@ class _HomeCourseListState extends State<HomeCourseList> {
         constraints: BoxConstraints(maxWidth: widget.maxWidth),
         child: LayoutBuilder(builder: (context, box) {
           // rows on a phone, a grid of tiles once there is room (course_list_card.dart)
-          final width = math.max(0.0, box.maxWidth - 32);
+          final width = math.max(0.0, box.maxWidth - AppSpace.md * 2);
           final cards = CourseCardSliver(
             width: width,
             count: widget.courses.length,
@@ -98,10 +99,10 @@ class _HomeCourseListState extends State<HomeCourseList> {
               controller: _scroll,
               physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
               slivers: [
-                SliverPadding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), sliver: cards),
+                SliverPadding(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0), sliver: cards),
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.only(bottom: AppSpace.md),
                     child: PagedListFooter(loadingMore: widget.loadingMore, hasMore: widget.hasMore),
                   ),
                 ),
@@ -127,12 +128,12 @@ class _HomeCourseListState extends State<HomeCourseList> {
                 ? const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics())
                 : const NeverScrollableScrollPhysics(),
             slivers: [
-              SliverPadding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 0), sliver: cards),
+              SliverPadding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.md), sliver: cards),
               if (widget.hasMore)
                 SliverToBoxAdapter(
-                  child: Padding(padding: const EdgeInsets.all(16), child: Center(child: AppLoadingIndicator())),
+                  child: Padding(padding: const EdgeInsets.all(AppSpace.md), child: Center(child: AppLoadingIndicator())),
                 ),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              const SliverToBoxAdapter(child: SizedBox(height: AppSpace.lg)),
             ],
           );
         }),

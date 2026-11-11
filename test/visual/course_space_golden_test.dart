@@ -299,10 +299,11 @@ Widget _teacherSessions(BuildContext context) {
   );
 }
 
-Widget _student() => Builder(
+Widget _student({Widget? cover}) => Builder(
   builder: (context) {
     final c = context.colors;
     return CourseSpace(
+      heroBackground: cover,
       hero: CourseSpaceHeroData(
         title: tr('أساسيات الذكاء الاصطناعي بلغة بايثون', 'AI Foundations with Python'),
         subtitle: tr(
@@ -687,6 +688,7 @@ void main() {
 
   testWidgets('course student', (t) => _render(t, 'course_student', _student));
   testWidgets('course parts', (t) => _render(t, 'course_parts', _parts));
+  testWidgets('course cover', (t) => _render(t, 'course_cover', () => _student(cover: const _StandInCover())));
   testWidgets('course teacher', (t) => _render(t, 'course_teacher', _teacher));
   testWidgets('course about', (t) => _render(t, 'course_about', _about));
   testWidgets('course student real pieces', (t) => _render(t, 'course_student_real', _studentReal));
@@ -780,3 +782,39 @@ Widget _materialOptions() => Builder(
         ),
       ),
     );
+
+/// A painted stand-in for a course cover photo (network images do not load in a test): a dusk sky over two hills.
+class _StandInCover extends StatelessWidget {
+  const _StandInCover();
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(painter: _CoverPainter(), child: const SizedBox.expand());
+}
+
+class _CoverPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = Offset.zero & size;
+    canvas.drawRect(
+      r,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF8FB7D9), Color(0xFFF2C9A0)],
+        ).createShader(r),
+    );
+    canvas.drawCircle(Offset(size.width * 0.7, size.height * 0.45), size.height * 0.12, Paint()..color = const Color(0xFFFFF1D6));
+    final hill = Path()
+      ..moveTo(0, size.height * 0.7)
+      ..quadraticBezierTo(size.width * 0.3, size.height * 0.5, size.width * 0.6, size.height * 0.72)
+      ..quadraticBezierTo(size.width * 0.8, size.height * 0.82, size.width, size.height * 0.66)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(hill, Paint()..color = const Color(0xFF3E6B58));
+  }
+
+  @override
+  bool shouldRepaint(_CoverPainter old) => false;
+}

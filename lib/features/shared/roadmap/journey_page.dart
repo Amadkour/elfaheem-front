@@ -12,12 +12,17 @@
 // once with NO call; GET /api/v1/me/journey only on pull-to-refresh, after the interests change, or when the block
 // came without steps (an older server) / no block was handed over (a deep link). Narrow and wide: one centred column
 // (max 760) so a desktop window never stretches the path across the screen.
+//
+// Warm Editorial: the summary is the page's one block (peach, learning) with the title in the editorial serif, the
+// path's segments (done emerald, the current one ink) and the next step on a paper card holding the ONE primary
+// button; "The whole path" is an editorial section under it.
 library;
 
 import 'package:flutter/material.dart';
 
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../design/app_kit.dart';
+import '../../../design/app_motion_kit.dart' show AppFill;
 import '../../../utils/widget/app_navigator.dart' show AppNavigator;
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';
@@ -142,50 +147,62 @@ class JourneyContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final j = journey;
-    final ink = appInk(context, c.primary);
     final field = j.field?.name ?? '';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.route_rounded, size: 18, color: ink),
-                  const SizedBox(width: AppSpace.xs),
-                  Expanded(
-                    child: Text(t('مسارك التعليمي', 'Your learning path'),
-                        maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w600, c: ink)),
-                  ),
-                  if (field.isNotEmpty) ConstrainedBox(constraints: const BoxConstraints(maxWidth: 180), child: AppStatusBadge(label: field)),
-                ],
-              ),
-              AppSpace.gapXs,
-              Text(j.title, style: appText(20, w: FontWeight.w600, c: c.textDark, h: 1.3)),
-              AppSpace.gapSm,
-              JourneyTrack(journey: j, height: 8),
-              const SizedBox(height: AppSpace.xs),
-              Text('${j.doneLine} · ${(j.fraction * 100).round()} %',
-                  style: appText(13, w: FontWeight.w500, c: c.textMedium)),
-              if (j.source == 'interest') ...[
-                AppSpace.gapXs,
-                Text(
-                  t('اقتراح من اهتماماتك والكورسات التي أكملتها.', 'Suggested from your interests and the courses you completed.'),
-                  style: appText(13, w: FontWeight.w400, c: c.textMedium),
+        AppBlock(
+          tone: AppBlockTone.peach,
+          hero: true,
+          child: Builder(builder: (context) {
+            final b = AppBlock.colorsOf(context);
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.route_rounded, size: AppIconSize.md, color: b.muted),
+                    const SizedBox(width: AppSpace.xs),
+                    Expanded(
+                      child: Text(t('مسارك التعليمي', 'Your learning path'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: b.muted)),
+                    ),
+                    if (field.isNotEmpty)
+                      ConstrainedBox(constraints: const BoxConstraints(maxWidth: 180), child: AppStatusBadge(label: field)),
+                  ],
                 ),
+                AppSpace.gapXs,
+                Semantics(
+                  header: true,
+                  child: Text(j.title, style: AppType.headline(context).copyWith(color: b.ink)),
+                ),
+                AppSpace.gapMd,
+                JourneyTrack(journey: j, height: AppSpace.xs, rest: b.ink.withValues(alpha: 0.12)),
+                const SizedBox(height: AppSpace.xs),
+                Text(
+                  '${j.doneLine} · ${(j.fraction * 100).round()} %',
+                  style: AppType.label(context).copyWith(color: b.muted, fontFeatures: const [FontFeature.tabularFigures()]),
+                ),
+                if (j.source == 'interest') ...[
+                  AppSpace.gapXs,
+                  Text(
+                    t('اقتراح من اهتماماتك والكورسات التي أكملتها.', 'Suggested from your interests and the courses you completed.'),
+                    style: AppType.body(context).copyWith(color: b.muted),
+                  ),
+                ],
+                AppSpace.gapLg,
+                _NextBox(journey: j, onOpen: () => onOpenCourse(j.next)),
               ],
-              AppSpace.gapMd,
-              _NextBox(journey: j, onOpen: () => onOpenCourse(j.next)),
-            ],
-          ),
+            );
+          }),
         ),
-        AppSpace.gapLg,
-        Text(t('المسار كاملاً', 'The whole path'), style: AppType.section(context)),
-        AppSpace.gapSm,
+        Padding(
+          padding: AppSpace.sectionHead,
+          child: Semantics(header: true, child: Text(t('المسار كاملاً', 'The whole path'), style: AppType.section(context))),
+        ),
         RoadmapPathView(
           stops: j.steps.isEmpty ? [RoadmapStop(j.next, RoadmapStopRole.here)] : journeyStops(j),
           hereLabel: t('خطوتك التالية', 'Your next step'),
@@ -237,9 +254,11 @@ class _NextBox extends StatelessWidget {
     final text = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w500, c: c.textMedium)),
-        Text(co.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w600, c: c.textDark, h: 1.3)),
-        Text(meta, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w400, c: c.textMedium)),
+        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w500)),
+        const SizedBox(height: AppSpace.xxs / 2),
+        Text(co.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+        const SizedBox(height: AppSpace.xxs / 2),
+        Text(meta, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
       ],
     );
     final button = AppButton.primary(
@@ -248,9 +267,14 @@ class _NextBox extends StatelessWidget {
       trailingIcon: Icons.arrow_forward_rounded,
       onPressed: onOpen,
     );
+    // the next step on paper inside the block: the one card that holds the page's primary action
     return Container(
-      padding: const EdgeInsets.all(AppSpace.sm),
-      decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.06), border: Border.all(color: c.primary.withValues(alpha: 0.12)), borderRadius: BorderRadius.circular(AppRadius.chip)),
+      padding: const EdgeInsets.all(AppSpace.md),
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
       child: LayoutBuilder(builder: (context, box) {
         // phone: the button under the text, full width; wider: beside it
         if (box.maxWidth < 420) {
@@ -262,20 +286,41 @@ class _NextBox extends StatelessWidget {
   }
 }
 
-/// The path as one segment per course (done · here · next); without steps (an older server) a plain bar.
+/// The path as one segment per course: done in emerald, the current one in ink (it fills once, AppFill), the rest
+/// on the [rest] track; without steps (an older server) a plain bar.
 class JourneyTrack extends StatelessWidget {
-  const JourneyTrack({super.key, required this.journey, this.height = 6});
+  const JourneyTrack({super.key, required this.journey, this.height = 6, this.rest});
 
   final Journey journey;
   final double height;
 
+  /// The colour of the steps ahead (the warm hairline by default; a block passes a tint of its ink).
+  final Color? rest;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final ink = appInk(context, c.primary);
+    final done = c.primary;
+    final track = rest ?? c.divider;
     final steps = journey.steps;
+    final radius = BorderRadius.circular(height);
+    Widget bar(Color color, double fill) => SizedBox(
+      height: height,
+      child: DecoratedBox(
+        decoration: BoxDecoration(color: track, borderRadius: radius),
+        child: AppFill(
+          value: fill,
+          builder: (context, v) => FractionallySizedBox(
+            alignment: AlignmentDirectional.centerStart,
+            widthFactor: v.clamp(0.0, 1.0),
+            heightFactor: 1,
+            child: DecoratedBox(decoration: BoxDecoration(color: color, borderRadius: radius)),
+          ),
+        ),
+      ),
+    );
     if (steps.isEmpty || steps.length > 12) {
-      return AppProgressBar(value: journey.fraction * 100, height: height, color: ink);
+      return ExcludeSemantics(child: bar(done, journey.fraction.clamp(0.0, 1.0)));
     }
     return ExcludeSemantics(
       child: Row(
@@ -283,17 +328,11 @@ class JourneyTrack extends StatelessWidget {
           for (var i = 0; i < steps.length; i++) ...[
             if (i > 0) const SizedBox(width: AppSpace.xxs),
             Expanded(
-              child: Container(
-                height: height,
-                decoration: BoxDecoration(
-                  color: steps[i].done
-                      ? ink
-                      : steps[i].current
-                          ? ink.withValues(alpha: 0.4)
-                          : c.divider,
-                  borderRadius: BorderRadius.circular(height),
-                ),
-              ),
+              child: steps[i].done
+                  ? bar(done, 1)
+                  : steps[i].current
+                      ? bar(c.textDark, (steps[i].progress / 100).clamp(0.15, 1.0))
+                      : bar(track, 0),
             ),
           ],
         ],

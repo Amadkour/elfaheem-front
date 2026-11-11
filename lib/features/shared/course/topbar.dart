@@ -1,11 +1,11 @@
-import 'dart:ui';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../design/app_back_button.dart';
+import '../../../design/app_tokens.dart' show AppIconSize, AppSpace;
+import '../../../design/chrome_button.dart' show ChromePlate;
 
 class CourseDetailsTopBar extends StatelessWidget {
   const CourseDetailsTopBar({
@@ -64,11 +64,11 @@ class CourseDetailsTopBar extends StatelessWidget {
         ...[
           if(onBack!=null)
             AppBackButton(onHero: true, onPressed: onBack),
-          Spacer(),
+          const Spacer(),
 
         ],
         for (var i = 0; i < buttons.length; i++) ...[
-          if (i > 0) const SizedBox(width: 8),
+          if (i > 0) const SizedBox(width: AppSpace.xxs),
           buttons[i],
         ],
 
@@ -77,8 +77,11 @@ class CourseDetailsTopBar extends StatelessWidget {
   }
 }
 
+/// One chrome button over a cover: the kit's glass plate (ChromePlate, onHero) — a 40 px plate in a 48 px target
+/// with the press depth, the icon in the on-hero ink unless [iconColor] is given.
 class GlassBtn extends StatelessWidget {
   const GlassBtn({
+    super.key,
     required this.icon,
     required this.onTap,
     this.iconColor,
@@ -91,29 +94,15 @@ class GlassBtn extends StatelessWidget {
   final String? tooltip;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.all(5.0),
-    child: Tooltip(
-      message: tooltip ?? '',
-      child: ClipOval(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Material(
-            color: context.colors.primary.withValues(alpha: 0.32),
-            child: InkWell(
-              onTap: onTap,
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: context.colors.heroGlassBorder, width: 1.7),
-                ),
-                child: Icon(icon, size: 24, color: iconColor ?? context.colors.onHero),
-              ),
-            ),
-          ),
-        ),
+  Widget build(BuildContext context) => Tooltip(
+    message: tooltip ?? '',
+    child: Semantics(
+      button: true,
+      label: tooltip,
+      child: ChromePlate(
+        onHero: true,
+        onTap: onTap,
+        child: Icon(icon, size: AppIconSize.md, color: iconColor ?? context.colors.onHero),
       ),
     ),
   );
