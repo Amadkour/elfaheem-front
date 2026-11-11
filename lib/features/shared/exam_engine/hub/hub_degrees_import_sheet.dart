@@ -176,7 +176,7 @@ class _HubDegreesImportSheetState extends State<HubDegreesImportSheet> {
   Widget build(BuildContext context) {
     final p = _preview;
     return AppSheetContent(title: t('استيراد الدرجات من Excel', 'Import degrees from Excel'), children: [
-      Text(widget.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, c: context.colors.textMedium)),
+      Text(widget.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.label(context)),
       AppSpace.gapMd,
       if (_error != null) ...[
         AppBanner(icon: Icons.error_outline_rounded, color: context.colors.danger, text: _error!),
@@ -214,14 +214,14 @@ class _StepLine extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(
-          width: 26,
-          height: 26,
+          width: AppIconSize.lg,
+          height: AppIconSize.lg,
           alignment: Alignment.center,
           decoration: BoxDecoration(color: c.primaryTint, shape: BoxShape.circle),
-          child: Text('$n', style: appText(12.5, w: FontWeight.w700, c: c.primary)),
+          child: Text('$n', style: AppType.meta(context).copyWith(color: appInk(context, c.primary), fontWeight: FontWeight.w600)),
         ),
         AppSpace.gapSm,
-        Expanded(child: Padding(padding: const EdgeInsets.only(top: 3), child: Text(text, style: appText(13.5, c: c.textDark).copyWith(height: 1.45)))),
+        Expanded(child: Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text(text, style: AppType.body(context).copyWith(color: c.textDark, height: 1.45)))),
       ]),
     );
   }
@@ -267,13 +267,12 @@ class _CountTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.sm),
       decoration: BoxDecoration(color: color.withValues(alpha: .10), borderRadius: AppRadius.chipAll),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-        Text('$value', style: appText(20, w: FontWeight.w700, c: c.textDark)),
-        Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
+        Text('$value', style: AppType.figure(context)),
+        Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
       ]),
     );
   }
@@ -300,17 +299,17 @@ class _IssueGroupState extends State<_IssueGroup> {
     final c = context.colors;
     final shown = _all ? widget.items : widget.items.take(_few).toList();
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-      Text(widget.title, style: appText(13, w: FontWeight.w700, c: c.textDark)),
+      Text(widget.title, style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
       const SizedBox(height: AppSpace.xxs),
       for (final x in shown)
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 3),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(t('صف ${x.row}', 'Row ${x.row}'), style: appText(12, w: FontWeight.w600, c: widget.color)),
+            Text(t('صف ${x.row}', 'Row ${x.row}'), style: AppType.meta(context).copyWith(color: widget.color, fontWeight: FontWeight.w600)),
             AppSpace.gapXs,
             Expanded(
               child: Text(x.value.isEmpty ? widget.reason(x) : '${x.value} · ${widget.reason(x)}',
-                  maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium)),
+                  maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
             ),
           ]),
         ),
@@ -353,7 +352,7 @@ class HubDegreesPreviewBody extends StatelessWidget {
   Widget _columnPicker(String label, IconData icon, String? value, ValueChanged<String> onChanged) => AppDropdown<String>(
         value: value,
         enabled: !reading && !saving,
-        decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon, size: 20)),
+        decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon, size: AppIconSize.md)),
         items: [for (final col in preview.columns) DropdownMenuItem(value: col, child: Text(col, overflow: TextOverflow.ellipsis))],
         onChanged: (v) {
           if (v != null && v != value) onChanged(v);
@@ -369,13 +368,13 @@ class HubDegreesPreviewBody extends StatelessWidget {
     final degree = _columnPicker(t('عمود الدرجة', 'Degree column'), Icons.numbers_rounded, p.degreeColumn, onDegreeColumn);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       Row(children: [
-        Icon(Icons.table_chart_outlined, size: 20, color: c.primary),
+        Icon(Icons.table_chart_outlined, size: AppIconSize.md, color: appInk(context, c.primary)),
         AppSpace.gapXs,
-        Expanded(child: Text(fileName, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w600, c: c.textDark))),
+        Expanded(child: Text(fileName, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context))),
         AppButton.ghost(key: const ValueKey('exam.hub.degrees.change'), label: t('تغيير', 'Change'), size: AppButtonSize.sm, onPressed: reading || saving ? null : onChangeFile),
       ]),
       AppSpace.gapSm,
-      Text(degreesHeadline(p), style: appText(15, w: FontWeight.w700, c: c.textDark)),
+      Text(degreesHeadline(p), style: AppType.section(context)),
       AppSpace.gapSm,
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Expanded(child: _CountTile(value: p.matched, label: t('مطابق', 'Matched'), color: c.success)),
@@ -396,7 +395,7 @@ class HubDegreesPreviewBody extends StatelessWidget {
         AppSpace.gapSm,
       ],
       Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: maxController, label: t('الدرجة العظمى', 'Full mark'), hint: t('مثال: 20', 'For example: 20'), min: 0, decimals: 2, onChanged: (_) => onMaxChanged())),
-      Text(t('الدرجات الأعلى منها لن تُحفظ.', 'Degrees above it are not saved.'), style: appText(12, c: c.textLight)),
+      Text(t('الدرجات الأعلى منها لن تُحفظ.', 'Degrees above it are not saved.'), style: AppType.meta(context).copyWith(color: c.textLight)),
       if (p.unmatched.isNotEmpty) ...[
         AppSpace.gapMd,
         _IssueGroup(

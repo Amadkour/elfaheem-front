@@ -326,10 +326,10 @@ class IdentifierPlanBody extends StatelessWidget {
     final off = [for (final o in options) if (!selected.contains(o.choice.id)) o];
     bool fillable(IdentifierOption o) => o.choice.source == 'datalab' && o.choice.key != '__identifier';
     final list = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(t('ماذا يُطبع على ورقة كل طالب؟', 'What is printed on each student\'s copy?'), style: appText(16, w: FontWeight.w800, c: c.textDark)),
+      Text(t('ماذا يُطبع على ورقة كل طالب؟', 'What is printed on each student\'s copy?'), style: AppType.section(context)),
       const SizedBox(height: AppSpace.xxs),
       Text(t('اختر حتى أربعة. واحد منها هو الذي نطابق به الورقة الممسوحة مع صاحبها، لذا يجب أن يختلف من طالب إلى آخر.',
-          'Pick up to four. One of them is how a scanned sheet is matched to its owner, so it must differ from student to student.'), style: appText(12.5, c: c.textMedium, h: 1.45)),
+          'Pick up to four. One of them is how a scanned sheet is matched to its owner, so it must differ from student to student.'), style: AppType.meta(context).copyWith(height: 1.45)),
       const SizedBox(height: AppSpace.sm),
       for (final o in on)
         Padding(
@@ -348,7 +348,7 @@ class IdentifierPlanBody extends StatelessWidget {
         ),
       if (off.isNotEmpty) ...[
         const SizedBox(height: AppSpace.xs),
-        Text(t('أضف إلى الورقة', 'Add to the paper'), style: appText(12.5, w: FontWeight.w700, c: c.textMedium)),
+        Text(t('أضف إلى الورقة', 'Add to the paper'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600)),
         const SizedBox(height: AppSpace.xs),
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final o in off) AppChoiceChip(label: _chipLabel(o), selected: false, onTap: () => onToggle(o)),
@@ -359,7 +359,7 @@ class IdentifierPlanBody extends StatelessWidget {
         alignment: AlignmentDirectional.centerStart,
         child: AppButton.tonal(key: const ValueKey('ident.new'), label: t('معرّف جديد', 'New identifier'), icon: Icons.add_rounded, onPressed: onNew),
       ),
-      if (saving) Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: Text(t('جارٍ الحفظ ...', 'Saving ...'), style: appText(12, c: c.textLight))),
+      if (saving) Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: Text(t('جارٍ الحفظ ...', 'Saving ...'), style: AppType.meta(context).copyWith(color: c.textLight))),
     ]);
     final preview = IdentifierPaperPreview(lines: plannedPaperLines(printed, coverage));
     return LayoutBuilder(builder: (context, box) {
@@ -401,22 +401,22 @@ class IdentifierSelectedTile extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpace.sm),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(matching ? Icons.verified_rounded : Icons.badge_outlined, size: 22, color: matching ? c.primary : c.textMedium),
+          Icon(matching ? Icons.verified_rounded : Icons.badge_outlined, size: AppIconSize.lg, color: matching ? c.primary : c.textMedium),
           const SizedBox(width: AppSpace.xs),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(option.label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark)),
+              Text(option.label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
               const SizedBox(height: 2),
               Text(
                   matching
                       ? t('نطابق به الورقة مع صاحبها', 'Sheets are matched on this')
                       : (recommended ? t('الأنسب للمطابقة', 'Best for matching') : t('يُطبع فقط', 'Printed only')),
-                  style: appText(12, c: matching ? c.primary : c.textLight)),
+                  style: AppType.meta(context).copyWith(color: matching ? appInk(context, c.primary) : c.textLight)),
               if (!matching)
                 InkWell(
                   key: ValueKey('ident.match.${option.choice.id}'),
                   onTap: onMatch,
-                  child: Padding(padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs), child: Text(t('استخدمه للمطابقة', 'Match on this'), style: appText(12.5, w: FontWeight.w700, c: c.primary))),
+                  child: Padding(padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs), child: Text(t('استخدمه للمطابقة', 'Match on this'), style: AppType.meta(context).copyWith(color: appInk(context, c.primary), fontWeight: FontWeight.w600))),
                 ),
             ]),
           ),
@@ -425,17 +425,17 @@ class IdentifierSelectedTile extends StatelessWidget {
         if (cov != null && !isName) ...[
           const SizedBox(height: AppSpace.xs),
           if (cov.unreadable)
-            Text(t('لا نستطيع عرض التغطية بصلاحياتك الحالية.', 'Coverage is not available with your permissions.'), style: appText(12, c: c.textLight))
+            Text(t('لا نستطيع عرض التغطية بصلاحياتك الحالية.', 'Coverage is not available with your permissions.'), style: AppType.meta(context).copyWith(color: c.textLight))
           else ...[
             Row(children: [
               Expanded(child: AppProgressBar(value: cov.filled.toDouble(), max: cov.total == 0 ? 1 : cov.total.toDouble(), color: tone, height: 6)),
               const SizedBox(width: AppSpace.xs),
-              Flexible(child: Text(coverageText(cov.filled, cov.total), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w700, c: tone))),
+              Flexible(child: Text(coverageText(cov.filled, cov.total), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: tone, fontWeight: FontWeight.w600))),
             ]),
             if (missing > 0 && cov.missingNames.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: AppSpace.xxs),
-                child: Text(t('ينقص: ${namesText(cov.missingNames)}', 'Missing: ${namesText(cov.missingNames)}'), style: appText(12, c: c.textMedium, h: 1.4)),
+                child: Text(t('ينقص: ${namesText(cov.missingNames)}', 'Missing: ${namesText(cov.missingNames)}'), style: AppType.meta(context).copyWith(height: 1.4)),
               ),
           ],
         ],
@@ -464,8 +464,8 @@ class IdentifierPaperPreview extends StatelessWidget {
     Widget cell(String label, String value) => Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 6),
           child: Text.rich(TextSpan(children: [
-            TextSpan(text: '$label: ', style: appText(11, c: PaperInk.muted)),
-            TextSpan(text: value.isEmpty ? '________' : value, style: appText(11, w: FontWeight.w700, c: PaperInk.text)),
+            TextSpan(text: '$label: ', style: AppType.meta(context).copyWith(color: PaperInk.muted)),
+            TextSpan(text: value.isEmpty ? '________' : value, style: AppType.meta(context).copyWith(color: PaperInk.text, fontWeight: FontWeight.w600)),
           ]), maxLines: 1, overflow: TextOverflow.ellipsis),
         );
     final cells = <Widget>[cell(t('اسم الطالب', 'Student name'), name ?? t('أحمد محمود', 'Ahmed Mahmoud')), for (final (l, v) in lines) cell(l, v)];
@@ -475,7 +475,7 @@ class IdentifierPaperPreview extends StatelessWidget {
     }
     Widget bar(double end, double h) => Container(height: h, margin: EdgeInsetsDirectional.only(end: end), decoration: BoxDecoration(color: PaperInk.placeholder, borderRadius: BorderRadius.circular(3)));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(t('كما سيظهر على الورقة', 'How it will look on the paper'), style: appText(12.5, w: FontWeight.w700, c: c.textMedium)),
+      Text(t('كما سيظهر على الورقة', 'How it will look on the paper'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600)),
       const SizedBox(height: AppSpace.xs),
       Container(
         padding: const EdgeInsets.all(AppSpace.sm),
@@ -491,7 +491,7 @@ class IdentifierPaperPreview extends StatelessWidget {
         ]),
       ),
       const SizedBox(height: AppSpace.xxs),
-      Text(t('الرقم القومي والهاتف والبريد يظهر منها آخر 4 خانات فقط.', 'National ID, phone and email show their last 4 characters only.'), style: appText(11, c: c.textLight)),
+      Text(t('الرقم القومي والهاتف والبريد يظهر منها آخر 4 خانات فقط.', 'National ID, phone and email show their last 4 characters only.'), style: AppType.meta(context).copyWith(color: c.textLight)),
     ]);
   }
 }
@@ -535,9 +535,9 @@ class _NewIdentifierFormState extends State<NewIdentifierForm> {
               const SizedBox(width: AppSpace.xs),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(title, style: appText(14, w: FontWeight.w700, c: c.textDark)),
+                  Text(title, style: AppType.bodyStrong(context)),
                   const SizedBox(height: 2),
-                  Text(body, style: appText(12.5, c: c.textMedium, h: 1.4)),
+                  Text(body, style: AppType.meta(context).copyWith(height: 1.4)),
                 ]),
               ),
             ]),
@@ -576,8 +576,8 @@ class RosterGrid extends StatelessWidget {
         itemCount: rows.length,
         itemExtent: 56,
         itemBuilder: (_, i) => Row(children: [
-          SizedBox(width: 30, child: Text('${i + 1}', style: appText(12, c: c.textLight))),
-          Expanded(flex: 3, child: Text(rows[i].name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w600, c: c.textDark))),
+          SizedBox(width: 30, child: Text('${i + 1}', style: AppType.meta(context).copyWith(color: c.textLight))),
+          Expanded(flex: 3, child: Text(rows[i].name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context))),
           const SizedBox(width: AppSpace.xs),
           Expanded(
             flex: 2,
@@ -585,7 +585,7 @@ class RosterGrid extends StatelessWidget {
               key: ValueKey('roster.$i'),
               controller: controllers[i],
               textInputAction: i == rows.length - 1 ? TextInputAction.done : TextInputAction.next,
-              style: appText(13.5, c: c.textDark),
+              style: AppType.body(context).copyWith(color: c.textDark),
               decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xs)),
             ),
           ),
@@ -656,8 +656,8 @@ class ImportPreviewCard extends StatelessWidget {
     final c = context.colors;
     Widget stat(String label, int n, Color tone) => Expanded(
           child: Column(children: [
-            Text('$n', style: appText(20, w: FontWeight.w800, c: tone)),
-            Text(label, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textMedium)),
+            Text('$n', style: AppType.figure(context).copyWith(color: tone)),
+            Text(label, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
           ]),
         );
     Widget issues(String title, List<IdImportIssue> list) {
@@ -666,9 +666,9 @@ class ImportPreviewCard extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.only(top: AppSpace.xs),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(title, style: appText(12.5, w: FontWeight.w700, c: c.textDark)),
-          Text(shown, style: appText(12, c: c.textMedium, h: 1.4)),
-          if (list.length > 5) Text(t('و${list.length - 5} غيرها', 'and ${list.length - 5} more'), style: appText(12, c: c.textLight)),
+          Text(title, style: AppType.meta(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
+          Text(shown, style: AppType.meta(context).copyWith(height: 1.4)),
+          if (list.length > 5) Text(t('و${list.length - 5} غيرها', 'and ${list.length - 5} more'), style: AppType.meta(context).copyWith(color: c.textLight)),
         ]),
       );
     }
@@ -740,11 +740,10 @@ class _ImportSheetState extends State<_ImportSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final p = _preview;
     return AppSheetContent(title: t('استيراد من Excel', 'Import from Excel'), children: [
       Text(t('1. نزّل القالب (فيه أسماء طلاب المقرر). 2. اكتب القيم في العمود الأخير. 3. ارفع الملف وراجع النتيجة قبل الحفظ.',
-          '1. Download the template (it holds the course\'s students). 2. Type the values in the last column. 3. Upload it and check the result before saving.'), style: appText(13, c: c.textMedium, h: 1.5)),
+          '1. Download the template (it holds the course\'s students). 2. Type the values in the last column. 3. Upload it and check the result before saving.'), style: AppType.label(context).copyWith(height: 1.5)),
       const SizedBox(height: AppSpace.sm),
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         AppButton.secondary(label: t('تنزيل القالب', 'Download the template'), icon: Icons.download_rounded, busy: _busy == 'template', onPressed: _busy != null ? null : _template),

@@ -450,7 +450,7 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
         n: 1,
         title: t('راجع الورقة', 'Check the paper'),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(t('الاستوديو يغيّر شكل الورقة فقط. لتغيير الأسئلة افتح محرر الأسئلة.', 'Studio changes how the paper looks. To change the questions, open the questions editor.'), style: appText(12.5, c: c.textMedium, h: 1.4)),
+          Text(t('الاستوديو يغيّر شكل الورقة فقط. لتغيير الأسئلة افتح محرر الأسئلة.', 'Studio changes how the paper looks. To change the questions, open the questions editor.'), style: AppType.meta(context).copyWith(height: 1.4)),
           const SizedBox(height: AppSpace.xs),
           Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             if (!AppConfig.disableList.contains('exam.paper_designer')) AppButton.tonal(label: t('تعديل في الاستوديو', 'Edit in Studio'), icon: Icons.brush_rounded, onPressed: _studio),
@@ -466,12 +466,12 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
                 child: Row(children: [
-                  Icon(Icons.badge_outlined, size: 18, color: c.textMedium),
+                  Icon(Icons.badge_outlined, size: AppIconSize.sm, color: c.textMedium),
                   const SizedBox(width: AppSpace.xs),
                   Expanded(
                       child: Text(s.printed.isEmpty ? t('لم تحدد ما يُطبع تحت اسم الطالب', 'Nothing chosen to print under the name') : t('يُطبع: ${s.printed.map((p) => p.label).join('، ')}', 'Printed: ${s.printed.map((p) => p.label).join(', ')}'),
-                          maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textDark))),
-                  Text(t('تغيير', 'Change'), style: appText(13, w: FontWeight.w700, c: c.primary)),
+                          maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: c.textDark))),
+                  Text(t('تغيير', 'Change'), style: AppType.label(context).copyWith(color: appInk(context, c.primary), fontWeight: FontWeight.w600)),
                 ]),
               ),
             ),
@@ -504,7 +504,7 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
           n: 3,
           title: t('أوراق التظليل', 'Bubble answer sheets'),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text(t('يجيب الطلاب عليها، فاطبعها مع ورقة الأسئلة.', 'Students answer on these, so print them with the question paper.'), style: appText(12.5, c: c.textMedium, h: 1.4)),
+            Text(t('يجيب الطلاب عليها، فاطبعها مع ورقة الأسئلة.', 'Students answer on these, so print them with the question paper.'), style: AppType.meta(context).copyWith(height: 1.4)),
             const SizedBox(height: AppSpace.xs),
             Align(alignment: AlignmentDirectional.centerStart, child: AppButton.tonal(label: t('طباعة أوراق التظليل', 'Print bubble sheets'), icon: Icons.grid_on_rounded, onPressed: () => showOmrSheetsSheet(context, examId: _id))),
           ]),
@@ -543,14 +543,11 @@ class _Step extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Row(children: [
-            Container(
-              width: 24, height: 24, alignment: Alignment.center,
-              decoration: BoxDecoration(color: c.primary.withValues(alpha: .12), shape: BoxShape.circle),
-              child: Text('$n', style: appText(12.5, w: FontWeight.w800, c: c.primary)),
-            ),
-            const SizedBox(width: AppSpace.xs),
-            Expanded(child: Text(title, style: appText(15.5, w: FontWeight.w800, c: c.textDark))),
+          // An editorial step numeral in the serif instead of a tinted dot: the steps read like a printed checklist.
+          Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+            Text('$n', style: AppType.headline(context).copyWith(color: appInk(context, c.primary))),
+            const SizedBox(width: AppSpace.sm),
+            Expanded(child: Text(title, style: AppType.section(context))),
           ]),
           const SizedBox(height: AppSpace.sm),
           child,
@@ -607,7 +604,7 @@ class _DeliverPreviewPaneState extends State<DeliverPreviewPane> {
     final pages = w.pages;
     final head = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Row(children: [
-        Expanded(child: Text(t('معاينة الورقة الحقيقية', 'The real paper'), style: appText(16, w: FontWeight.w800, c: c.textDark))),
+        Expanded(child: Text(t('معاينة الورقة الحقيقية', 'The real paper'), style: AppType.section(context))),
         if (pages != null) AppStatusBadge(dense: true, label: countText(pages.length, ar1: 'صفحة', ar2: 'صفحتان', arFew: '{n} صفحات', arMany: '{n} صفحة', en1: '1 page', en: '{n} pages')),
       ]),
       if (w.studentName != null) ...[
@@ -617,15 +614,15 @@ class _DeliverPreviewPaneState extends State<DeliverPreviewPane> {
               key: const ValueKey('deliver.prev'), tooltip: t('الطالب السابق', 'Previous student'), onPressed: w.onPrevStudent, icon: const Icon(Icons.chevron_left_rounded)),
           Expanded(
             child: Column(children: [
-              Text(w.studentName!, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
-              Text(t('نسخة ${w.studentIndex + 1} من ${w.studentCount}', 'Copy ${w.studentIndex + 1} of ${w.studentCount}'), style: appText(11.5, c: c.textLight)),
+              Text(w.studentName!, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: AppType.bodyStrong(context)),
+              Text(t('نسخة ${w.studentIndex + 1} من ${w.studentCount}', 'Copy ${w.studentIndex + 1} of ${w.studentCount}'), style: AppType.meta(context).copyWith(color: c.textLight)),
             ]),
           ),
           IconButton(key: const ValueKey('deliver.next'), tooltip: t('الطالب التالي', 'Next student'), onPressed: w.onNextStudent, icon: const Icon(Icons.chevron_right_rounded)),
         ]),
       ] else ...[
         const SizedBox(height: AppSpace.xxs),
-        Text(w.online ? t('هكذا ستبدو النسخة المطبوعة.', 'How the printed copy will look.') : t('نسخة فارغة، بلا اسم طالب.', 'A blank copy, no student name.'), style: appText(12.5, c: c.textMedium)),
+        Text(w.online ? t('هكذا ستبدو النسخة المطبوعة.', 'How the printed copy will look.') : t('نسخة فارغة، بلا اسم طالب.', 'A blank copy, no student name.'), style: AppType.meta(context)),
       ],
       if (w.versions.length > 1) ...[
         const SizedBox(height: AppSpace.xs),
@@ -635,7 +632,8 @@ class _DeliverPreviewPaneState extends State<DeliverPreviewPane> {
       ],
       const SizedBox(height: AppSpace.sm),
     ]);
-    return LayoutBuilder(builder: (context, box) {
+    // The paper lies on a sky "desk" block: the one memorable surface of this page, everything else is quiet paper cards.
+    return AppBlock(tone: AppBlockTone.sky, padding: const EdgeInsets.all(AppSpace.md), child: LayoutBuilder(builder: (context, box) {
       final body = pages == null
           ? AspectRatio(aspectRatio: 0.72, child: AppSkeletonBox(radius: AppRadius.card, height: double.infinity))
           : pages.isEmpty
@@ -664,10 +662,10 @@ class _DeliverPreviewPaneState extends State<DeliverPreviewPane> {
         AnimatedOpacity(opacity: w.busy ? .45 : 1, duration: AppMotion.of(context).base, child: body),
         if (w.busy && pages != null) ...[
           const SizedBox(height: AppSpace.xxs),
-          Text(t('جارٍ تحديث المعاينة ...', 'Updating the preview ...'), textAlign: TextAlign.center, style: appText(12, c: c.textLight)),
+          Text(t('جارٍ تحديث المعاينة ...', 'Updating the preview ...'), textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: AppBlock.colorsOf(context).faint)),
         ],
       ]);
-    });
+    }));
   }
 }
 
@@ -735,9 +733,9 @@ class DeliverPrintCard extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(top: AppSpace.xs),
           child: Row(children: [
-            Expanded(child: Text(t('عدد النسخ', 'Number of copies'), style: appText(13, c: c.textMedium))),
+            Expanded(child: Text(t('عدد النسخ', 'Number of copies'), style: AppType.label(context))),
             IconButton(onPressed: blank > 1 ? () => onBlank(blank - 1) : null, icon: const Icon(Icons.remove_circle_outline_rounded), tooltip: t('أقل', 'Less')),
-            SizedBox(width: 40, child: Text('$blank', textAlign: TextAlign.center, style: appText(16, w: FontWeight.w800, c: c.textDark))),
+            SizedBox(width: AppIconSize.hero, child: Text('$blank', textAlign: TextAlign.center, style: AppType.figure(context))),
             IconButton(onPressed: blank < 500 ? () => onBlank(blank + 1) : null, icon: const Icon(Icons.add_circle_outline_rounded), tooltip: t('أكثر', 'More')),
           ]),
         ),
@@ -749,7 +747,7 @@ class DeliverPrintCard extends StatelessWidget {
       if (word)
         Padding(
           padding: const EdgeInsets.only(top: AppSpace.xxs),
-          child: Text(t('Word يرتّب الصفحات بنفسه: راجع صفحات نسخة واحدة قبل طباعة الكل.', 'Word lays out the pages itself: check one copy before printing them all.'), style: appText(12, c: c.textLight, h: 1.4)),
+          child: Text(t('Word يرتّب الصفحات بنفسه: راجع صفحات نسخة واحدة قبل طباعة الكل.', 'Word lays out the pages itself: check one copy before printing them all.'), style: AppType.meta(context).copyWith(color: c.textLight, height: 1.4)),
         ),
       const SizedBox(height: AppSpace.sm),
       AppPrimaryButton(key: const ValueKey('deliver.print'), label: label, icon: Icons.print_rounded, busy: busy, onPressed: onPrint),
@@ -791,13 +789,13 @@ class DeliverEmailCard extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
             child: Row(children: [
-              Icon(icon, color: tap == null ? c.textLight : c.primary, size: 22),
+              Icon(icon, color: tap == null ? c.textLight : appInk(context, c.primary), size: AppIconSize.lg),
               const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(title, style: appText(14, w: FontWeight.w700, c: tap == null ? c.textLight : c.textDark)),
-                  const SizedBox(height: 2),
-                  Text(body, style: appText(12.5, c: c.textMedium, h: 1.4)),
+                  Text(title, style: AppType.bodyStrong(context).copyWith(color: tap == null ? c.textLight : c.textDark)),
+                  const SizedBox(height: AppSpace.xxs),
+                  Text(body, style: AppType.meta(context).copyWith(height: 1.4)),
                 ]),
               ),
               Icon(Icons.chevron_right_rounded, color: c.textLight),
@@ -824,7 +822,7 @@ class DeliverEmailCard extends StatelessWidget {
           const ValueKey('deliver.email.whole')),
       if (deliveries.isNotEmpty) ...[
         const SizedBox(height: AppSpace.xs),
-        Text(t('سجل الإرسال', 'Sent so far'), style: appText(13, w: FontWeight.w700, c: c.textMedium)),
+        Text(t('سجل الإرسال', 'Sent so far'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600)),
         for (final d in deliveries.take(10)) DeliveryRow(delivery: d),
       ],
     ]);
@@ -845,13 +843,13 @@ class DeliveryRow extends StatelessWidget {
       padding: const EdgeInsets.only(top: AppSpace.xs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Expanded(child: Text(d.summary, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w600, c: c.textDark))),
+          Expanded(child: Text(d.summary, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600))),
           const SizedBox(width: AppSpace.xs),
           AppStatusBadge(label: d.statusText, tone: tone, dense: true),
         ]),
-        if (when.isNotEmpty || d.createdBy.isNotEmpty) Text([if (when.isNotEmpty) when, if (d.createdBy.isNotEmpty) d.createdBy].join(' · '), style: appText(11.5, c: c.textLight)),
-        if (d.failedText != null) Text(d.failedText!, key: const ValueKey('deliver.row.failed'), style: appText(11.5, c: appInk(context, c.danger))),
-        if (d.noEmail.isNotEmpty) Text(t('بلا بريد: ${namesText([for (final x in d.noEmail) x.name])}', 'No email: ${namesText([for (final x in d.noEmail) x.name])}'), style: appText(11.5, c: c.warning)),
+        if (when.isNotEmpty || d.createdBy.isNotEmpty) Text([if (when.isNotEmpty) when, if (d.createdBy.isNotEmpty) d.createdBy].join(' · '), style: AppType.meta(context).copyWith(color: c.textLight)),
+        if (d.failedText != null) Text(d.failedText!, key: const ValueKey('deliver.row.failed'), style: AppType.meta(context).copyWith(color: appInk(context, c.danger))),
+        if (d.noEmail.isNotEmpty) Text(t('بلا بريد: ${namesText([for (final x in d.noEmail) x.name])}', 'No email: ${namesText([for (final x in d.noEmail) x.name])}'), style: AppType.meta(context).copyWith(color: c.warning)),
       ]),
     );
   }
@@ -872,7 +870,6 @@ class BuildProgressDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     // Back must not close it: the build would carry on with no Cancel, and the `finally` that closes it would pop the page instead
     return PopScope(
       canPop: false,
@@ -882,11 +879,11 @@ class BuildProgressDialog extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(AppSpace.lg),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text(progress.title, style: appText(15, w: FontWeight.w800, c: c.textDark)),
+            Text(progress.title, style: AppType.section(context)),
             const SizedBox(height: AppSpace.sm),
-            AppProgressBar(value: progress.total <= 0 ? null : progress.value * 100, height: 8),
+            AppProgressBar(value: progress.total <= 0 ? null : progress.value * 100, height: AppSpace.xs),
             const SizedBox(height: AppSpace.xs),
-            Text(t('يعمل على هذا الجهاز، لا تغلق هذه الصفحة.', 'This runs on this device. Keep this page open.'), style: appText(12.5, c: c.textMedium)),
+            Text(t('يعمل على هذا الجهاز، لا تغلق هذه الصفحة.', 'This runs on this device. Keep this page open.'), style: AppType.meta(context)),
             const SizedBox(height: AppSpace.xs),
             Align(alignment: AlignmentDirectional.centerEnd, child: TextButton(key: const ValueKey('deliver.cancel'), onPressed: onCancel, child: Text(t('إلغاء', 'Cancel')))),
           ]),
@@ -939,7 +936,7 @@ class _EmailComposeSheetState extends State<EmailComposeSheet> {
     return AppSheetContent(title: whole ? t('إرسال الاختبار كاملًا', 'Send the whole exam') : t('إرسال نسخة لكل طالب', 'Send each student their copy'), children: [
       if (!whole)
         Text(t('تُنشأ نسخة كل طالب (${widget.count}) على هذا الجهاز ثم تُرفع وتُرسل. لا يبقى الملف على الخادم بعد الإرسال.',
-            'Each student\'s copy (${widget.count}) is built on this device, uploaded and sent. The file is not kept on the server afterwards.'), style: appText(13, c: c.textMedium, h: 1.5)),
+            'Each student\'s copy (${widget.count}) is built on this device, uploaded and sent. The file is not kept on the server afterwards.'), style: AppType.label(context).copyWith(height: 1.5)),
       if (!whole && widget.coverageKnown && widget.noEmailNames.isNotEmpty) ...[
         const SizedBox(height: AppSpace.xs),
         AppBanner(icon: Icons.mail_outline_rounded, color: c.warning, text: t('لن يصل إلى من لا بريد له: ${namesText(widget.noEmailNames)}', 'Will not reach those without an email: ${namesText(widget.noEmailNames)}')),

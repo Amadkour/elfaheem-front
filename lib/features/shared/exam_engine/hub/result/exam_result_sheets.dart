@@ -27,8 +27,8 @@ class _Count extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
       decoration: BoxDecoration(color: (color ?? c.textMedium).withValues(alpha: .10), borderRadius: BorderRadius.circular(AppRadius.chip)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-        Text('$value', style: appText(18, w: FontWeight.w800, c: c.textDark)),
-        Text(label, style: appText(12, c: c.textMedium)),
+        Text('$value', style: AppType.section(context)),
+        Text(label, style: AppType.meta(context)),
       ]),
     );
   }
@@ -44,7 +44,7 @@ class ResultLabDiff extends StatelessWidget {
     final c = context.colors;
     final p = preview;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-      Text(t('العمود: «${p.label}»${p.max == null ? '' : ' من ${omrLtr(_v(p.max))}'}', 'Column: "${p.label}"${p.max == null ? '' : ' out of ${_v(p.max)}'}'), style: appText(14, w: FontWeight.w700, c: c.textDark)),
+      Text(t('العمود: «${p.label}»${p.max == null ? '' : ' من ${omrLtr(_v(p.max))}'}', 'Column: "${p.label}"${p.max == null ? '' : ' out of ${_v(p.max)}'}'), style: AppType.bodyStrong(context)),
       const SizedBox(height: AppSpace.xs),
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         _Count(t('ستتغير', 'Will change'), p.changes.length, color: c.primary),
@@ -82,11 +82,11 @@ class ResultLabDiff extends StatelessWidget {
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
                 child: Row(children: [
-                  Expanded(child: Text(x.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, c: c.textDark))),
+                  Expanded(child: Text(x.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.body(context).copyWith(color: c.textDark))),
                   const SizedBox(width: AppSpace.xs),
-                  Text(omrLtr(_v(x.oldValue)), style: appText(13, c: c.textMedium)),
+                  Text(omrLtr(_v(x.oldValue)), style: AppType.label(context)),
                   Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs), child: Icon(Icons.arrow_forward_rounded, size: 14, color: c.textLight)),
-                  Text(omrLtr(_v(x.newValue)), style: appText(13.5, w: FontWeight.w800, c: c.textDark)),
+                  Text(omrLtr(_v(x.newValue)), style: AppType.bodyStrong(context)),
                 ]),
               );
             },
@@ -96,7 +96,7 @@ class ResultLabDiff extends StatelessWidget {
       if (p.unmatched.isNotEmpty) ...[
         const SizedBox(height: AppSpace.sm),
         Text(t('ليسوا في هذا المقرر ولن تُكتب درجاتهم: ${p.unmatched.take(6).join('، ')}${p.unmatched.length > 6 ? '…' : ''}', 'Not in this course, so not written: ${p.unmatched.take(6).join(', ')}${p.unmatched.length > 6 ? '…' : ''}'),
-            style: appText(12.5, c: c.textMedium, h: 1.45)),
+            style: AppType.meta(context).copyWith(height: 1.45)),
       ],
     ]);
   }
@@ -196,7 +196,7 @@ class _DataLabSheetState extends State<_DataLabSheet> {
     final p = _preview;
     return AppSheetContent(title: t('الكتابة في Data Lab', 'Write to the Data Lab'), children: [
       if (p == null) ...[
-        Text(t('أين تُكتب الدرجات؟', 'Where should the marks go?'), style: appText(14, w: FontWeight.w700, c: c.textDark)),
+        Text(t('أين تُكتب الدرجات؟', 'Where should the marks go?'), style: AppType.bodyStrong(context)),
         const SizedBox(height: AppSpace.xs),
         Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
           for (final x in widget.columns)

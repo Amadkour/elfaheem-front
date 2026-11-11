@@ -53,6 +53,10 @@ String gradeStatusText(String status) => switch (status) {
 /// The row's headline: who, and what the paper says against the book.
 String gradeRowName(MarkRow r) => (r.studentName ?? '').isNotEmpty ? r.studentName! : t('طالب غير معروف', 'Unknown student');
 
+/// A mark's crop beside its value, and the tallest the student picker grows in its sheet.
+const _cropWidth = 96.0;
+const _pickerHeight = 320.0;
+
 String _signed(double? v) => v == null ? '' : '${v > 0 ? '+' : ''}${markNumberText(v)}';
 
 class GradeRowTile extends StatelessWidget {
@@ -66,7 +70,8 @@ class GradeRowTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final tone = switch (list) { MarkList.match => c.success, MarkList.mismatch => c.warning, MarkList.unreadable => c.danger };
+    final iconTone = switch (list) { MarkList.match => AppTone.success, MarkList.mismatch => AppTone.warning, MarkList.unreadable => AppTone.danger };
+    final tone = appInk(context, appToneColor(context, iconTone));
     final status = gradeStatusText(row.status);
     final problems = row.issues.where(gradeIssueIsProblem).toList();
     final String line = switch (list) {
@@ -76,32 +81,40 @@ class GradeRowTile extends StatelessWidget {
           : '${t('الورقة', 'Paper')} ${markNumberText(row.used)}${row.scaled != null && row.scaled != row.used ? ' → ${markNumberText(row.scaled)}' : ''} ${t('مقابل', 'vs')} ${t('المسجّل', 'recorded')} ${markNumberText(row.recorded)} · ${t('الفرق', 'diff')} ${_signed(row.diff ?? (row.proposed != null ? row.proposed! - row.recorded! : null))}',
       MarkList.unreadable => problems.isEmpty ? t('تحتاج مراجعة', 'Needs a look') : problems.map((i) => gradeRowIssueText(row, i)).join(' · '),
     };
+    // the open row (keyboard / wide) wears the table's "current" look: the primary tint and a start-side bar
     return AppCard(
       onTap: onTap,
-      padding: const EdgeInsets.all(AppSpace.sm),
-      child: Container(
-        decoration: selected ? BoxDecoration(border: BorderDirectional(start: BorderSide(color: c.primary, width: 3))) : null,
-        padding: selected ? const EdgeInsetsDirectional.only(start: AppSpace.xs) : null,
-        child: Row(children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(color: tone.withValues(alpha: .14), shape: BoxShape.circle),
-            child: Icon(switch (list) { MarkList.match => Icons.check_rounded, MarkList.mismatch => Icons.compare_arrows_rounded, MarkList.unreadable => Icons.warning_amber_rounded }, color: tone, size: 20),
-          ),
-          const SizedBox(width: AppSpace.sm),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(gradeRowName(row), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w700, c: c.textDark)),
-              Text(line, maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium, h: 1.35)),
-            ]),
-          ),
-          if (status.isNotEmpty) ...[
-            const SizedBox(width: AppSpace.xs),
-            AppTag(status, row.status == 'applied' ? c.success : c.textMedium),
-          ],
-          Icon(Icons.chevron_right_rounded, color: c.textLight),
-        ]),
+      padding: EdgeInsets.zero,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: selected ? c.primaryTint : null,
+          border: selected ? BorderDirectional(start: BorderSide(color: c.primary, width: AppBorder.focus)) : null,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpace.sm),
+          child: Row(children: [
+            Container(
+              width: AppIconSize.hero,
+              height: AppIconSize.hero,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: tone.withValues(alpha: .12), borderRadius: AppRadius.chipAll),
+              child: Icon(switch (list) { MarkList.match => Icons.check_rounded, MarkList.mismatch => Icons.compare_arrows_rounded, MarkList.unreadable => Icons.warning_amber_rounded }, color: tone, size: AppIconSize.md),
+            ),
+            AppSpace.gapSm,
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(gradeRowName(row), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(height: AppSpace.xxs),
+                Text(line, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(height: 1.35)),
+              ]),
+            ),
+            if (status.isNotEmpty) ...[
+              AppSpace.gapXs,
+              AppStatusBadge(label: status, tone: row.status == 'applied' ? AppTone.success : AppTone.neutral, dense: true),
+            ],
+            Icon(Icons.chevron_right_rounded, size: AppIconSize.lg, color: c.textLight),
+          ]),
+        ),
       ),
     );
   }
@@ -135,30 +148,34 @@ class _GradeMarkTileState extends State<GradeMarkTile> {
     final c = context.colors;
     final p = widget.part;
     final conf = p.conf == null ? '' : ' · ${(p.conf! * 100).round()}%';
+    final danger = appInk(context, c.danger);
+    // paper on a warm hairline; a reading that needs a person is edged in danger and says why
     return Container(
       padding: const EdgeInsets.all(AppSpace.xs),
       decoration: BoxDecoration(
+        color: c.cardBg,
         borderRadius: AppRadius.cardAll,
-        border: Border.all(color: (p.ok ? c.divider : c.danger).withValues(alpha: .6)),
+        border: Border.all(color: p.ok ? c.divider : danger.withValues(alpha: .6), width: AppBorder.hairline),
       ),
       child: Row(children: [
         if (_crop != null)
           SizedBox(
-            width: 96,
-            height: 48,
+            width: _cropWidth,
+            height: AppTouch.min,
             child: FutureBuilder<Uint8List?>(
               future: _crop,
               builder: (_, s) => s.data == null
-                  ? DecoratedBox(decoration: BoxDecoration(color: c.background, borderRadius: BorderRadius.circular(6)), child: Icon(Icons.image_outlined, color: c.textLight))
-                  : ClipRRect(borderRadius: BorderRadius.circular(6), child: Image.memory(s.data!, fit: BoxFit.contain, gaplessPlayback: true)),
+                  ? DecoratedBox(decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll), child: Icon(Icons.image_outlined, size: AppIconSize.md, color: c.textLight))
+                  : ClipRRect(borderRadius: AppRadius.chipAll, child: Image.memory(s.data!, fit: BoxFit.contain, gaplessPlayback: true)),
             ),
           ),
-        if (_crop != null) const SizedBox(width: AppSpace.xs),
+        if (_crop != null) AppSpace.gapSm,
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${t('سؤال', 'Q')} ${p.questionNo ?? p.fieldId}', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textLight)),
-            Text('${markNumberText(p.value)} / ${markNumberText(p.max)}$conf', maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: p.ok ? c.textDark : c.danger)),
-            if (!p.ok) Text(p.status == 'above_max' ? t('أكبر من الحد الأقصى', 'Above the maximum') : t('غير مقروءة', 'Unreadable'), style: appText(11.5, c: c.danger)),
+            Text('${t('سؤال', 'Q')} ${p.questionNo ?? p.fieldId}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+            Text('${markNumberText(p.value)} / ${markNumberText(p.max)}$conf',
+                maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.figure(context).copyWith(color: p.ok ? c.textDark : danger)),
+            if (!p.ok) Text(p.status == 'above_max' ? t('أكبر من الحد الأقصى', 'Above the maximum') : t('غير مقروءة', 'Unreadable'), style: AppType.meta(context).copyWith(color: danger)),
           ]),
         ),
         if (widget.onFix != null)
@@ -166,7 +183,7 @@ class _GradeMarkTileState extends State<GradeMarkTile> {
             tooltip: t('تصحيح القراءة', 'Fix the reading'),
             constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
             onPressed: widget.onFix,
-            icon: Icon(Icons.edit_outlined, color: c.primary),
+            icon: Icon(Icons.edit_outlined, size: AppIconSize.md, color: appInk(context, c.primary)),
           ),
       ]),
     );
@@ -198,30 +215,57 @@ class GradeRowDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final label = appText(12, c: c.textLight);
     final sumError = row.has('paper_sum_error');
-    Widget kv(String k, String v, {Color? color}) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(child: Text(k, style: label)),
-            const SizedBox(width: AppSpace.xs),
-            Flexible(child: Text(v, textAlign: TextAlign.end, style: appText(13.5, w: FontWeight.w700, c: color ?? c.textDark))),
+    final problems = row.issues.where(gradeIssueIsProblem).toList();
+    final warning = appInk(context, c.warning);
+    Widget kv(String k, String v, {Color? color}) => ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
+          child: Row(children: [
+            Expanded(flex: 3, child: Text(k, style: AppType.meta(context))),
+            AppSpace.gapXs,
+            Expanded(flex: 2, child: Text(v, textAlign: TextAlign.end, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600, color: color ?? c.textDark))),
           ]),
         );
+    final rows = <Widget>[
+      kv(t('المجموع المكتوب', 'Written total'), markNumberText(row.written)),
+      kv(t('المجموع المحسوب', 'Computed total'), markNumberText(row.computed), color: sumError ? warning : null),
+      if (session.converts) kv(t('بعد التحويل', 'After conversion'), '${markNumberText(row.scaled)} / ${markNumberText(session.columnMax)}'),
+      kv(t('المسجّل في الدفتر', 'Recorded in the gradebook'), row.recorded == null ? t('لا شيء', 'nothing') : markNumberText(row.recorded)),
+      if (row.diff != null && row.diff != 0) kv(t('الفرق', 'Difference'), _signed(row.diff), color: warning),
+    ];
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(gradeRowName(row), style: appText(17, w: FontWeight.w800, c: c.textDark)),
-      // the matched student opens their record where the server allows it (D-290)
-      if (row.studentId != null)
-        Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: EntityGuardedChip(EntityRef(EntityKind.student, row.studentId!, label: gradeRowName(row)))),
-      if (row.identifierMasked.isNotEmpty)
-        Text('${t('الرقم', 'Number')}: ${row.identifierMasked}${row.identifierMethod == null ? '' : ' · ${row.identifierMethod}'}', textDirection: TextDirection.ltr, style: appText(12.5, c: c.textMedium)),
-      if (row.decided) ...[
-        const SizedBox(height: AppSpace.xs),
-        Align(alignment: AlignmentDirectional.centerStart, child: AppTag(gradeStatusText(row.status), row.status == 'applied' ? c.success : c.textMedium)),
-      ],
-      const SizedBox(height: AppSpace.sm),
+      // the paper, on a block in the colour of where it stands (gradeRowTone)
+      AppBlock(
+        tone: gradeRowTone(row),
+        padding: AppSpace.block,
+        child: Builder(builder: (context) {
+          final b = AppBlock.colorsOf(context);
+          return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(gradeRowName(row), style: AppType.headline(context).copyWith(color: b.ink)),
+            // the matched student opens their record where the server allows it (D-290)
+            if (row.studentId != null) ...[
+              const SizedBox(height: AppSpace.xxs),
+              EntityGuardedChip(EntityRef(EntityKind.student, row.studentId!, label: gradeRowName(row))),
+            ],
+            if (row.identifierMasked.isNotEmpty) ...[
+              const SizedBox(height: AppSpace.xxs),
+              Text('${t('الرقم', 'Number')}: ${row.identifierMasked}${row.identifierMethod == null ? '' : ' · ${row.identifierMethod}'}',
+                  textDirection: TextDirection.ltr, style: AppType.meta(context).copyWith(color: b.muted)),
+            ],
+            if (row.decided) ...[
+              AppSpace.gapXs,
+              AppStatusBadge(label: gradeStatusText(row.status), tone: row.status == 'applied' ? AppTone.success : AppTone.neutral, dense: true),
+            ],
+            if (problems.isNotEmpty) ...[
+              AppSpace.gapSm,
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+                for (final i in problems) AppStatusBadge(label: gradeRowIssueText(row, i), tone: AppTone.danger, icon: Icons.error_outline_rounded, dense: true),
+              ]),
+            ],
+          ]);
+        }),
+      ),
+      AppSpace.gapSm,
       if (sumError)
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpace.sm),
@@ -234,24 +278,17 @@ class GradeRowDetail extends StatelessWidget {
           ),
         ),
       AppCard(
-        padding: const EdgeInsets.all(AppSpace.sm),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xxs),
         child: Column(children: [
-          kv(t('المجموع المكتوب', 'Written total'), markNumberText(row.written)),
-          kv(t('المجموع المحسوب', 'Computed total'), markNumberText(row.computed), color: sumError ? c.warning : null),
-          if (session.converts) kv(t('بعد التحويل', 'After conversion'), '${markNumberText(row.scaled)} / ${markNumberText(session.columnMax)}'),
-          kv(t('المسجّل في الدفتر', 'Recorded in the gradebook'), row.recorded == null ? t('لا شيء', 'nothing') : markNumberText(row.recorded)),
-          if (row.diff != null && row.diff != 0) kv(t('الفرق', 'Difference'), _signed(row.diff), color: c.warning),
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+            rows[i],
+          ],
         ]),
       ),
-      if (row.issues.any(gradeIssueIsProblem)) ...[
-        const SizedBox(height: AppSpace.sm),
-        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-          for (final i in row.issues.where(gradeIssueIsProblem)) AppTag(gradeRowIssueText(row, i), c.danger, icon: Icons.error_outline_rounded),
-        ]),
-      ],
       if (row.marks.isNotEmpty) ...[
-        const SizedBox(height: AppSpace.sm),
-        AppSectionTitle(t('الدرجات المقروءة', 'Marks read')),
+        AppSpace.gapLg,
+        Text(t('الدرجات المقروءة', 'Marks read'), style: AppType.section(context)),
         for (final m in row.marks)
           Padding(
             padding: const EdgeInsets.only(top: AppSpace.xs),
@@ -259,34 +296,42 @@ class GradeRowDetail extends StatelessWidget {
           ),
       ],
       if (!row.decided) ...[
-        const SizedBox(height: AppSpace.md),
+        AppSpace.gapLg,
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.start, children: [
           if (onApply != null)
             _Act(key: const ValueKey('gr.act.apply'), icon: Icons.check_circle_outline_rounded, label: t('تطبيق التصحيح (A)', 'Apply correction (A)'), primary: true, onTap: onApply!),
           if (onKeep != null) _Act(key: const ValueKey('gr.act.keep'), icon: Icons.lock_outline_rounded, label: t('إبقاء المسجّل (H)', 'Keep recorded (H)'), onTap: onKeep!),
           if (onAssign != null) _Act(key: const ValueKey('gr.act.assign'), icon: Icons.person_search_outlined, label: t('تحديد الطالب', 'Assign student'), onTap: onAssign!),
           if (onRetake != null) _Act(key: const ValueKey('gr.act.retake'), icon: Icons.replay_rounded, label: t('إعادة التصوير', 'Retake scan'), onTap: onRetake!),
-          if (onDismiss != null) _Act(key: const ValueKey('gr.act.dismiss'), icon: Icons.close_rounded, label: t('تجاهل (D)', 'Dismiss (D)'), onTap: onDismiss!),
+          if (onDismiss != null) _Act(key: const ValueKey('gr.act.dismiss'), icon: Icons.close_rounded, label: t('تجاهل (D)', 'Dismiss (D)'), ghost: true, onTap: onDismiss!),
         ]),
       ],
     ]);
   }
 }
 
+/// Where a paper stands, as a block (system.md §5): something to sort out = paper with the problems on it, the book
+/// already agrees or the correction was written = emerald, a difference to decide = peach.
+AppBlockTone gradeRowTone(MarkRow row) {
+  if (row.status == 'applied') return AppBlockTone.emerald;
+  if (row.issues.any(gradeIssueIsProblem)) return AppBlockTone.paper;
+  final diff = row.diff ?? (row.proposed != null && row.recorded != null ? row.proposed! - row.recorded! : null);
+  if (row.recorded != null && (diff == null || diff == 0)) return AppBlockTone.emerald;
+  return AppBlockTone.peach;
+}
+
 class _Act extends StatelessWidget {
-  const _Act({super.key, required this.icon, required this.label, required this.onTap, this.primary = false});
+  const _Act({super.key, required this.icon, required this.label, required this.onTap, this.primary = false, this.ghost = false});
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  final bool primary;
+  final bool primary, ghost;
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final style = ButtonStyle(minimumSize: WidgetStatePropertyAll(Size(AppTouch.min, AppTouch.min)));
-    return primary
-        ? FilledButton.icon(style: style, onPressed: onTap, icon: Icon(icon, size: 18), label: Text(label))
-        : OutlinedButton.icon(style: style, onPressed: onTap, icon: Icon(icon, size: 18, color: c.primary), label: Text(label));
+    if (primary) return AppButton.primary(label: label, icon: icon, onPressed: onTap);
+    if (ghost) return AppButton.ghost(label: label, icon: icon, onPressed: onTap);
+    return AppButton.secondary(label: label, icon: icon, onPressed: onTap);
   }
 }
 
@@ -313,20 +358,32 @@ class _GradeApplySheetState extends State<GradeApplySheet> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final r = widget.row;
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text('${gradeRowName(r)} · ${widget.columnLabel}', style: appText(14, w: FontWeight.w700, c: c.textDark)),
-      const SizedBox(height: AppSpace.sm),
-      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Flexible(child: Text(r.recorded == null ? t('لا شيء', 'nothing') : markNumberText(r.recorded), key: const ValueKey('gr.apply.old'), style: appText(26, w: FontWeight.w800, c: c.textLight))),
-        const Padding(padding: EdgeInsets.symmetric(horizontal: AppSpace.sm), child: Icon(Icons.arrow_forward_rounded)),
-        Flexible(child: Text(markNumberText(r.proposed), key: const ValueKey('gr.apply.new'), style: appText(26, w: FontWeight.w800, c: c.primary))),
-      ]),
-      const SizedBox(height: AppSpace.sm),
+      Text('${gradeRowName(r)} · ${widget.columnLabel}', style: AppType.bodyStrong(context)),
+      AppSpace.gapSm,
+      // the change itself, on the block of work to decide: the book's value struck through, the paper's in emerald
+      AppBlock(
+        tone: AppBlockTone.peach,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.md),
+        child: Builder(builder: (context) {
+          final b = AppBlock.colorsOf(context);
+          final figure = AppType.figureLarge(context);
+          return Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Flexible(
+              child: Text(r.recorded == null ? t('لا شيء', 'nothing') : markNumberText(r.recorded),
+                  key: const ValueKey('gr.apply.old'),
+                  style: figure.copyWith(color: b.muted, decoration: TextDecoration.lineThrough, decorationColor: b.muted)),
+            ),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.md), child: Icon(Icons.arrow_forward_rounded, size: AppIconSize.lg, color: b.muted)),
+            Flexible(child: Text(markNumberText(r.proposed), key: const ValueKey('gr.apply.new'), style: figure.copyWith(color: b.accentInk(context.colors.primary)))),
+          ]);
+        }),
+      ),
+      AppSpace.gapMd,
       AppField(controller: _reason, label: t('السبب (اختياري)', 'Reason (optional)'), maxLines: 2),
-      const SizedBox(height: AppSpace.md),
-      AppPrimaryButton(label: t('تأكيد التطبيق', 'Confirm and write'), icon: Icons.check_rounded, onPressed: () => widget.onConfirm(_reason.text)),
+      AppSpace.gapLg,
+      AppButton.primary(label: t('تأكيد التطبيق', 'Confirm and write'), icon: Icons.check_rounded, expand: true, onPressed: () => widget.onConfirm(_reason.text)),
     ]);
   }
 }
@@ -365,14 +422,14 @@ class _GradeFixMarkSheetState extends State<GradeFixMarkSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text('${t('سؤال', 'Q')} ${widget.part.questionNo ?? widget.part.fieldId} · ${t('الحد الأقصى', 'max')} ${markNumberText(widget.part.max)}', style: appText(13.5, c: c.textMedium)),
+      Text('${t('سؤال', 'Q')} ${widget.part.questionNo ?? widget.part.fieldId} · ${t('الحد الأقصى', 'max')} ${markNumberText(widget.part.max)}', style: AppType.body(context)),
       const SizedBox(height: AppSpace.sm),
       Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: _ctl, label: t('الدرجة الصحيحة', 'The right mark'), min: 0, max: widget.part.max, step: 0.5, decimals: 2, onSubmitted: (_) => _save(), onChanged: (_) {
           if (_error != null) setState(() => _error = null);
         })),
-      if (_error != null) Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text(_error!, key: const ValueKey('gr.fix.error'), style: appText(12.5, c: c.danger))),
+      if (_error != null) Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text(_error!, key: const ValueKey('gr.fix.error'), style: AppType.meta(context).copyWith(color: appInk(context, c.danger)))),
       const SizedBox(height: AppSpace.md),
-      AppPrimaryButton(label: t('حفظ وإعادة الحساب', 'Save and recompute'), icon: Icons.check_rounded, onPressed: _save),
+      AppButton.primary(label: t('حفظ وإعادة الحساب', 'Save and recompute'), icon: Icons.check_rounded, expand: true, onPressed: _save),
     ]);
   }
 }
@@ -408,10 +465,10 @@ class _GradeAssignSheetState extends State<GradeAssignSheet> {
       AppField(controller: _q, label: t('ابحث عن طالب', 'Search a student'), onChanged: (_) => setState(() {})),
       const SizedBox(height: AppSpace.xs),
       if (shown.isEmpty)
-        Padding(padding: const EdgeInsets.all(AppSpace.md), child: Text(t('لا نتائج', 'No matches'), textAlign: TextAlign.center, style: appText(13, c: c.textMedium)))
+        Padding(padding: const EdgeInsets.all(AppSpace.md), child: Text(t('لا نتائج', 'No matches'), textAlign: TextAlign.center, style: AppType.body(context)))
       else
         ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 320),
+          constraints: const BoxConstraints(maxHeight: _pickerHeight),
           child: ListView.builder(
             shrinkWrap: true,
             itemCount: shown.length,
@@ -420,7 +477,7 @@ class _GradeAssignSheetState extends State<GradeAssignSheet> {
               minTileHeight: AppTouch.min,
               leading: Icon(Icons.person_outline_rounded, color: c.primary),
               title: Text(shown[i].name, maxLines: 2, overflow: TextOverflow.ellipsis),
-              subtitle: widget.taken.contains(shown[i].id) ? Text(t('له ورقة أخرى في هذه المراجعة', 'Already has a paper in this revision'), style: appText(12, c: c.warning)) : null,
+              subtitle: widget.taken.contains(shown[i].id) ? Text(t('له ورقة أخرى في هذه المراجعة', 'Already has a paper in this revision'), style: AppType.meta(context).copyWith(color: appInk(context, c.warning))) : null,
               onTap: () => widget.onPick(shown[i]),
             ),
           ),

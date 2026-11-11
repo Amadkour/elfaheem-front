@@ -255,9 +255,8 @@ class _ExamGetResultScreenState extends State<ExamGetResultScreen> {
       );
 
   Widget _waiting() {
-    final c = context.colors;
     if (_error != null) {
-      return AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!, action: TextButton(onPressed: () => _load(), child: Text(t('إعادة المحاولة', 'Try again'))));
+      return AppErrorState(key: const ValueKey('result.error'), message: _error, onRetry: () => _load());
     }
     return const AppListSkeleton(key: ValueKey('result.waiting'), items: 5, withAvatar: false);
   }
@@ -393,12 +392,15 @@ class ResultBoardView extends StatelessWidget {
       return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [...results, list])),
         const SizedBox(width: AppSpace.lg),
-        SizedBox(width: 360, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [...actions, gap, links])),
+        SizedBox(width: _railWidth, child:Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [...actions, gap, links])),
       ]);
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [...results, ...actions, gap, list, gap, links]);
   }
 }
+
+/// The actions rail beside the results on a desktop.
+const _railWidth = 360.0;
 
 String _policyShort(String p) => switch (p) {
       'after_submit' => t('تظهر بعد التسليم', 'Shown after submitting'),

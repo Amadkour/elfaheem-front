@@ -5,6 +5,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
 
 import '../../../../admin/admin_common.dart' show t;
 import '../../exam_all.dart' show NewExamPlace;
@@ -112,10 +113,10 @@ class ExamCreateShell extends StatelessWidget {
             key: ValueKey(stepKey),
             padding: EdgeInsets.symmetric(horizontal: wide ? AppSpace.xl : AppSpace.md, vertical: wide ? AppSpace.xl : AppSpace.md),
             child: column(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text(title, style: appText(wide ? 24 : 20, w: FontWeight.w800, c: c.textDark, h: 1.3)),
+              Text(title, style: wide ? AppType.headline(context) : AppType.pageTitle(context)),
               if (subtitle != null) ...[
                 const SizedBox(height: AppSpace.xxs),
-                Text(subtitle!, style: appText(13.5, c: c.textMedium, h: 1.45)),
+                Text(subtitle!, style: AppType.body(context).copyWith(height: 1.45)),
               ],
               SizedBox(height: wide ? AppSpace.lg : AppSpace.md),
               if (error != null) ...[
@@ -135,21 +136,16 @@ class ExamCreateShell extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: wide ? AppSpace.xl : AppSpace.md, vertical: AppSpace.sm),
             child: column(Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               if (hint != null) ...[
-                Text(hint!, key: const ValueKey('create.hint'), textAlign: TextAlign.center, style: appText(12.5, c: c.textMedium)),
+                Text(hint!, key: const ValueKey('create.hint'), textAlign: TextAlign.center, style: AppType.meta(context)),
                 const SizedBox(height: AppSpace.xs),
               ],
               Row(children: [
-                TextButton(
-                  key: const ValueKey('create.back'),
-                  onPressed: onBack,
-                  style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
-                  child: Text(backLabel),
-                ),
-                const SizedBox(width: AppSpace.sm),
+                AppButton.ghost(key: const ValueKey('create.back'), label: backLabel, onPressed: onBack),
+                AppSpace.gapSm,
                 Expanded(
                   child: KeyedSubtree(
                     key: const ValueKey('create.primary'),
-                    child: AppPrimaryButton(label: primaryLabel, icon: primaryIcon, busy: busy, onPressed: onPrimary),
+                    child: AppButton.primary(label: primaryLabel, icon: primaryIcon, busy: busy, expand: true, onPressed: onPrimary),
                   ),
                 ),
               ]),
@@ -178,7 +174,7 @@ class _Rail extends StatelessWidget {
           Padding(
             padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.lg, AppSpace.md, AppSpace.xs, AppSpace.sm),
             child: Row(children: [
-              Expanded(child: Text(t('اختبار جديد', 'New exam'), style: appText(18, w: FontWeight.w800, c: c.textDark))),
+              Expanded(child: Text(t('اختبار جديد', 'New exam'), style: AppType.pageTitle(context))),
               IconButton(key: const ValueKey('create.close'), tooltip: t('إغلاق', 'Close'), onPressed: onClose, icon: Icon(Icons.close_rounded, color: c.textMedium)),
             ]),
           ),
@@ -190,19 +186,23 @@ class _Rail extends StatelessWidget {
           if (estimate.isNotEmpty)
             Padding(
               padding: const EdgeInsets.all(AppSpace.md),
-              child: Container(
+              // what the exam will come to, as it is planned: an information (sky) block
+              child: AppBlock(
                 key: const ValueKey('create.estimate'),
+                tone: AppBlockTone.sky,
                 padding: const EdgeInsets.all(AppSpace.md),
-                decoration: BoxDecoration(color: c.primary.withValues(alpha: .06), borderRadius: BorderRadius.circular(AppRadius.card)),
-                child: Column(children: [
-                  for (var i = 0; i < estimate.length; i++) ...[
-                    if (i > 0) const SizedBox(height: AppSpace.xs),
-                    Row(children: [
-                      Expanded(child: Text(estimate[i].$1, style: appText(12.5, c: c.textMedium))),
-                      Text(estimate[i].$2, style: appText(14.5, w: FontWeight.w800, c: c.textDark)),
-                    ]),
-                  ],
-                ]),
+                child: Builder(builder: (context) {
+                  final b = AppBlock.colorsOf(context);
+                  return Column(children: [
+                    for (var i = 0; i < estimate.length; i++) ...[
+                      if (i > 0) AppSpace.gapXs,
+                      Row(children: [
+                        Expanded(child: Text(estimate[i].$1, style: AppType.meta(context).copyWith(color: b.muted))),
+                        Text(estimate[i].$2, style: AppType.figure(context).copyWith(color: b.ink)),
+                      ]),
+                    ],
+                  ]);
+                }),
               ),
             ),
         ]),
@@ -223,17 +223,17 @@ class _RailRow extends StatelessWidget {
     final current = item.state == CreateItemState.current;
     final done = item.state == CreateItemState.done;
     final dot = Container(
-      width: 26,
-      height: 26,
+      width: AppIconSize.lg,
+      height: AppIconSize.lg,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: done || current ? c.primary : Colors.transparent,
+        color: done || current ? c.primary : null,
         border: done || current ? null : Border.all(color: c.divider, width: AppBorder.strong),
       ),
       child: done
-          ? Icon(Icons.check_rounded, size: 16, color: c.onHero)
-          : Text('$number', style: appText(12, w: FontWeight.w800, c: current ? c.onHero : c.textMedium)),
+          ? Icon(Icons.check_rounded, size: AppIconSize.sm, color: c.onHero)
+          : Text('$number', style: AppType.meta(context).copyWith(fontWeight: FontWeight.w700, color: current ? c.onHero : c.textMedium)),
     );
     return Semantics(
       button: item.onTap != null,
@@ -244,7 +244,7 @@ class _RailRow extends StatelessWidget {
         child: IntrinsicHeight(
           child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             SizedBox(
-              width: 42,
+              width: AppIconSize.hero,
               child: Column(children: [
                 const SizedBox(height: AppSpace.xs),
                 dot,
@@ -253,20 +253,20 @@ class _RailRow extends StatelessWidget {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsetsDirectional.only(top: AppSpace.xs + 2, bottom: AppSpace.md, end: AppSpace.xs),
+                padding: const EdgeInsetsDirectional.only(top: AppSpace.sm, bottom: AppSpace.md, end: AppSpace.xs),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(item.label, style: appText(13.5, w: current ? FontWeight.w800 : FontWeight.w600, c: item.state == CreateItemState.todo ? c.textMedium : c.textDark)),
+                  Text(item.label, style: AppType.row(context).copyWith(fontWeight: current ? FontWeight.w700 : FontWeight.w500, color: item.state == CreateItemState.todo ? c.textMedium : c.textDark)),
                   if (item.value != null) ...[
                     const SizedBox(height: 2),
-                    Text(item.value!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium, h: 1.35)),
+                    Text(item.value!, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(height: 1.35)),
                   ],
                 ]),
               ),
             ),
             if (item.locked)
-              Padding(padding: const EdgeInsets.only(top: AppSpace.sm), child: Icon(Icons.lock_outline_rounded, size: 15, color: c.textLight))
+              Padding(padding: const EdgeInsets.only(top: AppSpace.sm), child: Icon(Icons.lock_outline_rounded, size: AppIconSize.xs, color: c.textLight))
             else if (item.onTap != null && done)
-              Padding(padding: const EdgeInsets.only(top: AppSpace.sm), child: Icon(Icons.edit_outlined, size: 15, color: c.textLight)),
+              Padding(padding: const EdgeInsets.only(top: AppSpace.sm), child: Icon(Icons.edit_outlined, size: AppIconSize.xs, color: c.textLight)),
           ]),
         ),
       ),
@@ -333,14 +333,14 @@ class _SummaryChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.chip),
         onTap: item.onTap,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 200, minHeight: 34),
+          constraints: const BoxConstraints(maxWidth: _chipMax, minHeight: AppSpace.xl),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Flexible(child: Text(item.value!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w700, c: c.primary))),
+              Flexible(child: Text(item.value!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: appInk(context, c.primary)))),
               if (item.onTap != null) ...[
                 const SizedBox(width: AppSpace.xxs),
-                Icon(item.locked ? Icons.lock_outline_rounded : Icons.edit_outlined, size: 13, color: c.primary),
+                Icon(item.locked ? Icons.lock_outline_rounded : Icons.edit_outlined, size: AppIconSize.xs, color: appInk(context, c.primary)),
               ],
             ]),
           ),
@@ -369,6 +369,9 @@ class _Muted extends StatelessWidget {
 }
 
 const _gap = SizedBox(height: AppSpace.sm);
+
+/// The widest a done step's summary chip grows in the phone header.
+const _chipMax = 200.0;
 
 // ═══════════════════════════════════════ where ═════════════════════════════════════════════════════════════════
 
@@ -524,7 +527,6 @@ class CreateQuestionWayBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (canGenerate) ...[
         _Muted(
@@ -556,7 +558,7 @@ class CreateQuestionWayBody extends StatelessWidget {
         onTap: () => onPick(CreateQuestionWay.manual),
       ),
       const SizedBox(height: AppSpace.md),
-      Text(t('طرق أخرى', 'Other ways'), style: appText(12.5, w: FontWeight.w700, c: c.textMedium)),
+      Text(t('طرق أخرى', 'Other ways'), style: AppType.label(context)),
       const SizedBox(height: AppSpace.xs),
       _Muted(
         off: bubble,
@@ -631,8 +633,8 @@ class CreateBubbleProblems extends StatelessWidget {
         t('لا يمكن لورقة التظليل حمل ${questionsCountText(n)}: مقالي أو إجابة قصيرة أو أكمل أو مطابقة.',
             'A bubble sheet cannot hold ${questionsCountText(n)}: essay, short answer, complete or matching.'),
         actions: [
-          if (onRemove != null) TextButton(key: const ValueKey('create.bubble.remove'), onPressed: onRemove, child: Text(t('احذفها', 'Remove them'))),
-          if (onNormal != null) TextButton(key: const ValueKey('create.bubble.normal'), onPressed: onNormal, child: Text(t('اجعله اختبارًا عاديًا', 'Make it a normal exam'))),
+          if (onRemove != null) AppButton.ghost(key: const ValueKey('create.bubble.remove'), size: AppButtonSize.sm, onPressed: onRemove, label: t('احذفها', 'Remove them')),
+          if (onNormal != null) AppButton.ghost(key: const ValueKey('create.bubble.normal'), size: AppButtonSize.sm, onPressed: onNormal, label: t('اجعله اختبارًا عاديًا', 'Make it a normal exam')),
         ],
       ));
     }
@@ -641,8 +643,8 @@ class CreateBubbleProblems extends StatelessWidget {
         t('${questionsCountText(check.importedNotHeld)} من المستورد لا تناسب ورقة التظليل. احذفها من المحرر الكامل.',
             '${questionsCountText(check.importedNotHeld)} of the imported ones do not fit a bubble sheet. Remove them in the full editor.'),
         actions: [
-          if (onEditor != null) TextButton(onPressed: onEditor, child: Text(t('المحرر الكامل', 'Full editor'))),
-          if (onNormal != null) TextButton(onPressed: onNormal, child: Text(t('اجعله اختبارًا عاديًا', 'Make it a normal exam'))),
+          if (onEditor != null) AppButton.ghost(size: AppButtonSize.sm, onPressed: onEditor, label: t('المحرر الكامل', 'Full editor')),
+          if (onNormal != null) AppButton.ghost(size: AppButtonSize.sm, onPressed: onNormal, label: t('اجعله اختبارًا عاديًا', 'Make it a normal exam')),
         ],
       ));
     }
@@ -672,7 +674,7 @@ class CreateImportedCard extends StatelessWidget {
       icon: Icons.task_alt_rounded,
       color: c.success,
       text: t('استوردنا ${questionsCountText(count)}، والمجموع ${marksCountText(points)}.', 'Imported ${questionsCountText(count)}, ${marksCountText(points)} in all.'),
-      action: onEditor == null ? null : TextButton(onPressed: onEditor, child: Text(t('راجعها', 'Review'))),
+      action: onEditor == null ? null : AppButton.ghost(size: AppButtonSize.sm, onPressed: onEditor, label: t('راجعها', 'Review')),
     );
   }
 }
@@ -745,7 +747,7 @@ class CreatePublishBody extends StatelessWidget {
       ],
       if (p.isPaper) ...[
         const SizedBox(height: AppSpace.lg),
-        Text(t('كيف تُطبع الأوراق؟', 'How is it printed?'), style: appText(15, w: FontWeight.w800, c: c.textDark)),
+        Text(t('كيف تُطبع الأوراق؟', 'How is it printed?'), style: AppType.section(context)),
         _gap,
         SetupChoiceTile(
           key: const ValueKey('create.paper.versions'),
@@ -808,9 +810,9 @@ class _VersionsPanel extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpace.md),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Expanded(child: Text(t('كم نموذجًا؟', 'How many versions?'), style: appText(14, w: FontWeight.w700, c: c.textDark))),
+          Expanded(child: Text(t('كم نموذجًا؟', 'How many versions?'), style: AppType.bodyStrong(context))),
           IconButton(key: const ValueKey('create.versions.less'), tooltip: t('أقل', 'Fewer'), onPressed: n > 1 ? () => onVersions(n - 1) : null, icon: const Icon(Icons.remove_circle_outline_rounded)),
-          SizedBox(width: 32, child: Text('$n', key: const ValueKey('create.versions.count'), textAlign: TextAlign.center, style: appText(18, w: FontWeight.w800, c: c.textDark))),
+          SizedBox(width: AppIconSize.xl, child: Text('$n', key: const ValueKey('create.versions.count'), textAlign: TextAlign.center, style: AppType.figure(context))),
           IconButton(key: const ValueKey('create.versions.more'), tooltip: t('أكثر', 'More'), onPressed: n < 10 ? () => onVersions(n + 1) : null, icon: const Icon(Icons.add_circle_outline_rounded)),
         ]),
         if (n > 1) ...[
@@ -852,7 +854,6 @@ class CreateLeaveBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       AppBanner(
         icon: hasDraft ? Icons.bookmark_added_outlined : Icons.info_outline_rounded,
@@ -862,15 +863,18 @@ class CreateLeaveBody extends StatelessWidget {
       ),
       const SizedBox(height: AppSpace.md),
       if (hasDraft)
-        AppPrimaryButton(key: const ValueKey('create.leave.keep'), label: t('احتفظ بالمسودة واخرج', 'Keep the draft and leave'), onPressed: () => onPick(CreateLeave.keep))
+        AppButton.primary(key: const ValueKey('create.leave.keep'), label: t('احتفظ بالمسودة واخرج', 'Keep the draft and leave'), expand: true, onPressed: () => onPick(CreateLeave.keep))
       else if (canSave)
-        AppPrimaryButton(key: const ValueKey('create.leave.save'), label: t('احفظ كمسودة واخرج', 'Save as a draft and leave'), onPressed: () => onPick(CreateLeave.save)),
-      const SizedBox(height: AppSpace.xs),
-      TextButton(key: const ValueKey('create.leave.stay'), onPressed: onStay, child: Text(t('أكمل الاختبار', 'Keep working'))),
-      TextButton(
+        AppButton.primary(key: const ValueKey('create.leave.save'), label: t('احفظ كمسودة واخرج', 'Save as a draft and leave'), expand: true, onPressed: () => onPick(CreateLeave.save)),
+      AppSpace.gapXs,
+      AppButton.secondary(key: const ValueKey('create.leave.stay'), label: t('أكمل الاختبار', 'Keep working'), expand: true, onPressed: onStay),
+      AppSpace.gapXs,
+      AppButton.danger(
         key: ValueKey(hasDraft ? 'create.leave.delete' : 'create.leave.discard'),
+        label: hasDraft ? t('احذف المسودة', 'Delete the draft') : t('اخرج دون حفظ', 'Leave without saving'),
+        dangerOutline: true,
+        expand: true,
         onPressed: () => onPick(hasDraft ? CreateLeave.delete : CreateLeave.discard),
-        child: Text(hasDraft ? t('احذف المسودة', 'Delete the draft') : t('اخرج دون حفظ', 'Leave without saving'), style: appText(14, w: FontWeight.w600, c: c.danger)),
       ),
     ]);
   }
@@ -895,43 +899,55 @@ class CreateDoneBody extends StatelessWidget {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(AppSpace.lg),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
+              constraints: BoxConstraints(maxWidth: AppWidth.form.max),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Center(
-                  child: Container(
-                    width: 84,
-                    height: 84,
-                    decoration: BoxDecoration(shape: BoxShape.circle, color: c.success.withValues(alpha: .12)),
-                    child: Icon(Icons.task_alt_rounded, size: 44, color: c.success),
+                // the moment the exam goes out: one emerald hero block that settles in, the mark, the editorial headline
+                AppPopIn(
+                  child: AppBlock(
+                    tone: AppBlockTone.emerald,
+                    hero: true,
+                    child: Builder(builder: (context) {
+                      final b = AppBlock.colorsOf(context);
+                      final mark = b.accentInk(c.success);
+                      return Column(children: [
+                        Container(
+                          width: AppSpace.xxxl,
+                          height: AppSpace.xxxl,
+                          decoration: BoxDecoration(shape: BoxShape.circle, color: mark.withValues(alpha: .12)),
+                          child: Icon(Icons.task_alt_rounded, size: AppIconSize.xl, color: mark),
+                        ),
+                        AppSpace.gapMd,
+                        Text(t('نُشر الاختبار', 'The exam is published'), key: const ValueKey('create.done'), textAlign: TextAlign.center, style: AppType.headline(context).copyWith(color: b.ink)),
+                        const SizedBox(height: AppSpace.xxs),
+                        Text([title, ?place].join(' · '), textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.body(context).copyWith(color: b.muted, height: 1.45)),
+                      ]);
+                    }),
                   ),
                 ),
-                const SizedBox(height: AppSpace.lg),
-                Text(t('نُشر الاختبار', 'The exam is published'), key: const ValueKey('create.done'), textAlign: TextAlign.center, style: appText(23, w: FontWeight.w800, c: c.textDark)),
-                const SizedBox(height: AppSpace.xxs),
-                Text([title, ?place].join(' · '), textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(14, c: c.textMedium, h: 1.45)),
-                const SizedBox(height: AppSpace.lg),
+                AppSpace.gapMd,
                 AppCard(
-                  padding: const EdgeInsets.all(AppSpace.md),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xxs),
                   child: Column(children: [
                     for (var i = 0; i < lines.length; i++) ...[
-                      if (i > 0) const SizedBox(height: AppSpace.xs),
-                      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                        Flexible(child: Text(lines[i].$1, style: appText(13, c: c.textMedium))),
-                        const SizedBox(width: AppSpace.sm),
-                        Flexible(child: Text(lines[i].$2, textAlign: TextAlign.end, style: appText(14, w: FontWeight.w700, c: c.textDark))),
-                      ]),
+                      if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: AppTouch.min),
+                        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                          Flexible(child: Text(lines[i].$1, style: AppType.meta(context))),
+                          AppSpace.gapSm,
+                          Flexible(child: Text(lines[i].$2, textAlign: TextAlign.end, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600))),
+                        ]),
+                      ),
                     ],
                   ]),
                 ),
-                const SizedBox(height: AppSpace.lg),
-                AppPrimaryButton(key: const ValueKey('create.done.finish'), label: t('تم', 'Done'), onPressed: onDone),
-                const SizedBox(height: AppSpace.xs),
-                Wrap(alignment: WrapAlignment.center, spacing: AppSpace.xs, children: [
-                  TextButton.icon(key: const ValueKey('create.done.open'), onPressed: onOpen, icon: const Icon(Icons.edit_outlined, size: 18), label: Text(t('افتح الاختبار', 'Open the exam'))),
-                  if (onFollow != null)
-                    TextButton.icon(onPressed: onFollow, icon: const Icon(Icons.leaderboard_rounded, size: 18), label: Text(t('تابع النتائج', 'Follow the results'))),
-                  if (onShare != null)
-                    TextButton.icon(onPressed: onShare, icon: const Icon(Icons.campaign_outlined, size: 18), label: Text(t('أخبر الطلاب', 'Tell the students'))),
+                AppSpace.gapLg,
+                AppButton.primary(key: const ValueKey('create.done.finish'), label: t('تم', 'Done'), expand: true, onPressed: onDone),
+                AppSpace.gapXs,
+                Wrap(alignment: WrapAlignment.center, spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
+                  AppButton.ghost(key: const ValueKey('create.done.open'), label: t('افتح الاختبار', 'Open the exam'), icon: Icons.edit_outlined, onPressed: onOpen),
+                  if (onFollow != null) AppButton.ghost(label: t('تابع النتائج', 'Follow the results'), icon: Icons.leaderboard_rounded, onPressed: onFollow),
+                  if (onShare != null) AppButton.ghost(label: t('أخبر الطلاب', 'Tell the students'), icon: Icons.campaign_outlined, onPressed: onShare),
                 ]),
               ]),
             ),

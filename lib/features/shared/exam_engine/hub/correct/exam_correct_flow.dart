@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../../../admin/admin_common.dart' show t;
@@ -294,15 +295,15 @@ class CorrectionStartView extends StatelessWidget {
       final head = Padding(
         padding: const EdgeInsets.only(bottom: AppSpace.lg),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(22, w: FontWeight.w800, c: context.colors.textDark, h: 1.25)),
+          Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.headline(context)),
           const SizedBox(height: AppSpace.xxs),
           Text(t('صحّح أوراق التظليل بطريقتك، وتابع من حيث توقفت.', 'Correct the bubble sheets your way, and carry on where you stopped.'),
-              style: appText(14.5, c: context.colors.textMedium, h: 1.4)),
+              style: AppType.body(context).copyWith(height: 1.45)),
         ]),
       );
       final gutter = AppSpace.gutter(box.maxWidth);
       return SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(gutter, AppSpace.md, gutter, AppSpace.xl),
+        padding: EdgeInsets.fromLTRB(gutter, AppSpace.lg, gutter, AppSpace.xl),
         child: Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: AppWidth.content.max),
@@ -311,12 +312,12 @@ class CorrectionStartView extends StatelessWidget {
               if (wide)
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: options)),
-                  const SizedBox(width: AppSpace.lg),
+                  AppSpace.gapLg,
                   Expanded(child: progress),
                 ])
               else ...[
                 ...options,
-                const SizedBox(height: AppSpace.md),
+                AppSpace.gapMd,
                 progress,
               ],
             ]),
@@ -327,6 +328,8 @@ class CorrectionStartView extends StatelessWidget {
   }
 }
 
+/// One way to correct. The recommended way sits on the emerald block (the primary subject of the page); the other is
+/// paper. Both press in and lead with a tinted mark.
 class _OptionCard extends StatelessWidget {
   const _OptionCard({super.key, required this.icon, required this.title, required this.body, this.badge, this.onTap});
   final IconData icon;
@@ -337,29 +340,50 @@ class _OptionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return AppCard(
-      margin: const EdgeInsets.only(bottom: AppSpace.sm),
-      padding: const EdgeInsets.all(AppSpace.lg),
-      onTap: onTap,
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(AppRadius.card)),
-          child: Icon(icon, color: appInk(context, c.primary), size: AppIconSize.xl),
+    final b = AppBlockColors.of(context, badge != null ? AppBlockTone.emerald : AppBlockTone.paper);
+    final mark = b.accentInk(c.primary);
+    final border = b.border;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
+      child: AppPressScale(
+        enabled: onTap != null,
+        child: Material(
+          color: b.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: AppRadius.blockAll,
+            side: border == null ? BorderSide.none : BorderSide(color: border, width: AppBorder.hairline),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: AppSpace.block,
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Container(
+                  width: AppTouch.primary,
+                  height: AppTouch.primary,
+                  decoration: BoxDecoration(color: mark.withValues(alpha: .12), borderRadius: AppRadius.cardAll),
+                  child: Icon(icon, color: mark, size: AppIconSize.xl),
+                ),
+                AppSpace.gapMd,
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    if (badge != null) ...[
+                      AppStatusBadge(label: badge!, tone: AppTone.success, icon: Icons.thumb_up_alt_outlined, dense: true),
+                      AppSpace.gapXs,
+                    ],
+                    Text(title, style: AppType.section(context).copyWith(color: b.ink)),
+                    const SizedBox(height: AppSpace.xxs),
+                    Text(body, style: AppType.body(context).copyWith(color: b.muted, height: 1.45)),
+                  ]),
+                ),
+                AppSpace.gapXs,
+                Icon(Icons.chevron_right_rounded, size: AppIconSize.lg, color: b.faint),
+              ]),
+            ),
+          ),
         ),
-        const SizedBox(width: AppSpace.md),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            if (badge != null) ...[AppBadgePill(badge!, color: c.success), const SizedBox(height: AppSpace.xxs)],
-            Text(title, style: appText(17, w: FontWeight.w800, c: c.textDark, h: 1.3)),
-            const SizedBox(height: AppSpace.xxs),
-            Text(body, style: appText(13.5, c: c.textMedium, h: 1.45)),
-          ]),
-        ),
-        const SizedBox(width: AppSpace.xs),
-        Icon(Icons.chevron_right_rounded, color: c.textMedium),
-      ]),
+      ),
     );
   }
 }
@@ -385,23 +409,18 @@ class _EmptyProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return AppCard(
+      padding: AppSpace.block,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(t('لم تُصحَّح أي ورقة بعد', 'No paper corrected yet'), style: appText(16, w: FontWeight.w800, c: c.textDark)),
+        Text(t('لم تُصحَّح أي ورقة بعد', 'No paper corrected yet'), style: AppType.section(context)),
         const SizedBox(height: AppSpace.xxs),
         Text(t('بعد أول ورقة ستجد هنا ما صُحّح، وما يحتاج مراجعتك، ومكان المتابعة.', "After the first paper you'll find here what is corrected, what needs you, and where to carry on."),
-            style: appText(13.5, c: c.textMedium, h: 1.45)),
+            style: AppType.body(context).copyWith(height: 1.45)),
         if (onResults != null) ...[
-          const SizedBox(height: AppSpace.sm),
+          AppSpace.gapSm,
           Align(
             alignment: AlignmentDirectional.centerStart,
-            child: TextButton.icon(
-              style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
-              onPressed: onResults,
-              icon: const Icon(Icons.upload_file_rounded),
-              label: Text(t('عندي الدرجات في ملف Excel', 'I have the degrees in an Excel file')),
-            ),
+            child: AppButton.ghost(label: t('عندي الدرجات في ملف Excel', 'I have the degrees in an Excel file'), icon: Icons.upload_file_rounded, onPressed: onResults),
           ),
         ],
       ]),
@@ -409,6 +428,8 @@ class _EmptyProgress extends StatelessWidget {
   }
 }
 
+/// Where the correction stands: a block (peach while papers are left, emerald once all are corrected) with the count in
+/// the headline face, the bar that fills to it, what needs the teacher, and the ways on. The batches follow on paper.
 class _ProgressPanel extends StatelessWidget {
   const _ProgressPanel({required this.totals, required this.batches, this.onResume, this.onBatch, this.onProblems, this.onReview, this.onResults});
   final CorrectionTotals totals;
@@ -421,78 +442,69 @@ class _ProgressPanel extends StatelessWidget {
     final c = context.colors;
     final finished = totals.total > 0 && totals.done >= totals.total && totals.review == 0 && totals.rejected == 0;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      AppCard(
+      AppBlock(
         key: const ValueKey('correct.progress'),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(t('ما تم حتى الآن', 'So far'), style: appText(13, w: FontWeight.w700, c: c.textMedium)),
-          const SizedBox(height: AppSpace.xxs),
-          Text(
-            t('صُحّحت ${totals.graded} من ${omrSheetsText(totals.total)}', '${totals.graded} of ${totals.total} papers corrected'),
-            style: appText(20, w: FontWeight.w800, c: c.textDark, h: 1.3),
-          ),
-          const SizedBox(height: AppSpace.sm),
-          AppProgressBar(value: totals.total == 0 ? 0 : totals.graded * 100 / totals.total, height: 8, color: finished ? c.success : c.primary),
-          const SizedBox(height: AppSpace.sm),
-          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-            if (totals.pending > 0) AppBadgePill(t('${totals.pending} تُقرأ الآن', '${totals.pending} being read'), color: c.primary),
-            if (totals.review > 0) AppBadgePill(t('${totals.review} للمراجعة', '${totals.review} to review'), color: c.warning),
-            if (totals.rejected > 0) AppBadgePill(correctionClearerText(totals.rejected), color: c.danger),
-          ]),
-          const SizedBox(height: AppSpace.md),
-          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-            if (onResume != null)
-              FilledButton.icon(
-                key: const ValueKey('correct.resume'),
-                style: FilledButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
-                onPressed: onResume,
-                icon: const Icon(Icons.play_arrow_rounded),
-                label: Text(t('متابعة التصوير', 'Carry on scanning')),
-              ),
-            if (totals.review > 0 && onReview != null)
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
-                onPressed: onReview,
-                icon: const Icon(Icons.rate_review_outlined),
-                label: Text(t('مراجعة ${totals.review}', 'Review ${totals.review}')),
-              ),
-            if (onResults != null)
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
-                onPressed: onResults,
-                icon: const Icon(Icons.leaderboard_outlined),
-                label: Text(t('النتائج', 'Results')),
-              ),
-          ]),
-        ]),
+        tone: finished ? AppBlockTone.emerald : AppBlockTone.peach,
+        child: Builder(builder: (context) {
+          final b = AppBlock.colorsOf(context);
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text(t('ما تم حتى الآن', 'So far'), style: AppType.label(context).copyWith(color: b.muted)),
+            const SizedBox(height: AppSpace.xxs),
+            Text(
+              t('صُحّحت ${totals.graded} من ${omrSheetsText(totals.total)}', '${totals.graded} of ${totals.total} papers corrected'),
+              style: AppType.headline(context).copyWith(color: b.ink),
+            ),
+            AppSpace.gapSm,
+            AppProgressBar(value: totals.total == 0 ? 0 : totals.graded * 100 / totals.total, height: AppSpace.xs, color: b.accentInk(finished ? c.success : c.primary)),
+            if (totals.pending > 0 || totals.review > 0 || totals.rejected > 0) ...[
+              AppSpace.gapSm,
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+                if (totals.pending > 0) AppStatusBadge(label: t('${totals.pending} تُقرأ الآن', '${totals.pending} being read'), tone: AppTone.info, dot: true, dense: true),
+                if (totals.review > 0) AppStatusBadge(label: t('${totals.review} للمراجعة', '${totals.review} to review'), tone: AppTone.warning, dot: true, dense: true),
+                if (totals.rejected > 0) AppStatusBadge(label: correctionClearerText(totals.rejected), tone: AppTone.danger, dot: true, dense: true),
+              ]),
+            ],
+            AppSpace.gapMd,
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+              if (onResume != null)
+                AppButton.primary(key: const ValueKey('correct.resume'), label: t('متابعة التصوير', 'Carry on scanning'), icon: Icons.play_arrow_rounded, onPressed: onResume),
+              if (totals.review > 0 && onReview != null)
+                AppButton.secondary(label: t('مراجعة ${totals.review}', 'Review ${totals.review}'), icon: Icons.rate_review_outlined, onPressed: onReview),
+              if (onResults != null) AppButton.secondary(label: t('النتائج', 'Results'), icon: Icons.leaderboard_outlined, onPressed: onResults),
+            ]),
+          ]);
+        }),
       ),
-      const SizedBox(height: AppSpace.sm),
-      AppSectionTitle(t('الدفعات', 'Batches')),
+      const SizedBox(height: AppSpace.xl),
+      Text(t('الدفعات', 'Batches'), style: AppType.section(context)),
+      AppSpace.gapSm,
       for (final b in batches.take(6))
         AppCard(
           key: ValueKey('correct.batch.${b.batchId}'),
           margin: const EdgeInsets.only(bottom: AppSpace.xs),
           onTap: onBatch == null ? null : () => onBatch!(b),
           child: Row(children: [
-            Icon(b.kind == 'camera' ? Icons.photo_camera_outlined : Icons.picture_as_pdf_outlined, color: b.finished ? c.success : c.primary),
-            const SizedBox(width: AppSpace.sm),
+            Icon(b.kind == 'camera' ? Icons.photo_camera_outlined : Icons.picture_as_pdf_outlined, size: AppIconSize.lg, color: appInk(context, b.finished ? c.success : c.primary)),
+            AppSpace.gapSm,
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(b.text, style: appText(14, w: FontWeight.w700, c: c.textDark)),
-                Text(b.whenText, style: appText(12.5, c: c.textMedium)),
-                const SizedBox(height: AppSpace.xxs),
-                AppProgressBar(value: b.fraction * 100, height: 5, color: b.finished ? c.success : c.primary),
+                Text(b.text, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
+                Text(b.whenText, style: AppType.meta(context)),
+                AppSpace.gapXs,
+                AppProgressBar(value: b.fraction * 100, height: AppSpace.xxs, color: b.finished ? c.success : c.primary),
                 if (b.rejected > 0) ...[
                   const SizedBox(height: AppSpace.xxs),
-                  TextButton(
-                    style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min), padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs)),
+                  AppButton.ghost(
+                    label: correctionClearerText(b.rejected),
+                    icon: Icons.error_outline_rounded,
+                    size: AppButtonSize.sm,
                     onPressed: onProblems == null ? null : () => onProblems!(b),
-                    child: Text(correctionClearerText(b.rejected), style: appText(13, w: FontWeight.w700, c: appInk(context, c.danger))),
                   ),
                 ],
               ]),
             ),
-            const SizedBox(width: AppSpace.xs),
-            Icon(Icons.chevron_right_rounded, color: c.textMedium),
+            AppSpace.gapXs,
+            Icon(Icons.chevron_right_rounded, size: AppIconSize.lg, color: c.textMedium),
           ]),
         ),
     ]);

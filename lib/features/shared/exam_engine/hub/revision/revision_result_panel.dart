@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
 
 import '../../../../admin/admin_common.dart' show t;
 import '../../marks/mark_sessions_api.dart';
@@ -73,7 +74,7 @@ class RevisionResultPanel extends StatelessWidget {
       SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
+            constraints: BoxConstraints(maxWidth: AppWidth.form.max),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(AppSpace.md),
               child: Container(
@@ -191,20 +192,24 @@ class _Figure extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.sm),
-      decoration: BoxDecoration(
-        color: strong ? color.withValues(alpha: .1) : c.background,
-        borderRadius: AppRadius.cardAll,
-        border: Border.all(color: strong ? color.withValues(alpha: .45) : c.divider),
-      ),
+    // The scanned degree is THE figure of this panel: a sky block whose number rolls on from the previous paper's.
+    final tone = strong ? AppBlockTone.sky : AppBlockTone.paper;
+    final b = AppBlockColors.of(context, tone);
+    final base = AppType.figureLarge(context);
+    return AppBlock(
+      tone: tone,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.md),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text(label, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+        Text(label, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: b.muted)),
         const SizedBox(height: AppSpace.xxs),
         SizedBox(
-          height: 56,
-          child: FittedBox(fit: BoxFit.scaleDown, child: Text(value, style: AppType.figureLarge(context).copyWith(fontSize: 44, color: color, fontWeight: FontWeight.w800))),
+          height: AppTouch.min + AppSpace.xs,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: AppOdometer(value,
+                memoryKey: strong ? 'rv.scanned' : 'rv.system',
+                style: base.copyWith(fontSize: (base.fontSize ?? AppSpace.xl) * 1.5, color: strong ? b.accentInk(color) : b.ink, fontWeight: FontWeight.w700)),
+          ),
         ),
       ]),
     );

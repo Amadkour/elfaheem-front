@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -79,7 +78,7 @@ class _MarkTemplateNewPageState extends State<MarkTemplateNewPage> {
           : ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
               Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 640),
+                  constraints: BoxConstraints(maxWidth: AppWidth.form.max),
                   child: _kind == null ? _kindStep(context) : _captureStep(context),
                 ),
               ),
