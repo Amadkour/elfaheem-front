@@ -1,15 +1,23 @@
 // lib/features/parent/parent_report_widgets.dart
-// Visual building blocks of the parent report (no chart package needed):
-//   PlScoreRing · PlSection · PlKpi · PlTrendChart · PlInsightTile · PlBarRow · PlWeekdayStrip
+// Visual building blocks of the parent report, in the Warm Editorial kit (no chart package):
+//   PlScoreRing      the score as a ring that fills once; on the report's hero its figure rolls (AppOdometer)
+//   PlSection        a paper card with an editorial title and one plain line under it
+//   PlKpi            a paper figure card: icon well · change vs the previous period · figure (counts up) · label
+//   PlTrendChart     the period's trend on the kit's AppBarChart, the metric picked with AppTabs
+//   PlInsightTile    one finding: a tone well and the sentence
+//   PlBarRow         label · bar (fills once) · value
+//   PlWeekdayStrip   seven day squares whose depth is the activity
 library;
 
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_bidi.dart' show ltrIsolate;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppOdometer, AppFill;
 
 import '../../config/app_config.dart';
 import 'parent_widgets.dart';
-import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 // ── colours by meaning ────────────────────────────────────────────────────────
 Color plTierColor(BuildContext context, String tier) {
@@ -24,7 +32,7 @@ Color plTierColor(BuildContext context, String tier) {
     case 'attention':
       return c.danger;
     default:
-      return Colors.grey;
+      return c.textLight;
   }
 }
 
@@ -42,51 +50,103 @@ Color plPctColor(BuildContext context, num v) {
   return v >= 75 ? c.success : (v >= 50 ? c.primary : (v >= 30 ? c.warning : c.danger));
 }
 
+/// An icon in a soft round well of its tone (opaque tint, the icon at AA on it).
+class PlToneWell extends StatelessWidget {
+  const PlToneWell({super.key, required this.icon, required this.tone, this.surface, this.size = PlToneWell.standard});
+
+  final IconData icon;
+  final Color tone;
+
+  /// What the well sits on (the card by default).
+  final Color? surface;
+  final double size;
+
+  static const double standard = AppTouch.min - AppSpace.sm;
+
+  @override
+  Widget build(BuildContext context) {
+    final tint = appTintOn(context, tone, surface: surface);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: tint, shape: BoxShape.circle),
+      child: Icon(icon, size: AppIconSize.sm, color: appInkOn(context, tone, tint)),
+    );
+  }
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  Score ring
 // ═════════════════════════════════════════════════════════════════════════════
 class PlScoreRing extends StatelessWidget {
-  const PlScoreRing({super.key, required this.value, required this.color, this.size = 96, this.light = false});
+  const PlScoreRing({super.key, required this.value, required this.color, this.size = 96, this.light = false, this.memoryKey});
 
   final num value;
   final Color color;
   final double size;
-  final bool light; // drawn on a coloured background
+
+  /// Drawn inside a block: the arc in the block's accent ink, the figure in its ink, the track its faint ink.
+  final bool light;
+
+  /// Set on the report's key ring: its figure rolls like an odometer from the value it showed last.
+  final String? memoryKey;
+
+  static const double _stroke = 0.1;
+
+  /// From this size the ring also says "/100" under the figure.
+  static const double _withScale = AppTouch.primary + AppSpace.lg;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-        width: size,
-        height: size,
-        child: Stack(alignment: Alignment.center, children: [
-          CustomPaint(
-            size: Size.square(size),
-            painter: _RingPainter(value.toDouble().clamp(0, 100) / 100, color, light ? context.colors.heroGlass : color.withAlpha(35)),
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ink = light ? AppBlock.colorsOf(context) : null;
+    final arc = ink == null ? color : ink.accentInk(color);
+    final track = ink == null ? appTintOn(context, color) : Color.alphaBlend(ink.faint.withValues(alpha: 0.22), ink.surface);
+    final figureStyle = AppType.figureLarge(context).copyWith(fontSize: size * 0.3, height: 1, color: ink?.ink ?? appInk(context, color));
+    final figure = memoryKey == null
+        ? AppCountUp('${value.round()}', style: figureStyle)
+        : AppOdometer('${value.round()}', memoryKey: memoryKey, style: figureStyle);
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(alignment: Alignment.center, children: [
+        // the arc fills once from 0 and glides on a change
+        AppFill(
+          value: value.toDouble().clamp(0, 100) / 100,
+          builder: (_, t) => CustomPaint(size: Size.square(size), painter: _RingPainter(t, arc, track, _stroke)),
+        ),
+        Padding(
+          padding: EdgeInsets.all(size * _stroke * 1.6),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              figure,
+              if (size >= _withScale)
+                Text('/100', textDirection: TextDirection.ltr, style: AppType.meta(context).copyWith(color: ink?.muted ?? c.textLight)),
+            ]),
           ),
-          Column(mainAxisSize: MainAxisSize.min, children: [
-            Text('${value.round()}',
-                style: TextStyle(fontSize: size * 0.30, fontWeight: FontWeight.w900, color: light ? context.colors.onHero : color)),
-            Text('/100', style: TextStyle(fontSize: size * 0.12, color: light ? context.colors.onHeroMuted : context.colors.textLight)),
-          ]),
-        ]),
-      );
+        ),
+      ]),
+    );
+  }
 }
 
 class _RingPainter extends CustomPainter {
-  _RingPainter(this.t, this.color, this.track);
+  _RingPainter(this.t, this.color, this.track, this.strokeShare);
 
-  final double t;
+  final double t, strokeShare;
   final Color color, track;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final stroke = size.width * 0.11;
+    final stroke = size.width * strokeShare;
     final rect = Offset(stroke / 2, stroke / 2) & Size(size.width - stroke, size.height - stroke);
     final base = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke
       ..strokeCap = StrokeCap.round;
     canvas.drawArc(rect, 0, math.pi * 2, false, base..color = track);
-    canvas.drawArc(rect, -math.pi / 2, math.pi * 2 * t, false, base..color = color);
+    if (t > 0) canvas.drawArc(rect, -math.pi / 2, math.pi * 2 * t, false, base..color = color);
   }
 
   @override
@@ -108,23 +168,25 @@ class PlSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return PlCard(
+    return AppCard(
+      margin: const EdgeInsets.only(bottom: AppSpace.md),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.md + AppSpace.xxs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(color: c.primary.withAlpha(28), borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, size: 18, color: c.primary),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+            child: Semantics(header: true, child: Text(title, style: AppType.section(context))),
           ),
-          const SizedBox(width: 10),
-          Expanded(child: Text(title, style: c.h2.copyWith(fontSize: 15))),
-          if (trailing != null) trailing!,
+          ?trailing,
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: AppSpace.xs, top: AppSpace.xxs),
+            child: Icon(icon, size: AppIconSize.md, color: c.textLight),
+          ),
         ]),
         if (hint != null) ...[
-          const SizedBox(height: 6),
-          Text(hint!, style: c.caption.copyWith(fontSize: 12, height: 1.4)),
+          const SizedBox(height: AppSpace.xxs),
+          Text(hint!, style: AppType.meta(context).copyWith(height: 1.45)),
         ],
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.md),
         child,
       ]),
     );
@@ -132,7 +194,7 @@ class PlSection extends StatelessWidget {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  KPI tile  (big number · what it means · change vs previous period)
+//  KPI tile  (figure · what it means · change vs previous period)
 // ═════════════════════════════════════════════════════════════════════════════
 class PlKpi extends StatelessWidget {
   const PlKpi({
@@ -160,41 +222,40 @@ class PlKpi extends StatelessWidget {
     final c = context.colors;
     final col = color ?? c.primary;
     Widget? chip;
-    if (delta != null && delta != 0) {
+    if (delta != null && delta!.round() != 0) {
       final up = delta! > 0;
       final good = up == higherIsBetter;
-      final dc = good ? c.success : c.danger;
-      chip = Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(color: dc.withAlpha(30), borderRadius: BorderRadius.circular(8)),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, size: 12, color: dc),
-          Text('${delta!.abs().round()}$deltaSuffix', style: TextStyle(fontSize: 11, color: dc, fontWeight: FontWeight.w800)),
-        ]),
+      chip = AppStatusBadge(
+        label: ltrIsolate('${up ? '+' : '-'}${delta!.abs().round()}$deltaSuffix'),
+        tone: good ? AppTone.success : AppTone.danger,
+        icon: up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+        dense: true,
       );
     }
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: col.withAlpha(20),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: col.withAlpha(45)),
-      ),
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpace.md),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(icon, size: 18, color: col),
-          const Spacer(),
-          if (chip != null) chip,
+          PlToneWell(icon: icon, tone: col),
+          const SizedBox(width: AppSpace.xs),
+          if (chip != null)
+            Expanded(
+              child: Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: FittedBox(fit: BoxFit.scaleDown, child: chip),
+              ),
+            ),
         ]),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.sm),
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: AlignmentDirectional.centerStart,
-          child: Text(value, style: c.h2.copyWith(fontSize: 22, color: col)),
+          child: AppCountUp(value, memoryKey: 'parent.report.$label', style: AppType.figureLarge(context).copyWith(color: appInk(context, col))),
         ),
-        const SizedBox(height: 2),
-        Text(label, style: c.h2.copyWith(fontSize: 12.5)),
-        if (sub != null) Text(sub!, style: c.caption.copyWith(fontSize: 11), maxLines: 2, overflow: TextOverflow.ellipsis),
+        const SizedBox(height: AppSpace.xxs),
+        Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+        if (sub != null)
+          Text(sub!, style: AppType.meta(context).copyWith(height: 1.4), maxLines: 2, overflow: TextOverflow.ellipsis),
       ]),
     );
   }
@@ -210,19 +271,17 @@ class PlInsightTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final col = plLevelColor(context, level);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: col.withAlpha(22),
-        borderRadius: BorderRadius.circular(12),
-        border: BorderDirectional(start: BorderSide(color: col, width: 4)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(plLevelIcon(level), size: 18, color: col),
-        const SizedBox(width: 10),
-        Expanded(child: Text(text, style: const TextStyle(fontSize: 13.5, height: 1.4))),
+        PlToneWell(icon: plLevelIcon(level), tone: plLevelColor(context, level)),
+        const SizedBox(width: AppSpace.sm),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: AppSpace.xxs + AppBorder.focus),
+            child: Text(text, style: AppType.row(context).copyWith(height: 1.5)),
+          ),
+        ),
       ]),
     );
   }
@@ -240,36 +299,55 @@ class PlBarRow extends StatelessWidget {
   final Color? color;
   final bool highlight;
 
+  static const double _labelWidth = AppSpace.xxxl + AppSpace.md;
+  static const double _valueWidth = AppSpace.xl + AppSpace.xs;
+  static const double _bar = AppSpace.xs + AppBorder.focus;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final col = color ?? c.primary;
+    final fill = highlight ? col : Color.alphaBlend(col.withValues(alpha: 0.45), c.cardBg);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs + AppBorder.hairline),
       child: Row(children: [
-        Icon(icon, size: 18, color: highlight ? col : context.colors.textLight),
-        const SizedBox(width: 8),
-        SizedBox(width: 78, child: Text(label, style: TextStyle(fontSize: 12.5, fontWeight: highlight ? FontWeight.w800 : FontWeight.w500))),
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: fraction.clamp(0.0, 1.0).toDouble(),
-              minHeight: 10,
-              color: highlight ? col : col.withAlpha(120),
-              backgroundColor: col.withAlpha(25),
-            ),
-          ),
+        Icon(icon, size: AppIconSize.sm, color: highlight ? appInk(context, col) : c.textLight),
+        const SizedBox(width: AppSpace.xs),
+        SizedBox(
+          width: _labelWidth,
+          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: AppType.label(context).copyWith(color: c.textDark, fontWeight: highlight ? FontWeight.w600 : FontWeight.w400)),
         ),
-        const SizedBox(width: 8),
-        SizedBox(width: 34, child: Text(value, textAlign: TextAlign.end, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
+        Expanded(
+          child: LayoutBuilder(builder: (context, box) {
+            return Container(
+              height: _bar,
+              alignment: AlignmentDirectional.centerStart,
+              decoration: BoxDecoration(color: appTintOn(context, col), borderRadius: BorderRadius.circular(AppRadius.pill)),
+              child: AppFill(
+                value: fraction.clamp(0.0, 1.0).toDouble(),
+                builder: (_, v) => Container(
+                  width: box.maxWidth * v,
+                  height: _bar,
+                  decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                ),
+              ),
+            );
+          }),
+        ),
+        const SizedBox(width: AppSpace.xs),
+        SizedBox(
+          width: _valueWidth,
+          child: Text(value, textAlign: TextAlign.end, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()])),
+        ),
       ]),
     );
   }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  Weekday strip (7 squares whose colour = activity)
+//  Weekday strip (7 squares whose depth = activity)
 // ═════════════════════════════════════════════════════════════════════════════
 const _dayAr = ['إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت', 'أحد'];
 const _dayEn = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -284,6 +362,8 @@ class PlWeekdayStrip extends StatelessWidget {
   final List<int> counts; // Monday = 0
   final int weekStart;
 
+  static const double _cell = AppSpace.xl + AppSpace.xxs;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -292,28 +372,31 @@ class PlWeekdayStrip extends StatelessWidget {
     return Row(children: [
       for (final d in order)
         Expanded(
-          child: Column(children: [
-            Container(
-              height: 36,
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: counts[d] == 0 || maxV == 0 ? c.primary.withAlpha(18) : c.primary.withAlpha(60 + (170 * counts[d] / maxV).round()),
-                borderRadius: BorderRadius.circular(8),
+          child: Builder(builder: (context) {
+            final share = maxV == 0 ? 0.0 : counts[d] / maxV;
+            // the depth of the primary over the card: an empty day is the input well, the busiest the full primary
+            final fill = counts[d] == 0 ? c.inputBg : Color.alphaBlend(c.primary.withValues(alpha: 0.2 + 0.8 * share), c.cardBg);
+            return Column(children: [
+              Container(
+                height: _cell,
+                margin: const EdgeInsets.symmetric(horizontal: AppBorder.focus),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(AppRadius.chip)),
+                child: counts[d] == 0
+                    ? null
+                    : Text('${counts[d]}', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: appInkOnFill(context, fill))),
               ),
-              child: Text(counts[d] == 0 ? '' : '${counts[d]}',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: counts[d] / (maxV == 0 ? 1 : maxV) > 0.5 ? Colors.white : c.primary)),
-            ),
-            const SizedBox(height: 4),
-            Text(plDayName(d), style: const TextStyle(fontSize: 10), maxLines: 1, overflow: TextOverflow.clip),
-          ]),
+              const SizedBox(height: AppSpace.xxs),
+              Text(plDayName(d), style: AppType.overline(context).copyWith(fontWeight: FontWeight.w400, letterSpacing: 0), maxLines: 1, overflow: TextOverflow.ellipsis),
+            ]);
+          }),
         ),
     ]);
   }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  Trend chart (bars) — last 7 days / 6 weeks / 6 months
+//  Trend chart (bars) — last 7 days / 6 weeks / 6 months, on the kit's AppBarChart
 // ═════════════════════════════════════════════════════════════════════════════
 class PlTrendChart extends StatefulWidget {
   const PlTrendChart({super.key, required this.unit, required this.points});
@@ -326,7 +409,10 @@ class PlTrendChart extends StatefulWidget {
 }
 
 class _PlTrendChartState extends State<PlTrendChart> {
+  static const _metrics = ['minutes', 'activities', 'exam_avg'];
   String _metric = 'minutes';
+
+  static const double _height = AppSpace.xxxl * 2 + AppSpace.lg;
 
   String _label(String iso) {
     final d = DateTime.tryParse(iso);
@@ -349,48 +435,26 @@ class _PlTrendChartState extends State<PlTrendChart> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final vals = [for (final p in widget.points) (p[_metric] as num?)];
-    final maxV = vals.fold<num>(0, (a, b) => b != null && b > a ? b : a);
-    final top = _metric == 'exam_avg' ? 100 : (maxV == 0 ? 1 : maxV);
-    const maxH = 96.0;
-
+    final vals = [for (final p in widget.points) ((p[_metric] as num?) ?? 0).toDouble()];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Wrap(spacing: 8, children: [
-        for (final m in const ['minutes', 'activities', 'exam_avg'])
-          ChoiceChip(
-            visualDensity: VisualDensity.compact,
-            label: Text('pl_trend_$m'.tr, style: const TextStyle(fontSize: 12)),
-            selected: _metric == m,
-            onSelected: (_) => setState(() => _metric = m),
-          ),
-      ]),
-      const SizedBox(height: 12),
-      SizedBox(
-        height: maxH + 44,
-        child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          for (var i = 0; i < widget.points.length; i++)
-            Expanded(
-              child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
-                Text(vals[i] == null ? '–' : _fmt(vals[i]!), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 3),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 350),
-                  margin: const EdgeInsets.symmetric(horizontal: 5),
-                  height: vals[i] == null ? 3 : 3 + (maxH - 3) * (vals[i]! / top).clamp(0.0, 1.0),
-                  decoration: BoxDecoration(
-                    color: i == widget.points.length - 1 ? c.primary : c.primary.withAlpha(95),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(_label('${widget.points[i]['label']}'),
-                    style: TextStyle(fontSize: 10, fontWeight: i == widget.points.length - 1 ? FontWeight.w800 : FontWeight.w400),
-                    maxLines: 1,
-                    overflow: TextOverflow.clip),
-              ]),
-            ),
-        ]),
+      AppTabs(
+        expand: true,
+        items: [for (final m in _metrics) AppTabItem('pl_trend_$m'.tr)],
+        index: _metrics.indexOf(_metric),
+        onChanged: (i) => setState(() => _metric = _metrics[i]),
+      ),
+      const SizedBox(height: AppSpace.md),
+      // a new metric draws its bars in again (the key restarts the draw-in)
+      KeyedSubtree(
+        key: ValueKey(_metric),
+        child: AppBarChart(
+          series: [AppChartSeries('pl_trend_$_metric'.tr, vals, color: context.colors.primary)],
+          labels: [for (final p in widget.points) _label('${p['label']}')],
+          height: _height,
+          title: 'pl_trend_$_metric'.tr,
+          format: _fmt,
+          integerAxis: _metric == 'activities',
+        ),
       ),
     ]);
   }

@@ -14,8 +14,10 @@ import 'parent_link_providers.dart';
 import 'parent_reports_page.dart';
 import 'parent_widgets.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
-import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppPressScale, AppReveal;
+import 'package:flutter_education_app/design/app_bidi.dart' show ltrIsolate;
+import 'parent_report_widgets.dart' show PlToneWell;
 
 const _prios = ['high', 'medium', 'low'];
 
@@ -91,15 +93,26 @@ class _ParentAlertsPageState extends State<ParentAlertsPage> {
     final c = context.colors;
     final list = p.visible;
 
-    return Column(children: [
-      // ── filters ───────────────────────────────────────────────────────────
+    final sort = AppTabs(
+      items: [AppTabItem('pl_sort_priority'.tr), AppTabItem('pl_sort_date'.tr)],
+      index: p.sort == 'priority' ? 0 : 1,
+      onChanged: (i) => p.setSort(i == 0 ? 'priority' : 'date'),
+    );
+    final narrow = MediaQuery.sizeOf(context).width < AppWidth.phoneMax;
+
+    // a list of alerts reads best as one column, not stretched across a desktop window
+    return AppWidthBox(
+      width: AppWidth.reading,
+      gutters: false,
+      child: Column(children: [
+      // ── filters: the three priority tiles are the page's one memorable element (a count per priority) ─────
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.xxs, 0),
         child: Row(children: [
           for (final k in _prios)
             Expanded(
               child: Padding(
-                padding: const EdgeInsetsDirectional.only(end: 8),
+                padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
                 child: _PrioChip(
                   label: 'pl_prio_$k'.tr,
                   count: p.counts[k] ?? 0,
@@ -110,7 +123,7 @@ class _ParentAlertsPageState extends State<ParentAlertsPage> {
               ),
             ),
           PopupMenuButton<String>(
-            icon: Icon(Icons.more_vert_rounded, color: c.primary),
+            icon: Icon(Icons.more_vert_rounded, color: c.textMedium),
             onSelected: (v) {
               if (v == 'read') p.readAll();
               if (v == 'dismissed') p.toggleDismissed();
@@ -123,7 +136,7 @@ class _ParentAlertsPageState extends State<ParentAlertsPage> {
         ]),
       ),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxs),
         child: Row(children: [
           if (kids.length > 1)
             Expanded(
@@ -141,17 +154,9 @@ class _ParentAlertsPageState extends State<ParentAlertsPage> {
             )
           else
             const Spacer(),
-          const SizedBox(width: 8),
-          SegmentedButton<String>(
-            showSelectedIcon: false,
-            style: const ButtonStyle(visualDensity: VisualDensity.compact),
-            segments: [
-              ButtonSegment(value: 'priority', label: Text('pl_sort_priority'.tr, style: const TextStyle(fontSize: 12))),
-              ButtonSegment(value: 'date', label: Text('pl_sort_date'.tr, style: const TextStyle(fontSize: 12))),
-            ],
-            selected: {p.sort},
-            onSelectionChanged: (s) => p.setSort(s.first),
-          ),
+          const SizedBox(width: AppSpace.xs),
+          // a phone shares the line (the strip scrolls if it must); a wide window keeps the strip at its own width
+          if (narrow) Flexible(child: sort) else sort,
         ]),
       ),
       Expanded(
@@ -167,39 +172,43 @@ class _ParentAlertsPageState extends State<ParentAlertsPage> {
                     : AppRefresh(
                         onRefresh: p.load,
                         child: ListView(
-                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.lg),
                           children: [
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Text(plFmt('pl_alerts_hint', {'d': p.days}), style: c.caption.copyWith(fontSize: 11.5)),
-                            ),
+                            Text(plFmt('pl_alerts_hint', {'d': p.days}), style: AppType.meta(context)),
                             ..._rows(context, p, list),
                           ],
                         ),
                       ),
       ),
-    ]);
+    ]),
+    );
   }
 
   List<Widget> _rows(BuildContext context, ParentAlertsProvider p, List<Map<String, dynamic>> list) {
-    final c = context.colors;
     final out = <Widget>[];
+    var n = 0;
+    // ONE entrance: the first cards rise in order (AppReveal caps itself); the group headings stay put.
+    Widget card(Map<String, dynamic> a, bool showPriority) =>
+        AppReveal(index: n++, group: 'parent.alerts', child: _AlertCard(alert: a, showPriority: showPriority));
     if (p.sort == 'priority') {
       for (final k in _prios) {
         final group = list.where((a) => a['priority'] == k).toList();
         if (group.isEmpty) continue;
         out.add(Padding(
-          padding: const EdgeInsets.fromLTRB(2, 8, 2, 8),
-          child: Row(children: [
-            Container(width: 10, height: 10, decoration: BoxDecoration(color: _prioColor(context, k), shape: BoxShape.circle)),
-            const SizedBox(width: 8),
-            Text('${'pl_prio_$k'.tr}  (${group.length})', style: c.h2.copyWith(fontSize: 14)),
+          padding: const EdgeInsets.only(top: AppSpace.lg, bottom: AppSpace.sm),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+            Icon(Icons.circle, size: AppSpace.sm, color: _prioColor(context, k)),
+            const SizedBox(width: AppSpace.xs),
+            Flexible(child: Text('pl_prio_$k'.tr, style: AppType.section(context), maxLines: 1, overflow: TextOverflow.ellipsis)),
+            const SizedBox(width: AppSpace.xs),
+            Text(ltrIsolate('${group.length}'), style: AppType.figure(context).copyWith(color: context.colors.textLight)),
           ]),
         ));
-        out.addAll(group.map((a) => _AlertCard(alert: a, showPriority: false)));
+        out.addAll(group.map((a) => card(a, false)));
       }
     } else {
-      out.addAll(list.map((a) => _AlertCard(alert: a, showPriority: true)));
+      out.add(const SizedBox(height: AppSpace.sm));
+      out.addAll(list.map((a) => card(a, true)));
     }
     return out;
   }
@@ -215,23 +224,45 @@ class _PrioChip extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: selected ? color : color.withAlpha(24),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: color.withAlpha(selected ? 255 : 70)),
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final radius = BorderRadius.circular(AppRadius.card);
+    final ink = selected ? c.onHero : appInkOn(context, color, c.cardBg);
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: AppPressScale(
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: radius,
+            onTap: onTap,
+            child: AnimatedContainer(
+              duration: AppMotion.of(context).fast,
+              curve: AppMotion.curve,
+              constraints: const BoxConstraints(minHeight: AppTouch.min),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.sm),
+              decoration: BoxDecoration(
+                color: selected ? color : c.cardBg,
+                borderRadius: radius,
+                border: Border.all(color: selected ? color : c.divider),
+              ),
+              child: Column(children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: AppCountUp('$count', memoryKey: 'parent.alerts.$label', style: AppType.figureLarge(context).copyWith(color: ink)),
+                ),
+                Text(label,
+                    style: AppType.meta(context).copyWith(color: selected ? c.onHero : c.textMedium),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+              ]),
+            ),
           ),
-          child: Column(children: [
-            Text('$count', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: selected ? context.colors.onHero : color)),
-            Text(label, style: TextStyle(fontSize: 11.5, color: selected ? context.colors.onHero : null), maxLines: 1, overflow: TextOverflow.ellipsis),
-          ]),
         ),
-      );
+      ),
+    );
+  }
 }
 
 class _AlertCard extends StatelessWidget {
@@ -261,92 +292,91 @@ class _AlertCard extends StatelessWidget {
     final dismissed = alert['status'] == 'dismissed';
     final child = alert['child'] as Map;
     final key = '${alert['key']}';
+    final surface = unread ? c.cardBg : c.background;
 
-    return Dismissible(
-      key: ValueKey(key),
-      direction: dismissed ? DismissDirection.none : DismissDirection.horizontal,
-      background: _swipeBg(c.primary, Alignment.centerLeft),
-      secondaryBackground: _swipeBg(c.primary, Alignment.centerRight),
-      onDismissed: (_) {
-        p.setStatus([key], 'dismissed');
-        ScaffoldMessenger.of(context)
-          ..clearSnackBars()
-          ..showSnackBar(SnackBar(
-            content: Text('pl_alert_dismissed'.tr),
-            action: SnackBarAction(label: 'pl_undo'.tr, onPressed: () => p.setStatus([key], 'unread')),
-          ));
-      },
-      child: Opacity(
-        opacity: dismissed ? 0.5 : 1,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          decoration: BoxDecoration(
-            color: unread ? col.withAlpha(22) : c.primary.withAlpha(10),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: unread ? col.withAlpha(90) : c.primary.withAlpha(25)),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
+      child: Dismissible(
+        key: ValueKey(key),
+        direction: dismissed ? DismissDirection.none : DismissDirection.horizontal,
+        background: _swipeBg(context, Alignment.centerLeft),
+        secondaryBackground: _swipeBg(context, Alignment.centerRight),
+        onDismissed: (_) {
+          p.setStatus([key], 'dismissed');
+          ScaffoldMessenger.of(context)
+            ..clearSnackBars()
+            ..showSnackBar(SnackBar(
+              content: Text('pl_alert_dismissed'.tr),
+              action: SnackBarAction(label: 'pl_undo'.tr, onPressed: () => p.setStatus([key], 'unread')),
+            ));
+        },
+        child: AnimatedOpacity(
+          duration: AppMotion.of(context).fast,
+          opacity: dismissed ? 0.5 : 1,
+          // tone first: an unread alert sits on paper with its priority's hairline; a read one sinks into the canvas
+          child: Material(
+            color: surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              side: BorderSide(color: unread ? col.withValues(alpha: 0.45) : c.divider),
+            ),
+            clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: unread ? () => p.setStatus([key], 'read') : null,
-              child: IntrinsicHeight(
-                child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Container(width: 5, color: col),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsetsDirectional.fromSTEB(12, 12, 4, 8),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Row(children: [
-                          Container(
-                            padding: const EdgeInsets.all(7),
-                            decoration: BoxDecoration(color: col.withAlpha(35), borderRadius: BorderRadius.circular(10)),
-                            child: Icon(_typeIcon('${alert['type']}'), size: 18, color: col),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text('pl_alert_title_${alert['type']}'.tr,
-                                style: TextStyle(fontSize: 14.5, fontWeight: unread ? FontWeight.w800 : FontWeight.w600)),
-                          ),
-                          if (unread) Container(width: 9, height: 9, margin: const EdgeInsets.symmetric(horizontal: 6), decoration: BoxDecoration(color: col, shape: BoxShape.circle)),
-                          PopupMenuButton<String>(
-                            padding: EdgeInsets.zero,
-                            icon: const Icon(Icons.more_vert_rounded, size: 20),
-                            onSelected: (v) => p.setStatus([key], v),
-                            itemBuilder: (_) => [
-                              if (unread) PopupMenuItem(value: 'read', child: Text('pl_mark_read'.tr)) else PopupMenuItem(value: 'unread', child: Text('pl_mark_unread'.tr)),
-                              if (!dismissed) PopupMenuItem(value: 'dismissed', child: Text('pl_dismiss'.tr)),
-                            ],
-                          ),
-                        ]),
-                        const SizedBox(height: 6),
-                        Text(_text(), style: const TextStyle(fontSize: 13.5, height: 1.4)),
-                        const SizedBox(height: 8),
-                        Row(children: [
-                          Flexible(
-                            child: EntityChip(EntityRef(EntityKind.student, child['id'] as int, label: '${child['name']}'), maxWidth: 160),
-                          ),
-                          const SizedBox(width: 10),
-                          Icon(Icons.schedule_rounded, size: 14, color: context.colors.textMedium),
-                          const SizedBox(width: 3),
-                          Text(_ago(alert['at']), style: c.caption.copyWith(fontSize: 12)),
-                          if (showPriority) ...[
-                            const SizedBox(width: 10),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-                              decoration: BoxDecoration(color: col.withAlpha(35), borderRadius: BorderRadius.circular(8)),
-                              child: Text('pl_prio_$prio'.tr, style: TextStyle(fontSize: 10.5, color: col, fontWeight: FontWeight.w800)),
-                            ),
-                          ],
-                          const Spacer(),
-                          TextButton(
-                            style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 8)),
-                            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                                builder: (_) => ParentChildReportScreen(studentId: child['id'] as int, studentName: '${child['name']}'))),
-                            child: Text('pl_view_report'.tr, style: const TextStyle(fontSize: 12)),
-                          ),
-                        ]),
-                      ]),
+              child: Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.xxs, AppSpace.xs),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    PlToneWell(icon: _typeIcon('${alert['type']}'), tone: col, surface: surface),
+                    const SizedBox(width: AppSpace.sm),
+                    Expanded(
+                      child: Text('pl_alert_title_${alert['type']}'.tr,
+                          style: AppType.row(context).copyWith(fontWeight: unread ? FontWeight.w700 : FontWeight.w500)),
                     ),
+                    if (unread)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
+                        child: Icon(Icons.circle, size: AppSpace.xs, color: col),
+                      ),
+                    PopupMenuButton<String>(
+                      icon: Icon(Icons.more_vert_rounded, color: c.textMedium),
+                      onSelected: (v) => p.setStatus([key], v),
+                      itemBuilder: (_) => [
+                        if (unread) PopupMenuItem(value: 'read', child: Text('pl_mark_read'.tr)) else PopupMenuItem(value: 'unread', child: Text('pl_mark_unread'.tr)),
+                        if (!dismissed) PopupMenuItem(value: 'dismissed', child: Text('pl_dismiss'.tr)),
+                      ],
+                    ),
+                  ]),
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(top: AppSpace.xs, end: AppSpace.sm),
+                    child: Text(_text(), style: AppType.body(context)),
+                  ),
+                  const SizedBox(height: AppSpace.xs),
+                  // the who / when line and the report action share a line while they fit; on a narrow phone the action
+                  // drops under them instead of squeezing the child's name
+                  SizedBox(
+                    width: double.infinity,
+                    child: Wrap(alignment: WrapAlignment.spaceBetween, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                      Padding(
+                        padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
+                        child: Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                          EntityChip(EntityRef(EntityKind.student, child['id'] as int, label: '${child['name']}')),
+                          Row(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(Icons.schedule_rounded, size: AppIconSize.xs, color: c.textLight),
+                            const SizedBox(width: AppSpace.xxs),
+                            Flexible(child: Text(_ago(alert['at']), style: AppType.meta(context), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                          ]),
+                          if (showPriority) AppStatusBadge(label: 'pl_prio_$prio'.tr, tone: _prioTone(prio), dense: true),
+                        ]),
+                      ),
+                      AppButton(
+                        label: 'pl_view_report'.tr,
+                        variant: AppButtonVariant.ghost,
+                        size: AppButtonSize.sm,
+                        onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => ParentChildReportScreen(studentId: child['id'] as int, studentName: '${child['name']}'))),
+                      ),
+                    ]),
                   ),
                 ]),
               ),
@@ -357,11 +387,16 @@ class _AlertCard extends StatelessWidget {
     );
   }
 
-  Widget _swipeBg(Color col, Alignment al) => Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        alignment: al,
-        decoration: BoxDecoration(color: col.withAlpha(40), borderRadius: BorderRadius.circular(16)),
-        child: Icon(Icons.done_all_rounded, color: col),
-      );
+  Widget _swipeBg(BuildContext context, Alignment al) {
+    final c = context.colors;
+    final tint = appTintOn(context, c.primary);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
+      alignment: al,
+      decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(AppRadius.card)),
+      child: Icon(Icons.done_all_rounded, color: appInkOn(context, c.primary, tint)),
+    );
+  }
 }
+
+AppTone _prioTone(String p) => p == 'high' ? AppTone.danger : (p == 'medium' ? AppTone.warning : AppTone.success);

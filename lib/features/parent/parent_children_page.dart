@@ -6,7 +6,6 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
@@ -18,6 +17,7 @@ import 'parent_widgets.dart';
 import '../shared/inbox/unified_inbox.dart' show InboxEntryCard;
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 import 'package:flutter_education_app/design/master_detail/entity_detail_view.dart' show EntityPanelAction;
 import 'package:flutter_education_app/design/master_detail/entity_navigator.dart';
 import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
@@ -111,25 +111,31 @@ class _ParentChildrenPageState extends State<ParentChildrenPage> {
     return AppRefresh(
       onRefresh: p.loadAll,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xl),
         children: [
           // requests · announcements · offers for the parent: ONE entry into the inbox, as on every role's home
-          const InboxEntryCard(padding: EdgeInsets.only(bottom: 14)),
-          for (final ch in p.children)
+          const InboxEntryCard(padding: EdgeInsets.only(bottom: AppSpace.md)),
+          for (final (i, ch) in p.children.indexed)
             Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: _ChildCard(
-                data: ch,
-                profile: p.profiles[(ch['id'] as num).toInt()],
-                profileLoaded: p.profiles.containsKey((ch['id'] as num).toInt()),
-                unreadAlerts: unread[(ch['id'] as num).toInt()] ?? 0,
+              padding: const EdgeInsets.only(bottom: AppSpace.md),
+              // the one entrance of the page: the children's blocks, in order
+              child: AppReveal(
+                index: i,
+                group: 'parent.children',
+                child: _ChildCard(
+                  data: ch,
+                  profile: p.profiles[(ch['id'] as num).toInt()],
+                  profileLoaded: p.profiles.containsKey((ch['id'] as num).toInt()),
+                  unreadAlerts: unread[(ch['id'] as num).toInt()] ?? 0,
+                ),
               ),
             ),
           Center(
-            child: TextButton.icon(
+            child: AppButton(
+              label: anTr('pl_link_another', 'Link another child'),
+              icon: Icons.add_link_rounded,
+              variant: AppButtonVariant.ghost,
               onPressed: widget.onOpenLinkTab,
-              icon: const Icon(Icons.add_link_rounded, size: 18),
-              label: Text(anTr('pl_link_another', 'Link another child')),
             ),
           ),
         ],
@@ -148,72 +154,75 @@ class _ChildCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final id = (data['id'] as num).toInt();
     final name = '${data['name']}';
     final pr = profile;
     final attention = pr?.courses.where((b) => _needsAttention(b.attendance, b.examAvg)).length ?? 0;
     void report() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ParentChildReportScreen(studentId: id, studentName: name)));
-    return AnCard(
-      padding: EdgeInsets.zero,
-      borderColor: attention > 0 ? c.warning.withValues(alpha: 0.45) : null,
+    // The child's own tone (the same one their report hero wears): a parent learns each child's colour.
+    return AppBlock(
+      tone: parentChildTone(id),
+      semanticLabel: name,
       onTap: () => EntityNavigator.open(context, EntityRef(EntityKind.student, id, label: name)),
-      child: Column(children: [
-        Container(
-          padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 12, 14),
-          decoration: BoxDecoration(
-            gradient: AppGradients.wash(context),
-          ),
-          child: Row(children: [
-            Container(
-              padding: const EdgeInsets.all(2.5),
-              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: c.primary, width: 1.6)),
-              child: AnAvatar(name: name, url: '${data['image_url'] ?? ''}', size: 54),
-            ),
-            const SizedBox(width: 14),
+      child: Builder(builder: (context) {
+        final b = AppBlock.colorsOf(context);
+        Widget ring(double? v, String label) => Flexible(
+              child: AnRing(value: v, size: AppTouch.min + AppSpace.sm, stroke: AppSpace.xxs * 1.5, label: label, color: b.accentInk(anScoreColor(context, v))),
+            );
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            AnAvatar(name: name, url: '${data['image_url'] ?? ''}', size: AppTouch.min + AppSpace.xs),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(17, w: FontWeight.w800, c: c.textDark)),
-                const SizedBox(height: 3),
+                Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: b.ink)),
+                const SizedBox(height: AppSpace.xxs),
                 Text(
                   pr != null
                       ? anInsightSentence(pr.progress, pr.attendance, pr.examAvg, mine: false)
                       : '${'pl_linked_at'.tr} ${plDateTime(data['linked_at'])}',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: anText(12, c: c.textMedium, h: 1.45),
+                  style: AppType.meta(context).copyWith(color: b.muted),
                 ),
               ]),
             ),
-            Icon(Icons.chevron_right_rounded, color: c.textLight),
+            Icon(Icons.chevron_right_rounded, color: b.muted),
           ]),
-        ),
-        if (!profileLoaded)
-          const Padding(padding: EdgeInsets.fromLTRB(16, 8, 16, 8), child: LinearProgressIndicator(minHeight: 3))
-        else if (pr != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-              AnRing(value: pr.progress, size: 62, stroke: 6, label: 'dl_progress'.tr),
-              AnRing(value: pr.attendance, size: 62, stroke: 6, label: 'dl_attendance'.tr),
-              AnRing(value: pr.examAvg, size: 62, stroke: 6, label: 'dl_exams'.tr),
-            ]),
-          ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
-          child: Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-              AnChip(icon: Icons.insights_rounded, label: 'pl_tab_reports'.tr, color: c.primary, onTap: report),
-              if (pr != null) AnTag('${pr.courses.length} ${anTr('an_courses', 'Courses')}', c.accent2, icon: Icons.menu_book_rounded),
-              if (attention > 0)
-                AnTag(anFmt('pl_attention_courses', {'n': attention}, '{n} need attention'), c.warning, icon: Icons.volunteer_activism_rounded),
-              if (unreadAlerts > 0)
-                AnTag(anFmt('pl_unread_alerts', {'n': unreadAlerts}, '{n} new alerts'), c.danger, icon: Icons.notifications_active_rounded),
-            ]),
-          ),
-        ),
-      ]),
+          if (!profileLoaded)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpace.md),
+              child: LinearProgressIndicator(minHeight: AppSpace.xxs),
+            )
+          else if (pr != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
+              child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+                ring(pr.progress, 'dl_progress'.tr),
+                ring(pr.attendance, 'dl_attendance'.tr),
+                ring(pr.examAvg, 'dl_exams'.tr),
+              ]),
+            )
+          else
+            const SizedBox(height: AppSpace.md),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            AppButton(label: 'pl_tab_reports'.tr, icon: Icons.insights_rounded, variant: AppButtonVariant.secondary, size: AppButtonSize.sm, onPressed: report),
+            if (pr != null) AppStatusBadge(label: '${pr.courses.length} ${anTr('an_courses', 'Courses')}', icon: Icons.menu_book_rounded),
+            if (attention > 0)
+              AppStatusBadge(
+                label: anFmt('pl_attention_courses', {'n': attention}, '{n} need attention'),
+                tone: AppTone.warning,
+                icon: Icons.volunteer_activism_rounded,
+              ),
+            if (unreadAlerts > 0)
+              AppStatusBadge(
+                label: anFmt('pl_unread_alerts', {'n': unreadAlerts}, '{n} new alerts'),
+                tone: AppTone.danger,
+                icon: Icons.notifications_active_rounded,
+              ),
+          ]),
+        ]);
+      }),
     );
   }
 }

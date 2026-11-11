@@ -109,6 +109,8 @@ void main() {
     expect(find.byType(ParentSubjectsCard), findsOneWidget);
     expect(find.byType(ParentChildOverviewCard), findsNothing);
     await tester.tap(find.text('Sara'));
+    // switching children crossfades the pulse in place: the old child's picture leaves once the fade has ended
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.byType(ParentSubjectsCard), findsNothing, reason: 'Sara has no subjects');
     expect(find.byType(ParentInsightsCard), findsOneWidget);
