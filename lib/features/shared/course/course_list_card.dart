@@ -21,7 +21,11 @@
 // its row so the row's footers line up. Under a fixed height (another screen's SliverGrid) the footer still sits
 // at the bottom and a long title gives way first.
 //
-// Type: titles w600, meta w400 muted, figures w600; hairline border, no shadow, one accent per card. The header
+// Editorial theme (D-610 – D-629): paper on a warm hairline, radius `card`, no resting shadow; the title in the
+// editorial serif (AppType.section), meta in the UI sans; the card leans a little under the pointer (AppTilt.subtle)
+// and its cover drifts against the scroll (AppParallaxImage). A course with no picture gets a BOOK cover: a block
+// tone picked by its title (AppBlockTone.forKey, the same tone on every screen), a spine on the start edge and the
+// title's first letter set large in the editorial face. One accent per card. The header
 // parts of a course list (CourseSearchField, CourseSegments) and its states (CourseListSkeleton, CourseListEmpty,
 // CourseListError) live here too, so the two screens build the same calm block.
 import 'dart:math' as math;
@@ -31,8 +35,14 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_charts.dart' show appCompactNumber;
-import 'package:flutter_education_app/design/app_kit.dart' show appText, AppShimmer, AppSkeletonBox;
-import 'package:flutter_education_app/design/app_mesh.dart' show AppMeshSurface;
+import 'package:flutter_education_app/design/app_badges.dart' show AppStatusBadge, AppTone;
+import 'package:flutter_education_app/design/app_blocks.dart';
+import 'package:flutter_education_app/design/app_depth.dart' show AppParallaxImage;
+import 'package:flutter_education_app/design/app_inputs.dart' show appFieldDecoration, appFieldTextStyle;
+import 'package:flutter_education_app/design/app_kit.dart' show AppShimmer, AppSkeletonBox;
+import 'package:flutter_education_app/design/app_states.dart' show AppEmpty, AppErrorState;
+import 'package:flutter_education_app/design/app_tabs.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart';
@@ -69,26 +79,94 @@ String courseLessonsLabel(int n) {
 /// "12 h".
 String courseHoursLabel(num h) => 'course_list_hours'.tr.replaceAll('{n}', h.round().toString());
 
-/// One course in a list. [corner] is the heart (student) or the ⋮ menu (teacher); [chip] the type / status chip;
-/// [metaLead] leads the meta line (the organization badge of a mixed list); [footer] is the role's last line.
-/// The cover of a course with no picture: the app's gradient, a different shape per course.
+/// The ONE letter a book cover carries: the first letter of the first word, after the Arabic article "ال" (every
+/// "ال…" title would draw the same alef). Empty for an empty title.
+String courseInitialOf(String title) {
+  final words = title.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+  if (words.isEmpty) return '';
+  final w = words.first;
+  final stem = w.startsWith('ال') && w.characters.length > 3 ? w.substring(2) : w;
+  return stem.characters.first.toUpperCase();
+}
+
+/// The cover of a course with no picture: a book. Its block tone comes from [toneKey] (the title in a list; the
+/// same course keeps its tone on every screen), a spine runs down the start edge, and [label]'s first letter is set
+/// large in the editorial face; without a [label] a quiet book glyph stands in for it. Decorative: never read out.
 class CourseCoverArt extends StatelessWidget {
-  const CourseCoverArt({super.key, required this.seed, this.width, this.height, this.iconSize = 34});
+  const CourseCoverArt({
+    super.key,
+    required this.seed,
+    this.width,
+    this.height,
+    this.iconSize = AppIconSize.xl,
+    this.label,
+    this.toneKey,
+  });
 
   final int seed;
   final double? width, height;
   final double iconSize;
 
+  /// The title whose first letter the cover carries.
+  final String? label;
+
+  /// What picks the block tone (default: [seed]).
+  final String? toneKey;
+
+  /// The spine's width, as a share of the cover's shorter side.
+  static const double _spine = 0.07;
+
+  /// The letter's line box, as a share of the cover's height (a little less on a small thumbnail, where it sits
+  /// above the chip at the bottom).
+  static const double _letter = 0.62, _letterSmall = 0.56;
+
+  /// Below this height a cover is a thumbnail.
+  static const double _small = 120;
+
   @override
-  Widget build(BuildContext context) => SizedBox(
+  Widget build(BuildContext context) {
+    final tone = AppBlockTone.forKey(toneKey ?? 'course-$seed');
+    final b = AppBlockColors.of(context, tone);
+    final initial = label == null ? '' : courseInitialOf(label!);
+    final spine = Color.lerp(b.surface, b.ink, context.colors.isDark ? 0.10 : 0.08)!;
+    return ExcludeSemantics(
+      child: SizedBox(
         width: width ?? double.infinity,
         height: height,
-        child: AppMeshSurface(
-          seed: seed,
-          child: Center(child: Icon(Icons.auto_stories_rounded, size: iconSize, color: context.colors.onHero.withValues(alpha: 0.55))),
+        child: ColoredBox(
+          color: b.surface,
+          child: LayoutBuilder(builder: (context, box) {
+            final short = box.hasBoundedHeight ? math.min(box.maxWidth, box.maxHeight) : box.maxWidth;
+            return Stack(children: [
+              PositionedDirectional(
+                start: 0,
+                top: 0,
+                bottom: 0,
+                width: short.isFinite ? short * _spine : AppSpace.xs,
+                child: ColoredBox(color: spine),
+              ),
+              Positioned.fill(
+                child: initial.isEmpty || !box.hasBoundedHeight
+                    ? Center(child: Icon(Icons.auto_stories_rounded, size: iconSize, color: b.muted))
+                    : Align(
+                        alignment: box.maxHeight < _small ? const Alignment(0, -0.7) : Alignment.center,
+                        child: SizedBox(
+                          height: box.maxHeight * (box.maxHeight < _small ? _letterSmall : _letter),
+                          // the whole line box is scaled, so an Arabic letter's tail is never cut
+                          child: FittedBox(child: Text(initial, style: AppType.display(context).copyWith(color: b.muted))),
+                        ),
+                      ),
+              ),
+            ]);
+          }),
         ),
-      );
+      ),
+    );
+  }
 }
+
+/// One course in a list. [corner] is the heart (student) or the ⋮ menu (teacher); [chip] the type / status chip;
+/// [metaLead] leads the meta line (the organization badge of a mixed list); [footer] is the role's last line.
 
 class CourseListCard extends StatelessWidget {
   const CourseListCard({
@@ -118,20 +196,26 @@ class CourseListCard extends StatelessWidget {
   final Widget footer;
   final VoidCallback? onTap;
 
+  /// The text block and footer under a tile's cover at text scale 1 (two editorial title lines, the meta line, the
+  /// footer and the insets).
+  static const double _tileText = 148;
+
   /// Row height is the content's; a tile's height for a grid cell of [width] is this.
-  static double tileHeight(BuildContext context, double width) => width * 9 / 16 + 128 * _scale(context);
+  static double tileHeight(BuildContext context, double width) => width * 9 / 16 + _tileText * _scale(context);
+
+  /// The phone row's picture.
+  static const Size _thumb = Size(104, 80);
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final radius = BorderRadius.circular(16);
-    // depth (D-583): tilts toward the mouse, presses in on touch; the cover shifts inside it
-    return AppTilt(
-      radius: 16,
-      maxTilt: 3,
+    final radius = AppRadius.cardAll;
+    // depth (D-620): leans 2 degrees under the mouse, presses in on touch; the cover drifts with the scroll
+    return AppTilt.subtle(
+      radius: AppRadius.card,
       child: Material(
         color: c.cardBg,
-        shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: c.divider)),
+        shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: c.divider, width: AppBorder.hairline)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
@@ -146,12 +230,12 @@ class CourseListCard extends StatelessWidget {
         title,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
-        style: appText(15, w: FontWeight.w600, c: context.colors.textDark, h: 1.35),
+        style: AppType.section(context),
       );
 
   Widget _meta(BuildContext context) {
     final c = context.colors;
-    final style = appText(12.5, w: FontWeight.w400, c: c.textMedium, h: 1.4);
+    final style = AppType.meta(context).copyWith(height: 1.4);
     // each part in its own direction: an English teacher name beside an Arabic count read "12 Dr. Mona Adel · جلسة"
     final text = meta.where((m) => m.trim().isNotEmpty).map(bidiIsolate).join('  ·  ');
     return Row(children: [
@@ -159,10 +243,10 @@ class CourseListCard extends StatelessWidget {
         ParentComponent(
           featureKey: 'course_card.private_flag',
           child: Padding(
-            padding: const EdgeInsetsDirectional.only(end: 4),
+            padding: const EdgeInsetsDirectional.only(end: AppSpace.xxs),
             child: Tooltip(
               message: 'private'.tr,
-              child: Icon(Icons.lock_outline_rounded, size: 14, color: c.textMedium),
+              child: Icon(Icons.lock_outline_rounded, size: AppIconSize.xs, color: c.textMedium),
             ),
           ),
         ),
@@ -187,7 +271,7 @@ class CourseListCard extends StatelessWidget {
           textScaler: MediaQuery.textScalerOf(context),
           maxLines: 1,
         )..layout();
-        final textW = math.min(painter.width + 8, box.maxWidth / 2);
+        final textW = math.min(painter.width + AppSpace.xs, box.maxWidth / 2);
         painter.dispose();
         return Row(children: [
           Flexible(child: metaLead!),
@@ -203,7 +287,9 @@ class CourseListCard extends StatelessWidget {
 
   Widget _picture({double? width, double? height}) => ParentComponent(
         featureKey: 'course_card.thumbnail',
-        child: imageUrl.trim().isEmpty ? CourseCoverArt(seed: title.hashCode, width: width, height: height) : AppNetworkImage(
+        child: imageUrl.trim().isEmpty
+            ? CourseCoverArt(seed: title.hashCode, width: width, height: height, label: title, toneKey: title)
+            : AppNetworkImage(
           url: imageUrl,
           width: width ?? double.infinity,
           height: height,
@@ -215,29 +301,29 @@ class CourseListCard extends StatelessWidget {
 
   Widget _row(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpace.sm),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: SizedBox(
-            width: 104,
-            height: 80,
+          // concentric with the card: its radius less the inset
+          borderRadius: BorderRadius.circular(AppRadius.card - AppSpace.xxs),
+          child: SizedBox.fromSize(
+            size: _thumb,
             child: Stack(children: [
-              Positioned.fill(child: _picture()),
-              if (chip case final chip?) PositionedDirectional(start: 6, bottom: 6, child: chip),
+              Positioned.fill(child: AppParallaxImage(maxShift: AppSpace.xxs, image: _picture())),
+              if (chip case final chip?) PositionedDirectional(start: AppSpace.xxs, bottom: AppSpace.xxs, child: chip),
             ]),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(child: _title(context)),
-              if (corner != null) ...[const SizedBox(width: 4), corner!],
+              if (corner != null) ...[const SizedBox(width: AppSpace.xxs), corner!],
             ]),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpace.xxs),
             _meta(context),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             footer,
           ]),
         ),
@@ -249,9 +335,9 @@ class CourseListCard extends StatelessWidget {
     final cover = AspectRatio(
       aspectRatio: 16 / 9,
       child: Stack(children: [
-        Positioned.fill(child: ClipRect(child: AppTiltLayer(depth: 1.2, overscan: true, child: _picture()))),
-        if (chip != null) PositionedDirectional(start: 12, top: 12, child: chip!),
-        if (corner != null) PositionedDirectional(end: 8, top: 8, child: _CornerBackdrop(child: corner!)),
+        Positioned.fill(child: AppParallaxImage(image: _picture())),
+        if (chip != null) PositionedDirectional(start: AppSpace.sm, top: AppSpace.sm, child: chip!),
+        if (corner != null) PositionedDirectional(end: AppSpace.xs, top: AppSpace.xs, child: _CornerBackdrop(child: corner!)),
       ]),
     );
     // cover · title + meta · footer; the tile is its content's height, or the height it is given with the footer at
@@ -262,7 +348,7 @@ class CourseListCard extends StatelessWidget {
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           // a very large text scale in a fixed-height grid clips the title, never overflows
           Flexible(child: _title(context)),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpace.xxs),
           _meta(context),
         ]),
       ),
@@ -271,7 +357,7 @@ class CourseListCard extends StatelessWidget {
   }
 }
 
-/// A tile's three parts — cover (full width), text block, footer — inset 16 · 12 · 16 · 16 with 12 px between the
+/// A tile's three parts — cover (full width), text block, footer — inset 16 on every side with 12 px between the
 /// text and the footer. Unbounded height → the content's height; a bounded one → that height, the footer at the
 /// bottom and the text block given what is left.
 class _TileLayout extends MultiChildRenderObjectWidget {
@@ -285,7 +371,7 @@ class _TileParentData extends ContainerBoxParentData<RenderBox> {}
 
 class _RenderTileLayout extends RenderBox
     with ContainerRenderObjectMixin<RenderBox, _TileParentData>, RenderBoxContainerDefaultsMixin<RenderBox, _TileParentData> {
-  static const _side = 16.0, _top = 12.0, _gap = 12.0, _bottom = 16.0;
+  static const _side = AppSpace.md, _top = AppSpace.md, _gap = AppSpace.sm, _bottom = AppSpace.md;
 
   @override
   void setupParentData(RenderBox child) {
@@ -405,7 +491,8 @@ class _CornerBackdrop extends StatelessWidget {
       );
 }
 
-/// The small glass chip on the cover: Live / Recorded for a student, Draft / Published for a teacher.
+/// The small paper chip on the cover: Live / Recorded for a student, Draft / Published for a teacher. Paper with ink
+/// reads on a photograph and on a book cover alike; the live / status dot carries the colour.
 class CourseCoverChip extends StatelessWidget {
   const CourseCoverChip({super.key, required this.label, this.icon, this.dot});
 
@@ -426,22 +513,31 @@ class CourseCoverChip extends StatelessWidget {
   final IconData? icon;
   final Color? dot;
 
+  static const double _dot = 6;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsetsDirectional.fromSTEB(8, 4, 10, 4),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs, AppSpace.xxs, AppSpace.xs + 2, AppSpace.xxs),
       decoration: BoxDecoration(
-        color: c.heroShade.withValues(alpha: 0.62),
-        borderRadius: BorderRadius.circular(20),
+        color: c.cardBg.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         if (dot != null)
-          Container(width: 6, height: 6, decoration: BoxDecoration(color: dot, shape: BoxShape.circle))
+          Container(width: _dot, height: _dot, decoration: BoxDecoration(color: dot, shape: BoxShape.circle))
         else if (icon != null)
-          Icon(icon, size: 12, color: c.onHero),
-        const SizedBox(width: 4),
-        Text(label, maxLines: 1, style: appText(10.5, w: FontWeight.w500, c: c.onHero, h: 1.2)),
+          Icon(icon, size: AppIconSize.xs, color: c.textDark),
+        const SizedBox(width: AppSpace.xxs),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark, height: 1.2),
+          ),
+        ),
       ]),
     );
   }
@@ -454,10 +550,9 @@ class CourseFavoriteMark extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
         label: 'favorite'.tr,
-        child: SizedBox(
-          width: 28,
-          height: 28,
-          child: Icon(Icons.favorite_rounded, size: 16, color: context.colors.danger),
+        child: SizedBox.square(
+          dimension: AppIconSize.lg + AppSpace.xxs,
+          child: Icon(Icons.favorite_rounded, size: AppIconSize.sm, color: context.colors.danger),
         ),
       );
 }
@@ -483,20 +578,28 @@ class CourseProgressFooter extends StatelessWidget {
         child: Row(children: [
           Expanded(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
               child: AppFill(
                 value: p / 100,
                 builder: (_, v) => LinearProgressIndicator(
                   value: v,
-                  minHeight: 4,
+                  minHeight: AppSpace.xxs + 2,
                   backgroundColor: c.divider,
                   valueColor: AlwaysStoppedAnimation(done ? c.success : coursePrimaryInk(context)),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          Text('$p%', style: appText(12, w: FontWeight.w600, c: done ? c.success : c.textDark, h: 1.2)),
+          const SizedBox(width: AppSpace.xs),
+          Text(
+            '$p%',
+            style: AppType.label(context).copyWith(
+              fontWeight: FontWeight.w600,
+              color: done ? c.success : c.textDark,
+              height: 1.2,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
         ]),
       ),
     );
@@ -517,25 +620,21 @@ class CoursePriceFooter extends StatelessWidget {
     final c = context.colors;
     return ParentComponent(
       featureKey: 'course_card.price',
-      child: Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
-        Text(price, style: appText(14, w: FontWeight.w600, c: free ? c.success : c.textDark, h: 1.2)),
+      child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        Text(price, style: AppType.bodyStrong(context).copyWith(color: free ? c.success : c.textDark, height: 1.2)),
         if (original != null)
           ParentComponent(
             featureKey: 'course_card.discount',
             child: Text(
               original!,
-              style: appText(12, w: FontWeight.w400, c: c.textLight, h: 1.2)
-                  .copyWith(decoration: TextDecoration.lineThrough, decorationColor: c.textLight),
+              style: AppType.meta(context)
+                  .copyWith(color: c.textLight, height: 1.2, decoration: TextDecoration.lineThrough, decorationColor: c.textLight),
             ),
           ),
         if (offPercent != null && offPercent! > 0)
           ParentComponent(
             featureKey: 'course_card.discount',
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(color: c.danger.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(6)),
-              child: Text('-$offPercent%', style: appText(11, w: FontWeight.w600, c: c.danger, h: 1.2)),
-            ),
+            child: AppStatusBadge(label: '-$offPercent%', tone: AppTone.danger, dense: true),
           ),
       ]),
     );
@@ -557,12 +656,20 @@ class CourseStatsFooter extends StatelessWidget {
           label: semantics,
           excludeSemantics: true,
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 15, color: tint ?? c.textLight),
-            const SizedBox(width: 4),
-            Text(value, style: appText(12.5, w: FontWeight.w600, c: c.textDark, h: 1.2)),
+            Icon(icon, size: AppIconSize.sm, color: tint ?? c.textLight),
+            const SizedBox(width: AppSpace.xxs),
+            Text(
+              value,
+              style: AppType.label(context).copyWith(
+                fontWeight: FontWeight.w600,
+                color: c.textDark,
+                height: 1.2,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
           ]),
         );
-    return Wrap(spacing: 16, runSpacing: 4, children: [
+    return Wrap(spacing: AppSpace.md, runSpacing: AppSpace.xxs, children: [
       // compact like the home's figures ("1.3K", the exact number is read out)
       figure(Icons.people_outline_rounded, appCompactNumber(students), 'course_list_students_sem'.tr.replaceAll('{n}', '$students')),
       figure(Icons.play_circle_outline_rounded, appCompactNumber(sessions), 'course_list_sessions_sem'.tr.replaceAll('{n}', '$sessions')),
@@ -573,7 +680,8 @@ class CourseStatsFooter extends StatelessWidget {
             Icons.star_rounded,
             rating!.toStringAsFixed(1),
             'course_list_rating_sem'.tr.replaceAll('{n}', rating!.toStringAsFixed(1)),
-            tint: c.accent,
+            // a rating is a mark earned: gold, as an icon fill only (system.md §2)
+            tint: c.accent2,
           ),
         ),
     ]);
@@ -596,14 +704,14 @@ class CourseCardSliver extends StatelessWidget {
     if (shape == CourseCardShape.row) {
       return SliverList.separated(
         itemCount: count,
-        separatorBuilder: (_, _) => const SizedBox(height: 8),
+        separatorBuilder: (_, _) => const SizedBox(height: AppSpace.sm),
         itemBuilder: (context, i) => AppReveal(index: i, group: 'courses', child: itemBuilder(context, i, shape)),
       );
     }
     // rows sized by their tiles (no fixed cell height: a one-line title left a blank band above the footer), start
     // aligned — a lone course is one tile at the start, never stretched
     final cols = courseGridColumns(width);
-    const gap = 16.0;
+    const gap = AppSpace.md;
     final rows = (count + cols - 1) ~/ cols;
     return SliverList.builder(
       itemCount: rows,
@@ -625,7 +733,7 @@ class CourseCardSliver extends StatelessWidget {
 
 /// Loading placeholder in the card's own shapes.
 class CourseListSkeleton extends StatelessWidget {
-  const CourseListSkeleton({super.key, this.padding = const EdgeInsets.fromLTRB(16, 8, 16, 16)});
+  const CourseListSkeleton({super.key, this.padding = const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.md)});
 
   final EdgeInsets padding;
 
@@ -637,24 +745,28 @@ class CourseListSkeleton extends StatelessWidget {
       final shape = courseCardShapeFor(width);
       Widget card(int i) {
         final lines = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          AppSkeletonBox(width: 120.0 + (i * 37) % 70, height: 13),
-          const SizedBox(height: 8),
-          AppSkeletonBox(width: 80.0 + (i * 23) % 50, height: 10),
-          const SizedBox(height: 16),
-          const AppSkeletonBox(height: 4, radius: 2),
+          AppSkeletonBox(width: 120.0 + (i * 37) % 70, height: AppSpace.md),
+          const SizedBox(height: AppSpace.xs),
+          AppSkeletonBox(width: 80.0 + (i * 23) % 50, height: AppSpace.sm - 2),
+          const SizedBox(height: AppSpace.md),
+          const AppSkeletonBox(height: AppSpace.xxs + 2, radius: AppRadius.pill),
         ]);
         final deco = BoxDecoration(
           color: c.cardBg,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: c.divider),
+          borderRadius: AppRadius.cardAll,
+          border: Border.all(color: c.divider, width: AppBorder.hairline),
         );
         if (shape == CourseCardShape.row) {
           return Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(AppSpace.sm),
             decoration: deco,
             child: Row(children: [
-              const AppSkeletonBox(width: 104, height: 80, radius: 12),
-              const SizedBox(width: 12),
+              AppSkeletonBox(
+                width: CourseListCard._thumb.width,
+                height: CourseListCard._thumb.height,
+                radius: AppRadius.card - AppSpace.xxs,
+              ),
+              const SizedBox(width: AppSpace.sm),
               Expanded(child: lines),
             ]),
           );
@@ -664,7 +776,7 @@ class CourseListSkeleton extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             const AspectRatio(aspectRatio: 16 / 9, child: AppSkeletonBox(radius: 0)),
-            Padding(padding: const EdgeInsets.all(16), child: lines),
+            Padding(padding: const EdgeInsets.all(AppSpace.md), child: lines),
           ]),
         );
       }
@@ -684,7 +796,7 @@ class CourseListSkeleton extends StatelessWidget {
   }
 }
 
-/// Nothing to list: one calm line, and the one thing to do about it.
+/// Nothing to list: the kit's drawn plate, the line as an editorial headline, and the one thing to do about it.
 class CourseListEmpty extends StatelessWidget {
   const CourseListEmpty({super.key, required this.icon, required this.message, this.actionLabel, this.onAction});
 
@@ -694,35 +806,8 @@ class CourseListEmpty extends StatelessWidget {
   final VoidCallback? onAction;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.08), shape: BoxShape.circle),
-            child: Icon(icon, size: 22, color: coursePrimaryInk(context)),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: appText(14, w: FontWeight.w400, c: c.textMedium, h: 1.5),
-          ),
-          if (actionLabel != null && onAction != null) ...[
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: onAction,
-              child: Text(actionLabel!, style: appText(14, w: FontWeight.w600, c: coursePrimaryInk(context))),
-            ),
-          ],
-        ]),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      AppEmpty(icon: icon, title: message, actionLabel: actionLabel, onAction: onAction);
 }
 
 /// A failed load: a quiet banner with Retry (above the list when courses are already shown).
@@ -734,46 +819,16 @@ class CourseListError extends StatelessWidget {
   final EdgeInsetsGeometry? margin;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      margin: margin ?? const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 8, 8),
-      decoration: BoxDecoration(
-        color: c.danger.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: c.danger.withValues(alpha: 0.20)),
-      ),
-      child: Row(children: [
-        Icon(Icons.error_outline_rounded, size: 18, color: c.danger),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            message,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: appText(13, w: FontWeight.w400, c: c.textDark, h: 1.4),
-          ),
-        ),
-        Flexible(
-          child: TextButton(
-            onPressed: onRetry,
-            child: Text(
-              'retry'.tr,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: appText(13, w: FontWeight.w600, c: coursePrimaryInk(context)),
-            ),
-          ),
-        ),
-      ]),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+        padding: margin ?? const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
+        child: AppErrorState(compact: true, message: message, onRetry: onRetry),
+      );
 }
 
 // ── Header ──────────────────────────────────────────────────────────────────
 
-/// The list's search box: 44 px, hairline border, a clear button while it holds text.
+/// The list's search box: the kit's input well (48 px, warm fill, the focus ring), a clear button while it holds
+/// text. Every keystroke reaches [onChanged] at once (the screens filter or debounce themselves).
 class CourseSearchField extends StatefulWidget {
   const CourseSearchField({super.key, required this.controller, required this.hint, required this.onChanged});
 
@@ -786,12 +841,9 @@ class CourseSearchField extends StatefulWidget {
 }
 
 class _CourseSearchFieldState extends State<CourseSearchField> {
-  final _focus = FocusNode();
-
   @override
   void initState() {
     super.initState();
-    _focus.addListener(_changed);
     widget.controller.addListener(_changed);
   }
 
@@ -811,59 +863,34 @@ class _CourseSearchFieldState extends State<CourseSearchField> {
   @override
   void dispose() {
     widget.controller.removeListener(_changed);
-    _focus.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final focused = _focus.hasFocus;
-    final style = appText(14, w: FontWeight.w400, c: c.textDark);
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      constraints: const BoxConstraints(minHeight: 44),
-      padding: const EdgeInsetsDirectional.only(start: 12, end: 4),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: focused ? c.primary.withValues(alpha: 0.55) : c.divider),
-      ),
-      child: Row(children: [
-        Icon(Icons.search_rounded, size: 18, color: c.textLight),
-        const SizedBox(width: 8),
-        Expanded(
-          child: TextField(
-            controller: widget.controller,
-            focusNode: _focus,
-            onChanged: widget.onChanged,
-            textInputAction: TextInputAction.search,
-            style: style,
-            decoration: InputDecoration(
-              isDense: true,
-              filled: false,
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              disabledBorder: InputBorder.none,
-              errorBorder: InputBorder.none,
-              focusedErrorBorder: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
-              hintText: widget.hint.tr,
-              hintStyle: style.copyWith(color: c.textLight),
-            ),
-          ),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: AppTouch.min),
+      child: TextField(
+        controller: widget.controller,
+        onChanged: widget.onChanged,
+        textInputAction: TextInputAction.search,
+        style: appFieldTextStyle(context),
+        decoration: appFieldDecoration(
+          context,
+          hint: widget.hint.tr,
+          icon: Icons.search_rounded,
+          suffix: widget.controller.text.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: 'clear'.tr,
+                  onPressed: () {
+                    widget.controller.clear();
+                    widget.onChanged('');
+                  },
+                  icon: const Icon(Icons.close_rounded, size: AppIconSize.md),
+                ),
         ),
-        if (widget.controller.text.isNotEmpty)
-          IconButton(
-            tooltip: 'clear'.tr,
-            onPressed: () {
-              widget.controller.clear();
-              widget.onChanged('');
-            },
-            icon: Icon(Icons.close_rounded, size: 18, color: c.textMedium),
-          ),
-      ]),
+      ),
     );
   }
 }
@@ -879,7 +906,10 @@ class CourseSegment<T> {
   final int? count;
 }
 
-/// The list's filter: a calm segmented control (All · In progress · Completed / All · Published · Drafts).
+/// The list's filter (All · In progress · Completed / All · Published · Drafts): the kit's pill track (AppTabs) —
+/// the chosen pill solid emerald that slides to the tab, each count in its bubble; the tabs keep their own widths
+/// from the start edge and scroll sideways when they do not fit. (Not `expand`: its fractional shares can overflow
+/// the track by half a pixel, see the open issue on AppTabs.)
 class CourseSegments<T> extends StatelessWidget {
   const CourseSegments({super.key, required this.segments, required this.selected, required this.onSelect});
 
@@ -889,57 +919,11 @@ class CourseSegments<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final ink = coursePrimaryInk(context);
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: c.divider),
-      ),
-      child: Row(children: [
-        for (final s in segments)
-          Expanded(
-            child: Semantics(
-              button: true,
-              selected: s.value == selected,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: () => onSelect(s.value),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  constraints: const BoxConstraints(minHeight: 36),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: s.value == selected ? ink.withValues(alpha: 0.10) : null,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: s.value == selected ? ink.withValues(alpha: 0.30) : Colors.transparent),
-                  ),
-                  child: Text.rich(
-                    TextSpan(children: [
-                      TextSpan(text: s.label),
-                      if (s.count != null)
-                        TextSpan(
-                          text: '  ${s.count}',
-                          style: appText(12, w: FontWeight.w400, c: s.value == selected ? ink : c.textLight),
-                        ),
-                    ]),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: appText(
-                      13,
-                      w: s.value == selected ? FontWeight.w600 : FontWeight.w500,
-                      c: s.value == selected ? ink : c.textMedium,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ]),
+    final index = segments.indexWhere((s) => s.value == selected);
+    return AppTabs(
+      index: index < 0 ? 0 : index,
+      onChanged: (i) => onSelect(segments[i].value),
+      items: [for (final s in segments) AppTabItem(s.label, count: s.count)],
     );
   }
 }
@@ -957,23 +941,23 @@ class CourseListToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
       child: LayoutBuilder(builder: (context, box) {
         final wide = box.maxWidth >= 900; // below it the four filters keep whole labels on their own row
         if (wide) {
           return Row(children: [
             if (search != null) Expanded(child: search!),
-            if (search != null && filter != null) const SizedBox(width: 16),
-            if (filter != null) SizedBox(width: math.min(520, box.maxWidth * 0.5), child: filter!),
-            if (action != null) ...[const SizedBox(width: 16), action!],
+            if (search != null && filter != null) const SizedBox(width: AppSpace.md),
+            if (filter != null) SizedBox(width: math.min(560, box.maxWidth * 0.5), child: filter!),
+            if (action != null) ...[const SizedBox(width: AppSpace.md), action!],
           ]);
         }
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
           ?search,
-          if (search != null && filter != null) const SizedBox(height: 8),
+          if (search != null && filter != null) const SizedBox(height: AppSpace.sm),
           ?filter,
           if (action != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             Align(alignment: AlignmentDirectional.centerEnd, child: action),
           ],
         ]);

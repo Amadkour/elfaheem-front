@@ -17,6 +17,8 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
+import 'package:flutter_education_app/config/storage_service.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
 import 'package:dio/dio.dart' show RequestOptions;
 import 'package:flutter_education_app/features/shared/course/course_scope.dart';
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
@@ -209,11 +211,18 @@ final _overview = {
   ],
 };
 
-Widget _studentPage() => ChangeNotifierProvider(
-      // the "All" chip: a list that mixes the personal account and two organizations (badges on every card)
-      create: (_) => MyCoursesProvider(mode: AppModeController.instance)
-        ..selectScope(CourseScope.all)
-        ..init(const []),
+late StorageService _storage;
+
+Widget _studentPage() => MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => MyAuthProvider(storage: _storage)..loadCachedUser()),
+        // the "All" chip: a list that mixes the personal account and two organizations (badges on every card)
+        ChangeNotifierProvider(
+          create: (_) => MyCoursesProvider(mode: AppModeController.instance)
+            ..selectScope(CourseScope.all)
+            ..init(const []),
+        ),
+      ],
       child: MyCoursesBody(controller: TextEditingController()),
     );
 
@@ -238,7 +247,7 @@ List<Map<String, dynamic>> _onSide(List<Map<String, dynamic>> all, RequestOption
   final orgId = '${o.queryParameters['org_id']}';
   return [
     for (final c in all)
-      if (scope == null ||
+      if (scope == null || scope == 'all' ||
           (scope == 'personal' && c['org'] == null) ||
           (scope == 'org' && '${(c['org'] as Map?)?['path'] ?? ''}'.contains('/$orgId/')))
         c,
@@ -253,8 +262,10 @@ void main() {
     await _loadFonts();
   });
 
-  setUp(() {
+  setUp(() async {
     SharedPreferences.setMockInitialValues({});
+    _storage = await StorageService.getInstance();
+    await _storage.saveUser({'id': 5, 'name': 'Salma', 'gmail': 'salma@example.test', 'role': 'student'});
     mockRequestPlugins();
     AppConfig.setOrgsEnabled(true);
     AppModeController.applyContext = (_) {};
