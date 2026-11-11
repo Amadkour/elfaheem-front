@@ -34,7 +34,9 @@ import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
+import '../../../../design/app_contrast.dart' show ensureContrast;
 import '../../../../design/app_display.dart' show syncMotionLoop;
+import '../../../../design/chrome_button.dart' show ChromeCard;
 import '../../../../design/app_kit.dart';
 import '../../../../design/app_motion_kit.dart';
 import '../../../../utils/helpers.dart';
@@ -60,6 +62,7 @@ class CourseSpaceHero extends StatelessWidget {
     this.topActions = const [],
     this.onBack,
     this.rounded = false,
+    this.withBar = true,
   });
 
   final CourseSpaceHeroData data;
@@ -70,6 +73,9 @@ class CourseSpaceHero extends StatelessWidget {
   /// true → the desktop masthead (the chrome on the canvas, the cover framed inside the block); false → the phone's
   /// (the cover full bleed under the status bar, the block overlapping its foot).
   final bool rounded;
+
+  /// false: the desktop masthead draws no bar of its own — [CourseSpace] pins [CourseSpaceBar] over both columns.
+  final bool withBar;
 
   bool get _hasCover => background != null || data.imageUrl.isNotEmpty;
 
@@ -120,7 +126,7 @@ class CourseSpaceHero extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
+              padding: const EdgeInsets.symmetric(horizontal: kCourseGutter, vertical: AppSpace.xs),
               child: _bar(onCover: false),
             ),
             const SizedBox(height: AppSpace.xxs),
@@ -197,13 +203,25 @@ class CourseSpaceHero extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _bar(onCover: false),
-        const SizedBox(height: AppSpace.xs),
+        if (withBar) ...[_bar(onCover: false), const SizedBox(height: AppSpace.xs)],
         if (frame != null && !side) ...[frame, const SizedBox(height: AppSpace.sm)],
         _block(context, big: w >= 640, aside: side ? frame : null),
       ],
     );
   }
+}
+
+/// The course page's floating bar on desktop (D-648): Back and the page's actions in one white card, pinned over both
+/// columns like every pushed page's bar. The same actions, kill switches and callbacks as the hero's own bar.
+class CourseSpaceBar extends StatelessWidget {
+  const CourseSpaceBar({super.key, this.topActions = const [], this.onBack});
+
+  final List<CourseSpaceTopAction> topActions;
+  final VoidCallback? onBack;
+
+  @override
+  Widget build(BuildContext context) =>
+      _keyed('course_hero.topbar', _TopBar(onBack: onBack, actions: topActions, onCover: false));
 }
 
 /// The widest the hero's figures and progress run on a wide block (they read as one group, not spread apart).
@@ -317,8 +335,9 @@ class CourseCover extends StatelessWidget {
   }
 }
 
-/// The hero's chrome: back at the start · the inline actions in ONE capsule at the end, ending with ⋮ when some
-/// actions are rarer (D-111). Paper on the canvas, glass on the cover. Every target is 48 px; the icons mirror
+/// The hero's chrome: back at the start · the inline actions at the end, ending with ⋮ when some actions are rarer
+/// (D-111). On the canvas it is the floating bar every pushed page wears (D-648): one white rounded card with Back
+/// and the actions inside it as ghosts; on the cover it stays glass. Every target is 48 px; the icons mirror
 /// themselves in Arabic.
 class _TopBar extends StatelessWidget {
   const _TopBar({this.onBack, required this.actions, required this.onCover});
@@ -339,7 +358,14 @@ class _TopBar extends StatelessWidget {
       builder: (context, box) {
         final wide = box.maxWidth >= 560;
         final hasGroup = inline.isNotEmpty || menu.isNotEmpty;
-        return Row(
+        final buttons = [
+          for (final a in inline)
+            a.primary && wide
+                ? _CapsuleLabelButton(action: a, onCover: onCover)
+                : _CapsuleIconButton(action: a, onCover: onCover),
+          if (menu.isNotEmpty) _CapsuleMenu(actions: menu, onCover: onCover),
+        ];
+        final row = Row(
           children: [
             if (onBack != null) AppBackButton(onHero: onCover, onPressed: onBack),
             Expanded(
@@ -350,27 +376,26 @@ class _TopBar extends StatelessWidget {
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         reverse: true,
-                        child: _Capsule(
-                          onCover: onCover,
-                          children: [
-                            for (final a in inline)
-                              a.primary && wide
-                                  ? _CapsuleLabelButton(action: a, onCover: onCover)
-                                  : _CapsuleIconButton(action: a, onCover: onCover),
-                            if (menu.isNotEmpty) _CapsuleMenu(actions: menu, onCover: onCover),
-                          ],
-                        ),
+                        child: onCover
+                            ? _Capsule(onCover: true, children: buttons)
+                            : Row(mainAxisSize: MainAxisSize.min, children: buttons),
                       ),
                     ),
             ),
           ],
+        );
+        if (onCover) return row;
+        return ChromeCard(
+          height: ChromeCard.barHeight,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
+          child: row,
         );
       },
     );
   }
 }
 
-/// The action group: a paper capsule on a warm hairline on the canvas, frosted glass on the cover.
+/// The action group on the cover: frosted glass.
 class _Capsule extends StatelessWidget {
   const _Capsule({required this.children, required this.onCover});
 
@@ -385,16 +410,6 @@ class _Capsule extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs / 2),
       child: Row(mainAxisSize: MainAxisSize.min, children: children),
     );
-    if (!onCover) {
-      return DecoratedBox(
-        decoration: BoxDecoration(
-          color: c.cardBg,
-          borderRadius: radius,
-          border: Border.all(color: c.divider, width: AppBorder.hairline),
-        ),
-        child: row,
-      );
-    }
     return ClipRRect(
       borderRadius: radius,
       child: BackdropFilter(
@@ -437,7 +452,8 @@ class _CapsuleIconButton extends StatelessWidget {
             child: SizedBox(
               width: AppTouch.min,
               height: AppTouch.min,
-              child: Icon(action.icon, size: AppIconSize.md, color: action.color ?? _chromeInk(context, onCover)),
+              // a page-given colour (the favourite's gold) is deepened until it reads on the bar (3:1, a glyph)
+              child: Icon(action.icon, size: AppIconSize.md, color: action.color == null ? _chromeInk(context, onCover) : (onCover ? action.color : ensureContrast(action.color!, [context.colors.cardBg], min: 3))),
             ),
           ),
         ),
@@ -445,7 +461,8 @@ class _CapsuleIconButton extends StatelessWidget {
     );
   }
 }
-
+/// The primary action with its word (wide screens): "Edit course" — a solid primary pill with its own ink, lifted to
+/// 4.5:1 (the old translucent tint washed the label out on the paper bar, D-648).
 /// The primary action with its word (wide screens): "Edit course" — the emerald tint with emerald ink on paper.
 class _CapsuleLabelButton extends StatelessWidget {
   const _CapsuleLabelButton({required this.action, required this.onCover});
@@ -456,8 +473,8 @@ class _CapsuleLabelButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final fill = onCover ? c.heroGlass : c.primaryTint;
-    final ink = onCover ? c.onHero : appInkOn(context, c.primary, fill);
+    final fill = onCover ? c.heroGlass : c.primary;
+    final ink = onCover ? c.onHero : ensureContrast(c.onHero, [fill]);
     final radius = BorderRadius.circular(AppRadius.pill);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs, horizontal: AppSpace.xxs / 2),
@@ -474,7 +491,7 @@ class _CapsuleLabelButton extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(action.icon, size: AppIconSize.md, color: action.color ?? ink),
+                  Icon(action.icon, size: AppIconSize.md, color: ink),
                   const SizedBox(width: AppSpace.xs),
                   Text(
                     action.tooltip,

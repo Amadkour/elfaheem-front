@@ -41,6 +41,53 @@ class ChromeGhost extends InheritedWidget {
   bool updateShouldNotify(ChromeGhost oldWidget) => false;
 }
 
+/// The floating chrome card (D-648, the Spike-style shell): the sidebar, the top bar and every pushed page's header
+/// are one white rounded card on the canvas — the card surface, the card radius, a whisper of shadow (a hairline in
+/// dark mode, where a shadow does not show) and no rule under it. Its own [Material] carries the ink of the buttons
+/// inside, and the chrome buttons inside draw as ghosts ([ChromeGhost]).
+///
+///   ChromeCard(margin: EdgeInsets.all(AppSpace.lg), child: Row(…))
+class ChromeCard extends StatelessWidget {
+  const ChromeCard({super.key, required this.child, this.margin = EdgeInsets.zero, this.height, this.padding});
+
+  final Widget child;
+
+  /// The inset from the window / the neighbouring chrome (the page gutter).
+  final EdgeInsetsGeometry margin;
+
+  /// A fixed height (the shell's top bar); null = the child's.
+  final double? height;
+  final EdgeInsetsGeometry? padding;
+
+  /// The bar height every floating top bar shares: a touch target with its breathing room.
+  static const double barHeight = AppTouch.min + AppSpace.md;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final radius = BorderRadius.circular(AppRadius.card);
+    Widget body = ChromeGhost(child: child);
+    if (padding != null) body = Padding(padding: padding!, child: body);
+    if (height != null) body = SizedBox(height: height, child: body);
+    return Padding(
+      padding: margin,
+      child: DecoratedBox(
+        decoration: BoxDecoration(borderRadius: radius, boxShadow: AppElevation.of(context, 1)),
+        child: Material(
+          color: c.cardBg,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: radius,
+            side: c.isDark ? BorderSide(color: c.divider, width: AppBorder.hairline) : BorderSide.none,
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: body,
+        ),
+      ),
+    );
+  }
+}
+
 /// "9+" style count for the small badges.
 String chromeBadgeText(int n) => n > 99 ? '99+' : '$n';
 
@@ -119,7 +166,12 @@ class _ChromePlateState extends State<ChromePlate> {
               mouseCursor: widget.onTap == null ? SystemMouseCursors.basic : SystemMouseCursors.click,
               child: SizedBox.square(
                 dimension: ChromePlate.size,
-                child: IconTheme.merge(data: IconThemeData(color: k.ink, size: AppIconSize.md), child: widget.child),
+                // a button with nothing to do looks it on purpose: the ink at the disabled emphasis, never a faint
+                // look-alike of an enabled one (a busy button's spinner keeps its own ink)
+                child: IconTheme.merge(
+                  data: IconThemeData(color: widget.onTap == null ? k.ink.withValues(alpha: 0.38) : k.ink, size: AppIconSize.md),
+                  child: widget.child,
+                ),
               ),
             ),
           ),

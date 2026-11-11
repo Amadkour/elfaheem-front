@@ -24,6 +24,8 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/shared/course/course_list_card.dart';
+import 'package:flutter_education_app/utils/widget/app_bar.dart' show ScreenAppBar;
+import 'package:flutter_education_app/utils/widget/base_page.dart' show BasePage;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -253,6 +255,54 @@ void main() {
       ),
     );
   }
+
+  // The floating chrome (D-648): teacher and student shells at 1440 × 900 and 390 × 844, Arabic, light and dark, and
+  // a page pushed inside a tab (its own floating bar with Back) → goldens/shell_chrome_<role>_<w>_ar_<theme>.png.
+  testWidgets('shell chrome per role', (tester) async {
+    final prevLang = AppConfig.lang;
+    debugDisableShadows = false;
+    try {
+      for (final role in const ['teacher', 'student']) {
+        await storage.saveUser({'id': 7, 'name': 'أحمد حمدي', 'gmail': 'ahmed@example.test', 'role': role});
+        for (final size in const [Size(1440, 900), Size(390, 844)]) {
+          for (final dark in const [false, true]) {
+            for (final pushed in const [false, true]) {
+              AppConfig.lang = 'ar';
+              tester.view.devicePixelRatio = 1;
+              tester.view.physicalSize = size;
+              await tester.pumpWidget(const SizedBox());
+              await tester.pumpWidget(host(dark: dark, width: size.width));
+              await tester.pump(const Duration(milliseconds: 300));
+              if (pushed) {
+                final nav = tester.state<NavigatorState>(
+                    find.descendant(of: find.byType(LazyTabStack), matching: find.byWidgetPredicate((w) => w is Navigator)).first);
+                nav.push(MaterialPageRoute<void>(
+                  builder: (_) => BasePage(
+                    appBar: ScreenAppBar(title: _tr('تفاصيل الجلسة', 'Session details'), helpPageId: 'inbox'),
+                    child: const Padding(padding: EdgeInsets.all(AppSpace.lg), child: _SampleHome()),
+                  ),
+                ));
+              }
+              for (var i = 0; i < 12; i++) {
+                await tester.pump(const Duration(milliseconds: 100));
+              }
+              expect(tester.takeException(), isNull);
+              final tag = pushed ? '${role}_pushed' : role;
+              await expectLater(find.byKey(_shot),
+                  matchesGoldenFile('goldens/shell_chrome_${tag}_${size.width.toInt()}_ar_${dark ? 'dark' : 'light'}.png'));
+            }
+          }
+        }
+      }
+    } finally {
+      AppConfig.lang = prevLang;
+      debugDisableShadows = true;
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 1));
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    }
+  });
 
   testWidgets('premium dashboard', (tester) async {
     final prevLang = AppConfig.lang;

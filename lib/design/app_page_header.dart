@@ -13,9 +13,10 @@
 //   )
 //   AppSection(title: 'Recent activity', trailing: TextButton(…), child: …)
 //
-// An editorial masthead on the canvas (D-612): a thin emerald strip on top, the title in the editorial page-title
-// face in ink with the asymmetric rhythm (more room above the title than below it), the chrome as paper chips, one
-// primary action, a warm hairline under it all. It collapses with the page's scroll (AppHeaderCollapse). The title
+// A floating bar (D-648, was the editorial masthead of D-612): one white rounded card inset by the page gutter — the
+// back button inside it, the title in the editorial page-title face, a breadcrumb line above it that never repeats
+// the title, the chrome as ghosts, one primary action. Under the shell's own bar (a tab's first page) only the
+// page's actions remain, on the canvas. It collapses with the page's scroll (AppHeaderCollapse). The title
 // wraps to two lines and ellipsises; nothing overflows at 320 px or text scale 1.3. "Updated 3 min ago" re-draws
 // once a minute while shown.
 library;
@@ -31,6 +32,7 @@ import 'package:flutter_education_app/core/plural.dart';
 import 'app_kit.dart';
 import 'app_responsive.dart' show Breakpoints;
 import 'app_shell_nav.dart' show ShellChrome;
+import 'chrome_button.dart' show ChromeCard;
 
 /// "Updated just now" / "Updated 3 min ago" / "Updated 2 h ago" / "Updated 12 Oct 2026 · 09:30".
 String appUpdatedText(DateTime at, DateTime now) {
@@ -109,9 +111,11 @@ class AppPageHeader extends StatelessWidget {
     return LayoutBuilder(builder: (context, box) {
       final wide = box.maxWidth >= wideFrom;
       final gutter = AppSpace.gutter(box.maxWidth);
-      final hasCrumbs = breadcrumbs != null && breadcrumbs!.isNotEmpty;
+      // the trail leads TO the page: a last crumb that repeats the title is dropped (the title is right under it)
+      final crumbs = [...?breadcrumbs];
+      if (crumbs.isNotEmpty && crumbs.last.trim() == title.trim()) crumbs.removeLast();
       // underline tabs close the header with their own rule
-      final rule = bottom is! AppUnderlineTabs;
+      final rule = folded && bottom is! AppUnderlineTabs;
       return Material(
         color: c.background,
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -124,25 +128,25 @@ class AppPageHeader extends StatelessWidget {
                   animation: collapse,
                   builder: (context, _) {
                     final t = collapse.value;
-                    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                      if (accent) const AppHeaderStrip(),
-                      Padding(
-                        // the editorial rhythm: more room above the title than under it; a compact header keeps a hair
-                        padding: EdgeInsets.fromLTRB(
-                          gutter,
-                          lerpDouble(AppSpace.lg, AppSpace.xs, t)!,
-                          gutter,
-                          lerpDouble(AppSpace.md, AppSpace.xs, t)!,
+                    // the floating bar (D-648): one white card inset by the gutter, the back button inside it
+                    return ChromeCard(
+                      margin: appBarCardMargin(box.maxWidth),
+                      child: Padding(
+                        padding: EdgeInsetsDirectional.fromSTEB(
+                          onBack != null ? AppSpace.xs : AppSpace.lg,
+                          lerpDouble(AppSpace.sm, AppSpace.xs, t)!,
+                          AppSpace.sm,
+                          lerpDouble(AppSpace.sm, AppSpace.xs, t)!,
                         ),
                         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                          if (hasCrumbs && t < 1)
+                          if (crumbs.isNotEmpty && t < 1)
                             ClipRect(
                               child: Align(
                                 alignment: AlignmentDirectional.topStart,
                                 heightFactor: 1 - t,
                                 child: Opacity(
                                   opacity: 1 - t,
-                                  child: Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: _Crumbs(breadcrumbs!)),
+                                  child: Padding(padding: const EdgeInsets.only(bottom: AppSpace.xxs), child: _Crumbs(crumbs)),
                                 ),
                               ),
                             ),
@@ -153,14 +157,14 @@ class AppPageHeader extends StatelessWidget {
                           ],
                         ]),
                       ),
-                    ]);
+                    );
                   },
                 ),
               ),
             ),
           if (search != null || bottom != null)
             Padding(
-              padding: EdgeInsetsDirectional.fromSTEB(gutter, 0, gutter, rule ? AppSpace.sm : 0),
+              padding: EdgeInsetsDirectional.fromSTEB(gutter, 0, gutter, bottom is! AppUnderlineTabs ? AppSpace.sm : 0),
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 ?search,
                 if (search != null && bottom != null) AppSpace.gapSm,

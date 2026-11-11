@@ -5,9 +5,10 @@
 //     child: ListView(…),
 //   )
 //
-// An editorial masthead on the canvas: a thin emerald strip on top (the one touch of colour; [color] changes it), the
-// title in the editorial page-title face in ink, the back button and the chrome as paper chips, a warm hairline
-// under it all. No gradient: the Warm Editorial brief keeps colour for blocks and the primary action.
+// A floating bar (D-648, after the Spike admin reference): one white rounded card ([ChromeCard]) inset by the page
+// gutter, of the shell's top-bar height — the back button inside it, the title in the editorial page-title face in
+// ink, the page's actions and the app-wide tools as ghosts. A page's own accent ([color], an exam's colour) draws a
+// thin strip along the card's top. No gradient, no rule under it: the card is the edge.
 //
 // The page needs no slivers: a Scaffold reports its body's scrolling to whatever sits inside it, so AppHeader shrinks
 // when the page scrolls down and grows when it scrolls up, on any scrollable. A page too short to scroll stays open.
@@ -22,6 +23,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 import 'app_back_button.dart';
+import 'chrome_button.dart' show ChromeCard;
 import 'app_focus_mode.dart';
 import 'app_responsive.dart';
 import 'app_shell_nav.dart' show ShellChrome;
@@ -214,13 +216,16 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   final int seed;
 
   static const double compactHeight = 56;
-  static const double openHeight = 72;
+
+  /// The open bar: the shell's top bar height, so a pushed page's bar matches the tab's (D-648).
+  static const double openHeight = ChromeCard.barHeight;
   static const double openHeightWithSubtitle = 84;
 
   /// The upper limit a Scaffold gives its app bar: the header draws itself shorter than this and the body follows.
   /// It covers text scale 1.3 (the header scales its own heights).
   @override
-  Size get preferredSize => Size.fromHeight(openHeightWithSubtitle * 1.6 + (bottom?.preferredSize.height ?? 0));
+  Size get preferredSize =>
+      Size.fromHeight(openHeightWithSubtitle * 1.6 + AppSpace.lg + AppSpace.xs + (bottom?.preferredSize.height ?? 0));
 
   @override
   Widget build(BuildContext context) {
@@ -244,8 +249,12 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
             color: c.background,
             child: Padding(
               padding: EdgeInsets.only(top: top),
-              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                AppHeaderStrip(color: color),
+              // the floating bar (D-648): the card inset by the page gutter, the back button and the tools inside it
+              child: LayoutBuilder(builder: (context, box) => ChromeCard(
+                margin: appBarCardMargin(box.maxWidth),
+                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                // a page's own accent (an exam's colour) keeps its strip along the card's top
+                if (color != null) AppHeaderStrip(color: color),
                 AnimatedBuilder(
                   animation: collapse,
                   builder: (context, _) {
@@ -277,8 +286,8 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                   },
                 ),
                 if (tabs != null) _HeaderTabs(child: tabs),
-                const AppHeaderRule(),
               ]),
+              )),
             ),
           ),
         ),
@@ -367,7 +376,8 @@ class _Tools extends StatelessWidget {
     final global = MediaQuery.sizeOf(context).width >= Breakpoints.desktop ? ShellChrome.toolsOf(context) : null;
     return Row(mainAxisSize: MainAxisSize.min, children: [
       if (actions.isNotEmpty) ...[
-        AppHeaderTray(child: Row(mainAxisSize: MainAxisSize.min, children: actions)),
+        // inside the floating bar the actions stand bare: the card is their tray (D-648)
+        ...actions,
         const SizedBox(width: AppSpace.xs),
       ],
       // the app-wide tools (calendar, messages, assistant, bell) draw as paper chips on the canvas, like the rest
@@ -425,4 +435,11 @@ class _HeaderTabs extends StatelessWidget {
       child: SizedBox(height: child.preferredSize.height, child: child),
     );
   }
+}
+
+/// Where a page's floating bar sits (D-648): in from the sides by the page gutter, and from the top by the gutter on
+/// wide pages (level with the shell's sidebar card) or a hair on phones, where every pixel of height counts.
+EdgeInsets appBarCardMargin(double width) {
+  final g = AppSpace.gutter(width);
+  return EdgeInsets.fromLTRB(g, width < AppWidth.phoneMax ? AppSpace.xs : g, g, AppSpace.xs);
 }

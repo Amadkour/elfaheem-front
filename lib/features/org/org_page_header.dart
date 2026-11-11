@@ -61,13 +61,13 @@ import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/design/app_back_button.dart';
 import 'package:flutter_education_app/config/app_config.dart' show AppConfig, translate;
 import 'package:flutter_education_app/design/app_focus_mode.dart' show AppFocusExitButton, AppFocusMode, AppFocusToggle;
-import 'package:flutter_education_app/design/app_header.dart' show AppHeader, AppHeaderCollapse, AppHeaderRule, AppHeaderStrip;
+import 'package:flutter_education_app/design/app_header.dart' show AppHeader, AppHeaderCollapse, appBarCardMargin;
 import 'package:flutter_education_app/design/app_keyboard.dart' show AppCommandPaletteScope;
 import 'package:flutter_education_app/design/app_shell.dart' show NotificationIcon;
 import 'package:flutter_education_app/design/app_shell_nav.dart' show ShellScope;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/calendar_entry.dart' show CalendarEntryIcon, ChatEntryIcon;
-import 'package:flutter_education_app/design/chrome_button.dart' show ChromeIconButton;
+import 'package:flutter_education_app/design/chrome_button.dart' show ChromeCard, ChromeIconButton;
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextPill;
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant, appAssistantFeatureKey;
@@ -577,18 +577,15 @@ class OrgPageHeader extends StatelessWidget {
               );
             },
           );
-          // the editorial masthead (D-614): the strip, the header on the canvas, the warm hairline closing it
+          // the floating bar (D-648, was the editorial masthead of D-614)
           return RepaintBoundary(
             child: Semantics(
               container: true,
               explicitChildNodes: true,
               child: Material(
                 color: onFrame ? Colors.transparent : context.colors.background,
-                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  const AppHeaderStrip(),
-                  content,
-                  const AppHeaderRule(),
-                ]),
+                // the floating bar (D-648): one white card inset by the gutter, Back inside it, no strip or rule
+                child: ChromeCard(margin: appBarCardMargin(box.maxWidth), child: content),
               ),
             ),
           );

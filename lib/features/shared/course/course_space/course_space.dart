@@ -302,6 +302,22 @@ class CourseSpace extends StatelessWidget {
     topActions: topActions,
     onBack: onBack,
     rounded: rounded,
+    // desktop: the bar is pinned over both columns ([_withBar]), not drawn in the scrolling masthead
+    withBar: !rounded,
+  );
+
+  /// Desktop: the floating bar (Back + the page's actions, D-648) pinned over the page, then [body].
+  Widget _withBar(Widget body) => onBack == null && topActions.isEmpty
+      ? Padding(padding: const EdgeInsets.only(top: AppSpace.md), child: body)
+      : Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Padding(
+        padding: EdgeInsets.fromLTRB(kCourseGutter, AppSpace.lg, kCourseGutter, AppSpace.xs),
+        child: CourseSpaceBar(topActions: topActions, onBack: onBack),
+      ),
+      Expanded(child: body),
+    ],
   );
 
   /// The page's one entrance: the spotlight cards rise in once, a beat apart, after the hero (which arrives with
@@ -348,7 +364,7 @@ class CourseSpace extends StatelessWidget {
   );
 
   /// Desktop with nothing for the side column: one column, the hero as a rounded card.
-  Widget _single(BuildContext context, double w) => _scroll(context, [
+  Widget _single(BuildContext context, double w) => _withBar(_scroll(context, [
     SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(kCourseGutter, AppSpace.xs, kCourseGutter, AppSpace.xs),
@@ -356,9 +372,9 @@ class CourseSpace extends StatelessWidget {
       ),
     ),
     ..._tabSlivers(context, w),
-  ]);
+  ]));
 
-  Widget _wide(BuildContext context, double w) => Row(
+  Widget _wide(BuildContext context, double w) => _withBar(Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Expanded(
@@ -375,8 +391,8 @@ class CourseSpace extends StatelessWidget {
       SizedBox(
         width: kCourseAsideW,
         child: SingleChildScrollView(
-          // level with the hero block (under the masthead's chrome row: its 48 px targets)
-          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs, AppSpace.xs * 2 + 48, kCourseGutter, kCourseGutter),
+          // level with the hero block (the bar is pinned above both columns)
+          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs, AppSpace.xs, kCourseGutter, kCourseGutter),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -391,7 +407,7 @@ class CourseSpace extends StatelessWidget {
         ),
       ),
     ],
-  );
+  ));
 }
 
 class _TabBarDelegate extends SliverPersistentHeaderDelegate {
