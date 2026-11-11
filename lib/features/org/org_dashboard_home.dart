@@ -32,10 +32,12 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
-    show AppButton, AppButtonSize, AppCard, AppListSkeleton, AppPill, AppRefresh, AppTime, AppTrendTile, appChartPalette, appCompactNumber;
+    show AppButton, AppButtonSize, AppCard, AppKpiGrid, AppListSkeleton, AppPill, AppRefresh, AppTime, AppTrendTile, appChartPalette, appCompactNumber;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/shared/live/meeting_links_page.dart' show kMeetingLinksFeatureKey, openMeetingLinks;
 import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_blocks.dart' show AppBlockTone;
+import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
 import 'package:flutter_education_app/design/home_kit.dart' show HomeEntrance, HomeSection, homeIsWide;
 import 'package:flutter_education_app/utils/widget/app_navigator.dart' show AppNavigator;
 import 'package:provider/provider.dart';
@@ -44,13 +46,14 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart' show AdminAvatar;
 import 'home/org_home_departments.dart';
 import 'home/org_home_logic.dart';
+import 'home/org_home_premium.dart';
 import 'home/org_home_tasks.dart';
 import 'home/org_setup_checklist.dart';
 import 'home/org_insights_section.dart';
 import 'insights/org_insights_api.dart' show OrgInsightsPrefetch, orgInsightsAllowedBy, orgInsightsToday;
 import 'org_academic_pages.dart' show OrgAcademicPage;
 import 'org_dashboard_model.dart';
-import 'org_dashboard_screen.dart' show OrgTabs;
+import 'org_dashboard_screen.dart' show OrgSub, OrgTabs;
 import 'org_dashboard_settings.dart' show showJoinCode, showOrgForm, showOrgSwitcher;
 import 'org_department_dashboard.dart' show openDepartmentDashboard;
 import 'org_join_pages.dart' show OrgJoinInboxPage;
@@ -115,7 +118,19 @@ class OrgHomeBody extends StatelessWidget {
     this.insightsWeight = 0,
     this.setup,
     this.onRefresh,
+    this.greetingName = '',
+    this.shortcuts = const [],
+    this.onOpenMembers,
   });
+
+  /// My name for the hero's greeting (D-631); empty = the greeting alone.
+  final String greetingName;
+
+  /// The phone's shortcut tiles (sub-pages one tap away); empty = no grid.
+  final List<OrgHomeShortcut> shortcuts;
+
+  /// The members card's "See all" (People → Members); null = no button.
+  final VoidCallback? onOpenMembers;
 
   final OrgHomeData data;
 
@@ -173,10 +188,31 @@ class OrgHomeBody extends StatelessWidget {
             HomeEntrance(index: from + i, child: section(list[i])),
           ],
         ];
+    // the premium dashboard (D-631): ONE forest hero, the stat row, then the sections — the same data, no request
+    final waiting = data.tasks == null ? data.pendingTotal : total;
+    final onWaiting = data.tasks == null ? null : onSeeAllTasks;
+    Widget hero(bool centered) =>
+        OrgHomeHero(data: data, waiting: waiting, name: greetingName, centered: centered, onReview: onWaiting);
+    Widget stats(bool wide) => AppKpiGrid(
+        children: orgHomeStats(data, waiting: waiting, wide: wide, onWaiting: onWaiting, onUnits: onSeeAllUnits));
+    const inset = EdgeInsets.symmetric(horizontal: AppSpace.md);
     return LayoutBuilder(builder: (context, box) {
       final top = <Widget>[const SizedBox(height: AppSpace.xs), if (setup != null) Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs), child: setup!)];
       if (!homeIsWide(box.maxWidth)) {
-        return _pinnedHeader(header, _pullable(onRefresh, ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [...top, ...spaced(order, 0)])));
+        // phone: the hero, the shortcut tiles, what needs me and the departments, then the figures
+        return _pinnedHeader(header, _pullable(onRefresh, ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [
+          const SizedBox(height: AppSpace.xs),
+          HomeEntrance(index: 0, child: Padding(padding: inset, child: hero(false))),
+          if (shortcuts.isNotEmpty) ...[
+            const SizedBox(height: AppSpace.md),
+            HomeEntrance(index: 1, child: Padding(padding: inset, child: OrgHomeShortcuts(items: shortcuts))),
+          ],
+          ...top,
+          const SizedBox(height: AppSpace.sm),
+          ...spaced(order, 2),
+          const SizedBox(height: AppSpace.lg),
+          HomeEntrance(index: 2 + order.length, child: Padding(padding: inset, child: stats(false))),
+        ])));
       }
       final weights = {
         OrgHomeSection.attention: orgAttentionWeight(rows.take(5).length + alerts.length),
@@ -185,12 +221,30 @@ class OrgHomeBody extends StatelessWidget {
       };
       final (start, end) = orgHomeColumns(order, weights);
       return _pinnedHeader(header, _pullable(onRefresh, ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [
+        const SizedBox(height: AppSpace.sm),
+        // the hero beside the members card (equal height), then the stat row
+        HomeEntrance(
+          index: 0,
+          child: Padding(
+            padding: inset,
+            child: IntrinsicHeight(
+              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Expanded(flex: 5, child: hero(true)),
+                const SizedBox(width: AppSpace.lg),
+                Expanded(flex: 6, child: OrgMembersOverview(data: data, onOpen: onOpenMembers)),
+              ]),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpace.lg),
+        HomeEntrance(index: 1, child: Padding(padding: inset, child: stats(true))),
+        const SizedBox(height: AppSpace.sm),
         ...top,
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: spaced(start, 0))),
-            if (end.isNotEmpty) Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: spaced(end, 1))),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: spaced(start, 2))),
+            if (end.isNotEmpty) Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: spaced(end, 3))),
           ]),
         ),
       ])));
@@ -504,6 +558,31 @@ class _OrgHomePageState extends State<OrgHomePage> {
     );
   }
 
+  /// My first name for the hero's greeting (the signed-in user already in memory; none in a bare test → '').
+  static String _firstName(BuildContext context) {
+    try {
+      final n = (context.read<MyAuthProvider>().currentUser?.name ?? '').trim();
+      return n.isEmpty ? '' : n.split(RegExp(r'\s+')).first;
+    } catch (_) {
+      return '';
+    }
+  }
+
+  /// The phone's shortcut tiles: the first sub-page of each section I hold, then the rest of Services (on a phone it
+  /// folds into "More", so its pages are the ones a tile saves most taps for) — four at most, one tap each (orgJump).
+  static List<OrgHomeShortcut> _shortcuts(BuildContext context, OrgTabs tabs) {
+    const tones = [AppBlockTone.emerald, AppBlockTone.peach, AppBlockTone.sky, AppBlockTone.emerald];
+    final picks = <(String, OrgSub)>[
+      for (final k in const ['people', 'academics', 'services'])
+        if ((tabs.sections[k] ?? const []).isNotEmpty) (k, tabs.sections[k]!.first),
+      for (final x in (tabs.sections['services'] ?? const <OrgSub>[]).skip(1)) ('services', x),
+    ];
+    return [
+      for (final (i, (k, x)) in picks.take(4).indexed)
+        OrgHomeShortcut(icon: x.$3, label: x.$2, tone: tones[i], onTap: () => orgJump(context, k, sub: x.$1)),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = context.watch<OrgSession>();
@@ -552,6 +631,9 @@ class _OrgHomePageState extends State<OrgHomePage> {
           setup: s.isOrgAdmin ? OrgSetupChecklist(orgId: s.currentId, reloadToken: dash.loadedAt, onOpen: (x) => _openSetupStep(context, x)) : null,
           insights: OrgInsightsSection(orgId: s.currentId, fallback: d.trends.isEmpty ? null : OrgTrendRow(trends: d.trends)),
           insightsWeight: kOrgInsightsWeight,
+          greetingName: _firstName(context),
+          shortcuts: _shortcuts(context, tabs),
+          onOpenMembers: tabs.has('people', 'members') ? () => orgJump(context, 'people', sub: 'members') : null,
         ),
     );
   }

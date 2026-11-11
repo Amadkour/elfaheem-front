@@ -573,16 +573,42 @@ class OrgMemberHomeBody extends StatelessWidget {
         .then((_) => onInboxClosed?.call());
 
     final soon = asInt(todo['due_soon']) + asInt(todo['overdue']);
-    final stats = <HomeStat>[
-      HomeStat(icon: Icons.task_alt_rounded, label: t('مطلوب منك', 'To do'), count: asInt(todo['total']),
-          tone: asInt(todo['overdue']) > 0 ? c.danger : c.primary,
-          onTap: openInbox),
-      HomeStat(icon: Icons.schedule_rounded, label: t('قريب الموعد', 'Due soon'), count: soon, tone: c.warning),
+    final overdue = asInt(todo['overdue']);
+    final lateComplaints = asInt(ap['overdue_complaints']);
+    // the numbers as the premium stat cards (D-631): colour by meaning — work to do peach, dates sky, decisions
+    // emerald; what is late is said in the card's footer band, never by a red card
+    final stats = <(int, AppStatCard)>[
+      (asInt(todo['total']), AppStatCard(
+          key: const ValueKey('member.stat.todo'),
+          icon: Icons.task_alt_rounded,
+          label: t('مطلوب منك', 'To do'),
+          value: '${asInt(todo['total'])}',
+          tone: AppBlockTone.peach,
+          footer: overdue > 0 ? t('$overdue متأخرة', '$overdue overdue') : t('لا شيء متأخر', 'Nothing late'),
+          onTap: openInbox)),
+      (soon, AppStatCard(
+          key: const ValueKey('member.stat.soon'),
+          icon: Icons.schedule_rounded,
+          label: t('قريب الموعد', 'Due soon'),
+          value: '$soon',
+          tone: AppBlockTone.sky,
+          footer: t('خلال الأيام القادمة', 'In the coming days'))),
       if (manage != null)
-        HomeStat(icon: Icons.fact_check_rounded, label: t('بانتظار قرارك', 'Awaiting you'), count: asInt(ap['total']),
-            tone: asInt(ap['overdue_complaints']) > 0 ? c.danger : c.primary),
-      HomeStat(icon: Icons.campaign_rounded, label: t('أخبار جديدة', 'New news'), count: asInt(entry['news']), tone: c.accent2,
-          onTap: () => _space(context, org, 0)),
+        (asInt(ap['total']), AppStatCard(
+            key: const ValueKey('member.stat.awaiting'),
+            icon: Icons.fact_check_rounded,
+            label: t('بانتظار قرارك', 'Awaiting you'),
+            value: '${asInt(ap['total'])}',
+            tone: AppBlockTone.emerald,
+            footer: lateComplaints > 0 ? t('$lateComplaints شكاوى متأخرة', '$lateComplaints late complaints') : t('كلها في وقتها', 'All on time'))),
+      (asInt(entry['news']), AppStatCard(
+          key: const ValueKey('member.stat.news'),
+          icon: Icons.campaign_rounded,
+          label: t('أخبار جديدة', 'New news'),
+          value: '${asInt(entry['news'])}',
+          tone: AppBlockTone.sky,
+          footer: t('من مؤسستك', 'From your organization'),
+          onTap: () => _space(context, org, 0))),
     ];
 
     void openTimetable() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgTimetableScreen(orgId: orgId)));
@@ -615,8 +641,11 @@ class OrgMemberHomeBody extends StatelessWidget {
       if (roles.contains('student')) AdvMemberHubEntry(orgId: orgId, overview: entry['advising']),
 
       // ── the numbers, once: one card of small tiles (the same strip as the personal homes) — only while one counts
-      if (stats.any((x) => x.count > 0)) ...[
-        HomeStatStrip(items: stats, padding: const EdgeInsets.symmetric(horizontal: AppSpace.md)),
+      if (stats.any((x) => x.$1 > 0)) ...[
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+          child: AppKpiGrid(children: [for (final x in stats) x.$2]),
+        ),
         AppSpace.gapLg,
       ],
 
