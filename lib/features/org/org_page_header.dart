@@ -15,7 +15,8 @@
 //       row 1 = the pill + the calendar / messages / bell, row 2 = Back · the title block · Refresh, the action under it.
 //       Refresh state comes from the nearest OrgPageRefreshScope (the shell gives each page its own); without one
 //       there is no Refresh button.
-//       The look is AppHeader's (D-360): the mesh gradient, on-hero ink, tools on an AppHeaderTray, the focus toggle.
+//       The look is AppHeader's editorial masthead (D-614): the canvas, a 2 px primary strip on top, the title in the
+//       editorial page-title face in ink, the tools as paper chips, the ONE primary action bare, a warm hairline under it.
 //       It collapses with the page's scrolling (AppHeaderCollapse), so it must stay OUTSIDE the scrollable: a Column
 //       with the header above an Expanded body. Compact keeps Back · the title · the tools; on phones the pill row
 //       folds away and comes back on the first scroll up.
@@ -44,9 +45,8 @@
 //     may open too wears OrgPushedPage only when I work in that organization (OrgSession lists it; students never
 //     are there), else it keeps its own older app bar.
 //
-//   OrgPageFrame(header:, body:, width:) — how a header and its page meet (D-570). From AppWidth.phoneMax up the header
-//     lies on the shell's own gradient, edge to edge, and the page is a sheet under it, just like the other roles' top
-//     bar; phones keep the header above the page.
+//   OrgPageFrame(header:, body:, width:) — how a header and its page meet (D-570, D-614). The header sits on the
+//     canvas edge to edge above the page (no gradient band any more); the page body takes its width role under it.
 //
 // Layout test: test/ui/org_page_header_layout_test.dart; renders: test/visual/org_shell_golden_test.dart.
 library;
@@ -61,15 +61,13 @@ import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/design/app_back_button.dart';
 import 'package:flutter_education_app/config/app_config.dart' show AppConfig, translate;
 import 'package:flutter_education_app/design/app_focus_mode.dart' show AppFocusExitButton, AppFocusMode, AppFocusToggle;
-import 'package:flutter_education_app/design/app_header.dart' show AppHeader, AppHeaderCollapse, AppHeaderTray;
+import 'package:flutter_education_app/design/app_header.dart' show AppHeader, AppHeaderCollapse, AppHeaderRule, AppHeaderStrip;
 import 'package:flutter_education_app/design/app_keyboard.dart' show AppCommandPaletteScope;
-import 'package:flutter_education_app/design/app_mesh.dart' show AppMeshSurface;
-import 'package:flutter_education_app/design/app_responsive.dart' show AppShellKind, Breakpoints;
 import 'package:flutter_education_app/design/app_shell.dart' show NotificationIcon;
 import 'package:flutter_education_app/design/app_shell_nav.dart' show ShellScope;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/calendar_entry.dart' show CalendarEntryIcon, ChatEntryIcon;
-import 'package:flutter_education_app/design/chrome_button.dart' show ChromeBar, ChromeIconButton;
+import 'package:flutter_education_app/design/chrome_button.dart' show ChromeIconButton;
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextPill;
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant, appAssistantFeatureKey;
@@ -362,7 +360,7 @@ class _OrgPushedPageState extends State<OrgPushedPage> {
 //  Where the header and the page meet
 // ═════════════════════════════════════════════════════════════════════════════
 
-/// Under this, [OrgPageHeader] paints nothing behind itself: [OrgPageFrame] has laid it on the shell's gradient.
+/// Under this, [OrgPageHeader] is laid by [OrgPageFrame], which paints the canvas behind it.
 class _OrgFrameScope extends InheritedWidget {
   const _OrgFrameScope({required super.child});
 
@@ -372,11 +370,10 @@ class _OrgFrameScope extends InheritedWidget {
   bool updateShouldNotify(_OrgFrameScope oldWidget) => false;
 }
 
-/// A page of the organization dashboard: its [header] and its [body] (D-570).
+/// A page of the organization dashboard: its [header] and its [body] (D-570, D-614).
 ///
-/// From [AppWidth.phoneMax] up the header sits on the same gradient as the sidebar, painted at the window's coordinates
-/// so the two read as one surface, and the page is a sheet under it, as on every other role's shell. The body takes the
-/// page-width role [width] (or the older [maxWidth]) and the whole height that is left. Phones: the header above the page.
+/// The editorial masthead sits on the canvas edge to edge, the page under it takes the page-width role [width] (or the
+/// older [maxWidth]) and the whole height that is left. Phones: the header above the page, the full width.
 class OrgPageFrame extends StatelessWidget {
   const OrgPageFrame({super.key, required this.header, required this.body, this.width = AppWidth.wide, this.maxWidth});
 
@@ -384,16 +381,6 @@ class OrgPageFrame extends StatelessWidget {
   final Widget body;
   final AppWidth? width;
   final double? maxWidth;
-
-  /// The side chrome's width beside this page at the window's start: what the gradient has to be shifted by.
-  static double _sideOf(BuildContext context, double window) {
-    if (ShellScope.maybeOf(context) == null || AppFocusMode.activeIn(context)) return 0;
-    return switch (Breakpoints.shellFor(window)) {
-      AppShellKind.wide => Breakpoints.sidebarW,
-      AppShellKind.rail => 67, // AppShell's rail: 66 + its divider
-      AppShellKind.mobile => 0,
-    };
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -406,49 +393,16 @@ class OrgPageFrame extends StatelessWidget {
       return Align(alignment: Alignment.topCenter, child: SizedBox(width: w, height: box.maxHeight, child: body));
     });
     return Material(
-      type: MaterialType.transparency,
+      color: context.colors.background,
       // the header is above the page's Scaffold now: this is what reports the page's scrolling to its collapse
       child: ScrollNotificationObserver(
-        child: ValueListenableBuilder<bool>(
-          valueListenable: AppFocusMode.instance,
-          builder: (context, _, _) {
-            final side = _sideOf(context, window.width);
-            final rtl = Directionality.of(context) == TextDirection.rtl;
-            final corner = side == 0 ? Radius.zero : const Radius.circular(AppRadius.sheet);
-            return Stack(fit: StackFit.expand, children: [
-              Positioned.fill(
-                child: RepaintBoundary(
-                  child: ClipRect(
-                    child: Stack(clipBehavior: Clip.none, children: [
-                      // the shell's own surface (the sidebar's seed), at the window's coordinates
-                      Positioned(
-                        left: rtl ? 0 : -side,
-                        top: 0,
-                        width: window.width,
-                        height: window.height,
-                        child: const AppMeshSurface(seed: 3),
-                      ),
-                    ]),
-                  ),
-                ),
-              ),
-              _OrgFrameScope(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Padding(padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top), child: header),
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadiusDirectional.only(topStart: corner).resolve(Directionality.of(context)),
-                      child: MediaQuery.removePadding(
-                        context: context,
-                        removeTop: true,
-                        child: BasePage(child: page),
-                      ),
-                    ),
-                  ),
-                ]),
-              ),
-            ]);
-          },
+        child: _OrgFrameScope(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Padding(padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top), child: header),
+            Expanded(
+              child: MediaQuery.removePadding(context: context, removeTop: true, child: BasePage(child: page)),
+            ),
+          ]),
         ),
       ),
     );
@@ -509,16 +463,15 @@ class OrgPageHeader extends StatelessWidget {
       // built once here and reused by every frame of the collapse: only the sizes around them animate
       final help = helpPageId == null ? null : HelpInfoButton(pageId: helpPageId!);
       final backBtn = back
-          ? const KeyedSubtree(key: ValueKey('org.header.back'), child: AppBackButton(onHero: true))
+          ? const KeyedSubtree(key: ValueKey('org.header.back'), child: AppBackButton())
           : null;
-      final action = primaryAction == null
-          ? null
-          : AppHeaderTray(child: Padding(padding: const EdgeInsets.all(AppSpace.xxs / 2), child: primaryAction!));
+      // on the canvas the ONE primary action stands bare (D-614)
+      final action = primaryAction;
       // under the title, a long label at a large text scale shrinks a little rather than overflow
       final actionFitted = action == null
           ? null
           : FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.centerStart, child: action);
-      final Widget? phoneRefresh = refresh != null && !wide ? ChromeBar(child: _RefreshIcon(refresh: refresh)) : null;
+      final Widget? phoneRefresh = refresh != null && !wide ? _RefreshIcon(refresh: refresh) : null;
       final Widget? phoneSearch = search != null && searchBar && !wide ? _SearchBar(onTap: search) : null;
       final Widget? phoneChrome = wide
           ? null
@@ -527,30 +480,26 @@ class OrgPageHeader extends StatelessWidget {
                 child: Align(alignment: AlignmentDirectional.centerStart, child: pill ?? const SizedBox.shrink()),
               ),
               AppSpace.gapXs,
-              ChromeBar(
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const CalendarEntryIcon(),
-                  const ChatEntryIcon(),
-                  NotificationIcon(unreadCount: unread),
-                  ?help,
-                ]),
-              ),
+              Row(mainAxisSize: MainAxisSize.min, children: [
+                const CalendarEntryIcon(),
+                const ChatEntryIcon(),
+                NotificationIcon(unreadCount: unread),
+                ?help,
+              ]),
             ]);
       // the one order of every header's end (D-551): page tools, app-wide tools, the context, focus last
       final Widget? wideTools = !wide
           ? null
-          : ChromeBar(
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                if (search != null) _ChipButton(icon: Icons.search_rounded, label: _searchLabel, onTap: search, compact: !roomy),
-                if (refresh != null) _RefreshIcon(refresh: refresh),
-                const CalendarEntryIcon(),
-                const ChatEntryIcon(),
-                if (!AppConfig.disableList.contains(appAssistantFeatureKey))
-                  ChromeIconButton(icon: Icons.auto_awesome_rounded, label: translate('assistant_entry_title'), onTap: AppAssistant.openPanel),
-                NotificationIcon(unreadCount: unread),
-                ?help,
-              ]),
-            );
+          : Row(mainAxisSize: MainAxisSize.min, children: [
+              if (search != null) _ChipButton(icon: Icons.search_rounded, label: _searchLabel, onTap: search, compact: !roomy),
+              if (refresh != null) _RefreshIcon(refresh: refresh),
+              const CalendarEntryIcon(),
+              const ChatEntryIcon(),
+              if (!AppConfig.disableList.contains(appAssistantFeatureKey))
+                ChromeIconButton(icon: Icons.auto_awesome_rounded, label: translate('assistant_entry_title'), onTap: AppAssistant.openPanel),
+              NotificationIcon(unreadCount: unread),
+              ?help,
+            ]);
       final scale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.6);
       final hasLine = refresh != null || (subtitle ?? '').isNotEmpty;
       final openHeight = (hasLine ? AppHeader.openHeightWithSubtitle : AppHeader.openHeight) * scale;
@@ -576,12 +525,8 @@ class OrgPageHeader extends StatelessWidget {
                   Expanded(child: below == null ? ClipRect(child: titleBlock) : titleBlock),
                   if (action != null && !actionBelow) ...[
                     AppSpace.gapSm,
-                    // on its card-coloured tray (a tonal button alone has no readable fill on the gradient), the tray tight
-                    // around it and no taller than a touch target: a button that fills its height grew to the whole header
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: AppTouch.min),
-                      child: AppHeaderTray(child: primaryAction!),
-                    ),
+                    // no taller than a touch target: a button that fills its height grew to the whole header
+                    ConstrainedBox(constraints: const BoxConstraints(maxHeight: AppTouch.min), child: primaryAction!),
                   ],
                   AppSpace.gapSm,
                   wideTools!,
@@ -632,11 +577,19 @@ class OrgPageHeader extends StatelessWidget {
               );
             },
           );
+          // the editorial masthead (D-614): the strip, the header on the canvas, the warm hairline closing it
           return RepaintBoundary(
             child: Semantics(
               container: true,
               explicitChildNodes: true,
-              child: onFrame ? content : AppMeshSurface(drift: collapse, child: content),
+              child: Material(
+                color: onFrame ? Colors.transparent : context.colors.background,
+                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  const AppHeaderStrip(),
+                  content,
+                  const AppHeaderRule(),
+                ]),
+              ),
             ),
           );
         },
@@ -707,11 +660,10 @@ class _TitleBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final sub = subtitle;
     final hasSub = sub != null && sub.isNotEmpty;
-    final open = AppType.headline(context).copyWith(color: c.onHero);
-    final compact = AppType.section(context).copyWith(color: c.onHero);
+    final open = AppType.pageTitle(context);
+    final compact = AppType.section(context);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
       Semantics(
         header: true,
@@ -726,11 +678,11 @@ class _TitleBlock extends StatelessWidget {
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               if (hasSub)
                 Flexible(
-                  child: Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.onHeroMuted)),
+                  child: Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
                 ),
               if (hasSub && updated != null)
                 // a narrow title column (a long primary beside it) can leave less room than the dot itself
-                Flexible(child: Text('  ·  ', maxLines: 1, softWrap: false, overflow: TextOverflow.clip, style: AppType.meta(context).copyWith(color: c.onHeroMuted))),
+                Flexible(child: Text('  ·  ', maxLines: 1, softWrap: false, overflow: TextOverflow.clip, style: AppType.meta(context))),
               if (updated != null) Flexible(child: _UpdatedText(refresh: updated!)),
             ]),
           ),
@@ -755,7 +707,7 @@ class _UpdatedText extends StatelessWidget {
           key: const ValueKey('org.header.updated'),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: AppType.meta(context).copyWith(color: context.colors.onHeroMuted),
+          style: AppType.meta(context),
         ),
       );
 }
@@ -770,8 +722,8 @@ class _FocusEnd extends StatelessWidget {
         builder: (context, on, _) => Padding(
           padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs),
           child: on && AppFocusMode.activeIn(context) && ShellScope.maybeOf(context) != null
-              ? const ChromeBar(child: AppFocusExitButton())
-              : const AppFocusToggle(onHero: true),
+              ? const AppFocusExitButton()
+              : const AppFocusToggle(),
         ),
       );
 }
@@ -841,21 +793,21 @@ class _ChipButton extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(AppSpace.xxs / 2),
           child: Material(
-            color: c.heroGlass,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control), side: BorderSide(color: c.heroGlassBorder)),
+            color: c.cardBg,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control), side: BorderSide(color: c.divider)),
             child: InkWell(
               key: const ValueKey('org.header.search'),
               borderRadius: BorderRadius.circular(AppRadius.control),
               onTap: onTap,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
+                constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xxs, minWidth: AppTouch.min - AppSpace.xxs),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(icon, size: AppIconSize.md, color: c.onHero),
+                    Icon(icon, size: AppIconSize.md, color: c.textMedium),
                     if (!compact) ...[
                       const SizedBox(width: AppSpace.xs),
-                      Text(label, style: AppType.row(context).copyWith(color: c.onHero)),
+                      Text(label, style: AppType.row(context).copyWith(color: c.textMedium)),
                     ],
                   ]),
                 ),
