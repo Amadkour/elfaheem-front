@@ -1,7 +1,8 @@
 // shared/session/components/session_shared_widgets.dart
 //
 // Micro-widgets shared across SessionMaterialCard sub-components.
-// No provider dependency — purely presentational.
+// No provider dependency — purely presentational. They wear the editorial kit: paper surfaces on warm hairlines,
+// the kit's text roles, radius by hierarchy (chip 10 · control 14 · sheet 28), 48 px targets.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
@@ -9,10 +10,13 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 import '../../../../../config/app_config.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import '../../../../../design/app_buttons.dart';
+import '../../../../../design/app_inputs.dart' show appFieldDecoration, appFieldTextStyle, AppFieldLabel;
+import '../../../../../design/app_motion_kit.dart' show AppPopIn, AppPressScale;
+import '../../../../../design/app_tokens.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RTL themed AlertDialog wrapper
+// Confirm / form dialog (follows the app's direction; the name is historical)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class RtlDialog extends StatelessWidget {
@@ -35,46 +39,34 @@ class RtlDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    final danger = confirmColor == c.danger;
     return Directionality(
-      textDirection: TextDirection.rtl,
-      child: AlertDialog(
-        backgroundColor: context.colors.cardBg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(title, style: context.colors.h3),
-        content: content,
-        actions: [
-          TextButton(
-            onPressed: onCancel,
-            child: Text(
-              'cancel'.tr,
-              style: TextStyle(
-                  fontFamily: AppFonts.display, color: context.colors.textMedium),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: confirmColor,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: onConfirm,
-            child: Text(
-              confirmLabel,
-              style: TextStyle(
-                fontFamily: AppFonts.display,
-                color: context.colors.onHero,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
+      textDirection: AppConfig.lang == 'ar' ? TextDirection.rtl : TextDirection.ltr,
+      child: AppPopIn(
+        child: AlertDialog(
+          backgroundColor: c.cardBg,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sheet)),
+          titlePadding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.lg, AppSpace.lg, 0),
+          contentPadding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.xs),
+          actionsPadding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.sm, AppSpace.lg, AppSpace.lg),
+          title: Text(title, style: AppType.headline(context)),
+          content: DefaultTextStyle.merge(style: AppType.body(context), child: content),
+          actions: [
+            AppButton.ghost(label: 'cancel'.tr, onPressed: onCancel),
+            danger
+                ? AppButton.danger(label: confirmLabel, onPressed: onConfirm)
+                : AppButton.primary(label: confirmLabel, onPressed: onConfirm),
+          ],
+        ),
       ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Labelled text field (RTL-friendly)
+// Labelled text field: the kit's label above a warm well
 // ─────────────────────────────────────────────────────────────────────────────
 
 class SessionField extends StatelessWidget {
@@ -91,30 +83,18 @@ class SessionField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: ctrl,
-      keyboardType: keyboardType,
-      style: context.colors.body,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: context.colors.caption,
-        filled: true,
-        fillColor: context.colors.background,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(
-              color: context.colors.textLight.withValues(alpha: 0.2)),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppFieldLabel(label),
+        TextField(
+          controller: ctrl,
+          keyboardType: keyboardType,
+          style: appFieldTextStyle(context),
+          decoration: appFieldDecoration(context),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(
-              color: context.colors.textLight.withValues(alpha: 0.2)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: context.colors.primary),
-        ),
-      ),
+      ],
     );
   }
 }
@@ -130,24 +110,34 @@ class SessionTypePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = isLive ? context.colors.danger : context.colors.primary;
+    final c = context.colors;
+    final tone = isLive ? c.danger : c.primary;
+    final tint = isLive ? c.dangerTint : c.primaryTint;
+    final ink = c.blockAccentInk(tone, Color.alphaBlend(tint, c.cardBg));
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration: BoxDecoration(
-        color: c.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        isLive ? 'live_badge'.tr : 'recorded_badge'.tr,
-        style: context.colors.caption
-            .copyWith(color: c, fontWeight: FontWeight.w700),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 2),
+      decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(AppRadius.pill)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        if (isLive) ...[
+          // a vector dot, never the emoji in the old badge text
+          Container(width: AppSpace.xs - 2, height: AppSpace.xs - 2, decoration: BoxDecoration(color: tone, shape: BoxShape.circle)),
+          const SizedBox(width: AppSpace.xxs),
+        ],
+        Flexible(
+          child: Text(
+            isLive ? 'live'.tr : 'recorded_badge'.tr,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppType.overline(context).copyWith(color: ink),
+          ),
+        ),
+      ]),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Small colour pill (material type label)
+// Small type label (material type): the type's colour as a faint tint, its ink lifted to AA
 // ─────────────────────────────────────────────────────────────────────────────
 
 class SessionPill extends StatelessWidget {
@@ -157,22 +147,20 @@ class SessionPill extends StatelessWidget {
   const SessionPill(this.label, this.color, {super.key});
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(4),
-    ),
-    child: Text(
-      label,
-      style: TextStyle(
-        fontFamily: AppFonts.display,
-        fontSize: 9,
-        color: color,
-        fontWeight: FontWeight.w700,
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tint = Color.alphaBlend(color.withValues(alpha: 0.10), c.cardBg);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs - 2, vertical: 1),
+      decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(AppRadius.chip - 4)),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppType.overline(context).copyWith(color: c.blockAccentInk(color, tint)),
       ),
-    ),
-  );
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -201,50 +189,55 @@ class SessionActionBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final bg = filled
         ? color
         : outlined
         ? Colors.transparent
-        : color.withValues(alpha: 0.09);
+        : Color.alphaBlend(color.withValues(alpha: 0.09), c.cardBg);
 
-    final textColor = filled ? context.colors.onHero : color;
+    final textColor = filled ? c.onHero : c.blockAccentInk(color, outlined ? c.cardBg : bg);
 
-    return GestureDetector(
-      onTap:loading? null:onTap,
-      child: Container(
-        height: 30,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
+    return Semantics(
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      child: AppPressScale(
+        enabled: !loading && onTap != null,
+        child: Material(
           color: bg,
-          borderRadius: BorderRadius.circular(11),
-          border: Border.all(color: color.withValues(alpha: 0.40), width: 1.2),
-          boxShadow: filled
-              ? [
-            BoxShadow(
-              color: color.withValues(alpha: 0.30),
-              blurRadius: 12,
-              offset: const Offset(0, 5),
-            ),
-          ]
-              : null,
-        ),
-        child:loading?AppLoadingIndicator(ringColor: textColor,showLogo: false,size: 25,): Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 15, color: textColor),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-                color: textColor,
-                letterSpacing: 0.2,
+          shape: RoundedRectangleBorder(
+            borderRadius: AppRadius.controlAll,
+            side: filled ? BorderSide.none : BorderSide(color: color.withValues(alpha: 0.40), width: AppBorder.hairline),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: loading ? null : onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppSpace.xl + AppSpace.xxs),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+                child: loading
+                    ? AppLoadingIndicator(ringColor: textColor, showLogo: false, size: AppIconSize.lg)
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(icon, size: AppIconSize.sm, color: textColor),
+                          const SizedBox(width: AppSpace.xs - 2),
+                          Flexible(
+                            child: Text(
+                              label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: textColor),
+                            ),
+                          ),
+                        ],
+                      ),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

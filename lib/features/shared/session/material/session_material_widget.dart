@@ -15,6 +15,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter_education_app/design/app_share_sheet.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
@@ -329,7 +330,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
           mainAxisSize: MainAxisSize.min,
           children: [
             SessionField(ctrl: nameCtrl, label: 'name_label'.tr),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             SessionField(ctrl: descCtrl, label: 'description'.tr),
           ],
         ),
@@ -475,16 +476,16 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (items.isNotEmpty) Wrap(spacing: 8, runSpacing: 8, children: items),
-        if (widget.footer != null) ...[if (items.isNotEmpty) const SizedBox(height: 8), widget.footer!],
+        if (items.isNotEmpty) Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: items),
+        if (widget.footer != null) ...[if (items.isNotEmpty) const SizedBox(height: AppSpace.xs), widget.footer!],
         if (uploading) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           LinearProgressIndicator(
             value: prov.uploadProgressForSession(_session.id),
             minHeight: 3,
             color: c.primary,
             backgroundColor: c.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(AppRadius.pill),
           ),
         ],
       ],
@@ -500,15 +501,15 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
       value: v,
       child: Row(
         children: [
-          Icon(icon, size: 18, color: tone ?? c.textMedium),
-          const SizedBox(width: 12),
+          Icon(icon, size: AppIconSize.sm, color: tone ?? c.textMedium),
+          const SizedBox(width: AppSpace.sm),
           Flexible(child: Text(label, style: TextStyle(color: tone ?? c.textDark))),
         ],
       ),
     );
     return PopupMenuButton<String>(
       tooltip: _tt('خيارات الجلسة', 'Session options'),
-      icon: Icon(Icons.more_vert_rounded, color: c.textLight, size: 20),
+      icon: Icon(Icons.more_vert_rounded, color: c.textLight, size: AppIconSize.md),
       onSelected: (v) {
         switch (v) {
           case 'live':

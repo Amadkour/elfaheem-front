@@ -3,7 +3,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/design/app_kit.dart'
+    show AppListSkeleton, AppRefresh, AppTabs, AppTabItem, AppBlock, AppBlockTone, AppEmpty, AppStatusBadge, AppTone, AppButton, AppWidth;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppPressScale, AppReveal;
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
@@ -23,10 +25,8 @@ import '../attendance/attendance_strings.dart';
 import '../attendance/offline_attendance_tab.dart';
 import '../exam_engine/offline/offline_exam_screen.dart';
 import '../../admin/admin_common.dart' show t;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_header.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
-import 'package:flutter_education_app/design/app_gradients.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 // DownloadsScreen — every encrypted video saved on this device.
@@ -168,6 +168,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     final tc = context.watch<ThemeConfigProvider>();
     final canPop = Navigator.of(context).canPop();
     final totalBytes = _items.fold<int>(0, (s, e) => s + e.sizeBytes);
+    final wide = MediaQuery.sizeOf(context).width >= 600;
 
     return Directionality(
       textDirection: Helpers.pageDirection,
@@ -175,13 +176,13 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
 
         appBar: AppHeader(
           title: offlineT('dl_title'),
-          // Opened as the start page (nothing to go back to) → home button.
+          // Opened as the start page (nothing to go back to) → home button (the header sits on the canvas: ink).
           leading: canPop
               ? null
               : IconButton(
                   tooltip: offlineT('dl_go_home'),
                   constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
-                  icon: Icon(Icons.home_rounded, color: c.onHero),
+                  icon: Icon(Icons.home_rounded, color: c.textDark),
                   onPressed: _goHome,
                 ),
           actions: [
@@ -189,34 +190,27 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             if (_items.isNotEmpty && _tab == 0)
               IconButton(
                 tooltip: offlineT('dl_delete_all'),
-                icon: Icon(Icons.delete_sweep_rounded, color: c.danger),
+                constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+                icon: Icon(Icons.delete_sweep_rounded, color: c.textMedium),
                 onPressed: _deleteAll,
               ),
           ],
         ),
         child: Column(children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: SizedBox(
-              width: double.infinity,
-              child: SegmentedButton<int>(
-                showSelectedIcon: false,
-                segments: [
-                  ButtonSegment(
-                      value: 0,
-                      icon: const Icon(Icons.download_done_rounded, size: 18),
-                      label: Text(attT('att_tab_downloads'))),
-                  ButtonSegment(
-                      value: 1,
-                      icon: const Icon(Icons.how_to_reg_rounded, size: 18),
-                      label: Text(attT('att_tab_attendance'), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                  ButtonSegment(
-                      value: 2,
-                      icon: const Icon(Icons.offline_pin_rounded, size: 18),
-                      label: Text(t('الاختبارات', 'Exams'), maxLines: 1, overflow: TextOverflow.ellipsis)),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: AppWidth.reading.max),
+              child: AppTabs(
+                expand: true,
+                index: _tab,
+                onChanged: (v) => setState(() => _tab = v),
+                // phones: the three labels alone (with their icons they no longer fit 360 px)
+                items: [
+                  AppTabItem(attT('att_tab_downloads'), icon: wide ? Icons.download_done_rounded : null),
+                  AppTabItem(attT('att_tab_attendance'), icon: wide ? Icons.how_to_reg_rounded : null),
+                  AppTabItem(t('الاختبارات', 'Exams'), icon: wide ? Icons.offline_pin_rounded : null),
                 ],
-                selected: {_tab},
-                onSelectionChanged: (v) => setState(() => _tab = v.first),
               ),
             ),
           ),
@@ -230,46 +224,60 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             : AppRefresh(
                 onRefresh: _load,
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xl),
                   children: [
-                    // Connection status card
-                    if (tc.serverUnreachable)
-                      _StatusCard(
-                        icon: Icons.wifi_off_rounded,
-                        color: c.danger,
-                        text: offlineT('dl_offline_info'),
-                        actionLabel: offlineT('dl_retry_connection'),
-                        loading: tc.isRetrying,
-                        onAction: () =>
-                            context.read<ThemeConfigProvider>().reload(),
-                      )
-                    else if (!canPop)
-                      _StatusCard(
-                        icon: Icons.wifi_rounded,
-                        color: c.primary,
-                        text: offlineT('dl_back_online'),
-                        actionLabel: offlineT('dl_go_home'),
-                        onAction: _goHome,
-                      ),
+                    Center(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: AppWidth.reading.max),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                          // Connection status card
+                          if (tc.serverUnreachable)
+                            _StatusCard(
+                              icon: Icons.wifi_off_rounded,
+                              danger: true,
+                              text: offlineT('dl_offline_info'),
+                              actionLabel: offlineT('dl_retry_connection'),
+                              loading: tc.isRetrying,
+                              onAction: () =>
+                                  context.read<ThemeConfigProvider>().reload(),
+                            )
+                          else if (!canPop)
+                            _StatusCard(
+                              icon: Icons.wifi_rounded,
+                              text: offlineT('dl_back_online'),
+                              actionLabel: offlineT('dl_go_home'),
+                              actionIcon: Icons.home_rounded,
+                              onAction: _goHome,
+                            ),
 
-                    if (_items.isEmpty)
-                      _EmptyState()
-                    else ...[
-                      _SummaryCard(
-                        count: _items.length,
-                        sizeLabel: _fmtSize(totalBytes),
+                          if (_items.isEmpty)
+                            const _EmptyState()
+                          else ...[
+                            // ONE entrance: the summary block, then the first rows ripple in after it
+                            AppReveal(
+                              index: 0,
+                              group: 'downloads',
+                              child: _SummaryCard(count: _items.length, sizeLabel: _fmtSize(totalBytes)),
+                            ),
+                            const SizedBox(height: AppSpace.lg),
+                            for (final (i, it) in _items.indexed)
+                              AppReveal(
+                                index: i + 1,
+                                group: 'downloads',
+                                rise: 8,
+                                child: _DownloadTile(
+                                  item: it,
+                                  sizeLabel: _fmtSize(it.sizeBytes),
+                                  expiryLabel: _fmtExpiry(it.expiresAt),
+                                  accessEnded: it.courseId != null && _endedCourses.contains(it.courseId),
+                                  onTap: () => _open(it),
+                                  onDelete: () => _delete(it),
+                                ),
+                              ),
+                          ],
+                        ]),
                       ),
-                      const SizedBox(height: 12),
-                      for (final it in _items)
-                        _DownloadTile(
-                          item: it,
-                          sizeLabel: _fmtSize(it.sizeBytes),
-                          expiryLabel: _fmtExpiry(it.expiresAt),
-                          accessEnded: it.courseId != null && _endedCourses.contains(it.courseId),
-                          onTap: () => _open(it),
-                          onDelete: () => _delete(it),
-                        ),
-                    ],
+                    ),
                   ],
                 ),
               ),
@@ -284,71 +292,74 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
 // Widgets
 // ════════════════════════════════════════════════════════════════════════════
 
+/// The connection line on top: a paper card with the tone in its icon well and a tonal action, never a wash.
 class _StatusCard extends StatelessWidget {
   const _StatusCard({
     required this.icon,
-    required this.color,
     required this.text,
     required this.actionLabel,
     required this.onAction,
+    this.actionIcon = Icons.refresh_rounded,
+    this.danger = false,
     this.loading = false,
   });
 
   final IconData icon;
-  final Color color;
+  final IconData actionIcon;
   final String text;
   final String actionLabel;
   final VoidCallback onAction;
+  final bool danger;
   final bool loading;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final tone = danger ? c.danger : c.primary;
+    final tint = danger ? c.dangerTint : c.primaryTint;
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: AppSpace.md),
+      padding: const EdgeInsets.all(AppSpace.md),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.30)),
+        color: c.cardBg,
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: danger ? c.danger.withValues(alpha: 0.35) : c.divider, width: AppBorder.hairline),
       ),
-      child: Column(children: [
-        Row(children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(width: 10),
-          Expanded(child: Text(text, style: c.body.copyWith(color: c.textDark))),
-        ]),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: double.infinity,
-          child: TextButton.icon(
-            onPressed: loading ? null : onAction,
-            style: TextButton.styleFrom(
-              foregroundColor: color,
-              backgroundColor: color.withValues(alpha: 0.10),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-            icon: loading
-                ? SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: color),
-                  )
-                : Icon(Icons.refresh_rounded, size: 18, color: color),
-            label: Text(actionLabel,
-                style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: AppFonts.family)),
-          ),
-        ),
-      ]),
+      child: LayoutBuilder(builder: (context, box) {
+        final mark = Container(
+          width: AppSpace.xl + AppSpace.xs,
+          height: AppSpace.xl + AppSpace.xs,
+          decoration: BoxDecoration(color: tint, shape: BoxShape.circle),
+          child: Icon(icon, color: c.blockAccentInk(tone, Color.alphaBlend(tint, c.cardBg)), size: AppIconSize.md),
+        );
+        final label = Text(text, style: AppType.bodyStrong(context).copyWith(fontWeight: FontWeight.w500));
+        final action = AppButton.tonal(
+          label: actionLabel,
+          icon: actionIcon,
+          busy: loading,
+          onPressed: loading ? null : onAction,
+        );
+        // wide: one line (mark, text, action at the end); a phone stacks the action under the text
+        if (box.maxWidth >= 560) {
+          return Row(children: [
+            mark,
+            const SizedBox(width: AppSpace.sm),
+            Expanded(child: label),
+            const SizedBox(width: AppSpace.md),
+            action,
+          ]);
+        }
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [mark, const SizedBox(width: AppSpace.sm), Expanded(child: label)]),
+          const SizedBox(height: AppSpace.sm),
+          Align(alignment: AlignmentDirectional.centerEnd, child: action),
+        ]);
+      }),
     );
   }
 }
 
+/// What is saved on this device: the screen's one block (sky = information), the count as the key figure.
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({required this.count, required this.sizeLabel});
 
@@ -357,37 +368,54 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    return DecoratedBox(decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), boxShadow: c.primaryShadow),
-      child: AppMeshSurface(radius: BorderRadius.circular(18),
-      child: Padding(padding: const EdgeInsets.all(16), child: Row(children: [
-        Container(
-          width: 46,
-          height: 46,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: context.colors.onHero.withValues(alpha: 0.18),
+    return AppBlock(
+      tone: AppBlockTone.sky,
+      child: Builder(builder: (context) {
+        final b = AppBlock.colorsOf(context);
+        return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+                AppCountUp('$count', memoryKey: 'downloads.count', style: AppType.figureLarge(context).copyWith(color: b.ink)),
+                const SizedBox(width: AppSpace.xs),
+                Flexible(
+                  child: Text(offlineT('dl_videos_count'),
+                      maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: b.ink)),
+                ),
+              ]),
+              const SizedBox(height: AppSpace.xs),
+              Row(children: [
+                Icon(Icons.sd_storage_rounded, size: AppIconSize.sm, color: b.muted),
+                const SizedBox(width: AppSpace.xs - 2),
+                Flexible(
+                  child: Text.rich(
+                    TextSpan(children: [
+                      TextSpan(text: '${offlineT('dl_storage_used')}  '),
+                      TextSpan(
+                          text: '${String.fromCharCode(0x2068)}$sizeLabel${String.fromCharCode(0x2069)}',
+                          style: TextStyle(color: b.ink, fontWeight: FontWeight.w600)),
+                    ]),
+                    style: AppType.meta(context).copyWith(color: b.muted, fontFeatures: const [FontFeature.tabularFigures()]),
+                  ),
+                ),
+              ]),
+            ]),
           ),
-          child: Icon(Icons.download_done_rounded,
-              color: context.colors.onHero, size: 26),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('$count ${offlineT('dl_videos_count')}',
-                  style: c.h4.copyWith(color: context.colors.onHero)),
-              const SizedBox(height: 2),
-              Text('${offlineT('dl_storage_used')}: $sizeLabel',
-                  style: c.caption.copyWith(color: context.colors.onHeroMuted)),
-            ],
+          const SizedBox(width: AppSpace.md),
+          // a quiet paper disc with the mark: the block's colour does the talking
+          Container(
+            width: AppSpace.xxl + AppSpace.xs,
+            height: AppSpace.xxl + AppSpace.xs,
+            decoration: BoxDecoration(color: context.colors.cardBg, shape: BoxShape.circle),
+            child: Icon(Icons.download_done_rounded, color: b.ink, size: AppIconSize.lg),
           ),
-        ),
-      ]))));
+        ]);
+      }),
+    );
   }
 }
 
+/// One saved lecture: a paper row on a warm hairline — the play well, the title, its facts, a quiet delete.
 class _DownloadTile extends StatelessWidget {
   const _DownloadTile({
     required this.item,
@@ -408,64 +436,68 @@ class _DownloadTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final well = Color.alphaBlend(c.primaryTint, c.cardBg);
+    final meta = AppType.meta(context).copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: c.divider.withValues(alpha: 0.6)),
-            ),
-            child: Row(children: [
-              // Play badge
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  color: c.primary.withValues(alpha: 0.12),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
+      child: AppPressScale(
+        child: Material(
+          color: c.cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: AppRadius.cardAll,
+            side: BorderSide(color: c.divider, width: AppBorder.hairline),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.xxs, AppSpace.sm),
+              child: Row(children: [
+                // Play well
+                Container(
+                  width: AppTouch.min,
+                  height: AppTouch.min,
+                  decoration: BoxDecoration(borderRadius: AppRadius.controlAll, color: well),
+                  child: Icon(Icons.play_arrow_rounded, color: c.blockAccentInk(c.primary, well), size: AppIconSize.lg),
                 ),
-                child: Icon(Icons.play_circle_fill_rounded,
-                    color: c.primary, size: 30),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(item.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: c.bodyBold.copyWith(color: c.textDark)),
-                    if ((item.description ?? '').isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(item.description!,
-                          maxLines: 1,
+                const SizedBox(width: AppSpace.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(item.title,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: c.caption.copyWith(color: c.textLight)),
+                          style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
+                      if ((item.description ?? '').isNotEmpty) ...[
+                        const SizedBox(height: AppSpace.xxs / 2),
+                        Text(item.description!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppType.meta(context)),
+                      ],
+                      const SizedBox(height: AppSpace.xs),
+                      Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                        _Chip(item.tier.label),
+                        Text(sizeLabel, textDirection: TextDirection.ltr, style: meta),
+                        Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.schedule_rounded, size: AppIconSize.xs - 2, color: c.textLight),
+                          const SizedBox(width: AppSpace.xxs / 2),
+                          Flexible(child: Text(expiryLabel, style: meta, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        ]),
+                        if (accessEnded) AppStatusBadge(label: 'dl_access_ended'.tr, tone: AppTone.danger, dense: true),
+                      ]),
                     ],
-                    const SizedBox(height: 8),
-                    Wrap(spacing: 6, runSpacing: 6, children: [
-                      _Chip(item.tier.label, c.primary),
-                      _Chip(sizeLabel, c.textMedium),
-                      _Chip(expiryLabel, c.textLight),
-                      if (accessEnded) _Chip('dl_access_ended'.tr, c.danger),
-                    ]),
-                  ],
+                  ),
                 ),
-              ),
-              IconButton(
-                tooltip: AppConfig.lang == 'ar' ? 'حذف' : 'Delete',
-                onPressed: onDelete,
-                icon: Icon(Icons.delete_outline_rounded, color: c.danger),
-              ),
-            ]),
+                IconButton(
+                  tooltip: 'delete'.tr,
+                  constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+                  onPressed: onDelete,
+                  icon: Icon(Icons.delete_outline_rounded, color: c.textLight, size: AppIconSize.md),
+                ),
+              ]),
+            ),
           ),
         ),
       ),
@@ -473,56 +505,34 @@ class _DownloadTile extends StatelessWidget {
   }
 }
 
+/// The saved quality ("720p") as a quiet chip.
 class _Chip extends StatelessWidget {
-  const _Chip(this.label, this.color);
+  const _Chip(this.label);
 
   final String label;
-  final Color color;
 
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(label,
-            style: TextStyle(
-                color: color,
-                fontSize: 10.5,
-                fontWeight: FontWeight.w700,
-                fontFamily: AppFonts.family)),
-      );
-}
-
-class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Padding(
-      padding: const EdgeInsets.only(top: 80),
-      child: Column(children: [
-        Container(
-          width: 96,
-          height: 96,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: c.primary.withValues(alpha: 0.10),
-          ),
-          child: Icon(Icons.cloud_download_outlined,
-              color: c.primary, size: 48),
-        ),
-        const SizedBox(height: 20),
-        Text(offlineT('dl_empty_title'),
-            style: c.h4, textAlign: TextAlign.center),
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Text(offlineT('dl_empty_body'),
-              style: c.body.copyWith(color: c.textLight),
-              textAlign: TextAlign.center),
-        ),
-      ]),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs - 2, vertical: 1),
+      decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.chip - 4)),
+      child: Text(label, textDirection: TextDirection.ltr, style: AppType.overline(context)),
     );
   }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(top: AppSpace.xxl),
+        child: AppEmpty(
+          icon: Icons.cloud_download_outlined,
+          title: offlineT('dl_empty_title'),
+          message: offlineT('dl_empty_body'),
+          tone: AppBlockTone.sky,
+        ),
+      );
 }

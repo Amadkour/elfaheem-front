@@ -1,0 +1,14 @@
+{
+  "session_exam_gate_note_teacher": {
+    "en": "Students must pass this exam to open the next session",
+    "ar": "على الطالب اجتياز هذا الاختبار لفتح الجلسة التالية"
+  },
+  "session_exam_gate_note_student": {
+    "en": "Pass this exam to open the next session",
+    "ar": "اجتز هذا الاختبار لفتح الجلسة التالية"
+  },
+  "session_exam_pinned_end": {
+    "en": "Pinned to the end of the session",
+    "ar": "مثبّت في نهاية الجلسة"
+  }
+}
