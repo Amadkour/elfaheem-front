@@ -9,14 +9,16 @@
 //   VerifyWayStatusPill  "waiting for your confirmation" indicator
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/design/app_gradients.dart';
+import 'package:flutter_education_app/design/app_charts.dart' show appInk;
+import 'package:flutter_education_app/design/app_contrast.dart' show ensureContrast;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase, AppPressScale;
 import 'package:flutter/services.dart';
 
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import 'auth_provider.dart';
-import 'auth_widgets.dart' show authHeroGradient;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import '../../design/app_tokens.dart';
+import 'auth_widgets.dart' show AuthMark;
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Model
@@ -98,10 +100,24 @@ List<VerifyWay> verifyWaysForChannels(MyAuthProvider a, Iterable<String> channel
     policyWays(a).where((w) => channels.contains(w.channel)).toList();
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  Shared bits
+//  Shared bits (Warm Editorial: a way's colour lives in its mark and its selection edge — no gradient, no glow)
 // ══════════════════════════════════════════════════════════════════════════════
 
-/// Fades + slides a child up when it first appears; [index] staggers a list.
+/// The colour a way wears in the UI: our own channels (e-mail, SMS) take the theme's primary, the messaging apps
+/// keep their brand hue so the person recognises them.
+Color _wayTone(BuildContext context, VerifyWay way) => switch (way) {
+      VerifyWay.email || VerifyWay.sms => context.colors.primary,
+      _ => way.brand,
+    };
+
+/// [_wayTone] as readable ink on the card / canvas (AA in both modes).
+Color _wayInk(BuildContext context, VerifyWay way) => appInk(context, _wayTone(context, way));
+
+/// [_wayTone] deep enough to carry the on-primary ink as a fill (AA).
+Color _wayFill(BuildContext context, VerifyWay way) =>
+    ensureContrast(_wayTone(context, way), [context.colors.onHero], min: 4.5);
+
+/// Fades + rises a child when it first appears; [index] starts a later card a beat later (one wave, not a queue).
 class _Reveal extends StatelessWidget {
   const _Reveal({required this.index, required this.child});
 
@@ -110,58 +126,52 @@ class _Reveal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return child;
+    final delay = (index.clamp(0, 4) * 50);
+    const run = 360;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: 380 + index * 90),
-      curve: Curves.easeOutCubic,
+      duration: Duration(milliseconds: run + delay),
+      curve: Interval(delay / (run + delay), 1, curve: AppEase.out),
       builder: (_, v, child) => Opacity(
         opacity: v,
-        child: Transform.translate(offset: Offset(0, 18 * (1 - v)), child: child),
+        child: Transform.translate(offset: Offset(0, AppSpace.xs * (1 - v)), child: child),
       ),
       child: child,
     );
   }
 }
 
+/// A way's mark: its icon on its own tint; the chosen way's mark turns solid.
 class _BrandBadge extends StatelessWidget {
   const _BrandBadge({required this.way, required this.selected});
 
   final VerifyWay way;
   final bool selected;
-  final double size = 48;
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    final tone = _wayTone(context, way);
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOutCubic,
-      width: size,
-      height: size,
+      duration: AppMotion.of(context).base,
+      curve: AppEase.out,
+      width: AppTouch.min - AppSpace.xxs,
+      height: AppTouch.min - AppSpace.xxs,
       decoration: BoxDecoration(
-        gradient: selected
-            ? AppGradients.blend(context, color: way.brand)
-            : null,
-        color: selected ? null : way.brand.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(size * 0.31),
-        boxShadow: selected
-            ? [
-                BoxShadow(
-                  color: way.brand.withValues(alpha: 0.4),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
-                ),
-              ]
-            : const [],
+        color: selected ? _wayFill(context, way) : Color.alphaBlend(tone.withValues(alpha: c.isDark ? 0.20 : 0.12), c.cardBg),
+        borderRadius: AppRadius.controlAll,
       ),
       child: Icon(
         way.icon,
-        size: size * 0.46,
-        color: selected ? context.colors.onHero : way.brand,
+        size: AppIconSize.md,
+        color: selected ? c.onHero : _wayInk(context, way),
       ),
     );
   }
 }
 
+/// A small status label ("Recommended", "Fastest"): a full pill on the way's tint, its ink readable on it.
 class _Pill extends StatelessWidget {
   const _Pill({required this.label, required this.color});
 
@@ -170,19 +180,21 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    final tint = Color.alphaBlend(color.withValues(alpha: c.isDark ? 0.22 : 0.12), c.cardBg);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(20),
+        color: tint,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
       child: Text(
         label,
-        style: TextStyle(
-          fontFamily: AppFonts.family,
-          fontSize: 10.5,
-          fontWeight: FontWeight.w800,
-          color: color,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppType.meta(context).copyWith(
+          fontWeight: FontWeight.w600,
+          color: ensureContrast(color, [tint]),
         ),
       ),
     );
@@ -221,39 +233,17 @@ class VerifyWayPicker extends StatelessWidget {
       children: [
         Row(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                gradient: authHeroGradient(c),
-                borderRadius: BorderRadius.circular(13),
-                boxShadow: c.primaryShadow,
-              ),
-              child: Icon(Icons.verified_user_rounded, color: context.colors.onHero, size: 20),
-            ),
-            const SizedBox(width: 12),
+            const AuthMark(icon: Icons.verified_user_rounded, size: AppTouch.min - AppSpace.xs),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'verify_way_title'.tr,
-                    style: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: c.textDark,
-                    ),
-                  ),
+                  Text('verify_way_title'.tr, style: AppType.section(context)),
                   const SizedBox(height: 2),
                   Text(
                     interactive ? 'verify_way_subtitle'.tr : 'verify_way_single_subtitle'.tr,
-                    style: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontSize: 12.5,
-                      height: 1.5,
-                      color: c.secondText,
-                    ),
+                    style: AppType.meta(context).copyWith(height: 1.5),
                   ),
                 ],
               ),
@@ -261,42 +251,35 @@ class VerifyWayPicker extends StatelessWidget {
           ],
         ),
         if (requireAll) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
             decoration: BoxDecoration(
-              color: c.warning.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: c.warning.withValues(alpha: 0.3)),
+              color: c.blockSky,
+              borderRadius: AppRadius.controlAll,
             ),
             child: Row(
               children: [
-                Icon(Icons.info_outline_rounded, size: 16, color: c.warning),
-                const SizedBox(width: 8),
+                Icon(Icons.info_outline_rounded, size: AppIconSize.sm, color: c.blockInk),
+                const SizedBox(width: AppSpace.xs),
                 Expanded(
                   child: Text(
                     'verify_way_both_hint'.tr,
-                    style: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontSize: 12,
-                      height: 1.5,
-                      fontWeight: FontWeight.w600,
-                      color: c.textMedium,
-                    ),
+                    style: AppType.meta(context).copyWith(height: 1.5, fontWeight: FontWeight.w500, color: c.blockInk),
                   ),
                 ),
               ],
             ),
           ),
         ],
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.sm),
         LayoutBuilder(
           builder: (context, box) {
             final twoColumns = ways.length > 1 && box.maxWidth >= 560;
-            final cardWidth = twoColumns ? (box.maxWidth - 12) / 2 : box.maxWidth;
+            final cardWidth = twoColumns ? (box.maxWidth - AppSpace.sm) / 2 : box.maxWidth;
             return Wrap(
-              spacing: 12,
-              runSpacing: 12,
+              spacing: AppSpace.sm,
+              runSpacing: AppSpace.sm,
               children: [
                 for (var i = 0; i < ways.length; i++)
                   SizedBox(
@@ -345,48 +328,33 @@ class _WayCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final brand = way.brand;
-    return AnimatedScale(
-      scale: selected ? 1 : 0.985,
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOut,
+    final tone = _wayTone(context, way);
+    final edge = _wayInk(context, way);
+    // paper; the chosen card takes a whisper of the way's tone and a 2 px edge in its ink (no glow)
+    return AppPressScale(
+      enabled: interactive,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 260),
-        curve: Curves.easeOutCubic,
+        duration: AppMotion.of(context).base,
+        curve: AppEase.out,
         decoration: BoxDecoration(
-          color: selected ? brand.withValues(alpha: c.isDark ? 0.16 : 0.07) : c.cardBg,
-          borderRadius: BorderRadius.circular(20),
+          color: selected ? Color.alphaBlend(tone.withValues(alpha: c.isDark ? 0.12 : 0.06), c.cardBg) : c.cardBg,
+          borderRadius: AppRadius.cardAll,
           border: Border.all(
-            color: selected ? brand : c.divider,
-            width: selected ? 1.8 : 1,
+            color: selected ? edge : c.divider,
+            width: selected ? AppBorder.focus : AppBorder.hairline,
           ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: brand.withValues(alpha: 0.26),
-                    blurRadius: 22,
-                    offset: const Offset(0, 10),
-                  ),
-                ]
-              : [
-                  BoxShadow(
-                    color: context.colors.heroShade.withValues(alpha: 0.03),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
         ),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: AppRadius.cardAll,
             onTap: interactive ? onTap : null,
             child: Padding(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(AppSpace.sm),
               child: Row(
                 children: [
                   _BrandBadge(way: way, selected: selected),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -398,41 +366,30 @@ class _WayCard extends StatelessWidget {
                                 way.titleKey.tr,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontFamily: AppFonts.family,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w800,
-                                  color: c.textDark,
-                                ),
+                                style: AppType.bodyStrong(context),
                               ),
                             ),
                             if (recommended) ...[
-                              const SizedBox(width: 8),
-                              _Pill(
+                              const SizedBox(width: AppSpace.xs),
+                              Flexible(
+                                child: _Pill(
                                   label: (way == VerifyWay.telegram
                                           ? 'verify_way_badge_fast'
                                           : 'verify_way_badge_recommended')
                                       .tr,
-                                  color: brand,
+                                  color: tone,
                                 ),
+                              ),
                             ],
                           ],
                         ),
-                        const SizedBox(height: 3),
-                        Text(
-                          subtitle,
-                          style: TextStyle(
-                            fontFamily: AppFonts.family,
-                            fontSize: 12,
-                            height: 1.45,
-                            color: c.secondText,
-                          ),
-                        ),
+                        const SizedBox(height: 2),
+                        Text(subtitle, style: AppType.meta(context).copyWith(height: 1.45)),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  _CheckDot(selected: selected, color: brand),
+                  const SizedBox(width: AppSpace.xs),
+                  _CheckDot(selected: selected, color: _wayFill(context, way)),
                 ],
               ),
             ),
@@ -451,23 +408,24 @@ class _CheckDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final d = AppMotion.of(context).base;
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 240),
-      curve: Curves.easeOutBack,
-      width: 26,
-      height: 26,
+      duration: d,
+      curve: AppEase.out,
+      width: AppIconSize.lg,
+      height: AppIconSize.lg,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: selected ? color : Colors.transparent,
         border: Border.all(
-          color: selected ? color : context.colors.divider,
-          width: selected ? 0 : 1.6,
+          color: selected ? color : Color.lerp(context.colors.divider, context.colors.textDark, 0.3)!,
+          width: selected ? 0 : AppBorder.strong,
         ),
       ),
       child: AnimatedOpacity(
-        duration: const Duration(milliseconds: 180),
+        duration: d,
         opacity: selected ? 1 : 0,
-        child: Icon(Icons.check_rounded, size: 17, color: context.colors.onHero),
+        child: Icon(Icons.check_rounded, size: AppIconSize.sm, color: context.colors.onHero),
       ),
     );
   }
@@ -500,28 +458,21 @@ class VerifyWaySwitcher extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsetsDirectional.only(start: 4, bottom: 8),
-          child: Text(
-            'verify_way_switch_title'.tr,
-            style: TextStyle(
-              fontFamily: AppFonts.family,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-              color: c.secondText,
-            ),
-          ),
+          padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs, bottom: AppSpace.xs),
+          child: Text('verify_way_switch_title'.tr, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600)),
         ),
+        // the kit's pill track: the input surface, the chosen way a solid pill
         Container(
-          padding: const EdgeInsets.all(5),
+          padding: const EdgeInsets.all(AppSpace.xxs),
           decoration: BoxDecoration(
             color: c.inputBg,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: c.divider),
+            borderRadius: AppRadius.cardAll,
+            border: Border.all(color: c.divider, width: AppBorder.hairline),
           ),
           child: Row(
             children: [
               for (var i = 0; i < ways.length; i++) ...[
-                if (i > 0) const SizedBox(width: 4),
+                if (i > 0) const SizedBox(width: AppSpace.xxs),
                 Expanded(
                   child: _SwitchItem(
                     way: ways[i],
@@ -558,52 +509,42 @@ class _SwitchItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final fg = selected ? context.colors.onHero : (done ? c.success : c.textMedium);
+    final fg = selected ? c.onHero : (done ? appInk(context, c.success) : c.textMedium);
+    final radius = BorderRadius.circular(AppRadius.card - AppSpace.xxs);
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOutCubic,
-      height: 66,
+      duration: AppMotion.of(context).base,
+      curve: AppEase.out,
+      height: AppTouch.primary + AppSpace.xs,
       decoration: BoxDecoration(
-        gradient: selected ? AppGradients.blend(context, color: way.brand) : null,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: selected
-            ? [
-                BoxShadow(
-                  color: way.brand.withValues(alpha: 0.38),
-                  blurRadius: 14,
-                  offset: const Offset(0, 5),
-                ),
-              ]
-            : const [],
+        color: selected ? _wayFill(context, way) : Colors.transparent,
+        borderRadius: radius,
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: radius,
           onTap: (selected || done) ? null : onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs, vertical: AppSpace.xxs),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 220),
+                  duration: AppMotion.of(context).base,
                   child: Icon(
                     done ? Icons.check_circle_rounded : way.icon,
                     key: ValueKey(done),
-                    size: 22,
+                    size: AppIconSize.md,
                     color: fg,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpace.xxs),
                 Text(
                   way.titleKey.tr,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: AppFonts.family,
-                    fontSize: 11.5,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  style: AppType.meta(context).copyWith(
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                     color: fg,
                   ),
                 ),
@@ -620,6 +561,8 @@ class _SwitchItem extends StatelessWidget {
 //  3) Brand button + status pill
 // ══════════════════════════════════════════════════════════════════════════════
 
+/// The messaging app's own call to action (Telegram / WhatsApp): a solid fill in the app's colour, deepened until
+/// the label reads on it, the kit's control radius, no glow; a press sinks it.
 class VerifyWayButton extends StatelessWidget {
   const VerifyWayButton({
     super.key,
@@ -634,47 +577,37 @@ class VerifyWayButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(context.colors.radiusMedium);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: AppGradients.blend(context, color: way.brand),
-        borderRadius: radius,
-        boxShadow: [
-          BoxShadow(
-            color: way.brand.withValues(alpha: 0.36),
-            blurRadius: 20,
-            offset: const Offset(0, 9),
-          ),
-        ],
-      ),
+    final c = context.colors;
+    final radius = AppRadius.controlAll;
+    return AppPressScale(
+      scale: 0.97,
       child: Material(
-        color: Colors.transparent,
+        color: _wayFill(context, way),
+        borderRadius: radius,
         child: InkWell(
           borderRadius: radius,
           onTap: onPressed,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 17, horizontal: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(way.icon, color: context.colors.onHero, size: 22),
-                const SizedBox(width: 10),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: context.colors.onHero,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppTouch.primary),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.sm),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(way.icon, color: c.onHero, size: AppIconSize.md),
+                  const SizedBox(width: AppSpace.xs),
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.bodyStrong(context).copyWith(color: c.onHero, fontSize: 15),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Icon(Icons.open_in_new_rounded, color: context.colors.onHeroMuted, size: 18),
-              ],
+                  const SizedBox(width: AppSpace.xs),
+                  Icon(Icons.open_in_new_rounded, color: c.onHero, size: AppIconSize.sm),
+                ],
+              ),
             ),
           ),
         ),
@@ -691,34 +624,30 @@ class VerifyWayStatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Center(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
         decoration: BoxDecoration(
-          color: way.brand.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: way.brand.withValues(alpha: 0.28)),
+          color: c.cardBg,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          border: Border.all(color: c.divider, width: AppBorder.hairline),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2, color: way.brand),
+              width: AppIconSize.xs,
+              height: AppIconSize.xs,
+              child: CircularProgressIndicator(strokeWidth: 2, color: _wayInk(context, way)),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpace.xs),
             Flexible(
               child: Text(
                 label,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: AppFonts.family,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: context.colors.textMedium,
-                ),
+                style: AppType.label(context).copyWith(fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -732,68 +661,51 @@ class VerifyWayStatusPill extends StatelessWidget {
 //  4) Verification page extras: hero badge, destination chip, step tracker
 // ══════════════════════════════════════════════════════════════════════════════
 
-/// Large badge of the way being verified; softly pulses and morphs when the way changes.
-class VerifyWayHero extends StatefulWidget {
+/// The mark of the way being verified: the way's icon on a paper disc inside its own tint, with one quiet hairline
+/// orbit; it settles in (from 92 %, never from nothing) when the way changes. No glow, no pulse.
+class VerifyWayHero extends StatelessWidget {
   const VerifyWayHero({super.key, required this.way, this.size = 84});
 
   final VerifyWay way;
   final double size;
 
   @override
-  State<VerifyWayHero> createState() => _VerifyWayHeroState();
-}
-
-class _VerifyWayHeroState extends State<VerifyWayHero>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pulse = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 2200),
-  )..repeat(reverse: true);
-
-  @override
-  void dispose() {
-    _pulse.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final way = widget.way;
+    final c = context.colors;
+    final tone = _wayTone(context, way);
+    final motion = AppMotion.of(context);
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 320),
-      switchInCurve: Curves.easeOutBack,
+      duration: motion.slow,
+      switchInCurve: AppEase.out,
+      switchOutCurve: AppEase.out,
       transitionBuilder: (child, anim) => FadeTransition(
         opacity: anim,
-        child: ScaleTransition(scale: anim, child: child),
+        child: ScaleTransition(scale: Tween(begin: 0.92, end: 1.0).animate(anim), child: child),
       ),
-      child: AnimatedBuilder(
+      child: Container(
         key: ValueKey(way),
-        animation: _pulse,
-        builder: (_, _) {
-          final t = Curves.easeInOut.transform(_pulse.value);
-          return Container(
-            width: widget.size,
-            height: widget.size,
-            decoration: BoxDecoration(
-              gradient: AppGradients.blend(context, color: way.brand),
-              borderRadius: BorderRadius.circular(widget.size * 0.32),
-              boxShadow: [
-                BoxShadow(
-                  color: way.brand.withValues(alpha: 0.30 + 0.12 * t),
-                  blurRadius: 18 + 14 * t,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Icon(way.icon, color: context.colors.onHero, size: widget.size * 0.46),
-          );
-        },
+        width: size,
+        height: size,
+        padding: const EdgeInsets.all(AppSpace.xs),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Color.alphaBlend(tone.withValues(alpha: c.isDark ? 0.18 : 0.10), c.background),
+          border: Border.all(color: tone.withValues(alpha: c.isDark ? 0.35 : 0.22), width: AppBorder.hairline),
+        ),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: c.cardBg,
+            border: Border.all(color: c.divider, width: AppBorder.hairline),
+          ),
+          child: Icon(way.icon, color: _wayInk(context, way), size: size * 0.4),
+        ),
       ),
     );
   }
 }
 
-/// "Code sent to  e•••@mail.com" — the destination in a soft brand-tinted capsule.
+/// "Code sent to  e•••@mail.com" — the destination on a paper capsule, the way's icon in its ink.
 class VerifyDestinationChip extends StatelessWidget {
   const VerifyDestinationChip({super.key, required this.way, required this.text});
 
@@ -804,29 +716,24 @@ class VerifyDestinationChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
       decoration: BoxDecoration(
-        color: way.brand.withValues(alpha: c.isDark ? 0.16 : 0.09),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: way.brand.withValues(alpha: 0.30)),
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(way.icon, size: 16, color: way.brand),
-          const SizedBox(width: 8),
+          Icon(way.icon, size: AppIconSize.sm, color: _wayInk(context, way)),
+          const SizedBox(width: AppSpace.xs),
           Flexible(
             child: Text(
               text,
               textDirection: TextDirection.ltr,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 13.5,
-                fontWeight: FontWeight.w800,
-                color: c.textDark,
-              ),
+              style: AppType.bodyStrong(context),
             ),
           ),
         ],
@@ -856,6 +763,7 @@ class VerifyStepTracker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final d = AppMotion.of(context).slow;
     final items = <Widget>[];
     for (var i = 0; i < channels.length; i++) {
       final ch = channels[i];
@@ -865,12 +773,13 @@ class VerifyStepTracker extends StatelessWidget {
       if (i > 0) {
         items.add(Expanded(
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            height: 2.5,
-            margin: const EdgeInsets.symmetric(horizontal: 8),
+            duration: d,
+            curve: AppEase.out,
+            height: AppBorder.focus,
+            margin: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
             decoration: BoxDecoration(
               color: done ? c.success : c.divider,
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
             ),
           ),
         ));
@@ -881,33 +790,32 @@ class VerifyStepTracker extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            width: 34,
-            height: 34,
+            duration: d,
+            curve: AppEase.out,
+            width: AppTouch.min - AppSpace.sm,
+            height: AppTouch.min - AppSpace.sm,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: done ? c.success : (active ? c.primary : Colors.transparent),
-              border: Border.all(color: color, width: 2),
+              border: Border.all(color: color, width: AppBorder.focus),
             ),
             child: Icon(
               done
                   ? Icons.check_rounded
                   : (ch == 'email' ? Icons.mail_rounded : Icons.phone_iphone_rounded),
-              size: 17,
-              color: (done || active) ? context.colors.onHero : c.textLight,
+              size: AppIconSize.sm,
+              color: (done || active) ? c.onHero : c.textLight,
             ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: AppSpace.xxs),
           Text(
             (ch == 'email' ? 'verify_channel_email' : 'verify_channel_phone').tr,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: AppFonts.family,
-              fontSize: 11.5,
-              fontWeight: active ? FontWeight.w800 : FontWeight.w600,
-              color: done ? c.success : (active ? c.textDark : c.textLight),
+            style: AppType.meta(context).copyWith(
+              fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+              color: done ? appInk(context, c.success) : (active ? c.textDark : c.textMedium),
             ),
           ),
         ],

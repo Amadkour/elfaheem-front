@@ -12,9 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNav;
-import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -230,13 +228,13 @@ class _IdentityRequestOverlayState extends State<IdentityRequestOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Directionality(
       textDirection: pageDirection,
       child: PopScope(
         canPop: false,
         child: Stack(children: [
-          Positioned.fill(child: ModalBarrier(dismissible: false, color: c.textDark.withValues(alpha: 0.42))),
+          // the kit's warm scrim (the dialogs' and sheets')
+          Positioned.fill(child: ModalBarrier(dismissible: false, color: appScrimColor(context))),
           Positioned.fill(
             child: SafeArea(
               child: Center(
@@ -298,9 +296,16 @@ class IdentityRequestCard extends StatelessWidget {
       if (item.examTitle != null) item.examTitle!,
       if (due != null) item.paper ? t('قبل ${AppTime.date(due)}', 'Before ${AppTime.date(due)}') : t('حتى ${AppTime.date(due)}', 'By ${AppTime.date(due)}'),
     ];
+    final tone = AppBlockColors.of(context, AppBlockTone.emerald);
+    // paper at the dialog radius, the modal lift (it floats over the scrim), the editorial title beside a tinted mark
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 440),
-      child: Material(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.sheet),
+          boxShadow: AppElevation.of(context, 4),
+        ),
+        child: Material(
         color: c.cardBg,
         elevation: 0,
         borderRadius: BorderRadius.circular(AppRadius.sheet),
@@ -310,24 +315,27 @@ class IdentityRequestCard extends StatelessWidget {
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(children: [
               Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.12), shape: BoxShape.circle),
+                width: AppTouch.min,
+                height: AppTouch.min,
+                decoration: BoxDecoration(color: tone.surface, shape: BoxShape.circle),
                 child: Icon(f.kind == 'phone' ? Icons.phone_iphone_rounded : (f.kind == 'email' ? Icons.alternate_email_rounded : Icons.badge_outlined),
-                    color: c.primary, size: 24),
+                    color: tone.accentInk(c.primary), size: AppIconSize.lg),
               ),
               const SizedBox(width: AppSpace.sm),
               Expanded(
-                child: Text(t('مطلوب: ${f.labelAr}', '${f.labelEn} needed'),
-                    style: appText(18, w: FontWeight.w800, c: c.textDark), maxLines: 2, overflow: TextOverflow.ellipsis),
+                child: Semantics(
+                  header: true,
+                  child: Text(t('مطلوب: ${f.labelAr}', '${f.labelEn} needed'),
+                      style: AppType.pageTitle(context), maxLines: 2, overflow: TextOverflow.ellipsis),
+                ),
               ),
               if (total > 1) AppBadgePill(t('$index من $total', '$index of $total')),
             ]),
             const SizedBox(height: AppSpace.md),
-            Text(item.message, style: appText(14, c: c.textDark, h: 1.55)),
+            Text(item.message, style: AppType.body(context).copyWith(color: c.textDark, height: 1.55)),
             if (meta.isNotEmpty) ...[
               const SizedBox(height: AppSpace.xs),
-              Text(meta.join(' · '), style: appText(12.5, c: c.textMedium)),
+              Text(meta.join(' · '), style: AppType.meta(context)),
             ],
             const SizedBox(height: AppSpace.md),
             TextField(
@@ -340,16 +348,13 @@ class IdentityRequestCard extends StatelessWidget {
               textInputAction: TextInputAction.done,
               onChanged: (_) => onChanged?.call(),
               onSubmitted: (_) => onSubmit(),
-              style: appText(16, w: FontWeight.w600, c: c.textDark),
-              decoration: InputDecoration(
-                labelText: f.label,
-                helperText: hint.isEmpty ? null : hint,
+              style: appFieldTextStyle(context).copyWith(fontWeight: FontWeight.w600),
+              // the kit's well; its label is floated inside so the dialog stays one block of reading
+              decoration: appFieldDecoration(
+                context,
+                helper: hint.isEmpty ? null : hint,
                 errorText: error,
-                errorMaxLines: 3,
-                filled: true,
-                fillColor: c.inputBg,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.card)),
-              ),
+              ).copyWith(labelText: f.label, errorMaxLines: 3),
             ),
             const SizedBox(height: AppSpace.md),
             AppPrimaryButton(label: t('حفظ', 'Save'), icon: Icons.check_rounded, busy: busy, onPressed: onSubmit),
@@ -362,6 +367,7 @@ class IdentityRequestCard extends StatelessWidget {
             ),
           ]),
         ),
+      ),
       ),
     );
   }

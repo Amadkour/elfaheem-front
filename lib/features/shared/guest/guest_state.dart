@@ -26,7 +26,9 @@ import '../../auth/auth_provider.dart';
 import '../../auth/login_screen.dart';
 import '../../auth/register_screen.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_blocks.dart';
+import 'package:flutter_education_app/design/app_buttons.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // State
@@ -172,48 +174,36 @@ class GuestBanner extends StatelessWidget {
                 textDirection:
                     AppConfig.lang == 'ar' ? TextDirection.rtl : TextDirection.ltr,
                 child: Material(
-                  color: Colors.transparent,
-                  child: Container(
-                    decoration: BoxDecoration(gradient: c.primaryGradient),
+                  color: c.blockSky,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(color: c.divider, width: AppBorder.hairline)),
+                    ),
                     child: SafeArea(
                       bottom: false,
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
                         child: Row(
                           children: [
-                            Icon(Icons.explore_rounded, color: c.onHero, size: 18),
-                            const SizedBox(width: 8),
+                            Icon(Icons.explore_rounded, color: c.blockInk, size: AppIconSize.md),
+                            const SizedBox(width: AppSpace.xs),
                             Expanded(
                               child: Text(
                                 'guest_banner'.tr,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: c.onHero,
-                                  fontWeight: FontWeight.w700,
-                                  fontFamily: AppFonts.family,
+                                style: AppType.label(context).copyWith(
+                                  color: c.blockInk,
+                                  fontWeight: FontWeight.w600,
                                   decoration: TextDecoration.none,
-                                  fontSize: 13,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            FilledButton.icon(
-                              style: FilledButton.styleFrom(
-                                backgroundColor: c.onHero,
-                                foregroundColor: c.primary,
-                                visualDensity: VisualDensity.compact,
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
-                              ),
-                              icon: const Icon(DirIcons.login, size: 18),
-                              label: Text(
-                                'login'.tr,
-                                style: TextStyle(
-                                  fontFamily: AppFonts.family,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 12.5,
-                                ),
-                              ),
+                            const SizedBox(width: AppSpace.xs),
+                            AppButton.primary(
+                              size: AppButtonSize.sm,
+                              icon: DirIcons.login,
+                              label: 'login'.tr,
                               onPressed: GuestGuard.goToLogin,
                             ),
                           ],
@@ -254,76 +244,53 @@ class _GuestLoginSheet extends StatelessWidget {
     final c = context.colors;
     return Container(
       padding: EdgeInsets.fromLTRB(
-        24,
-        12,
-        24,
-        24 + MediaQuery.of(context).viewPadding.bottom,
+        AppSpace.lg,
+        AppSpace.sm,
+        AppSpace.lg,
+        AppSpace.lg + MediaQuery.of(context).viewPadding.bottom,
       ),
       child: SafeArea(
         top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 22),
-            _GradientIcon(icon: Icons.lock_open_rounded, size: 64),
-            const SizedBox(height: 16),
-            Text(
-              'guest_login_required'.tr,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: c.textDark,
-              ),
+            const SizedBox(height: AppSpace.md),
+            const _GradientIcon(icon: Icons.lock_open_rounded, size: AppTouch.primary + AppSpace.xs),
+            const SizedBox(height: AppSpace.md),
+            Semantics(
+              header: true,
+              child: Text('guest_login_required'.tr, textAlign: TextAlign.center, style: AppType.headline(context)),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             Text(
               reasonKey.tr,
               textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 14, height: 1.5, color: c.textLight),
+              style: AppType.body(context).copyWith(height: 1.5),
             ),
-            const SizedBox(height: 22),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: c.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                icon: const Icon(DirIcons.login),
-                label: Text(
-                  'login'.tr,
-                  style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
-                ),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  GuestGuard.goToLogin();
-                },
-              ),
+            const SizedBox(height: AppSpace.lg),
+            AppButton.primary(
+              size: AppButtonSize.lg,
+              expand: true,
+              icon: DirIcons.login,
+              label: 'login'.tr,
+              onPressed: () {
+                Navigator.of(context).pop();
+                GuestGuard.goToLogin();
+              },
             ),
-            const SizedBox(height: 8),
-            TextButton(
+            const SizedBox(height: AppSpace.xs),
+            AppButton.ghost(
+              expand: true,
+              label: 'create_account'.tr,
               onPressed: () {
                 Navigator.of(context).pop();
                 GuestGuard.goToRegister();
               },
-              child: Text(
-                'create_account'.tr,
-                style: TextStyle(
-                  fontFamily: AppFonts.family,
-                  fontWeight: FontWeight.w700,
-                  color: c.primary,
-                ),
-              ),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'guest_keep_browsing'.tr,
-                style: TextStyle(fontFamily: AppFonts.family, color: c.textLight),
-              ),
+              style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min), foregroundColor: c.textMedium),
+              child: Text('guest_keep_browsing'.tr, style: AppType.label(context)),
             ),
           ],
         ),
@@ -335,26 +302,25 @@ class _GuestLoginSheet extends StatelessWidget {
 class _GradientIcon extends StatelessWidget {
   const _GradientIcon({required this.icon, required this.size});
 
+  // (the name stays; the look is the emerald block tint since the editorial theme, D-612)
+
   final IconData icon;
   final double size;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      gradient: context.colors.primaryGradient,
-      boxShadow: [
-        BoxShadow(
-          color: context.colors.primary.withValues(alpha: 0.35),
-          blurRadius: 20,
-          offset: const Offset(0, 8),
-        ),
-      ],
-    ),
-    child: Icon(icon, color: context.colors.onHero, size: size * 0.46),
-  );
+  Widget build(BuildContext context) {
+    final tone = AppBlockColors.of(context, AppBlockTone.emerald);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: tone.surface,
+        border: tone.border == null ? null : Border.all(color: tone.border!, width: AppBorder.hairline),
+      ),
+      child: Icon(icon, color: tone.accentInk(context.colors.primary), size: size * 0.42),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -391,53 +357,33 @@ class _GuestLocked extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Material(
       color: Colors.transparent,
       child: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
+            constraints: BoxConstraints(maxWidth: AppWidth.form.max * 0.7),
             child: Padding(
-              padding: const EdgeInsets.all(28),
+              padding: const EdgeInsets.all(AppSpace.lg),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _GradientIcon(icon: icon, size: 84),
-                  const SizedBox(height: 20),
-                  Text(
-                    'guest_locked_title'.tr,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: c.textDark,
-                    ),
+                  _GradientIcon(icon: icon, size: AppTouch.primary + AppSpace.lg),
+                  const SizedBox(height: AppSpace.md),
+                  Semantics(
+                    header: true,
+                    child: Text('guest_locked_title'.tr, textAlign: TextAlign.center, style: AppType.headline(context)),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.xs),
                   Text(
                     messageKey.tr,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontSize: 14,
-                      height: 1.5,
-                      color: c.textLight,
-                    ),
+                    style: AppType.body(context).copyWith(height: 1.5),
                   ),
-                  const SizedBox(height: 22),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: c.primary,
-                      minimumSize: const Size(200, 48),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    ),
-                    icon: const Icon(DirIcons.login),
-                    label: Text(
-                      'login'.tr,
-                      style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
-                    ),
+                  const SizedBox(height: AppSpace.lg),
+                  AppButton.primary(
+                    icon: DirIcons.login,
+                    label: 'login'.tr,
                     onPressed: GuestGuard.goToLogin,
                   ),
                 ],
@@ -457,77 +403,41 @@ class _GuestLocked extends StatelessWidget {
 class GuestPromoCard extends StatelessWidget {
   const GuestPromoCard({super.key});
 
+  /// A peach block (learning, system.md §5): the invitation in the editorial section role, one line under it, the
+  /// ONE emerald action, and the subject's mark on a paper disc — no gradient, no glow.
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        padding: const EdgeInsets.all(22),
-        decoration: BoxDecoration(
-          gradient: c.primaryGradient,
-          borderRadius: BorderRadius.circular(c.radiusXL),
-          boxShadow: [
-            BoxShadow(
-              color: c.primary.withValues(alpha: 0.38),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'guest_promo_title'.tr,
-                    style: TextStyle(
-                      color: c.onHero,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      fontFamily: AppFonts.display,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'guest_promo_sub'.tr,
-                    style: TextStyle(
-                      color: c.onHero.withValues(alpha: 0.85),
-                      fontSize: 12.5,
-                      height: 1.4,
-                      fontFamily: AppFonts.family,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: c.onHero,
-                      foregroundColor: c.primary,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    onPressed: GuestGuard.goToRegister,
-                    child: Text(
-                      'create_account'.tr,
-                      style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                ],
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+      child: AppBlock(
+        tone: AppBlockTone.peach,
+        child: Builder(builder: (context) {
+          final ink = AppBlock.colorsOf(context);
+          return Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('guest_promo_title'.tr, style: AppType.section(context).copyWith(color: ink.ink)),
+                    const SizedBox(height: AppSpace.xxs),
+                    Text('guest_promo_sub'.tr, style: AppType.label(context).copyWith(color: ink.muted, height: 1.4)),
+                    const SizedBox(height: AppSpace.sm),
+                    AppButton.primary(size: AppButtonSize.sm, label: 'create_account'.tr, onPressed: GuestGuard.goToRegister),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Container(
-              width: 58,
-              height: 58,
-              decoration: BoxDecoration(
-                color: c.onHero.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
+              const SizedBox(width: AppSpace.sm),
+              Container(
+                width: AppTouch.primary,
+                height: AppTouch.primary,
+                decoration: BoxDecoration(color: c.cardBg, shape: BoxShape.circle),
+                child: Icon(Icons.school_rounded, color: ink.ink, size: AppIconSize.lg),
               ),
-              child: Icon(Icons.school_rounded, color: c.onHero, size: 28),
-            ),
-          ],
-        ),
+            ],
+          );
+        }),
       ),
     );
   }

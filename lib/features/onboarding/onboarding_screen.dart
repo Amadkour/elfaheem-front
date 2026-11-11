@@ -1,12 +1,16 @@
 // First-run onboarding: three calm pages (learn with the best teachers / study anywhere safely / try free), a page
 // indicator, Skip and Next, a language switch on the first page. The last step leads to the guest search.
+//
+// Warm Editorial (D-610 – D-629): each page is ONE tinted block (peach · sky · peach) holding its mark on a paper
+// disc inside two quiet hairline orbits, then the editorial headline and the body on the warm canvas, start-aligned
+// like a magazine page. The emerald is only the Next / Start button and the open page's dot.
 library;
 
 import 'package:flutter/material.dart';
 
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
-import '../../design/app_kit.dart' show appText;
+import '../../design/app_blocks.dart';
 import '../../design/app_language_switch.dart';
 import '../../design/app_tokens.dart';
 import '../../utils/widget/primary_button.dart';
@@ -53,16 +57,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final c = context.colors;
     final last = _index == _count - 1;
     final items = <_Slide>[
-      _Slide(icon: null, title: 'ob_p1_title'.tr, body: 'ob_p1_body'.tr),
-      _Slide(icon: Icons.verified_user_outlined, title: 'ob_p2_title'.tr, body: 'ob_p2_body'.tr),
-      _Slide(icon: Icons.explore_outlined, title: 'ob_p3_title'.tr, body: 'ob_p3_body'.tr),
+      _Slide(icon: null, tone: AppBlockTone.peach, title: 'ob_p1_title'.tr, body: 'ob_p1_body'.tr),
+      _Slide(icon: Icons.verified_user_rounded, tone: AppBlockTone.sky, title: 'ob_p2_title'.tr, body: 'ob_p2_body'.tr),
+      _Slide(icon: Icons.explore_rounded, tone: AppBlockTone.peach, title: 'ob_p3_title'.tr, body: 'ob_p3_body'.tr),
     ];
     return Scaffold(
       backgroundColor: c.background,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
+            constraints: BoxConstraints(maxWidth: AppWidth.form.max),
             child: Column(children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
@@ -82,7 +86,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     TextButton(
                       onPressed: _finish,
                       style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
-                      child: Text('ob_skip'.tr, style: appText(14, w: FontWeight.w500, c: c.textMedium)),
+                      child: Text('ob_skip'.tr, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600)),
                     ),
                 ]),
               ),
@@ -99,13 +103,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   for (var i = 0; i < _count; i++)
                     AnimatedContainer(
-                      duration: AppMotion.of(context).base,
+                      duration: AppMotion.of(context).slow,
+                      curve: AppMotion.curve,
                       margin: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
-                      height: 8,
-                      width: i == _index ? 24 : 8,
+                      height: AppSpace.xs,
+                      width: i == _index ? AppSpace.lg : AppSpace.xs,
                       decoration: BoxDecoration(
                         color: i == _index ? c.primary : c.divider,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
                       ),
                     ),
                 ]),
@@ -127,8 +132,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 }
 
 class _Slide {
-  const _Slide({required this.icon, required this.title, required this.body});
+  const _Slide({required this.icon, required this.tone, required this.title, required this.body});
   final IconData? icon; // null = the app logo
+  final AppBlockTone tone;
   final String title;
   final String body;
 }
@@ -141,33 +147,84 @@ class _SlideView extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return LayoutBuilder(
-      builder: (context, box) => SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: box.maxHeight),
-          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Container(
-              width: 132,
-              height: 132,
-              decoration: BoxDecoration(color: c.primaryTint, shape: BoxShape.circle),
-              alignment: Alignment.center,
-              child: slide.icon == null
-                  ? Padding(
-                      padding: const EdgeInsets.all(AppSpace.lg),
-                      child: Image.asset('assets/images/logo_mark.png',
-                          errorBuilder: (_, _, _) => Icon(Icons.school_outlined, size: 56, color: c.primary)),
-                    )
-                  : Icon(slide.icon, size: 56, color: c.primary),
+      builder: (context, box) {
+        // the block keeps a calm landscape on a phone and never towers on a short window
+        final art = (box.maxHeight * 0.42).clamp(AppSpace.xxxl * 2, AppSpace.xxxl * 4);
+        return SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: box.maxHeight),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AppBlock(
+                  tone: slide.tone,
+                  padding: EdgeInsets.zero,
+                  child: SizedBox(
+                    height: art,
+                    child: Builder(builder: (context) {
+                      final ink = AppBlock.colorsOf(context);
+                      final disc = (art * 0.5).clamp(AppSpace.xxxl, AppSpace.xxxl * 2);
+                      return CustomPaint(
+                        painter: _OrbitPainter(color: ink.faint.withValues(alpha: 0.35), disc: disc),
+                        child: Center(
+                          child: Container(
+                            width: disc,
+                            height: disc,
+                            decoration: BoxDecoration(
+                              color: c.cardBg,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: ink.border ?? c.divider, width: AppBorder.hairline),
+                            ),
+                            alignment: Alignment.center,
+                            child: slide.icon == null
+                                ? Padding(
+                                    padding: EdgeInsets.all(disc * 0.2),
+                                    child: Image.asset('assets/images/logo_mark.png',
+                                        errorBuilder: (_, _, _) => Icon(Icons.school_rounded, size: AppIconSize.hero, color: ink.ink)),
+                                  )
+                                : Icon(slide.icon, size: AppIconSize.hero, color: ink.ink),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+                const SizedBox(height: AppSpace.xl),
+                Semantics(
+                  header: true,
+                  child: Text(slide.title, style: AppType.display(context)),
+                ),
+                const SizedBox(height: AppSpace.sm),
+                Text(slide.body, style: AppType.body(context).copyWith(height: 1.6)),
+              ],
             ),
-            const SizedBox(height: AppSpace.xl),
-            Text(slide.title, textAlign: TextAlign.center, style: AppType.pageTitle(context).copyWith(fontSize: 24)),
-            const SizedBox(height: AppSpace.sm),
-            Text(slide.body,
-                textAlign: TextAlign.center,
-                style: AppType.row(context).copyWith(color: c.textMedium, height: 1.6, fontWeight: FontWeight.w400)),
-          ]),
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
+}
+
+/// Two quiet hairline orbits around the disc: the page's one drawn detail, in the block's faint ink.
+class _OrbitPainter extends CustomPainter {
+  const _OrbitPainter({required this.color, required this.disc});
+
+  final Color color;
+  final double disc;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = AppBorder.hairline
+      ..color = color;
+    final centre = size.center(Offset.zero);
+    canvas.drawCircle(centre, disc * 0.5 + AppSpace.lg, paint);
+    canvas.drawCircle(centre, disc * 0.5 + AppSpace.xxl + AppSpace.xs, paint..color = color.withValues(alpha: color.a * 0.6));
+  }
+
+  @override
+  bool shouldRepaint(_OrbitPainter old) => old.color != color || old.disc != disc;
 }

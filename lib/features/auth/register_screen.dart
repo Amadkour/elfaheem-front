@@ -24,6 +24,7 @@ import '../shared/profile/about/about_terms_provider.dart';
 import 'auth_provider.dart';
 import '../../utils/helpers.dart';
 import 'auth_shell.dart';
+import '../../design/app_tokens.dart';
 import 'auth_widgets.dart';
 import 'google_auth_flow.dart';
 import 'verify_way.dart';
@@ -32,7 +33,9 @@ import 'username_field.dart';
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_blocks.dart';
+import 'package:flutter_education_app/design/app_buttons.dart' show AppButton, AppButtonSize;
+import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Register Screen
@@ -260,7 +263,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final selectedWay = ways.contains(_pickedWay)
         ? _pickedWay
         : (ways.isEmpty ? null : ways.first);
-    const gap = SizedBox(height: 16);
+    const gap = SizedBox(height: AppSpace.md);
     return AutofillGroup(
       child: Form(
         key: _formKey,
@@ -268,7 +271,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const ProgressBar(currentStep: 0, totalSteps: 3),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpace.lg),
 
             // Join with Google: role sheet -> account created -> signed in
             const GoogleAuthSection(joining: true),
@@ -292,7 +295,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ParentComponent(
               featureKey: kUsernameFeatureKey,
               child: Padding(
-                padding: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.only(bottom: AppSpace.md),
                 child: UsernameField(
                   controller: _usernameController,
                   error: _usernameError,
@@ -338,7 +341,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SectionLabel(label: 'dob'.tr),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.xs),
                   AuthDateField(
                     onChange: (picked) => setState(() {
                       selectedDate = picked;
@@ -363,9 +366,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SectionLabel(label: 'auth_i_am'.tr),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AppSpace.xs),
                   RolePicker(provider: provider, rolController: _rolController),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpace.lg),
                 ],
               ),
             ),
@@ -384,13 +387,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   setState(() => _obscurePassword = !_obscurePassword),
             ),
             AnimatedSize(
-              duration: authDuration(context, 240),
-              curve: Curves.easeOutCubic,
+              duration: AppMotion.of(context).base,
+              curve: AppMotion.curve,
               alignment: Alignment.topCenter,
               child: _passwordController.text.isEmpty
                   ? const SizedBox(width: double.infinity)
                   : Padding(
-                      padding: const EdgeInsets.only(top: 12),
+                      padding: const EdgeInsets.only(top: AppSpace.sm),
                       child: ParentComponent(
                         featureKey: 'register.password_strength',
                         child: AuthPasswordStrength(
@@ -416,20 +419,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
               },
               onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             ParentComponent(
               featureKey: 'register.password_requirements',
+              // a paper checklist with a warm hairline (the wells above are the input fill)
               child: Container(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+                padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xs),
                 decoration: BoxDecoration(
-                  color: c.inputBg,
-                  borderRadius: BorderRadius.circular(16),
+                  color: c.cardBg,
+                  borderRadius: AppRadius.cardAll,
+                  border: Border.all(color: c.divider, width: AppBorder.hairline),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('pw_req_title'.tr, style: authText(12.5, w: FontWeight.w700, c: c.textMedium, h: 1.3)),
-                    const SizedBox(height: 6),
+                    Text('pw_req_title'.tr, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: AppSpace.xxs),
                     AuthRequirement(met: _reqMinLength, label: 'pw_req_min8'.tr),
                     AuthRequirement(met: _reqUppercase, label: 'pw_req_upper'.tr),
                     AuthRequirement(met: _reqDigit, label: 'pw_req_digit'.tr),
@@ -438,18 +443,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpace.lg),
 
             // Verification way — everything the admin allows; the student picks one here
             // and can still switch on the verification page.
             AnimatedSize(
-              duration: authDuration(context, 320),
-              curve: Curves.easeOutCubic,
+              duration: AppMotion.of(context).slow,
+              curve: AppMotion.curve,
               alignment: Alignment.topCenter,
               child: ways.isEmpty
                   ? const SizedBox(width: double.infinity)
                   : Padding(
-                      padding: const EdgeInsets.only(bottom: 24),
+                      padding: const EdgeInsets.only(bottom: AppSpace.lg),
                       child: VerifyWayPicker(
                         ways: ways,
                         selected: selectedWay,
@@ -470,17 +475,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 if (!v) setState(() => _termsAccepted = false);
               },
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpace.lg),
 
             // Submit
             AuthButton(
               loading: provider.isLoadingRegistration,
               label: 'auth_create_my_account'.tr,
-              icon: Icons.arrow_forward_rounded,
               onPressed: _register,
               enabled: _canSubmit,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
 
             ParentComponent(
               featureKey: 'register.login_link',
@@ -561,19 +565,18 @@ class AuthTermsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final link = appInk(context, c.primary); // AA on the row and on the Read button's tint, both modes
+    final text = AppType.label(context).copyWith(height: 1.5);
     return AnimatedContainer(
-      duration: authDuration(context, 240),
-      padding: const EdgeInsetsDirectional.fromSTEB(4, 6, 6, 6),
+      duration: AppMotion.of(context).base,
+      curve: AppMotion.curve,
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xxs, AppSpace.xs, AppSpace.xs, AppSpace.xs),
+      // accepted = done: the success tint and line (emerald means done, D-610); otherwise paper on a hairline
       decoration: BoxDecoration(
-        color: accepted
-            ? c.success.withValues(alpha: c.isDark ? 0.14 : 0.07)
-            : c.inputBg,
-        borderRadius: BorderRadius.circular(16),
+        color: accepted ? c.successTint : c.cardBg,
+        borderRadius: AppRadius.cardAll,
         border: Border.all(
-          color: accepted
-              ? c.success.withValues(alpha: 0.45)
-              : c.divider.withValues(alpha: c.isDark ? 0.9 : 0.75),
-          width: 1.2,
+          color: accepted ? c.success.withValues(alpha: 0.45) : c.divider,
+          width: AppBorder.hairline,
         ),
       ),
       child: Row(
@@ -588,8 +591,8 @@ class AuthTermsRow extends StatelessWidget {
                 onChanged: (v) => onCheckChanged(v ?? false),
                 activeColor: c.success,
                 checkColor: c.onHero,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                side: BorderSide(color: accepted ? c.success : c.textLight, width: 1.5),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpace.xxs + 2)),
+                side: BorderSide(color: accepted ? c.success : c.textLight, width: AppBorder.strong),
               ),
             ),
           ),
@@ -597,7 +600,7 @@ class AuthTermsRow extends StatelessWidget {
           Expanded(
             child: Text.rich(
               TextSpan(
-                style: authText(13.5, c: c.textMedium, h: 1.5),
+                style: text,
                 children: [
                   TextSpan(text: 'terms_agree_prefix'.tr),
                   WidgetSpan(
@@ -610,7 +613,9 @@ class AuthTermsRow extends StatelessWidget {
                         onTap: onReadTap,
                         child: Text(
                           'terms_link'.tr,
-                          style: authText(13.5, w: FontWeight.w700, c: link, h: 1.5).copyWith(
+                          style: text.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: link,
                             decoration: TextDecoration.underline,
                             decorationColor: link,
                           ),
@@ -631,7 +636,9 @@ class AuthTermsRow extends StatelessWidget {
                           onTap: onPrivacyTap,
                           child: Text(
                             'privacy_policy'.tr,
-                            style: authText(13.5, w: FontWeight.w700, c: link, h: 1.5).copyWith(
+                            style: text.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: link,
                               decoration: TextDecoration.underline,
                               decorationColor: link,
                             ),
@@ -644,24 +651,24 @@ class AuthTermsRow extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           // Read button
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 112),
             child: TextButton(
             onPressed: onReadTap,
             style: TextButton.styleFrom(
-              minimumSize: const Size(48, 40),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              backgroundColor: c.primary.withValues(alpha: c.isDark ? 0.20 : 0.09),
+              minimumSize: const Size(AppTouch.min, AppTouch.min - AppSpace.xs),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+              backgroundColor: c.primaryTint,
               foregroundColor: link,
-              shape: const StadiumBorder(),
+              shape: RoundedRectangleBorder(borderRadius: AppRadius.controlAll),
             ),
             child: Text(
               accepted ? 'terms_read_again'.tr : 'terms_read_now'.tr,
               maxLines: 2,
               textAlign: TextAlign.center,
-              style: authText(12.5, w: FontWeight.w700, c: link, h: 1.2),
+              style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: link, height: 1.2),
             ),
           ),
           ),
@@ -726,40 +733,27 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
         height: screenH * 0.88,
         child: Column(
           children: [
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.md),
 
             // ── Header ──────────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
               child: Row(
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      gradient: authHeroGradient(c),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: c.primaryShadow,
-                    ),
-                    child: Icon(
-                      Icons.description_outlined,
-                      color: context.colors.onHero,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
+                  const AuthMark(icon: Icons.description_outlined, size: AppTouch.min - AppSpace.xxs),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'terms_and_conditions'.tr,
-                          style: c.h2.copyWith(fontSize: 17),
+                          style: AppType.pageTitle(context),
                         ),
                         if (p.terms?.meta != null)
                           Text(
                             '${'terms_last_updated'.tr}: ${p.terms!.meta!.lastUpdated}',
-                            style: c.caption.copyWith(fontSize: 11),
+                            style: AppType.meta(context),
                           ),
                       ],
                     ),
@@ -769,32 +763,33 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
                     tooltip: 'close'.tr,
                     onPressed: () => Navigator.pop(context, false),
                     icon: Container(
-                      width: 34,
-                      height: 34,
+                      width: AppTouch.min - AppSpace.xs,
+                      height: AppTouch.min - AppSpace.xs,
                       decoration: BoxDecoration(
-                        color: c.background,
-                        shape: BoxShape.circle,
+                        color: c.cardBg,
+                        borderRadius: AppRadius.chipAll,
+                        border: Border.all(color: c.divider, width: AppBorder.hairline),
                       ),
                       child: Icon(
                         Icons.close_rounded,
-                        size: 18,
-                        color: c.textMedium,
+                        size: AppIconSize.md,
+                        color: c.textDark,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpace.xxs),
 
             // ── "Scroll to read" hint ────────────────────────────────────
             if (!_hasReadAll)
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xs, AppSpace.lg, 0),
                 child: _ScrollHint(),
               ),
 
-            Divider(color: c.divider, height: 16),
+            Divider(color: c.divider, height: AppSpace.md, thickness: AppBorder.hairline),
 
             // ── Content ──────────────────────────────────────────────────
             Expanded(child: _buildContent(p, c)),
@@ -822,21 +817,18 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.wifi_off_rounded, size: 48, color: c.textLight),
-            const SizedBox(height: 12),
+            Icon(Icons.wifi_off_rounded, size: AppIconSize.hero, color: c.textLight),
+            const SizedBox(height: AppSpace.sm),
             Text(
               p.termsError!,
-              style: c.body.copyWith(color: c.textMedium),
+              style: AppType.body(context),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
+            const SizedBox(height: AppSpace.md),
+            AppButton.secondary(
               onPressed: () => p.loadTerms(context, forceRefresh: true),
-              icon: const Icon(Icons.refresh_rounded),
-              label: Text(
-                'retry'.tr,
-                style: TextStyle(fontFamily: AppFonts.family),
-              ),
+              icon: Icons.refresh_rounded,
+              label: 'retry'.tr,
             ),
           ],
         ),
@@ -847,16 +839,16 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
       return Center(
         child: Text(
           'terms_empty'.tr,
-          style: c.body.copyWith(color: c.textMedium),
+          style: AppType.body(context),
         ),
       );
     }
 
     return ListView.separated(
       controller: _scrollCtrl,
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
       itemCount: p.terms!.sections.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpace.sm),
       itemBuilder: (_, i) => _SectionCard(
         section: p.terms!.sections[i],
         index: i,
@@ -871,8 +863,8 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
   void _scrollToEnd() {
     _scrollCtrl.animateTo(
       _scrollCtrl.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeOut,
+      duration: authReduceMotion(context) ? const Duration(milliseconds: 1) : const Duration(milliseconds: 600),
+      curve: AppMotion.emphasized,
     );
   }
 }
@@ -911,11 +903,11 @@ class _SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpace.md),
       decoration: BoxDecoration(
         color: c.background,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: c.divider),
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -924,50 +916,47 @@ class _SectionCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 34,
-                height: 34,
+                width: AppTouch.min - AppSpace.sm,
+                height: AppTouch.min - AppSpace.sm,
                 decoration: BoxDecoration(
-                  color: c.primaryTint,
-                  borderRadius: BorderRadius.circular(10),
+                  color: c.inputBg,
+                  borderRadius: AppRadius.chipAll,
                 ),
                 child: Icon(
                   _icon(section.iconName),
-                  size: 17,
-                  color: c.primary,
+                  size: AppIconSize.sm,
+                  color: c.textDark,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpace.sm),
               Expanded(
-                child: Text(section.title, style: c.h3.copyWith(fontSize: 14)),
+                child: Text(section.title, style: AppType.bodyStrong(context)),
               ),
               InkWell(
                 onTap: () {
                   onTap.call(section);
                 },
-                child: Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: c.successTint,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                borderRadius: AppRadius.chipAll,
+                child: SizedBox(
+                  width: AppTouch.min,
+                  height: AppTouch.min,
                   child: Icon(
                     section.accept
-                        ? Icons.check_circle
-                        : Icons.radio_button_unchecked,
-                    size: 17,
-                    color: c.success,
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    size: AppIconSize.md,
+                    color: section.accept ? c.success : c.textLight,
                   ),
                 ),
               ),
               // Section number
             ],
           ),
-          Divider(color: c.divider, height: 20),
+          Divider(color: c.divider, height: AppSpace.md, thickness: AppBorder.hairline),
           // Body
           Text(
             section.body,
-            style: c.body.copyWith(height: 1.85, fontSize: 13.5),
+            style: AppType.body(context).copyWith(height: 1.75),
           ),
         ],
       ),
@@ -993,11 +982,17 @@ class _ScrollHintState extends State<_ScrollHint>
     _anim = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
+    );
     _bounce = Tween<double>(
       begin: 0,
       end: 6,
     ).animate(CurvedAnimation(parent: _anim, curve: Curves.easeInOut));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    syncMotionLoop(context, _anim, reverse: true, rest: 0);
   }
 
   @override
@@ -1008,13 +1003,13 @@ class _ScrollHintState extends State<_ScrollHint>
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
+    final tone = AppBlockColors.of(context, AppBlockTone.sky);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
       decoration: BoxDecoration(
-        color: c.primary.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: c.primary.withValues(alpha: 0.2)),
+        color: tone.surface,
+        borderRadius: AppRadius.controlAll,
+        border: tone.border == null ? null : Border.all(color: tone.border!, width: AppBorder.hairline),
       ),
       child: Row(
         children: [
@@ -1024,21 +1019,16 @@ class _ScrollHintState extends State<_ScrollHint>
               offset: Offset(0, _bounce.value),
               child: Icon(
                 Icons.keyboard_double_arrow_down_rounded,
-                size: 18,
-                color: c.primary,
+                size: AppIconSize.md,
+                color: tone.ink,
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           Expanded(
             child: Text(
               'terms_scroll_hint'.tr,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 12,
-                color: c.primary,
-                fontWeight: FontWeight.w600,
-              ),
+              style: AppType.label(context).copyWith(color: tone.ink, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -1066,16 +1056,11 @@ class _BottomBar extends StatelessWidget {
     final bottom = MediaQuery.of(context).padding.bottom;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + bottom),
+      padding: EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.sm, AppSpace.lg, AppSpace.sm + bottom),
+      // a warm hairline over the bar (tone first, no shadow)
       decoration: BoxDecoration(
         color: c.cardBg,
-        boxShadow: [
-          BoxShadow(
-            color: context.colors.heroShade.withValues(alpha: 0.07),
-            blurRadius: 10,
-            offset: const Offset(0, -3),
-          ),
-        ],
+        border: Border(top: BorderSide(color: c.divider, width: AppBorder.hairline)),
       ),
       child:
           hasReadAll ||
@@ -1089,32 +1074,27 @@ class _BottomBar extends StatelessWidget {
                 // Success hint
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
+                    horizontal: AppSpace.sm,
+                    vertical: AppSpace.xs,
                   ),
-                  margin: const EdgeInsets.only(bottom: 12),
+                  margin: const EdgeInsets.only(bottom: AppSpace.sm),
                   decoration: BoxDecoration(
                     color: c.successTint,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: c.success.withValues(alpha: 0.35),
-                    ),
+                    borderRadius: AppRadius.controlAll,
                   ),
                   child: Row(
                     children: [
                       Icon(
                         Icons.check_circle_outline_rounded,
-                        size: 18,
+                        size: AppIconSize.md,
                         color: c.success,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpace.xs),
                       Expanded(
                         child: Text(
                           'terms_read_all_done'.tr,
-                          style: TextStyle(
-                            fontFamily: AppFonts.family,
-                            fontSize: 12,
-                            color: c.success,
+                          style: AppType.label(context).copyWith(
+                            color: appInk(context, c.success),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1122,61 +1102,22 @@ class _BottomBar extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Accept button
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: onAccept,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: c.success,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    icon: Icon(
-                      Icons.verified_outlined,
-                      color: context.colors.onHero,
-                    ),
-                    label: Text(
-                      'terms_accept_button'.tr,
-                      style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: context.colors.onHero,
-                      ),
-                    ),
-                  ),
+                // Accept button: the sheet's one primary action
+                AuthButton(
+                  onPressed: onAccept,
+                  icon: Icons.verified_outlined,
+                  iconBefore: true,
+                  label: 'terms_accept_button'.tr,
                 ),
               ],
             )
           // ── Locked: nudge user to scroll ─────────────────────────────
-          : SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: onScrollToEnd,
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  side: BorderSide(color: c.primary, width: 1.5),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                icon: Icon(
-                  Icons.keyboard_double_arrow_down_rounded,
-                  color: c.primary,
-                ),
-                label: Text(
-                  'terms_jump_to_end'.tr,
-                  style: TextStyle(
-                    fontFamily: AppFonts.family,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: c.primary,
-                  ),
-                ),
-              ),
+          : AppButton.secondary(
+              onPressed: onScrollToEnd,
+              expand: true,
+              size: AppButtonSize.lg,
+              icon: Icons.keyboard_double_arrow_down_rounded,
+              label: 'terms_jump_to_end'.tr,
             ),
     );
   }

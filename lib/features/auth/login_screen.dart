@@ -6,6 +6,7 @@ import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../design/app_charts.dart' show appInk;
 import '../../design/app_kit.dart' show appConfirm;
+import '../../design/app_tokens.dart';
 import '../../design/app_notice.dart';
 import '../../utils/helpers.dart';
 import '../shared/guest/guest_state.dart';
@@ -198,7 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   );
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpace.md),
             ],
 
             // ── Password ───────────────────────────────────────────────────
@@ -215,40 +216,39 @@ class _LoginScreenState extends State<LoginScreen> {
               child: TextButton(
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ForgetScreen())),
                 style: TextButton.styleFrom(
-                  minimumSize: const Size(48, 48),
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  minimumSize: const Size(AppTouch.min, AppTouch.min),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
                   foregroundColor: link,
                 ),
-                child: Text('auth_forgot'.tr, style: authText(13.5, w: FontWeight.w700, c: link)),
+                child: Text('auth_forgot'.tr, style: AppType.label(context).copyWith(color: link, fontWeight: FontWeight.w600)),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
 
             // ── Sign in ────────────────────────────────────────────────────
             AuthButton(
               loading: context.watch<MyAuthProvider>().isLoadingLogin,
               label: 'auth_sign_in'.tr,
-              icon: Icons.arrow_forward_rounded,
               onPressed: _login,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpace.lg),
 
             // ── or · Continue with Google ──────────────────────────────────
             const GoogleAuthSection(joining: true, smallIcon: true),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.md),
 
             LinkRow(
               message: 'auth_no_account'.tr,
               linkText: 'auth_create_account'.tr,
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RegisterScreen())),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
 
             // ── Institutions apply · explore as a guest ────────────────────
             Wrap(
               alignment: WrapAlignment.center,
-              spacing: 8,
-              runSpacing: 8,
+              spacing: AppSpace.xs,
+              runSpacing: AppSpace.xs,
               children: [
                 // the public check (D-420): no account, no authenticated call
                 ParentComponent(

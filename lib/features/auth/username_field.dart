@@ -15,6 +15,7 @@
 // test/auth/username_field_layout_test.dart).
 library;
 
+import '../../design/app_tokens.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -23,7 +24,7 @@ import 'package:flutter/services.dart';
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../core/app_time.dart';
-import 'auth_widgets.dart' show SectionLabel, authInputDecoration, authFieldText, authText, authDuration;
+import 'auth_widgets.dart' show SectionLabel, authInputDecoration, authFieldText, authDuration;
 import 'username.dart';
 
 /// Where a username field stands.
@@ -246,7 +247,7 @@ class _UsernameFieldState extends State<UsernameField> {
       mainAxisSize: MainAxisSize.min,
       children: [
         SectionLabel(label: widget.label ?? 'username_optional'.tr),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         // the whole box is LTR: "@" then the name, also in Arabic
         Directionality(
           textDirection: TextDirection.ltr,
@@ -277,7 +278,7 @@ class _UsernameFieldState extends State<UsernameField> {
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         UsernameStatusView(
           status: _status,
           username: norm,
@@ -288,7 +289,7 @@ class _UsernameFieldState extends State<UsernameField> {
           lockedUntil: widget.lockedUntil,
         ),
         if (_locked && widget.enabled) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpace.xxs),
           Align(
             alignment: AlignmentDirectional.centerStart,
             child: TextButton.icon(
@@ -300,7 +301,7 @@ class _UsernameFieldState extends State<UsernameField> {
               icon: Icon(norm.isEmpty ? Icons.undo_rounded : Icons.person_remove_outlined, size: 18),
               label: Text(
                 norm.isEmpty ? 'username_keep_current'.tr : 'username_remove'.tr,
-                style: authText(13, w: FontWeight.w700, c: norm.isEmpty ? c.primary : c.danger),
+                style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: norm.isEmpty ? c.primary : c.danger),
               ),
             ),
           ),
@@ -426,7 +427,7 @@ class UsernameStatusView extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 1),
                 child: Icon(icon, size: 15, color: color),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: AppSpace.xs),
               Expanded(
                 child: Text.rich(
                   TextSpan(children: [
@@ -439,19 +440,19 @@ class UsernameStatusView extends StatelessWidget {
                     ],
                     TextSpan(text: _text()),
                   ]),
-                  style: authText(12.5, w: FontWeight.w500, c: color, h: 1.45),
+                  style: AppType.meta(context).copyWith(fontWeight: FontWeight.w500, color: color, height: 1.45),
                 ),
               ),
             ],
           ),
           if (chips.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Text('username_try'.tr, style: authText(12.5, w: FontWeight.w600, c: c.textMedium)),
+                Text('username_try'.tr, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
                 for (final s in chips)
                   _SuggestionChip(
                     label: s,
@@ -496,14 +497,14 @@ class _SuggestionChip extends StatelessWidget {
               textDirection: TextDirection.ltr,
               children: [
                 Icon(Icons.auto_awesome_rounded, size: 14, color: ink),
-                const SizedBox(width: 6),
+                const SizedBox(width: AppSpace.xs),
                 Flexible(
                   child: Text(
                     '@$label',
                     textDirection: TextDirection.ltr,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: authText(13, w: FontWeight.w700, c: ink, h: 1.2),
+                    style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: ink, height: 1.2),
                   ),
                 ),
               ],

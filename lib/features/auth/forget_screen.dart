@@ -5,6 +5,7 @@ import '../../config/app_config.dart';
 import '../../utils/helpers.dart';
 import 'auth_provider.dart';
 import 'auth_shell.dart';
+import '../../design/app_tokens.dart';
 import 'auth_widgets.dart';
 import 'register_screen.dart';
 import 'username.dart';
@@ -97,20 +98,19 @@ class _ForgetScreenState extends State<ForgetScreen> {
                 );
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.md),
 
             // ── Hint ───────────────────────────────────────────────────────
             AuthInfoBanner(text: 'reset_link_hint'.tr, icon: Icons.mark_email_unread_outlined),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpace.lg),
 
             // ── Send ───────────────────────────────────────────────────────
             AuthButton(
               loading: context.watch<MyAuthProvider>().isLoadingForget,
               label: 'send_reset_link'.tr,
-              icon: Icons.send_rounded,
               onPressed: _submit,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.md),
 
             // ── Register link ──────────────────────────────────────────────
             LinkRow(
