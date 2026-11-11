@@ -31,7 +31,6 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'app_blocks.dart';
 import 'app_charts.dart' show AppSparkline;
-import 'app_gradients.dart';
 import 'app_kpi.dart' show appDeltaText;
 import 'app_motion_kit.dart';
 import 'app_tokens.dart';
@@ -43,11 +42,13 @@ Color appToneStrong(BuildContext context, AppBlockTone tone) {
   final c = context.colors;
   final raw = switch (tone) {
     AppBlockTone.peach => c.accent,
-    AppBlockTone.sky => c.accent3,
-    AppBlockTone.sage => c.sage,
+    // sky / sage (one tone since D-630): accent3 is a pale block colour, so its strong colour is it darkened toward
+    // a readable grey-green (blockAccentInk below takes it to AA)
+    AppBlockTone.sky => HSLColor.fromColor(c.accent3).withLightness(0.38).toColor(),
     AppBlockTone.gold => c.accent2,
     AppBlockTone.emerald => c.primary,
     AppBlockTone.paper => c.textDark,
+    AppBlockTone.forest => c.heroInk,
   };
   // as TEXT on the card surface it must read (AA): darkened in light mode, lifted in dark mode
   return c.blockAccentInk(raw, c.cardBg);
@@ -263,9 +264,11 @@ class AppGreetingHero extends StatelessWidget {
     }
 
     return DecoratedBox(
+      // the home's ONE forest block (D-630): solid, never a gradient; dark mode keeps a cream hairline for an edge
       decoration: BoxDecoration(
-        gradient: AppGradients.hero(context),
+        color: c.blockForest,
         borderRadius: BorderRadius.circular(AppRadius.block),
+        border: c.isDark ? Border.all(color: c.heroInk.withValues(alpha: 0.10), width: AppBorder.hairline) : null,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadius.block),

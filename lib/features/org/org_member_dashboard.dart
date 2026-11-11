@@ -444,7 +444,8 @@ class OrgMemberHome extends StatelessWidget {
 }
 
 /// The member home, plain values in: the overview entry, today's events, the inbox preview rows.
-/// The member home's hero: a sky block — the organization's logo (or its type's icon) on a paper tile, its name in
+/// The member home's organization block: a sage block (the `sky` tone; it sits under the home's forest hero, D-630,
+/// so it is never a second forest) — the organization's logo (or its type's icon) on a paper tile, its name in
 /// the editorial headline, my roles under it, and the switch when I belong to more than one.
 class OrgMemberHero extends StatelessWidget {
   const OrgMemberHero({super.key, required this.org, this.subtitle, this.onSwitch});

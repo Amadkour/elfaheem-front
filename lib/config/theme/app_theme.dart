@@ -42,7 +42,7 @@ class AppTheme {
 
   static const Color accent          = Color(0xFFFBE2D3);   // block peach (accent1): learning / progress blocks
   static const Color accent2         = Color(0xFF94691A);   // gold: streaks, achievements, top marks (text-safe)
-  static const Color accent3         = Color(0xFFDCE7F5);   // block sky: schedule / information blocks
+  static const Color accent3         = Color(0xFFE4ECE3);   // block sage (the `sky` tone, D-630): schedule / information blocks
   static const Color success         = Color(0xFF12805C);
   static const Color danger          = Color(0xFFB42E3A);
   static const Color warning         = Color(0xFFB7791F);   // 2.9 – 3.6:1: icons and fills, never small text
@@ -69,7 +69,7 @@ class AppTheme {
   // ── Light text ────────────────────────────────────────────────────────────
   static const Color textDark     = Color(0xFF211D18);   // 15.4:1 on canvas
   static const Color textMedium   = Color(0xFF4D463E);
-  static const Color textLight    = Color(0xFF6E655A);   // 4.5:1+ on canvas / paper / input / peach / sky (WCAG AA)
+  static const Color textLight    = Color(0xFF6E655A);   // 4.5:1+ on canvas / paper / input / peach / sage (WCAG AA)
   static const Color textAction   = Color(0xFF0B6B4F);
 
   // ── Dark surfaces ─────────────────────────────────────────────────────────

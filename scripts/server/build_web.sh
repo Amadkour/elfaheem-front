@@ -71,7 +71,10 @@ curl -s $R "$U" | grep -q flutter_bootstrap.js || rollback "index has no flutter
 c=$(code "${U}flutter_bootstrap.js"); echo "bootstrap: $c"; [ "$c" = 200 ] || rollback "bootstrap $c"
 curl -s $R "${U}flutter_bootstrap.js" | grep -q "$MAIN" || rollback "the served bootstrap does not load $MAIN"
 c=$(code "${U}$MAIN"); echo "main: $c"; [ "$c" = 200 ] || rollback "main $c"
-c=$(code "${U}main.dart.$HASH.js_1.part.js"); echo "part 1: $c"; [ "$c" = 200 ] || rollback "part $c"
+# the first deferred part that exists (dart2js does not always emit _1)
+PART=$(ls build/web | grep -E "^main\.dart\.$HASH\.js_[0-9]+\.part\.js$" | sort -t_ -k2 -n | head -1)
+[ -n "$PART" ] || rollback "no deferred part in build/web"
+c=$(code "${U}$PART"); echo "part $PART: $c"; [ "$c" = 200 ] || rollback "part $c"
 c=$(code "${U}assets/assets/tz/latest.tzf"); echo "tz data: $c"; [ "$c" = 200 ] || rollback "tz $c"
 c=$(code "${U}calendar"); echo "deep link /calendar: $c"; [ "$c" = 200 ] || rollback "deep link $c"
 c=$(code "https://nextbrain.site/api/api/v1/theme/web"); echo "api theme: $c"; [ "$c" = 200 ] || rollback "api theme $c"

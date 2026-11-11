@@ -85,9 +85,10 @@ HomeAgendaItem homeAgendaItemOf(BuildContext context, CalEvent e, DateTime nowUt
     ].join(' · '),
     place: e.location,
     tag: homeEventTag(e),
-    // gold is kept for streaks and achievements (system.md §2): a meeting is a quiet ink tag
+    // gold is kept for streaks and achievements (system.md §2): a meeting is a quiet ink tag; an exam is amber, not
+    // the error red (D-630)
     tone: switch (e.source) {
-      'exam' => c.danger,
+      'exam' => c.warning,
       'meeting' => c.textMedium,
       _ => e.kind == 'lab' ? c.purple : null,
     },
@@ -156,7 +157,7 @@ class _UpcomingListState extends State<UpcomingList> {
   }
 
   static Color _tone(ThemeConfigProvider c, CalEvent e) => switch (e.source) {
-        'exam' => c.danger,
+        'exam' => c.warning, // D-630: red only for live / errors
         'meeting' => c.textMedium,
         _ => e.kind == 'lab' ? c.purple : c.primary,
       };

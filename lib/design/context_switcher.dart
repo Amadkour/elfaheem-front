@@ -33,6 +33,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:provider/provider.dart';
 import 'app_shell_nav.dart' show AppShellNav;
+import 'chrome_button.dart' show ChromeBar;
 
 import '../features/admin/admin_common.dart' show asInt, asMap, t;
 import '../features/org/org_access_joining.dart' show openOrgJoin;
@@ -190,6 +191,11 @@ class ContextPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    // on the forest hero (D-630, inside a ChromeBar) the pill is a translucent cream plate in cream ink; the mark
+    // keeps its paper disc so the organization's colour still reads
+    final glass = ChromeBar.of(context);
+    final ink = glass ? c.onHero : c.textDark;
+    final inkSoft = glass ? c.onHeroMuted : c.textMedium;
     return LayoutBuilder(builder: (context, box) {
       // a long name degrades in steps: one line → two lines (no caption) → the mark alone on a very narrow row
       final markOnly = box.maxWidth.isFinite && box.maxWidth < markOnlyBelow;
@@ -204,13 +210,13 @@ class ContextPill extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: AppTouch.min, minWidth: AppTouch.min),
             child: Material(
-              color: c.cardBg,
-              shape: StadiumBorder(side: BorderSide(color: c.divider, width: AppBorder.hairline)),
+              color: glass ? c.heroGlass : c.cardBg,
+              shape: StadiumBorder(side: BorderSide(color: glass ? c.heroGlassBorder : c.divider, width: AppBorder.hairline)),
               child: InkWell(
                 key: inkKey,
                 customBorder: const StadiumBorder(),
-                hoverColor: c.inputBg,
-                focusColor: c.inputBg,
+                hoverColor: glass ? c.heroGlass : c.inputBg,
+                focusColor: glass ? c.heroGlass : c.inputBg,
                 onTap: onTap,
                 child: Padding(
                   padding: EdgeInsetsDirectional.fromSTEB(
@@ -218,7 +224,12 @@ class ContextPill extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _ContextMark(icon: icon, tone: tone, logoUrl: logoUrl),
+                      glass
+                          ? DecoratedBox(
+                              decoration: BoxDecoration(color: c.cardBg, shape: BoxShape.circle),
+                              child: _ContextMark(icon: icon, tone: tone, logoUrl: logoUrl),
+                            )
+                          : _ContextMark(icon: icon, tone: tone, logoUrl: logoUrl),
                       if (!markOnly) ...[
                         AppSpace.gapXs,
                         Flexible(
@@ -231,14 +242,14 @@ class ContextPill extends StatelessWidget {
                                   caption!,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: AppType.meta(context).copyWith(color: c.textLight),
+                                  style: AppType.meta(context).copyWith(color: glass ? c.onHeroMuted : c.textLight),
                                 ),
                               Text(
                                 label,
                                 maxLines: twoLines ? 2 : 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: AppType.label(context).copyWith(
-                                    fontWeight: FontWeight.w600, color: c.textDark, height: twoLines ? 1.2 : null),
+                                    fontWeight: FontWeight.w600, color: ink, height: twoLines ? 1.2 : null),
                               ),
                             ],
                           ),
@@ -246,7 +257,7 @@ class ContextPill extends StatelessWidget {
                       ],
                       if (badge > 0) ...[AppSpace.gapXs, AppCountBadge(count: badge)],
                       const SizedBox(width: AppSpace.xxs),
-                      Icon(Icons.unfold_more_rounded, size: AppIconSize.md, color: c.textMedium),
+                      Icon(Icons.unfold_more_rounded, size: AppIconSize.md, color: inkSoft),
                     ],
                   ),
                 ),

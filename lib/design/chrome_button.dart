@@ -1,9 +1,9 @@
 // lib/design/chrome_button.dart
 // The one look of the small action buttons in the app's chrome — the desktop / tablet top bar (calendar, assistant,
-// bell), the home header (Meet now, calendar, bell on phones) and the page headers: a paper chip in ink (D-612),
-// never a loud orange / red fill (M7). A button finds out by itself where it sits: inside [ChromeBar] (the shell's
-// top bar, drawn in the hero colour) it is glass on the bar; anywhere else it is a paper chip — the card surface
-// with a warm hairline — on the canvas.
+// bell), the home header (Meet now, calendar, bell on phones) and the page headers: never a loud orange / red fill
+// (M7). A button finds out by itself where it sits: inside [ChromeBar] (the forest home hero, a hero band) it is a
+// translucent cream plate on it; anywhere else it is a GHOST on the canvas (D-630: seven white boxed chips along a
+// top bar were noise) — no plate, no border, the ink icon, a soft ink tint on hover / press and the focus ring.
 //
 //   ChromeIconButton(icon: Icons.event_rounded, label: 'my_calendar'.tr, onTap: …, badge: 3)
 //   ChromePlate(onTap: …, child: Icon(…))     the bare plate (AppBackButton is one with the back arrow)
@@ -44,8 +44,8 @@ class ChromeGhost extends InheritedWidget {
 /// "9+" style count for the small badges.
 String chromeBadgeText(int n) => n > 99 ? '99+' : '$n';
 
-/// The chip itself: a 40 × 40 plate centred in a 48 × 48 target, paper on the canvas (card surface + hairline) or
-/// glass on a hero band ([onHero], or inside a [ChromeBar]), with the press depth of the kit.
+/// The chip itself: a 40 × 40 plate centred in a 48 × 48 target, a ghost on the canvas (transparent until hovered /
+/// pressed) or glass on a hero ([onHero], or inside a [ChromeBar]), with the press depth of the kit and a focus ring.
 class ChromePlate extends StatefulWidget {
   const ChromePlate({super.key, required this.child, required this.onTap, this.onHero, this.onHighlightChanged});
 
@@ -59,14 +59,17 @@ class ChromePlate extends StatefulWidget {
   /// The plate inside the target.
   static const double size = AppTouch.min - AppSpace.xs;
 
-  /// The plate's surface and ink where it sits.
+  /// The plate's surface and ink where it sits (a ghost's plate and border are transparent).
   static ({Color plate, Color border, Color ink}) colorsOf(BuildContext context, {required bool onHero}) {
     final c = context.colors;
     if (onHero) return (plate: c.heroGlass, border: c.heroGlassBorder, ink: c.onHero);
-    // a ghost has no plate: the surface under it (the paper bar) shows through, the hover tints it
-    if (ChromeGhost.of(context)) return (plate: c.cardBg.withValues(alpha: 0), border: c.cardBg.withValues(alpha: 0), ink: c.textMedium);
-    return (plate: c.cardBg, border: c.divider, ink: c.textDark);
+    // off a hero every button is a ghost (D-630); on the shell's paper bar ([ChromeGhost], D-631) its ink is the quieter one
+    return (plate: Colors.transparent, border: Colors.transparent, ink: ChromeGhost.of(context) ? c.textMedium : c.textDark);
   }
+
+  /// The colour a count badge is ringed with so it parts from what is under it.
+  static Color badgeRing(BuildContext context, {required bool onHero}) =>
+      onHero ? colorsOf(context, onHero: true).plate : context.colors.background;
 
   @override
   State<ChromePlate> createState() => _ChromePlateState();
@@ -74,6 +77,7 @@ class ChromePlate extends StatefulWidget {
 
 class _ChromePlateState extends State<ChromePlate> {
   bool _down = false;
+  bool _focused = false;
 
   void _press(bool down) {
     if (_down != down) setState(() => _down = down);
@@ -82,8 +86,11 @@ class _ChromePlateState extends State<ChromePlate> {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final onHero = widget.onHero ?? ChromeBar.of(context);
     final k = ChromePlate.colorsOf(context, onHero: onHero);
+    // hover / press: a soft wash of the ink (the ghost has no plate of its own to darken)
+    final wash = k.ink.withValues(alpha: c.isDark || onHero ? 0.14 : 0.08);
     return SizedBox(
       width: AppTouch.min,
       height: AppTouch.min,
@@ -96,13 +103,19 @@ class _ChromePlateState extends State<ChromePlate> {
             color: k.plate,
             shape: RoundedRectangleBorder(
               borderRadius: AppRadius.chipAll,
-              side: BorderSide(color: k.border, width: AppBorder.hairline),
+              side: _focused
+                  ? BorderSide(color: onHero ? k.ink : c.primary, width: AppBorder.focus)
+                  : BorderSide(color: k.border, width: AppBorder.hairline),
             ),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: widget.onTap,
               onHighlightChanged: _press,
-              hoverColor: !onHero && ChromeGhost.of(context) ? context.colors.inputBg : null,
+              onFocusChange: (f) => setState(() => _focused = f),
+              hoverColor: wash,
+              highlightColor: wash,
+              splashColor: wash,
+              focusColor: wash,
               mouseCursor: widget.onTap == null ? SystemMouseCursors.basic : SystemMouseCursors.click,
               child: SizedBox.square(
                 dimension: ChromePlate.size,
@@ -172,8 +185,8 @@ class ChromeIconButton extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: c.danger,
                     borderRadius: BorderRadius.circular(AppRadius.pill),
-                    // a ghost's count rings itself with the bar's paper, a plate's with the plate
-                    border: Border.all(color: ChromeGhost.of(context) && !onBar ? c.cardBg : k.plate, width: AppBorder.strong),
+                    // a count on the shell's paper bar rings itself with the paper, elsewhere with what is under it
+                    border: Border.all(color: ChromeGhost.of(context) && !onBar ? c.cardBg : ChromePlate.badgeRing(context, onHero: onBar), width: AppBorder.strong),
                   ),
                   child: ExcludeSemantics(
                     child: Text(

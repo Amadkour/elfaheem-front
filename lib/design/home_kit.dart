@@ -8,10 +8,10 @@
 // card with hairline dividers rather than many tinted tiles; tints stay at a low alpha. Colours come only from
 // context.colors (server theme); times only through AppTime.
 //
-//   HomeHeader         THE hero block of a home (D-622): greeting (time of day, effective timezone), the name in the
-//                      editorial display face, the day line, the actions as paper chips and the context switcher,
-//                      on a tinted AppBlock (peach for a student / parent, sky for an instructor / admin /
-//                      organization; HomeHeader.toneForRole) with charcoal ink — never a gradient.
+//   HomeHeader         THE hero block of a home (D-622, D-630): greeting (time of day, effective timezone), the name in
+//                      the editorial display face, the day line, the actions as translucent cream plates and the
+//                      context switcher, on the ONE deep forest block of the home (AppBlockTone.forest, every role)
+//                      with cream ink — never a gradient.
 //                      `greetingHero: true` draws it as the premium AppGreetingHero instead (D-631): the forest
 //                      card with the time chip, the avatar ring (`avatar:` / the name's initial, `ring:` progress),
 //                      "Good evening, Mona" in the display face, the day line, ONE `cta:`; `centered:` for the
@@ -57,6 +57,7 @@ import 'package:flutter_education_app/design/app_contrast.dart' show ensureContr
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show ShellScope;
+import 'package:flutter_education_app/design/chrome_button.dart' show ChromeBar;
 import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
 import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
@@ -169,17 +170,14 @@ class HomeHeader extends StatelessWidget {
   final String? subtitle;
   final EdgeInsetsGeometry padding;
 
-  /// The hero block's tint (D-622): peach for a student's or a parent's home, sky for an instructor's, an admin's or
-  /// an organization's. Null = from the signed-in role ([toneOf]); peach without one (a guest).
+  /// The hero block's tint. Null = [toneOf]: the forest hero every role's home wears (D-630).
   final AppBlockTone? tone;
 
-  /// The hero tone of a role: students and parents learn (peach), everyone else runs a schedule (sage, D-630).
-  static AppBlockTone toneForRole(String? role) => switch (role) {
-        null || '' || 'student' || 'parent' => AppBlockTone.peach,
-        _ => AppBlockTone.sage,
-      };
+  /// The hero tone of a role: since D-630 every home wears the ONE forest hero (the pale peach / sky heroes had no
+  /// colour weight on the cream canvas). Kept as a hook should a role ever need its own.
+  static AppBlockTone toneForRole(String? role) => AppBlockTone.forest;
 
-  /// [toneForRole] of the signed-in user, when an auth provider is in scope (a preview without one is peach).
+  /// [toneForRole] of the signed-in user, when an auth provider is in scope.
   static AppBlockTone toneOf(BuildContext context) =>
       toneForRole(Provider.of<MyAuthProvider?>(context, listen: false)?.currentUser?.role);
 
@@ -261,7 +259,7 @@ class HomeHeader extends StatelessWidget {
         // the greeting and the day line in the UI sans, the buttons as paper chips (ChromeIconButton off a bar);
         // the tilt (D-583) stays, with its glare over the light surface
         return Padding(
-          padding: padding.resolve(Directionality.of(context)).copyWith(top: AppSpace.sm, bottom: AppSpace.xs),
+          padding: padding.resolve(Directionality.of(context)).copyWith(top: AppSpace.sm, bottom: AppSpace.md),
           child: RepaintBoundary(
             child: AppTilt(
               radius: AppRadius.block,
@@ -270,7 +268,8 @@ class HomeHeader extends StatelessWidget {
               child: AppBlock(
                 tone: blockTone,
                 hero: true,
-                child: Builder(builder: (context) {
+                // a dark hero: its chips and buttons draw as translucent ink plates (ChromeBar), not paper
+                child: _HeroChrome(child: Builder(builder: (context) {
                   final ink = AppBlock.colorsOf(context);
                   final greeting = AppType.body(context).copyWith(color: ink.muted);
                   // the greeting line: when its buttons leave the greeting less than two targets (a phone at 320 px
@@ -322,7 +321,7 @@ class HomeHeader extends StatelessWidget {
                       ]),
                     ),
                   ]);
-                }),
+                })),
               ),
             ),
           ),
@@ -330,6 +329,17 @@ class HomeHeader extends StatelessWidget {
       }),
     );
   }
+}
+
+/// Inside a dark block (the forest hero) the chrome buttons, the avatar and the context switcher draw as translucent
+/// cream plates: [ChromeBar] tells them so. On a light block nothing changes.
+class _HeroChrome extends StatelessWidget {
+  const _HeroChrome({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) =>
+      AppBlock.colorsOf(context).surface == context.colors.blockForest ? ChromeBar(child: child) : child;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -542,7 +552,7 @@ class HomeHeroCard extends StatelessWidget {
   const HomeHeroCard({super.key, required this.child, this.tone, this.gradient, this.glow, this.onTap, this.margin});
   final Widget child;
 
-  /// Null = the home's hero tone ([HomeHeader.toneOf]).
+  /// Null = peach (the forest is the home's ONE hero, D-630; this is a second block).
   final AppBlockTone? tone;
 
   /// Kept for existing callers: a hero is a tinted block now, no gradient paints it.
@@ -555,7 +565,7 @@ class HomeHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final blockTone = tone ?? HomeHeader.toneOf(context);
+    final blockTone = tone ?? AppBlockTone.peach;
     return Padding(
       padding: margin ?? const EdgeInsets.symmetric(horizontal: 20),
       // depth (D-583): a gentle tilt toward the mouse with a soft glare, a press depth on touch; the ring floats
@@ -724,7 +734,8 @@ class HomeTodoCard extends StatelessWidget {
           title: 'home_todo'.tr,
           subtitle: n == 0 ? 'home_todo_clear'.tr : 'home_todo_hint'.tr,
           count: n,
-          tone: n > 0 ? context.colors.danger : context.colors.success,
+          // waiting work is amber, never the error red (D-630)
+          tone: n > 0 ? context.colors.warning : context.colors.success,
           onTap: () => n > 0 ? showAttentionItems(context, tabKey) : fallback?.call(),
         );
       },
@@ -902,12 +913,14 @@ class _HomeAgendaState extends State<HomeAgenda> {
       return Padding(
         padding: padding,
         child: Container(
+          // a free day rests on the calm sage block (D-630), its plate on paper
           decoration: BoxDecoration(
-            color: c.cardBg,
+            color: c.blockSky,
             borderRadius: BorderRadius.circular(c.radiusLarge),
-            border: Border.all(color: c.divider),
+            border: c.isDark ? Border.all(color: c.divider) : null,
           ),
           child: AppEmpty(
+            tone: AppBlockTone.paper,
             icon: Icons.wb_twilight_rounded,
             title: emptyTitle,
             message: emptyMessage,
@@ -1435,14 +1448,17 @@ class HomeCourseSummary extends StatelessWidget {
     final divider = Divider(height: 1, thickness: 1, indent: 16, endIndent: 16, color: c.divider);
     Widget? head;
     if (figures.isNotEmpty) {
+      // the figures sit on a peach band across the top of the card (D-630: the 30 % of tinted surface), counting up
+      // once from the last value shown
+      final band = AppBlockColors.of(context, AppBlockTone.peach);
       Widget figure(String value, String label) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: AlignmentDirectional.centerStart,
-              child: Text(value, maxLines: 1, style: appText(18, w: FontWeight.w600, c: c.textDark, h: 1.2)),
+              child: AppCountUp(value, memoryKey: 'home.figure.$label', style: appText(18, w: FontWeight.w600, c: band.ink, h: 1.2)),
             ),
             const SizedBox(height: 4),
-            Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium, h: 1.25)),
+            Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: band.muted, h: 1.25)),
           ]);
       head = Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
@@ -1453,11 +1469,11 @@ class HomeCourseSummary extends StatelessWidget {
             for (final (value, label) in figures)
               if (wide) SizedBox(width: 168, child: figure(value, label)) else Expanded(child: figure(value, label)),
             if (wide) const Spacer(),
-            if (onFigures != null) Icon(Icons.chevron_right_rounded, size: 20, color: c.textLight),
+            if (onFigures != null) Icon(Icons.chevron_right_rounded, size: 20, color: band.faint),
           ]);
         }),
       );
-      if (onFigures != null) head = InkWell(onTap: onFigures, child: head);
+      head = Material(color: band.surface, child: onFigures != null ? InkWell(onTap: onFigures, child: head) : head);
     } else if (caption != null && caption!.isNotEmpty) {
       head = Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
@@ -1472,7 +1488,7 @@ class HomeCourseSummary extends StatelessWidget {
           ?head,
           if (footer != null) Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), child: footer),
           for (var i = 0; i < lines.length; i++) ...[
-            if (i > 0 || head != null || footer != null) divider,
+            if (i > 0 || (head != null && figures.isEmpty) || footer != null) divider, // the peach band is its own edge
             _CourseLineRow(lines[i]),
           ],
           if (moreLabel != null && onMore != null) ...[
@@ -1648,9 +1664,10 @@ class HomeAgendaLine extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: x.onAction,
                 onLongPress: x.onActionLongPress,
-                // the live tone darkened until its label reaches 4.5:1; the theme's padded 48 px tap target
+                // the primary action in emerald (D-630): the row's dot and tag already say "live" in red; the
+                // theme's padded 48 px tap target
                 style: FilledButton.styleFrom(
-                  backgroundColor: ensureContrast(tone, [c.onHero]),
+                  backgroundColor: ensureContrast(c.primary, [c.onHero]),
                   foregroundColor: c.onHero,
                   minimumSize: const Size(0, 36),
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -2064,9 +2081,9 @@ class _LiveCard extends StatelessWidget {
       onPressed: x.onJoin,
       icon: const Icon(Icons.videocam_rounded, size: 18),
       label: Text('home_live_join'.tr, maxLines: 1, overflow: TextOverflow.ellipsis),
-      // the one strong accent of the home: the live tone, darkened until its label reaches 4.5:1
+      // the primary action in emerald (D-630): the pulsing dot, the label and the ring already say "live" in red
       style: FilledButton.styleFrom(
-        backgroundColor: ensureContrast(red, [c.onHero]),
+        backgroundColor: ensureContrast(c.primary, [c.onHero]),
         foregroundColor: c.onHero,
         minimumSize: const Size(0, 44),
         padding: const EdgeInsets.symmetric(horizontal: 18),

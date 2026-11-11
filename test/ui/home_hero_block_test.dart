@@ -1,10 +1,11 @@
-// D-622: a role home's hero is a tinted BLOCK (AppBlock(hero: true)) in the block's charcoal ink — peach for a
-// student's or a parent's home, sky for every other role — with the name in the editorial display face, the
-// actions as paper chips (ChromeIconButton off a bar) and no gradient anywhere in it. The hero parts (tag, day
-// ribbon, figure) draw in the block's ink too. Plus: no layout error at 320 / 1400, ar + en, textScaler 1.3.
+// D-622 / D-630: a role home's hero is a BLOCK (AppBlock(hero: true)) — the ONE deep forest block for every role,
+// cream ink at 7:1 (muted at AA) — with the name in the editorial display face, the actions as translucent cream
+// plates (ChromeIconButton inside a ChromeBar) and no gradient anywhere in it. The hero parts (tag, day ribbon,
+// figure) draw in the block's ink too. Plus: no layout error at 320 / 1400, ar + en, textScaler 1.3.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_contrast.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -29,33 +30,42 @@ List<HomeAgendaItem> _day() => const [
 void main() {
   setUp(() => AppConfig.lang = 'ar');
 
-  test('the hero tone follows the role: students and parents on peach, every other role on sage (D-630)', () {
-    for (final r in [null, '', 'student', 'parent']) {
-      expect(HomeHeader.toneForRole(r), AppBlockTone.peach, reason: '$r');
-    }
-    for (final r in ['teacher', 'admin', 'super-admin', 'developer', 'org-admin', 'org-staff']) {
-      expect(HomeHeader.toneForRole(r), AppBlockTone.sage, reason: r);
+  test('every role wears the one forest hero', () {
+    for (final r in [null, '', 'student', 'parent', 'teacher', 'admin', 'super-admin', 'developer', 'org-admin', 'org-staff']) {
+      expect(HomeHeader.toneForRole(r), AppBlockTone.forest, reason: '$r');
     }
   });
 
-  testWidgets('the header is a block: charcoal ink, the editorial name, paper chips, no gradient', (tester) async {
+  test('the forest is deep: cream ink at 7:1 and the muted ink at AA, in both modes, for any preset', () {
+    for (final dark in [false, true]) {
+      final p = ThemeConfigProvider(api: ApiClient())..isDark = dark;
+      expect(contrastRatio(p.heroInk, p.blockForest), greaterThanOrEqualTo(7), reason: 'dark $dark');
+      expect(contrastRatio(p.heroInkMuted, p.blockForest), greaterThanOrEqualTo(kWcagAaText), reason: 'dark $dark');
+      expect(contrastRatio(p.heroInkFaint, p.blockForest), greaterThanOrEqualTo(kWcagAaText), reason: 'dark $dark');
+    }
+    // a light primary_dark is deepened until the cream reads at 7:1
+    final f = ThemeConfigProvider.deriveForest(const Color(0xFF6FA8DC), const Color(0xFFFBF7F0));
+    expect(contrastRatio(const Color(0xFFFBF7F0), f), greaterThanOrEqualTo(7));
+  });
+
+  testWidgets('the header is the forest block: cream ink, the editorial name, glass chips, no gradient', (tester) async {
     AppConfig.lang = 'en';
     await tester.pumpWidget(layoutHost(HomeHeader(name: 'Sara Ali', subtitle: '2 sessions today', actions: _chips())));
     await tester.pump();
     expect(find.byType(AppBlock), findsOneWidget);
     expect(find.byType(AppMeshSurface), findsNothing, reason: 'a hero is a block, not the brand gradient');
-    expect(find.byType(ChromeBar), findsNothing, reason: 'the chips are paper, not glass on a bar');
+    expect(find.byType(ChromeBar), findsOneWidget, reason: 'the chips are translucent cream plates on the forest');
     final c = tester.element(find.byType(AppBlock)).colors;
     final block = tester.widget<Material>(find.descendant(of: find.byType(AppBlock), matching: find.byType(Material)).first);
-    expect(block.color, c.blockPeach, reason: 'no role in scope: the learning tone');
+    expect(block.color, c.blockForest);
 
     final name = tester.widget<Text>(find.text('Sara Ali')).style!;
-    expect(name.color, c.blockInk);
+    expect(name.color, c.heroInk);
     expect(name.fontFamily, AppFonts.editorial);
     expect(name.fontSize, (32 * AppFonts.editorialScale('en')).roundToDouble(), reason: 'the display role');
     final sub = tester.widget<Text>(find.text('2 sessions today')).style!;
     expect(sub.fontFamily, isNot(AppFonts.editorialFamily), reason: 'the day line is the UI sans');
-    expect(contrastRatio(sub.color!, c.blockPeach), greaterThanOrEqualTo(kWcagAaText));
+    expect(contrastRatio(sub.color!, c.blockForest), greaterThanOrEqualTo(kWcagAaText));
 
     for (final chip in find.byType(ChromeIconButton).evaluate()) {
       final size = (chip.renderObject! as RenderBox).size;
@@ -63,7 +73,7 @@ void main() {
       expect(size.height, greaterThanOrEqualTo(48));
     }
     final chip = tester.widget<Material>(find.descendant(of: find.byType(ChromeIconButton).first, matching: find.byType(Material)).first);
-    expect(chip.color, c.cardBg, reason: 'a paper chip with ink icons');
+    expect(chip.color, c.heroGlass, reason: 'a translucent cream plate');
   });
 
   testWidgets('an explicit tone wins; the hero parts take the block ink', (tester) async {

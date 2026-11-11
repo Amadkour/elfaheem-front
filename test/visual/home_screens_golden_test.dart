@@ -43,7 +43,9 @@ import 'package:flutter_education_app/features/shared/rag/rag_learning.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_learning_page.dart';
 import 'package:flutter_education_app/features/student/home/home_screen.dart';
 import 'package:flutter_education_app/features/teacher/courses/component/teacher_stats.dart';
+import 'package:flutter_education_app/features/teacher/home/go_live_sheet.dart' show GoLiveButton;
 import 'package:flutter_education_app/features/teacher/home/home_screen.dart';
+import 'package:flutter_education_app/features/teacher/todo/teacher_todo_models.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_extra.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -448,15 +450,6 @@ List<MeLiveRoom> _liveMeeting() => [
       ),
     ];
 
-// the real header buttons (Meet now always; calendar + bell on phones, the top bar carries them on desktop)
-Widget _header(String name, String? summary) => HomeHeader(
-      name: name,
-      subtitle: summary,
-      actions: const [QuickMeetingIcon()],
-      shellActions: const [CalendarEntryIcon(), NotificationIcon(unreadCount: 0)],
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-    );
-
 /// The student home's header as the screen draws it (D-631): the forest hero, its ring and its one call to action;
 /// the search beside it on a desktop.
 Widget _studentHeader(String name, String? summary, MeHome home) => HomeHeader(
@@ -507,12 +500,29 @@ TeacherHomeExtra _teacherExtra() => TeacherHomeExtra.fromJson({
 /// [free]: a day without sessions (the next ones are tomorrow) and no live room — "Today's sessions" folds itself.
 Widget _teacherHome({bool free = false}) => SingleChildScrollView(
       child: _width(kHomeWideMax, Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        _header(
-            tr('أحمد حمدي', 'Ahmed Hamdy'),
-            free
-                ? homeDaySummary(sessions: 0, live: 0, todo: 28)
-                : homeDaySummary(sessions: 3, live: 2, todo: 28, nextAt: AppTime.time(_now.add(const Duration(hours: 3))))),
+        // the live hero: actions, the day's ring, Go live (the context switcher needs the app's providers)
+        TeacherHomeHero(
+          name: tr('أحمد حمدي', 'Ahmed Hamdy'),
+          subtitle: free
+              ? homeDaySummary(sessions: 0, live: 0, todo: 28)
+              : homeDaySummary(sessions: 3, live: 2, todo: 28, nextAt: AppTime.time(_now.add(const Duration(hours: 3)))),
+          actions: const [QuickMeetingIcon()],
+          shellActions: const [CalendarEntryIcon(), NotificationIcon(unreadCount: 3)],
+          ring: free ? null : 1 / 3,
+          goLive: GoLiveButton(onTap: () {}, onHero: true),
+          helpPageId: null,
+        ),
         TeacherHomeBody(
+        todo: free
+            ? null
+            : TodoList(items: [
+                for (final (k, kind, pr, ar, en) in [
+                  ('a', 'grading', 'high', 'صحّح 18 تسليمًا', 'Grade 18 submissions'),
+                  ('b', 'attendance_missing', 'high', 'سجّل حضور معمل الشبكات', 'Take attendance: Networks lab'),
+                  ('c', 'materials_missing', 'medium', 'ارفع مواد المحاضرة 4', 'Upload lecture 4 materials'),
+                ])
+                  TodoItem(key: k, kind: kind, priority: pr, score: 1, titleAr: ar, titleEn: en, whyAr: 'منذ يومين', whyEn: 'Since 2 days', courseName: tr('معمل الشبكات', 'Networks lab')),
+              ]),
         liveNow: free ? const [] : _liveMeeting(),
         now: _now,
         loading: false,

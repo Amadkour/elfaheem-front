@@ -26,6 +26,7 @@ import '../../../core/app_mode.dart';
 import '../../../core/plural.dart';
 import '../../../design/app_contrast.dart' show ensureContrast;
 import '../../../design/app_kit.dart';
+import '../../../design/chrome_button.dart' show ChromeBar;
 import '../../../design/app_motion_kit.dart' show AppEase, AppPressScale;
 import '../../../design/home_kit.dart' show homeDurationText;
 import '../../../utils/widget/app_network_image.dart';
@@ -41,10 +42,9 @@ import 'teacher_models.dart';
 //  The header pill
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// The red "Go live" pill (a 48 px tap target around a 40 px pill). [live] → "Return to live" with a ringed dot.
-/// [compact] → the round icon only (narrow headers). [onHero] → the greeting hero's call to action: a full-height
-/// paper pill in the primary ink with a small live-red mark (red stays for what is live, D-630); while a room of
-/// mine runs it is the solid live red again.
+/// The "Go live" pill (a 48 px tap target around a 40 px pill): the primary with a small live-red dot (red stays for
+/// what is live, D-630). [live] → "Return to live" with a ringed red dot. [compact] → the round icon only (narrow
+/// headers). [onHero] → the greeting hero's call to action: a full-height cream pill in the primary ink.
 class GoLiveButton extends StatelessWidget {
   const GoLiveButton({super.key, this.live = false, this.onTap, this.busy = false, this.compact = false, this.onHero = false});
 
@@ -62,18 +62,18 @@ class GoLiveButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    // ONE solid live red (no gradient, no coloured glow): the home's strong accent, legible white ink on it; on the
-    // greeting hero the idle pill is paper (the hero's one call to action) with the red kept for its small mark
-    final red = ensureContrast(c.danger, [c.onHero]);
-    final paper = onHero && !live;
-    final fill = paper ? c.onHero : red;
-    final ink = paper ? c.blockAccentInk(c.primary, c.onHero) : c.onHero;
+    // the primary action in emerald, not a solid live red (D-630: red only where it means something): on the forest
+    // hero (the greeting hero's call to action, or inside a ChromeBar) a cream plate in emerald ink, elsewhere the
+    // solid primary in cream; the small red dot says "live"
+    final hero = onHero || ChromeBar.of(context);
+    final fill = hero ? c.onHero : c.primary;
+    final ink = hero ? ensureContrast(c.primary, [fill]) : ensureContrast(c.onHero, [fill]);
     final label = labelFor(live);
     final icon = busy
         ? SizedBox.square(dimension: AppIconSize.sm, child: CircularProgressIndicator(strokeWidth: AppBorder.focus, color: ink))
         : live
-            ? _RingDot(color: c.onHero)
-            : Icon(Icons.sensors_rounded, size: AppIconSize.md, color: paper ? ensureContrast(c.danger, [c.onHero]) : ink);
+            ? _RingDot(color: c.danger)
+            : _LiveDot(color: c.danger, ring: c.onHero);
     final height = onHero ? AppTouch.min : _pill;
     final pill = DecoratedBox(
       decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(AppRadius.pill)),
@@ -123,6 +123,24 @@ class GoLiveButton extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The small red dot of "go live" (static), ringed in [ring] so it parts from an emerald fill.
+class _LiveDot extends StatelessWidget {
+  const _LiveDot({required this.color, required this.ring});
+  final Color color, ring;
+
+  @override
+  Widget build(BuildContext context) => SizedBox.square(
+        dimension: AppIconSize.sm,
+        child: Center(
+          child: Container(
+            width: AppSpace.xs + AppSpace.xxs / 2,
+            height: AppSpace.xs + AppSpace.xxs / 2,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: color, border: Border.all(color: ring, width: AppBorder.hairline)),
+          ),
+        ),
+      );
 }
 
 /// A dot inside a ring — "you are live" (static: it tells, it does not decorate).

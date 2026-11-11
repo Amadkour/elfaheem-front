@@ -4,17 +4,19 @@
 // subject (today's lesson, your streak, the next session, a category) — instead of accents sprinkled on cards.
 //
 //   AppBlock(tone: AppBlockTone.peach, child: …)              a full-width tinted block, radius 24, padding 24
-//   AppBlock(tone: AppBlockTone.sky, hero: true, child: …)    a hero block: 32 on top (the editorial rhythm)
+//   AppBlock(tone: AppBlockTone.forest, hero: true, child: …) THE home hero (D-630): deep forest, cream ink, 32 on top
+//   AppBlock(tone: AppBlockTone.sage, child: …)               schedule / information / a calm empty state
 //   AppBlock(tone: AppBlockTone.forKey(course.id), onTap: …)  a category keeps its tone everywhere
 //   AppBlock.colorsOf(context).accentInk(c.accent2)           gold / success / warning as TEXT inside a block
 //
-// Tones come from the live palette: peach = `accent` (accent1), sky = `accent3` (derived when the theme sends none),
-// gold = a tint of accent2, emerald = a tint of the primary, paper = the card surface with a hairline. Dark mode
-// draws each as a dark surface tinted with its hue. The ink inside keeps WCAG AA on every tone (main ink, muted and
+// Tones come from the live palette: peach = `accent` (accent1), sky / sage = `accent3` (a warm sage since D-630;
+// derived when the theme sends none), gold = a tint of accent2, emerald = a tint of the primary, paper = the card
+// surface with a hairline, forest = the primary_dark deepened to 7:1 under cream ink (the ONE hero of a home, D-630).
+// Dark mode draws each as a dark surface tinted with its hue. The ink inside keeps WCAG AA on every tone (main ink, muted and
 // faint captions); gold, success and warning reach AA on a block only as icons, fills or large text — for text use
 // [AppBlockColors.accentInk], which darkens them until they read.
 //
-// Rules (system.md §2, §5): a screen uses at most two or three tones; peach and sky are surfaces, never text; gold
+// Rules (system.md §2, §5): a screen uses at most two tones besides the forest hero; peach and sky are surfaces, never text; gold
 // only for streaks, achievements and top marks, emerald for done / correct / the primary subject — never decoration.
 // That is why [AppBlockTone.forKey] picks among the category tones (peach, sky) only.
 library;
@@ -29,11 +31,8 @@ enum AppBlockTone {
   /// Learning / progress blocks (`accent`).
   peach,
 
-  /// Schedule / information blocks (`accent3`).
+  /// Schedule / information blocks (`accent3`): a warm sage since D-630 (the name stays; [sage] is the same tone).
   sky,
-
-  /// The warm green-grey of dashboards and book covers (D-630: sage takes sky's place there).
-  sage,
 
   /// Streaks, achievements, top marks only.
   gold,
@@ -42,7 +41,17 @@ enum AppBlockTone {
   emerald,
 
   /// The card surface with a warm hairline: a block without colour.
-  paper;
+  paper,
+
+  /// THE hero of a home (D-630): deep forest from the theme's primary_dark, cream ink. One per screen.
+  forest;
+
+  /// The sage tone ([sky]'s colour since D-630: `accent3`, the warm sage #E4ECE3 the server sends after migration
+  /// 0074). Dashboards and book covers use this name.
+  static const AppBlockTone sage = sky;
+
+  /// True for the dark-surface tones whose ink is cream ([forest]).
+  bool get isDark => this == forest;
 
   /// The tones a category may wear (gold and emerald carry meaning and are never handed out by a hash). D-630: the
   /// warm pair, peach and sage (sky stays for the schedule blocks a screen picks on purpose).
@@ -94,9 +103,10 @@ class AppBlockColors {
 
   final ThemeConfigProvider _palette;
 
-  /// [accent] (gold, success, warning, danger, the primary) darkened — lifted in dark mode — until it reads as text
-  /// on this block at AA.
+  /// [accent] (gold, success, warning, danger, the primary) darkened — lifted in dark mode and on the forest hero —
+  /// until it reads as text on this block at AA.
   Color accentInk(Color accent) => _palette.blockAccentInk(accent, surface);
+
 
   /// The colours of [tone] under [context]'s theme and mode.
   static AppBlockColors of(BuildContext context, AppBlockTone tone) {
@@ -104,11 +114,22 @@ class AppBlockColors {
     final surface = switch (tone) {
       AppBlockTone.peach => c.blockPeach,
       AppBlockTone.sky => c.blockSky,
-      AppBlockTone.sage => c.blockSage,
       AppBlockTone.gold => c.blockGold,
       AppBlockTone.emerald => c.blockEmerald,
       AppBlockTone.paper => c.cardBg,
+      AppBlockTone.forest => c.blockForest,
     };
+    if (tone == AppBlockTone.forest) {
+      return AppBlockColors(
+        surface: surface,
+        ink: c.heroInk,
+        muted: c.heroInkMuted,
+        faint: c.heroInkFaint,
+        // dark mode: a hairline of the cream so the lifted forest still has an edge on the dark canvas
+        border: c.isDark ? c.heroInk.withValues(alpha: 0.10) : null,
+        palette: c,
+      );
+    }
     final Color? border = tone == AppBlockTone.paper
         ? c.divider
         : c.isDark
