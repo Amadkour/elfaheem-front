@@ -1,6 +1,8 @@
 // VISUAL review renders of the student's course browsing pages in the editorial theme: the categories page (the
 // real CategoriesProvider over a fake server answering with the real categories payload, nothing chosen and a
-// chosen category) — 390x844 and 1440x900, ar / en, light / dark, into test/visual/goldens/student_courses_*.png.
+// chosen category) and the checkout (EnrollmentScreen over the real EnrollmentProvider: three plans, every way to
+// pay, the fee breakdown; the success result) — 390x844 and 1440x900, ar / en, light / dark, into
+// test/visual/goldens/student_courses_*.png.
 // Not a CI suite; compared by eye.
 //
 //   flutter test test/visual/student_courses_golden_test.dart --update-goldens [--plain-name categories]
@@ -17,6 +19,9 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/shared/category/categories_provider.dart';
 import 'package:flutter_education_app/features/shared/category/categories_screen.dart';
+import 'package:flutter_education_app/features/student/enrollment/enrollment_screen.dart';
+import 'package:flutter_education_app/features/student/enrollment/enrollment_widgets.dart';
+import 'package:flutter_education_app/features/student/models.dart' show CourseModel;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -111,6 +116,46 @@ final _courses = [
   _course(35, 'مراجعة نهائية رياضيات', fees: 120),
 ];
 
+CourseModel get _paidCourse => CourseModel(
+      id: '42',
+      imageUrl: '',
+      price: 1200,
+      finalPrice: 900,
+      discountActive: true,
+      discountPercentage: 25,
+      type: 'live',
+      isEnrolled: false,
+      isPublished: true,
+      expectedHours: 40,
+      titleAr: 'أساسيات الذكاء الاصطناعي بلغة بايثون',
+      titleEn: 'AI foundations with Python',
+    );
+
+final _plans = {
+  'default_plan': 'yearly',
+  'options': [
+    {'plan': 'monthly', 'duration_days': 30, 'price': 120, 'final_price': 120},
+    {'plan': 'six_months', 'duration_days': 180, 'price': 720, 'final_price': 600},
+    {'plan': 'yearly', 'duration_days': 365, 'price': 1440, 'final_price': 900, 'discount_active': true},
+  ],
+};
+
+final _gateway = {
+  'provider': 'paymob',
+  'currency': 'EGP',
+  'payment_methods': [
+    {'type': 'card', 'label': 'Card', 'enabled': true},
+    {'type': 'bank_transfer', 'label': 'Bank transfer', 'enabled': true},
+    {'type': 'instapay', 'label': 'InstaPay', 'enabled': true},
+  ],
+  'wallet_methods': [],
+};
+
+final _fees = {
+  'course_price': 900, 'platform_fee': 45, 'vat_on_platform': 6.3, 'gateway_fee': 27.5, 'total': 978.8,
+  'gateway_label': 'Paymob 2.75% + 3 EGP', 'amount_minor': 97880, 'plan': 'yearly',
+};
+
 void main() {
   late FakeApi fake;
   late List<dynamic> categories;
@@ -127,6 +172,11 @@ void main() {
     fake = FakeApi({
       'GET /api/v1/categories': (_) => categories,
       'GET /api/v1/courses': (_) => {'items': _courses, 'total': _courses.length},
+      'GET /api/v1/payments/transfer-status*': (_) => <String, dynamic>{},
+      'GET /api/v1/config*': (_) => _gateway,
+      'GET /api/v1/payment-methods': (_) => <dynamic>[],
+      'GET /api/v1/payments/price-options*': (_) => _plans,
+      'GET /api/v1/payments/fees/preview*': (_) => _fees,
     }, latency: Duration.zero);
     fake.install();
   });
@@ -137,6 +187,27 @@ void main() {
         t,
         'student_courses_categories_all',
         () => ChangeNotifierProvider(create: (_) => CategoriesProvider(), child: const CategoriesScreen()),
+      ));
+
+  testWidgets('enroll method', (t) => _render(t, 'student_courses_enroll', () => EnrollmentScreen(course: _paidCourse)));
+
+  testWidgets('enroll success', (t) => _render(
+        t,
+        'student_courses_enroll_success',
+        () => Builder(
+          builder: (context) => Scaffold(
+            backgroundColor: context.colors.background,
+            body: PaymentResultView(
+              kind: ResultKind.success,
+              title: 'enroll_success_title'.tr,
+              message: 'enroll_success_message'.tr,
+              primaryLabel: 'start_learning_now'.tr,
+              onPrimary: () {},
+              secondaryLabel: 'back_to_home'.tr,
+              onSecondary: () {},
+            ),
+          ),
+        ),
       ));
 
   testWidgets('categories chosen', (t) => _render(
