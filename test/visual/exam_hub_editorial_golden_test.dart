@@ -18,6 +18,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_all.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/exam_hub_screen.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/hub_widgets.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/hub/create/exam_create_parts.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/correct/exam_correct_flow.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_scan.dart' show OmrBatchProgress;
 import 'package:flutter_education_app/features/shared/exam_engine/marks/mark_sessions_api.dart';
@@ -201,6 +202,7 @@ void main() {
   resultScenes();
   marksScenes();
   correctScenes();
+  createScenes();
   testWidgets('sheets', (t0) => _render(t0, 'sheets', sizes: const [Size(390, 844)], () => Builder(
       builder: (context) => _Sheet(
             title: AppConfig.lang == 'ar' ? 'لا درجات لهذا الاختبار بعد' : 'This exam has no degrees yet',
@@ -367,6 +369,53 @@ void correctScenes() {
         return Scaffold(
           appBar: AppHeader(title: ar ? 'تصحيح الاختبار' : 'Correct the exam'),
           body: CorrectionStartView(title: ar ? 'امتحان منتصف الفصل الورقي' : 'Midterm paper exam', batches: [b, p], onImport: () {}, onScan: () {}, onResume: () {}, onBatch: (_) {}, onReview: () {}, onResults: () {}),
+        );
+      }));
+}
+
+Widget _createShell() {
+  final ar = AppConfig.lang == 'ar';
+  String x(String a, String e) => ar ? a : e;
+  CreateSummaryItem item(String l, String? v, CreateItemState s) => CreateSummaryItem(label: l, value: v, state: s, onTap: () {});
+  return Scaffold(
+    body: ExamCreateShell(
+      stepKey: 'x',
+      items: [
+        item(x('المكان', 'Where'), x('الرياضيات للصف الثاني الثانوي', 'Mathematics, second secondary'), CreateItemState.done),
+        item(x('النوع', 'Type'), x('اختبار عادي', 'Normal exam'), CreateItemState.done),
+        item(x('الأسئلة', 'Questions'), null, CreateItemState.current),
+        item(x('النشر', 'Publish'), null, CreateItemState.todo),
+        item(x('الطلاب', 'Students'), null, CreateItemState.todo),
+      ],
+      index: 2,
+      stepLabel: x('الأسئلة', 'Questions'),
+      title: x('من أين تأتي الأسئلة؟', 'Where do the questions come from?'),
+      subtitle: x('اختر طريقة، ويمكنك التعديل قبل النشر.', 'Choose a way; you can edit them before publishing.'),
+      body: CreateQuestionWayBody(onPick: (_) {}, hasCourse: true, canGenerate: true, canImportForms: true, bubble: false),
+      primaryLabel: x('متابعة', 'Continue'),
+      onPrimary: () {},
+      backLabel: x('رجوع', 'Back'),
+      onBack: () {},
+      onClose: () {},
+      estimate: [(x('الأسئلة', 'Questions'), '12'), (x('مجموع الدرجات', 'Total marks'), '40')],
+    ),
+  );
+}
+
+void createScenes() {
+  testWidgets('create', (t0) => _render(t0, 'create', _createShell));
+  testWidgets('create_done', (t0) => _render(t0, 'create_done', () {
+        final ar = AppConfig.lang == 'ar';
+        return Scaffold(
+          body: CreateDoneBody(
+            title: ar ? 'اختبار الوحدة الرابعة' : 'Unit 4 check',
+            place: ar ? 'الرياضيات للصف الثاني الثانوي' : 'Mathematics, second secondary',
+            lines: [(ar ? 'يفتح' : 'Opens', '3 Nov 2026 · 9:00 AM'), (ar ? 'المدة' : 'Duration', ar ? '45 دقيقة' : '45 min'), (ar ? 'الأسئلة' : 'Questions', '12')],
+            onDone: () {},
+            onOpen: () {},
+            onFollow: () {},
+            onShare: () {},
+          ),
         );
       }));
 }
