@@ -5,15 +5,15 @@
 library;
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty;
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'attendance_store.dart';
 import 'attendance_strings.dart';
 import 'attendance_widgets.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'attendance_ui.dart';
 
 class OfflineAttendanceTab extends StatefulWidget {
   const OfflineAttendanceTab({super.key});
@@ -44,50 +44,38 @@ class _OfflineAttendanceTabState extends State<OfflineAttendanceTab> {
           return AppEmpty(icon: CupertinoIcons.person_crop_circle_badge_checkmark, title: attT('att_courses_empty'));
         }
         return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.lg, AppSpace.md, AppSpace.xl),
           itemCount: courses.length + 1,
-          separatorBuilder: (_, _) => const SizedBox(height: 10),
+          separatorBuilder: (_, i) => i == 0 ? const SizedBox.shrink() : AppSpace.gapXs,
           itemBuilder: (_, i) {
             if (i == 0) {
               return Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Text(attT('att_courses_title'),
-                    style: TextStyle(
-                        fontFamily: AppFonts.family, fontSize: 15, fontWeight: FontWeight.w800)),
+                padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                child: Semantics(header: true, child: Text(attT('att_courses_title'), style: AppType.section(context))),
               );
             }
             final c = courses[i - 1];
             final name = c.nameFor(AppConfig.lang);
-            return Material(
-              color: primary.withValues(alpha: 0.07),
-              borderRadius: BorderRadius.circular(16),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
+            // One entrance: the first rows rise in once (AppReveal caps the stagger).
+            return AppReveal(
+              index: i - 1,
+              group: 'att_offline',
+              child: AppCard(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
                 onTap: () => showStudentCheckInSheet(context, courseId: c.courseId, title: name),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Row(children: [
-                    CircleAvatar(
-                      backgroundColor: primary.withValues(alpha: 0.14),
-                      child: Icon(CupertinoIcons.book_fill, color: primary, size: 18),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 14)),
-                        const SizedBox(height: 2),
-                        Text(attT('att_course_tap'),
-                            style: TextStyle(
-                                fontFamily: AppFonts.family, fontSize: 11.5, color: context.colors.textMedium)),
-                      ]),
-                    ),
-                    const Icon(CupertinoIcons.forward, size: 16),
-                  ]),
-                ),
+                child: Row(children: [
+                  AttIconWell(icon: CupertinoIcons.book_fill, color: primary),
+                  AppSpace.gapSm,
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+                      const SizedBox(height: AppSpace.xxs / 2),
+                      Text(attT('att_course_tap'), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                    ]),
+                  ),
+                  AppSpace.gapXs,
+                  Icon(CupertinoIcons.forward, size: AppIconSize.sm, color: context.colors.textLight),
+                ]),
               ),
             );
           },

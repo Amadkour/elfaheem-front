@@ -4,7 +4,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/design/app_gradients.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
@@ -12,9 +12,7 @@ import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../models.dart';
 import 'attendance_provider.dart';
-import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class StudentAttendanceWidget extends StatelessWidget {
   final SessionModel session;
@@ -25,83 +23,64 @@ class StudentAttendanceWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<StudentAttendanceProvider>();
     final inSession = provider.isCheckedIn;
+    final c = context.colors;
 
+    // Warm Editorial: a paper block while you are out, the emerald block once you are in (present = done / right).
     return ParentComponent(
         featureKey: 'attendance',
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: inSession
-                ? context.colors.danger.withValues(alpha: 0.06)
-                : context.colors.primary.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-            border: Border.all(
-                color: (inSession ? context.colors.danger : context.colors.primary)
-                    .withValues(alpha: 0.2)),
-          ),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Icon(Icons.fact_check_rounded,
-                  color: inSession ? context.colors.danger : context.colors.primary,
-                  size: 20),
-              const SizedBox(width: 8),
-              Text('att_title'.tr,
-                  style: context.colors.h3.copyWith(
-                      color: inSession
-                          ? context.colors.danger
-                          : context.colors.primary)),
-            ]),
-            const SizedBox(height: 12),
-            // Record summary
-            if (provider.activeRecord != null) ParentComponent(
-                featureKey: 'attendance.record',
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  _RecordRow('att_check_in_time'.tr, _fmt(provider.activeRecord!.checkInAt),
-                      DirIcons.login, context.colors.success),
-                  if (provider.activeRecord!.checkOutAt != null) ...[
-                    const SizedBox(height: 6),
-                    _RecordRow('att_check_out_time'.tr, _fmt(provider.activeRecord!.checkOutAt),
-                        DirIcons.logout, context.colors.danger),
-                  ],
-                  const SizedBox(height: 12),
-                ])),
-            // Action button
-            ParentComponent(
-                featureKey: 'attendance.action',
-                child: GestureDetector(
-                  onTap: () => _toggle(context, provider),
-                  child: Container(
-                      height: 44,
-                      decoration: BoxDecoration(
-                          gradient: inSession
-                              ? AppGradients.blend(context, color: context.colors.danger)
-                              : AppGradients.brand(context),
-                          borderRadius: BorderRadius.circular(22),
-                          boxShadow: inSession ? [] : context.colors.primaryShadow),
-                      child: provider.isLoading
-                          ? Center(
-                          child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                  color: context.colors.onHero, strokeWidth: 2)))
-                          : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(
-                            inSession
-                                ? DirIcons.logout
-                                : DirIcons.login,
-                            color: context.colors.onHero,
-                            size: 18),
-                        const SizedBox(width: 8),
-                        Text(inSession ? 'att_check_out'.tr : 'att_check_in'.tr,
-                            style: TextStyle(
-                                color: context.colors.onHero,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                                fontFamily: AppFonts.display))
-                      ])),
-                )),
-          ]),
+        child: AppBlock(
+          tone: inSession ? AppBlockTone.emerald : AppBlockTone.paper,
+          padding: const EdgeInsets.all(AppSpace.md),
+          child: Builder(builder: (context) {
+            final b = AppBlock.colorsOf(context);
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Row(children: [
+                Icon(inSession ? Icons.how_to_reg_rounded : Icons.fact_check_rounded,
+                    color: b.accentInk(c.primary), size: AppIconSize.md),
+                AppSpace.gapXs,
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text('att_title'.tr,
+                        maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: b.ink)),
+                  ),
+                ),
+              ]),
+              // Record summary
+              if (provider.activeRecord != null) ParentComponent(
+                  featureKey: 'attendance.record',
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: AppSpace.sm),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      _RecordRow('att_check_in_time'.tr, _fmt(provider.activeRecord!.checkInAt),
+                          DirIcons.login, c.success),
+                      if (provider.activeRecord!.checkOutAt != null) ...[
+                        const SizedBox(height: AppSpace.xxs),
+                        _RecordRow('att_check_out_time'.tr, _fmt(provider.activeRecord!.checkOutAt),
+                            DirIcons.logout, c.danger),
+                      ],
+                    ]),
+                  )),
+              AppSpace.gapMd,
+              // Action button
+              ParentComponent(
+                  featureKey: 'attendance.action',
+                  child: inSession
+                      ? AppButton.danger(
+                          dangerOutline: true,
+                          expand: true,
+                          busy: provider.isLoading,
+                          icon: DirIcons.logout,
+                          label: 'att_check_out'.tr,
+                          onPressed: () => _toggle(context, provider))
+                      : AppButton.primary(
+                          expand: true,
+                          busy: provider.isLoading,
+                          icon: DirIcons.login,
+                          label: 'att_check_in'.tr,
+                          onPressed: () => _toggle(context, provider))),
+            ]);
+          }),
         ));
   }
 
@@ -139,12 +118,16 @@ class _RecordRow extends StatelessWidget {
   const _RecordRow(this.label, this.value, this.icon, this.color);
 
   @override
-  Widget build(BuildContext context) => Row(children: [
-    Icon(icon, size: 14, color: color),
-    const SizedBox(width: 6),
-    Text('$label: ', style: context.colors.caption),
-    Text(value,
-        style: context.colors.caption.copyWith(
-            color: context.colors.textDark, fontWeight: FontWeight.w700))
-  ]);
+  Widget build(BuildContext context) {
+    final b = AppBlock.colorsOf(context);
+    return Row(children: [
+      Icon(icon, size: AppIconSize.sm, color: b.accentInk(color)),
+      AppSpace.gapXs,
+      Expanded(
+        child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: b.muted)),
+      ),
+      AppSpace.gapXs,
+      Text(value, style: AppType.figure(context).copyWith(color: b.ink)),
+    ]);
+  }
 }
