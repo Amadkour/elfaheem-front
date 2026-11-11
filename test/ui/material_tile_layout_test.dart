@@ -40,7 +40,7 @@ void main() {
     await expectNoLayoutErrors(t, () => Row(mainAxisSize: MainAxisSize.min, children: [MaterialMoreButton(onTap: () {}), const MaterialIndexBadge(index: 12)]));
   });
 
-  testWidgets('a tapped option is what the sheet pops with; the button is 44 wide and labelled', (t) async {
+  testWidgets('a tapped option is what the sheet pops with; the button is 48 wide and labelled', (t) async {
     String? got;
     await t.pumpWidget(layoutHost(
       scale: 1,
@@ -50,7 +50,7 @@ void main() {
         ),
       ),
     ));
-    expect(t.getSize(find.byType(MaterialMoreButton)).width, 44);
+    expect(t.getSize(find.byType(MaterialMoreButton)).width, 48);
     expect(find.bySemanticsLabel(MaterialMoreButton.label), findsOneWidget);
     await t.tap(find.byType(MaterialMoreButton));
     await t.pumpAndSettle();

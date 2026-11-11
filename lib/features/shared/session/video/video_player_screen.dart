@@ -41,7 +41,10 @@ import 'vod_listen.dart';
 import 'package:flutter_education_app/core/media_focus.dart';
 import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_side_sheet.dart' show appSheetIsSide;
+import 'package:flutter_education_app/design/app_buttons.dart' show AppButton;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppPressScale, AppEase;
 // ════════════════════════════════════════════════════════════════════════════
 // VideoPlayerScreen
 // ════════════════════════════════════════════════════════════════════════════
@@ -1364,7 +1367,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       builder: (_, map, _) {
         final p = map[id];
         if (p != null) return _ProgressIconBtn(progress: p);
-        return _GlassIconBtn(
+        return VodGlassButton(
           icon: _downloaded
               ? Icons.download_done_rounded
               : Icons.download_rounded,
@@ -1568,6 +1571,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     return body;
   }
 
+  /// How much the bottom controls take: captions, the resume chip and next-up sit above it. Phones stack the chips
+  /// on their own row over the seek bar ([_buildBottomPanel]).
+  double get _controlsHeight => MediaQuery.sizeOf(context).width < 600 ? 152 : 104;
+
   Widget _buildPlayerBody() {
     // The player chrome is always LTR so "left = rewind / right = forward"
     // and the seek bar direction are correct in RTL (Arabic) too. Text that
@@ -1599,7 +1606,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
             IgnorePointer(
               child: _withVc((v) => AnimatedPadding(
                 duration: const Duration(milliseconds: 200),
-                padding: EdgeInsets.fromLTRB(16, 0, 16, (_controlsShown ? 104 : 22) + bottomInset),
+                padding: EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, (_controlsShown ? _controlsHeight : 22) + bottomInset),
                 child: Align(
                   alignment: Alignment.bottomCenter,
                   child: Directionality(textDirection: appDir, child: VodCaption(text: v.caption.text)),
@@ -1624,7 +1631,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
             Align(
               alignment: Alignment.bottomCenter,
               child: Padding(
-                padding: EdgeInsets.fromLTRB(16, 0, 16, 104 + bottomInset),
+                padding: EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, _controlsHeight + bottomInset),
                 child: Directionality(
                     textDirection: appDir, child: VodResumeChip(at: _resumedAt!, onStartOver: _startOver)),
               ),
@@ -1699,7 +1706,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
             return Align(
               alignment: appDir == TextDirection.rtl ? Alignment.bottomLeft : Alignment.bottomRight,
               child: Padding(
-                padding: EdgeInsets.fromLTRB(16, 70, 16, box.maxHeight < 420 ? 64 : 104),
+                padding: EdgeInsets.fromLTRB(AppSpace.md, 70, AppSpace.md, box.maxHeight < 420 ? 64 : _controlsHeight),
                 child: Directionality(
                   textDirection: appDir,
                   child: VodNextUpCard(
@@ -1760,73 +1767,55 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     return _buildAudioOnlyBg();
   }
 
+  /// Listening without a picture: the letterbox stays black (no colour wash), the lecture's name in the editorial
+  /// face under a slow breathing ring, the stream as a glass pill.
   Widget _buildAudioOnlyBg() {
     final c = context.colors;
-    return Container(
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment.topCenter,
-          radius: 1.6,
-          colors: [c.primaryDark.withValues(alpha: 0.6), VodInk.letterbox],
-        ),
-      ),
+    return ColoredBox(
+      color: VodInk.letterbox,
       child: Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          ScaleTransition(
-            scale: _pulseAnim,
-            child: Container(
-              width: 150,
-              height: 150,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: c.primary.withValues(alpha: 0.10),
-                border: Border.all(
-                    color: c.primary.withValues(alpha: 0.25), width: 2),
-                boxShadow: [
-                  BoxShadow(
-                      color: c.primary.withValues(alpha: 0.25),
-                      blurRadius: 50,
-                      spreadRadius: 4),
-                ],
-              ),
+        child: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            ScaleTransition(
+              scale: _pulseAnim,
               child: Container(
-                margin: const EdgeInsets.all(18),
+                width: 136,
+                height: 136,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: c.primary.withValues(alpha: 0.18),
+                  border: Border.all(color: VodInk.ink(0.16), width: AppBorder.hairline),
                 ),
-                child:
-                Icon(Icons.music_note_rounded, size: 56, color: c.primary),
+                padding: const EdgeInsets.all(AppSpace.md),
+                child: Container(
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: c.primary),
+                  child: const Icon(Icons.headphones_rounded, size: AppIconSize.hero, color: VodInk.textHigh),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 32),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 52),
-            child: Text(_mat.name,
-                style: c.h3.copyWith(color: VodInk.textHigh),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis),
-          ),
-          if (_mat.description != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xl),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 52),
-              child: Text(_mat.description!,
-                  style: c.body.copyWith(color: VodInk.textSoft),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxl),
+              child: Text(_mat.name,
+                  style: vodText(AppType.headline(context)),
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis),
             ),
-          ],
-          const SizedBox(height: 16),
-          _GlassPill(
-            label: _activeVariant.fullLabel,
-            icon: Icons.headphones_rounded,
-            color: c.primary,
-          ),
-        ]),
+            if (_mat.description != null) ...[
+              const SizedBox(height: AppSpace.xs),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxl),
+                child: Text(_mat.description!,
+                    style: vodText(AppType.body(context), VodInk.textSoft),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
+              ),
+            ],
+            const SizedBox(height: AppSpace.md),
+            _GlassPill(label: _activeVariant.fullLabel, icon: Icons.headphones_rounded),
+          ]),
+        ),
       ),
     );
   }
@@ -1862,35 +1851,28 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     Widget half({required bool active, required bool forward}) => Expanded(
       child: AnimatedOpacity(
         opacity: active ? 1 : 0,
-        duration: const Duration(milliseconds: 160),
+        duration: AppMotion.of(context).fast,
+        curve: AppEase.out,
         child: Container(
           decoration: BoxDecoration(
             gradient: RadialGradient(
-              // FIX: glow now comes from the screen edge the user tapped
+              // the light comes from the screen edge the user tapped: it says WHERE the jump went
               center: forward ? Alignment.centerRight : Alignment.centerLeft,
               radius: 1.2,
-              colors: [
-                VodInk.ink(0.16),
-                Colors.transparent
-              ],
+              colors: [VodInk.ink(0.14), VodInk.ink(0)],
             ),
           ),
           child: Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Icon(
-                forward
-                    ? Icons.fast_forward_rounded
-                    : Icons.fast_rewind_rounded,
+                forward ? Icons.fast_forward_rounded : Icons.fast_rewind_rounded,
                 color: VodInk.textHigh,
-                size: 44,
+                size: AppIconSize.hero,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpace.xxs),
               Text(forward ? '+${_seekAccum}s' : '-${_seekAccum}s',
-                  style: TextStyle(
-                      color: VodInk.textHigh,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                      fontFamily: AppFonts.family)),
+                  textDirection: TextDirection.ltr,
+                  style: vodText(AppType.bodyStrong(context)).copyWith(fontFeatures: vodTabular)),
             ]),
           ),
         ),
@@ -1906,32 +1888,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }
 
   Widget _buildBoostPill() {
-    final c = context.colors;
     return IgnorePointer(
       child: Align(
         alignment: Alignment.topCenter,
         child: Padding(
           padding: EdgeInsets.only(
-              top: (_isFullScreen ? 14 : MediaQuery.of(context).padding.top) + 12),
+              top: (_isFullScreen ? AppSpace.sm : MediaQuery.of(context).padding.top) + AppSpace.sm),
           child: AnimatedOpacity(
             opacity: _boosting ? 1 : 0,
-            duration: const Duration(milliseconds: 160),
+            duration: AppMotion.of(context).fast,
+            curve: AppEase.out,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-              decoration: BoxDecoration(
-                color: VodInk.shade(0.6),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: c.primary.withValues(alpha: 0.6)),
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs - 1),
+              decoration: vodGlass(radius: AppRadius.pill, alpha: 0.6),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.fast_forward_rounded, color: VodInk.textHigh, size: 16),
-                SizedBox(width: 6),
-                Text('2×',
-                    style: TextStyle(
-                        color: VodInk.textHigh,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                        fontFamily: AppFonts.family)),
+                const Icon(Icons.fast_forward_rounded, color: VodInk.textHigh, size: AppIconSize.sm),
+                const SizedBox(width: AppSpace.xs - 2),
+                Text('2×', style: vodText(AppType.label(context)).copyWith(fontWeight: FontWeight.w600)),
               ]),
             ),
           ),
@@ -1965,101 +1938,124 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   // ── Top bar ───────────────────────────────────────────────────────────────
 
+  /// The lecture's name is the chrome's one editorial line. Phones stack it UNDER the buttons, so it gets the whole
+  /// width (two lines) instead of the sliver the buttons leave; wider windows keep one row.
   Widget _buildTopBar(TextDirection appDir) {
-    final c = context.colors;
     final mq = MediaQuery.of(context).padding;
-    final top = _isFullScreen ? 10.0 : mq.top;
+    final width = MediaQuery.sizeOf(context).width;
+    final top = _isFullScreen ? AppSpace.xs : mq.top;
+    final stacked = width < 600;
+
+    final title = Directionality(
+      // Titles follow the app language direction (Arabic = right aligned).
+      textDirection: appDir,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(_mat.name,
+              style: vodText(stacked ? AppType.section(context) : AppType.pageTitle(context)),
+              maxLines: stacked ? 2 : 1,
+              overflow: TextOverflow.ellipsis),
+          if (_mat.description != null)
+            Text(_mat.description!,
+                style: vodText(AppType.meta(context), VodInk.textSoft),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+          if (_isOffline || _viewsNote != null)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpace.xs - 2),
+              child: Wrap(spacing: AppSpace.xs - 2, runSpacing: AppSpace.xxs, children: [
+                if (_isOffline) _InfoChip(icon: Icons.offline_pin_rounded, label: offlineT('dl_on_device')),
+                // FIX: _viewsNote was computed but never shown anywhere.
+                if (_viewsNote != null) _InfoChip(icon: Icons.visibility_outlined, label: _viewsNote!),
+              ]),
+            ),
+        ],
+      ),
+    );
+
+    const gap = SizedBox(width: AppSpace.xxs);
+    final buttons = <Widget>[
+      // Phones: the quality is on the chip below already; the title and "Listen" need the room.
+      if (width >= 600) ...[
+        _ActiveStreamBadge(variant: _activeVariant),
+        gap,
+      ],
+      // the caller's buttons (Records: Open in Studio · Share); the help button gives them its room on phones
+      for (final a in _actions) ...[
+        VodActionButton(action: a, showLabel: width >= 720),
+        gap,
+      ],
+      if (!_isFullScreen && (_actions.isEmpty || width >= 480))
+        const HelpInfoButton(pageId: 'video.player'),
+      if (_canDownload) ...[
+        _buildDownloadBtn(),
+        gap,
+      ],
+      if (_pipAvailable && !_isAudioMode) ...[
+        VodGlassButton(
+          icon: Icons.picture_in_picture_alt_rounded,
+          tooltip: offlineT('dl_minimize'),
+          onTap: _enterPip,
+        ),
+        gap,
+      ],
+      if (_canListen) ...[
+        VodListenButton(
+          label: width >= (_actions.isEmpty ? 360 : 720) ? 'vod_listen_short'.tr : null,
+          tooltip: 'vod_listen_only_hint'.tr,
+          onTap: _startListenOnly,
+        ),
+        gap,
+      ],
+      VodGlassButton(
+        icon: Icons.lock_open_rounded,
+        tooltip: 'lock_controls'.tr,
+        onTap: _lock,
+      ),
+    ];
+    final back = VodBackButton(onPressed: () => _isFullScreen ? _exitFullScreen() : Navigator.maybePop(context));
+
     return Container(
       decoration: BoxDecoration(
+        // a legibility scrim over the picture, not decoration: it fades to nothing where the image is
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [VodInk.shade(0.78), Colors.transparent],
+          colors: [VodInk.shade(stacked ? 0.82 : 0.78), VodInk.shade(0)],
         ),
       ),
       // Respect notch / camera cut-out in landscape.
-      padding: EdgeInsets.fromLTRB(6 + mq.left, top, 10 + mq.right, 24),
-      child: Row(children: [
-        IconButton(
-          tooltip: t('رجوع', 'Back'),
-          onPressed: () =>
-          _isFullScreen ? _exitFullScreen() : Navigator.maybePop(context),
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: VodInk.textHigh, size: 20),
-        ),
-        Expanded(
-          // Titles follow the app language direction (Arabic = right aligned).
-          child: Directionality(
-            textDirection: appDir,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(_mat.name,
-                    style: c.h4.copyWith(color: VodInk.textHigh),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-                if (_mat.description != null)
-                  Text(_mat.description!,
-                      style: c.caption.copyWith(color: VodInk.textSoft),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                if (_isOffline)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 5),
-                    child: _InfoChip(
-                        icon: Icons.offline_pin_rounded,
-                        label: offlineT('dl_on_device')),
+      padding: EdgeInsets.fromLTRB(AppSpace.xxs + mq.left, top, AppSpace.xs + mq.right, AppSpace.lg),
+      child: stacked
+          ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+              Row(children: [
+                back,
+                const SizedBox(width: AppSpace.xs),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Row(mainAxisSize: MainAxisSize.min, children: buttons),
+                    ),
                   ),
-                // FIX: _viewsNote was computed but never shown anywhere.
-                if (_viewsNote != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 5),
-                    child: _InfoChip(
-                        icon: Icons.visibility_outlined, label: _viewsNote!),
-                  ),
-              ],
-            ),
-          ),
-        ),
-        // Phones: the quality is on the chip below already; the title and "Listen" need the room.
-        if (MediaQuery.sizeOf(context).width >= 600) ...[
-          _ActiveStreamBadge(variant: _activeVariant),
-          const SizedBox(width: 6),
-        ],
-        // the caller's buttons (Records: Open in Studio · Share); the help button gives them its room on phones
-        for (final a in _actions) ...[
-          VodActionButton(action: a, showLabel: MediaQuery.sizeOf(context).width >= 720),
-          const SizedBox(width: 6),
-        ],
-        if (!_isFullScreen && (_actions.isEmpty || MediaQuery.sizeOf(context).width >= 480))
-          const HelpInfoButton(pageId: 'video.player'),
-        if (_canDownload) ...[
-          _buildDownloadBtn(),
-          const SizedBox(width: 6),
-        ],
-        if (_pipAvailable && !_isAudioMode) ...[
-          _GlassIconBtn(
-            icon: Icons.picture_in_picture_alt_rounded,
-            tooltip: offlineT('dl_minimize'),
-            onTap: _enterPip,
-          ),
-          const SizedBox(width: 6),
-        ],
-        if (_canListen) ...[
-          VodListenButton(
-            label: MediaQuery.sizeOf(context).width >= (_actions.isEmpty ? 360 : 720) ? 'vod_listen_short'.tr : null,
-            tooltip: 'vod_listen_only_hint'.tr,
-            onTap: _startListenOnly,
-          ),
-          const SizedBox(width: 6),
-        ],
-        _GlassIconBtn(
-          icon: Icons.lock_open_rounded,
-          tooltip: 'lock_controls'.tr,
-          onTap: _lock,
-        ),
-      ]),
+                ),
+              ]),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.xxs, AppSpace.sm, 0),
+                child: title,
+              ),
+            ])
+          : Row(children: [
+              back,
+              const SizedBox(width: AppSpace.xs),
+              Expanded(child: title),
+              const SizedBox(width: AppSpace.sm),
+              ...buttons,
+            ]),
     );
   }
 
@@ -2071,42 +2067,46 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     required bool buffering,
   }) {
     final c = context.colors;
+    const playSize = AppSpace.xxxl + AppSpace.xs; // 72: the one large control on the screen
     return Center(
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         _CircleCtrlBtn(
           label: t('رجوع 10 ثوانٍ', 'Back 10 seconds'),
           icon: Icons.replay_10_rounded,
-          size: 32,
           onTap: () => _seekRelative(10, forward: false),
         ),
-        const SizedBox(width: 28),
+        const SizedBox(width: AppSpace.xl),
         Semantics(
           button: true,
           label: finished ? t('إعادة التشغيل', 'Replay') : (isPlaying ? t('إيقاف مؤقت', 'Pause') : t('تشغيل', 'Play')),
           child: _PressScale(
           onTap: finished ? _replay : _togglePlayPause,
           child: Container(
-            width: 78,
-            height: 78,
+            width: playSize,
+            height: playSize,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: c.primary.withValues(alpha: 0.92),
-              border: Border.all(
-                  color: VodInk.ink(0.25), width: 1.5),
+              // solid emerald, a faint ink rim so it holds on a bright frame; a soft drop, never a coloured glow
+              color: c.primary,
+              border: Border.all(color: VodInk.ink(0.22), width: AppBorder.hairline),
               boxShadow: [
-                ...c.primaryShadow,
-                BoxShadow(
-                    color: VodInk.shade(0.4), blurRadius: 24),
+                BoxShadow(color: VodInk.shade(0.35), blurRadius: AppSpace.lg, offset: const Offset(0, AppSpace.xs)),
               ],
             ),
             child: buffering
                 ? const Padding(
-              padding: EdgeInsets.all(24),
+              padding: EdgeInsets.all(AppSpace.lg),
               child: CircularProgressIndicator(
                   strokeWidth: 3, color: VodInk.textHigh),
             )
                 : AnimatedSwitcher(
-              duration: const Duration(milliseconds: 180),
+              duration: AppMotion.of(context).fast,
+              switchInCurve: AppEase.out,
+              switchOutCurve: AppEase.out,
+              transitionBuilder: (child, anim) => FadeTransition(
+                opacity: anim,
+                child: ScaleTransition(scale: Tween(begin: 0.8, end: 1.0).animate(anim), child: child),
+              ),
               child: Icon(
                 finished
                     ? Icons.replay_rounded
@@ -2115,16 +2115,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                     : Icons.play_arrow_rounded),
                 key: ValueKey('$finished$isPlaying'),
                 color: VodInk.textHigh,
-                size: 44,
+                size: AppIconSize.hero,
               ),
             ),
           ),
         )),
-        const SizedBox(width: 28),
+        const SizedBox(width: AppSpace.xl),
         _CircleCtrlBtn(
           label: t('تقديم 10 ثوانٍ', 'Forward 10 seconds'),
           icon: Icons.forward_10_rounded,
-          size: 32,
           onTap: () => _seekRelative(10, forward: true),
         ),
       ]),
@@ -2133,6 +2132,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   // ── Bottom panel ──────────────────────────────────────────────────────────
 
+  /// Seek bar, time, chips and tools. Wide windows keep one row under the bar; phones give the chips their own row
+  /// ABOVE the bar (full size, no shrinking to fit) and keep the time and the tools under it.
   Widget _buildBottomPanel({
     required double fraction,
     required double buffered,
@@ -2141,149 +2142,153 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }) {
     final c = context.colors;
     final mq = MediaQuery.of(context).padding;
-    final bot = _isFullScreen ? 10.0 : mq.bottom + 4;
+    final bot = _isFullScreen ? AppSpace.xs : mq.bottom + AppSpace.xxs;
+    final narrow = MediaQuery.sizeOf(context).width < 600;
 
     final scrubLabel = _fmt(
         Duration(milliseconds: (_seekFraction * dur.inMilliseconds).round()));
 
+    Widget iconTap({required String tip, required VoidCallback onTap, required IconData icon}) =>
+        Tooltip(
+          message: tip,
+          child: Semantics(
+            button: true,
+            label: tip,
+            child: _PressScale(
+              onTap: onTap,
+              child: SizedBox.square(
+                dimension: AppTouch.min,
+                child: Icon(icon, color: VodInk.textHigh, size: AppIconSize.lg),
+              ),
+            ),
+          ),
+        );
+
+    const chipGap = SizedBox(width: AppSpace.xs - 2);
+    final chips = <Widget>[
+      // Only when the material really has more than one stream.
+      if (_mat.availableVariants.length > 1) ...[
+        _ControlChip(
+          icon: _isAudioMode ? Icons.headphones_rounded : Icons.hd_rounded,
+          label: _activeVariant.label,
+          active: _isAudioMode,
+          onTap: _openStreamPicker,
+        ),
+        chipGap,
+      ],
+      if (_hasCaptions) ...[
+        _ControlChip(
+          icon: _captionsOn ? Icons.closed_caption_rounded : Icons.closed_caption_off_rounded,
+          label: 'CC',
+          active: _captionsOn,
+          onTap: _toggleCaptions,
+        ),
+        chipGap,
+      ],
+      if (_list.length > 1) ...[
+        _ControlChip(
+          icon: Icons.playlist_play_rounded,
+          label: t('المحاضرات', 'Lectures'),
+          active: false,
+          onTap: _openLectures,
+        ),
+        chipGap,
+      ],
+      _ControlChip(
+        icon: Icons.speed_rounded,
+        label: _speed == 1.0 ? 'normal_speed'.tr : '$_speed×',
+        active: _speed != 1.0,
+        onTap: _openSpeedSheet,
+      ),
+    ];
+
+    const toolGap = SizedBox(width: AppSpace.xxs);
+    final tools = <Widget>[
+      if (!_touchDevice) ...[
+        iconTap(
+          tip: t('كتم (M)', 'Mute (M)'),
+          onTap: _toggleMute,
+          icon: _volume == 0 ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+        ),
+        toolGap,
+      ],
+      if (_next != null) ...[
+        iconTap(tip: t('التالي (N)', 'Next (N)'), onTap: _playNext, icon: Icons.skip_next_rounded),
+        toolGap,
+      ],
+      // Rotation: auto (sensor, left/right/portrait) vs locked.
+      if (!kIsWeb) ...[
+        iconTap(
+          tip: t('تدوير الشاشة تلقائياً', 'Auto-rotate'),
+          onTap: _toggleAutoRotate,
+          icon: _autoRotate ? Icons.screen_rotation_rounded : Icons.screen_lock_rotation_rounded,
+        ),
+        toolGap,
+      ],
+      // Fullscreen: locks landscape (sensor ignored) / back to portrait.
+      _FullscreenButton(
+        active: _isFullScreen,
+        accent: c.primary,
+        onTap: _toggleFullScreen,
+      ),
+    ];
+
+    final time = Text.rich(
+      TextSpan(children: [
+        TextSpan(
+            text: _fmt(_isSeeking ? Duration(milliseconds: (_seekFraction * dur.inMilliseconds).round()) : pos),
+            style: const TextStyle(color: VodInk.textHigh)),
+        TextSpan(text: ' / ${_fmt(dur)}'),
+      ]),
+      style: vodText(AppType.meta(context), VodInk.textMid).copyWith(fontWeight: FontWeight.w500, fontFeatures: vodTabular),
+    );
+
+    // FittedBox: a group scales down instead of overflowing on the narrowest phones.
+    Widget fit(List<Widget> children) => FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerRight,
+          child: Row(mainAxisSize: MainAxisSize.min, children: children),
+        );
+
+    final seek = _SeekBar(
+      fraction: fraction,
+      buffered: buffered,
+      dragging: _isSeeking,
+      accent: c.primary,
+      previewLabel: scrubLabel,
+      onStart: _onSeekStart,
+      onUpdate: _onSeekUpdate,
+      onEnd: _onSeekEnd,
+    );
+
     return Container(
       decoration: BoxDecoration(
+        // the legibility scrim under the controls
         gradient: LinearGradient(
           begin: Alignment.bottomCenter,
           end: Alignment.topCenter,
-          colors: [VodInk.shade(0.88), Colors.transparent],
+          colors: [VodInk.shade(0.88), VodInk.shade(0)],
         ),
       ),
-      padding: EdgeInsets.fromLTRB(16 + mq.left, 28, 16 + mq.right, bot),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        // ── Seek bar ──────────────────────────────────────────────────────
-        _SeekBar(
-          fraction: fraction,
-          buffered: buffered,
-          dragging: _isSeeking,
-          accent: c.primary,
-          previewLabel: scrubLabel,
-          onStart: _onSeekStart,
-          onUpdate: _onSeekUpdate,
-          onEnd: _onSeekEnd,
-        ),
-
-        const SizedBox(height: 2),
-
-        // ── Controls row ──────────────────────────────────────────────────
-        Row(children: [
-          Text(
-              '${_fmt(_isSeeking ? Duration(milliseconds: (_seekFraction * dur.inMilliseconds).round()) : pos)} / ${_fmt(dur)}',
-              style: TextStyle(
-                  color: VodInk.textMid,
-                  fontSize: 11.5,
-                  fontFamily: AppFonts.family,
-                  fontWeight: FontWeight.w500)),
-          const SizedBox(width: 8),
-          // FittedBox: the right-hand group scales down instead of
-          // overflowing on narrow phones.
-          Expanded(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerRight,
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                // Only when the material really has more than one stream.
-                if (_mat.availableVariants.length > 1) ...[
-                  _ControlChip(
-                    icon: _isAudioMode
-                        ? Icons.headphones_rounded
-                        : Icons.hd_rounded,
-                    label: _activeVariant.label,
-                    active: _isAudioMode,
-                    onTap: _openStreamPicker,
-                  ),
-                  const SizedBox(width: 6),
-                ],
-
-                if (_hasCaptions) ...[
-                  _ControlChip(
-                    icon: _captionsOn ? Icons.closed_caption_rounded : Icons.closed_caption_off_rounded,
-                    label: 'CC',
-                    active: _captionsOn,
-                    onTap: _toggleCaptions,
-                  ),
-                  const SizedBox(width: 6),
-                ],
-                if (_list.length > 1) ...[
-                  _ControlChip(
-                    icon: Icons.playlist_play_rounded,
-                    label: t('المحاضرات', 'Lectures'),
-                    active: false,
-                    onTap: _openLectures,
-                  ),
-                  const SizedBox(width: 6),
-                ],
-                _ControlChip(
-                  icon: Icons.speed_rounded,
-                  label: _speed == 1.0 ? 'normal_speed'.tr : '$_speed×',
-                  active: _speed != 1.0,
-                  onTap: _openSpeedSheet,
-                ),
-                const SizedBox(width: 10),
-                if (!_touchDevice) ...[
-                  Tooltip(
-                    message: t('كتم (M)', 'Mute (M)'),
-                    child: _PressScale(
-                      onTap: _toggleMute,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Icon(_volume == 0 ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-                            color: VodInk.textHigh, size: 24),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                ],
-                if (_next != null) ...[
-                  Tooltip(
-                    message: t('التالي (N)', 'Next (N)'),
-                    child: _PressScale(
-                      onTap: _playNext,
-                      child: const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Icon(Icons.skip_next_rounded, color: VodInk.textHigh, size: 26),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                ],
-
-                // Rotation: auto (sensor, left/right/portrait) vs locked.
-                if (!kIsWeb) ...[
-                  Tooltip(
-                    message: t('تدوير الشاشة تلقائياً', 'Auto-rotate'),
-                    child: _PressScale(
-                    onTap: _toggleAutoRotate,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Icon(
-                        _autoRotate
-                            ? Icons.screen_rotation_rounded
-                            : Icons.screen_lock_rotation_rounded,
-                        color: _autoRotate ? VodInk.textHigh : c.primary,
-                        size: 24,
-                      ),
-                    ),
-                  )),
-                  const SizedBox(width: 10),
-                ],
-
-                // Fullscreen: locks landscape (sensor ignored) / back to portrait.
-                _FullscreenButton(
-                  active: _isFullScreen,
-                  accent: c.primary,
-                  onTap: _toggleFullScreen,
-                ),
+      padding: EdgeInsets.fromLTRB(AppSpace.md + mq.left, AppSpace.xl - AppSpace.xxs, AppSpace.md + mq.right, bot),
+      child: Column(mainAxisSize: MainAxisSize.min, children: narrow
+          ? [
+              Align(alignment: Alignment.centerRight, child: fit(chips)),
+              seek,
+              Row(children: [
+                time,
+                const SizedBox(width: AppSpace.xs),
+                Expanded(child: Align(alignment: Alignment.centerRight, child: fit(tools))),
               ]),
-            ),
-          ),
-        ]),
-      ]),
+            ]
+          : [
+              seek,
+              Row(children: [
+                time,
+                const SizedBox(width: AppSpace.xs),
+                Expanded(child: fit([...chips, const SizedBox(width: AppSpace.xs), ...tools])),
+              ]),
+            ]),
     );
   }
 
@@ -2294,38 +2299,38 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     return Align(
       alignment: Alignment.centerRight,
       child: Padding(
-        padding: EdgeInsets.only(right: 20 + mq.right),
+        padding: EdgeInsets.only(right: AppSpace.lg + mq.right),
         child: IgnorePointer(
           ignoring: !_lockHint,
           child: AnimatedOpacity(
             opacity: _lockHint ? 1 : 0,
-            duration: const Duration(milliseconds: 220),
-            child: GestureDetector(
+            duration: AppMotion.of(context).base,
+            curve: AppEase.out,
+            child: Semantics(
+              button: true,
+              label: 'unlock_controls'.tr,
+              excludeSemantics: true,
               onTap: _unlock,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(30),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                  child: Container(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: VodInk.ink(0.14),
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(
-                          color: VodInk.ink(0.24)),
+              child: _PressScale(
+                onTap: _unlock,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                    child: Container(
+                      constraints: const BoxConstraints(minHeight: AppTouch.min),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md + 2),
+                      decoration: BoxDecoration(
+                        color: VodInk.ink(0.14),
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                        border: Border.all(color: VodInk.ink(0.24), width: AppBorder.hairline),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.lock_rounded, color: VodInk.textHigh, size: AppIconSize.md - 2),
+                        const SizedBox(width: AppSpace.xs),
+                        Text('unlock_controls'.tr, style: vodText(AppType.label(context)).copyWith(fontWeight: FontWeight.w600)),
+                      ]),
                     ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.lock_rounded,
-                          color: VodInk.textHigh, size: 18),
-                      const SizedBox(width: 8),
-                      Text('unlock_controls'.tr,
-                          style: TextStyle(
-                              color: VodInk.textHigh,
-                              fontSize: 12,
-                              fontFamily: AppFonts.family,
-                              fontWeight: FontWeight.w700)),
-                    ]),
                   ),
                 ),
               ),
@@ -2339,79 +2344,56 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   // ── Loading / Error ───────────────────────────────────────────────────────
 
   Widget _buildLoadingState() {
-    return Container(
+    return ColoredBox(
       // Dim the last frame while switching quality so the change is obvious.
-      color: _vcReady ? VodInk.shade(0.45) : Colors.transparent,
+      color: _vcReady ? VodInk.shade(0.45) : VodInk.shade(0),
       child: Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const SizedBox(width: 44, height: 44, child: AppLoadingIndicator()),
-          const SizedBox(height: 14),
+          const SizedBox(width: AppSpace.xxl - AppSpace.xxs, height: AppSpace.xxl - AppSpace.xxs, child: AppLoadingIndicator()),
+          const SizedBox(height: AppSpace.sm),
           Text((_switching ? 'vod_switching' : 'loading_video').tr,
-              style: TextStyle(
-                  color: VodInk.textSoft, fontSize: 13, fontFamily: AppFonts.family)),
+              style: vodText(AppType.label(context), VodInk.textSoft)),
         ]),
       ),
     );
   }
 
   Widget _buildErrorState() {
-    final c = context.colors;
-    return Container(
-      color: VodInk.shade(0.88),
+    return ColoredBox(
+      color: VodInk.shade(0.9),
       child: SafeArea(
         child: Stack(children: [
           // Back button always reachable on the error screen.
           Align(
             alignment: AlignmentDirectional.topStart,
-            child: IconButton(
-              tooltip: t('رجوع', 'Back'),
-              onPressed: () => _isFullScreen
-                  ? _exitFullScreen()
-                  : Navigator.maybePop(context),
-              icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                  color: VodInk.textHigh, size: 20),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpace.xxs),
+              child: VodBackButton(onPressed: () => _isFullScreen ? _exitFullScreen() : Navigator.maybePop(context)),
             ),
           ),
           Center(
-            child: Padding(
-              padding: const EdgeInsets.all(40),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSpace.xl),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Container(
-                  width: 80,
-                  height: 80,
+                  width: AppSpace.xxxl + AppSpace.md,
+                  height: AppSpace.xxxl + AppSpace.md,
                   decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: c.danger.withValues(alpha: 0.14)),
-                  child: Icon(Icons.error_outline_rounded,
-                      color: c.danger, size: 44),
-                ),
-                const SizedBox(height: 20),
-                Text('video_load_error'.tr,
-                    style: c.h4.copyWith(color: VodInk.textHigh),
-                    textAlign: TextAlign.center),
-                const SizedBox(height: 28),
-                _PressScale(
-                  onTap: _retry,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 32, vertical: 14),
-                    decoration: BoxDecoration(
-                        color: c.primary,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: c.primaryShadow),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.refresh_rounded,
-                          color: VodInk.textHigh, size: 18),
-                      const SizedBox(width: 8),
-                      Text('retry'.tr,
-                          style: TextStyle(
-                              color: VodInk.textHigh,
-                              fontWeight: FontWeight.w700,
-                              fontFamily: AppFonts.family,
-                              fontSize: 14)),
-                    ]),
+                    shape: BoxShape.circle,
+                    color: VodInk.ink(0.08),
+                    border: Border.all(color: VodInk.ink(0.14), width: AppBorder.hairline),
                   ),
+                  child: const Icon(Icons.videocam_off_rounded, color: VodInk.textHigh, size: AppIconSize.xl),
                 ),
+                const SizedBox(height: AppSpace.lg),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Text('video_load_error'.tr,
+                      style: vodText(AppType.headline(context)),
+                      textAlign: TextAlign.center),
+                ),
+                const SizedBox(height: AppSpace.lg),
+                AppButton.primary(label: 'retry'.tr, icon: Icons.refresh_rounded, onPressed: _retry),
               ]),
             ),
           ),
@@ -2453,10 +2435,13 @@ class _SeekBar extends StatelessWidget {
       double toFrac(Offset p) =>
           w <= 0 ? 0.0 : (p.dx / w).clamp(0.0, 1.0).toDouble();
 
+      // the track thickens and the thumb grows under the finger: the bar says "you have it"
       final trackH = dragging ? 6.0 : 4.0;
       final thumb = dragging ? 18.0 : 12.0;
       final x = (fraction * w).clamp(0.0, w).toDouble();
-      const dur = Duration(milliseconds: 120);
+      final dur = AppMotion.of(context).fast;
+      const bubbleW = AppSpace.xxxl;
+      final radius = BorderRadius.circular(AppRadius.pill);
 
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -2469,7 +2454,7 @@ class _SeekBar extends StatelessWidget {
         onHorizontalDragEnd: (_) => onEnd(),
         onHorizontalDragCancel: onEnd,
         child: SizedBox(
-          height: 34,
+          height: AppSpace.xl + 2,
           child: Stack(
             clipBehavior: Clip.none,
             alignment: Alignment.centerLeft,
@@ -2477,71 +2462,56 @@ class _SeekBar extends StatelessWidget {
               // track
               AnimatedContainer(
                 duration: dur,
+                curve: AppEase.out,
                 height: trackH,
                 width: w,
-                decoration: BoxDecoration(
-                  color: VodInk.ink(0.18),
-                  borderRadius: BorderRadius.circular(4),
-                ),
+                decoration: BoxDecoration(color: VodInk.ink(0.18), borderRadius: radius),
               ),
               // buffered
               AnimatedContainer(
                 duration: dur,
+                curve: AppEase.out,
                 height: trackH,
                 width: w * buffered,
-                decoration: BoxDecoration(
-                  color: VodInk.ink(0.34),
-                  borderRadius: BorderRadius.circular(4),
-                ),
+                decoration: BoxDecoration(color: VodInk.ink(0.32), borderRadius: radius),
               ),
               // played
               AnimatedContainer(
                 duration: dur,
+                curve: AppEase.out,
                 height: trackH,
                 width: x,
-                decoration: BoxDecoration(
-                  color: accent,
-                  borderRadius: BorderRadius.circular(4),
-                ),
+                decoration: BoxDecoration(color: accent, borderRadius: radius),
               ),
               // thumb
               Positioned(
                 left: x - thumb / 2,
                 child: AnimatedContainer(
                   duration: dur,
+                  curve: AppEase.out,
                   width: thumb,
                   height: thumb,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: VodInk.textHigh,
-                    boxShadow: [
-                      BoxShadow(
-                          color: accent.withValues(alpha: 0.55),
-                          blurRadius: dragging ? 12 : 6),
-                    ],
+                    border: Border.all(color: accent, width: dragging ? 3 : 2),
+                    boxShadow: [BoxShadow(color: VodInk.shade(0.35), blurRadius: AppSpace.xxs)],
                   ),
                 ),
               ),
               // scrub-time bubble
               if (dragging)
                 Positioned(
-                  top: -30,
-                  left: (x - 30).clamp(0.0, (w - 60).clamp(0.0, w)).toDouble(),
+                  top: -AppSpace.xl,
+                  left: (x - bubbleW / 2).clamp(0.0, (w - bubbleW).clamp(0.0, w)).toDouble(),
                   child: Container(
-                    width: 60,
-                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    width: bubbleW,
+                    padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: VodInk.shade(0.75),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: accent.withValues(alpha: 0.6)),
-                    ),
+                    decoration: vodGlass(radius: AppRadius.chip, alpha: 0.8),
                     child: Text(previewLabel,
-                        style: TextStyle(
-                            color: VodInk.textHigh,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            fontFamily: AppFonts.family)),
+                        textDirection: TextDirection.ltr,
+                        style: vodText(AppType.label(context)).copyWith(fontWeight: FontWeight.w600, fontFeatures: vodTabular)),
                   ),
                 ),
             ],
@@ -2556,17 +2526,31 @@ class _SeekBar extends StatelessWidget {
 // Bottom sheets
 // ════════════════════════════════════════════════════════════════════════════
 
-/// Shared sheet shell: rounded card, handle, scrollable (so it never overflows
+/// Shared sheet shell: paper, the sheet radius, a drag handle, an editorial title, scrollable (so it never overflows
 /// in landscape) and width-limited (so it doesn't stretch across a tablet).
 class _SheetFrame extends StatelessWidget {
-  const _SheetFrame({required this.child});
+  const _SheetFrame({required this.title, required this.child});
 
+  final String title;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final mq = MediaQuery.of(context);
+    final heading = Semantics(
+        header: true, child: Text(title, style: AppType.pageTitle(context), maxLines: 2, overflow: TextOverflow.ellipsis));
+    if (appSheetIsSide(context)) {
+      // the side panel brings its own paper, edge and close bar: just the title and the body
+      return SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xs, AppSpace.lg, AppSpace.lg),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          heading,
+          const SizedBox(height: AppSpace.md),
+          child,
+        ]),
+      );
+    }
     return Align(
       alignment: Alignment.bottomCenter,
       heightFactor: 1.0,
@@ -2578,16 +2562,20 @@ class _SheetFrame extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             color: c.cardBg,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            borderRadius: AppRadius.sheetTop,
+            boxShadow: AppElevation.of(context, 3),
           ),
-          padding: EdgeInsets.fromLTRB(24, 12, 24, mq.padding.bottom + 24),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                    color: c.divider, borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 18),
+          padding: EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.sm, AppSpace.lg, mq.padding.bottom + AppSpace.lg),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Center(
+              child: Container(
+                  width: AppSpace.xl + AppSpace.xs,
+                  height: AppSpace.xxs,
+                  decoration: BoxDecoration(color: c.divider, borderRadius: BorderRadius.circular(AppRadius.pill))),
+            ),
+            const SizedBox(height: AppSpace.md),
+            heading,
+            const SizedBox(height: AppSpace.md),
             Flexible(child: SingleChildScrollView(child: child)),
           ]),
         ),
@@ -2613,23 +2601,13 @@ class _StreamPickerSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final videoVariants = material.videoVariants;
 
     return _SheetFrame(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Row(children: [
-          Icon(Icons.tune_rounded, color: c.primary, size: 20),
-          const SizedBox(width: 8),
-          Text('stream_quality'.tr, style: c.h3),
-        ]),
-        const SizedBox(height: 20),
-        _SectionHeader(
-          icon: Icons.videocam_rounded,
-          label: 'video'.tr,
-          color: c.primary,
-        ),
-        const SizedBox(height: 8),
+      title: 'stream_quality'.tr,
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _SectionHeader(icon: Icons.videocam_rounded, label: 'video'.tr),
+        const SizedBox(height: AppSpace.xs),
         ...videoVariants.map((v) => _VariantTile(
           variant: v,
           selected: v.url == activeVariant.url,
@@ -2637,13 +2615,9 @@ class _StreamPickerSheet extends StatelessWidget {
         )),
         // One "Audio only" row (the bar picks the lecture's audio track itself, else the lightest picture).
         if (onAudioOnly != null) ...[
-          const SizedBox(height: 16),
-          _SectionHeader(
-            icon: Icons.headphones_rounded,
-            label: 'audio_only'.tr,
-            color: c.accent2,
-          ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.lg),
+          _SectionHeader(icon: Icons.headphones_rounded, label: 'audio_only'.tr),
+          const SizedBox(height: AppSpace.xs),
           VodAudioOnlyTile(onTap: onAudioOnly!),
         ],
       ]),
@@ -2651,34 +2625,22 @@ class _StreamPickerSheet extends StatelessWidget {
   }
 }
 
+/// A group label inside a sheet: a quiet glyph, the label in the label role, a warm hairline to the end.
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(
-      {required this.icon, required this.label, required this.color});
+  const _SectionHeader({required this.icon, required this.label});
 
   final IconData icon;
   final String label;
-  final Color color;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Row(children: [
-      Container(
-        padding: const EdgeInsets.all(5),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, color: color, size: 14),
-      ),
-      const SizedBox(width: 8),
-      Text(label,
-          style: c.caption.copyWith(
-              color: c.textMedium,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.8)),
-      const SizedBox(width: 8),
-      Expanded(child: Divider(color: c.divider, height: 1)),
+      Icon(icon, color: c.textLight, size: AppIconSize.sm),
+      const SizedBox(width: AppSpace.xs),
+      Flexible(child: Text(label, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis)),
+      const SizedBox(width: AppSpace.sm),
+      Expanded(child: Divider(color: c.divider, height: 1, thickness: AppBorder.hairline)),
     ]);
   }
 }
@@ -2694,82 +2656,76 @@ class _VariantTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final accentColor =
-    variant.isAudio ? c.accent2 : c.primary;
+    final motion = AppMotion.of(context);
+    // the chosen stream is the emerald block; the others are wells on the paper
+    final surface = selected ? c.blockEmerald : c.inputBg;
+    final ink = c.blockInk;
+    final muted = c.blockMuted(surface);
 
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: selected
-              ? accentColor.withValues(alpha: 0.10)
-              : c.inputBg.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected
-                ? accentColor.withValues(alpha: 0.45)
-                : c.divider.withValues(alpha: 0.5),
-            width: selected ? 1.5 : 1,
-          ),
-        ),
-        child: Row(children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: selected
-                  ? accentColor.withValues(alpha: 0.15)
-                  : c.divider.withValues(alpha: 0.3),
-            ),
-            child: Icon(
-              variant.isAudio
-                  ? Icons.headphones_rounded
-                  : _videoIcon(variant.tier),
-              size: 18,
-              color: selected ? accentColor : c.textLight,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  variant.fullLabel,
-                  style: c.bodyBold.copyWith(
-                    color: selected ? accentColor : c.textDark,
-                    fontSize: 13,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
+      child: Semantics(
+        selected: selected,
+        button: true,
+        child: AppPressScale(
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: AppRadius.cardAll,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                onTap();
+              },
+              child: AnimatedContainer(
+                duration: motion.fast,
+                curve: AppEase.out,
+                constraints: const BoxConstraints(minHeight: AppTouch.primary),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+                decoration: BoxDecoration(
+                  color: surface,
+                  borderRadius: AppRadius.cardAll,
+                  border: Border.all(
+                    color: selected ? c.primary : c.divider,
+                    width: selected ? AppBorder.strong : AppBorder.hairline,
                   ),
                 ),
-                if (variant.sizeLabel.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(variant.sizeLabel,
-                      textDirection: TextDirection.ltr, // "9.4 MB", not "MB 9.4", in Arabic
-                      style:
-                      c.caption.copyWith(color: c.textLight, fontSize: 11)),
-                ],
-              ],
+                child: Row(children: [
+                  Icon(
+                    variant.isAudio ? Icons.headphones_rounded : _videoIcon(variant.tier),
+                    size: AppIconSize.md,
+                    color: selected ? c.blockAccentInk(c.primary, surface) : muted,
+                  ),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(variant.fullLabel, style: AppType.bodyStrong(context).copyWith(color: ink)),
+                        if (variant.sizeLabel.isNotEmpty) ...[
+                          const SizedBox(height: AppSpace.xxs / 2),
+                          Text(variant.sizeLabel,
+                              textDirection: TextDirection.ltr, // "9.4 MB", not "MB 9.4", in Arabic
+                              style: AppType.meta(context).copyWith(color: muted, fontFeatures: vodTabular)),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (!variant.isOriginal) ...[
+                    const SizedBox(width: AppSpace.xs),
+                    _QualityBadge(variant: variant, selected: selected, surface: surface),
+                  ],
+                  const SizedBox(width: AppSpace.xs),
+                  AnimatedOpacity(
+                    opacity: selected ? 1.0 : 0.0,
+                    duration: motion.fast,
+                    child: Icon(Icons.check_circle_rounded, color: c.blockAccentInk(c.primary, surface), size: AppIconSize.md),
+                  ),
+                ]),
+              ),
             ),
           ),
-          if (!variant.isOriginal)
-            _QualityBadge(
-                variant: variant, selected: selected, accent: accentColor),
-          const SizedBox(width: 8),
-          AnimatedOpacity(
-            opacity: selected ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 180),
-            child:
-            Icon(Icons.check_circle_rounded, color: accentColor, size: 20),
-          ),
-        ]),
+        ),
       ),
     );
   }
@@ -2786,13 +2742,13 @@ class _VariantTile extends StatelessWidget {
   }
 }
 
+/// The tier's short name ("HD", "SD", "HQ") as a quiet chip: ink on paper, never a status colour.
 class _QualityBadge extends StatelessWidget {
-  const _QualityBadge(
-      {required this.variant, required this.selected, required this.accent});
+  const _QualityBadge({required this.variant, required this.selected, required this.surface});
 
   final MaterialVariant variant;
   final bool selected;
-  final Color accent;
+  final Color surface;
 
   @override
   Widget build(BuildContext context) {
@@ -2801,36 +2757,23 @@ class _QualityBadge extends StatelessWidget {
         ? (variant.tier == QualityTier.high ? 'HQ' : 'MQ')
         : variant.tier.label;
 
-    final tierColor = variant.isAudio
-        ? accent
-        : switch (variant.tier) {
-      QualityTier.high => c.warning,
-      QualityTier.medium => c.success,
-      QualityTier.low => c.textLight,
-    };
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 2),
       decoration: BoxDecoration(
-        color: tierColor.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-            color: tierColor.withValues(alpha: selected ? 0.50 : 0.25)),
+        color: c.cardBg,
+        borderRadius: AppRadius.chipAll,
+        border: Border.all(color: selected ? c.primary.withValues(alpha: 0.4) : c.divider, width: AppBorder.hairline),
       ),
       child: Text(
         badgeText,
-        style: TextStyle(
-          color: tierColor,
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-          fontFamily: AppFonts.family,
-          letterSpacing: 0.4,
-        ),
+        textDirection: TextDirection.ltr,
+        style: AppType.overline(context).copyWith(color: c.textMedium),
       ),
     );
   }
 }
 
+/// The stream playing, beside the title on wide windows: a glass chip in the chrome's ink.
 class _ActiveStreamBadge extends StatelessWidget {
   const _ActiveStreamBadge({required this.variant});
 
@@ -2839,29 +2782,20 @@ class _ActiveStreamBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (variant.isOriginal) return const SizedBox.shrink();
-    final c = context.colors;
-    final color = variant.isAudio ? c.accent2 : c.primary;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs + 2, vertical: AppSpace.xxs),
+      decoration: vodGlass(radius: AppRadius.chip, alpha: 0.35),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(
             variant.isAudio
                 ? Icons.headphones_rounded
                 : Icons.play_circle_outline_rounded,
-            size: 11,
-            color: color),
-        const SizedBox(width: 4),
+            size: AppIconSize.xs,
+            color: VodInk.textMid),
+        const SizedBox(width: AppSpace.xxs),
         Text(variant.label,
-            style: TextStyle(
-                color: color,
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                fontFamily: AppFonts.family)),
+            textDirection: TextDirection.ltr,
+            style: vodText(AppType.overline(context), VodInk.textMid)),
       ]),
     );
   }
@@ -2871,41 +2805,45 @@ class _ActiveStreamBadge extends StatelessWidget {
 // Reusable micro-widgets
 // ════════════════════════════════════════════════════════════════════════════
 
-/// Download-in-progress indicator that matches [_GlassIconBtn].
+/// Download-in-progress indicator that matches the glass buttons (a ring in the same 40 px disc, 48 px box).
 class _ProgressIconBtn extends StatelessWidget {
   const _ProgressIconBtn({required this.progress});
 
   final double progress;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: 38,
-    height: 38,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: VodInk.ink(0.10),
-      border: Border.all(color: VodInk.ink(0.18)),
-    ),
-    alignment: Alignment.center,
-    child: Stack(alignment: Alignment.center, children: [
-      SizedBox(
-        width: 24,
-        height: 24,
-        child: CircularProgressIndicator(
-          // 0 → indeterminate until the first bytes arrive
-          value: progress > 0 ? progress : null,
-          strokeWidth: 2.5,
-          color: VodInk.textHigh,
-          backgroundColor: VodInk.glassBorder,
+  Widget build(BuildContext context) => SizedBox.square(
+    dimension: AppTouch.min,
+    child: Center(
+      child: Container(
+        width: AppSpace.xl + AppSpace.xs,
+        height: AppSpace.xl + AppSpace.xs,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: VodInk.ink(0.10),
+          border: Border.all(color: VodInk.ink(0.16), width: AppBorder.hairline),
         ),
+        alignment: Alignment.center,
+        child: Stack(alignment: Alignment.center, children: [
+          SizedBox(
+            width: AppIconSize.lg,
+            height: AppIconSize.lg,
+            child: CircularProgressIndicator(
+              // 0 → indeterminate until the first bytes arrive
+              value: progress > 0 ? progress : null,
+              strokeWidth: 2.5,
+              color: VodInk.textHigh,
+              backgroundColor: VodInk.glassBorder,
+            ),
+          ),
+          const Icon(Icons.arrow_downward_rounded, size: AppIconSize.xs - 3, color: VodInk.textHigh),
+        ]),
       ),
-      const Icon(Icons.arrow_downward_rounded,
-          size: 11, color: VodInk.textHigh),
-    ]),
+    ),
   );
 }
 
-/// Subtle press-down scale for every tappable control (premium feel).
+/// Press-down scale for the chrome's tappable controls (it owns the tap; the kit's [AppPressScale] is passive).
 class _PressScale extends StatefulWidget {
   const _PressScale({required this.child, required this.onTap});
 
@@ -2921,6 +2859,7 @@ class _PressScaleState extends State<_PressScale> {
 
   @override
   Widget build(BuildContext context) {
+    final off = AppMotion.of(context).off;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _down = true),
@@ -2928,44 +2867,48 @@ class _PressScaleState extends State<_PressScale> {
       onTapCancel: () => setState(() => _down = false),
       onTap: widget.onTap,
       child: AnimatedScale(
-        scale: _down ? 0.92 : 1.0,
-        duration: const Duration(milliseconds: 100),
+        scale: _down && !off ? 0.92 : 1.0,
+        duration: Duration(milliseconds: _down ? 90 : 160),
+        curve: AppEase.out,
         child: widget.child,
       ),
     );
   }
 }
 
+/// ±10 s: a glass disc at the primary touch size beside the play button.
 class _CircleCtrlBtn extends StatelessWidget {
-  const _CircleCtrlBtn(
-      {required this.icon, required this.size, required this.onTap, required this.label});
+  const _CircleCtrlBtn({required this.icon, required this.onTap, required this.label});
 
   final String label;
   final IconData icon;
-  final double size;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    label: label,
-    child: _PressScale(
-    onTap: onTap,
-    child: Container(
-      width: 54,
-      height: 54,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: VodInk.ink(0.12),
-        border: Border.all(color: VodInk.ink(0.14)),
+  Widget build(BuildContext context) => Tooltip(
+    message: label,
+    child: Semantics(
+      button: true,
+      label: label,
+      child: _PressScale(
+        onTap: onTap,
+        child: Container(
+          width: AppTouch.primary,
+          height: AppTouch.primary,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: VodInk.ink(0.10),
+            border: Border.all(color: VodInk.ink(0.14), width: AppBorder.hairline),
+          ),
+          child: Icon(icon, color: VodInk.textHigh, size: AppIconSize.xl),
+        ),
       ),
-      child: Icon(icon, color: VodInk.textHigh, size: size),
     ),
-  ));
+  );
 }
 
-/// Premium fullscreen toggle: glass tile that lights up in the accent colour
-/// (with a soft glow) while fullscreen is on; the icon rotates + scales on swap.
+/// Fullscreen toggle: a glass square (radius control) that turns solid emerald while fullscreen is on; the icon
+/// crossfades with a small scale on the swap.
 class _FullscreenButton extends StatelessWidget {
   const _FullscreenButton({
     required this.active,
@@ -2979,57 +2922,45 @@ class _FullscreenButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final deep = HSLColor.fromColor(accent)
-        .withLightness(
-        (HSLColor.fromColor(accent).lightness - 0.12).clamp(0.0, 1.0))
-        .toColor();
-    return _PressScale(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 260),
-        curve: Curves.easeOutCubic,
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: active
-                ? [accent, deep]
-                : [
-              VodInk.ink(0.18),
-              VodInk.ink(0.06),
-            ],
-          ),
-          border: Border.all(
-            color: active
-                ? VodInk.ink(0.35)
-                : VodInk.ink(0.22),
-          ),
-          boxShadow: active
-              ? [
-            BoxShadow(
-              color: accent.withValues(alpha: 0.45),
-              blurRadius: 16,
-              spreadRadius: 1,
+    final motion = AppMotion.of(context);
+    final label = (active ? 'exit_fullscreen' : 'fullscreen').tr;
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        button: true,
+        label: label,
+        child: _PressScale(
+          onTap: onTap,
+          child: SizedBox.square(
+            dimension: AppTouch.min,
+            child: Center(
+              child: AnimatedContainer(
+                duration: motion.base,
+                curve: AppEase.out,
+                width: AppSpace.xl + AppSpace.xs,
+                height: AppSpace.xl + AppSpace.xs,
+                decoration: BoxDecoration(
+                  borderRadius: AppRadius.controlAll,
+                  color: active ? accent : VodInk.ink(0.10),
+                  border: Border.all(color: active ? VodInk.ink(0.28) : VodInk.ink(0.18), width: AppBorder.hairline),
+                ),
+                child: AnimatedSwitcher(
+                  duration: motion.fast,
+                  switchInCurve: AppEase.out,
+                  switchOutCurve: AppEase.out,
+                  transitionBuilder: (child, anim) => FadeTransition(
+                    opacity: anim,
+                    child: ScaleTransition(scale: Tween(begin: 0.8, end: 1.0).animate(anim), child: child),
+                  ),
+                  child: Icon(
+                    active ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
+                    key: ValueKey(active),
+                    color: VodInk.textHigh,
+                    size: AppIconSize.lg,
+                  ),
+                ),
+              ),
             ),
-          ]
-              : const [],
-        ),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 220),
-          transitionBuilder: (child, anim) => RotationTransition(
-            turns: Tween(begin: 0.85, end: 1.0).animate(anim),
-            child: ScaleTransition(scale: anim, child: child),
-          ),
-          child: Icon(
-            active
-                ? Icons.fullscreen_exit_rounded
-                : Icons.fullscreen_rounded,
-            key: ValueKey(active),
-            color: VodInk.textHigh,
-            size: 26,
           ),
         ),
       ),
@@ -3037,37 +2968,8 @@ class _FullscreenButton extends StatelessWidget {
   }
 }
 
-class _GlassIconBtn extends StatelessWidget {
-  const _GlassIconBtn({required this.icon, required this.onTap, this.tooltip});
-
-  final IconData icon;
-  final VoidCallback onTap;
-  final String? tooltip;
-
-  @override
-  Widget build(BuildContext context) => Tooltip(
-    message: tooltip ?? '',
-    child: _PressScale(
-      onTap: onTap,
-      // 38 px glass disc inside a 48 px touch target.
-      child: SizedBox(
-        width: 48,
-        height: 48,
-        child: Center(child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: VodInk.ink(0.10),
-          border: Border.all(color: VodInk.ink(0.18)),
-        ),
-        child: Icon(icon, color: VodInk.textMid, size: 18),
-      )),
-      ),
-    ),
-  );
-}
-
+/// A chip of the controls row (quality, captions, lectures, speed): a 36 px glass pill in a 48 px target; on = the
+/// solid primary with the chrome's white ink.
 class _ControlChip extends StatelessWidget {
   const _ControlChip({
     required this.icon,
@@ -3084,31 +2986,33 @@ class _ControlChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return _PressScale(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-        decoration: BoxDecoration(
-          color: active
-              ? c.primary.withValues(alpha: 0.90)
-              : VodInk.ink(0.12),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: active
-                  ? c.primary.withValues(alpha: 0.60)
-                  : VodInk.ink(0.20)),
+    final ink = active ? VodInk.textHigh : VodInk.textMid;
+    return Semantics(
+      button: true,
+      toggled: active,
+      child: _PressScale(
+        onTap: onTap,
+        child: SizedBox(
+          height: AppTouch.min,
+          child: Center(
+            child: AnimatedContainer(
+              duration: AppMotion.of(context).fast,
+              curve: AppEase.out,
+              height: AppSpace.xl + AppSpace.xxs,
+              padding: const EdgeInsetsDirectional.only(start: AppSpace.sm - 2, end: AppSpace.sm),
+              decoration: BoxDecoration(
+                color: active ? c.primary : VodInk.ink(0.10),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                border: Border.all(color: active ? VodInk.ink(0.24) : VodInk.ink(0.16), width: AppBorder.hairline),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(icon, size: AppIconSize.sm, color: ink),
+                const SizedBox(width: AppSpace.xxs + 2),
+                Text(label, style: vodText(AppType.label(context), ink).copyWith(fontWeight: FontWeight.w600, fontFeatures: vodTabular)),
+              ]),
+            ),
+          ),
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 13, color: active ? VodInk.textHigh : VodInk.textMid),
-          const SizedBox(width: 4),
-          Text(label,
-              style: TextStyle(
-                  color: active ? VodInk.textHigh : VodInk.textMid,
-                  fontSize: 11,
-                  fontFamily: AppFonts.family,
-                  fontWeight: FontWeight.w700)),
-        ]),
       ),
     );
   }
@@ -3122,54 +3026,36 @@ class _InfoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-    decoration: BoxDecoration(
-      color: VodInk.ink(0.10),
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: VodInk.ink(0.16)),
-    ),
+    padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 2),
+    decoration: vodGlass(radius: AppRadius.chip, alpha: 0.3),
     child: Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 11, color: VodInk.textMid),
-      const SizedBox(width: 4),
+      Icon(icon, size: AppIconSize.xs - 2, color: VodInk.textMid),
+      const SizedBox(width: AppSpace.xxs),
       Flexible(
         child: Text(label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-                color: VodInk.textMid,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                fontFamily: AppFonts.family)),
+            style: vodText(AppType.overline(context), VodInk.textMid)),
       ),
     ]),
   );
 }
 
+/// A glass pill in the chrome's ink (the stream under the audio-only title).
 class _GlassPill extends StatelessWidget {
-  const _GlassPill(
-      {required this.label, required this.icon, required this.color});
+  const _GlassPill({required this.label, required this.icon});
 
   final String label;
   final IconData icon;
-  final Color color;
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.16),
-      borderRadius: BorderRadius.circular(22),
-      border: Border.all(color: color.withValues(alpha: 0.35)),
-    ),
+    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs - 2),
+    decoration: vodGlass(radius: AppRadius.pill, alpha: 0.3),
     child: Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, color: color, size: 14),
-      const SizedBox(width: 6),
-      Text(label,
-          style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontFamily: AppFonts.family,
-              fontWeight: FontWeight.w700)),
+      Icon(icon, color: VodInk.textMid, size: AppIconSize.xs),
+      const SizedBox(width: AppSpace.xs - 2),
+      Text(label, style: vodText(AppType.label(context), VodInk.textMid).copyWith(fontWeight: FontWeight.w600)),
     ]),
   );
 }
@@ -3187,41 +3073,52 @@ class _SpeedSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final motion = AppMotion.of(context);
     return _SheetFrame(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text('select_speed'.tr, style: c.h3),
-        const SizedBox(height: 20),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          alignment: WrapAlignment.center,
-          children: speeds.map((s) {
-            final sel = s == current;
-            final label = s == 1.0 ? 'normal_speed'.tr : '$s×';
-            return GestureDetector(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                onSelect(s);
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                width: 80,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: sel ? c.primary : c.inputBg,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: sel ? c.primaryShadow : [],
+      title: 'select_speed'.tr,
+      child: Wrap(
+        spacing: AppSpace.xs,
+        runSpacing: AppSpace.xs,
+        alignment: WrapAlignment.center,
+        children: speeds.map((s) {
+          final sel = s == current;
+          final label = s == 1.0 ? 'normal_speed'.tr : '$s×';
+          return Semantics(
+            button: true,
+            selected: sel,
+            child: AppPressScale(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: AppRadius.controlAll,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    onSelect(s);
+                  },
+                  child: AnimatedContainer(
+                    duration: motion.fast,
+                    curve: AppEase.out,
+                    constraints: const BoxConstraints(minWidth: 80, minHeight: AppTouch.min),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+                    decoration: BoxDecoration(
+                      color: sel ? c.primary : c.inputBg,
+                      borderRadius: AppRadius.controlAll,
+                      border: Border.all(color: sel ? c.primary : c.divider, width: AppBorder.hairline),
+                    ),
+                    child: Center(
+                      widthFactor: 1,
+                      child: Text(label,
+                          textDirection: TextDirection.ltr,
+                          style: AppType.label(context).copyWith(
+                              color: sel ? c.onHero : c.textDark, fontWeight: FontWeight.w600, fontFeatures: vodTabular)),
+                    ),
+                  ),
                 ),
-                alignment: Alignment.center,
-                child: Text(label,
-                    style: c.bodyBold.copyWith(
-                        color: sel ? c.onHero : c.textMedium,
-                        fontSize: 13)),
               ),
-            );
-          }).toList(),
-        ),
-      ]),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 }

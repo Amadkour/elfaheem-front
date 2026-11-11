@@ -12,7 +12,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../config/theme/theme_config_provider.dart';
-import '../../../../../core/display/app_fonts.dart';
 import '../../../../../design/app_tokens.dart';
 import '../../../../admin/admin_common.dart' show t;
 
@@ -31,7 +30,7 @@ class MaterialOption {
   final bool danger;
 }
 
-/// The ⋯ on a teacher's material card.
+/// The ⋯ on a teacher's material card: a quiet well in a 48 px target.
 class MaterialMoreButton extends StatelessWidget {
   const MaterialMoreButton({super.key, required this.onTap});
   final VoidCallback onTap;
@@ -49,16 +48,15 @@ class MaterialMoreButton extends StatelessWidget {
         excludeSemantics: true,
         child: InkResponse(
           onTap: onTap,
-          radius: 22,
-          child: SizedBox(
-            width: 44,
-            height: 44,
+          radius: AppTouch.min / 2,
+          child: SizedBox.square(
+            dimension: AppTouch.min,
             child: Center(
               child: Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(color: c.inputBg, shape: BoxShape.circle, border: Border.all(color: c.divider)),
-                child: Icon(Icons.more_horiz_rounded, size: 20, color: c.textMedium),
+                width: AppSpace.xl + AppSpace.xxs,
+                height: AppSpace.xl + AppSpace.xxs,
+                decoration: BoxDecoration(color: c.inputBg, shape: BoxShape.circle),
+                child: Icon(Icons.more_horiz_rounded, size: AppIconSize.md, color: c.textMedium),
               ),
             ),
           ),
@@ -68,7 +66,7 @@ class MaterialMoreButton extends StatelessWidget {
   }
 }
 
-/// The small number on the corner of a card's type tile.
+/// The small number on the corner of a card's type tile: a paper chip on a hairline, tabular figures.
 class MaterialIndexBadge extends StatelessWidget {
   const MaterialIndexBadge({super.key, required this.index});
   final int index;
@@ -77,18 +75,18 @@ class MaterialIndexBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      constraints: const BoxConstraints(minWidth: 20),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      constraints: const BoxConstraints(minWidth: AppSpace.lg - 2),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs, vertical: 1),
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: c.primary.withValues(alpha: 0.35)),
+        borderRadius: AppRadius.chipAll,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Text(
         index.toString().padLeft(2, '0'),
         textAlign: TextAlign.center,
         textDirection: TextDirection.ltr,
-        style: TextStyle(fontFamily: AppFonts.family, fontSize: 10, height: 1.2, fontWeight: FontWeight.w800, color: c.textDark),
+        style: AppType.overline(context).copyWith(height: 1.2, color: c.textDark, fontFeatures: const [FontFeature.tabularFigures()]),
       ),
     );
   }
@@ -128,56 +126,41 @@ class MaterialOptionsSheet extends StatelessWidget {
     return SafeArea(
       top: false,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.md),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.lg),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── the material ──
-            Container(
-              padding: const EdgeInsets.all(AppSpace.sm),
-              decoration: BoxDecoration(
-                borderRadius: AppRadius.cardAll,
-                gradient: LinearGradient(
-                  begin: AlignmentDirectional.topStart,
-                  end: AlignmentDirectional.bottomEnd,
-                  colors: [color.withValues(alpha: 0.14), color.withValues(alpha: 0.04)],
-                ),
-                border: Border.all(color: color.withValues(alpha: 0.22)),
+            // ── the material: its tile, its name in the editorial face, its facts ──
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: icon),
+              const SizedBox(width: AppSpace.sm),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+                  if (facts.isNotEmpty) ...[
+                    const SizedBox(height: AppSpace.xxs),
+                    Text(_isolated(facts).join(' · '), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                  ],
+                ]),
               ),
-              child: Row(children: [
-                icon,
-                const SizedBox(width: AppSpace.sm),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontFamily: AppFonts.family, fontSize: 15, fontWeight: FontWeight.w700, color: c.textDark)),
-                    if (facts.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(_isolated(facts).join(' · '),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
-                    ],
-                  ]),
-                ),
-                IconButton(
-                  tooltip: t('إغلاق', 'Close'),
-                  style: IconButton.styleFrom(backgroundColor: c.cardBg),
-                  onPressed: () => pop(),
-                  icon: Icon(Icons.close_rounded, color: c.textMedium, size: 20),
-                ),
-              ]),
-            ),
+              const SizedBox(width: AppSpace.xs),
+              IconButton(
+                tooltip: t('إغلاق', 'Close'),
+                constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+                style: IconButton.styleFrom(backgroundColor: c.inputBg),
+                onPressed: () => pop(),
+                icon: Icon(Icons.close_rounded, color: c.textMedium, size: AppIconSize.md),
+              ),
+            ]),
+            const SizedBox(height: AppSpace.md),
             for (final g in groups)
               if (g.isNotEmpty) ...[
-                const SizedBox(height: AppSpace.sm),
                 _Group(children: [for (final o in g) _Row(option: o, onTap: () => pop(o.id))]),
+                const SizedBox(height: AppSpace.sm),
               ],
             if (danger != null) ...[
-              const SizedBox(height: AppSpace.sm),
+              const SizedBox(height: AppSpace.xs),
               _Group(children: [_Row(option: danger!, onTap: () => pop(danger!.id))]),
             ],
           ],
@@ -187,6 +170,7 @@ class MaterialOptionsSheet extends StatelessWidget {
   }
 }
 
+/// One group of options: a paper card on a warm hairline, its rows parted by hairlines.
 class _Group extends StatelessWidget {
   const _Group({required this.children});
   final List<Widget> children;
@@ -195,12 +179,12 @@ class _Group extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Material(
-      color: c.inputBg,
-      shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: BorderSide(color: c.divider)),
+      color: c.cardBg,
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: BorderSide(color: c.divider, width: AppBorder.hairline)),
       clipBehavior: Clip.antiAlias,
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         for (var i = 0; i < children.length; i++) ...[
-          if (i > 0) Divider(height: 1, thickness: 1, indent: 60, color: c.divider),
+          if (i > 0) Divider(height: 1, thickness: AppBorder.hairline, indent: AppSpace.xxxl - AppSpace.xxs, color: c.divider),
           children[i],
         ],
       ]),
@@ -217,34 +201,34 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final o = option;
-    final tint = o.danger ? c.danger : c.primary;
+    final ink = o.danger ? c.blockAccentInk(c.danger, c.cardBg) : c.textDark;
     return InkWell(
       key: ValueKey('material.option.${o.id}'),
       onTap: onTap,
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: AppTouch.primary),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs + 2),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.sm - 2),
           child: Row(children: [
             Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(color: tint.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-              child: Icon(o.icon, size: 20, color: o.danger ? c.danger : c.textDark), // primary on its own tint vanishes in dark mode
+              width: AppSpace.xl + AppSpace.xxs,
+              height: AppSpace.xl + AppSpace.xxs,
+              decoration: BoxDecoration(color: o.danger ? c.dangerTint : c.inputBg, borderRadius: AppRadius.chipAll),
+              child: Icon(o.icon, size: AppIconSize.md, color: ink),
             ),
             const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(o.label,
-                    style: TextStyle(
-                        fontFamily: AppFonts.family, fontSize: 14, fontWeight: FontWeight.w700, color: o.danger ? c.danger : c.textDark)),
-                if (o.hint != null)
-                  Text(o.hint!, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, height: 1.35, color: c.textMedium)),
+                Text(o.label, style: AppType.bodyStrong(context).copyWith(color: ink)),
+                if (o.hint != null) ...[
+                  const SizedBox(height: AppSpace.xxs / 2),
+                  Text(o.hint!, style: AppType.meta(context).copyWith(height: 1.35)),
+                ],
               ]),
             ),
             if (!o.danger) ...[
               const SizedBox(width: AppSpace.xs),
-              Icon(Icons.chevron_right_rounded, size: 20, color: c.textLight),
+              Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.textLight),
             ],
           ]),
         ),

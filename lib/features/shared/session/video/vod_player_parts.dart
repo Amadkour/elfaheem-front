@@ -9,8 +9,8 @@ import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../design/app_kit.dart';
 import '../../../admin/admin_common.dart' show t;
 import '../material/session_material_model.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppPressScale;
 import 'package:flutter_education_app/core/display/display_settings.dart';
 
 String vodFmt(Duration d) {
@@ -91,13 +91,35 @@ class VodInk {
   static Color ink(double a) => textHigh.withValues(alpha: a);
 }
 
-TextStyle _w(double size, {FontWeight w = FontWeight.w600, Color c = VodInk.textHigh}) =>
-    TextStyle(color: c, fontSize: size, fontWeight: w, fontFamily: AppFonts.family);
+/// A kit text role ([AppType]) in the chrome's ink: everything here is drawn over the picture.
+TextStyle vodText(TextStyle role, [Color ink = VodInk.textHigh]) => role.copyWith(color: ink);
+
+/// Times and counts in the chrome: tabular, so a running clock never jitters.
+const List<FontFeature> vodTabular = [FontFeature.tabularFigures()];
+
+/// The glass the chrome's floating pieces sit on (next up, resume, HUD, captions): a deep scrim with a faint ink
+/// hairline, a radius by hierarchy.
+BoxDecoration vodGlass({double radius = AppRadius.card, double alpha = 0.72, bool lifted = false}) => BoxDecoration(
+      color: VodInk.shade(alpha),
+      borderRadius: BorderRadius.circular(radius),
+      border: Border.all(color: VodInk.ink(0.14), width: AppBorder.hairline),
+      boxShadow: lifted ? [BoxShadow(color: VodInk.shade(0.35), blurRadius: AppSpace.lg, offset: const Offset(0, AppSpace.xs))] : null,
+    );
 
 // ── Next up ────────────────────────────────────────────────────────────────
 
+/// The card that offers the next lecture when this one ends: the next title in the editorial face, its length, and
+/// a thin emerald line along the top that drains with the auto-play countdown.
 class VodNextUpCard extends StatelessWidget {
-  const VodNextUpCard({super.key, required this.next, required this.seconds, required this.onPlay, required this.onCancel, this.maxWidth = 360});
+  const VodNextUpCard({
+    super.key,
+    required this.next,
+    required this.seconds,
+    required this.onPlay,
+    required this.onCancel,
+    this.maxWidth = 360,
+    this.total = 5,
+  });
 
   final SessionMaterialModel next;
 
@@ -106,38 +128,94 @@ class VodNextUpCard extends StatelessWidget {
   final VoidCallback onPlay, onCancel;
   final double maxWidth;
 
+  /// The countdown's length in seconds (the line is full at [total]).
+  final int total;
+
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
+    final s = seconds;
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: maxWidth),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: VodInk.shade(0.72),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: VodInk.ink(0.14)),
+      child: DecoratedBox(
+        decoration: vodGlass(radius: AppRadius.block, alpha: 0.8, lifted: true),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.block),
+          child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              if (s != null) _Countdown(fraction: total <= 0 ? 0 : ((s - 1) / total).clamp(0.0, 1.0).toDouble()),
+              Padding(
+                padding: EdgeInsets.fromLTRB(AppSpace.md, s == null ? AppSpace.md : AppSpace.sm, AppSpace.md, AppSpace.md),
+                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Row(children: [
+                    Icon(Icons.skip_next_rounded, color: VodInk.textMid, size: AppIconSize.sm),
+                    const SizedBox(width: AppSpace.xxs),
+                    Flexible(
+                      child: Text(s == null ? t('التالي', 'Up next') : t('التالي خلال $s ث', 'Up next in ${s}s'),
+                          style: vodText(AppType.label(context), VodInk.textMid).copyWith(fontFeatures: vodTabular),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                  ]),
+                  const SizedBox(height: AppSpace.xs),
+                  Text(next.name, style: vodText(AppType.section(context)), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  if (next.durationSeconds != null) ...[
+                    const SizedBox(height: AppSpace.xxs),
+                    Text(vodFmt(Duration(seconds: next.durationSeconds!)),
+                        textDirection: TextDirection.ltr,
+                        style: vodText(AppType.meta(context), VodInk.textSoft).copyWith(fontFeatures: vodTabular)),
+                  ],
+                  const SizedBox(height: AppSpace.md),
+                  Wrap(
+                    spacing: AppSpace.xs,
+                    runSpacing: AppSpace.xs,
+                    alignment: WrapAlignment.end,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      if (s != null)
+                        TextButton(
+                          onPressed: onCancel,
+                          style: TextButton.styleFrom(
+                            foregroundColor: VodInk.textMid,
+                            minimumSize: const Size(AppTouch.min, AppTouch.min),
+                            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+                            shape: RoundedRectangleBorder(borderRadius: AppRadius.controlAll),
+                          ),
+                          child: Text(t('إلغاء', 'Cancel'), style: vodText(AppType.label(context), VodInk.textMid)),
+                        ),
+                      AppButton.primary(label: t('تشغيل الآن', 'Play now'), icon: Icons.skip_next_rounded, onPressed: onPlay),
+                    ],
+                  ),
+                ]),
+              ),
+            ]),
+          ),
         ),
-        child: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(seconds == null ? t('التالي', 'Up next') : t('التالي خلال $seconds ث', 'Up next in ${seconds}s'),
-              style: _w(12, c: VodInk.textMid), maxLines: 1, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 6),
-          Text(next.name, style: _w(15, w: FontWeight.w800), maxLines: 2, overflow: TextOverflow.ellipsis),
-          if (next.durationSeconds != null)
-            Text(vodFmt(Duration(seconds: next.durationSeconds!)), style: _w(12, c: VodInk.textSoft)),
-          const SizedBox(height: 12),
-          Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, children: [
-            if (seconds != null)
-              TextButton(onPressed: onCancel, child: Text(t('إلغاء', 'Cancel'), style: _w(13, c: VodInk.textMid))),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(backgroundColor: c.primary, foregroundColor: VodInk.textHigh),
-              onPressed: onPlay,
-              icon: const Icon(Icons.skip_next_rounded, size: 18),
-              label: Text(t('تشغيل الآن', 'Play now'), style: _w(13, w: FontWeight.w700)),
-            ),
-          ]),
-        ]),
+      ),
+    );
+  }
+}
+
+/// The next-up countdown: a 3 px emerald line that drains linearly, one second per step (still under Reduce motion).
+class _Countdown extends StatelessWidget {
+  const _Countdown({required this.fraction});
+
+  final double fraction;
+
+  @override
+  Widget build(BuildContext context) {
+    final off = AppMotion.of(context).off;
+    return SizedBox(
+      height: AppSpace.xxs - 1,
+      child: ColoredBox(
+        color: VodInk.ink(0.10),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 1, end: fraction),
+          duration: off ? Duration.zero : const Duration(seconds: 1),
+          builder: (context, v, _) => FractionallySizedBox(
+            alignment: AlignmentDirectional.centerStart,
+            widthFactor: v,
+            child: ColoredBox(color: context.colors.primary),
+          ),
         ),
       ),
     );
@@ -146,6 +224,8 @@ class VodNextUpCard extends StatelessWidget {
 
 // ── Lecture list ───────────────────────────────────────────────────────────
 
+/// The lectures of the playlist as a numbered reading list: the one playing is an emerald block with an equaliser
+/// glyph, the finished ones carry a quiet check, the rest are paper rows on warm hairlines.
 class VodLectureList extends StatelessWidget {
   const VodLectureList({super.key, required this.items, required this.currentId, required this.onSelect});
 
@@ -155,57 +235,84 @@ class VodLectureList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     if (items.isEmpty) return AppEmpty(icon: Icons.video_library_outlined, title: t('لا توجد محاضرات', 'No lectures'));
     return ListView.separated(
       shrinkWrap: true,
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
       itemCount: items.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 6),
-      itemBuilder: (_, i) {
-        final m = items[i];
-        final on = m.id == currentId;
-        return Material(
-          color: on ? c.primary.withValues(alpha: 0.12) : c.cardBg,
-          borderRadius: BorderRadius.circular(14),
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpace.xs),
+      itemBuilder: (_, i) => _LectureRow(lecture: items[i], number: i + 1, on: items[i].id == currentId, onSelect: onSelect),
+    );
+  }
+}
+
+class _LectureRow extends StatelessWidget {
+  const _LectureRow({required this.lecture, required this.number, required this.on, required this.onSelect});
+
+  final SessionMaterialModel lecture;
+  final int number;
+  final bool on;
+  final void Function(SessionMaterialModel) onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final m = lecture;
+    final surface = on ? c.blockEmerald : c.cardBg;
+    final muted = c.blockMuted(surface);
+    return Semantics(
+      selected: on,
+      child: AppPressScale(
+        enabled: !on,
+        child: Material(
+          color: surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: AppRadius.cardAll,
+            side: on ? BorderSide.none : BorderSide(color: c.divider, width: AppBorder.hairline),
+          ),
+          clipBehavior: Clip.antiAlias,
           child: InkWell(
-            borderRadius: BorderRadius.circular(14),
             onTap: on ? null : () => onSelect(m),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Row(children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: on ? c.primary : c.divider.withValues(alpha: 0.6),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouch.primary),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+                child: Row(children: [
+                  SizedBox(
+                    width: AppSpace.xl,
+                    child: on
+                        ? Icon(Icons.equalizer_rounded, color: c.blockAccentInk(c.primary, surface), size: AppIconSize.md)
+                        : Text(number.toString().padLeft(2, '0'),
+                            textDirection: TextDirection.ltr,
+                            style: AppType.label(context).copyWith(color: muted, fontFeatures: vodTabular)),
                   ),
-                  child: on
-                      ? const Icon(Icons.equalizer_rounded, color: VodInk.textHigh, size: 18)
-                      : Text('${i + 1}', style: appText(12, w: FontWeight.w700, c: c.textDark)),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(m.name,
-                        style: appText(13.5, w: on ? FontWeight.w800 : FontWeight.w600, c: c.textDark),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis),
-                    if (m.durationSeconds != null)
-                      Text(vodFmt(Duration(seconds: m.durationSeconds!)), style: appText(11.5, c: c.textMedium)),
-                  ]),
-                ),
-                if (m.completed) ...[
-                  const SizedBox(width: 8),
-                  Icon(Icons.check_circle_rounded, color: c.success, size: 18),
-                ],
-              ]),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(m.name,
+                          style: AppType.row(context).copyWith(
+                              color: c.blockInk, fontWeight: on ? FontWeight.w600 : FontWeight.w500),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis),
+                      if (m.durationSeconds != null) ...[
+                        const SizedBox(height: AppSpace.xxs / 2),
+                        Text(vodFmt(Duration(seconds: m.durationSeconds!)),
+                            textDirection: TextDirection.ltr,
+                            style: AppType.meta(context).copyWith(color: muted, fontFeatures: vodTabular)),
+                      ],
+                    ]),
+                  ),
+                  if (m.completed) ...[
+                    const SizedBox(width: AppSpace.xs),
+                    Icon(Icons.check_circle_rounded,
+                        color: c.blockAccentInk(c.success, surface), size: AppIconSize.md, semanticLabel: 'completed'.tr),
+                  ],
+                ]),
+              ),
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
@@ -239,26 +346,34 @@ class VodResumeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsetsDirectional.fromSTEB(14, 4, 4, 4),
-      decoration: BoxDecoration(
-        color: VodInk.shade(0.7),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: VodInk.ink(0.16)),
+    return DecoratedBox(
+      decoration: vodGlass(radius: AppRadius.pill, alpha: 0.72),
+      child: Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, 0, AppSpace.xxs, 0),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.history_rounded, color: VodInk.textHigh, size: AppIconSize.sm),
+          const SizedBox(width: AppSpace.xs),
+          Flexible(
+            child: Text(t('استكمال من ${vodFmt(at)}', 'Resumed at ${vodFmt(at)}'),
+                style: vodText(AppType.label(context)).copyWith(fontFeatures: vodTabular),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+          ),
+          TextButton(
+            onPressed: onStartOver,
+            style: TextButton.styleFrom(
+              foregroundColor: VodInk.textHigh,
+              minimumSize: const Size(AppTouch.min, AppTouch.min),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+              shape: const StadiumBorder(),
+            ),
+            // the theme's primary is too dark on the scrim: the action reads as an underlined ink link
+            child: Text(t('من البداية', 'Start over'),
+                style: vodText(AppType.label(context)).copyWith(
+                    fontWeight: FontWeight.w600, decoration: TextDecoration.underline, decorationColor: VodInk.textSoft)),
+          ),
+        ]),
       ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.history_rounded, color: VodInk.textHigh, size: 16),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Text(t('استكمال من ${vodFmt(at)}', 'Resumed at ${vodFmt(at)}'),
-              style: _w(12), maxLines: 1, overflow: TextOverflow.ellipsis),
-        ),
-        TextButton(
-          onPressed: onStartOver,
-          style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-          child: Text(t('من البداية', 'Start over'), style: _w(12, w: FontWeight.w800, c: context.colors.primary)),
-        ),
-      ]),
     );
   }
 }
@@ -276,21 +391,27 @@ class VodLevelHud extends StatelessWidget {
     final icon = brightness
         ? (value < 0.35 ? Icons.brightness_low_rounded : Icons.brightness_high_rounded)
         : (value == 0 ? Icons.volume_off_rounded : (value < 0.5 ? Icons.volume_down_rounded : Icons.volume_up_rounded));
+    final v = value.clamp(0.0, 1.0).toDouble();
     return Container(
-      width: 150,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(color: VodInk.shade(0.65), borderRadius: BorderRadius.circular(16)),
+      width: 168,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+      decoration: vodGlass(radius: AppRadius.pill, alpha: 0.68),
       child: Row(children: [
-        Icon(icon, color: VodInk.textHigh, size: 20),
-        const SizedBox(width: 10),
+        Icon(icon, color: VodInk.textHigh, size: AppIconSize.md),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: value.clamp(0.0, 1.0),
-              minHeight: 4,
-              color: context.colors.primary,
-              backgroundColor: VodInk.glassBorder,
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            child: SizedBox(
+              height: AppSpace.xxs,
+              child: ColoredBox(
+                color: VodInk.glassBorder,
+                child: FractionallySizedBox(
+                  alignment: AlignmentDirectional.centerStart,
+                  widthFactor: v,
+                  child: const ColoredBox(color: VodInk.textHigh),
+                ),
+              ),
             ),
           ),
         ),
@@ -309,12 +430,17 @@ class VodCaption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (text.trim().isEmpty) return const SizedBox.shrink();
+    final role = AppType.bodyStrong(context);
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 720),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(color: VodInk.shade(0.7), borderRadius: BorderRadius.circular(6)),
-        child: Text(text, textAlign: TextAlign.center, style: _w(15, w: FontWeight.w600, c: VodInk.textHigh), maxLines: 3),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs + 2),
+        decoration: BoxDecoration(color: VodInk.shade(0.72), borderRadius: AppRadius.chipAll),
+        // subtitles are read while watching, from further away: the body role a step up
+        child: Text(text,
+            textAlign: TextAlign.center,
+            style: vodText(role).copyWith(fontSize: (role.fontSize ?? 14) + 2, height: 1.4),
+            maxLines: 3),
       ),
     );
   }
@@ -334,30 +460,90 @@ class VodPlayerSkeleton extends StatelessWidget {
       color: VodInk.letterbox,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpace.md),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               if (onBack == null)
-                const SizedBox(width: 36)
+                const SizedBox(width: AppTouch.min)
               else
-                IconButton(
-                  tooltip: t('رجوع', 'Back'),
-                  onPressed: onBack,
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: VodInk.textHigh, size: 20),
-                ),
+                VodBackButton(onPressed: onBack!),
+              const SizedBox(width: AppSpace.xs),
               Expanded(
                 child: title == null
                     ? const Align(alignment: AlignmentDirectional.centerStart, child: _Bar(width: 160, height: 14))
-                    : Text(title!, style: _w(15, w: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    : Text(title!, style: vodText(AppType.section(context)), maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
             ]),
             const Spacer(),
             const Center(child: _Bar(width: 72, height: 72, radius: 36)),
             const Spacer(),
-            const _Bar(height: 4),
-            const SizedBox(height: 12),
-            const Row(children: [_Bar(width: 70, height: 10), Spacer(), _Bar(width: 90, height: 22, radius: 11)]),
+            const _Bar(height: AppSpace.xxs),
+            const SizedBox(height: AppSpace.sm),
+            const Row(children: [_Bar(width: 70, height: 10), Spacer(), _Bar(width: 90, height: 22, radius: AppRadius.chip)]),
           ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// The player's back button: a glass disc in a 48 px target (the arrow mirrors in Arabic by itself).
+class VodBackButton extends StatelessWidget {
+  const VodBackButton({super.key, required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) =>
+      VodGlassButton(icon: Icons.arrow_back_ios_new_rounded, tooltip: t('رجوع', 'Back'), onTap: onPressed, bright: true);
+}
+
+/// A round glass button of the player chrome: a 40 px disc in a 48 px target, press depth, the tooltip as its label.
+class VodGlassButton extends StatelessWidget {
+  const VodGlassButton({super.key, required this.icon, required this.onTap, this.tooltip, this.bright = false, this.child});
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final String? tooltip;
+
+  /// Full-white icon (navigation); the others sit a step back.
+  final bool bright;
+
+  /// Drawn instead of the icon (a download ring).
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    final tip = tooltip ?? '';
+    return Tooltip(
+      message: tip,
+      child: Semantics(
+        button: true,
+        label: tip.isEmpty ? null : tip,
+        excludeSemantics: tip.isNotEmpty,
+        onTap: onTap,
+        child: AppPressScale(
+          scale: 0.92,
+          child: InkResponse(
+            onTap: onTap,
+            radius: AppTouch.min / 2,
+            child: SizedBox.square(
+              dimension: AppTouch.min,
+              child: Center(
+                child: Container(
+                  width: AppSpace.xl + AppSpace.xs,
+                  height: AppSpace.xl + AppSpace.xs,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: VodInk.ink(0.10),
+                    border: Border.all(color: VodInk.ink(0.16), width: AppBorder.hairline),
+                  ),
+                  child: child ?? Icon(icon, color: bright ? VodInk.textHigh : VodInk.textMid, size: AppIconSize.md - 2),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -538,8 +724,35 @@ class VodListenButton extends StatelessWidget {
   final String? label;
 
   @override
+  Widget build(BuildContext context) =>
+      VodGlassPill(icon: Icons.headphones_rounded, tooltip: tooltip, label: label, labelMax: 96, onTap: onTap);
+}
+
+/// A glass pill of the top bar: an icon and, when there is room, a short label; a 40 px pill in a 48 px target.
+class VodGlassPill extends StatelessWidget {
+  const VodGlassPill({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    this.label,
+    this.labelMax = 120,
+    this.tapKey,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  final String? label;
+  final double labelMax;
+
+  /// The key of the tappable part (tests find the button by it).
+  final Key? tapKey;
+
+  @override
   Widget build(BuildContext context) {
     final l = label;
+    const side = AppSpace.xl + AppSpace.xs; // 40
     return Tooltip(
       message: tooltip,
       child: Semantics(
@@ -547,31 +760,38 @@ class VodListenButton extends StatelessWidget {
         label: tooltip,
         excludeSemantics: true,
         onTap: onTap, // screen readers and the web semantics tree activate the button through this
-        child: InkResponse(
-          onTap: onTap,
-          radius: 26,
-          child: SizedBox(
-            height: 48,
-            child: Center(
-              child: Container(
-                height: 38,
-                constraints: const BoxConstraints(minWidth: 38),
-                padding: EdgeInsets.symmetric(horizontal: l == null ? 0 : 12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(19),
-                  color: VodInk.ink(0.10),
-                  border: Border.all(color: VodInk.ink(0.18)),
+        child: AppPressScale(
+          scale: 0.95,
+          child: InkResponse(
+            key: tapKey,
+            onTap: onTap,
+            radius: AppTouch.min / 2 + 2,
+            child: SizedBox(
+              height: AppTouch.min,
+              child: Center(
+                child: Container(
+                  height: side,
+                  constraints: const BoxConstraints(minWidth: side),
+                  padding: EdgeInsetsDirectional.only(start: l == null ? 0 : AppSpace.sm, end: l == null ? 0 : AppSpace.md),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    color: VodInk.ink(0.10),
+                    border: Border.all(color: VodInk.ink(0.16), width: AppBorder.hairline),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(icon, color: VodInk.textHigh, size: AppIconSize.md - 2),
+                    if (l != null) ...[
+                      const SizedBox(width: AppSpace.xs - 2),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: labelMax),
+                        child: Text(l,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: vodText(AppType.label(context)).copyWith(fontWeight: FontWeight.w600)),
+                      ),
+                    ],
+                  ]),
                 ),
-                child: Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.headphones_rounded, color: VodInk.textHigh, size: 18),
-                  if (l != null) ...[
-                    const SizedBox(width: 6),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 96),
-                      child: Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: _w(12.5)),
-                    ),
-                  ],
-                ]),
               ),
             ),
           ),
@@ -584,7 +804,8 @@ class VodListenButton extends StatelessWidget {
 /// What the quality sheet answers for its "Audio only" row.
 const Object vodAudioOnlyChoice = #vodAudioOnly;
 
-/// The quality sheet's last row: "Audio only — close the video and keep listening (also in the background)".
+/// The quality sheet's last row: "Audio only — close the video and keep listening (also in the background)". A sky
+/// block (information, a different way to follow the lecture), its headphones mark on a paper disc.
 class VodAudioOnlyTile extends StatelessWidget {
   const VodAudioOnlyTile({super.key, required this.onTap});
 
@@ -593,43 +814,47 @@ class VodAudioOnlyTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final block = c.blockSky;
     return Semantics(
       button: true,
       label: '${'vod_audio_only_title'.tr}. ${'vod_audio_only_sub'.tr}',
       excludeSemantics: true,
       onTap: onTap,
-      child: Material(
-        color: c.accent2.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          key: const ValueKey('vod_audio_only'),
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: c.accent2.withValues(alpha: 0.35)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
+        child: AppPressScale(
+          child: Material(
+            color: block,
+            borderRadius: AppRadius.cardAll,
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              key: const ValueKey('vod_audio_only'),
+              onTap: onTap,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: AppTouch.primary),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+                  child: Row(children: [
+                    Container(
+                      width: AppSpace.xl + AppSpace.xxs,
+                      height: AppSpace.xl + AppSpace.xxs,
+                      decoration: BoxDecoration(shape: BoxShape.circle, color: c.cardBg),
+                      child: Icon(Icons.headphones_rounded, size: AppIconSize.md - 2, color: c.blockInk),
+                    ),
+                    const SizedBox(width: AppSpace.sm),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                        Text('vod_audio_only_title'.tr, style: AppType.bodyStrong(context).copyWith(color: c.blockInk)),
+                        const SizedBox(height: AppSpace.xxs / 2),
+                        Text('vod_audio_only_sub'.tr, style: AppType.meta(context).copyWith(color: c.blockMuted(block))),
+                      ]),
+                    ),
+                    const SizedBox(width: AppSpace.xs),
+                    Icon(Icons.arrow_forward_rounded, size: AppIconSize.md - 2, color: c.blockMuted(block)),
+                  ]),
+                ),
+              ),
             ),
-            child: Row(children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: c.accent2.withValues(alpha: 0.15)),
-                child: Icon(Icons.headphones_rounded, size: 18, color: c.accent2),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                  Text('vod_audio_only_title'.tr, style: appText(13, w: FontWeight.w600, c: c.textDark)),
-                  const SizedBox(height: 2),
-                  Text('vod_audio_only_sub'.tr, style: appText(11, w: FontWeight.w400, c: c.textLight)),
-                ]),
-              ),
-              const SizedBox(width: 8),
-              Icon(Icons.arrow_forward_rounded, size: 18, color: c.accent2),
-            ]),
           ),
         ),
       ),
@@ -662,44 +887,12 @@ class VodActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final a = action;
-    return Tooltip(
-      message: a.label,
-      child: Semantics(
-        button: true,
-        label: a.label,
-        excludeSemantics: true,
-        onTap: a.onTap,
-        child: InkResponse(
-          key: a.id == null ? null : ValueKey('vod.action.${a.id}'),
-          onTap: a.onTap,
-          radius: 26,
-          child: SizedBox(
-            height: 48,
-            child: Center(
-              child: Container(
-                height: 38,
-                constraints: const BoxConstraints(minWidth: 38),
-                padding: EdgeInsets.symmetric(horizontal: showLabel ? 12 : 0),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(19),
-                  color: VodInk.ink(0.10),
-                  border: Border.all(color: VodInk.ink(0.18)),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(a.icon, color: VodInk.textHigh, size: 18),
-                  if (showLabel) ...[
-                    const SizedBox(width: 6),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 120),
-                      child: Text(a.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: _w(12.5)),
-                    ),
-                  ],
-                ]),
-              ),
-            ),
-          ),
-        ),
-      ),
+    return VodGlassPill(
+      tapKey: a.id == null ? null : ValueKey('vod.action.${a.id}'),
+      icon: a.icon,
+      tooltip: a.label,
+      label: showLabel ? a.label : null,
+      onTap: a.onTap,
     );
   }
 }
