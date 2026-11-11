@@ -59,7 +59,7 @@ class GovCouncilCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 1),
                 decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(AppRadius.chip)),
-                child: Text(openVotes > 99 ? '99+' : '$openVotes', style: TextStyle(color: c.onHero, fontSize: 10.5, fontWeight: FontWeight.w600)),
+                child: Text(openVotes > 99 ? '99+' : '$openVotes', style: AppType.meta(context).copyWith(color: c.onHero, fontWeight: FontWeight.w600)),
               ),
             ),
         ]),

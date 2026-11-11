@@ -582,9 +582,9 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         Widget stepper(String label, int v, int min, int max, ValueChanged<int> on) => Row(children: [
-              Expanded(child: Text(label, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, color: c.textDark))),
+              Expanded(child: Text(label, style: AppType.bodyStrong(ctx).copyWith(color: c.textDark))),
               IconButton(tooltip: t('تقليل', 'Decrease'), onPressed: v > min ? () => set(() => on(v - 1)) : null, icon: const Icon(Icons.remove_circle_outline_rounded)),
-              Text('$v', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+              Text('$v', style: AppType.figure(ctx)),
               IconButton(tooltip: t('زيادة', 'Increase'), onPressed: v < max ? () => set(() => on(v + 1)) : null, icon: const Icon(Icons.add_circle_outline_rounded)),
             ]);
         return SingleChildScrollView(

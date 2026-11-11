@@ -388,7 +388,7 @@ Future<void> showGeneratedPassword(BuildContext context, String login, String pa
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             SheetHeader(t('بيانات الدخول', 'Login details')),
             SelectableText('$login\n$password',
-                textDirection: TextDirection.ltr, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                textDirection: TextDirection.ltr, textAlign: TextAlign.center, style: AppType.section(context)),
             const SizedBox(height: AppSpace.xs),
             Text(t('تظهر مرة واحدة فقط — انسخها الآن.', 'Shown once — copy it now.')),
           ]),
