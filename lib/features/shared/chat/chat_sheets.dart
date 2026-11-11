@@ -286,7 +286,7 @@ class _LevelOption extends StatelessWidget {
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(AppSpace.sm),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppRadius.chip + 2), border: Border.all(color: selected ? c.primary : Colors.transparent, width: 1.2)),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppRadius.control), border: Border.all(color: selected ? c.primary : Colors.transparent, width: AppBorder.strong)),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Icon(selected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded, size: AppIconSize.md, color: selected ? c.primary : c.textLight),
             const SizedBox(width: AppSpace.sm),
@@ -434,7 +434,7 @@ class _ChatInfoSheetState extends State<ChatInfoSheet> {
     return AppSheetContent(title: conv.isGroup ? 'chat_group_info'.tr : 'chat_person_info'.tr, children: [
       Center(child: ChatAvatar(name: conv.title, url: conv.isGroup ? conv.course?.imageUrl : conv.peer?.imageUrl, size: 84, online: conv.online, group: conv.isGroup && conv.course?.imageUrl == null)),
       const SizedBox(height: AppSpace.sm),
-      Text(conv.title, textAlign: TextAlign.center, style: appText(18, w: FontWeight.w700, c: c.textDark)),
+      Text(conv.title, textAlign: TextAlign.center, style: AppType.headline(context)),
       if (username != null) Text('@$username', textAlign: TextAlign.center, style: appText(13, w: FontWeight.w500, c: chatInk(c))),
       if (facts.isNotEmpty) ...[
         const SizedBox(height: AppSpace.xxs),
@@ -446,7 +446,7 @@ class _ChatInfoSheetState extends State<ChatInfoSheet> {
       ],
       if (_members != null) ...[
         const SizedBox(height: AppSpace.sm),
-        Text('chat_members'.tr, style: appText(13, w: FontWeight.w700, c: c.textDark)),
+        Text('chat_members'.tr, style: AppType.section(context)),
         const SizedBox(height: AppSpace.xs),
         FutureBuilder<List<ChatMemberRow>>(
           future: _members,
@@ -612,7 +612,7 @@ class _ChatBlocksPageState extends State<ChatBlocksPage> {
                           const SizedBox(height: 3),
                           Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
                             AppBadgePill(chatLevelLabel(b.level), color: b.level == 'all_courses' ? c.danger : c.warning),
-                            if (b.course != null) AppBadgePill(b.course!.label, color: c.accent2),
+                            if (b.course != null) AppBadgePill(b.course!.label, color: c.textMedium),
                           ]),
                           if ((b.reason ?? '').isNotEmpty) ...[
                             const SizedBox(height: AppSpace.xxs),
@@ -728,7 +728,7 @@ class _ChatReportsPageState extends State<ChatReportsPage> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: AppSpace.xs),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('${m['sender_name'] ?? ''}', style: appText(11.5, w: FontWeight.w700, c: '${m['id']}' == '${r.messageId}' ? c.danger : c.textMedium)),
+                      Text('${m['sender_name'] ?? ''}', style: appText(11.5, w: FontWeight.w600, c: '${m['id']}' == '${r.messageId}' ? c.danger : c.textMedium)),
                       Text('${m['body'] ?? 'chat_file'.tr}', style: appText(13, w: FontWeight.w400, c: c.textDark, h: 1.35)),
                     ]),
                   ),

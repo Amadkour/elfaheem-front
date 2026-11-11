@@ -32,6 +32,7 @@ import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/inbox_badge.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/features/student/courses/details/course_detail_screen.dart';
 import 'package:flutter_education_app/features/student/models.dart' show CourseModel;
@@ -381,25 +382,25 @@ class InboxCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(c.radiusLarge - 4),
+          borderRadius: AppRadius.cardAll,
           onTap: onTap,
           child: Ink(
+            // paper on a warm hairline, no resting shadow (D-612); an overdue row says so with a danger edge
             decoration: BoxDecoration(
               color: overdue ? Color.alphaBlend(c.danger.withValues(alpha: 0.05), c.cardBg) : c.cardBg,
-              borderRadius: BorderRadius.circular(c.radiusLarge - 4),
-              border: Border.all(color: overdue ? c.danger.withValues(alpha: 0.45) : c.divider),
-              boxShadow: c.cardShadow,
+              borderRadius: AppRadius.cardAll,
+              border: Border.all(color: overdue ? c.danger.withValues(alpha: 0.45) : c.divider, width: AppBorder.hairline),
             ),
             child: Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(12, 12, 10, 12),
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, AppSpace.sm, AppSpace.md),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(13)),
-                  child: Icon(_kindIcon(x), color: appInk(context, tone), size: 22),
+                  width: AppTouch.min - AppSpace.xxs,
+                  height: AppTouch.min - AppSpace.xxs,
+                  decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.control)),
+                  child: Icon(_kindIcon(x), color: appInk(context, tone), size: AppIconSize.md + 2),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
@@ -407,25 +408,25 @@ class InboxCard extends StatelessWidget {
                         child: Text(_kindLabel(x),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: appText(11.5, w: FontWeight.w700, c: c.textLight)),
+                            style: AppType.meta(context)),
                       ),
                       if (u == 'new' && x.segment != InboxSegment.done)
-                        Container(width: 8, height: 8, decoration: BoxDecoration(color: c.primary, shape: BoxShape.circle)),
+                        Container(width: AppSpace.xs, height: AppSpace.xs, decoration: BoxDecoration(color: c.primary, shape: BoxShape.circle)),
                     ]),
-                    const SizedBox(height: 2),
-                    Text(_title(x), maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w800, c: c.textDark)),
+                    const SizedBox(height: AppSpace.xxs / 2),
+                    Text(_title(x), maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w600, c: c.textDark, h: 1.3)),
                     if (where.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(top: 2),
+                        padding: const EdgeInsets.only(top: AppSpace.xxs / 2),
                         child: Text(where, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
                       ),
                     if (x.subtitle.isNotEmpty && x.kind != 'approval')
                       Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(x.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium, h: 1.35)),
+                        padding: const EdgeInsets.only(top: AppSpace.xxs),
+                        child: Text(x.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textMedium, h: 1.4)),
                       ),
-                    const SizedBox(height: 8),
-                    Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                    const SizedBox(height: AppSpace.xs),
+                    Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs + 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
                       if (overdue) AppTag('inbox_overdue'.tr, c.danger, icon: Icons.error_outline_rounded),
                       if (u == 'due_soon' && x.kind != 'ad' && x.kind != 'exam') AppTag('inbox_due_soon'.tr, c.warning, icon: Icons.schedule_rounded),
                       if (x.required && x.segment == InboxSegment.todo) AppTag('inbox_mandatory'.tr, c.danger, icon: Icons.priority_high_rounded),
@@ -444,13 +445,13 @@ class InboxCard extends StatelessWidget {
                     ]),
                   ]),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: AppSpace.xs),
                 if (count > 0)
                   Container(
-                    constraints: const BoxConstraints(minWidth: 26),
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                    decoration: BoxDecoration(color: tone, borderRadius: BorderRadius.circular(20)),
-                    child: Text('$count', textAlign: TextAlign.center, style: appText(12, w: FontWeight.w800, c: context.colors.onHero)),
+                    constraints: const BoxConstraints(minWidth: AppSpace.lg + 2),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs - 1),
+                    decoration: BoxDecoration(color: tone, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                    child: Text('$count', textAlign: TextAlign.center, style: appText(12, w: FontWeight.w600, c: context.colors.onHero)),
                   )
                 else
                   Icon(Icons.chevron_right_rounded, color: c.textLight),
@@ -472,14 +473,14 @@ class _Meta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 13, color: color),
-        const SizedBox(width: 3),
+        Icon(icon, size: AppIconSize.xs, color: color),
+        const SizedBox(width: AppSpace.xxs),
         Flexible(
           child: Text(text,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textDirection: ltr ? TextDirection.ltr : null,
-              style: appText(11.5, w: FontWeight.w600, c: color)),
+              style: appText(11.5, w: FontWeight.w500, c: color)),
         ),
       ]);
 }
@@ -500,40 +501,41 @@ class InboxSegments extends StatelessWidget {
     final c = context.colors;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
       child: Row(children: [
         for (final s in segments)
           Padding(
-            padding: const EdgeInsetsDirectional.only(end: 8),
+            padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
             child: Semantics(
               selected: s == value,
               button: true,
               child: InkWell(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
                 onTap: () => onChanged(s),
+                // the chosen pill solid emerald, the rest paper on a hairline: tone, not a glow (D-614)
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
+                  duration: AppMotion.of(context).base,
                   curve: Curves.easeOutCubic,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                  constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xxs),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
                   decoration: BoxDecoration(
                     color: s == value ? c.primary : c.cardBg,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: s == value ? c.primary : c.divider),
-                    boxShadow: s == value ? [BoxShadow(color: c.primary.withValues(alpha: 0.25), blurRadius: 10, offset: const Offset(0, 4))] : null,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    border: Border.all(color: s == value ? c.primary : c.divider, width: AppBorder.hairline),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(_segmentIcon(s), size: 17, color: s == value ? context.colors.onHero : c.textMedium),
-                    const SizedBox(width: 6),
-                    Text(inboxSegmentLabel(s), style: appText(13, w: FontWeight.w800, c: s == value ? context.colors.onHero : c.textMedium)),
+                    Icon(_segmentIcon(s), size: AppIconSize.sm, color: s == value ? context.colors.onHero : c.textMedium),
+                    const SizedBox(width: AppSpace.xs - 2),
+                    Text(inboxSegmentLabel(s), style: appText(13, w: FontWeight.w600, c: s == value ? context.colors.onHero : c.textMedium)),
                     if ((counts[s] ?? 0) > 0) ...[
-                      const SizedBox(width: 6),
+                      const SizedBox(width: AppSpace.xs - 2),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs + 2, vertical: 1),
                         decoration: BoxDecoration(
-                          color: s == value ? context.colors.onHero.withValues(alpha: 0.25) : c.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
+                          color: s == value ? context.colors.onHero.withValues(alpha: 0.22) : c.blockEmerald,
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
                         ),
-                        child: Text('${counts[s]}', style: appText(11.5, w: FontWeight.w800, c: s == value ? context.colors.onHero : c.primary)),
+                        child: Text('${counts[s]}', style: appText(11.5, w: FontWeight.w600, c: s == value ? context.colors.onHero : c.blockAccentInk(c.primary, c.blockEmerald))),
                       ),
                     ],
                   ]),
@@ -604,7 +606,7 @@ class _UnifiedInboxState extends State<UnifiedInbox> {
         final all = _c.of(_seg);
         final list = widget.limit == null ? all : all.take(widget.limit!).toList();
         final header = Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
           child: InboxSegments(
             value: _seg,
             segments: segs,
@@ -614,7 +616,7 @@ class _UnifiedInboxState extends State<UnifiedInbox> {
         );
         Widget body;
         if (_c.loading && _c.items.isEmpty) {
-          body = SizedBox(height: 260, child: AppListSkeleton(items: 3, padding: const EdgeInsets.symmetric(horizontal: 16)));
+          body = SizedBox(height: 260, child: const AppListSkeleton(items: 3, padding: EdgeInsets.symmetric(horizontal: AppSpace.md)));
         } else if (_c.failed) {
           body = AppEmpty(
             icon: Icons.wifi_off_rounded,
@@ -628,13 +630,13 @@ class _UnifiedInboxState extends State<UnifiedInbox> {
           body = Column(children: [
             for (final x in list)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
                 child: _row(x),
               ),
           ]);
         }
         final content = AnimatedSwitcher(
-          duration: const Duration(milliseconds: 220),
+          duration: AppMotion.of(context).base,
           child: KeyedSubtree(key: ValueKey('${_seg.name}-${list.length}-${_c.loading}'), child: body),
         );
         if (widget.shrinkWrap) {
@@ -643,7 +645,7 @@ class _UnifiedInboxState extends State<UnifiedInbox> {
         return AppRefresh(
           onRefresh: _c.load,
           child: ListView(
-            padding: const EdgeInsets.only(top: 12, bottom: 40),
+            padding: const EdgeInsets.only(top: AppSpace.sm, bottom: AppSpace.xxl),
             children: [header, content],
           ),
         );
@@ -729,19 +731,23 @@ class InboxSegmentList extends StatelessWidget {
           body = empty ?? _segmentEmpty(segments.first);
         } else {
           body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            for (final (s, rows) in filled) ...[
+            for (final (gi, (s, rows)) in filled.indexed) ...[
               if (filled.length > 1)
                 Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md + AppSpace.xxs, AppSpace.xs, AppSpace.md, AppSpace.xs),
+                  // editorial rhythm: more air above a heading than under it
+                  padding: EdgeInsetsDirectional.fromSTEB(AppSpace.md + AppSpace.xxs, gi == 0 ? AppSpace.xs : AppSpace.lg, AppSpace.md, AppSpace.sm),
                   child: Semantics(
                     header: true,
-                    child: Text(inboxSegmentLabel(s), style: AppType.section(context).copyWith(fontSize: 14)),
+                    child: Text(inboxSegmentLabel(s), style: AppType.section(context)),
                   ),
                 ),
-              for (final x in rows)
+              for (final (i, x) in rows.indexed)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm - 2),
-                  child: _inboxRow(context, c, x, () => _open(context, x)),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
+                  // ONE entrance: the first rows of the first group rise in once per route
+                  child: gi == 0
+                      ? AppReveal(index: i, group: 'inbox-${s.name}', cap: 5, child: _inboxRow(context, c, x, () => _open(context, x)))
+                      : _inboxRow(context, c, x, () => _open(context, x)),
                 ),
             ],
           ]);
@@ -762,12 +768,12 @@ Widget _swipeBg(BuildContext context) {
   final c = context.colors;
   return Container(
     alignment: AlignmentDirectional.centerEnd,
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    decoration: BoxDecoration(color: c.textLight.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(c.radiusLarge - 4)),
+    padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
+    decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.cardAll),
     child: Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(Icons.visibility_off_rounded, color: c.textMedium, size: 20),
-      const SizedBox(width: 6),
-      Text('inbox_hide'.tr, style: appText(13, w: FontWeight.w700, c: c.textMedium)),
+      Icon(Icons.visibility_off_rounded, color: c.textMedium, size: AppIconSize.md),
+      const SizedBox(width: AppSpace.xs),
+      Text('inbox_hide'.tr, style: appText(13, w: FontWeight.w600, c: c.textMedium)),
     ]),
   );
 }
@@ -888,10 +894,9 @@ class InboxEntry extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             child: Ink(
               decoration: BoxDecoration(
-                // a soft brand wash while something waits; the hairline of every home card
-                gradient: busy ? c.surfaceGlow : null,
+                // paper on the hairline of every home card; what waits shows in the emerald well, never a wash
                 borderRadius: radius,
-                border: Border.all(color: c.divider),
+                border: Border.all(color: c.divider, width: AppBorder.hairline),
               ),
               child: InkWell(
                 onTap: onTap,
@@ -901,14 +906,13 @@ class InboxEntry extends StatelessWidget {
                     padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.xs, AppSpace.sm),
                     child: Row(children: [
                       Container(
-                        width: 40,
-                        height: 40,
+                        width: AppIconSize.hero,
+                        height: AppIconSize.hero,
                         decoration: BoxDecoration(
-                          gradient: busy ? c.primaryGradient : null,
-                          color: busy ? null : c.primary.withValues(alpha: 0.08),
-                          borderRadius: AppRadius.chipAll,
+                          color: busy ? c.primary : c.blockEmerald,
+                          borderRadius: BorderRadius.circular(AppRadius.control),
                         ),
-                        child: Icon(Icons.inbox_rounded, size: 20, color: busy ? c.onHero : appInk(context, c.primary)),
+                        child: Icon(Icons.inbox_rounded, size: AppIconSize.md, color: busy ? c.onHero : c.blockAccentInk(c.primary, c.blockEmerald)),
                       ),
                       const SizedBox(width: AppSpace.sm),
                       Expanded(
@@ -928,9 +932,9 @@ class InboxEntry extends StatelessWidget {
                       if (busy) ...[
                         const SizedBox(width: AppSpace.xs),
                         Container(
-                          constraints: const BoxConstraints(minWidth: 28),
-                          padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 3),
-                          decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(999)),
+                          constraints: const BoxConstraints(minWidth: AppSpace.lg + AppSpace.xxs),
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs - 1),
+                          decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.pill)),
                           child: Text(actionable > 99 ? '99+' : '$actionable',
                               textAlign: TextAlign.center,
                               style: appText(13, w: FontWeight.w600, c: ink).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
@@ -1086,12 +1090,12 @@ Future<void> _showRequest(BuildContext context, InboxItem x) => showAppSheet<voi
       final st = _statusChip(ctx, x);
       final sent = orgParseUtc(x.data['submitted_at']);
       return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+        padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.xl),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(x.title, style: appText(18, w: FontWeight.w800, c: c.textDark)),
+          Text(x.title, style: AppType.headline(ctx)),
           if (_orgLine(x).isNotEmpty) Text(_orgLine(x), style: appText(12.5, c: c.textMedium)),
-          const SizedBox(height: 14),
-          Wrap(spacing: 8, runSpacing: 8, children: [
+          const SizedBox(height: AppSpace.md),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             if (st != null) AppTag(st.$1, st.$2),
             if ('${x.data['ref'] ?? ''}'.isNotEmpty) AppTag('${'inbox_ref'.tr} ${x.data['ref']}', c.primary, icon: Icons.tag_rounded),
           ]),
@@ -1113,20 +1117,20 @@ Future<void> _showAnnouncement(BuildContext context, InboxItem x) => showAppShee
       final img = '${x.data['image_url'] ?? ''}';
       final link = '${x.data['link_url'] ?? ''}';
       return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+        padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.xl),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           if (img.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.only(bottom: AppSpace.md),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(AppRadius.block),
                 child: AspectRatio(
                     aspectRatio: 16 / 8,
                     child: Image.network(img, fit: BoxFit.cover, errorBuilder: (_, _, _) => const SizedBox.shrink())),
               ),
             ),
-          if (_orgLine(x).isNotEmpty) Text(_orgLine(x), style: appText(12.5, w: FontWeight.w700, c: c.primary)),
-          Text(x.title, style: appText(18, w: FontWeight.w800, c: c.textDark)),
+          if (_orgLine(x).isNotEmpty) Text(_orgLine(x), style: appText(12.5, w: FontWeight.w600, c: appInk(ctx, c.primary))),
+          Text(x.title, style: AppType.headline(ctx)),
           if (x.createdAt != null) Text(AppTime.dateTime(x.createdAt!.toUtc()), style: appText(12, c: c.textLight)),
           if (x.subtitle.isNotEmpty) ...[
             const SizedBox(height: 12),

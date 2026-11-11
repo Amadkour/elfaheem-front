@@ -45,22 +45,27 @@ Color chatReadableOn(Color bg, Color wanted, {double min = 4.5}) {
   return chatContrast(Colors.white, bg) >= chatContrast(const Color(0xFF111418), bg) ? Colors.white : const Color(0xFF111418);
 }
 
-/// The background behind the messages: the page's colour with a breath of the brand, so white bubbles stand off it.
-Color chatThreadBg(ThemeConfigProvider c) => Color.alphaBlend(c.primary.withValues(alpha: c.isDark ? 0.05 : 0.045), c.background);
+/// The background behind the messages: the warm canvas itself (D-610); paper bubbles stand off it by tone and a
+/// warm hairline, never by a shadow.
+Color chatThreadBg(ThemeConfigProvider c) => c.background;
 
 class ChatBubbleInk {
-  const ChatBubbleInk({required this.bg, required this.ink, required this.soft, required this.link, required this.read, required this.tint});
+  const ChatBubbleInk({required this.bg, required this.ink, required this.soft, required this.link, required this.read, required this.tint, this.edge});
   final Color bg, ink, soft, link, read, tint;
+
+  /// The warm hairline around a paper bubble (null: a tinted bubble needs none).
+  final Color? edge;
 }
 
-/// Own messages are a calm tint of the brand and the other side the card colour: both carry long reading text, so
-/// neither is a solid block of colour. The ink is checked against the result because the palette is server-driven.
+/// Own messages are the emerald block tint and the other side paper on a warm hairline (D-610): both carry long
+/// reading text in charcoal ink, so neither is a solid block of colour. The ink is checked against the result because
+/// the palette is server-driven.
 ChatBubbleInk chatBubbleInk(ThemeConfigProvider c, {required bool mine, bool failed = false}) {
   final surface = c.cardBg;
   final bg = failed
       ? Color.alphaBlend(c.danger.withValues(alpha: c.isDark ? 0.28 : 0.11), surface)
       : mine
-          ? Color.alphaBlend(c.primary.withValues(alpha: c.isDark ? 0.42 : 0.3), surface)
+          ? c.blockEmerald
           : surface;
   final ink = chatReadableOn(bg, c.textDark, min: 7);
   return ChatBubbleInk(
@@ -70,14 +75,18 @@ ChatBubbleInk chatBubbleInk(ThemeConfigProvider c, {required bool mine, bool fai
     link: chatBrandOn(bg, chatInk(c)),
     read: chatBrandOn(bg, chatInk(c), min: 3.2),
     tint: ink.withValues(alpha: c.isDark ? 0.10 : 0.06),
+    edge: failed || mine ? null : c.divider,
   );
 }
 
 /// A rounded rectangle; [tailRight] (null = none) adds the small tail at that bottom corner.
 class ChatBubbleBorder extends ShapeBorder {
-  const ChatBubbleBorder({required this.radius, this.tailRight});
+  const ChatBubbleBorder({required this.radius, this.tailRight, this.side = BorderSide.none});
   final BorderRadius radius;
   final bool? tailRight;
+
+  /// A hairline drawn along the outline, tail included (paper bubbles on the canvas).
+  final BorderSide side;
 
   static const tail = 6.0;
 
@@ -114,16 +123,21 @@ class ChatBubbleBorder extends ShapeBorder {
   }
 
   @override
-  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {}
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
+    if (side.style == BorderStyle.none || side.width == 0) return;
+    // the body and the tail as ONE outline, so the hairline runs round the tail instead of across it
+    final outline = Path.combine(PathOperation.union, Path()..addRRect(radius.toRRect(rect)), getOuterPath(rect));
+    canvas.drawPath(outline, side.toPaint());
+  }
 
   @override
   ShapeBorder scale(double t) => this;
 
   @override
-  bool operator ==(Object other) => other is ChatBubbleBorder && other.radius == radius && other.tailRight == tailRight;
+  bool operator ==(Object other) => other is ChatBubbleBorder && other.radius == radius && other.tailRight == tailRight && other.side == side;
 
   @override
-  int get hashCode => Object.hash(radius, tailRight);
+  int get hashCode => Object.hash(radius, tailRight, side);
 }
 
 final _urlRe = RegExp(r'''(?:https?://|www\.)[^\s<>"']+''', caseSensitive: false);
@@ -240,7 +254,7 @@ class ChatQuote extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(AppSpace.xs, 5, AppSpace.sm, 6),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                  if (who.isNotEmpty) Text(who, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w700, c: bar)),
+                  if (who.isNotEmpty) Text(who, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: bar)),
                   Text(preview, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: contentDirection(preview), style: appText(12.5, w: FontWeight.w400, c: reply.deleted ? soft : ink.withValues(alpha: 0.78))),
                 ]),
               ),
@@ -392,13 +406,13 @@ class _ChatBubbleState extends State<ChatBubble> {
     Widget? sender;
     if (widget.showSender && !mine) {
       sender = Row(mainAxisSize: MainAxisSize.min, children: [
-        Flexible(child: Text(m.senderName ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w700, c: chatSenderTone(c, m.senderId, colors.bg)))),
+        Flexible(child: Text(m.senderName ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w600, c: chatSenderTone(c, m.senderId, colors.bg)))),
         if (m.senderIsTeacher) ...[
           const SizedBox(width: AppSpace.xxs),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-            decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(AppRadius.chip)),
-            child: Text('chat_teacher'.tr, style: appText(10, w: FontWeight.w700, c: chatInk(c))),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs + 2, vertical: 1),
+            decoration: BoxDecoration(color: c.blockSky, borderRadius: BorderRadius.circular(AppRadius.pill)),
+            child: Text('chat_teacher'.tr, style: appText(10, w: FontWeight.w600, c: c.blockMuted(c.blockSky))),
           ),
         ],
       ]);
@@ -481,8 +495,11 @@ class _ChatBubbleState extends State<ChatBubble> {
       child: DecoratedBox(
         decoration: ShapeDecoration(
           color: colors.bg,
-          shape: ChatBubbleBorder(radius: radius, tailRight: tailRight),
-          shadows: [BoxShadow(color: Colors.black.withValues(alpha: c.isDark ? 0.22 : 0.10), blurRadius: 1.5, offset: const Offset(0, 1))],
+          shape: ChatBubbleBorder(
+            radius: radius,
+            tailRight: tailRight,
+            side: colors.edge == null ? BorderSide.none : BorderSide(color: colors.edge!, width: AppBorder.hairline),
+          ),
         ),
         child: content,
       ),
@@ -647,7 +664,7 @@ class _FailedActions extends StatelessWidget {
             style: TextButton.styleFrom(minimumSize: const Size(0, AppTouch.min), padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs), foregroundColor: c.danger),
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded, size: AppIconSize.xs),
-            label: Text('chat_retry'.tr, style: appText(12, w: FontWeight.w700, c: c.danger)),
+            label: Text('chat_retry'.tr, style: appText(12, w: FontWeight.w600, c: c.danger)),
           ),
         ],
         if (onDiscard != null)

@@ -43,7 +43,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/core/live/live_events_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/org/org_member_changes.dart' show respondToChange, undoChange;
 import 'package:flutter_education_app/features/org/org_member_pages.dart' show OrgTimetableScreen;
@@ -678,7 +678,8 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
               onPressed: () => _add(),
               backgroundColor: c.primary,
               foregroundColor: c.onHero,
-              child: const Icon(Icons.add_rounded, size: 28),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.block - AppSpace.xxs)),
+              child: const Icon(Icons.add_rounded, size: AppIconSize.lg + 4),
             ),
           ),
         ),
@@ -720,58 +721,40 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     final list = view == CalView.agenda;
     return ColoredBox(
       color: c.cardBg,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
-        children: [
+      // a short column, built whole (a lazy list would leave the filters unbuilt below the fold)
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.lg - 6, AppSpace.md, AppSpace.lg),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           if (!widget.asTab) ...[
             Row(children: [
               if (Navigator.of(context).canPop()) ...[
                 const AppBackButton(),
                 const SizedBox(width: AppSpace.xxs),
               ],
-              Expanded(child: Text(_pageTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(22, w: FontWeight.w800, c: c.textDark))),
+              Expanded(child: Semantics(header: true, child: Text(_pageTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context)))),
               const HelpInfoButton(pageId: 'calendar'),
             ]),
-            const SizedBox(height: 2),
+            const SizedBox(height: AppSpace.xxs / 2),
           ],
           Padding(
-            padding: const EdgeInsetsDirectional.only(start: 2, bottom: 14),
-            child: Text(AppTime.date(now, pattern: 'EEEE d MMMM'), style: appText(13, w: FontWeight.w600, c: c.textMedium)),
+            padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs / 2, bottom: AppSpace.md),
+            child: Text(AppTime.date(now, pattern: 'EEEE d MMMM'), style: AppType.meta(context)),
+          ),
+          AppButton.primary(
+            key: const ValueKey('cal.new_meeting'),
+            label: t('اجتماع جديد', 'New meeting'),
+            icon: Icons.add_rounded,
+            expand: true,
+            onPressed: () => _add(),
           ),
           if (!_dept) ...[
-            SizedBox(
-              height: 46,
-              child: FilledButton.icon(
-                key: const ValueKey('cal.new_meeting'),
-                onPressed: () => _add(),
-                style: FilledButton.styleFrom(
-                  backgroundColor: c.primary,
-                  foregroundColor: c.onHero,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                icon: const Icon(Icons.add_rounded),
-                label: Text(t('اجتماع جديد', 'New meeting'), style: appText(14, w: FontWeight.w800, c: c.onHero)),
-              ),
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             Align(
               alignment: AlignmentDirectional.centerStart,
               child: QuickMeetingButton(orgId: widget.orgId, api: widget.api, onDone: _refresh),
             ),
-            const SizedBox(height: 18),
-          ] else ...[
-            SizedBox(
-              height: 46,
-              child: FilledButton.icon(
-                key: const ValueKey('cal.new_meeting'),
-                onPressed: () => _add(),
-                style: FilledButton.styleFrom(backgroundColor: c.primary, foregroundColor: c.onHero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                icon: const Icon(Icons.add_rounded),
-                label: Text(t('اجتماع جديد', 'New meeting'), style: appText(14, w: FontWeight.w800, c: c.onHero)),
-              ),
-            ),
-            const SizedBox(height: 18),
           ],
+          const SizedBox(height: AppSpace.lg - 6),
           CalMonthPicker(
             month: _pickerMonth,
             selected: list ? calDay(_nowWall) : _anchor,
@@ -783,14 +766,14 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
             onPick: (d) => _go(list || view == CalView.month ? CalView.day : view, d),
             onMonth: (dir) => setState(() => _pickerMonth = DateTime(_pickerMonth.year, _pickerMonth.month + dir)),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AppSpace.lg - 6),
           if (next.isNotEmpty) ...[
             CalUpNextCard(event: next.first, nowUtc: now, live: calIsLive(next.first, now, liveKeys: keys), onTap: () => _tap(next.first)),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpace.md - 2),
           ],
           if (invites.isNotEmpty) ...[
             CalInvitesCard(invites: invites, actions: _actions),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpace.md - 2),
           ],
           if (!_dept)
             CalFilterPanel(
@@ -800,7 +783,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
               orgs: calOrgsOf(all),
               onOrg: (id) => _setFilters(_filters.toggleOrg(id)),
             ),
-        ],
+        ]),
       ),
     );
   }
@@ -826,13 +809,13 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     final monthTitle = calTitleFor(view == CalView.day || view == CalView.week ? CalView.month : view, _anchor, weekFrom: _weekFrom);
     final grid = view != CalView.agenda;
     return Padding(
-      padding: EdgeInsetsDirectional.fromSTEB(canPop ? 4 : 18, 8, 8, 4),
+      padding: EdgeInsetsDirectional.fromSTEB(canPop ? AppSpace.xxs : AppSpace.md + AppSpace.xxs / 2, AppSpace.xs, AppSpace.xs, AppSpace.xxs),
       child: Row(children: [
         if (canPop) const AppBackButton(),
         Expanded(
           // the list's hero carries the date; on the grid the month is the title, and opens the mini month
           child: !grid
-              ? Text(_pageTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(22, w: FontWeight.w800, c: c.textDark))
+              ? Semantics(header: true, child: Text(_pageTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context)))
               : Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: Semantics(
@@ -849,12 +832,12 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
                         padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
                           Flexible(
-                            child: Text(monthTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(21, w: FontWeight.w800, c: c.textDark)),
+                            child: Text(monthTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context)),
                           ),
                           AnimatedRotation(
                             turns: _pickerOpen ? 0.5 : 0,
                             duration: AppMotion.of(context).base,
-                            child: Icon(Icons.expand_more_rounded, size: 22, color: appInk(context, c.primary)),
+                            child: Icon(Icons.expand_more_rounded, size: AppIconSize.lg - 2, color: appInk(context, c.primary)),
                           ),
                         ]),
                       ),
@@ -892,8 +875,8 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
           ),
           if (_loading && _chunk != null)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: SizedBox(width: 60, child: LinearProgressIndicator(minHeight: 3, borderRadius: BorderRadius.circular(3), color: c.primary, backgroundColor: c.inputBg)),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm - 2),
+              child: SizedBox(width: AppSpace.xxxl - 4, child: LinearProgressIndicator(minHeight: AppSpace.xxs - 1, borderRadius: BorderRadius.circular(AppRadius.pill), color: c.primary, backgroundColor: c.inputBg)),
             ),
           const MeetingLinksIcon(),
           _MoreMenu(onRefresh: _refresh, onExport: _export),
@@ -902,12 +885,12 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
           const SizedBox(height: AppSpace.sm),
           Row(children: [
             _TodayButton(onTap: _today, isToday: _atToday, outlined: true),
-            const SizedBox(width: 6),
+            const SizedBox(width: AppSpace.xs - 2),
             IconButton(tooltip: t('السابق', 'Previous'), onPressed: () => _shift(-1), icon: const Icon(Icons.chevron_left_rounded)),
             IconButton(tooltip: t('التالي', 'Next'), onPressed: () => _shift(1), icon: const Icon(Icons.chevron_right_rounded)),
-            const SizedBox(width: 6),
+            const SizedBox(width: AppSpace.xs - 2),
             Expanded(
-              child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(19, w: FontWeight.w800, c: c.textDark)),
+              child: Semantics(header: true, child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context))),
             ),
             CalViewSwitch(view: view, views: calGridViews, onView: (v) => _go(v, _anchor)),
           ]),
@@ -937,10 +920,10 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
           child: !_pickerOpen || !grid
               ? const SizedBox(width: double.infinity)
               : Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.xxs, AppSpace.sm, AppSpace.xs),
                   child: Container(
-                    padding: const EdgeInsets.fromLTRB(6, 4, 6, 8),
-                    decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(18), border: Border.all(color: c.divider.withValues(alpha: 0.7))),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.xs - 2, AppSpace.xxs, AppSpace.xs - 2, AppSpace.xs),
+                    decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.cardAll, border: Border.all(color: c.divider, width: AppBorder.hairline)),
                     child: CalMonthPicker(
                       month: _pickerMonth,
                       selected: _anchor,
@@ -965,7 +948,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
       // on the list the chips ride with the rows ([_agenda]), so the first event stays high on a phone
       if (!wide && !_dept && grid)
         Padding(
-          padding: EdgeInsets.only(top: tablet ? 8 : 2, bottom: 4),
+          padding: EdgeInsets.only(top: tablet ? AppSpace.xs : AppSpace.xxs / 2, bottom: AppSpace.xxs),
           child: CalFilterChips(
             counts: _countsOf(view, all),
             filters: _filters,
@@ -975,12 +958,12 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
           ),
         ),
       if (!wide && _loading && _chunk != null)
-        LinearProgressIndicator(minHeight: 2, color: c.primary, backgroundColor: Colors.transparent)
+        LinearProgressIndicator(minHeight: AppSpace.xxs / 2, color: c.primary, backgroundColor: c.background)
       else if (!wide)
-        const SizedBox(height: 2),
+        const SizedBox(height: AppSpace.xxs / 2),
       if (_error != null && _chunk != null)
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs - 2, AppSpace.md, AppSpace.xs - 2),
           child: AppBanner(
             icon: Icons.cloud_off_rounded,
             text: _error!,
@@ -990,10 +973,10 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
         ),
       if (pending > 0 && !wide && firstPending != null && view != CalView.agenda)
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs - 2, AppSpace.md, AppSpace.xs - 2),
           child: AppBanner(
             icon: Icons.mark_email_unread_rounded,
-            color: c.accent2,
+            color: c.primary,
             text: t('لديك $pending ${pending == 1 ? 'دعوة' : 'دعوات'} بانتظار ردك', 'You have $pending invitation${pending == 1 ? '' : 's'} awaiting your answer'),
             action: IconButton(tooltip: t('عرض', 'Open'), onPressed: () => _openMeeting(firstPending.meetingId!), icon: const Icon(Icons.open_in_new_rounded)),
           ),
@@ -1008,7 +991,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
       if (_error != null) {
         return Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(AppSpace.lg),
             child: AppEmpty(
               icon: Icons.cloud_off_rounded,
               title: t('تعذر تحميل جدولك', 'Could not load your schedule'),
@@ -1029,9 +1012,9 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     };
     final keyed = KeyedSubtree(key: ValueKey(view == CalView.agenda ? 'list|$_showPast' : '${view.name}|$_anchor'), child: child);
     final animated = AnimatedSwitcher(
-      duration: const Duration(milliseconds: 240),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
+      duration: AppMotion.of(context).base,
+      switchInCurve: AppMotion.curve,
+      switchOutCurve: AppMotion.curve,
       transitionBuilder: (w, anim) {
         final dx = _slide == 0 ? 0.0 : 0.06 * _slide;
         return FadeTransition(
@@ -1128,7 +1111,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
         todayDone: todayLeft == 0 && todayAll > 0,
         padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, wide ? AppSpace.xl : _fabRoomOf(context)),
         header: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          CalTodayHero(
+          AppReveal(index: 0, group: 'cal.agenda', rise: 8, child: CalTodayHero(
             nowUtc: now,
             left: todayLeft,
             week: ahead.where((e) => !e.cancelled && e.wallStart.isBefore(inWeek)).length + live.length,
@@ -1137,8 +1120,8 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
             nextJoinable: next != null && calJoinable(next, now, liveKeys: keys),
             onTapNext: next == null ? null : () => _tap(next),
             onJoinNext: next == null ? null : () => _join(next),
-          ),
-          const SizedBox(height: AppSpace.sm),
+          )),
+          const SizedBox(height: AppSpace.md),
           ?chips,
           CalListBar(
             title: t('القادمة', 'Coming up'),
@@ -1192,14 +1175,14 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
         onPick: (d) => _go(CalView.day, d, dir: d.isAfter(_anchor) ? 1 : -1),
       ),
       Padding(
-        padding: const EdgeInsets.fromLTRB(18, 2, 18, 6),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs / 2, AppSpace.xxs / 2, AppSpace.md + AppSpace.xxs / 2, AppSpace.xs - 2),
         child: Row(children: [
           Expanded(
             child: Text(
               '${_dayTitleOf(_anchor)} · ${AppTime.date(AppTime.fromZone(DateTime(_anchor.year, _anchor.month, _anchor.day, 12)), pattern: 'd MMMM')}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: appText(13.5, w: FontWeight.w800, c: context.colors.textDark),
+              style: AppType.section(context),
             ),
           ),
           Text(
@@ -1207,7 +1190,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
               final n = calEventsOnDay(shown, _anchor).where((e) => !e.cancelled).length;
               return n == 0 ? t('يوم فارغ', 'Free day') : t('$n ${n == 1 ? 'موعد' : 'مواعيد'}', '$n ${n == 1 ? 'event' : 'events'}');
             }(),
-            style: appText(12, w: FontWeight.w700, c: context.colors.textLight),
+            style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textLight),
           ),
         ]),
       ),
@@ -1260,11 +1243,11 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     return AppRefresh(
       onRefresh: _refresh,
       child: ListView(
-        padding: EdgeInsets.fromLTRB(12, 4, 12, _fabRoomOf(context)),
+        padding: EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.xxs, AppSpace.sm, _fabRoomOf(context)),
         children: [
           Container(
-            padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-            decoration: BoxDecoration(color: context.colors.cardBg, borderRadius: BorderRadius.circular(20), border: Border.all(color: context.colors.divider.withValues(alpha: 0.7))),
+            padding: const EdgeInsets.fromLTRB(AppSpace.xxs, AppSpace.xs, AppSpace.xxs, AppSpace.xs),
+            decoration: BoxDecoration(color: context.colors.cardBg, borderRadius: AppRadius.cardAll, border: Border.all(color: context.colors.divider, width: AppBorder.hairline)),
             child: CalMonthPicker(
               month: DateTime(sel.year, sel.month),
               selected: sel,
@@ -1283,9 +1266,9 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
               onMonth: (dir) => _shift(dir),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.lg),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
             child: CalAgendaDayCard(
               day: CalAgendaDay(day: day.day, events: day.events, today: day.today, nowAt: day.nowAt, pauses: [for (final p in _pauses) if (p.covers(sel)) p]),
               nowUtc: _nowUtc,
@@ -1309,22 +1292,22 @@ class _TodayButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
       child: InkWell(
         key: const ValueKey('cal.today'),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.controlAll,
         onTap: onTap,
         child: Container(
-          constraints: const BoxConstraints(minHeight: 40, minWidth: 48),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs, minWidth: AppTouch.min),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md - 2, vertical: AppSpace.xs),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: outlined || isToday ? Colors.transparent : calTint(c, c.primary, 0.10),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: outlined ? c.divider : (isToday ? c.divider : c.primary.withValues(alpha: 0.3))),
+            color: outlined || isToday ? c.cardBg : calTint(c, c.primary, 0.10),
+            borderRadius: AppRadius.controlAll,
+            border: Border.all(color: outlined ? Color.lerp(c.divider, c.textDark, 0.2)! : (isToday ? c.divider : c.primary.withValues(alpha: 0.3)), width: AppBorder.hairline),
           ),
           // already on today: the button goes quiet (it would change nothing)
-          child: Text(t('اليوم', 'Today'), style: appText(13, w: FontWeight.w800, c: isToday ? c.textMedium : (outlined ? c.textDark : appInk(context, c.primary)))),
+          child: Text(t('اليوم', 'Today'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: isToday ? c.textMedium : (outlined ? c.textDark : appInk(context, c.primary)))),
         ),
       ),
     );
@@ -1343,7 +1326,7 @@ class _MoreMenu extends StatelessWidget {
       key: const ValueKey('cal.more'),
       tooltip: t('المزيد', 'More'),
       icon: Icon(Icons.more_vert_rounded, color: c.textMedium),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll),
       onSelected: (v) {
         if (v == 'refresh') onRefresh();
         if (v == 'ics') onExport();
@@ -1390,17 +1373,13 @@ class _NothingAhead extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: AppSpace.xl),
       child: Column(children: [
         Container(
-          width: 88,
-          height: 88,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(colors: [calTint(c, c.primary, 0.16), calTint(c, c.primary, 0.03)]),
-            border: Border.all(color: c.primary.withValues(alpha: 0.16)),
-          ),
-          child: Icon(past ? Icons.history_rounded : Icons.event_available_rounded, size: AppIconSize.hero, color: appInk(context, c.primary)),
+          width: AppSpace.xxxl + AppSpace.lg,
+          height: AppSpace.xxxl + AppSpace.lg,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: c.blockSky),
+          child: Icon(past ? Icons.history_rounded : Icons.event_available_rounded, size: AppIconSize.hero, color: c.blockAccentInk(c.accent3, c.blockSky)),
         ),
         const SizedBox(height: AppSpace.md),
-        Text(past ? t('لا شيء هنا بعد', 'Nothing here yet') : t('لا شيء قادم', 'Nothing coming up'), textAlign: TextAlign.center, style: appText(17, w: FontWeight.w800, c: c.textDark)),
+        Text(past ? t('لا شيء هنا بعد', 'Nothing here yet') : t('لا شيء قادم', 'Nothing coming up'), textAlign: TextAlign.center, style: AppType.section(context)),
         const SizedBox(height: AppSpace.xxs),
         Text(
           filtered
@@ -1409,19 +1388,14 @@ class _NothingAhead extends StatelessWidget {
                   ? t('ستجد هنا مواعيدك المنتهية والاجتماعات المغلقة', 'What has finished and meetings that were closed show up here')
                   : t('ستظهر هنا محاضراتك وامتحاناتك واجتماعاتك', 'Your classes, exams and meetings show up here'),
           textAlign: TextAlign.center,
-          style: appText(13, c: c.textMedium),
+          style: AppType.body(context),
         ),
         if (filtered) ...[
           const SizedBox(height: AppSpace.xs),
           TextButton(onPressed: onClear, child: Text(t('إظهار الكل', 'Show everything'))),
         ] else if (onNew != null) ...[
           const SizedBox(height: AppSpace.md),
-          FilledButton.icon(
-            onPressed: onNew,
-            style: FilledButton.styleFrom(backgroundColor: c.primary, foregroundColor: c.onHero, minimumSize: const Size(48, AppTouch.min), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card))),
-            icon: const Icon(Icons.add_rounded),
-            label: Text(t('اجتماع جديد', 'New meeting'), style: appText(14, w: FontWeight.w800, c: c.onHero)),
-          ),
+          AppButton.primary(label: t('اجتماع جديد', 'New meeting'), icon: Icons.add_rounded, onPressed: onNew),
         ],
       ]),
     );

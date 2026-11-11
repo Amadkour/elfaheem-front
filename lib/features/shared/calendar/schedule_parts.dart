@@ -26,6 +26,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppReveal, AppTilt;
 
 import '../../admin/admin_common.dart' show t;
 import 'calendar_models.dart';
@@ -83,22 +84,23 @@ class CalTag extends StatelessWidget {
     final c = context.colors;
     final ink = solid ? c.onHero : appInk(context, color);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
       decoration: BoxDecoration(
         color: solid ? color : calTint(c, color, 0.12),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        if (icon != null) ...[Icon(icon, size: 12, color: ink), const SizedBox(width: 4)],
+        if (icon != null) ...[Icon(icon, size: AppIconSize.xs - 2, color: ink), const SizedBox(width: AppSpace.xxs)],
         Flexible(
-          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, w: FontWeight.w700, c: ink)),
+          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: ink)),
         ),
       ]),
     );
   }
 }
 
-/// The pulsing-free live dot (a decorative pulse would need syncMotionLoop; a still dot tells the same).
+/// THE live mark of the schedule (system brief: live = a danger dot): a still danger dot on a soft ring of its own
+/// tint, never a glow or a red slab (a decorative pulse would need syncMotionLoop; a still dot tells the same).
 class CalLiveDot extends StatelessWidget {
   const CalLiveDot({super.key, this.size = 8});
   final double size;
@@ -107,13 +109,11 @@ class CalLiveDot extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: c.danger,
-        shape: BoxShape.circle,
-        boxShadow: [BoxShadow(color: c.danger.withValues(alpha: 0.45), blurRadius: size, spreadRadius: 1)],
-      ),
+      width: size + AppSpace.xxs,
+      height: size + AppSpace.xxs,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: calTint(c, c.danger, 0.18), shape: BoxShape.circle),
+      child: Container(width: size, height: size, decoration: BoxDecoration(color: c.danger, shape: BoxShape.circle)),
     );
   }
 }
@@ -169,25 +169,24 @@ class CalViewSwitch extends StatelessWidget {
         label: calViewLabel(v),
         child: InkWell(
           key: ValueKey('cal.view.${v.name}'),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: AppRadius.chipAll,
           onTap: () => onView(v),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOut,
-            constraints: const BoxConstraints(minHeight: 36),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            duration: AppMotion.of(context).fast,
+            curve: AppMotion.curve,
+            constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs - 2),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs - 1),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: on ? c.cardBg : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: on ? [BoxShadow(color: c.textDark.withValues(alpha: c.isDark ? 0.0 : 0.08), blurRadius: 6, offset: const Offset(0, 2))] : null,
-              border: on && c.isDark ? Border.all(color: c.divider) : null,
+              color: on ? c.cardBg : c.cardBg.withValues(alpha: 0),
+              borderRadius: AppRadius.chipAll,
+              border: Border.all(color: on ? c.divider : c.divider.withValues(alpha: 0), width: AppBorder.hairline),
             ),
             child: Text(
               calViewLabel(v),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: appText(13, w: on ? FontWeight.w800 : FontWeight.w600, c: on ? c.textDark : c.textMedium),
+              style: AppType.label(context).copyWith(fontWeight: on ? FontWeight.w600 : FontWeight.w500, color: on ? c.textDark : c.textMedium),
             ),
           ),
         ),
@@ -196,8 +195,12 @@ class CalViewSwitch extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(13)),
+      padding: const EdgeInsets.all(AppSpace.xxs - 1),
+      decoration: BoxDecoration(
+        color: c.inputBg,
+        borderRadius: BorderRadius.circular(AppRadius.chip + AppSpace.xxs - 1),
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
+      ),
       child: Row(mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min, children: [for (final v in views) seg(v)]),
     );
   }
@@ -231,41 +234,42 @@ class CalFilterChips extends StatelessWidget {
     Widget chip({required Key key, required String label, required Color color, required bool on, required VoidCallback onTap, int? count, IconData? icon}) {
       final ink = appInk(context, color);
       return Padding(
-        padding: const EdgeInsetsDirectional.only(end: 8),
+        padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
         child: Semantics(
           button: true,
           selected: on,
           label: label,
           child: InkWell(
             key: key,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(AppRadius.pill),
             onTap: onTap,
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              constraints: const BoxConstraints(minHeight: 36),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              duration: AppMotion.of(context).fast,
+              curve: AppMotion.curve,
+              constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.sm),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs - 1),
               decoration: BoxDecoration(
-                color: on ? calTint(c, color, 0.12) : c.cardBg,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: on ? color.withValues(alpha: 0.45) : c.divider),
+                color: on ? c.cardBg : c.background,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                border: Border.all(color: on ? Color.lerp(c.divider, c.textDark, 0.25)! : c.divider, width: AppBorder.hairline),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
-                  width: 10,
-                  height: 10,
+                  duration: AppMotion.of(context).fast,
+                  width: AppSpace.xs + 2,
+                  height: AppSpace.xs + 2,
                   decoration: BoxDecoration(
-                    color: on ? color : Colors.transparent,
+                    color: on ? color : color.withValues(alpha: 0),
                     shape: BoxShape.circle,
-                    border: Border.all(color: on ? color : c.textLight, width: 1.6),
+                    border: Border.all(color: on ? color : c.textLight, width: AppBorder.strong),
                   ),
                 ),
-                const SizedBox(width: 7),
-                if (icon != null) ...[Icon(icon, size: 14, color: on ? ink : c.textLight), const SizedBox(width: 4)],
-                Text(label, maxLines: 1, style: appText(12.5, w: FontWeight.w700, c: on ? ink : c.textMedium)),
+                const SizedBox(width: AppSpace.xs - 1),
+                if (icon != null) ...[Icon(icon, size: AppIconSize.xs, color: on ? ink : c.textLight), const SizedBox(width: AppSpace.xxs)],
+                Text(label, maxLines: 1, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: on ? c.textDark : c.textLight)),
                 if (count != null && count > 0) ...[
-                  const SizedBox(width: 6),
-                  Text('$count', style: appText(11.5, w: FontWeight.w800, c: on ? ink.withValues(alpha: 0.75) : c.textLight)),
+                  const SizedBox(width: AppSpace.xs - 2),
+                  Text('$count', style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textLight, fontFeatures: const [FontFeature.tabularFigures()])),
                 ],
               ]),
             ),
@@ -290,7 +294,7 @@ class CalFilterChips extends StatelessWidget {
               onTap: () => onCat(k),
             ),
           if (orgs.length > 1 && onOrg != null) ...[
-            Center(child: Container(width: 1, height: 22, margin: const EdgeInsetsDirectional.only(end: 8), color: c.divider)),
+            Center(child: Container(width: AppBorder.hairline, height: AppSpace.lg - 2, margin: const EdgeInsetsDirectional.only(end: AppSpace.xs), color: c.divider)),
             for (final o in orgs)
               chip(
                 key: ValueKey('cal.org.${o.id}'),
@@ -329,30 +333,31 @@ class CalFilterPanel extends StatelessWidget {
     Widget row({required Key key, required String label, required Color color, required bool on, required VoidCallback onTap, int? count, IconData? icon}) =>
         InkWell(
           key: key,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: AppRadius.chipAll,
           onTap: onTap,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 40),
+            constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xs - 2),
               child: Row(children: [
                 AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
-                  width: 18,
-                  height: 18,
+                  duration: AppMotion.of(context).fast,
+                  width: AppIconSize.sm + 2,
+                  height: AppIconSize.sm + 2,
                   decoration: BoxDecoration(
-                    color: on ? color : Colors.transparent,
-                    borderRadius: BorderRadius.circular(5),
-                    border: Border.all(color: on ? color : c.textLight, width: 1.6),
+                    color: on ? color : color.withValues(alpha: 0),
+                    borderRadius: BorderRadius.circular(AppSpace.xxs + 1),
+                    border: Border.all(color: on ? color : c.textLight, width: AppBorder.strong),
                   ),
-                  child: on ? Icon(Icons.check_rounded, size: 13, color: c.onHero) : null,
+                  child: on ? Icon(Icons.check_rounded, size: AppIconSize.xs - 1, color: c.onHero) : null,
                 ),
-                const SizedBox(width: 10),
-                if (icon != null) ...[Icon(icon, size: 15, color: c.textMedium), const SizedBox(width: 6)],
+                const SizedBox(width: AppSpace.sm - 2),
+                if (icon != null) ...[Icon(icon, size: AppIconSize.xs + 1, color: c.textMedium), const SizedBox(width: AppSpace.xs - 2)],
                 Expanded(
-                  child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w600, c: on ? c.textDark : c.textLight)),
+                  child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: on ? c.textDark : c.textLight)),
                 ),
-                if (count != null && count > 0) Text('$count', style: appText(12, w: FontWeight.w700, c: c.textLight)),
+                if (count != null && count > 0)
+                  Text('$count', style: AppType.meta(context).copyWith(color: c.textLight, fontFeatures: const [FontFeature.tabularFigures()])),
               ]),
             ),
           ),
@@ -370,7 +375,7 @@ class CalFilterPanel extends StatelessWidget {
           onTap: () => onCat(k),
         ),
       if (orgs.length > 1 && onOrg != null) ...[
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         _SideTitle(t('الجهات', 'Organizations')),
         for (final o in orgs)
           row(
@@ -392,8 +397,8 @@ class _SideTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 8, 6),
-        child: Text(text.toUpperCase(), style: appText(11, w: FontWeight.w800, c: context.colors.textLight).copyWith(letterSpacing: 0.8)),
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs, AppSpace.xs - 2, AppSpace.xs, AppSpace.xxs),
+        child: Semantics(header: true, child: Text(text, style: AppType.section(context))),
       );
 }
 
@@ -438,7 +443,7 @@ class CalMonthPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final days = calVisibleDays(CalView.month, month);
-    final cell = roomy ? 50.0 : 34.0;
+    final cell = roomy ? AppSpace.xxl + 2 : AppSpace.xl + 2;
     final title = _dayDate(DateTime(month.year, month.month, 15), pattern: 'MMMM y');
     Widget dayCell(DateTime d) {
       final inMonth = d.month == month.month;
@@ -457,34 +462,36 @@ class CalMonthPicker extends StatelessWidget {
             borderRadius: BorderRadius.circular(cell / 2),
             onTap: () => onPick(d),
             child: Container(
-              height: cell + (roomy ? 6 : 4),
+              height: cell + (roomy ? AppSpace.xs - 2 : AppSpace.xxs),
               decoration: BoxDecoration(
-                color: inRange && !isSel ? calTint(c, c.primary, 0.07) : null,
+                // the main view's range: the schedule's sky band
+                color: inRange && !isSel ? c.blockSky : null,
               ),
               child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                 Container(
-                  width: cell - (roomy ? 12 : 6),
-                  height: cell - (roomy ? 12 : 6),
+                  width: cell - (roomy ? AppSpace.sm : AppSpace.xs - 2),
+                  height: cell - (roomy ? AppSpace.sm : AppSpace.xs - 2),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: isSel ? c.primary : (paused ? calTint(c, c.warning, 0.14) : null),
                     shape: BoxShape.circle,
-                    border: isToday && !isSel ? Border.all(color: c.primary, width: 1.6) : null,
+                    border: isToday && !isSel ? Border.all(color: c.primary, width: AppBorder.strong) : null,
                   ),
                   child: Text(
                     '${d.day}',
                     maxLines: 1,
-                    style: appText(roomy ? 15 : 12, w: isToday || isSel ? FontWeight.w800 : FontWeight.w600, c: fg),
+                    style: (roomy ? AppType.row(context) : AppType.meta(context))
+                        .copyWith(fontWeight: isToday || isSel ? FontWeight.w600 : FontWeight.w500, color: fg, fontFeatures: const [FontFeature.tabularFigures()]),
                   ),
                 ),
                 SizedBox(
-                  height: roomy ? 8 : 5,
+                  height: roomy ? AppSpace.xs : AppSpace.xxs + 1,
                   child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                     for (final col in dots.take(3))
                       Container(
-                        width: roomy ? 5 : 4,
-                        height: roomy ? 5 : 4,
-                        margin: const EdgeInsets.symmetric(horizontal: 1),
+                        width: roomy ? AppSpace.xxs + 1 : AppSpace.xxs,
+                        height: roomy ? AppSpace.xxs + 1 : AppSpace.xxs,
+                        margin: const EdgeInsets.symmetric(horizontal: AppBorder.hairline),
                         decoration: BoxDecoration(color: inMonth ? col : col.withValues(alpha: 0.4), shape: BoxShape.circle),
                       ),
                   ]),
@@ -499,10 +506,10 @@ class CalMonthPicker extends StatelessWidget {
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (showHeader)
         Padding(
-          padding: const EdgeInsetsDirectional.only(start: 6, bottom: 4),
+          padding: const EdgeInsetsDirectional.only(start: AppSpace.xs - 2, bottom: AppSpace.xxs),
           child: Row(children: [
             Expanded(
-              child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(roomy ? 16 : 14, w: FontWeight.w800, c: c.textDark)),
+              child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
             ),
             IconButton(
               tooltip: t('الشهر السابق', 'Previous month'),
@@ -524,12 +531,12 @@ class CalMonthPicker extends StatelessWidget {
                 _dayDate(days[k], pattern: roomy ? 'EEE' : 'EEEEE'),
                 maxLines: 1,
                 overflow: TextOverflow.clip,
-                style: appText(11, w: FontWeight.w700, c: c.textLight),
+                style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textLight),
               ),
             ),
           ),
       ]),
-      const SizedBox(height: 4),
+      const SizedBox(height: AppSpace.xxs),
       for (var r = 0; r < 6; r++)
         if (r < 5 || days[r * 7].month == month.month) Row(children: [for (var k = 0; k < 7; k++) dayCell(days[r * 7 + k])]),
     ]);
@@ -547,7 +554,7 @@ class CalWeekStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm - 2, vertical: AppSpace.xxs),
       child: Row(children: [
         for (final d in days)
           Expanded(
@@ -556,37 +563,38 @@ class CalWeekStrip extends StatelessWidget {
               selected: d == selected,
               label: _dayDate(d, pattern: 'EEEE d MMMM'),
               child: InkWell(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: AppRadius.controlAll,
                 onTap: () => onPick(d),
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  duration: AppMotion.of(context).fast,
+                  curve: AppMotion.curve,
+                  margin: const EdgeInsets.symmetric(horizontal: AppSpace.xxs / 2),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpace.xs - 2),
                   decoration: BoxDecoration(
-                    color: d == selected ? c.primary : Colors.transparent,
-                    borderRadius: BorderRadius.circular(14),
+                    color: d == selected ? c.primary : c.primary.withValues(alpha: 0),
+                    borderRadius: AppRadius.controlAll,
                   ),
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     Text(
                       _dayDate(d, pattern: 'EEE'),
                       maxLines: 1,
                       overflow: TextOverflow.clip,
-                      style: appText(10.5, w: FontWeight.w700, c: d == selected ? c.onHeroMuted : c.textLight),
+                      style: AppType.overline(context).copyWith(letterSpacing: 0, color: d == selected ? c.onHeroMuted : c.textLight),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpace.xxs / 2),
                     Text(
                       '${d.day}',
-                      style: appText(16, w: FontWeight.w800, c: d == selected ? c.onHero : (d == today ? appInk(context, c.primary) : c.textDark)),
+                      style: AppType.figure(context).copyWith(color: d == selected ? c.onHero : (d == today ? appInk(context, c.primary) : c.textDark), fontFeatures: const [FontFeature.tabularFigures()]),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: AppSpace.xxs - 1),
                     SizedBox(
-                      height: 5,
+                      height: AppSpace.xxs + 1,
                       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                         for (final col in (dotsOf?.call(d) ?? const <Color>[]).take(3))
                           Container(
-                            width: 4,
-                            height: 4,
-                            margin: const EdgeInsets.symmetric(horizontal: 1),
+                            width: AppSpace.xxs,
+                            height: AppSpace.xxs,
+                            margin: const EdgeInsets.symmetric(horizontal: AppBorder.hairline),
                             decoration: BoxDecoration(color: d == selected ? c.onHero : col, shape: BoxShape.circle),
                           ),
                       ]),
@@ -628,7 +636,7 @@ class CalAgendaList extends StatelessWidget {
     this.showOrg = false,
     this.header,
     this.footer,
-    this.padding = const EdgeInsets.fromLTRB(16, 8, 16, 120),
+    this.padding = const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xxxl * 2 - AppSpace.xs),
     this.controller,
     this.emptyRange,
     this.history = false,
@@ -662,9 +670,16 @@ class CalAgendaList extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
         ?header,
-        for (final d in days) ...[
-          CalAgendaDayCard(day: d, nowUtc: nowUtc, liveKeys: liveKeys, actions: actions, showOrg: showOrg, history: history, todayDone: todayDone),
-          const SizedBox(height: AppSpace.lg),
+        // the page's one entrance: the hero (index 0, in the header) then the first days, once per route
+        for (final (i, d) in days.indexed) ...[
+          AppReveal(
+            index: i + 1,
+            group: 'cal.agenda',
+            rise: 6,
+            cap: 4,
+            child: CalAgendaDayCard(day: d, nowUtc: nowUtc, liveKeys: liveKeys, actions: actions, showOrg: showOrg, history: history, todayDone: todayDone),
+          ),
+          const SizedBox(height: AppSpace.xl),
         ],
         if (nothing && emptyRange != null) emptyRange!,
         ?footer,
@@ -713,41 +728,41 @@ class CalAgendaDayCard extends StatelessWidget {
         actions: actions,
       ));
     }
+    final dateLine = _dayDate(day.day, pattern: calDay(day.day).difference(calDay(nowWall)).inDays.abs() <= 1 ? 'EEEE d MMMM' : 'd MMMM y');
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Padding(
-        padding: const EdgeInsetsDirectional.fromSTEB(2, 2, 4, AppSpace.sm),
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xxs / 2, AppSpace.xxs / 2, AppSpace.xxs, AppSpace.sm),
         child: Row(children: [
+          // the date tile: paper on a hairline; today wears the schedule's sky tone
           Container(
-            width: 46,
-            height: 50,
+            width: AppTouch.min,
+            height: AppTouch.min + AppSpace.xxs,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              gradient: day.today ? AppGradients.brand(context) : null,
-              color: day.today ? null : c.cardBg,
-              borderRadius: BorderRadius.circular(AppRadius.card - 2),
-              border: day.today ? null : Border.all(color: c.divider.withValues(alpha: 0.8)),
-              boxShadow: day.today ? c.primaryButtonShadow : null,
+              color: day.today ? c.blockSky : c.cardBg,
+              borderRadius: AppRadius.controlAll,
+              border: Border.all(color: day.today ? c.blockSky : c.divider, width: AppBorder.hairline),
             ),
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Text(_dayDate(day.day, pattern: 'MMM'), maxLines: 1, style: appText(10, w: FontWeight.w700, c: day.today ? c.onHeroMuted : c.textLight, h: 1.1)),
-                Text('${day.day.day}', maxLines: 1, style: appText(19, w: FontWeight.w800, c: day.today ? c.onHero : c.textDark, h: 1.15)),
+                Text(_dayDate(day.day, pattern: 'MMM'), maxLines: 1, style: AppType.overline(context).copyWith(letterSpacing: 0, height: 1.1, color: day.today ? c.blockMuted(c.blockSky) : c.textLight)),
+                Text('${day.day.day}', maxLines: 1, style: AppType.section(context).copyWith(height: 1.05)),
               ]),
             ),
           ),
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(_dayTitle(day.day, nowWall), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w800, c: c.textDark)),
+              Semantics(
+                header: true,
+                child: Text(_dayTitle(day.day, nowWall), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+              ),
               // the count rides on the date line, beside the title: at the row's END it sat under the assistant's
               // docked edge tab on phones (R3), which docks on that side by default
               Row(children: [
-                Flexible(
-                  child: Text(_dayDate(day.day, pattern: calDay(day.day).difference(calDay(nowWall)).inDays.abs() <= 1 ? 'EEEE d MMMM' : 'd MMMM y'), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: c.textMedium)),
-                ),
-                if (count > 0)
-                  Text(' · ${calEventsText(count)}', maxLines: 1, style: appText(12, w: FontWeight.w600, c: c.textMedium)),
+                Flexible(child: Text(dateLine, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context))),
+                if (count > 0) Text(' · ${calEventsText(count)}', maxLines: 1, style: AppType.meta(context)),
               ]),
             ]),
           ),
@@ -819,107 +834,88 @@ class CalTodayHero extends StatelessWidget {
         en: '{n} events left today');
     final n = next;
     final nextWhen = n == null ? null : (calWhen(n, nowUtc, toWall: AppTime.toZone) ?? '${AppTime.date(n.start, pattern: 'EEE d MMM')} · ${AppTime.time(n.start)}');
-    Widget figure(String value, String label) => Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(value, maxLines: 1, style: appText(21, w: FontWeight.w800, c: c.onHero, h: 1.15)),
-          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, w: FontWeight.w600, c: c.onHeroMuted)),
+    final bc = AppBlockColors.of(context, AppBlockTone.sky);
+    Widget figure(String value, String label) => Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: [
+          AppCountUp(value, memoryKey: 'cal.hero.$label', style: AppType.figureLarge(context).copyWith(color: bc.ink)),
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: bc.muted)),
         ]);
-    return AppGradientSurface(
-      padding: const EdgeInsets.all(AppSpace.md),
-      child: LayoutBuilder(builder: (context, box) {
-        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-          Row(children: [
-            Container(
-              width: 56,
-              height: 62,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(color: c.heroGlass, borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.heroGlassBorder)),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Text(AppTime.date(nowUtc, pattern: 'EEE'), maxLines: 1, style: appText(11, w: FontWeight.w700, c: c.onHeroMuted, h: 1.1)),
-                  Text(AppTime.date(nowUtc, pattern: 'd'), maxLines: 1, style: appText(26, w: FontWeight.w800, c: c.onHero, h: 1.15)),
+    return AppTilt(
+      radius: AppRadius.block,
+      maxTilt: 2,
+      touchTilt: false,
+      shadowStrength: 0.5,
+      child: AppBlock(
+        tone: AppBlockTone.sky,
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.md + AppSpace.xxs),
+        child: LayoutBuilder(builder: (context, box) {
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              // the day as an editorial numeral, the weekday over it: the one big thing of the page
+              Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(AppTime.date(nowUtc, pattern: 'EEE'), maxLines: 1, style: AppType.label(context).copyWith(color: bc.muted, height: 1.1)),
+                Text(AppTime.date(nowUtc, pattern: 'd'), maxLines: 1, style: AppType.display(context).copyWith(color: bc.ink, height: 1.0, fontFeatures: const [FontFeature.liningFigures()])),
+              ]),
+              const SizedBox(width: AppSpace.md),
+              Container(width: AppBorder.hairline, height: AppTouch.min, color: bc.faint.withValues(alpha: 0.35)),
+              const SizedBox(width: AppSpace.md),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(AppTime.date(nowUtc, pattern: 'EEEE d MMMM'), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: bc.ink)),
+                  const SizedBox(height: AppSpace.xxs / 2),
+                  Text(leftText, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.body(context).copyWith(color: bc.muted)),
                 ]),
               ),
-            ),
-            const SizedBox(width: AppSpace.sm),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(AppTime.date(nowUtc, pattern: 'EEEE d MMMM'), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(17, w: FontWeight.w800, c: c.onHero)),
-                const SizedBox(height: 2),
-                Text(leftText, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w600, c: c.onHeroMuted)),
-              ]),
-            ),
-            if (box.maxWidth >= 560) ...[
-              const SizedBox(width: AppSpace.md),
-              figure('$week', t('خلال 7 أيام', 'Next 7 days')),
-              if (invites > 0) ...[
-                const SizedBox(width: AppSpace.lg),
-                figure('$invites', t('دعوات', 'Invitations')),
+              if (box.maxWidth >= 560) ...[
+                const SizedBox(width: AppSpace.md),
+                figure('$week', t('خلال 7 أيام', 'Next 7 days')),
+                if (invites > 0) ...[
+                  const SizedBox(width: AppSpace.lg),
+                  figure('$invites', t('دعوات', 'Invitations')),
+                ],
               ],
-              const SizedBox(width: AppSpace.xs),
-            ],
-          ]),
-          if (n != null) ...[
-            const SizedBox(height: AppSpace.sm),
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                key: const ValueKey('cal.hero.next'),
-                borderRadius: BorderRadius.circular(AppRadius.card),
-                onTap: onTapNext,
-                child: Ink(
-                  padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xs, AppSpace.xs, AppSpace.xs),
-                  decoration: BoxDecoration(color: c.heroGlass, borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.heroGlassBorder)),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(minHeight: 40),
-                    child: Row(children: [
-                      Icon(calSourceIcon(n.source), size: AppIconSize.md, color: c.onHero),
-                      const SizedBox(width: AppSpace.xs),
-                      Expanded(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                          Text(n.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w800, c: c.onHero)),
-                          Text('${t('التالي', 'Next')} · $nextWhen', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w600, c: c.onHeroMuted)),
-                        ]),
-                      ),
-                      if (nextJoinable && onJoinNext != null) ...[
-                        const SizedBox(width: AppSpace.xs),
-                        _OnHeroJoin(tone: c.primary, onTap: onJoinNext!, buttonKey: const ValueKey('cal.hero.join')),
-                      ] else
-                        Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.onHeroMuted),
-                    ]),
+            ]),
+            if (n != null) ...[
+              const SizedBox(height: AppSpace.md),
+              Material(
+                color: c.cardBg,
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: BorderSide(color: bc.border ?? c.divider, width: AppBorder.hairline)),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  key: const ValueKey('cal.hero.next'),
+                  onTap: onTapNext,
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xs, AppSpace.xs, AppSpace.xs),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
+                      child: Row(children: [
+                        Icon(calSourceIcon(n.source), size: AppIconSize.md, color: calEventColor(c, n)),
+                        const SizedBox(width: AppSpace.sm - 2),
+                        Expanded(
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                            Text(n.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+                            Text('${t('التالي', 'Next')} · $nextWhen', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                          ]),
+                        ),
+                        if (nextJoinable && onJoinNext != null) ...[
+                          const SizedBox(width: AppSpace.xs),
+                          AppButton.primary(
+                            key: const ValueKey('cal.hero.join'),
+                            label: t('انضم', 'Join'),
+                            icon: Icons.videocam_rounded,
+                            size: AppButtonSize.sm,
+                            onPressed: onJoinNext,
+                          ),
+                        ] else
+                          Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.textLight),
+                      ]),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
-        ]);
-      }),
-    );
-  }
-}
-
-/// Join on a coloured surface: the light on-hero fill, ink in the surface's tone.
-class _OnHeroJoin extends StatelessWidget {
-  const _OnHeroJoin({required this.tone, required this.onTap, this.buttonKey});
-  final Color tone;
-  final VoidCallback onTap;
-  final Key? buttonKey;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return FilledButton.icon(
-      key: buttonKey,
-      onPressed: onTap,
-      style: FilledButton.styleFrom(
-        backgroundColor: c.onHero,
-        foregroundColor: tone,
-        minimumSize: const Size(48, AppTouch.min - 4),
-        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card - 2)),
+            ],
+          ]);
+        }),
       ),
-      icon: Icon(Icons.videocam_rounded, size: 18, color: tone),
-      label: Text(t('انضم', 'Join'), style: appText(13.5, w: FontWeight.w800, c: tone)),
     );
   }
 }
@@ -936,32 +932,29 @@ class CalLiveNowCard extends StatelessWidget {
     final c = context.colors;
     final e = event;
     final when = calWhen(e, nowUtc, toWall: AppTime.toZone);
+    final radius = AppRadius.blockAll;
     return Semantics(
       button: onTap != null,
       label: '${t('مباشر الآن', 'Live now')}: ${e.title}',
       child: Material(
-        color: Colors.transparent,
+        color: c.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: c.danger, width: AppBorder.strong)),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadius.sheet - 4),
-          child: Ink(
-            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.sm, AppSpace.sm),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppRadius.sheet - 4),
-              gradient: AppGradients.blend(context, color: c.danger),
-              boxShadow: [BoxShadow(color: c.danger.withValues(alpha: 0.26), blurRadius: 18, offset: const Offset(0, 8))],
-            ),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.sm, AppSpace.sm),
             child: Row(children: [
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                   Row(children: [
-                    Container(width: 8, height: 8, decoration: BoxDecoration(color: c.onHero, shape: BoxShape.circle)),
-                    const SizedBox(width: 6),
+                    const CalLiveDot(),
+                    const SizedBox(width: AppSpace.xs - 2),
                     Expanded(
                       child: Text.rich(
                         TextSpan(children: [
-                          TextSpan(text: t('مباشر الآن', 'Live now'), style: appText(12, w: FontWeight.w800, c: c.onHero)),
-                          if (when != null) TextSpan(text: '  ·  $when', style: appText(12, w: FontWeight.w600, c: c.onHeroMuted)),
+                          TextSpan(text: t('مباشر الآن', 'Live now'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: appInk(context, c.danger))),
+                          if (when != null) TextSpan(text: '  ·  $when', style: AppType.meta(context)),
                         ]),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -969,14 +962,20 @@ class CalLiveNowCard extends StatelessWidget {
                     ),
                   ]),
                   const SizedBox(height: AppSpace.xxs),
-                  Text(e.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w800, c: c.onHero, h: 1.3)),
+                  Text(e.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
                   if ((e.subtitle ?? '').isNotEmpty)
-                    Text(e.subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.onHeroMuted)),
+                    Text(e.subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
                 ]),
               ),
               if (onJoin != null) ...[
                 const SizedBox(width: AppSpace.sm),
-                _OnHeroJoin(tone: c.danger, onTap: onJoin!, buttonKey: ValueKey('cal.join.${e.id}')),
+                AppButton.primary(
+                  key: ValueKey('cal.join.${e.id}'),
+                  label: t('انضم', 'Join'),
+                  icon: Icons.videocam_rounded,
+                  size: AppButtonSize.sm,
+                  onPressed: onJoin,
+                ),
               ],
             ]),
           ),
@@ -998,15 +997,16 @@ class CalListBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsetsDirectional.only(start: 2, bottom: AppSpace.xxs),
+      padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs / 2, bottom: AppSpace.xxs),
       child: Row(children: [
-        Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(17, w: FontWeight.w800, c: c.textDark))),
+        Expanded(child: Semantics(header: true, child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context)))),
         Flexible(
           child: TextButton.icon(
             key: actionKey == null ? null : ValueKey<String>(actionKey!),
             onPressed: onAction,
-            icon: Icon(actionIcon, size: 18),
-            label: Text(actionLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
+            style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min), foregroundColor: c.textMedium),
+            icon: Icon(actionIcon, size: AppIconSize.sm + 2),
+            label: Text(actionLabel, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600)),
           ),
         ),
       ]),
@@ -1025,15 +1025,15 @@ class CalNowLine extends StatelessWidget {
     return Semantics(
       label: t('الآن $label', 'Now $label'),
       child: Padding(
-        padding: const EdgeInsetsDirectional.fromSTEB(10, 2, 14, 2),
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm - 2, AppSpace.xxs / 2, AppSpace.sm, AppSpace.xxs / 2),
         child: Row(children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(8)),
-            child: Text(label, maxLines: 1, style: appText(10.5, w: FontWeight.w800, c: c.onHero)),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs - 1, vertical: AppSpace.xxs / 2),
+            decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(AppRadius.pill)),
+            child: Text(label, maxLines: 1, style: AppType.overline(context).copyWith(letterSpacing: 0, color: c.onHero, fontFeatures: const [FontFeature.tabularFigures()])),
           ),
-          Container(width: 7, height: 7, decoration: BoxDecoration(color: c.danger, shape: BoxShape.circle)),
-          Expanded(child: Container(height: 1.6, color: c.danger)),
+          Container(width: AppSpace.xs - 1, height: AppSpace.xs - 1, decoration: BoxDecoration(color: c.danger, shape: BoxShape.circle)),
+          Expanded(child: Container(height: AppBorder.strong, color: c.danger)),
         ]),
       ),
     );
@@ -1051,21 +1051,21 @@ class CalFreeDay extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      padding: const EdgeInsets.all(AppSpace.md),
       decoration: BoxDecoration(
-        color: calTint(c, c.success, 0.07),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: c.success.withValues(alpha: 0.18)),
+        color: c.cardBg,
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Row(children: [
-        Icon(Icons.wb_sunny_rounded, color: appInk(context, c.success), size: 22),
-        const SizedBox(width: 12),
+        Icon(done ? Icons.task_alt_rounded : Icons.wb_sunny_rounded, color: c.textLight, size: AppIconSize.lg - 2),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(done ? t('انتهت مواعيد اليوم', "You're done for today") : (today ? t('لا شيء اليوم', 'Nothing today') : t('يوم فارغ', 'A free day')),
-                style: appText(14, w: FontWeight.w800, c: c.textDark)),
+                style: AppType.bodyStrong(context)),
             Text(done ? t('ما انتهى تجده في السابقة والمنتهية', 'What finished is under Past and ended') : t('لا محاضرات ولا اجتماعات — وقتك لك', 'No classes, no meetings — the time is yours'),
-                style: appText(12, c: c.textMedium)),
+                style: AppType.meta(context)),
           ]),
         ),
       ]),
@@ -1087,18 +1087,18 @@ class CalPauseBanner extends StatelessWidget {
         : '${_dayDate(pause.start, pattern: 'd MMM')} – ${_dayDate(pause.end, pattern: 'd MMM')}';
     final name = pause.name.isEmpty ? t('فترة الامتحانات', 'Exam period') : pause.name;
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 14, vertical: compact ? 8 : 11),
+      padding: EdgeInsets.symmetric(horizontal: AppSpace.md - 2, vertical: compact ? AppSpace.xs : AppSpace.sm - 1),
       decoration: BoxDecoration(
         color: calTint(c, c.warning, 0.10),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: c.warning.withValues(alpha: 0.30)),
+        borderRadius: AppRadius.controlAll,
+        border: Border.all(color: c.warning.withValues(alpha: 0.30), width: AppBorder.hairline),
       ),
       child: Row(children: [
-        Icon(Icons.pause_circle_rounded, color: ink, size: 20),
-        const SizedBox(width: 10),
+        Icon(Icons.pause_circle_rounded, color: ink, size: AppIconSize.md),
+        const SizedBox(width: AppSpace.sm - 2),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w800, c: c.textDark)),
+            Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(fontSize: AppType.label(context).fontSize)),
             Text(
               [
                 t('المحاضرات الأسبوعية متوقفة', 'Weekly classes paused'),
@@ -1107,7 +1107,7 @@ class CalPauseBanner extends StatelessWidget {
               ].join(' · '),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: appText(11.5, c: c.textMedium),
+              style: AppType.meta(context),
             ),
           ]),
         ),
@@ -1175,41 +1175,34 @@ class CalAgendaTile extends StatelessWidget {
     final allDay = e.wallEnd.difference(e.wallStart).inHours >= 20;
 
     final join = joinable && actions.onJoin != null
-        ? FilledButton.icon(
+        ? AppButton.primary(
             key: ValueKey('cal.join.${e.id}'),
+            label: t('انضم', 'Join'),
+            icon: Icons.videocam_rounded,
+            size: AppButtonSize.sm,
             onPressed: () => actions.onJoin!(e),
-            style: FilledButton.styleFrom(
-              backgroundColor: live ? c.danger : c.primary,
-              foregroundColor: c.onHero,
-              visualDensity: VisualDensity.compact,
-              minimumSize: const Size(48, 40),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.chip + 2)),
-            ),
-            icon: const Icon(Icons.videocam_rounded, size: 18),
-            label: Text(t('انضم', 'Join'), style: appText(13, w: FontWeight.w800, c: c.onHero)),
           )
         : null;
 
     final body = Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md + 4, AppSpace.sm, AppSpace.sm, AppSpace.sm),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md + AppSpace.xxs, AppSpace.sm + AppSpace.xxs / 2, AppSpace.sm, AppSpace.sm + AppSpace.xxs / 2),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         SizedBox(
-          width: 62,
+          width: AppSpace.xxxl - 2,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             if (allDay)
-              Text(t('طوال اليوم', 'All day'), style: appText(12, w: FontWeight.w800, c: c.textDark))
+              Text(t('طوال اليوم', 'All day'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark))
             else ...[
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: AlignmentDirectional.centerStart,
-                child: Text(AppTime.time(e.start), maxLines: 1, style: appText(13.5, w: FontWeight.w800, c: muted ? c.textMedium : c.textDark)),
+                child: Text(AppTime.time(e.start), maxLines: 1, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600, color: muted ? c.textMedium : c.textDark, fontFeatures: const [FontFeature.tabularFigures()])),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: AppSpace.xxs / 2),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: AlignmentDirectional.centerStart,
-                child: Text(AppTime.time(e.end), maxLines: 1, style: appText(11.5, w: FontWeight.w600, c: c.textLight)),
+                child: Text(AppTime.time(e.end), maxLines: 1, style: AppType.meta(context).copyWith(color: c.textLight, fontFeatures: const [FontFeature.tabularFigures()])),
               ),
             ],
           ]),
@@ -1223,35 +1216,37 @@ class CalAgendaTile extends StatelessWidget {
                   e.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: appText(14.5, w: FontWeight.w800, c: muted ? c.textMedium : c.textDark).copyWith(
+                  style: AppType.bodyStrong(context).copyWith(
+                    color: muted ? c.textMedium : c.textDark,
                     decoration: struck ? TextDecoration.lineThrough : null,
                     decorationColor: c.textLight,
                   ),
                 ),
               ),
-              if (join != null) ...[const SizedBox(width: 8), join],
+              if (join != null) ...[const SizedBox(width: AppSpace.xs), join],
             ]),
             if (meta.isNotEmpty) ...[
-              const SizedBox(height: 3),
+              const SizedBox(height: AppSpace.xxs - 1),
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Padding(
-                  padding: const EdgeInsetsDirectional.only(top: 2, end: AppSpace.xxs),
-                  child: Icon(calSourceIcon(e.source), size: 13, color: muted ? c.textLight : appInk(context, color)),
+                  padding: const EdgeInsetsDirectional.only(top: AppSpace.xxs / 2, end: AppSpace.xxs),
+                  child: Icon(calSourceIcon(e.source), size: AppIconSize.xs - 1, color: muted ? c.textLight : appInk(context, color)),
                 ),
-                Expanded(child: Text(meta, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium))),
+                Expanded(child: Text(meta, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context))),
               ]),
             ],
             if (tags.isNotEmpty || when != null) ...[
-              const SizedBox(height: 8),
-              Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              const SizedBox(height: AppSpace.xs),
+              Wrap(spacing: AppSpace.xs - 2, runSpacing: AppSpace.xs - 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                if (live) const CalLiveDot(),
                 ...tags,
                 if (when != null && !past)
-                  Text(when, style: appText(11.5, w: FontWeight.w700, c: live ? appInk(context, c.danger) : c.textLight)),
+                  Text(when, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: live ? appInk(context, c.danger) : c.textLight)),
               ]),
             ],
             if (pendingInvite || answerChange) ...[
-              const SizedBox(height: 10),
-              Wrap(spacing: 8, runSpacing: 8, children: [
+              const SizedBox(height: AppSpace.sm - 2),
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 if (pendingInvite) ...[
                   _MiniAction(key: ValueKey('cal.accept.${e.id}'), label: t('قبول', 'Accept'), icon: Icons.check_rounded, color: c.success, onTap: () => actions.onRsvp!(e, 'accepted')),
                   _MiniAction(key: ValueKey('cal.decline.${e.id}'), label: t('اعتذار', 'Decline'), icon: Icons.close_rounded, color: c.danger, outline: true, onTap: () => actions.onRsvp!(e, 'declined')),
@@ -1283,33 +1278,36 @@ class CalAgendaTile extends StatelessWidget {
       ]),
     );
 
-    final radius = BorderRadius.circular(AppRadius.card);
+    // paper on a warm hairline, no resting shadow (tone first); a live row draws its edge in the danger tone
+    final radius = AppRadius.cardAll;
     return Semantics(
       button: actions.onTap != null,
       label: '${e.title}, ${AppTime.time(e.start)}',
-      child: DecoratedBox(
-        decoration: BoxDecoration(
+      child: Material(
+        color: c.cardBg,
+        shape: RoundedRectangleBorder(
           borderRadius: radius,
-          boxShadow: c.isDark || past ? null : [BoxShadow(color: c.textDark.withValues(alpha: 0.05), blurRadius: 14, offset: const Offset(0, 4))],
+          side: BorderSide(color: live ? c.danger : c.divider, width: live ? AppBorder.strong : AppBorder.hairline),
         ),
-        child: Material(
-          color: live ? Color.alphaBlend(calTint(c, c.danger, 0.05), c.cardBg) : c.cardBg,
-          shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: c.divider.withValues(alpha: 0.7))),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: actions.onTap == null ? null : () => actions.onTap!(e),
-            child: Stack(children: [
-              Opacity(opacity: past && !live && !history ? 0.55 : 1, child: body),
-              // the kind's colour down the card's edge, the height of the card whatever it holds
-              PositionedDirectional(
-                start: 0,
-                top: 0,
-                bottom: 0,
-                width: 5,
-                child: ColoredBox(color: muted ? c.textLight.withValues(alpha: 0.35) : (past ? color.withValues(alpha: 0.5) : color)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: actions.onTap == null ? null : () => actions.onTap!(e),
+          child: Stack(children: [
+            Opacity(opacity: past && !live && !history ? 0.55 : 1, child: body),
+            // the kind's colour as a slim rule inside the card's start, the height of the card whatever it holds
+            PositionedDirectional(
+              start: AppSpace.xs - 2,
+              top: AppSpace.sm,
+              bottom: AppSpace.sm,
+              width: AppSpace.xxs - 1,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: muted ? c.textLight.withValues(alpha: 0.35) : (past ? color.withValues(alpha: 0.5) : color),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
               ),
-            ]),
-          ),
+            ),
+          ]),
         ),
       ),
     );
@@ -1340,20 +1338,20 @@ class _MiniAction extends StatelessWidget {
     final c = context.colors;
     final ink = appInk(context, color);
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: AppRadius.controlAll,
       onTap: onTap,
       child: Container(
-        constraints: const BoxConstraints(minHeight: 40),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
         decoration: BoxDecoration(
-          color: outline ? Colors.transparent : calTint(c, color, 0.14),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: outline ? c.divider : color.withValues(alpha: 0.35)),
+          color: outline ? c.cardBg : calTint(c, color, 0.12),
+          borderRadius: AppRadius.controlAll,
+          border: Border.all(color: outline ? Color.lerp(c.divider, c.textDark, 0.2)! : color.withValues(alpha: 0.35), width: AppBorder.hairline),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 16, color: outline ? c.textMedium : ink),
-          const SizedBox(width: 6),
-          Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w800, c: outline ? c.textMedium : ink))),
+          Icon(icon, size: AppIconSize.sm, color: outline ? c.textMedium : ink),
+          const SizedBox(width: AppSpace.xs - 2),
+          Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: outline ? c.textMedium : ink))),
         ]),
       ),
     );
@@ -1396,42 +1394,43 @@ class CalEventSheet extends StatelessWidget {
     final ch = e.change;
     final when = calWhen(e, nowUtc, toWall: AppTime.toZone);
     Widget line(IconData icon, String text, {Color? tone}) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.xs - 2),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(icon, size: 19, color: tone ?? c.textLight),
-            const SizedBox(width: 12),
-            Expanded(child: Text(text, style: appText(14, c: c.textDark, h: 1.35))),
+            Icon(icon, size: AppIconSize.md - 1, color: tone ?? c.textLight),
+            const SizedBox(width: AppSpace.sm),
+            Expanded(child: Text(text, style: AppType.body(context).copyWith(color: c.textDark))),
           ]),
         );
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg - 4, AppSpace.xxs, AppSpace.lg - 4, AppSpace.lg),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(color: calTint(c, color, 0.14), borderRadius: BorderRadius.circular(14)),
-            child: Icon(calSourceIcon(e.source), color: appInk(context, color), size: 24),
+            width: AppTouch.min - 2,
+            height: AppTouch.min - 2,
+            decoration: BoxDecoration(color: calTint(c, color, 0.14), borderRadius: AppRadius.controlAll),
+            child: Icon(calSourceIcon(e.source), color: appInk(context, color), size: AppIconSize.lg),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: AppSpace.md - 2),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(calSourceLabelShort(e).toUpperCase(), style: appText(11, w: FontWeight.w800, c: appInk(context, color)).copyWith(letterSpacing: 0.6)),
-              const SizedBox(height: 2),
+              Text(calSourceLabelShort(e), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: appInk(context, color))),
+              const SizedBox(height: AppSpace.xxs / 2),
               Text(
                 e.title,
-                style: appText(19, w: FontWeight.w800, c: e.cancelled ? c.textLight : c.textDark, h: 1.25)
-                    .copyWith(decoration: e.cancelled ? TextDecoration.lineThrough : null),
+                style: AppType.headline(context)
+                    .copyWith(color: e.cancelled ? c.textLight : c.textDark, decoration: e.cancelled ? TextDecoration.lineThrough : null),
               ),
             ]),
           ),
         ]),
-        const SizedBox(height: 12),
-        Wrap(spacing: 6, runSpacing: 6, children: [
+        const SizedBox(height: AppSpace.sm),
+        Wrap(spacing: AppSpace.xs - 2, runSpacing: AppSpace.xs - 2, children: [
+          if (live) const CalLiveDot(),
           ...calTagsOf(context, e, live: live, nowUtc: nowUtc),
           if (when != null) CalTag(when, c.textMedium, icon: Icons.schedule_rounded),
         ]),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm - 2),
         line(Icons.event_rounded, '${AppTime.date(e.start, pattern: 'EEEE d MMMM')} · ${AppTime.time(e.start)} – ${AppTime.time(e.end)}'),
         if (e.online && !e.isMeeting)
           line(Icons.videocam_rounded, t('أونلاين', 'Online'))
@@ -1440,13 +1439,13 @@ class CalEventSheet extends StatelessWidget {
         if ((e.subtitle ?? '').isNotEmpty) line(e.source == 'timetable' ? Icons.person_rounded : Icons.info_outline_rounded, e.subtitle!),
         if ((e.orgName ?? '').isNotEmpty) line(Icons.apartment_rounded, e.orgName!),
         if (ch != null && (ch.online || ch.substitute || ch.cancelled || ch.mode == 'offline')) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm - 2),
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AppSpace.md - 2),
             decoration: BoxDecoration(
               color: calTint(c, ch.cancelled ? c.danger : (ch.online ? c.primary : c.warning), 0.08),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: (ch.cancelled ? c.danger : (ch.online ? c.primary : c.warning)).withValues(alpha: 0.28)),
+              borderRadius: AppRadius.cardAll,
+              border: Border.all(color: (ch.cancelled ? c.danger : (ch.online ? c.primary : c.warning)).withValues(alpha: 0.28), width: AppBorder.hairline),
             ),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(
@@ -1457,15 +1456,15 @@ class CalEventSheet extends StatelessWidget {
                         : ch.substitute
                             ? t('يدرّس هذه الحصة مدرس بديل', 'A substitute teaches this date')
                             : t('تعود الحصة حضورياً', 'Back in person on this date'),
-                style: appText(14, w: FontWeight.w800, c: c.textDark),
+                style: AppType.bodyStrong(context),
               ),
-              if ((ch.note ?? '').isNotEmpty) ...[const SizedBox(height: 4), Text(ch.note!, style: appText(12.5, c: c.textMedium))],
+              if ((ch.note ?? '').isNotEmpty) ...[const SizedBox(height: AppSpace.xxs), Text(ch.note!, style: AppType.meta(context))],
               if (ch.canRespond || ch.canEdit) ...[
-                const SizedBox(height: 6),
-                Text(t('قبِل ${ch.accept} · رفض ${ch.reject}', '${ch.accept} accepted · ${ch.reject} rejected'), style: appText(12, w: FontWeight.w600, c: c.textMedium)),
+                const SizedBox(height: AppSpace.xs - 2),
+                Text(t('قبِل ${ch.accept} · رفض ${ch.reject}', '${ch.accept} accepted · ${ch.reject} rejected'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600)),
               ],
-              const SizedBox(height: 10),
-              Wrap(spacing: 8, runSpacing: 8, children: [
+              const SizedBox(height: AppSpace.sm - 2),
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 if (ch.online && (ch.onlineUrl ?? '').isNotEmpty && onOpenLink != null)
                   _MiniAction(label: t('رابط الحصة', 'Session link'), icon: Icons.link_rounded, color: c.primary, onTap: onOpenLink!),
                 if (ch.canRespond && !ch.cancelled && onAnswer != null) ...[
@@ -1490,12 +1489,12 @@ class CalEventSheet extends StatelessWidget {
             ]),
           ),
         ],
-        const SizedBox(height: 18),
+        const SizedBox(height: AppSpace.lg - 6),
         if (joinable && onJoin != null) ...[
-          AppPrimaryButton(label: live ? t('انضم الآن', 'Join now') : t('انضم', 'Join'), icon: Icons.videocam_rounded, onPressed: onJoin),
-          const SizedBox(height: 10),
+          AppButton.primary(label: live ? t('انضم الآن', 'Join now') : t('انضم', 'Join'), icon: Icons.videocam_rounded, onPressed: onJoin, expand: true),
+          const SizedBox(height: AppSpace.sm - 2),
         ],
-        Wrap(spacing: 8, runSpacing: 8, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           if (onOpenCourse != null) AppPill(icon: Icons.menu_book_rounded, label: t('فتح المقرر', 'Open course'), onTap: onOpenCourse),
           if (onCourseDetails != null)
             AppPill(icon: Icons.insights_rounded, label: t('تقدمي في المقرر', 'Course progress'), onTap: onCourseDetails),
@@ -1522,38 +1521,45 @@ class CalUpNextCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final e = event;
-    final base = live ? c.danger : calEventColor(c, e);
     final when = calWhen(e, nowUtc, toWall: AppTime.toZone) ?? AppTime.date(e.start, pattern: 'EEE d MMM');
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: DecoratedBox(decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), boxShadow: [BoxShadow(color: base.withValues(alpha: 0.28), blurRadius: 18, offset: const Offset(0, 8))]),
-          child: AppMeshSurface(color: base, radius: BorderRadius.circular(18),
-          child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              if (live) ...[const CalLiveDot(), const SizedBox(width: 6)],
-              Expanded(
-                child: Text(live ? t('مباشر الآن', 'Live now') : t('التالي', 'Up next'),
-                    style: appText(11.5, w: FontWeight.w800, c: c.onHeroMuted).copyWith(letterSpacing: 0.6)),
-              ),
-              const SizedBox(width: 8),
-              Flexible(child: Text(when, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w700, c: c.onHero))),
-            ]),
-            const SizedBox(height: 10),
-            Text(AppTime.time(e.start), style: appText(26, w: FontWeight.w800, c: c.onHero)),
-            const SizedBox(height: 2),
-            Text(e.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w800, c: c.onHero)),
-            const SizedBox(height: 4),
-            Text(
-              [calSourceLabelShort(e), if ((e.location ?? '').isNotEmpty) e.location!, if ((e.orgName ?? '').isNotEmpty) e.orgName!].join(' · '),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: appText(12, c: c.onHeroMuted),
-            ),
-          ])))),
+    final bc = AppBlockColors.of(context, live ? AppBlockTone.paper : AppBlockTone.sky);
+    final content = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        if (live) ...[const CalLiveDot(), const SizedBox(width: AppSpace.xs - 2)],
+        Expanded(
+          child: Text(live ? t('مباشر الآن', 'Live now') : t('التالي', 'Up next'),
+              style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: live ? appInk(context, c.danger) : bc.muted)),
+        ),
+        const SizedBox(width: AppSpace.xs),
+        Flexible(child: Text(when, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: bc.ink))),
+      ]),
+      const SizedBox(height: AppSpace.sm - 2),
+      FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: AlignmentDirectional.centerStart,
+        child: Text(AppTime.time(e.start), maxLines: 1, style: AppType.display(context).copyWith(color: bc.ink, height: 1.05)),
       ),
+      const SizedBox(height: AppSpace.xxs),
+      Text(e.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: bc.ink)),
+      const SizedBox(height: AppSpace.xxs),
+      Text(
+        [calSourceLabelShort(e), if ((e.location ?? '').isNotEmpty) e.location!, if ((e.orgName ?? '').isNotEmpty) e.orgName!].join(' · '),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: AppType.meta(context).copyWith(color: bc.muted),
+      ),
+    ]);
+    if (live) {
+      return Material(
+        color: c.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.blockAll, side: BorderSide(color: c.danger, width: AppBorder.strong)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(onTap: onTap, child: Padding(padding: const EdgeInsets.all(AppSpace.md + AppSpace.xxs), child: content)),
+      );
+    }
+    return AppTilt.subtle(
+      radius: AppRadius.block,
+      child: AppBlock(tone: AppBlockTone.sky, padding: const EdgeInsets.all(AppSpace.md + AppSpace.xxs), onTap: onTap, child: content),
     );
   }
 }
@@ -1567,39 +1573,58 @@ class CalInvitesCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.md),
       decoration: BoxDecoration(
-        color: calTint(c, c.accent2, 0.08),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: c.accent2.withValues(alpha: 0.3)),
+        color: c.cardBg,
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Icon(Icons.mark_email_unread_rounded, size: 18, color: appInk(context, c.accent2)),
-          const SizedBox(width: 8),
+          Icon(Icons.mark_email_unread_rounded, size: AppIconSize.sm + 2, color: c.textMedium),
+          const SizedBox(width: AppSpace.xs),
           Expanded(
-            child: Text(t('دعوات بانتظار ردك', 'Invitations to answer'), style: appText(13.5, w: FontWeight.w800, c: c.textDark)),
+            child: Text(t('دعوات بانتظار ردك', 'Invitations to answer'), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
           ),
-          Text('${invites.length}', style: appText(13, w: FontWeight.w800, c: appInk(context, c.accent2))),
+          AppCountBadgePill(count: invites.length),
         ]),
         for (final e in invites.take(3)) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           InkWell(
             onTap: actions.onTap == null ? null : () => actions.onTap!(e),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(e.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: c.textDark)),
-              Text('${AppTime.date(e.start, pattern: 'EEE d MMM')} · ${AppTime.time(e.start)}', style: appText(11.5, c: c.textMedium)),
+              Text(e.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+              Text('${AppTime.date(e.start, pattern: 'EEE d MMM')} · ${AppTime.time(e.start)}', style: AppType.meta(context)),
             ]),
           ),
           if (actions.onRsvp != null) ...[
-            const SizedBox(height: 6),
-            Wrap(spacing: 6, runSpacing: 6, children: [
+            const SizedBox(height: AppSpace.xs - 2),
+            Wrap(spacing: AppSpace.xs - 2, runSpacing: AppSpace.xs - 2, children: [
               _MiniAction(label: t('قبول', 'Accept'), icon: Icons.check_rounded, color: c.success, onTap: () => actions.onRsvp!(e, 'accepted')),
               _MiniAction(label: t('اعتذار', 'Decline'), icon: Icons.close_rounded, color: c.danger, outline: true, onTap: () => actions.onRsvp!(e, 'declined')),
             ]),
           ],
         ],
       ]),
+    );
+  }
+}
+
+/// A small count in the primary tint (the invitations card's head).
+class AppCountBadgePill extends StatelessWidget {
+  const AppCountBadgePill({super.key, required this.count});
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      constraints: const BoxConstraints(minWidth: AppSpace.lg),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs - 1, vertical: AppSpace.xxs / 2),
+      decoration: BoxDecoration(color: calTint(c, c.primary, 0.12), borderRadius: BorderRadius.circular(AppRadius.pill)),
+      child: Text(count > 99 ? '99+' : '$count',
+          textAlign: TextAlign.center,
+          style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: appInk(context, c.primary), fontFeatures: const [FontFeature.tabularFigures()])),
     );
   }
 }
@@ -1632,7 +1657,7 @@ class CalScheduleSkeleton extends StatelessWidget {
                 Container(
                   margin: EdgeInsets.only(bottom: i == rows - 1 ? 0 : AppSpace.xs),
                   padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.divider.withValues(alpha: 0.7))),
+                  decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.cardAll, border: Border.all(color: c.divider, width: AppBorder.hairline)),
                   child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       AppSkeletonBox(width: 48, height: 12),
@@ -1657,7 +1682,7 @@ class CalScheduleSkeleton extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
           children: [
-            const Padding(padding: EdgeInsets.only(bottom: AppSpace.lg), child: AppSkeletonBox(height: 118, radius: AppRadius.sheet)),
+            const Padding(padding: EdgeInsets.only(bottom: AppSpace.lg), child: AppSkeletonBox(height: 118, radius: AppRadius.block)),
             day(3),
             day(2),
             day(2),

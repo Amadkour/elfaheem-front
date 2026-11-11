@@ -130,9 +130,9 @@ class ChatCountPill extends StatelessWidget {
     return Container(
       constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
       padding: const EdgeInsets.symmetric(horizontal: 6),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadius.hero)),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadius.pill)),
       alignment: Alignment.center,
-      child: Text(count > 99 ? '99+' : '$count', style: appText(11, w: FontWeight.w700, c: chatReadableOn(bg, c.onHero))),
+      child: Text(count > 99 ? '99+' : '$count', style: appText(11, w: FontWeight.w600, c: chatReadableOn(bg, c.onHero))),
     );
   }
 }
@@ -197,7 +197,7 @@ class _ChatConversationTileState extends State<ChatConversationTile> {
                       Expanded(
                         child: Text.rich(
                           TextSpan(children: [
-                            TextSpan(text: conv.title, style: appText(14.5, w: unread ? FontWeight.w700 : FontWeight.w600, c: c.textDark)),
+                            TextSpan(text: conv.title, style: appText(14.5, w: unread ? FontWeight.w600 : FontWeight.w500, c: c.textDark)),
                             if (who != null) TextSpan(text: '  $who', style: appText(11.5, w: FontWeight.w500, c: c.textMedium)),
                           ]),
                           maxLines: 1,
@@ -205,7 +205,7 @@ class _ChatConversationTileState extends State<ChatConversationTile> {
                         ),
                       ),
                       const SizedBox(width: AppSpace.xs),
-                      Text(chatRowTime(conv.lastAt, now: widget.now), style: appText(11.5, w: unread ? FontWeight.w700 : FontWeight.w400, c: unread ? chatInk(c) : c.textMedium)),
+                      Text(chatRowTime(conv.lastAt, now: widget.now), style: appText(11.5, w: unread ? FontWeight.w600 : FontWeight.w400, c: unread ? chatInk(c) : c.textMedium)),
                     ]),
                     const SizedBox(height: 3),
                     SizedBox(
@@ -335,8 +335,8 @@ class ChatDateChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
         decoration: BoxDecoration(
           color: c.cardBg,
-          borderRadius: BorderRadius.circular(AppRadius.chip),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: c.isDark ? 0.22 : 0.08), blurRadius: 1.5, offset: const Offset(0, 1))],
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          border: Border.all(color: c.divider, width: AppBorder.hairline),
         ),
         child: Text(label, style: appText(11.5, w: FontWeight.w600, c: c.textMedium)),
       ),
@@ -359,8 +359,8 @@ class ChatUnreadDivider extends StatelessWidget {
         Container(
           margin: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
-          decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(AppRadius.chip)),
-          child: Text('chat_new_messages'.tr, style: appText(11.5, w: FontWeight.w700, c: chatInk(c))),
+          decoration: BoxDecoration(color: c.blockEmerald, borderRadius: BorderRadius.circular(AppRadius.pill)),
+          child: Text('chat_new_messages'.tr, style: appText(11.5, w: FontWeight.w600, c: c.blockAccentInk(c.primary, c.blockEmerald))),
         ),
         line,
       ]),
@@ -406,7 +406,7 @@ class ChatJumpToLatest extends StatelessWidget {
             color: c.cardBg,
             shape: const CircleBorder(),
             elevation: 3,
-            shadowColor: Colors.black.withValues(alpha: 0.35),
+            shadowColor: c.shadowTone,
             child: InkWell(
               customBorder: const CircleBorder(),
               onTap: onTap,
@@ -465,8 +465,7 @@ class _ChatTypingBubbleState extends State<ChatTypingBubble> with SingleTickerPr
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 12),
         decoration: ShapeDecoration(
           color: c.cardBg,
-          shape: ChatBubbleBorder(radius: BorderRadiusDirectional.only(topStart: big, topEnd: big, bottomEnd: big, bottomStart: const Radius.circular(3)).resolve(Directionality.of(context)), tailRight: rtl),
-          shadows: [BoxShadow(color: Colors.black.withValues(alpha: c.isDark ? 0.22 : 0.10), blurRadius: 1.5, offset: const Offset(0, 1))],
+          shape: ChatBubbleBorder(radius: BorderRadiusDirectional.only(topStart: big, topEnd: big, bottomEnd: big, bottomStart: const Radius.circular(3)).resolve(Directionality.of(context)), tailRight: rtl, side: BorderSide(color: c.divider, width: AppBorder.hairline)),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           if (widget.name != null) ...[
@@ -516,7 +515,7 @@ class ChatThreadSkeleton extends StatelessWidget {
                     margin: const EdgeInsets.only(top: AppSpace.xs),
                     width: w.clamp(0.0, box.maxWidth * 0.75),
                     padding: const EdgeInsets.all(AppSpace.sm),
-                    decoration: BoxDecoration(color: mine ? c.primaryTint : c.cardBg, borderRadius: BorderRadius.circular(AppRadius.card - 1)),
+                    decoration: BoxDecoration(color: mine ? c.blockEmerald : c.cardBg, borderRadius: BorderRadius.circular(AppRadius.card - 1)),
                     child: AppSkeletonBox(height: h),
                   ),
                 ),
@@ -735,7 +734,7 @@ class ChatComposerBar extends StatelessWidget {
     final c = context.colors;
     final canSend = controller.text.trim().isNotEmpty || files.isNotEmpty;
     final length = controller.text.length;
-    final border = OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none);
+    final border = OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.block), borderSide: BorderSide.none);
     return Container(
       padding: const EdgeInsets.all(AppSpace.xs),
       decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider.withValues(alpha: 0.5)))),
@@ -794,7 +793,7 @@ class ChatComposerBar extends StatelessWidget {
                     contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 14),
                     border: border,
                     enabledBorder: border,
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: chatInk(c).withValues(alpha: 0.45), width: 1.2)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.block), borderSide: BorderSide(color: chatInk(c).withValues(alpha: 0.45), width: AppBorder.strong)),
                   ),
                 ),
               ),
@@ -875,7 +874,7 @@ class ChatRequestsRow extends StatelessWidget {
             const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text('chat_requests'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w700, c: c.textDark)),
+                Text('chat_requests'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w600, c: c.textDark)),
                 const SizedBox(height: 2),
                 Text('chat_requests_sub'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w400, c: c.textMedium)),
               ]),
@@ -913,7 +912,7 @@ class ChatRequestCard extends StatelessWidget {
           child: Row(children: [
             ChatAvatar(name: conv.title, url: conv.peer?.imageUrl, size: 44),
             const SizedBox(width: AppSpace.sm),
-            Expanded(child: Text(conv.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w700, c: c.textDark))),
+            Expanded(child: Text(conv.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w600, c: c.textDark))),
             const SizedBox(width: AppSpace.xs),
             Text(chatRowTime(conv.lastAt, now: now), style: appText(11.5, w: FontWeight.w400, c: c.textMedium)),
           ]),
@@ -974,7 +973,7 @@ class ChatRequestDecisionBar extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-              Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w700, c: c.textDark)),
+              Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w600, c: c.textDark)),
               const SizedBox(height: 2),
               Text(reason ?? 'chat_request_received_body'.tr, style: appText(13, w: FontWeight.w400, c: c.textMedium, h: 1.35)),
               const SizedBox(height: AppSpace.sm),

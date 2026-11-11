@@ -252,11 +252,11 @@ class _InboxTabBarState extends State<InboxTabBar> {
     final count = n <= 0
         ? null
         : Container(
-            constraints: const BoxConstraints(minWidth: 22),
+            constraints: const BoxConstraints(minWidth: AppSpace.lg - 2),
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
             decoration: BoxDecoration(
               color: selected ? c.onHero.withValues(alpha: 0.22) : tone.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
             ),
             child: Text(
               n > 99 ? '99+' : '$n',
@@ -265,7 +265,7 @@ class _InboxTabBarState extends State<InboxTabBar> {
                   .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
             ),
           );
-    final radius = AppRadius.chipAll;
+    final radius = BorderRadius.circular(AppRadius.pill);
     return Semantics(
       key: _keyOf(t),
       button: true,
@@ -284,12 +284,12 @@ class _InboxTabBarState extends State<InboxTabBar> {
             curve: AppMotion.curve,
             constraints: const BoxConstraints(minHeight: AppTouch.min),
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
-            decoration: BoxDecoration(gradient: selected ? c.primaryGradient : null, borderRadius: radius),
+            decoration: BoxDecoration(color: selected ? c.primary : null, borderRadius: radius),
             child: Row(
               mainAxisSize: even ? MainAxisSize.max : MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(inboxTabIcon(t), size: 18, color: fg),
+                Icon(inboxTabIcon(t), size: AppIconSize.sm + 2, color: fg),
                 const SizedBox(width: 6),
                 if (even) Flexible(child: text) else text,
                 if (count != null) ...[const SizedBox(width: 6), count],

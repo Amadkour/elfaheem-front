@@ -434,17 +434,22 @@ IconData calSourceIcon(String s) => switch (s) {
       _ => Icons.event_rounded,
     };
 
-/// One colour per kind of event, derived from the live theme (D-085): classes = primary (a lab leans to success),
-/// exams = danger, live sessions = purple, meetings = gold (a private one = warning), special periods between
-/// primary and purple.
-Color calSourceColor(ThemeConfigProvider c, String source, {String? kind}) => switch (source) {
-      'meeting' => kind == 'private' ? c.warning : c.accent2,
-      'timetable' => kind == 'lab' ? Color.lerp(c.primary, c.success, 0.6)! : c.primary,
-      'extra' => Color.lerp(c.primary, c.purple, 0.5)!,
-      'exam' => c.danger,
-      'course_session' || 'course_weekly' => c.purple,
-      _ => c.textMedium,
-    };
+/// One colour per kind of event, derived from the live theme (D-085, editorial palette D-610): classes = the sky
+/// (schedule) hue deepened until it reads as ink (a lab leans to the primary), exams = danger, meetings = the peach
+/// hue deepened (a private one = warning), live course sessions and appointments = the quiet ink (a room that is
+/// live says so with its danger dot, not with a loud colour), special periods between sky and ink. Emerald, gold
+/// and violet stay out: they mean "the primary action / done" and "an achievement", not a kind of event.
+Color calSourceColor(ThemeConfigProvider c, String source, {String? kind}) {
+  final sky = c.blockAccentInk(c.accent3, c.cardBg);
+  return switch (source) {
+    'meeting' => kind == 'private' ? c.warning : c.blockAccentInk(c.accent, c.cardBg),
+    'timetable' => kind == 'lab' ? Color.lerp(sky, c.primary, 0.45)! : sky,
+    'extra' => Color.lerp(sky, c.textMedium, 0.5)!,
+    'exam' => c.danger,
+    'course_session' || 'course_weekly' => c.textMedium,
+    _ => c.textMedium,
+  };
+}
 
 Color calEventColor(ThemeConfigProvider c, CalEvent e) => calSourceColor(c, e.source, kind: e.kind);
 
@@ -468,8 +473,8 @@ IconData calStatusIcon(String? s) => switch (s) {
 Color calStatusColor(ThemeConfigProvider c, String? s) => switch (s) {
       'accepted' => c.success,
       'declined' => c.danger,
-      'proposed' => c.purple,
-      'owner' => c.primary,
+      'proposed' => c.blockAccentInk(c.accent3, c.cardBg),
+      'owner' => c.textMedium,
       _ => c.warning,
     };
 
