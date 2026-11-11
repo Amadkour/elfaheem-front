@@ -21,8 +21,8 @@ library;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_buttons.dart';
-import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -368,13 +368,12 @@ class _AdminContentPageState extends State<AdminContentPage> {
         customBorder: const StadiumBorder(),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(icon, size: 14, color: fg),
-            const SizedBox(width: 5),
+            const SizedBox(width: AppSpace.xxs),
             Text(label,
-                style: TextStyle(
-                    fontFamily: AppFonts.family, fontSize: 11.5, fontWeight: FontWeight.w700, color: fg)),
+                style: AppType.overline(context).copyWith(color: fg)),
           ]),
         ),
       ),
@@ -395,27 +394,26 @@ class _AdminContentPageState extends State<AdminContentPage> {
   }) {
     final c = context.colors;
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: AppSpace.md),
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(AppRadius.block),
         border: Border.all(color: c.divider),
         boxShadow: c.cardShadow,
       ),
       child: Material(
         type: MaterialType.transparency,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpace.md),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               ServiceIcon(icon: icon, colors: colors, size: 40),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(titleKey.tr, style: adminText(context, size: 16, weight: FontWeight.w800)),
+                  Text(titleKey.tr, style: AppType.section(context)),
                   Text(trp('content_items_n', {'n': items.length}),
-                      style: adminText(context,
-                          size: 11.5, weight: FontWeight.w600, color: c.textLight)),
+                      style: AppType.overline(context).copyWith(color: c.textLight)),
                 ]),
               ),
               FilledButton.tonalIcon(
@@ -425,34 +423,32 @@ class _AdminContentPageState extends State<AdminContentPage> {
                     style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
                 style: FilledButton.styleFrom(
                   visualDensity: VisualDensity.compact,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
                 ),
               ),
             ]),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             Text(hintKey.tr,
-                style: adminText(context,
-                    size: 12.5, weight: FontWeight.w500, color: c.textMedium, height: 1.5)),
-            const SizedBox(height: 12),
+                style: AppType.meta(context).copyWith(color: c.textMedium, fontWeight: FontWeight.w500, height: 1.5)),
+            const SizedBox(height: AppSpace.sm),
             if (items.isEmpty)
               InkWell(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(AppRadius.card),
                 onTap: onAdd,
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 12),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpace.lg, horizontal: AppSpace.sm),
                   decoration: BoxDecoration(
                     color: c.inputBg,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(AppRadius.card),
                     border: Border.all(color: c.divider),
                   ),
                   child: Column(children: [
                     Icon(Icons.add_circle_outline_rounded, color: colors.last, size: 30),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpace.xs),
                     Text('content_empty_list'.tr,
                         textAlign: TextAlign.center,
-                        style: adminText(context,
-                            size: 12.5, weight: FontWeight.w600, color: c.textMedium)),
+                        style: AppType.meta(context).copyWith(color: c.textMedium, fontWeight: FontWeight.w600)),
                   ]),
                 ),
               )
@@ -489,61 +485,56 @@ class _AdminContentPageState extends State<AdminContentPage> {
     final active = asBool(data['is_active'], true);
     return Container(
       key: ValueKey('$kind-${data['id']}'),
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: AppSpace.sm),
       decoration: BoxDecoration(
         color: c.inputBg,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: c.divider),
       ),
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AppRadius.card),
           onTap: onEdit,
           child: Opacity(
             opacity: active ? 1 : 0.62,
             child: Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(12, 12, 6, 10),
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.xs, AppSpace.sm),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   leading,
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(title,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: adminText(context, size: 14.5, weight: FontWeight.w800)),
+                          style: AppType.bodyStrong(context)),
                       if (subtitle != null && subtitle.isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Text(subtitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: adminText(context,
-                                size: 12, weight: FontWeight.w500, color: c.textMedium)),
+                            style: AppType.meta(context).copyWith(color: c.textMedium, fontWeight: FontWeight.w500)),
                       ],
                       if (body != null && body.isNotEmpty) ...[
-                        const SizedBox(height: 5),
+                        const SizedBox(height: AppSpace.xxs),
                         Text(body,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: adminText(context,
-                                size: 12,
-                                weight: FontWeight.w500,
-                                color: c.textLight,
-                                height: 1.45)),
+                            style: AppType.meta(context).copyWith(color: c.textLight, fontWeight: FontWeight.w500, height: 1.45)),
                       ],
                     ]),
                   ),
                   ReorderableDragStartListener(
                     index: index,
                     child: Padding(
-                      padding: const EdgeInsets.all(6),
+                      padding: const EdgeInsets.all(AppSpace.xs),
                       child: Icon(Icons.drag_indicator_rounded, color: c.textLight),
                     ),
                   ),
                 ]),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.xs),
                 Row(children: [
                   _pill(
                     label: active ? 'content_visible'.tr : 'content_hidden'.tr,
@@ -599,29 +590,29 @@ class _AdminContentPageState extends State<AdminContentPage> {
     final empty = line.isEmpty && logo.isEmpty;
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(top: 14),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(top: AppSpace.md),
+      padding: const EdgeInsets.all(AppSpace.md),
       decoration: BoxDecoration(
         color: c.inputBg,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: c.divider),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.vertical_align_bottom_rounded, size: 16, color: c.primary),
-          const SizedBox(width: 6),
+          const SizedBox(width: AppSpace.xs),
           Expanded(
             child: Text('content_splash_footer'.tr,
-                style: adminText(context, size: 12, weight: FontWeight.w800, color: c.primary)),
+                style: AppType.meta(context).copyWith(color: c.primary, fontWeight: FontWeight.w600)),
           ),
         ]),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpace.xxs),
         Text('content_splash_footer_hint'.tr,
-            style: adminText(context, size: 12, weight: FontWeight.w500, color: c.textMedium, height: 1.5)),
-        const SizedBox(height: 10),
+            style: AppType.meta(context).copyWith(color: c.textMedium, fontWeight: FontWeight.w500, height: 1.5)),
+        const SizedBox(height: AppSpace.sm),
         if (empty && !uploading)
           Text('content_splash_footer_empty'.tr,
-              style: adminText(context, size: 13, weight: FontWeight.w600, color: c.textLight))
+              style: AppType.label(context).copyWith(color: c.textLight, fontWeight: FontWeight.w600))
         else
           Row(mainAxisSize: MainAxisSize.min, children: [
             if (uploading)
@@ -632,16 +623,16 @@ class _AdminContentPageState extends State<AdminContentPage> {
                 child: Image.network(logo, height: 26, fit: BoxFit.contain,
                     errorBuilder: (_, _, _) => Icon(Icons.broken_image_rounded, size: 20, color: c.textLight)),
               ),
-            if ((uploading || logo.isNotEmpty) && line.isNotEmpty) const SizedBox(width: 8),
+            if ((uploading || logo.isNotEmpty) && line.isNotEmpty) const SizedBox(width: AppSpace.xs),
             if (line.isNotEmpty)
               Flexible(
                 child: Text(line,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: adminText(context, size: 13, weight: FontWeight.w700, color: c.textDark)),
+                    style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
               ),
           ]),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         Wrap(spacing: 10, runSpacing: 8, children: [
           AppButton.secondary(
             label: 'content_upload_splash_logo'.tr,
@@ -673,7 +664,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
       height: 74,
       decoration: BoxDecoration(
         color: c.inputBg,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(AppRadius.block),
         border: Border.all(color: c.divider),
       ),
       child: uploading
@@ -684,83 +675,78 @@ class _AdminContentPageState extends State<AdminContentPage> {
     );
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: AppSpace.md),
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(AppRadius.block),
         border: Border.all(color: c.divider),
         boxShadow: c.cardShadow,
       ),
       child: Material(
         type: MaterialType.transparency,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpace.md),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               ServiceIcon(icon: Icons.badge_rounded, colors: _pal(context).primary, size: 40),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Text('content_identity'.tr,
-                    style: adminText(context, size: 16, weight: FontWeight.w800)),
+                    style: AppType.section(context)),
               ),
             ]),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             Text('content_identity_hint'.tr,
-                style: adminText(context,
-                    size: 12.5, weight: FontWeight.w500, color: c.textMedium, height: 1.5)),
-            const SizedBox(height: 14),
+                style: AppType.meta(context).copyWith(color: c.textMedium, fontWeight: FontWeight.w500, height: 1.5)),
+            const SizedBox(height: AppSpace.md),
             if (info == null)
               Text('content_not_set'.tr,
-                  style: adminText(context, size: 13, weight: FontWeight.w600, color: c.textLight))
+                  style: AppType.label(context).copyWith(color: c.textLight, fontWeight: FontWeight.w600))
             else ...[
               Row(children: [
                 logoBox,
-                const SizedBox(width: 14),
+                const SizedBox(width: AppSpace.md),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(_loc(info, 'name'),
-                        style: adminText(context, size: 17, weight: FontWeight.w800)),
+                        style: AppType.section(context)),
                     if (_other(info, 'name').isNotEmpty)
                       Text(_other(info, 'name'),
-                          style: adminText(context,
-                              size: 12.5, weight: FontWeight.w500, color: c.textMedium)),
+                          style: AppType.meta(context).copyWith(color: c.textMedium, fontWeight: FontWeight.w500)),
                     if (_loc(info, 'tagline').isNotEmpty) ...[
-                      const SizedBox(height: 6),
+                      const SizedBox(height: AppSpace.xs),
                       Text(_loc(info, 'tagline'),
-                          style: adminText(context,
-                              size: 12.5, weight: FontWeight.w600, color: c.primary, height: 1.4)),
+                          style: AppType.meta(context).copyWith(color: c.primary, fontWeight: FontWeight.w600, height: 1.4)),
                     ],
                   ]),
                 ),
               ]),
               if (mission.isNotEmpty) ...[
-                const SizedBox(height: 14),
+                const SizedBox(height: AppSpace.md),
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(AppSpace.md),
                   decoration: BoxDecoration(
                     color: c.primary.withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(AppRadius.card),
                     border: Border.all(color: c.primary.withValues(alpha: 0.22)),
                   ),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
                       Icon(Icons.flag_rounded, size: 16, color: c.primary),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: AppSpace.xs),
                       Flexible(child: Text('content_mission'.tr,
-                          style: adminText(context,
-                              size: 12, weight: FontWeight.w800, color: c.primary))),
+                          style: AppType.meta(context).copyWith(color: c.primary, fontWeight: FontWeight.w600))),
                     ]),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpace.xs),
                     Text(mission,
-                        style: adminText(context,
-                            size: 13, weight: FontWeight.w500, color: c.textDark, height: 1.6)),
+                        style: AppType.label(context).copyWith(color: c.textDark, height: 1.6)),
                   ]),
                 ),
               ],
               _splashFooterBlock(info),
             ],
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpace.md),
             Wrap(spacing: 10, runSpacing: 8, children: [
               AppButton.primary(
                 label: 'btn_edit'.tr,
@@ -803,19 +789,13 @@ class _AdminContentPageState extends State<AdminContentPage> {
           onEdit: () => _form(_statCfg, item: s, path: '/about/stats'),
           leading: Container(
             constraints: const BoxConstraints(minWidth: 60),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-            decoration: BoxDecoration(
-              gradient: AppGradients.blend(context, color: _pal(context).green.last),
-              borderRadius: BorderRadius.circular(16),
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.sm),
+            // the figure on the emerald block tint (a stat is "done / counted"), never a gradient wash
+            decoration: BoxDecoration(color: c.blockEmerald, borderRadius: AppRadius.controlAll),
             child: Text(_loc(s, 'value'),
                 textAlign: TextAlign.center,
                 textDirection: TextDirection.ltr,
-                style: TextStyle(
-                    fontFamily: AppFonts.family,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: c.onHero)),
+                style: AppType.figure(context).copyWith(color: c.blockAccentInk(c.primary, c.blockEmerald))),
           ),
           title: _loc(s, 'label'),
           subtitle: _other(s, 'label'),
@@ -837,17 +817,16 @@ class _AdminContentPageState extends State<AdminContentPage> {
           final path = '/about/team/${m['id']}/image';
           final busy = _uploading == path;
           final emoji = asStr(m['emoji']);
+          // the member's own emoji (content) or a person mark, on a faint tint (never a gradient wash)
+          final tint = Color.alphaBlend(_pal(context).purple.last.withValues(alpha: 0.14), c.cardBg);
           final fallback = Container(
-            width: 50,
-            height: 50,
+            width: AppTouch.min,
+            height: AppTouch.min,
             alignment: Alignment.center,
-            decoration: BoxDecoration(
-              gradient: AppGradients.blend(context, color: _pal(context).purple.last),
-              borderRadius: BorderRadius.circular(16),
-            ),
+            decoration: BoxDecoration(color: tint, borderRadius: AppRadius.controlAll),
             child: emoji.isNotEmpty
-                ? Text(emoji, style: const TextStyle(fontSize: 24))
-                : Icon(Icons.person_rounded, color: c.onHero),
+                ? Text(emoji, style: AppType.figureLarge(context))
+                : Icon(Icons.person_rounded, color: c.blockAccentInk(_pal(context).purple.last, tint)),
           );
           return _row(
             kind: 'team',
@@ -934,24 +913,24 @@ class _AdminContentPageState extends State<AdminContentPage> {
         ),
       ),
       Container(
-        margin: const EdgeInsets.only(bottom: 16),
+        margin: const EdgeInsets.only(bottom: AppSpace.md),
         decoration: BoxDecoration(
           color: c.cardBg,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(AppRadius.block),
           border: Border.all(color: c.divider),
           boxShadow: c.cardShadow,
         ),
         child: Material(
           type: MaterialType.transparency,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpace.md),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 ServiceIcon(icon: Icons.update_rounded, colors: _pal(context).gold, size: 40),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Text('content_terms_version'.tr,
-                      style: adminText(context, size: 16, weight: FontWeight.w800)),
+                      style: AppType.section(context)),
                 ),
                 IconButton(
                   tooltip: 'btn_edit'.tr,
@@ -959,10 +938,10 @@ class _AdminContentPageState extends State<AdminContentPage> {
                   onPressed: () => _form(_metaCfg, item: meta, path: '/terms/meta', single: true),
                 ),
               ]),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               if (meta == null)
                 Text('content_not_set'.tr,
-                    style: adminText(context, size: 13, weight: FontWeight.w600, color: c.textLight))
+                    style: AppType.label(context).copyWith(color: c.textLight, fontWeight: FontWeight.w600))
               else
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   StatusChip(trp('content_version_n', {'v': asStr(meta['version'], '—')}),
@@ -1234,10 +1213,9 @@ class _EntityFormState extends State<_EntityForm> {
   }
 
   Widget _label(String key) => Padding(
-    padding: const EdgeInsets.only(bottom: 8, top: 4),
+    padding: const EdgeInsets.only(bottom: AppSpace.xs, top: AppSpace.xxs),
     child: Text(key.tr,
-        style: adminText(context,
-            size: 12.5, weight: FontWeight.w700, color: context.colors.textMedium)),
+        style: AppType.meta(context).copyWith(color: context.colors.textMedium, fontWeight: FontWeight.w600)),
   );
 
   @override
@@ -1251,7 +1229,7 @@ class _EntityFormState extends State<_EntityForm> {
       SheetHeader((_isNew ? cfg.newKey : cfg.editKey).tr),
       Flexible(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Form(
             key: _form,
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1264,13 +1242,13 @@ class _EntityFormState extends State<_EntityForm> {
                           ? null
                           : Icon(contentIcon(p.icon), size: 16, color: c.primary),
                       label: Text(ar ? p.ar : p.en,
-                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
+                          style: AppType.meta(context)),
                       backgroundColor: c.inputBg,
                       side: BorderSide(color: c.divider),
                       onPressed: () => _usePreset(p),
                     ),
                 ]),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpace.md),
               ],
               if (cfg.contactTypes) ...[
                 _label('content_contact_type'),
@@ -1279,11 +1257,7 @@ class _EntityFormState extends State<_EntityForm> {
                     ChoiceChip(
                       avatar: Icon(e.value, size: 16, color: _type == e.key ? c.primary : c.textMedium),
                       label: Text('content_type_${e.key}'.tr,
-                          style: TextStyle(
-                              fontFamily: AppFonts.family,
-                              fontSize: 12.5,
-                              fontWeight: _type == e.key ? FontWeight.w800 : FontWeight.w600,
-                              color: _type == e.key ? c.primary : c.textMedium)),
+                          style: AppType.meta(context).copyWith(color: _type == e.key ? c.primary : c.textMedium, fontWeight: FontWeight.w600)),
                       selected: _type == e.key,
                       showCheckmark: false,
                       selectedColor: c.primary.withValues(alpha: 0.13),
@@ -1292,7 +1266,7 @@ class _EntityFormState extends State<_EntityForm> {
                       onSelected: (_) => setState(() => _type = e.key),
                     ),
                 ]),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpace.md),
               ],
               for (final f in cfg.fields)
                 Field(
@@ -1309,7 +1283,7 @@ class _EntityFormState extends State<_EntityForm> {
                 Wrap(spacing: 10, runSpacing: 10, children: [
                   for (final e in cfg.icons!.entries)
                     InkWell(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(AppRadius.control),
                       onTap: () => setState(() => _icon = e.key),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
@@ -1317,7 +1291,7 @@ class _EntityFormState extends State<_EntityForm> {
                         height: 48,
                         decoration: BoxDecoration(
                           color: _icon == e.key ? c.primary.withValues(alpha: 0.12) : c.inputBg,
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(AppRadius.control),
                           border: Border.all(
                               color: _icon == e.key ? c.primary : c.divider,
                               width: _icon == e.key ? 2 : 1),
@@ -1327,7 +1301,7 @@ class _EntityFormState extends State<_EntityForm> {
                       ),
                     ),
                 ]),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpace.md),
               ],
               if (cfg.hasActive)
                 PremiumSwitchRow(
@@ -1337,7 +1311,7 @@ class _EntityFormState extends State<_EntityForm> {
                   value: _active,
                   onChanged: (v) => setState(() => _active = v),
                 ),
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpace.xs),
               SizedBox(
                 width: double.infinity,
                 height: 52,
@@ -1345,14 +1319,10 @@ class _EntityFormState extends State<_EntityForm> {
                   onPressed: _submit,
                   style: FilledButton.styleFrom(
                     backgroundColor: c.primary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card)),
                   ),
                   child: Text('save'.tr,
-                      style: TextStyle(
-                          fontFamily: AppFonts.family,
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w800,
-                          color: c.onHero)),
+                      style: AppType.section(context).copyWith(color: c.onHero)),
                 ),
               ),
             ]),

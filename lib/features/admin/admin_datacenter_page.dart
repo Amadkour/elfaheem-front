@@ -212,21 +212,21 @@ class _DataCenterPageState extends State<DataCenterPage> {
           final colors = {'#0F7B5F': c.primary, '#7C3AED': c.purple, '#C98A3E': c.accent2, '#2563EB': hexColor('#2563EB', c.charcoal),
             '#DC2626': c.danger, '#1F2430': hexColor('#1F2430', c.textDark)};
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               SheetHeader(t('تصميم التصدير', 'Design the export')),
               // ── live preview ──
               Container(
                 height: 300,
                 width: double.infinity,
-                decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.divider)),
+                decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.divider)),
                 child: Stack(children: [
-                  if (preview != null) Positioned.fill(child: Padding(padding: const EdgeInsets.all(8), child: Image.memory(preview!, fit: BoxFit.contain))),
+                  if (preview != null) Positioned.fill(child: Padding(padding: const EdgeInsets.all(AppSpace.xs), child: Image.memory(preview!, fit: BoxFit.contain))),
                   if (busy) const AppListSkeleton(),
                   PositionedDirectional(top: 6, end: 6, child: IconButton.filledTonal(tooltip: t('تحديث', 'Refresh'), onPressed: refresh, icon: const Icon(Icons.refresh_rounded))),
                 ]),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               Field(controller: title, label: t('العنوان (فارغ = الافتراضي)', 'Title (empty = default)')),
               Field(controller: subtitle, label: t('العنوان الفرعي', 'Subtitle')),
               Field(controller: footer, label: t('تذييل الصفحة (مثل: سري)', 'Page footer (e.g. Confidential)')),
@@ -244,9 +244,9 @@ class _DataCenterPageState extends State<DataCenterPage> {
                 )),
                 if (logo != null) IconButton(tooltip: t('إزالة', 'Remove'), onPressed: () { set(() => logo = null); refresh(); }, icon: const Icon(Icons.close_rounded)),
               ]),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
               Text(t('اللون', 'Colour'), style: orgText(ctx, size: 12.5, w: FontWeight.w700, color: c.textMedium)),
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpace.xs),
               Wrap(spacing: 10, children: [
                 for (final e in colors.entries)
                   GestureDetector(
@@ -258,7 +258,7 @@ class _DataCenterPageState extends State<DataCenterPage> {
                     ),
                   ),
               ]),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               Row(children: [
                 Expanded(child: SegmentedButton<String>(
                   segments: [ButtonSegment(value: 'landscape', icon: const Icon(Icons.crop_landscape_rounded), label: Text(t('عرضي', 'Landscape'))),
@@ -295,7 +295,7 @@ class _DataCenterPageState extends State<DataCenterPage> {
                     ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               AppButton.primary(label: t('حفظ التصميم', 'Save the design'), busy: saving, expand: true, onPressed: saving ? null : () async {
                 if (chosen.isEmpty) return toast(t('اختر عموداً واحداً على الأقل', 'Keep at least one column'), error: true);
                 set(() => saving = true);
@@ -586,7 +586,7 @@ class _DataCenterPageState extends State<DataCenterPage> {
     } else if (_sets.isEmpty) {
       content = AppEmpty(icon: Icons.insights_rounded, title: t('لا بيانات متاحة لك', 'No data available to you'));
     } else {
-      content = ListView(padding: widget.embedded ? const EdgeInsets.fromLTRB(16, 10, 16, 40) : AdminPage.bodyPadding(context), children: [
+      content = ListView(padding: widget.embedded ? const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl) : AdminPage.bodyPadding(context), children: [
         _datasetChips(),
         AppSpace.gapSm,
         if (_key == 'parents' && _sets.any((s) => s['key'] == 'parents' && s['can_import'] == true)) _parentsTools(),

@@ -12,6 +12,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -19,14 +20,12 @@ import 'package:flutter_education_app/core/api_client.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_filter_models.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/design/app_buttons.dart' show AppIconButton, AppIconButtonVariant;
 import 'package:flutter_education_app/design/app_search_field.dart';
 import 'package:flutter_education_app/design/app_username.dart' show usernameFrom;
 import 'admin_money_p8.dart' show parseAmountLoose;
 
-String get _font => AppFonts.family;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  helpers
@@ -88,7 +87,7 @@ class AdminFilterBar extends StatelessWidget {
     required this.specs,
     this.sort,
     this.quickKeys = const {},
-    this.padding = const EdgeInsets.fromLTRB(14, 10, 14, 6),
+    this.padding = const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xs),
   });
 
   final AdminQueryHost host;
@@ -123,7 +122,7 @@ class AdminFilterBar extends StatelessWidget {
                   onChanged: host.setSearch,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               _FilterButton(
                 count: count,
                 onTap: () => showAdminFilterSheet(
@@ -144,18 +143,14 @@ class AdminFilterBar extends StatelessWidget {
         ),
         if (hasQuery && total != null)
           Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(18, 2, 18, 2),
+            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, 2, AppSpace.md, 2),
             child: Row(
               children: [
                 Icon(Icons.manage_search_rounded, size: 16, color: c.textLight),
-                const SizedBox(width: 6),
+                const SizedBox(width: AppSpace.xs),
                 Flexible(child: Text(
                   'admin_results_count'.tr.replaceAll('{n}', '$total'),
-                  style: TextStyle(
-                    fontFamily: _font,
-                    fontSize: 12,
-                    color: c.textLight,
-                  ),
+                  style: AppType.meta(context).copyWith(color: c.textLight),
                 )),
               ],
             ),
@@ -238,9 +233,9 @@ class _FilterButton extends StatelessWidget {
       message: 'admin_filter_title'.tr,
       child: Material(
         color: active ? c.primary : c.inputBg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadius.control),
           onTap: onTap,
           child: SizedBox(
             width: 48,
@@ -259,22 +254,17 @@ class _FilterButton extends StatelessWidget {
                     child: Container(
                       constraints: const BoxConstraints(minWidth: 17),
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
+                        horizontal: AppSpace.xxs,
                         vertical: 1,
                       ),
                       decoration: BoxDecoration(
                         color: c.danger,
-                        borderRadius: BorderRadius.circular(9),
+                        borderRadius: BorderRadius.circular(AppRadius.chip),
                       ),
                       child: Text(
                         '$count',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: _font,
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w800,
-                          color: c.onHero,
-                        ),
+                        style: AppType.overline(context).copyWith(color: c.onHero),
                       ),
                     ),
                   ),
@@ -358,7 +348,7 @@ class _ActiveChips extends StatelessWidget {
       height: 44,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xxs),
         children: [
           ...chips,
           if (host.hasActiveQuery)
@@ -372,7 +362,7 @@ class _ActiveChips extends StatelessWidget {
                 icon: const Icon(Icons.filter_alt_off_rounded, size: 17),
                 label: Text(
                   'admin_filter_clear_all'.tr,
-                  style: TextStyle(fontFamily: _font, fontSize: 12.5),
+                  style: AppType.meta(context),
                 ),
                 onPressed: host.clearAll,
               ),
@@ -394,17 +384,12 @@ class _RemovableChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsetsDirectional.only(end: 6),
+      padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
       child: InputChip(
         avatar: icon == null ? null : Icon(icon, size: 16, color: c.primary),
         label: Text(
           text,
-          style: TextStyle(
-            fontFamily: _font,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: c.primary,
-          ),
+          style: AppType.meta(context).copyWith(color: c.primary, fontWeight: FontWeight.w600),
         ),
         backgroundColor: c.primary.withValues(alpha: 0.10),
         side: BorderSide(color: c.primary.withValues(alpha: 0.35)),
@@ -490,7 +475,7 @@ class _FilterSheetState extends State<_FilterSheet> {
         SheetHeader('admin_filter_title'.tr),
         Flexible(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -509,7 +494,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                   ),
                 for (final s in widget.specs)
                   _Section(title: s.labelKey.tr, child: _build(s)),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.xs),
                 Row(
                   children: [
                     Expanded(
@@ -521,18 +506,18 @@ class _FilterSheetState extends State<_FilterSheet> {
                           ),
                           minimumSize: const Size.fromHeight(48),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(AppRadius.control),
                           ),
                         ),
                         icon: const Icon(Icons.restart_alt_rounded, size: 19),
                         label: Text(
                           'admin_filter_reset'.tr,
-                          style: TextStyle(fontFamily: _font),
+                          style: AppType.body(context),
                         ),
                         onPressed: _count == 0 ? null : _reset,
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: AppSpace.sm),
                     Expanded(
                       flex: 2,
                       child: PrimaryButton(
@@ -629,20 +614,15 @@ class _Section extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: AppSpace.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: TextStyle(
-              fontFamily: _font,
-              fontWeight: FontWeight.w800,
-              fontSize: 13.5,
-              color: c.textDark,
-            ),
+            style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           child,
         ],
       ),
@@ -655,7 +635,7 @@ class _MiniLoader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const Padding(
-    padding: EdgeInsets.symmetric(vertical: 6),
+    padding: EdgeInsets.symmetric(vertical: AppSpace.xs),
     child: SizedBox(
       width: 20,
       height: 20,
@@ -684,12 +664,7 @@ class _Chips<T> extends StatelessWidget {
     Widget chip(String label, bool selected, VoidCallback onTap) => ChoiceChip(
       label: Text(
         label,
-        style: TextStyle(
-          fontFamily: _font,
-          fontSize: 12.5,
-          fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-          color: selected ? c.primary : c.textMedium,
-        ),
+        style: AppType.meta(context).copyWith(color: selected ? c.primary : c.textMedium, fontWeight: FontWeight.w600),
       ),
       selected: selected,
       showCheckmark: false,
@@ -763,11 +738,7 @@ class _DateRange extends StatelessWidget {
               ActionChip(
                 label: Text(
                   e.key.tr,
-                  style: TextStyle(
-                    fontFamily: _font,
-                    fontSize: 12,
-                    color: c.textMedium,
-                  ),
+                  style: AppType.meta(context).copyWith(color: c.textMedium),
                 ),
                 backgroundColor: c.inputBg,
                 side: BorderSide(color: c.divider),
@@ -775,7 +746,7 @@ class _DateRange extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         Row(
           children: [
             Expanded(
@@ -793,7 +764,7 @@ class _DateRange extends StatelessWidget {
                 onClear: () => onChanged(null, to),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.xs),
             Expanded(
               child: _DateTile(
                 label: 'admin_filter_to'.tr,
@@ -833,13 +804,13 @@ class _DateTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppRadius.control),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 4, 8),
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xs, AppSpace.xxs, AppSpace.xs),
         decoration: BoxDecoration(
           color: c.inputBg,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.control),
           border: Border.all(color: value == null ? c.divider : c.primary),
         ),
         child: Row(
@@ -849,28 +820,19 @@ class _DateTile extends StatelessWidget {
               size: 18,
               color: value == null ? c.textLight : c.primary,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.xs),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     label,
-                    style: TextStyle(
-                      fontFamily: _font,
-                      fontSize: 10.5,
-                      color: c.textLight,
-                    ),
+                    style: AppType.overline(context).copyWith(color: c.textLight),
                   ),
                   Text(
                     value == null ? '—' : _fmtDate(value),
                     textDirection: TextDirection.ltr,
-                    style: TextStyle(
-                      fontFamily: _font,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: c.textDark,
-                    ),
+                    style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
@@ -944,20 +906,20 @@ class _NumberRangeState extends State<_NumberRange> {
     final c = context.colors;
     InputDecoration deco(String hint) => InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(fontFamily: _font, color: c.textLight, fontSize: 13),
+      hintStyle: AppType.label(context).copyWith(color: c.textLight),
       isDense: true,
       filled: true,
       fillColor: c.inputBg,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         borderSide: BorderSide(color: c.divider),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         borderSide: BorderSide(color: c.divider),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         borderSide: BorderSide(color: c.primary),
       ),
     );
@@ -974,7 +936,7 @@ class _NumberRangeState extends State<_NumberRange> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
           child: Text('–', style: TextStyle(color: c.textLight)),
         ),
         Expanded(
@@ -1008,17 +970,17 @@ class _LookupTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppRadius.control),
       onTap: () => showAdminSheet(
         context,
         (ctx) => _LookupPicker(kind: kind, onPick: (v) => onChanged(v)),
       ),
       child: Container(
-        padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 4, 6),
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xs, AppSpace.xxs, AppSpace.xs),
         constraints: const BoxConstraints(minHeight: 48),
         decoration: BoxDecoration(
           color: c.inputBg,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.control),
           border: Border.all(color: value == null ? c.divider : c.primary),
         ),
         child: Row(
@@ -1028,18 +990,13 @@ class _LookupTile extends StatelessWidget {
               size: 18,
               color: value == null ? c.textLight : c.primary,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.xs),
             Expanded(
               child: Text(
                 value?.label ?? 'admin_filter_any'.tr,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: _font,
-                  fontSize: 13.5,
-                  fontWeight: value == null ? FontWeight.w500 : FontWeight.w800,
-                  color: value == null ? c.textLight : c.textDark,
-                ),
+                style: AppType.label(context).copyWith(color: value == null ? c.textLight : c.textDark),
               ),
             ),
             if (value != null)
@@ -1050,7 +1007,7 @@ class _LookupTile extends StatelessWidget {
               )
             else
               Icon(Icons.keyboard_arrow_down_rounded, color: c.textLight),
-            const SizedBox(width: 4),
+            const SizedBox(width: AppSpace.xxs),
           ],
         ),
       ),
@@ -1119,7 +1076,7 @@ class _LookupPickerState extends State<_LookupPicker> {
       children: [
         SheetHeader('admin_filter_pick'.tr),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
           child: AdminSearchField(
             hint: 'admin_filter_search_hint'.tr,
             value: _c.text,
@@ -1154,11 +1111,7 @@ class _LookupPickerState extends State<_LookupPicker> {
                         it.label,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: _font,
-                          fontSize: 14,
-                          color: c.textDark,
-                        ),
+                        style: AppType.body(context).copyWith(color: c.textDark),
                       ),
                       onTap: () {
                         widget.onPick(it);
@@ -1168,7 +1121,7 @@ class _LookupPickerState extends State<_LookupPicker> {
                   },
                 ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
       ],
     );
   }

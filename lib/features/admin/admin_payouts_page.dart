@@ -512,7 +512,7 @@ class _ResolveDialogState extends State<_ResolveDialog> {
               'admin_check_the_provider_dashboard_did_the'.tr,
               style: TextStyle(fontFamily: AppFonts.family),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             TextField(
               controller: _ctrl,
               decoration: InputDecoration(
@@ -669,7 +669,7 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
                 controller: _ref,
                 decoration: InputDecoration(hintText: 'admin_transfer_ref'.tr),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpace.md),
               Row(
                 children: [
                   OutlineButton(
@@ -685,7 +685,7 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
               ),
               if (_file != null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.only(top: AppSpace.xs),
                   child: Row(
                     children: [
                       Icon(
@@ -694,17 +694,14 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
                             : Icons.image_rounded,
                         color: c.primary,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpace.xs),
                       Expanded(
                         child: Text(
                           _file!.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textDirection: TextDirection.ltr,
-                          style: TextStyle(
-                            fontFamily: AppFonts.family,
-                            fontSize: 12,
-                          ),
+                          style: AppType.meta(context),
                         ),
                       ),
                     ],
@@ -712,7 +709,7 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
                 ),
               if (_file != null && !_isPdf)
                 Padding(
-                  padding: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.only(top: AppSpace.xs),
                   // FIXED size on purpose: AlertDialog measures its content with IntrinsicWidth, and an
                   // Image with width: double.infinity (or a full-resolution photo decode) there is what
                   // blanked the screen. cacheWidth keeps a 12 MP camera photo from being decoded in full.
@@ -720,7 +717,7 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
                     width: 232,
                     height: 140,
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppRadius.chip),
                       child: _preview(_file!),
                     ),
                   ),
@@ -757,7 +754,7 @@ class _TeachersView extends StatelessWidget {
       header: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xs),
             child: SearchBox(
               hint: 'admin_search_teachers'.tr,
               onChanged: p.setSearch,
@@ -772,7 +769,7 @@ class _TeachersView extends StatelessWidget {
             },
             onChanged: (v) => p.setOnly(v == 'all' ? null : v),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs),
         ],
       ),
       emptyText: 'admin_no_teachers'.tr,
@@ -804,7 +801,7 @@ class _TeacherTile extends StatelessWidget {
             allowed ? Icons.check_circle_rounded : Icons.block_rounded,
             color: allowed ? c.success : c.danger,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -820,13 +817,9 @@ class _TeacherTile extends StatelessWidget {
                 Text(
                   asStr(row['gmail']),
                   textDirection: TextDirection.ltr,
-                  style: TextStyle(
-                    fontFamily: AppFonts.family,
-                    fontSize: 12,
-                    color: c.textLight,
-                  ),
+                  style: AppType.meta(context).copyWith(color: c.textLight),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpace.xxs),
                 Wrap(
                   spacing: 6,
                   runSpacing: 4,
@@ -881,7 +874,7 @@ class _TeacherTile extends StatelessWidget {
               SheetHeader(asStr(row['name'])),
               Flexible(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -896,7 +889,7 @@ class _TeacherTile extends StatelessWidget {
                         onChanged: (v) => setS(() => enabled = v),
                       ),
                       AppSwitchTile(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
                         title: 'admin_custom_methods_for_this_teacher'.tr,
                         value: restrict,
                         onChanged: (v) => setS(() => restrict = v),
@@ -918,7 +911,7 @@ class _TeacherTile extends StatelessWidget {
                               ),
                           ],
                         ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpace.md),
                       PrimaryButton(
                         label: 'save'.tr,
                         isLoading: busy,

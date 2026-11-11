@@ -20,7 +20,6 @@ import 'package:flutter_education_app/design/app_states.dart' show appErrorMessa
 import 'package:flutter_education_app/design/app_tabs.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_username.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Starts view-as for [id] and lands on that user's own home. ONE place for every entry point
 /// (this page, the student/teacher lists, the user detail sheet).
@@ -302,8 +301,8 @@ class ViewAsBanner extends StatelessWidget {
                   bottom: false,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
+                      horizontal: AppSpace.sm,
+                      vertical: AppSpace.xs,
                     ),
                     child: Row(
                       children: [
@@ -312,28 +311,22 @@ class ViewAsBanner extends StatelessWidget {
                           color: context.colors.onHero,
                           size: 18,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpace.xs),
                         Expanded(
                           child: Text(
                             '${'admin_view_only'.tr}: ${s.name}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: context.colors.onHero,
-                              fontWeight: FontWeight.w700,
-                              fontFamily: AppFonts.family,
-                              decoration: TextDecoration.none,
-                              fontSize: 13,
-                            ),
+                            style: AppType.label(context).copyWith(color: context.colors.onHero, fontWeight: FontWeight.w600, decoration: TextDecoration.none),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpace.xs),
                         FilledButton.icon(
                           style: FilledButton.styleFrom(
                             backgroundColor: context.colors.onHero,
                             foregroundColor: context.colors.warning,
                             visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
                           ),
                           icon: const Icon(
                             Icons.admin_panel_settings_rounded,
@@ -341,11 +334,7 @@ class ViewAsBanner extends StatelessWidget {
                           ),
                           label: Text(
                             'admin_back_to_admin'.tr,
-                            style: TextStyle(
-                              fontFamily: AppFonts.family,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 12.5,
-                            ),
+                            style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600),
                           ),
                           onPressed: exit,
                         ),

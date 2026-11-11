@@ -236,7 +236,7 @@ class _AdminFeatureGuidePageState extends State<AdminFeatureGuidePage> {
                         '"App" turns the feature\'s switches off on every platform; "Assistant" decides whether it is explained. A feature hidden in the app is never explained.'),
               ),
             if (_super) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               Align(
                 alignment: AlignmentDirectional.centerStart,
                 child: AppPill(
@@ -245,12 +245,12 @@ class _AdminFeatureGuidePageState extends State<AdminFeatureGuidePage> {
                     onTap: _syncing ? null : _syncAssistant),
               ),
             ],
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppSearchField(
               hint: t('ابحث بالاسم أو المفتاح أو الوصف', 'Search by name, key or description'),
               onChanged: (v) => setState(() => _q = v),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             Wrap(spacing: 8, runSpacing: 8, children: [
               AppChoiceChip(label: t('الكل', 'All'), selected: _show == GuideShow.all, onTap: () => setState(() => _show = GuideShow.all)),
               AppChoiceChip(
@@ -269,7 +269,7 @@ class _AdminFeatureGuidePageState extends State<AdminFeatureGuidePage> {
                   selected: _show == GuideShow.hiddenInApp,
                   onTap: () => setState(() => _show = GuideShow.hiddenInApp)),
             ]),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             AppPicker<String>(
                 label: t('الدور', 'Role'),
                 icon: Icons.badge_outlined,
@@ -286,7 +286,7 @@ class _AdminFeatureGuidePageState extends State<AdminFeatureGuidePage> {
                 noneLabel: t('كل المجموعات', 'All groups'),
                 options: {for (final g in asMapList(_data!['groups'])) '${g['id']}': '${groups['${g['id']}']} (${g['count']})'},
                 onChanged: (v) => setState(() => _group = v)),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
           ]),
         ),
         if (rows.isEmpty)
@@ -304,24 +304,24 @@ class _AdminFeatureGuidePageState extends State<AdminFeatureGuidePage> {
           )
         else
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 100),
             sliver: SliverList.builder(
               itemCount: rows.length,
               itemBuilder: (_, i) {
                 final row = rows[i];
                 if (row is (String, int)) {
                   return Padding(
-                    padding: const EdgeInsets.fromLTRB(4, 14, 4, 6),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.xxs, AppSpace.md, AppSpace.xxs, AppSpace.xs),
                     child: Row(children: [
-                      Expanded(child: Text(row.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w800, c: c.textDark))),
-                      Text('${row.$2}', style: appText(12, c: c.textLight)),
+                      Expanded(child: Text(row.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600))),
+                      Text('${row.$2}', style: AppType.meta(context).copyWith(color: c.textLight)),
                     ]),
                   );
                 }
                 final f = row as GuideFeature;
                 final busy = _busy.contains(f.key);
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(bottom: AppSpace.xs),
                   child: GuideFeatureTile(
                     feature: f,
                     roleNames: roles,
@@ -386,14 +386,14 @@ class GuideFeatureTile extends StatelessWidget {
     final state = guideAppStateText(f);
     final appOn = f.appState != 'hidden';
     return AppCard(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
       onTap: onTap,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(f.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark)),
+        Text(f.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
         Text(f.key, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: AppType.meta(context)),
-        Text(f.roles.map((r) => roleNames[r] ?? r).join(t('، ', ', ')), maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w600, c: c.primary)),
-        if (f.summary.isNotEmpty) Text(f.summary, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
-        const SizedBox(height: 8),
+        Text(f.roles.map((r) => roleNames[r] ?? r).join(t('، ', ', ')), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.overline(context).copyWith(color: c.primary)),
+        if (f.summary.isNotEmpty) Text(f.summary, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
+        const SizedBox(height: AppSpace.xs),
         Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
           // read-only: the app switches belong to the Features page
           if (f.appState != 'none') ...[
@@ -503,13 +503,13 @@ class _GuideFeatureEditorState extends State<GuideFeatureEditor> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final ro = widget.readOnly;
-    Widget label(String s) => Padding(padding: const EdgeInsets.only(top: 10, bottom: 6), child: Text(s, style: appText(12.5, w: FontWeight.w800, c: c.textMedium)));
+    Widget label(String s) => Padding(padding: const EdgeInsets.only(top: AppSpace.sm, bottom: AppSpace.xs), child: Text(s, style: AppType.meta(context).copyWith(color: c.textMedium, fontWeight: FontWeight.w600)));
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.lg),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppSheetHeader(f == null ? t('ميزة جديدة في الدليل', 'New guide feature') : f!.title),
         if (f != null)
-          SelectableText(f!.key, textDirection: TextDirection.ltr, style: appText(12, c: c.textLight).copyWith(fontFamily: 'monospace'))
+          SelectableText(f!.key, textDirection: TextDirection.ltr, style: AppType.meta(context).copyWith(color: c.textLight).copyWith(fontFamily: 'monospace'))
         else
           AppField(controller: _key, label: t('المفتاح (مثل offline_downloads)', 'Key (e.g. offline_downloads)'), ltr: true),
         if (ro) ..._readOnly(context, label) else ..._form(context, label),
@@ -523,16 +523,16 @@ class _GuideFeatureEditorState extends State<GuideFeatureEditor> {
     String lang(String n) => t(x.text(n, 'ar'), x.text(n, 'en'));
     return [
       label(t('لمن', 'Who has it')),
-      Text(x.roles.map((r) => widget.roles[r] ?? r).join(t('، ', ', ')), style: appText(13, c: c.textDark)),
+      Text(x.roles.map((r) => widget.roles[r] ?? r).join(t('، ', ', ')), style: AppType.label(context).copyWith(color: c.textDark)),
       label(t('الوصف', 'Summary')),
-      Text(lang('summary'), style: appText(13, c: c.textDark)),
-      if (lang('where').isNotEmpty) ...[label(t('مكانها', 'Where')), Text(lang('where'), style: appText(13, c: c.textDark))],
+      Text(lang('summary'), style: AppType.label(context).copyWith(color: c.textDark)),
+      if (lang('where').isNotEmpty) ...[label(t('مكانها', 'Where')), Text(lang('where'), style: AppType.label(context).copyWith(color: c.textDark))],
       if (x.steps(t('ar', 'en')).isNotEmpty) ...[
         label(t('الخطوات', 'Steps')),
-        for (final (i, s) in x.steps(t('ar', 'en')).indexed) Text('${i + 1}. $s', style: appText(13, c: c.textDark)),
+        for (final (i, s) in x.steps(t('ar', 'en')).indexed) Text('${i + 1}. $s', style: AppType.label(context).copyWith(color: c.textDark)),
       ],
-      const SizedBox(height: 10),
-      Text(t('التعديل لمدير المنصة الأعلى فقط.', 'Only the super admin can edit the guide.'), style: appText(11.5, c: c.textLight)),
+      const SizedBox(height: AppSpace.sm),
+      Text(t('التعديل لمدير المنصة الأعلى فقط.', 'Only the super admin can edit the guide.'), style: AppType.overline(context).copyWith(color: c.textLight)),
     ];
   }
 
@@ -563,8 +563,8 @@ class _GuideFeatureEditorState extends State<GuideFeatureEditor> {
       Text(
           t('إخفاء الميزة في التطبيق يطفئ كل هذه المفاتيح على كل المنصات (نفس صفحة «الميزات»). بدون مفاتيح لا يمكن إخفاؤها من هنا.',
               'Hiding the feature in the app turns all these switches off on every platform (the same rows as the Features page). Without switches it cannot be hidden from here.'),
-          style: appText(11.5, c: c.textLight)),
-      const SizedBox(height: 6),
+          style: AppType.overline(context).copyWith(color: c.textLight)),
+      const SizedBox(height: AppSpace.xs),
       Wrap(spacing: 6, runSpacing: 6, children: [
         for (final k in _keys)
           InputChip(
@@ -580,7 +580,7 @@ class _GuideFeatureEditorState extends State<GuideFeatureEditor> {
           onChanged: (v) {
             if (v != null) setState(() => _keys.add(v));
           }),
-      const SizedBox(height: 14),
+      const SizedBox(height: AppSpace.md),
       AppPrimaryButton(label: f == null ? t('إضافة', 'Add') : t('حفظ', 'Save'), icon: Icons.save_rounded, busy: _busy, onPressed: _busy ? null : _save),
       if (widget.onReset != null)
         TextButton.icon(
@@ -625,7 +625,7 @@ class _PreviewSheetState extends State<_PreviewSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.lg),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppSheetHeader(t('ما يقرؤه المساعد', 'What the assistant reads')),
         Wrap(spacing: 8, children: [
@@ -635,12 +635,12 @@ class _PreviewSheetState extends State<_PreviewSheet> {
               _load();
             }),
         ]),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         Flexible(
           child: _md == null
               ? const AppListSkeleton(items: 4)
               : SingleChildScrollView(
-                  child: SelectableText(_md!, textDirection: _lang == 'ar' ? TextDirection.rtl : TextDirection.ltr, style: appText(12.5, c: c.textDark, h: 1.5))),
+                  child: SelectableText(_md!, textDirection: _lang == 'ar' ? TextDirection.rtl : TextDirection.ltr, style: AppType.meta(context).copyWith(color: c.textDark, height: 1.5))),
         ),
       ]),
     );

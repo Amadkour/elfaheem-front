@@ -25,7 +25,6 @@ import 'admin_fees_page.dart';
 import 'admin_page.dart';
 import 'admin_providers.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Small helpers
@@ -74,7 +73,7 @@ BoxDecoration _cardDecoration(BuildContext context, {Color? border}) {
   final c = context.colors;
   return BoxDecoration(
     color: c.cardBg,
-    borderRadius: BorderRadius.circular(22),
+    borderRadius: BorderRadius.circular(AppRadius.block),
     border: Border.all(color: border ?? c.divider),
     boxShadow: [
       BoxShadow(color: c.heroShade.withValues(alpha: .045), blurRadius: 16, offset: const Offset(0, 6)),
@@ -231,7 +230,7 @@ class _MethodsTab extends StatelessWidget {
           ('moyasar', Icons.payments_rounded, 'Moyasar'),
           ('paymob', Icons.account_balance_wallet_rounded, 'Paymob'),
         ].indexed) ...[
-          if (i > 0) const SizedBox(width: 8),
+          if (i > 0) const SizedBox(width: AppSpace.xs),
           Expanded(
             child: _GatewayTile(
               icon: g.$2,
@@ -258,7 +257,7 @@ class _MethodsTab extends StatelessWidget {
       Text(
         _t('إنستاباي يظهر للطلاب بالجنيه المصري فقط. Apple Pay / Google Pay تظهر على الجوال فقط، وعندما تدعمها بوابة الدفع. رسومها من صفحة الرسوم.',
             'InstaPay is only shown to students paying in EGP. Apple Pay / Google Pay show on mobile only, and only when the gateway supports them. Set their fees on the Fees page.'),
-        style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: c.textLight),
+        style: AppType.overline(context).copyWith(color: c.textLight),
       ),
     ]);
   }
@@ -284,14 +283,14 @@ class _GatewayTile extends StatelessWidget {
     return Material(
       color: selected ? c.primary.withValues(alpha: .1) : c.cardBg,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         side: BorderSide(color: selected ? c.primary : c.divider, width: selected ? 1.6 : 1),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.md, horizontal: AppSpace.xs),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             SizedBox(
               height: 26,
@@ -300,16 +299,12 @@ class _GatewayTile extends StatelessWidget {
                   : Icon(selected ? Icons.check_circle_rounded : icon,
                   color: selected ? c.primary : c.textLight, size: 24),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             Text(label,
                 maxLines: 2,
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    fontFamily: AppFonts.family,
-                    fontSize: 12.5,
-                    fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
-                    color: selected ? c.primary : c.textDark)),
+                style: AppType.meta(context).copyWith(color: selected ? c.primary : c.textDark, fontWeight: FontWeight.w600)),
           ]),
         ),
       ),
@@ -427,52 +422,48 @@ class _MethodCardState extends State<_MethodCard> {
     final warn = context.colors.warning;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: AppSpace.sm),
       decoration: _cardDecoration(context, border: enabled ? c.primary.withValues(alpha: .4) : null),
       // Transparent Material = ink surface for the InkWell / SwitchListTiles inside the decorated box.
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(AppRadius.block),
         clipBehavior: Clip.antiAlias,
         child: Column(children: [
           InkWell(
             onTap: () => setState(() => _open = !_open),
             child: Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 10, 14),
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, AppSpace.sm, AppSpace.md),
               child: Row(children: [
                 Container(
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
                     color: (enabled ? c.primary : c.textLight).withValues(alpha: .12),
-                    borderRadius: BorderRadius.circular(15),
+                    borderRadius: BorderRadius.circular(AppRadius.card),
                   ),
                   child: Icon(_methodIcon(method), color: enabled ? c.primary : c.textLight, size: 24),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(asStr(m['label']),
-                        style: TextStyle(
-                            fontFamily: AppFonts.family, fontWeight: FontWeight.w900, fontSize: 15.5, color: c.textDark)),
-                    const SizedBox(height: 3),
+                        style: AppType.section(context).copyWith(color: c.textDark)),
+                    const SizedBox(height: AppSpace.xxs),
                     Row(children: [
                       if (summary.incomplete) ...[
                         Icon(Icons.warning_amber_rounded, size: 14, color: warn),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: AppSpace.xxs),
                       ],
                       Expanded(
                         child: Text(summary.text,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             textDirection: method == 'card' || summary.incomplete ? null : TextDirection.ltr,
-                            style: TextStyle(
-                                fontFamily: AppFonts.family,
-                                fontSize: 12.5,
-                                color: summary.incomplete ? warn : c.textLight)),
+                            style: AppType.meta(context).copyWith(color: summary.incomplete ? warn : c.textLight)),
                       ),
                     ]),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpace.xs),
                     AppStatusBadge(
                         label: enabled ? 'apm_enabled'.tr : 'apm_disabled'.tr,
                         tone: enabled ? AppTone.success : AppTone.danger,
@@ -480,7 +471,7 @@ class _MethodCardState extends State<_MethodCard> {
                         dense: true),
                   ]),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
                 AppSwitch(
                   value: enabled,
                   activeColor: c.primary,
@@ -502,7 +493,7 @@ class _MethodCardState extends State<_MethodCard> {
                 ? Column(children: [
               Divider(height: 1, color: c.divider),
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSpace.md),
                 child: _MethodForm(key: ValueKey('form_$method'), method: method, item: m),
               ),
             ])
@@ -662,7 +653,7 @@ class _MethodFormState extends State<_MethodForm> {
           helperMaxLines: 2,
           prefixIcon: icon == null ? null : Icon(icon, size: 20),
           alignLabelWithHint: maxLines > 1,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
         ),
       );
 
@@ -681,11 +672,11 @@ class _MethodFormState extends State<_MethodForm> {
     return Container(
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         border: Border.all(color: c.divider),
       ),
       child: AppSwitchTile(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.sm),
         value: value,
         activeColor: c.primary,
         onChanged: onChanged,
@@ -717,7 +708,7 @@ class _MethodFormState extends State<_MethodForm> {
           ],
         ),
         if (_isBank) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.md),
           _Group(
             icon: Icons.account_balance_rounded,
             title: 'apm_section_receiving'.tr,
@@ -734,19 +725,19 @@ class _MethodFormState extends State<_MethodForm> {
           ),
         ],
         if (_isInstapay) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.md),
           _Group(
             icon: Icons.qr_code_2_rounded,
             title: 'apm_section_receiving'.tr,
             children: [
               _field(_instapayId, 'apm_instapay_id', ltr: true),
               Text('apm_instapay_egp_note'.tr,
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight)),
+                  style: AppType.meta(context).copyWith(color: c.textLight)),
             ],
           ),
         ],
         if (_isManual) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.md),
           _Group(
             icon: Icons.rule_rounded,
             title: 'apm_section_requirements'.tr,
@@ -763,7 +754,7 @@ class _MethodFormState extends State<_MethodForm> {
             ],
           ),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         PrimaryButton(label: 'apm_save'.tr, isLoading: _busy, onPressed: _save),
       ]),
     );
@@ -781,10 +772,10 @@ class _Group extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpace.md),
       decoration: BoxDecoration(
         color: c.primary.withValues(alpha: .035),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: c.divider),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -794,18 +785,17 @@ class _Group extends StatelessWidget {
             height: 30,
             decoration: BoxDecoration(
               color: c.primary.withValues(alpha: .12),
-              borderRadius: BorderRadius.circular(9),
+              borderRadius: BorderRadius.circular(AppRadius.chip),
             ),
             child: Icon(icon, size: 17, color: c.primary),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Text(title,
-                style: TextStyle(
-                    fontFamily: AppFonts.family, fontWeight: FontWeight.w900, fontSize: 14, color: c.textDark)),
+                style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
           ),
         ]),
-        for (final w in children) ...[const SizedBox(height: 12), w],
+        for (final w in children) ...[const SizedBox(height: AppSpace.sm), w],
       ]),
     );
   }
@@ -820,11 +810,11 @@ class _Pair extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(builder: (_, box) {
     if (box.maxWidth < 560) {
-      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [a, const SizedBox(height: 12), b]);
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [a, const SizedBox(height: AppSpace.sm), b]);
     }
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Expanded(child: a),
-      const SizedBox(width: 12),
+      const SizedBox(width: AppSpace.sm),
       Expanded(child: b),
     ]);
   });

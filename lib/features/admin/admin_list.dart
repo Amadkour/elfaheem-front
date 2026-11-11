@@ -7,6 +7,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
@@ -139,7 +140,7 @@ class _PagedListState<P extends AdminPagedProvider> extends State<PagedList<P>> 
           return ListView.builder(
             controller: _scroll,
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(14, 6, 14, 90),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 90),
             itemCount: lines + 1,
             itemBuilder: (ctx, line) {
               if (line == lines) {
@@ -168,7 +169,7 @@ class _PagedListState<P extends AdminPagedProvider> extends State<PagedList<P>> 
       if (widget.header != null) widget.header!,
       if (widget.export != null && p.rows.isNotEmpty)
         Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(14, 2, 14, 8),
+          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, 2, AppSpace.md, AppSpace.xs),
           child: Align(alignment: AlignmentDirectional.centerEnd, child: AppExportPill(onTap: () => exportPagedList(context, p, widget.export!))),
         ),
       // pinned "Showing 20 of 134" progress
@@ -179,7 +180,7 @@ class _PagedListState<P extends AdminPagedProvider> extends State<PagedList<P>> 
           loadingMore: p.loadingMore,
           done: !p.hasMore,
           icon: widget.countIcon ?? Icons.format_list_numbered_rounded,
-          margin: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+          margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
         ),
     ];
     return LayoutBuilder(builder: (context, box) {
@@ -252,7 +253,7 @@ class AdminSimpleList extends StatelessWidget {
         onRefresh: onRefresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(14, 6, 14, 90),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 90),
           children: [
             ...children,
             const PagedListFooter(loadingMore: false, hasMore: false),
@@ -270,7 +271,7 @@ class AdminSimpleList extends StatelessWidget {
             loadingMore: false,
             done: true,
             icon: countIcon ?? Icons.format_list_numbered_rounded,
-            margin: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+            margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
           ),
         Expanded(child: body),
       ],
@@ -296,7 +297,7 @@ class RowCard extends StatelessWidget {
     final c = context.colors;
     final radius = BorderRadius.circular(c.radiusLarge - 4);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: Container(
         decoration: BoxDecoration(
           color: c.cardBg,
@@ -317,7 +318,7 @@ class RowCard extends StatelessWidget {
                     if (accent != null) Container(width: 4, color: accent),
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.all(14),
+                        padding: const EdgeInsets.all(AppSpace.md),
                         child: child,
                       ),
                     ),
@@ -403,28 +404,23 @@ class InfoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+    padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
     decoration: BoxDecoration(
       color: color.withValues(alpha: 0.10),
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AppRadius.card),
       border: Border.all(color: color.withValues(alpha: 0.22)),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 13, color: color),
-        const SizedBox(width: 4),
+        const SizedBox(width: AppSpace.xxs),
         Flexible(
           child: Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontFamily: AppFonts.family,
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
+            style: AppType.overline(context).copyWith(color: color),
           ),
         ),
       ],
@@ -456,11 +452,11 @@ class FilterChips<T> extends StatelessWidget {
       height: 42,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
         children: [
           for (final e in options.entries)
             Padding(
-              padding: const EdgeInsetsDirectional.only(end: 8),
+              padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
               child: ChoiceChip(
                 showCheckmark: false,
                 shape: const StadiumBorder(),
@@ -470,12 +466,7 @@ class FilterChips<T> extends StatelessWidget {
                 backgroundColor: c.cardBg,
                 label: Text(
                   e.value,
-                  style: TextStyle(
-                    fontFamily: AppFonts.family,
-                    fontSize: 12.5,
-                    fontWeight: e.key == value ? FontWeight.w800 : FontWeight.w600,
-                    color: e.key == value ? c.onHero : c.textDark,
-                  ),
+                  style: AppType.meta(context).copyWith(color: e.key == value ? c.onHero : c.textDark, fontWeight: FontWeight.w600),
                 ),
                 selected: e.key == value,
                 selectedColor: c.primary,

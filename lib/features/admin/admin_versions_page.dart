@@ -311,7 +311,7 @@ Future<void> _form(
             ),
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -367,7 +367,7 @@ Future<void> _form(
                       value: active,
                       onChanged: (v) => setS(() => active = v),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpace.xs),
                     PrimaryButton(
                       label: 'save'.tr,
                       isLoading: busy,

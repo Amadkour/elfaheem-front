@@ -21,6 +21,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_side_sheet.dart' show appScrimColor;
 import 'package:flutter_education_app/design/app_keyboard.dart' show AppCommandPaletteScope;
 
 import 'admin_common.dart' show isSuperNow, t;
@@ -348,7 +349,7 @@ Future<void> showAdminGlobalSearch(
   if (wide) {
     await showDialog<void>(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.32),
+      barrierColor: appScrimColor(context),
       builder: (ctx) {
         final h = MediaQuery.sizeOf(ctx).height;
         return Align(
@@ -423,14 +424,15 @@ class AdminSearchLauncher extends StatelessWidget {
       label: hint,
       excludeSemantics: true,
       onTap: open,
+      // paper on the home's sky block: a well that reads as the one thing to type into
       child: Material(
-        color: c.inputBg,
+        color: c.cardBg,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.card),
+          borderRadius: AppRadius.controlAll,
           side: BorderSide(color: c.divider, width: AppBorder.hairline),
         ),
         child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadius.card),
+          borderRadius: AppRadius.controlAll,
           onTap: open,
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: AppTouch.primary),

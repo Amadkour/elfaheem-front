@@ -47,16 +47,16 @@ class _View extends StatelessWidget {
 
     final header = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
         // Material (not Container) paints the card colour, so the ListTiles inside can show ink splashes.
         child: Material(
           color: c.cardBg,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(AppRadius.card),
             side: BorderSide(color: p.required ? c.primary : c.divider, width: p.required ? 1.5 : 1),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AppSpace.md),
             child: Column(children: [
               AppSwitchTile(
                 title: 'admin_subscription_required'.tr,
@@ -82,7 +82,7 @@ class _View extends StatelessWidget {
           ),
         ),
       ),
-      const SizedBox(height: 4),
+      const SizedBox(height: AppSpace.xxs),
       AdminFilterBar(
         host: p,
         hintKey: 'admin_search_subscriptions',
@@ -102,7 +102,7 @@ class _View extends StatelessWidget {
         },
         onChanged: (v) => p.setStatusFilter(v == 'all' ? null : v),
       ),
-      const SizedBox(height: 6),
+      const SizedBox(height: AppSpace.xs),
     ]);
 
     return BasePage(
@@ -172,7 +172,7 @@ class _PlanRow extends StatelessWidget {
         plan.price <= 0
             ? 'admin_free'.tr
             : '${money(plan.price, plan.currency)} • ${plan.durationDays} ${'admin_days'.tr}',
-        style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.textMedium),
+        style: AppType.meta(context).copyWith(color: c.textMedium),
       ),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
         AppSwitch(
@@ -199,10 +199,10 @@ Future<void> _editPlan(BuildContext context, AdminSubscriptionsProvider p, Plan 
         SheetHeader(plan.name),
         Flexible(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: AppSpace.sm),
                 child: AppNumberField(controller: price, label: 'admin_price_empty_or_0_free'.tr, min: 0, decimals: 2),
               ),
               ChoiceRow<String>(
@@ -212,7 +212,7 @@ Future<void> _editPlan(BuildContext context, AdminSubscriptionsProvider p, Plan 
                 onChanged: (v) => setS(() => currency = v),
               ),
               Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: AppSpace.sm),
                 child: AppNumberField(controller: days, label: 'admin_duration_days'.tr, min: 0),
               ),
               PrimaryButton(
@@ -278,7 +278,7 @@ class _SubTile extends StatelessWidget {
         // ── who · how much ──────────────────────────────────────────────
         Row(children: [
           AdminAvatar(name: s.studentName),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               adminEntityCell(context, EntityKind.student, {'id': s.studentId, 'name': s.studentName}),
@@ -286,21 +286,17 @@ class _SubTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textDirection: TextDirection.ltr,
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight)),
+                  style: AppType.meta(context).copyWith(color: c.textLight)),
             ]),
           ),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Text(money(s.amount, s.currency),
-                style: TextStyle(
-                    fontFamily: AppFonts.family,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                    color: c.textDark)),
-            const SizedBox(height: 4),
+                style: AppType.section(context).copyWith(color: c.textDark)),
+            const SizedBox(height: AppSpace.xxs),
             StatusChip(subscriptionStatusLabel(s.status), color),
           ]),
         ]),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
 
         // ── plan · method · end date ─────────────────────────────────────
         Wrap(spacing: 6, runSpacing: 6, children: [
@@ -315,13 +311,13 @@ class _SubTile extends StatelessWidget {
 
         // ── transfer details ─────────────────────────────────────────────
         if (s.senderName != null || s.transferReference != null || s.rejectionReason != null) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(AppSpace.sm),
             decoration: BoxDecoration(
               color: c.inputBg,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppRadius.control),
             ),
             child: Column(children: [
               if (s.senderName != null)
@@ -337,7 +333,7 @@ class _SubTile extends StatelessWidget {
         // ── receipt ──────────────────────────────────────────────────────
         if (s.proofImageUrl != null)
           Padding(
-            padding: const EdgeInsets.only(top: 10),
+            padding: const EdgeInsets.only(top: AppSpace.sm),
             child: GestureDetector(
               onTap: () => showDialog(
                 context: context,
@@ -346,7 +342,7 @@ class _SubTile extends StatelessWidget {
                 ),
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AppRadius.control),
                 child: Image.network(
                   s.proofImageUrl!,
                   height: 120,
@@ -365,7 +361,7 @@ class _SubTile extends StatelessWidget {
 
         // ── actions ──────────────────────────────────────────────────────
         if (s.status == 'pending') ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           Row(children: [
             Expanded(
               child: AppButton.danger(
@@ -380,7 +376,7 @@ class _SubTile extends StatelessWidget {
                 },
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: AppButton.primary(
                 label: 'admin_approve'.tr,

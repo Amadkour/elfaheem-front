@@ -193,7 +193,7 @@ class _AdminUsernameStatsPageState extends State<AdminUsernameStatsPage> {
     final title = t('أسماء المستخدمين', 'Usernames');
     Widget body;
     if (_missing) {
-      body = ListView(padding: const EdgeInsets.all(16), children: [
+      body = ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
         AppBanner(
           icon: Icons.system_update_alt_rounded,
           text: t('هذه الصفحة تحتاج تحديث الخادم.', 'This page needs a server update.'),
@@ -211,10 +211,10 @@ class _AdminUsernameStatsPageState extends State<AdminUsernameStatsPage> {
     } else {
       body = AppRefresh(
         onRefresh: _load,
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: [
+        child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xl), children: [
           if (_error != null) ...[
             AppBanner(icon: Icons.error_outline_rounded, text: _error!),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
           ],
           UsernameStatsContent(stats: _stats!, days: _days, onDays: _pick, loading: _loading),
         ]),
@@ -380,19 +380,19 @@ class UsernameStatsContent extends StatelessWidget {
         Widget pair(Widget a, Widget b) => wide
             ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(child: a),
-                const SizedBox(width: 16),
+                const SizedBox(width: AppSpace.md),
                 Expanded(child: b),
               ])
-            : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [a, const SizedBox(height: 16), b]);
+            : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [a, const SizedBox(height: AppSpace.md), b]);
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           chips,
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           tiles,
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           trendTiles,
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           pair(snapshot, flows),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           pair(logins, daily),
         ]);
       }),
@@ -411,7 +411,7 @@ class _Section extends StatelessWidget {
     return AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         AppSectionTitle(title, subtitle: subtitle),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpace.xxs),
         child,
       ]),
     );
@@ -426,8 +426,8 @@ class _Quiet extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24),
-      child: Text(text, textAlign: TextAlign.center, style: appText(13, c: c.textLight)),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.lg),
+      child: Text(text, textAlign: TextAlign.center, style: AppType.label(context).copyWith(color: c.textLight)),
     );
   }
 }

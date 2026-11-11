@@ -18,6 +18,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/admin/admin_features_page.dart';
 import 'package:flutter_education_app/features/admin/admin_flags_settings_page.dart';
 import 'package:flutter_education_app/features/admin/admin_platform_settings_page.dart';
+import 'package:flutter_education_app/features/admin/admin_theme_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/fake_api.dart';
@@ -86,6 +87,7 @@ void main() {
       'platform_settings': const AdminPlatformSettingsPage(),
       'features': const AdminFeaturesPage(),
       'flags': const AdminFlagsSettingsPage(),
+      'theme': const AdminThemePage(),
     };
     try {
       final api = FakeApi(cfgRoutes(), latency: const Duration(milliseconds: 20));

@@ -14,6 +14,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
@@ -76,7 +77,7 @@ class AdminUsernameField extends StatelessWidget {
     return ParentComponent(
       featureKey: kUsernameFeatureKey,
       child: Padding(
-        padding: const EdgeInsets.only(top: 4, bottom: 12),
+        padding: const EdgeInsets.only(top: AppSpace.xxs, bottom: AppSpace.sm),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,

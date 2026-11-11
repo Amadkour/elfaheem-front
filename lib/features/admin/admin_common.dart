@@ -27,6 +27,10 @@ import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import 'admin_premium_widgets.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_search_field.dart';
+import 'package:flutter_education_app/design/app_blocks.dart';
+import 'package:flutter_education_app/design/app_buttons.dart';
+import 'package:flutter_education_app/design/app_inputs.dart';
+import 'package:flutter_education_app/design/app_states.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 
@@ -100,13 +104,13 @@ void toast(String message, {bool error = false}) {
       ..showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll),
           backgroundColor: (error ? AdminPalette.rose : AdminPalette.green).last,
           content: Row(children: [
             Icon(error ? Icons.error_rounded : Icons.check_circle_rounded,
-                color: AdminPalette.ink, size: 20),
-            const SizedBox(width: 10),
+                color: AdminPalette.ink, size: AppIconSize.md),
+            const SizedBox(width: AppSpace.xs),
             Expanded(
               child: Text(message,
                   style: TextStyle(
@@ -175,6 +179,9 @@ List<Map<String, dynamic>> asMapList(dynamic v) => v is List
 
 // ── dialogs ──────────────────────────────────────────────────────────────────
 
+/// The confirm dialog's mark (54 px: a 48 px target plus its own breathing room, test/org/omr_r2_ui_test.dart).
+const double _confirmMark = AppTouch.min + AppSpace.xxs + 2;
+
 Future<bool> confirm(
     BuildContext context, {
       required String message,
@@ -189,43 +196,39 @@ Future<bool> confirm(
       child: AlertDialog(
         // long messages / big text scale / 320 px: scroll inside the dialog instead of overflowing
         scrollable: true,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.lg),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sheet)),
         // centred: a scrollable dialog stretches its icon slot, which drew the badge as a full-width bar; the theme's
         // primary (AdminPalette.blue is the success gradient, off-theme in most palettes)
         icon: Center(
           child: ServiceIcon(
             icon: danger ? Icons.warning_amber_rounded : Icons.help_outline_rounded,
             colors: danger ? AdminPalette.rose : [c.primaryLight, c.primary],
-            size: 54,
+            size: _confirmMark,
           ),
         ),
-        content: Text(message,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: AppFonts.family, height: 1.5)),
+        content: Text(message, textAlign: TextAlign.center, style: AppType.body(ctx).copyWith(height: 1.5)),
         actionsAlignment: MainAxisAlignment.center,
-        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actionsPadding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
         actions: [
           OutlinedButton(
             style: OutlinedButton.styleFrom(
-              minimumSize: const Size(110, 44),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              minimumSize: const Size(AppSpace.xxxl * 2, AppTouch.min),
+              shape: RoundedRectangleBorder(borderRadius: AppRadius.controlAll),
               side: BorderSide(color: c.divider),
             ),
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('exam_cancel'.tr,
-                style: TextStyle(fontFamily: AppFonts.family, color: c.textMedium)),
+            child: Text('exam_cancel'.tr, style: AppType.label(ctx).copyWith(color: c.textMedium)),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              minimumSize: const Size(110, 44),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              minimumSize: const Size(AppSpace.xxxl * 2, AppTouch.min),
+              shape: RoundedRectangleBorder(borderRadius: AppRadius.controlAll),
               backgroundColor: danger ? c.danger : c.primary,
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(confirmLabel ?? 'confirm'.tr,
-                style: TextStyle(
-                    fontFamily: AppFonts.family, color: c.onHero, fontWeight: FontWeight.w800)),
+                style: AppType.label(ctx).copyWith(color: c.onHero, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -283,26 +286,17 @@ class _AskTextDialogState extends State<_AskTextDialog> {
       textDirection: dir,
       child: AlertDialog(
         scrollable: true,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text(widget.title,
-            style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.lg),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sheet)),
+        title: Text(widget.title, style: AppType.headline(context)),
         content: TextField(
           controller: _ctrl,
           autofocus: true,
           maxLines: widget.multiline ? 4 : 1,
           // Enter answers (a multi-line box: Ctrl+Enter on web / desktop, design/app_keyboard.dart)
           onSubmitted: (_) => Navigator.pop(context, _ctrl.text.trim()),
-          style: TextStyle(fontFamily: AppFonts.family),
-          decoration: InputDecoration(
-            hintText: widget.hint,
-            filled: true,
-            fillColor: context.colors.inputBg,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: context.colors.divider),
-            ),
-          ),
+          style: appFieldTextStyle(context),
+          decoration: appFieldDecoration(context, hint: widget.hint),
         ),
         actions: [
           TextButton(
@@ -351,21 +345,19 @@ class StatusChip extends StatelessWidget {
   final String label;
   final Color color;
 
+  /// A full pill on an opaque tint of [color]; the label keeps AA on it and ellipsizes instead of clipping.
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.14),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: color.withValues(alpha: 0.28)),
-    ),
-    child: Text(label,
-        style: TextStyle(
-            fontFamily: AppFonts.family,
-            fontSize: 11.5,
-            fontWeight: FontWeight.w700,
-            color: color)),
-  );
+  Widget build(BuildContext context) {
+    final tint = Color.alphaBlend(color.withValues(alpha: 0.14), context.colors.cardBg);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs / 2),
+      decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(AppRadius.pill)),
+      child: Text(label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppType.overline(context).copyWith(color: context.colors.blockAccentInk(color, tint))),
+    );
+  }
 }
 
 class Section extends StatelessWidget {
@@ -381,48 +373,47 @@ class Section extends StatelessWidget {
   final Widget child;
   final Widget? trailing;
 
-  /// Optional gradient icon shown before the title (premium look).
+  /// Optional icon shown before the title, in a faint well of [colors]' base tone.
   final IconData? icon;
   final List<Color>? colors;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    // Material (not a decorated Container) so ListTile / SwitchListTile children
-    // can paint their background + ink splash on it. A Container's own colour sits
-    // between them and the Material ancestor and hides the effects (Flutter asserts).
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: c.cardShadow,
-      ),
+    // Paper on a warm hairline, no resting shadow (D-612). Material (not a decorated Container) so ListTile /
+    // SwitchListTile children paint their background + ink splash on it.
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.md),
       child: Material(
         color: c.cardBg,
         clipBehavior: Clip.antiAlias, // keeps splashes inside the rounded corners
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: c.divider),
+          borderRadius: AppRadius.cardAll,
+          side: BorderSide(color: c.divider, width: AppBorder.hairline),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: AppSpace.card,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              if (icon != null) ...[
-                ServiceIcon(icon: icon!, colors: colors ?? AdminPalette.blue, size: 36),
-                const SizedBox(width: 10),
-              ],
-              Expanded(
-                child: Text(title,
-                    style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15.5,
-                        color: c.textDark)),
-              ),
-              ?trailing,
-            ]),
-            const SizedBox(height: 12),
+            // the trailing widget keeps its own width up to half the row (a long status ellipsizes, never overflows)
+            LayoutBuilder(
+              builder: (context, box) => Row(children: [
+                if (icon != null) ...[
+                  ServiceIcon(icon: icon!, colors: colors ?? AdminPalette.blue, size: AppIconSize.hero),
+                  const SizedBox(width: AppSpace.sm),
+                ],
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+                  ),
+                ),
+                if (trailing != null) ...[
+                  const SizedBox(width: AppSpace.xs),
+                  ConstrainedBox(constraints: BoxConstraints(maxWidth: box.maxWidth / 2), child: trailing!),
+                ],
+              ]),
+            ),
+            const SizedBox(height: AppSpace.sm),
             child,
           ]),
         ),
@@ -436,26 +427,20 @@ class KeyValue extends StatelessWidget {
   final String k;
   final String v;
 
+  /// The key column: room for "Created at" at 12 px beside a value.
+  static const double _keyWidth = AppSpace.xxxl + AppSpace.xxl - AppSpace.xxs / 2;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         SizedBox(
-          width: 110,
-          child: Text(k,
-              style: TextStyle(
-                  fontFamily: AppFonts.family, fontSize: 12.5, color: c.textLight)),
+          width: _keyWidth,
+          child: Text(k, style: AppType.meta(context).copyWith(color: c.textLight)),
         ),
-        Expanded(
-          child: Text(v.isEmpty ? '—' : v,
-              style: TextStyle(
-                  fontFamily: AppFonts.family,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: c.textDark)),
-        ),
+        Expanded(child: Text(v.isEmpty ? '—' : v, style: AppType.row(context).copyWith(color: c.textDark))),
       ]),
     );
   }
@@ -466,30 +451,23 @@ class EmptyState extends StatelessWidget {
   final String message;
   final IconData icon;
 
+  /// The kit's drawn plate with the message as its one line (scrolls when the slot is short).
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 96,
-            height: 96,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: c.primary.withValues(alpha: 0.10),
+  Widget build(BuildContext context) => Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpace.lg),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            AppStatePlate(icon: icon, tone: AppBlockTone.sky, size: AppSpace.xxxl + AppSpace.xl),
+            const SizedBox(height: AppSpace.md),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: AppWidth.form.max),
+              child: Text(message,
+                  textAlign: TextAlign.center,
+                  style: AppType.body(context).copyWith(height: 1.5, color: context.colors.textMedium)),
             ),
-            child: Icon(icon, size: 44, color: c.primary),
-          ),
-          const SizedBox(height: 14),
-          Text(message,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: AppFonts.family, height: 1.5, color: c.textMedium)),
-        ]),
-      ),
-    );
-  }
+          ]),
+        ),
+      );
 }
 
 class ErrorRetry extends StatelessWidget {
@@ -503,31 +481,18 @@ class ErrorRetry extends StatelessWidget {
     // scrolls when the space is short (a fixed-height slot, a phone in landscape, a large text scale)
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(AppSpace.lg),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 84,
-            height: 84,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: c.danger.withValues(alpha: 0.10),
-            ),
-            child: Icon(Icons.cloud_off_rounded, size: 40, color: c.danger),
+          AppStatePlate(
+              icon: Icons.cloud_off_rounded, tone: AppBlockTone.peach, accent: c.danger, size: AppSpace.xxxl + AppSpace.xl),
+          const SizedBox(height: AppSpace.md),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: AppWidth.form.max),
+            child: Text(message,
+                textAlign: TextAlign.center, style: AppType.body(context).copyWith(height: 1.5, color: c.textMedium)),
           ),
-          const SizedBox(height: 12),
-          Text(message,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: AppFonts.family, color: c.textMedium)),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: c.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh_rounded),
-            label: Text('retry'.tr),
-          ),
+          const SizedBox(height: AppSpace.md),
+          AppButton.primary(label: 'retry'.tr, icon: Icons.refresh_rounded, onPressed: onRetry),
         ]),
       ),
     );
@@ -563,7 +528,7 @@ class Field extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: TextFormField(
         controller: controller,
         enabled: enabled,
@@ -572,26 +537,12 @@ class Field extends StatelessWidget {
         maxLines: obscure ? 1 : maxLines,
         textDirection: ltr ? TextDirection.ltr : null,
         validator: validator,
-        style: TextStyle(fontFamily: AppFonts.family),
-        decoration: InputDecoration(
+        style: appFieldTextStyle(context),
+        // the kit's well (warm fill, radius 14, hairline, the 2 px focus ring); the label stays inside the well so the
+        // many admin forms keep their compact rhythm
+        decoration: appFieldDecoration(context, hint: hint, enabled: enabled).copyWith(
           labelText: label,
-          hintText: hint,
-          labelStyle: TextStyle(fontFamily: AppFonts.family, color: c.textMedium),
-          filled: true,
-          fillColor: c.inputBg,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: c.divider),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: c.divider),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: c.primary, width: 1.6),
-          ),
+          labelStyle: AppType.label(context).copyWith(color: c.textMedium),
         ),
       ),
     );
@@ -619,29 +570,23 @@ class ChoiceRow<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (label != null)
           Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Text(label!,
-                style: TextStyle(
-                    fontFamily: AppFonts.family, fontSize: 12.5, color: c.textLight)),
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
+            child: AppFieldLabel(label!),
           ),
-        Wrap(spacing: 8, runSpacing: 6, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final e in options.entries)
             ChoiceChip(
-              label: Text(e.value,
-                  style: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontWeight: FontWeight.w700,
-                      color: e.key == value ? c.onHero : c.textDark)),
+              label: Text(e.value, style: AppType.label(context).copyWith(color: e.key == value ? c.onHero : c.textDark)),
               selected: e.key == value,
               showCheckmark: false,
               selectedColor: c.primary,
               backgroundColor: c.inputBg,
               side: BorderSide(color: e.key == value ? c.primary : c.divider),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: const StadiumBorder(),
               onSelected: (_) => onChanged(e.key),
             ),
         ]),

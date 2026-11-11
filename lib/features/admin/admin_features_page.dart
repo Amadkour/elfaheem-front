@@ -347,7 +347,7 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.lg),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               AppSheetHeader(_title(f)),
               SelectableText('${f['key']}', textDirection: TextDirection.ltr, style: AppType.meta(ctx)),
@@ -436,14 +436,14 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
     final names = {for (final tb in _tabs) '${tb['id']}': t('${tb['title_ar']}', '${tb['title_en']}')};
     await showAppSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.lg),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               AppSheetHeader(t('ميزة جديدة', 'New feature')),
               AppBanner(
                   icon: Icons.info_outline_rounded,
                   text: t('المفتاح يجب أن يطابق ما يستخدمه التطبيق (ParentComponent / ValueKey).',
                       'The key must match what the app uses (ParentComponent / ValueKey).')),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
               AppField(controller: key, label: t('المفتاح (مثل profile.chat)', 'Key (e.g. profile.chat)'), ltr: true),
               AppField(controller: ar, label: t('الاسم بالعربية', 'Arabic name')),
               AppField(controller: en, label: t('الاسم بالإنجليزية', 'English name'), ltr: true),
@@ -451,7 +451,7 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
                 Expanded(child: Text(t('المجموعة', 'Group'), style: AppType.label(ctx))),
                 AppChoiceChip(label: t('مجموعة جديدة', 'New group'), icon: Icons.add_rounded, selected: newGroup, onTap: () => set(() => newGroup = !newGroup)),
               ]),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               if (newGroup) ...[
                 AppField(controller: gAr, label: t('اسم المجموعة بالعربية', 'Group name (Arabic)')),
                 AppField(controller: gEn, label: t('اسم المجموعة بالإنجليزية', 'Group name (English)'), ltr: true),

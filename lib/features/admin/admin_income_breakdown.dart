@@ -8,13 +8,13 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../../config/app_config.dart';
 import '../../core/api_client.dart';
 import 'admin_common.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, appErrorMessage;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 Future<void> showIncomeBreakdown(BuildContext context) =>
     showAdminSheet(context, (_) => const _BreakdownSheet());
@@ -84,17 +84,17 @@ class _BreakdownSheetState extends State<_BreakdownSheet> {
     final subs = asMapList(data!['subscriptions']);
 
     Widget hint(String text) =>
-        Text(text, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight));
+        Text(text, style: AppType.meta(context).copyWith(color: c.textLight));
 
     return Column(mainAxisSize: MainAxisSize.min, children: [
       SheetHeader('admin_inc_title'.tr),
       Flexible(
         child: ListView(
           shrinkWrap: true,
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.lg),
           children: [
             hint('admin_inc_hint'.tr),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             if (currencies.isEmpty) EmptyState('admin_inc_empty'.tr),
             for (final r in currencies)
               Section(

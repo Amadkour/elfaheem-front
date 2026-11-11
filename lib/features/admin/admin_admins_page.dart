@@ -621,7 +621,7 @@ class _AdminFormState extends State<_AdminForm> {
         SheetHeader(editing ? 'admin_edit_admin'.tr : 'admin_add_admin'.tr),
         Flexible(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
             child: Form(
               key: _form,
               child: Column(
@@ -650,12 +650,12 @@ class _AdminFormState extends State<_AdminForm> {
                         : 'password'.tr, required: !editing),
                   if (editing)
                     AppSwitchTile(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
                       title: 'exam_status_active'.tr,
                       value: _active,
                       onChanged: (v) => setState(() => _active = v),
                     ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.xs),
                   PrimaryButton(
                     label: 'save'.tr,
                     isLoading: busy,

@@ -2,19 +2,20 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_contrast.dart';
 import 'package:provider/provider.dart';
 
-import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_page.dart';
 import 'admin_models.dart';
 import 'admin_providers.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
-    show AppListSkeleton, AppRefresh, AppButton, AppIconButton, AppCard, AppSpace, AppType, AppStatusBadge, AppTone, AppErrorState, AppUnsavedGuard, AppTouch, AppRadius;
+    show AppListSkeleton, AppRefresh, AppButton, AppIconButton, AppCard, AppSpace, AppType, AppStatusBadge, AppTone, AppErrorState, AppUnsavedGuard, AppTouch, AppRadius, AppGrid, AppBorder, AppIconSize, appInk, appFieldDecoration, appFieldTextStyle;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal, AppTilt;
 
 Color? _parseHex(String s) {
   final h = s.trim().replaceFirst('#', '');
@@ -38,6 +39,9 @@ class AdminThemePage extends StatelessWidget {
 class _View extends StatelessWidget {
   const _View();
 
+  /// A preset card is never narrower than this: the mock screen and its three actions stay readable.
+  static const double _cardMinWidth = AppSpace.xxxl * 5;
+
   @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminThemesProvider>();
@@ -53,11 +57,15 @@ class _View extends StatelessWidget {
         child: ListView(
           padding: AdminPage.bodyPadding(context),
           children: [
-            for (final th in p.items)
-              Padding(
-                padding: const EdgeInsets.only(bottom: AppSpace.sm),
-                child: _ThemeCard(th, active: th.key == p.activeKey),
-              ),
+            // the presets side by side on wide screens, so they compare at a glance; one column on phones
+            AppGrid(
+              minTile: _View._cardMinWidth,
+              padding: EdgeInsets.zero,
+              children: [
+                for (final (i, th) in p.items.indexed)
+                  AppReveal(index: i, group: 'admin_themes', child: _ThemeCard(th, active: th.key == p.activeKey)),
+              ],
+            ),
           ],
         ),
       );
@@ -91,11 +99,11 @@ class _ThemeCard extends StatelessWidget {
     final col = th.colors;
     Color sw(String k) => _parseHex(col[k] ?? '') ?? context.colors.textLight;
 
-    return DecoratedBox(
+    final card = DecoratedBox(
       position: DecorationPosition.foreground,
       decoration: BoxDecoration(
         borderRadius: AppRadius.cardAll,
-        border: active ? Border.all(color: context.colors.primary, width: 2) : null,
+        border: active ? Border.all(color: context.colors.primary, width: AppBorder.focus) : null,
       ),
       child: AppCard(
       child: Column(
@@ -103,7 +111,9 @@ class _ThemeCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(child: Text(th.name, style: AppType.section(context))),
+              Expanded(
+                child: Text(th.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+              ),
               if (active) AppStatusBadge(label: 'admin_active_2'.tr, tone: AppTone.success),
               if (!th.isBuiltin) ...[
                 AppSpace.gapXs,
@@ -165,10 +175,13 @@ class _ThemeCard extends StatelessWidget {
         ],
       ),
     ));
+    return active ? AppTilt.subtle(radius: AppRadius.card, child: card) : card;
   }
 }
 
-/// Mini mock screen painted with the theme colours (used in the list and the editor).
+/// A mini editorial screen painted with the theme's colours (used in the list and the editor): the canvas, a tinted
+/// block (accent 1) with a headline, a paper card with an achievement dot (accent 2) and the solid primary button,
+/// then the primary family as swatches.
 class _Preview extends StatelessWidget {
   const _Preview({
     required this.primary,
@@ -183,44 +196,124 @@ class _Preview extends StatelessWidget {
 
   final Color primary, dark, light, accent1, accent2, background, text, card;
 
+  static const double _height = AppSpace.xxxl * 2 + AppSpace.lg;
+  static const double _bar = AppSpace.xxs + 2;
+
+  Widget _line(Color color, double widthFactor, [double height = _bar]) => FractionallySizedBox(
+        alignment: AlignmentDirectional.centerStart,
+        widthFactor: widthFactor,
+        child: Container(
+          height: height,
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(AppRadius.pill)),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 110,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          for (final col in [primary, dark, light, accent1, accent2])
+    final muted = text.withValues(alpha: 0.35);
+    return ExcludeSemantics(
+      child: Container(
+        height: _height,
+        padding: const EdgeInsets.all(AppSpace.sm),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: AppRadius.controlAll,
+          border: Border.all(color: context.colors.divider, width: AppBorder.hairline),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
             Expanded(
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 3),
-                decoration: BoxDecoration(
-                  color: col,
-                  borderRadius: BorderRadius.circular(5),
-                ),
+              flex: 3,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // the block: headline + one line in the theme's ink
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(AppSpace.xs + AppSpace.xxs),
+                      decoration: BoxDecoration(color: accent1, borderRadius: AppRadius.controlAll),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _line(text, 0.7, AppSpace.xs),
+                          const SizedBox(height: AppSpace.xxs + 2),
+                          _line(muted, 0.45),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpace.xs),
+                  // the primary button
+                  Container(
+                    height: AppSpace.lg,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: primary, borderRadius: AppRadius.chipAll),
+                    child: FractionallySizedBox(
+                      widthFactor: 0.4,
+                      child: Container(
+                        height: AppSpace.xxs + 1,
+                        decoration: BoxDecoration(
+                          color: context.colors.onHero,
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          Container(
-            height: 24,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [primary, accent2]),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Container(
-              height: 5,
-              width: 40,
-              decoration: BoxDecoration(
-                color: context.colors.onHero,
-                borderRadius: BorderRadius.circular(3),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(
+              flex: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // a paper card: a gold achievement dot and two lines
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(AppSpace.xs),
+                      decoration: BoxDecoration(color: card, borderRadius: AppRadius.chipAll),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: AppSpace.sm,
+                            height: AppSpace.sm,
+                            decoration: BoxDecoration(color: accent2, shape: BoxShape.circle),
+                          ),
+                          const SizedBox(height: AppSpace.xs),
+                          _line(muted, 0.85),
+                          const SizedBox(height: AppSpace.xxs),
+                          _line(muted, 0.55),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpace.xs),
+                  // the primary family
+                  SizedBox(
+                    height: AppSpace.lg,
+                    child: Row(
+                      children: [
+                        for (final (i, col) in [dark, primary, light].indexed) ...[
+                          if (i > 0) const SizedBox(width: AppSpace.xxs),
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(color: col, borderRadius: AppRadius.chipAll),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -394,7 +487,7 @@ class _EditorState extends State<_Editor> {
         ),
         Flexible(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -408,7 +501,7 @@ class _EditorState extends State<_Editor> {
                   text: col('text_dark'),
                   card: _parseHex(colors['surface_card'] ?? '') ?? AppTheme.surfaceCard,
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: AppSpace.lg),
                 Field(controller: _ar, label: 'admin_arabic_name_2'.tr),
                 Field(
                   controller: _en,
@@ -417,43 +510,40 @@ class _EditorState extends State<_Editor> {
                 ),
                 for (final e in _editable.entries)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.only(bottom: AppSpace.sm),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Semantics(
                           button: true,
                           label: '${e.value.tr} ${_ctrls[e.key]!.text}',
                           child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: AppRadius.controlAll,
                             onTap: () => _pickPalette(e.key),
                             child: Container(
                               width: AppTouch.min,
                               height: AppTouch.min,
                               decoration: BoxDecoration(
                                 color: col(e.key),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: context.colors.divider),
+                                borderRadius: AppRadius.controlAll,
+                                border: Border.all(color: context.colors.divider, width: AppBorder.hairline),
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: AppSpace.sm),
                         Expanded(
                           child: TextField(
                             controller: _ctrls[e.key],
                             textDirection: TextDirection.ltr,
                             onChanged: (_) => setState(() {}),
-                            decoration: InputDecoration(
-                              labelText: e.value.tr,
-                              hintText: '#RRGGBB',
-                              errorText: _validHex(_ctrls[e.key]!.text)
-                                  ? null
-                                  : 'admin_use_rrggbb'.tr,
-                              isDense: true,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
+                            style: appFieldTextStyle(context),
+                            decoration: appFieldDecoration(
+                              context,
+                              hint: '#RRGGBB',
+                              errorText: _validHex(_ctrls[e.key]!.text) ? null : 'admin_use_rrggbb'.tr,
+                              dense: true,
+                            ).copyWith(labelText: e.value.tr),
                           ),
                         ),
                       ],
@@ -465,12 +555,12 @@ class _EditorState extends State<_Editor> {
                     if (_validHex(e.value.text)) e.key: e.value.text.trim(),
                 }))
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.only(bottom: AppSpace.xs),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.contrast_rounded, size: 16, color: context.colors.warning),
-                        const SizedBox(width: 6),
+                        Icon(Icons.contrast_rounded, size: AppIconSize.sm, color: appInk(context, context.colors.warning)),
+                        const SizedBox(width: AppSpace.xs),
                         Expanded(
                           child: Text(
                             t(
@@ -487,12 +577,8 @@ class _EditorState extends State<_Editor> {
                   'admin_all_other_colours_success_danger_dark'.tr,
                   style: AppType.meta(context),
                 ),
-                const SizedBox(height: 14),
-                PrimaryButton(
-                  label: 'save'.tr,
-                  isLoading: busy,
-                  onPressed: _save,
-                ),
+                const SizedBox(height: AppSpace.lg),
+                AppButton.primary(label: 'save'.tr, busy: busy, expand: true, onPressed: _save),
               ],
             ),
           ),
@@ -533,23 +619,23 @@ class _EditorState extends State<_Editor> {
           scrollable: true,
           title: Text('admin_pick_a_colour'.tr),
           content: Wrap(
-            spacing: 10,
-            runSpacing: 10,
+            spacing: AppSpace.xs,
+            runSpacing: AppSpace.xs,
             children: [
               for (final c in _swatches)
                 Semantics(
                   button: true,
                   label: _hexOf(c),
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: AppRadius.controlAll,
                     onTap: () => Navigator.pop(ctx, c),
                     child: Container(
                       width: AppTouch.min,
                       height: AppTouch.min,
                       decoration: BoxDecoration(
                         color: c,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: context.colors.divider),
+                        borderRadius: AppRadius.controlAll,
+                        border: Border.all(color: context.colors.divider, width: AppBorder.hairline),
                       ),
                     ),
                   ),

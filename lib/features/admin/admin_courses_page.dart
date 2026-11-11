@@ -942,7 +942,7 @@ class _CourseDetailState extends State<_CourseDetail> {
         Flexible(
           child: ListView(
             shrinkWrap: true,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.lg),
             children: [
               Section(
                 title: 'admin_overview'.tr,
@@ -1009,7 +1009,7 @@ class _CourseDetailState extends State<_CourseDetail> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpace.xs),
                     ],
                     AppSwitchTile(
                       dense: true,
@@ -1070,9 +1070,9 @@ class _CourseDetailState extends State<_CourseDetail> {
                             ),
                         ],
                       ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpace.sm),
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.only(bottom: AppSpace.sm),
                       child: AppNumberField(
                         controller: _fee,
                         label: 'admin_platform_fee_empty_default'.tr,
@@ -1083,13 +1083,9 @@ class _CourseDetailState extends State<_CourseDetail> {
                     ),
                     Text(
                       'admin_instapay_is_only_shown_for_egp_courses'.tr,
-                      style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontSize: 11.5,
-                        color: c.textLight,
-                      ),
+                      style: AppType.overline(context).copyWith(color: c.textLight),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AppSpace.sm),
                     PrimaryButton(
                       label: 'admin_save_payment_settings'.tr,
                       isLoading: saving,
@@ -1105,17 +1101,13 @@ class _CourseDetailState extends State<_CourseDetail> {
                     children: [
                       for (final pay in co.recentPayments.take(8))
                         Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 3),
+                          padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
                           child: Row(
                             children: [
                               Expanded(
                                 child: Text(
                                   '#${pay['id']} • ${asStr(pay['method'], '—')} • ${shortDate(asStrOrNull(pay['created_at']))}',
-                                  style: TextStyle(
-                                    fontFamily: AppFonts.family,
-                                    fontSize: 12.5,
-                                    color: c.textMedium,
-                                  ),
+                                  style: AppType.meta(context).copyWith(color: c.textMedium),
                                 ),
                               ),
                               Text(
@@ -1131,7 +1123,7 @@ class _CourseDetailState extends State<_CourseDetail> {
                                   color: c.textDark,
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: AppSpace.xs),
                               StatusChip(
                                 asStr(pay['status']),
                                 asStr(pay['status']) == 'completed'
@@ -1148,7 +1140,7 @@ class _CourseDetailState extends State<_CourseDetail> {
                 ),
               // the course's exams: the list, New exam and the question bank a teacher has (the engine lets a platform
               // admin manage any course's exams; it decides the organization scope itself)
-              AppCard(margin: const EdgeInsets.only(bottom: 14), child: EngineReviewSection(courseId: co.id, showEmpty: true)),
+              AppCard(margin: const EdgeInsets.only(bottom: AppSpace.md), child: EngineReviewSection(courseId: co.id, showEmpty: true)),
               Section(
                 title: 'admin_controls'.tr,
                 child: Column(
@@ -1174,7 +1166,7 @@ class _CourseDetailState extends State<_CourseDetail> {
                             }
                           },
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpace.xs),
                         OutlineButton(
                           label: 'btn_edit'.tr,
                           color: context.colors.warning,
@@ -1183,7 +1175,7 @@ class _CourseDetailState extends State<_CourseDetail> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpace.xs),
                     Row(
                       children: [
                         OutlineButton(
@@ -1203,7 +1195,7 @@ class _CourseDetailState extends State<_CourseDetail> {
                             }
                           },
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpace.xs),
                         OutlineButton(
                           label: 'delete'.tr,
                           color: context.colors.danger,
@@ -1393,7 +1385,7 @@ class _CourseFormState extends State<_CourseForm> {
                       ),
                       subtitle: Text(
                         u.gmail,
-                        style: const TextStyle(fontSize: 12),
+                        style: AppType.meta(context),
                       ),
                       onTap: () => Navigator.pop(ctx, u),
                     ),
@@ -1428,7 +1420,7 @@ class _CourseFormState extends State<_CourseForm> {
             child: AppListSkeleton(items: 3),
           )
               : SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
             child: Form(
               key: _form,
               child: Column(
@@ -1475,14 +1467,10 @@ class _CourseFormState extends State<_CourseForm> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.only(bottom: AppSpace.sm),
                     child: Text(
                       'price_plans_hint'.tr,
-                      style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontSize: 11.5,
-                        color: context.colors.textLight,
-                      ),
+                      style: AppType.overline(context).copyWith(color: context.colors.textLight),
                     ),
                   ),
                   ChoiceRow<int>(
@@ -1567,7 +1555,7 @@ class _CourseFormState extends State<_CourseForm> {
                     activeColor: c.primary,
                     onChanged: (v) => setState(() => published = v),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.xs),
                   PrimaryButton(
                     label: 'save'.tr,
                     isLoading: busy,
@@ -1591,7 +1579,7 @@ class _NumberPair extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.only(bottom: AppSpace.sm),
         child: LayoutBuilder(builder: (context, box) {
           if (box.maxWidth < 420) {
             return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [first, AppSpace.gapSm, second]);

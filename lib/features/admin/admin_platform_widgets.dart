@@ -72,32 +72,32 @@ class RegionEditor extends StatelessWidget {
           onChanged: onZone,
         ),
       ),
-      const SizedBox(height: 12),
-      Text(t('نظام الوقت', 'Clock'), style: appText(12.5, w: FontWeight.w700, c: c.textMedium)),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.sm),
+      Text(t('نظام الوقت', 'Clock'), style: AppType.meta(context).copyWith(color: c.textMedium, fontWeight: FontWeight.w600)),
+      const SizedBox(height: AppSpace.xs),
       Wrap(spacing: 8, runSpacing: 8, children: [
         if (inheritLabel != null) fmtChip(null, '$inheritLabel (${(inheritedFormat ?? '12h') == '24h' ? '24' : '12'})'),
         fmtChip('12h', t('12 ساعة (ص / م)', '12-hour (AM / PM)')),
         fmtChip('24h', t('24 ساعة', '24-hour')),
       ]),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AppSpace.sm),
         decoration: BoxDecoration(
           color: c.primary.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadius.control),
           border: Border.all(color: c.primary.withValues(alpha: 0.15)),
         ),
         child: Row(children: [
           Icon(Icons.schedule_rounded, color: c.primary, size: 20),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Text(
               '${t('الوقت الآن', 'Now')}: ${_preview(now, effZone, eff24)}  ·  ${AppTime.zoneInfo(effZone).label}',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: appText(12.5, w: FontWeight.w700, c: c.textDark),
+              style: AppType.meta(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600),
             ),
           ),
         ]),
@@ -130,22 +130,22 @@ class PlatformSectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: Row(children: [
         Container(
-          padding: const EdgeInsets.all(9),
-          decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+          padding: const EdgeInsets.all(AppSpace.xs),
+          decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(AppRadius.control)),
           child: Icon(icon, color: c.primary, size: 20),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(15.5, w: FontWeight.w800, c: c.textDark)),
+            Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.textDark)),
             if (subtitle != null)
-              Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textLight)),
+              Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight)),
           ]),
         ),
-        if (trailing != null) ...[const SizedBox(width: 8), trailing!],
+        if (trailing != null) ...[const SizedBox(width: AppSpace.xs), trailing!],
       ]),
     );
   }

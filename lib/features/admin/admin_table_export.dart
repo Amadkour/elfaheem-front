@@ -6,6 +6,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../../core/api_client.dart';
@@ -17,7 +18,6 @@ import 'admin_common.dart';
 import 'admin_filter_models.dart' show encodeFilters;
 import 'admin_models.dart' show PageData;
 import 'admin_providers.dart' show AdminPagedProvider;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Every row of [p]'s list (current search / filters / sort), [pageSize] per request, at most [maxRows].
 /// [progress] shows "rows n / total" and stops between pages when the person cancels (ExportCancelled).
@@ -162,13 +162,13 @@ class AppExportPill extends StatelessWidget {
         customBorder: const StadiumBorder(),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(Icons.ios_share_rounded, size: 16, color: c.primary),
-            const SizedBox(width: 6),
+            const SizedBox(width: AppSpace.xs),
             Flexible(
               child: Text(label ?? t('تصدير · Excel · Word · PDF', 'Export · Excel · Word · PDF'),
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, fontWeight: FontWeight.w700, color: c.primary)),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.primary, fontWeight: FontWeight.w600)),
             ),
           ]),
         ),
