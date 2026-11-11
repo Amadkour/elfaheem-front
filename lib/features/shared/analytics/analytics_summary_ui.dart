@@ -39,9 +39,10 @@ import 'package:flutter_education_app/design/app_shell_nav.dart' show ShellChrom
 Color anMetricColor(BuildContext context, AnMetric m) => anMetricColors(context)[m.index];
 
 /// The three metric colours, in [AnMetric] order. Progress is the theme's primary (palette slot 0). Attendance and
-/// exams take, in the palette's own order (gold · primary −60° · purple · primary +90°, then hues derived from the
-/// primary at +120° / −120° / +150°), the first colour whose OKLCH hue sits at least [_kMetricHueGap] away from the
-/// colours already taken. A fixed slot 2 made a teal or green primary (the Normal and Green presets) draw progress
+/// exams take, in the palette's own order (peach · sage · gold · terracotta, then hues derived from the primary at
+/// +120° / −120° / +150° as a last resort), the first colour whose OKLCH hue sits at least [_kMetricHueGap] away from
+/// the colours already taken (D-632: the theme's tones come first, so an emerald theme draws emerald · gold ·
+/// terracotta, not a violet from the primary +120°). A fixed slot 2 made a teal or green primary (the Normal and Green presets) draw progress
 /// and exams in two greens; the Blue preset keeps indigo · gold · teal. Every candidate sits in the mode's lightness
 /// band (chartSnapLightness), so the three read in light and dark.
 List<Color> anMetricColors(BuildContext context) =>
@@ -60,30 +61,40 @@ List<Color> anDistinctColors(List<Color> palette, {required bool dark, int n = 3
   Color derived(double shift) => chartSnapLightness(
       p.withHue((p.hue + shift + 360) % 360).withSaturation(math.max(p.saturation, 0.55)).toColor(),
       dark: dark);
-  final candidates = [...palette.skip(1), derived(120), derived(-120), derived(150)];
+  // the theme's own tones first; a hue derived from the primary only when none of them is even [_kMetricMinGap]
+  // apart (D-632: an emerald primary +120° is a violet the theme never chose)
+  final own = palette.skip(1).toList();
+  final spare = [derived(120), derived(-120), derived(150)];
   final taken = [palette[0]];
-  while (taken.length < n) {
+  (Color?, double) pick(List<Color> from) {
     Color? best;
     var bestGap = -1.0;
-    for (final x in candidates) {
+    for (final x in from) {
       if (taken.contains(x)) continue;
       final gap = taken.map((t) => _hueGap(x, t)).reduce(math.min);
-      if (gap >= _kMetricHueGap) {
-        best = x;
-        break;
-      }
+      if (gap >= _kMetricHueGap) return (x, gap);
       if (gap > bestGap) {
         best = x;
         bestGap = gap;
       }
     }
-    taken.add(best!);
+    return (best, bestGap);
+  }
+
+  while (taken.length < n) {
+    final (ownBest, ownGap) = pick(own);
+    taken.add(ownBest != null && ownGap >= _kMetricMinGap ? ownBest : (pick(spare).$1 ?? ownBest)!);
   }
   return taken;
 }
 
-/// The smallest OKLCH hue distance (degrees) that keeps two metric colours apart at a glance.
-const double _kMetricHueGap = 70;
+/// The smallest OKLCH hue distance (degrees) that keeps two metric colours apart at a glance (with the lightness
+/// band, 45° tells gold from terracotta; D-632).
+const double _kMetricHueGap = 45;
+
+/// Below this hue distance a theme tone is no longer told apart even with the lightness band, and a derived hue
+/// takes the slot.
+const double _kMetricMinGap = 20;
 
 /// OKLCH hue distance between [a] and [b] in degrees (0–180); 0 when either is nearly grey (no usable hue).
 @visibleForTesting

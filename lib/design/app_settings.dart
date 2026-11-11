@@ -7,7 +7,7 @@
 //       when nothing is left.
 //   AppSettingsGroup(title:, icon:, children:, danger:)
 //       an editorial group heading (the section face in ink, an optional quiet glyph) over a paper card of rows
-//       (card surface, warm hairline, hairline dividers, no shadow); `danger` tints the card for sign-out.
+//       (the white card, one soft shadow, hairline dividers, D-632); `danger` tints the card for sign-out.
 //   AppSettingsTile(icon:, label:, subtitle:, color:, trailing:, onTap:, badge:, featureKey:, keywords:)
 //       one 48 px (or taller) row: a faint icon well in the row's colour, label, optional subtitle, a count pill, a
 //       trailing widget or the direction-aware chevron. `featureKey` hides it with the kill switch (ParentComponent).
@@ -235,18 +235,23 @@ class AppSettingsGroup extends StatelessWidget {
           ),
         ]),
       ),
-      Material(
+      // the white card on the tinted page (D-632); the sign-out group keeps its flat danger tint
+      _lifted(danger, Material(
         color: danger ? c.dangerTint : c.cardBg,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: AppRadius.cardAll,
-          side: BorderSide(color: danger ? c.danger.withValues(alpha: 0.35) : c.divider, width: AppBorder.hairline),
+          side: danger
+              ? BorderSide(color: c.danger.withValues(alpha: 0.35), width: AppBorder.hairline)
+              : AppShadow.cardEdge(context),
         ),
         clipBehavior: Clip.antiAlias,
         child: Padding(padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs), child: Column(children: rows)),
-      ),
+      )),
     ]);
   }
+
+  static Widget _lifted(bool danger, Widget card) => danger ? card : AppLift(child: card);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

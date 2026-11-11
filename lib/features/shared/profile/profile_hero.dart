@@ -2,9 +2,8 @@
 //
 //   ProfileHero(name:, role:, email:, username:, imageUrl:, heroTag:, onEdit:)
 //
-// The page's ONE tinted block (peach) and its memorable element: the person's initial set as a large editorial
-// letter that bleeds off the block's end edge (a quiet monogram, Markazi in the block's faint ink, shifting a little
-// against the tilt), the avatar on a paper ring, the name in the editorial face and the identity chips on paper.
+// The page's ONE tinted block (peach): the avatar on a paper ring, the name in the editorial face and the identity
+// chips on paper. (The faint initial watermark behind it read as a rendering glitch and was removed, D-632.)
 // Phones stack it centred; from [wideFrom] it reads as a masthead: avatar · name and chips · "Update account".
 // Plain values only (test/ui/profile_hero_layout_test.dart). Kill switches: `profile.header` (the whole block),
 // `auth.username` (the @username chip).
@@ -14,9 +13,8 @@ import 'package:flutter/material.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
-import '../../../core/display/app_fonts.dart';
 import '../../../design/app_kit.dart';
-import '../../../design/app_motion_kit.dart' show AppTilt, AppTiltLayer, AppPressScale;
+import '../../../design/app_motion_kit.dart' show AppTilt, AppPressScale;
 import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/parent_component.dart';
 
@@ -47,14 +45,6 @@ class ProfileHero extends StatelessWidget {
   /// The avatar's side and its paper ring.
   static const double avatar = AppSettingsHeader.avatar;
 
-  /// How much larger than the display face the monogram is drawn.
-  static const double _monogramScale = 5.5;
-
-  /// How much of the block's ink the monogram carries (a watermark that never competes with the name).
-  static const double _monogramInk = 0.07;
-
-  String get _initial => name.trim().isEmpty ? '' : name.trim().characters.first.toUpperCase();
-
   @override
   Widget build(BuildContext context) => ParentComponent(
         featureKey: 'profile.header',
@@ -75,33 +65,6 @@ class ProfileHero extends StatelessWidget {
   Widget _body(BuildContext context, bool wide) {
     final b = AppBlock.colorsOf(context);
     final display = AppType.display(context);
-    final monogram = _initial.isEmpty
-        ? const SizedBox.shrink()
-        : PositionedDirectional(
-            // the letter rises from the block's bottom edge at its end: its foot bleeds off, its top stays in
-            end: -AppSpace.lg,
-            bottom: -(AppSpace.xxl + AppSpace.xl),
-            child: IgnorePointer(
-              child: ExcludeSemantics(
-                child: AppTiltLayer(
-                  depth: 1.5,
-                  child: Text(
-                    _initial,
-                    maxLines: 1,
-                    textScaler: TextScaler.noScaling,
-                    style: display.copyWith(
-                      fontFamily: AppFonts.editorialFamily,
-                      fontFamilyFallback: AppFonts.editorialFallback,
-                      fontSize: (display.fontSize ?? AppSpace.xl) * _monogramScale,
-                      height: 1,
-                      // a watermark, not a second heading: a few percent of the ink over the block
-                      color: Color.lerp(b.surface, b.ink, _monogramInk),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
     final chips = Wrap(
       alignment: wide ? WrapAlignment.start : WrapAlignment.center,
       spacing: AppSpace.xs,
@@ -150,10 +113,7 @@ class ProfileHero extends StatelessWidget {
         chips,
       ]);
     }
-    return Stack(clipBehavior: Clip.none, children: [
-      monogram,
-      SizedBox(width: double.infinity, child: content),
-    ]);
+    return SizedBox(width: double.infinity, child: content);
   }
 }
 

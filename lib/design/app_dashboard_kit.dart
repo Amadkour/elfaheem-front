@@ -79,7 +79,8 @@ class _ToneChip extends StatelessWidget {
   }
 }
 
-/// The paper surface of every card here: card colour, warm hairline, radius `card`; a press depth when tappable.
+/// The paper surface of every card here: the white card, one soft shadow, a near-invisible edge (D-632), radius
+/// `card`; a press depth when tappable.
 class _Paper extends StatelessWidget {
   const _Paper({required this.child, this.onTap, this.semanticLabel, this.padding = AppSpace.card});
 
@@ -92,14 +93,13 @@ class _Paper extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final body = Padding(padding: padding, child: child);
-    final card = Material(
-      color: c.cardBg,
-      shape: RoundedRectangleBorder(
-        borderRadius: AppRadius.cardAll,
-        side: BorderSide(color: c.divider, width: AppBorder.hairline),
+    final card = AppLift(
+      child: Material(
+        color: c.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: AppShadow.cardEdge(context)),
+        clipBehavior: Clip.antiAlias,
+        child: onTap == null ? body : InkWell(onTap: onTap, child: body),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: onTap == null ? body : InkWell(onTap: onTap, child: body),
     );
     final labelled = semanticLabel == null
         ? card

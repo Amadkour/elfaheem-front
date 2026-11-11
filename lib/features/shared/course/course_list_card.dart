@@ -217,14 +217,18 @@ class CourseListCard extends StatelessWidget {
     // depth (D-620): leans 2 degrees under the mouse, presses in on touch; the cover drifts with the scroll
     return AppTilt.subtle(
       radius: AppRadius.card,
-      child: Material(
-        color: c.cardBg,
-        shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: c.divider, width: AppBorder.hairline)),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: radius,
-          child: shape == CourseCardShape.row ? _row(context) : _tile(context),
+      // the white card on the tinted page, one soft shadow (D-632)
+      child: AppLift(
+        radius: radius,
+        child: Material(
+          color: c.cardBg,
+          shape: RoundedRectangleBorder(borderRadius: radius, side: AppShadow.cardEdge(context)),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: radius,
+            child: shape == CourseCardShape.row ? _row(context) : _tile(context),
+          ),
         ),
       ),
     );

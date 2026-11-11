@@ -59,12 +59,12 @@ class AppTheme {
   static const Color cardShadowColorDark    = Color(0xFF000000);   // dark mode
 
   // ── Light surfaces ────────────────────────────────────────────────────────
-  static const Color background           = Color(0xFFFBF7F0);   // canvas: warm white
-  static const Color surfaceCard          = Color(0xFFFFFDF9);   // paper
-  static const Color cardBg               = Color(0xFFFFFDF9);
-  static const Color textFieldBackground  = Color(0xFFF5EFE5);
-  static const Color inputBg              = Color(0xFFF5EFE5);
-  static const Color divider              = Color(0xFFECE4D8);   // warm hairline
+  static const Color background           = Color(0xFFF1F4F0);   // canvas: pale sage-grey (D-632), white cards lift off it
+  static const Color surfaceCard          = Color(0xFFFFFFFF);   // the card: pure white
+  static const Color cardBg               = Color(0xFFFFFFFF);
+  static const Color textFieldBackground  = Color(0xFFF4F6F2);
+  static const Color inputBg              = Color(0xFFF4F6F2);
+  static const Color divider              = Color(0xFFE6EAE3);   // neutral sage hairline
 
   // ── Light text ────────────────────────────────────────────────────────────
   static const Color textDark     = Color(0xFF211D18);   // 15.4:1 on canvas

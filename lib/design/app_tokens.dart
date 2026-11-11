@@ -12,8 +12,9 @@
 //   AppTouch    48 px minimum target (Material / WCAG), 56 px for a primary action on phones
 //   AppShadow   the theme's soft card / raised shadows, by role
 //   AppElevation  0 flat · 1 card · 2 raised (hover, sticky bar) · 3 overlay (menu, drawer) · 4 modal (dialog);
-//               depth is TONE first (canvas → paper → tinted block, warm hairlines): a resting card has no shadow,
-//               only what floats casts one, in the warm charcoal shadow tone (D-612)
+//               depth is TONE first (tinted canvas → white card → tinted block); a resting card is white on the
+//               tinted page with one soft shadow and no visible border (`AppLift`, `AppShadow.cardEdge`, D-632),
+//               what floats casts the clearer shadows, in the theme's shadow tone (D-612)
 //   AppIconSize   xs 14 · sm 16 · md 20 · lg 24 · xl 32 · hero 40
 //   AppBorder     hairline 1 · strong 1.5 · focus 2
 //   AppDashSize   the dashboard kit's fixed sizes: avatar 56 / 72 · disc 64 · ring 76 · course tile 220
@@ -116,6 +117,26 @@ abstract final class AppTouch {
 abstract final class AppShadow {
   static List<BoxShadow> card(BuildContext context) => context.colors.cardShadow;
   static List<BoxShadow> raised(BuildContext context) => context.colors.primaryShadow;
+
+  /// The edge of a resting card (D-632): a near-invisible hairline in light mode, a quiet step in dark mode.
+  static BorderSide cardEdge(BuildContext context) =>
+      BorderSide(color: context.colors.cardEdge, width: AppBorder.hairline);
+}
+
+/// Casts the resting card shadow ([AppShadow.card]) under [child], a card drawn with a `Material` of the same
+/// [radius] (default [AppRadius.cardAll]; a `Material` takes no shadow list). The white card on the tinted page
+/// (D-632).
+class AppLift extends StatelessWidget {
+  const AppLift({super.key, required this.child, this.radius});
+
+  final Widget child;
+  final BorderRadius? radius;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+        decoration: BoxDecoration(borderRadius: radius ?? AppRadius.cardAll, boxShadow: AppShadow.card(context)),
+        child: child,
+      );
 }
 
 /// Elevation by level, in the theme's warm shadow tone (`card_shadow_color`, charcoal; never a neutral grey). Depth
