@@ -156,7 +156,7 @@ class _GovTextField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    OutlineInputBorder b(Color col, [double w = 1]) => OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: col, width: w));
+    OutlineInputBorder b(Color col, [double w = 1]) => OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: col, width: w));
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: TextField(
@@ -169,12 +169,12 @@ class _GovTextField extends StatelessWidget {
           hintText: hint,
           errorText: error,
           errorMaxLines: 2,
-          prefixIcon: Icon(icon, size: 20, color: c.textLight),
+          prefixIcon: Icon(icon, size: AppIconSize.md, color: c.textLight),
           labelStyle: appText(13, c: c.textMedium),
           hintStyle: appText(13, c: c.textLight),
           filled: true,
           fillColor: c.inputBg,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.md),
           border: b(c.divider),
           enabledBorder: b(c.divider),
           focusedBorder: b(c.primary, 1.6),
@@ -261,8 +261,8 @@ class _BeneficiarySheetState extends State<_BeneficiarySheet> {
             isDense: true,
             filled: true,
             fillColor: c.inputBg,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.divider)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.divider)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.divider)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.divider)),
           ),
         ),
         const SizedBox(height: AppSpace.xs),
@@ -327,7 +327,7 @@ class GovChainPreview extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(Icons.account_tree_rounded, size: 18, color: appInk(context, c.primary)),
+          Icon(Icons.account_tree_rounded, size: AppIconSize.md, color: appInk(context, c.primary)),
           const SizedBox(width: AppSpace.xs),
           Expanded(child: Text(t('مراحل الاعتماد', 'Approval steps'), style: appText(12.5, w: FontWeight.w800, c: c.textDark))),
         ]),
@@ -335,7 +335,7 @@ class GovChainPreview extends StatelessWidget {
         Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
           for (var i = 0; i < steps.length; i++) ...[
             AppBadgePill('${i + 1}. ${steps[i].label}', color: c.primary),
-            if (i < steps.length - 1) Icon(Icons.arrow_forward_rounded, size: 14, color: c.textLight),
+            if (i < steps.length - 1) Icon(Icons.arrow_forward_rounded, size: AppIconSize.xs, color: c.textLight),
           ],
         ]),
       ]),
@@ -366,7 +366,7 @@ class GovChainCard extends StatelessWidget {
     return AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Icon(Icons.account_tree_rounded, size: 18, color: appInk(context, c.primary)),
+          Icon(Icons.account_tree_rounded, size: AppIconSize.md, color: appInk(context, c.primary)),
           const SizedBox(width: AppSpace.xs),
           Expanded(child: Text(t('مراحل الاعتماد', 'Approval steps'), style: appText(14, w: FontWeight.w800, c: c.textDark))),
           if (chain.round > 1) AppBadgePill('${t('الجولة', 'Round')} ${chain.round}', color: c.purple, icon: Icons.replay_rounded),
@@ -433,8 +433,8 @@ class GovChainStepRow extends StatelessWidget {
         SizedBox(
           width: 28,
           child: Column(children: [
-            Icon(icon, size: 22, color: color),
-            if (!last) Expanded(child: Container(width: 2, margin: const EdgeInsets.symmetric(vertical: 2), color: c.divider)),
+            Icon(icon, size: AppIconSize.lg, color: color),
+            if (!last) Expanded(child: Container(width: 2, margin: const EdgeInsets.symmetric(vertical: AppSpace.xxs / 2), color: c.divider)),
           ]),
         ),
         const SizedBox(width: AppSpace.xs),
@@ -452,7 +452,7 @@ class GovChainStepRow extends StatelessWidget {
                 if (who.isNotEmpty) Text(who, style: appText(12, c: c.textMedium)),
                 if ((note ?? '').isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 2),
+                    padding: const EdgeInsets.only(top: AppSpace.xxs / 2),
                     child: Text('«$note»', style: appText(12.5, c: step.status == 'rejected' ? c.danger : c.textDark, h: 1.4)),
                   ),
               ]),
@@ -515,14 +515,14 @@ class GovChainEditor extends StatelessWidget {
                 IconButton(
                   tooltip: t('لأعلى', 'Move up'),
                   onPressed: i == 0 ? null : () => set([...steps]..insert(i - 1, steps[i])..removeAt(i + 1)),
-                  icon: const Icon(Icons.arrow_upward_rounded, size: 20),
+                  icon: const Icon(Icons.arrow_upward_rounded, size: AppIconSize.md),
                 ),
                 IconButton(
                   tooltip: t('لأسفل', 'Move down'),
                   onPressed: i == steps.length - 1 ? null : () => set([...steps]..insert(i + 2, steps[i])..removeAt(i)),
-                  icon: const Icon(Icons.arrow_downward_rounded, size: 20),
+                  icon: const Icon(Icons.arrow_downward_rounded, size: AppIconSize.md),
                 ),
-                IconButton(tooltip: t('حذف', 'Remove'), onPressed: () => set([...steps]..removeAt(i)), icon: Icon(Icons.delete_outline_rounded, size: 20, color: c.danger)),
+                IconButton(tooltip: t('حذف', 'Remove'), onPressed: () => set([...steps]..removeAt(i)), icon: Icon(Icons.delete_outline_rounded, size: AppIconSize.md, color: c.danger)),
               ],
             ]),
             if (steps[i].kind == 'entity') ...[
@@ -776,7 +776,7 @@ class GovAttachmentChips extends StatelessWidget {
     return Wrap(spacing: AppSpace.xs - 2, runSpacing: AppSpace.xs - 2, children: [
       for (final a in attachments)
         InputChip(
-          avatar: Icon(a.isImage ? Icons.image_rounded : (a.isPdf ? Icons.picture_as_pdf_rounded : Icons.attach_file_rounded), size: 16, color: appInk(context, c.primary)),
+          avatar: Icon(a.isImage ? Icons.image_rounded : (a.isPdf ? Icons.picture_as_pdf_rounded : Icons.attach_file_rounded), size: AppIconSize.sm, color: appInk(context, c.primary)),
           label: Text(
             [a.name.isEmpty ? t('مرفق', 'Attachment') : a.name, if ((a.size ?? 0) > 0) fileSizeLabel(a.size)].join(' · '),
             maxLines: 1,
@@ -785,7 +785,7 @@ class GovAttachmentChips extends StatelessWidget {
           ),
           onPressed: onOpen == null ? null : () => onOpen!(a),
           onDeleted: onRemove == null ? null : () => onRemove!(a),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
         ),
     ]);
   }
@@ -877,7 +877,7 @@ class _ResubmitSheetState extends State<_ResubmitSheet> {
         Align(
           alignment: AlignmentDirectional.centerStart,
           child: ActionChip(
-            avatar: _uploading ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.add_rounded, size: 16, color: appInk(context, c.primary)),
+            avatar: _uploading ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.add_rounded, size: AppIconSize.sm, color: appInk(context, c.primary)),
             label: Text(t('إضافة ملف', 'Add file'), style: appText(12, w: FontWeight.w700, c: appInk(context, c.primary))),
             onPressed: _uploading || _files.length >= 10 ? null : _add,
           ),

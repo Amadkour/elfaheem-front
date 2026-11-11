@@ -28,7 +28,6 @@ import 'org_page_header.dart' show OrgPageRefresh;
 import 'org_schedule_planning.dart' show kOrgSchedulingMocks, orgStudioPage;
 import 'org_schedule_versions.dart';
 import 'org_timetable_time.dart';
-import 'org_ui.dart';
 import 'org_v3.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -292,7 +291,7 @@ class _ExamListPageState extends State<_ExamListPage> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final terms = [...widget.p.terms]..sort((a, b) => '${b['start_date']}'.compareTo('${a['start_date']}'));
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xl), children: [
       AppHero(
         icon: Icons.assignment_rounded,
         title: t('امتحانات منتصف الفصل والنهائية', 'Midterm and final exams'),
@@ -303,7 +302,7 @@ class _ExamListPageState extends State<_ExamListPage> {
           AppHeroStat(icon: Icons.assignment_turned_in_rounded, value: '${items?.length ?? '—'}', label: t('جداول امتحانات', 'exam timetables')),
         ],
       ),
-      const SizedBox(height: 14),
+      const SizedBox(height: AppSpace.md),
       if (error != null)
         AppBanner(icon: Icons.error_outline_rounded, text: error!, color: c.danger, action: TextButton(onPressed: _load, child: Text(t('أعد المحاولة', 'Try again'))))
       else if (items == null)
@@ -327,10 +326,10 @@ class _ExamListPageState extends State<_ExamListPage> {
                   onCreate: widget.canEdit ? () => _create(term, k) : null,
                 ),
             ];
-            if (box.maxWidth < 560) return Column(children: [for (final w in tiles) Padding(padding: const EdgeInsets.only(bottom: 10), child: w)]);
-            return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: tiles[0]), const SizedBox(width: 12), Expanded(child: tiles[1])]);
+            if (box.maxWidth < 560) return Column(children: [for (final w in tiles) Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: w)]);
+            return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: tiles[0]), const SizedBox(width: AppSpace.sm), Expanded(child: tiles[1])]);
           }),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
         ],
     ]);
   }
@@ -356,18 +355,18 @@ class _KindTile extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(kind == 'midterm' ? Icons.timelapse_rounded : Icons.flag_circle_rounded, color: c.primary),
-          const SizedBox(width: 8),
-          Expanded(child: Text(examKindLabel(kind), maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800))),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: Text(examKindLabel(kind), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context))),
           if (e != null) AppBadgePill(e['status'] == 'active' ? t('منشور', 'Published') : t('مسودة', 'Draft'), color: e['status'] == 'active' ? c.success : c.warning),
         ]),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         if (e != null) ...[
-          Text('${calendarDate(e['start_date'])} – ${calendarDate(e['end_date'])}', style: orgText(context, size: 12.5, color: c.textMedium)),
-          if (st.isNotEmpty) Text(t('${st['exams_placed']} من ${st['exams_required']} امتحان', '${st['exams_placed']} of ${st['exams_required']} exams'), style: orgText(context, size: 12.5, w: FontWeight.w700)),
+          Text('${calendarDate(e['start_date'])} – ${calendarDate(e['end_date'])}', style: AppType.label(context).copyWith(color: c.textMedium)),
+          if (st.isNotEmpty) Text(t('${st['exams_placed']} من ${st['exams_required']} امتحان', '${st['exams_placed']} of ${st['exams_required']} exams'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
         ] else ...[
           if (w != null)
-            Text('${t('الفترة المقترحة', 'Suggested window')}: ${calendarDate(_iso(w.$1))} – ${calendarDate(_iso(w.$2))}', style: orgText(context, size: 12.5, color: c.textMedium)),
-          const SizedBox(height: 8),
+            Text('${t('الفترة المقترحة', 'Suggested window')}: ${calendarDate(_iso(w.$1))} – ${calendarDate(_iso(w.$2))}', style: AppType.label(context).copyWith(color: c.textMedium)),
+          const SizedBox(height: AppSpace.xs),
           if (onCreate != null)
             Align(alignment: AlignmentDirectional.centerEnd, child: TextButton.icon(onPressed: onCreate, icon: const Icon(Icons.add_rounded), label: Text(t('أنشئ', 'Create')))),
         ],
@@ -405,20 +404,20 @@ Future<int?> showExamSettingsSheet(BuildContext context, OrgScheduleProvider p, 
         }
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24), // showAppSheet already lifts the sheet above the keyboard
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg), // showAppSheet already lifts the sheet above the keyboard
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppSheetHeader('${examKindLabel(kind)} · ${termLabelOf(term)}'),
             Field(controller: name, label: t('الاسم (اختياري)', 'Name (optional)')),
             AppSectionTitle(t('فترة الامتحانات', 'Exam window'),
                 subtitle: t('مقترحة من تواريخ الفصل — ${kind == 'midterm' ? 'حول منتصفه' : 'في نهايته'}', 'Suggested from the term\'s dates — ${kind == 'midterm' ? 'around its midpoint' : 'at its end'}')),
             Row(children: [
-              Expanded(child: OutlinedButton.icon(onPressed: () => pick(true), icon: const Icon(Icons.event_rounded, size: 18), label: Text(calendarDate(_iso(start)), maxLines: 1, overflow: TextOverflow.ellipsis))),
-              const SizedBox(width: 8),
-              Expanded(child: OutlinedButton.icon(onPressed: () => pick(false), icon: const Icon(Icons.event_available_rounded, size: 18), label: Text(calendarDate(_iso(end)), maxLines: 1, overflow: TextOverflow.ellipsis))),
+              Expanded(child: OutlinedButton.icon(onPressed: () => pick(true), icon: const Icon(Icons.event_rounded, size: AppIconSize.md), label: Text(calendarDate(_iso(start)), maxLines: 1, overflow: TextOverflow.ellipsis))),
+              const SizedBox(width: AppSpace.xs),
+              Expanded(child: OutlinedButton.icon(onPressed: () => pick(false), icon: const Icon(Icons.event_available_rounded, size: AppIconSize.md), label: Text(calendarDate(_iso(end)), maxLines: 1, overflow: TextOverflow.ellipsis))),
             ]),
-            const SizedBox(height: 12),
-            Text(t('أيام الامتحانات', 'Exam days'), style: orgText(ctx, w: FontWeight.w700)),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.sm),
+            Text(t('أيام الامتحانات', 'Exam days'), style: AppType.bodyStrong(ctx)),
+            const SizedBox(height: AppSpace.xs),
             Wrap(spacing: 6, runSpacing: 6, children: [
               for (final d in orgDaysOrder)
                 FilterChip(
@@ -427,20 +426,20 @@ Future<int?> showExamSettingsSheet(BuildContext context, OrgScheduleProvider p, 
                   onSelected: (v) => set(() => v ? days.add(d) : days.remove(d)),
                 ),
             ]),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             Row(children: [
-              Expanded(child: Text(t('فترات الامتحان في اليوم', 'Sittings per day'), style: orgText(ctx, w: FontWeight.w700))),
+              Expanded(child: Text(t('فترات الامتحان في اليوم', 'Sittings per day'), style: AppType.bodyStrong(ctx))),
               if (sittings.length < 8)
                 TextButton.icon(
                   onPressed: () => set(() => sittings.add({'start_time': '15:00', 'end_time': '17:00'})),
-                  icon: const Icon(Icons.add_rounded, size: 18),
+                  icon: const Icon(Icons.add_rounded, size: AppIconSize.md),
                   label: Text(t('إضافة', 'Add')),
                 ),
             ]),
             for (var i = 0; i < sittings.length; i++)
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(child: ClockField(label: t('تبدأ', 'Starts'), value: '${sittings[i]['start_time']}', onChanged: (v) => set(() => sittings[i]['start_time'] = v))),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
                 Expanded(child: ClockField(label: t('تنتهي', 'Ends'), value: '${sittings[i]['end_time']}', onChanged: (v) => set(() => sittings[i]['end_time'] = v))),
                 IconButton(
                   tooltip: t('حذف', 'Remove'),
@@ -463,14 +462,14 @@ Future<int?> showExamSettingsSheet(BuildContext context, OrgScheduleProvider p, 
               value: pauseWeekly,
               onChanged: (v) => set(() => pauseWeekly = v),
             ),
-            Text(t('أقصى عدد امتحانات للطالب في اليوم', 'Most exams a student sits in one day'), style: orgText(ctx, w: FontWeight.w700)),
-            const SizedBox(height: 6),
+            Text(t('أقصى عدد امتحانات للطالب في اليوم', 'Most exams a student sits in one day'), style: AppType.bodyStrong(ctx)),
+            const SizedBox(height: AppSpace.xs),
             Wrap(spacing: 6, runSpacing: 6, children: [
               for (final n in const [null, 1, 2, 3])
                 ChoiceChip(label: Text(n == null ? t('بلا حد', 'No limit') : '$n'), selected: maxPerDay == n, onSelected: (_) => set(() => maxPerDay = n)),
             ]),
-            if (error != null) ...[const SizedBox(height: 10), AppBanner(icon: Icons.error_outline_rounded, text: error!, color: c.danger)],
-            const SizedBox(height: 14),
+            if (error != null) ...[const SizedBox(height: AppSpace.sm), AppBanner(icon: Icons.error_outline_rounded, text: error!, color: c.danger)],
+            const SizedBox(height: AppSpace.md),
             AppPrimaryButton(
               label: existing == null ? t('إنشاء جدول الامتحانات', 'Create the exam timetable') : t('حفظ', 'Save'),
               icon: Icons.check_rounded,
@@ -629,7 +628,7 @@ class _ExamPageState extends State<_ExamPage> {
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               AppSheetHeader('${t('نقل امتحان', 'Move the exam of')} ${names.course(x['course_id'])}'),
               OutlinedButton.icon(
@@ -643,7 +642,7 @@ class _ExamPageState extends State<_ExamPage> {
                   }
                 },
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
               Wrap(spacing: 6, runSpacing: 6, children: [
                 for (var i = 0; i < sittings.length; i++)
                   ChoiceChip(
@@ -655,14 +654,14 @@ class _ExamPageState extends State<_ExamPage> {
                     },
                   ),
               ]),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
               if (checking) const LinearProgressIndicator(),
               for (final k in conflicts)
                 Padding(
-                  padding: const EdgeInsets.only(top: 6),
+                  padding: const EdgeInsets.only(top: AppSpace.xs),
                   child: AppBanner(icon: Icons.warning_amber_rounded, text: examConflictText('${k['type']}'), color: c.danger),
                 ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               AppPrimaryButton(
                 label: conflicts.isEmpty ? t('نقل', 'Move') : t('نقل رغم التعارض', 'Move despite the clash'),
                 icon: Icons.check_rounded,
@@ -700,10 +699,10 @@ class _ExamPageState extends State<_ExamPage> {
     final ex = e;
     if (error != null && ex == null) {
       return Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpace.md),
           child: AppBanner(icon: Icons.error_outline_rounded, text: error!, color: c.danger, action: TextButton(onPressed: _load, child: Text(t('أعد المحاولة', 'Try again')))));
     }
-    if (ex == null) return const Padding(padding: EdgeInsets.all(16), child: AppListSkeleton(items: 5, withAvatar: false));
+    if (ex == null) return const Padding(padding: EdgeInsets.all(AppSpace.md), child: AppListSkeleton(items: 5, withAvatar: false));
     final names = timetableNamesOf(widget.p);
     final items = asMapList(ex['items']);
     final res = asMap(ex['result']);
@@ -717,7 +716,7 @@ class _ExamPageState extends State<_ExamPage> {
     final byDate = examsByDate(items);
     return AppRefresh(
       onRefresh: _load,
-      child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: [
+      child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xl), children: [
         AppHero(
           icon: ex['kind'] == 'midterm' ? Icons.timelapse_rounded : Icons.flag_circle_rounded,
           title: '${ex['name']}',
@@ -729,7 +728,7 @@ class _ExamPageState extends State<_ExamPage> {
             AppHeroStat(icon: Icons.warning_amber_rounded, value: '$hard', label: t('تعارضات', 'clashes')),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         if (active)
           AppBanner(icon: Icons.verified_rounded, text: t('منشور — يراه الطلاب والمراقبون. أوقف النشر لتعديله.', 'Published — students and invigilators see it. Unpublish to edit it.'), color: c.success)
         else if (items.isEmpty)
@@ -744,7 +743,7 @@ class _ExamPageState extends State<_ExamPage> {
           AppBanner(icon: Icons.error_outline_rounded, text: t('حُرّك امتحان يدوياً فسبّب تعارضاً — انقله أو ولّد من جديد.', 'A hand move caused a clash — move it or generate again.'), color: c.danger)
         else
           AppBanner(icon: Icons.check_circle_rounded, text: t('كل الامتحانات في أماكنها دون تعارض — جاهز للنشر.', 'Every exam is placed with no clash — ready to publish.'), color: c.success),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         AppBanner(
           icon: ex['pause_weekly'] == false ? Icons.event_repeat_rounded : Icons.event_busy_rounded,
           text: ex['pause_weekly'] == false
@@ -752,7 +751,7 @@ class _ExamPageState extends State<_ExamPage> {
               : '${examPauseText(ex)}${active ? '' : t(' (بعد النشر)', ' (once published)')}',
           color: ex['pause_weekly'] == false ? c.textMedium : c.primary,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         Wrap(spacing: 8, runSpacing: 8, children: [
           if (widget.canEdit && !active)
             AppPrimaryButton(
@@ -769,7 +768,7 @@ class _ExamPageState extends State<_ExamPage> {
                       if (id != null) await _load();
                     }
                   : null,
-              icon: const Icon(Icons.tune_rounded, size: 18),
+              icon: const Icon(Icons.tune_rounded, size: AppIconSize.md),
               label: Text(t('الإعدادات', 'Settings')),
             ),
           if (widget.canExport && items.isNotEmpty)
@@ -780,7 +779,7 @@ class _ExamPageState extends State<_ExamPage> {
                 PopupMenuItem(value: 'invigilator', child: Text(t('لكل مراقب', 'Per invigilator'))),
                 PopupMenuItem(value: 'room', child: Text(t('لكل مكان', 'Per room'))),
               ],
-              child: Chip(avatar: Icon(Icons.file_download_rounded, size: 18, color: c.primary), label: Text(t('تصدير: إكسل · وورد · PDF', 'Export: Excel · Word · PDF'))),
+              child: Chip(avatar: Icon(Icons.file_download_rounded, size: AppIconSize.md, color: c.primary), label: Text(t('تصدير: إكسل · وورد · PDF', 'Export: Excel · Word · PDF'))),
             ),
           if (widget.canApprove && items.isNotEmpty)
             OutlinedButton.icon(
@@ -791,7 +790,7 @@ class _ExamPageState extends State<_ExamPage> {
                       if (active && !await appConfirm(context, message: t('إيقاف نشر جدول الامتحانات؟', 'Unpublish the exam timetable?'))) return;
                       await _run(() => widget.api.publish(asInt(ex['id']), !active), ok: active ? t('أوقف النشر', 'Unpublished') : t('نُشر الجدول', 'Published'));
                     },
-              icon: Icon(active ? Icons.unpublished_rounded : Icons.publish_rounded, size: 18),
+              icon: Icon(active ? Icons.unpublished_rounded : Icons.publish_rounded, size: AppIconSize.md),
               label: Text(active ? t('إيقاف النشر', 'Unpublish') : t('نشر', 'Publish')),
             ),
           if (widget.canEdit && !active)
@@ -807,7 +806,7 @@ class _ExamPageState extends State<_ExamPage> {
                         appToast(_err(x), error: true);
                       }
                     },
-              icon: Icon(Icons.delete_outline_rounded, color: c.danger, size: 18),
+              icon: Icon(Icons.delete_outline_rounded, color: c.danger, size: AppIconSize.md),
               label: Text(t('حذف', 'Delete'), style: TextStyle(color: c.danger)),
             ),
         ]),
@@ -815,15 +814,15 @@ class _ExamPageState extends State<_ExamPage> {
           AppSectionTitle(t('بلا موعد ولماذا', 'Without a time, and why')),
           for (final u in unplaced)
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
               child: AppCard(
                 child: Row(children: [
                   Icon(Icons.event_busy_rounded, color: c.warning),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(names.course(u['course_id']), maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800)),
-                    Text(examReasonText('${u['reason']}'), style: orgText(context, size: 12.5, color: c.textMedium)),
+                    Text(names.course(u['course_id']), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+                    Text(examReasonText('${u['reason']}'), style: AppType.label(context).copyWith(color: c.textMedium)),
                   ])),
                 ]),
               ),
@@ -833,7 +832,7 @@ class _ExamPageState extends State<_ExamPage> {
           AppSectionTitle(t('تعارضات', 'Clashes')),
           for (final k in conflicts)
             Padding(
-              padding: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
               child: AppBanner(
                   icon: k['severity'] == 'error' ? Icons.error_outline_rounded : Icons.warning_amber_rounded,
                   text: '${examConflictText('${k['type']}')} · ${calendarDate(k['date'])} · ${(k['course_ids'] as List? ?? const []).map(names.course).join('، ')}',
@@ -844,24 +843,24 @@ class _ExamPageState extends State<_ExamPage> {
           AppSectionTitle(calendarDate(d.key, pattern: 'EEEE d MMMM y'), subtitle: t('${d.value.length} امتحان', '${d.value.length} exam(s)')),
           for (final x in d.value)
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
               child: AppCard(
                 onTap: () => _slot(x, editable: editable),
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Container(
                     width: 92,
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-                    decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: AppSpace.xs, horizontal: AppSpace.xs),
+                    decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(AppRadius.control)),
                     child: Column(children: [
-                      Text(clockOf(x['start_time']), maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 13, w: FontWeight.w800, color: c.primary)),
-                      Text(clockOf(x['end_time']), maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 11.5, color: c.textMedium)),
+                      Text(clockOf(x['start_time']), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.primary)),
+                      Text(clockOf(x['end_time']), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
                     ]),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(names.course(x['course_id']), maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800)),
-                      const SizedBox(height: 4),
+                      Text(names.course(x['course_id']), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+                      const SizedBox(height: AppSpace.xxs),
                       Wrap(spacing: 6, runSpacing: 4, children: [
                         AppBadgePill(t('${x['students']} طالب', '${x['students']} students'), icon: Icons.people_alt_rounded, color: c.purple),
                         _made.containsKey(asInt(x['id']))

@@ -116,7 +116,7 @@ class _RequestsInboxState extends State<_RequestsInbox> with AutomaticKeepAliveC
   Future<String?> _askNote(String title) async {
     final ctrl = TextEditingController();
     final ok = await showAppSheet<bool>(context, (ctx) => SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 20), // the sheet already lifts above the keyboard
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg), // the sheet already lifts above the keyboard
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             AppSheetHeader(title),
             Field(controller: ctrl, label: t('الملاحظة', 'Note'), maxLines: 3),
@@ -143,7 +143,7 @@ class _RequestsInboxState extends State<_RequestsInbox> with AutomaticKeepAliveC
     return Column(children: [
       if (shareTip)
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
           child: AppBanner(
             icon: Icons.diversity_3_rounded,
             text: t('طلبات كثيرة تنتظرك. وزّع العمل: امنح صلاحية «اعتماد طلبات الانضمام» لأحد الموظفين من الأدوار والصلاحيات.',
@@ -161,7 +161,7 @@ class _RequestsInboxState extends State<_RequestsInbox> with AutomaticKeepAliveC
                 tooltip: t('إخفاء', 'Hide'),
                 visualDensity: VisualDensity.compact,
                 onPressed: () => setState(() => _tipHidden = true),
-                icon: Icon(Icons.close_rounded, size: 18, color: c.textLight),
+                icon: Icon(Icons.close_rounded, size: AppIconSize.md, color: c.textLight),
               ),
             ]),
           ),
@@ -211,7 +211,7 @@ class _RequestsInboxState extends State<_RequestsInbox> with AutomaticKeepAliveC
                   ),
                 ])
               : ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 110),
+                  padding: const EdgeInsets.only(bottom: AppSpace.xxxl + AppSpace.xxl),
                   itemCount: rows.length,
                   itemBuilder: (_, i) {
                     final (key, r) = rows[i];
@@ -224,7 +224,7 @@ class _RequestsInboxState extends State<_RequestsInbox> with AutomaticKeepAliveC
                           });
                     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Padding(
-                        padding: const EdgeInsetsDirectional.only(start: 8, top: 18),
+                        padding: const EdgeInsetsDirectional.only(start: AppSpace.xs, top: AppSpace.md),
                         child: Checkbox(value: on, onChanged: (_) => setState(() => on ? _sel.remove(key) : _sel.add(key))),
                       ),
                       Expanded(child: card),
@@ -241,13 +241,13 @@ class _RequestsInboxState extends State<_RequestsInbox> with AutomaticKeepAliveC
                 top: false,
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
                   decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider))),
                   child: Row(children: [
                     Expanded(
                       child: AppButton.primary(expand: true, busy: _busy, onPressed: _busy ? null : () => _decide(true), icon: Icons.done_all_rounded, label: t('قبول (${_sel.length})', 'Accept (${_sel.length})')),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpace.xs),
                     Expanded(
                       child: AppButton(variant: AppButtonVariant.danger, dangerOutline: true, expand: true, onPressed: _busy ? null : () => _decide(false), icon: Icons.close_rounded, label: t('رفض (${_sel.length})', 'Reject (${_sel.length})')),
                     ),
@@ -270,27 +270,27 @@ class _OrgRequestCard extends StatelessWidget {
     final c = context.colors;
     final u = asMap(row['user']);
     return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(4, 4, 16, 4),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xxs, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
       child: AppCard(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(AppSpace.md),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             AdminAvatar(name: '${u['name'] ?? ''}', url: u['image_url'] as String?),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('${u['name'] ?? '#${row['id']}'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800)),
+                Text('${u['name'] ?? '#${row['id']}'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
                 Text('${t('للانضمام إلى المؤسسة', 'To join the organization')} · ${_roleLabels()[row['role']] ?? row['role']}',
-                    maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12, color: c.textMedium)),
-                Text(relTime(row['created_at']), style: orgText(context, size: 11.5, color: c.textLight)),
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
+                Text(relTime(row['created_at']), style: AppType.meta(context).copyWith(color: c.textLight)),
               ]),
             ),
           ]),
           if (row['code_verified'] == true) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             AppBadgePill(t('الكود صحيح', 'Code verified'), color: c.success, icon: Icons.verified_rounded),
           ],
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           Wrap(spacing: 8, runSpacing: 6, children: [
             AppButton.secondary(size: AppButtonSize.sm, onPressed: busy ? null : () => onDecide(true), icon: Icons.check_rounded, label: t('قبول', 'Accept')),
             AppButton.ghost(size: AppButtonSize.sm, onPressed: busy ? null : () => onDecide(false), icon: Icons.close_rounded, label: t('رفض', 'Reject')),

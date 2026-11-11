@@ -14,6 +14,7 @@ import 'org_providers.dart' show OrgApi, orgBase;
 import 'org_ui.dart';
 import '../admin/admin_list.dart' show IconBadge;
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 class OrgSectionsPage extends StatefulWidget {
   const OrgSectionsPage({super.key});
@@ -43,7 +44,7 @@ class _OrgSectionsPageState extends State<OrgSectionsPage> {
     String type = '${s?['type'] ?? 'live'}';
     DateTime? when = DateTime.tryParse('${s?['scheduled_at'] ?? ''}')?.toLocal();
     await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(s == null ? t('سكشن جديد', 'New section') : t('تعديل السكشن', 'Edit section')),
             Field(controller: name, label: t('العنوان — مثلاً: سكشن 3: الدوال', 'Title — e.g. Section 3: functions')),
@@ -90,29 +91,29 @@ class _OrgSectionsPageState extends State<OrgSectionsPage> {
     }
     return AppRefresh(
       onRefresh: _load,
-      child: ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 40), children: [
+      child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl), children: [
         for (final co in courses)
           Container(
-            margin: const EdgeInsets.only(bottom: 14),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(20), border: Border.all(color: c.divider)),
+            margin: const EdgeInsets.only(bottom: AppSpace.md),
+            padding: const EdgeInsets.all(AppSpace.md),
+            decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.block), border: Border.all(color: c.divider)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 IconBadge(Icons.science_rounded, c.purple, size: 42),
-                const SizedBox(width: 12),
-                Expanded(child: Text(t('${co['name_ar'] ?? co['name_en']}', '${co['name_en'] ?? co['name_ar']}'), style: orgText(context, size: 16, w: FontWeight.w800))),
+                const SizedBox(width: AppSpace.sm),
+                Expanded(child: Text(t('${co['name_ar'] ?? co['name_en']}', '${co['name_en'] ?? co['name_ar']}'), style: AppType.section(context))),
                 FilledButton.tonalIcon(onPressed: () => _edit(co), icon: const Icon(Icons.add_rounded), label: Text(t('سكشن', 'Section'))),
               ]),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               if (asMapList(co['sections']).isEmpty)
-                Text(t('لا سكاشن بعد', 'No sections yet'), style: orgText(context, color: c.textMedium))
+                Text(t('لا سكاشن بعد', 'No sections yet'), style: AppType.row(context).copyWith(color: c.textMedium))
               else
                 for (final (i, s) in asMapList(co['sections']).indexed)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: CircleAvatar(backgroundColor: c.purple.withValues(alpha: 0.12),
-                        child: Text('${i + 1}', style: orgText(context, w: FontWeight.w800, color: c.purple))),
-                    title: Text('${s['name']}', style: orgText(context, w: FontWeight.w700)),
+                        child: Text('${i + 1}', style: AppType.bodyStrong(context).copyWith(color: c.purple))),
+                    title: Text('${s['name']}', style: AppType.bodyStrong(context)),
                     subtitle: Text([
                       s['type'] == 'live' ? t('مباشر', 'Live') : t('مسجّل', 'Recorded'),
                       if (s['scheduled_at'] != null) shortDateTime('${s['scheduled_at']}'),

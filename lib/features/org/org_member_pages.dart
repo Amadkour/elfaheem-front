@@ -34,6 +34,7 @@ import 'package:flutter_education_app/design/app_kit.dart' show appConfirm;
 import 'package:flutter_education_app/design/app_buttons.dart' show AppButton, AppButtonSize;
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Home entry card
@@ -59,14 +60,14 @@ class OrgHomeEntry extends StatelessWidget {
           onTap: () => first == null && pending == 0 && p.loaded
               ? openOrgJoin(context, onDone: p.loadMine)
               : Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgMembershipScreen())).then((_) => p.loadMine()),
-          child: Container(margin: const EdgeInsets.symmetric(vertical: 6), decoration: BoxDecoration(borderRadius: BorderRadius.circular(22), boxShadow: [BoxShadow(color: base.withValues(alpha: 0.25), blurRadius: 14, offset: const Offset(0, 6))]), child: AppMeshSurface(color: base, radius: BorderRadius.circular(22), child: Padding(padding: const EdgeInsets.all(16), child: Row(children: [
+          child: Container(margin: const EdgeInsets.symmetric(vertical: AppSpace.xs), decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppRadius.block), boxShadow: [BoxShadow(color: base.withValues(alpha: 0.25), blurRadius: 14, offset: const Offset(0, 6))]), child: AppMeshSurface(color: base, radius: BorderRadius.circular(AppRadius.block), child: Padding(padding: const EdgeInsets.all(AppSpace.md), child: Row(children: [
               Container(
                 width: 46,
                 height: 46,
-                decoration: BoxDecoration(color: c.onHero.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(14)),
+                decoration: BoxDecoration(color: c.onHero.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(AppRadius.control)),
                 child: Icon(first == null ? Icons.add_business_rounded : (orgTypeIcons[first['type']] ?? Icons.domain_rounded), color: c.onHero),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: AppSpace.md),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(
@@ -123,19 +124,19 @@ class _MembershipView extends StatelessWidget {
       child: !p.loaded
           ? const AppListSkeleton()
           : p.mine.isEmpty
-              ? ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 100), children: [
+              ? ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxxl + AppSpace.xl), children: [
                   deferredOrgMyInvitationsCard(onChanged: p.loadMine),
                   OrgEmpty(icon: Icons.domain_rounded, title: t('لم تنضم لأي مؤسسة بعد', "You haven't joined an organization yet")),
                 ])
-              : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 100), children: [
+              : ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxxl + AppSpace.xl), children: [
                   deferredOrgMyInvitationsCard(onChanged: p.loadMine),
                   for (final m in p.mine)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.only(bottom: AppSpace.sm),
                       child: _OrgCard(m: m),
                     ),
                   Padding(
-                    padding: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.only(top: AppSpace.xs),
                     child: OutlinedButton.icon(
                       onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgTimetableScreen())),
                       icon: const Icon(Icons.calendar_month_rounded),
@@ -165,12 +166,12 @@ class _OrgCard extends StatelessWidget {
           : null,
       child: Row(children: [
         IconBadge(orgTypeIcons[o['type']] ?? Icons.domain_rounded, col, size: 46),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(OrgSession.nameOf(o), style: AppType.section(context)),
             Text(orgTypeLabels()[o['type']] ?? '', style: AppType.meta(context)),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             StatusChip(
               status == 'active' ? t('عضو', 'Member') : status == 'rejected' ? t('مرفوض', 'Declined') : status == 'removed' ? t('أُزيل', 'Removed') : membershipStatusLabels()[status] ?? status,
               status == 'active' ? c.success : status == 'pending' ? c.warning : status == 'removed' ? c.textMedium : c.danger,
@@ -178,7 +179,7 @@ class _OrgCard extends StatelessWidget {
             // only this organization's membership ended — the account and its other services keep working
             if (status == 'expired' || status == 'suspended')
               Padding(
-                padding: const EdgeInsets.only(top: 4),
+                padding: const EdgeInsets.only(top: AppSpace.xxs),
                 child: Text(orgCodeText('membership_ended'), style: AppType.meta(context)),
               ),
           ]),
@@ -265,7 +266,7 @@ class _CoursesBody extends StatelessWidget {
       useWebCard: true,
       maxWith: 900,
       appBar: ScreenAppBar(title: OrgSession.nameOf(org)),
-      child: ListView(padding: const EdgeInsets.only(bottom: 40), children: [
+      child: ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [
         OrgHero(
           org: org,
           subtitle: t('كورسات مؤسستك', 'Your institution’s courses'),
@@ -276,7 +277,7 @@ class _CoursesBody extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
           child: SearchBox(hint: t('ابحث عن كورس', 'Search a course'), onChanged: (q) => p.loadCourses(asInt(org['id']), search: q)),
         ),
         if (p.isLoading && p.courses.isEmpty)
@@ -286,17 +287,17 @@ class _CoursesBody extends StatelessWidget {
         else
           for (final row in p.courses)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
               child: RowCard(
                 onTap: () => _open(context, row),
                 child: Row(children: [
                   IconBadge(Icons.menu_book_rounded, c.primary, size: 46),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(t('${row['name_ar'] ?? row['name_en']}', '${row['name_en'] ?? row['name_ar']}'), maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
                       if (row['teacher'] != null) Text('${(row['teacher'] as Map)['name']}', style: AppType.meta(context)),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: AppSpace.xs),
                       Wrap(spacing: 6, children: [
                         InfoChip(Icons.payments_rounded, asDouble(row['fees']) == 0 ? t('مجاني', 'Free') : money(asDouble(row['fees'])), c.success),
                         if (row['is_enrolled'] == true) StatusChip(t('مشترك', 'Enrolled'), c.primary),
@@ -366,7 +367,7 @@ class _TimetableView extends StatelessWidget {
       body = AppRefresh(
         onRefresh: reload,
         child: ListView(physics: const AlwaysScrollableScrollPhysics(), children: [
-          const SizedBox(height: 40),
+          const SizedBox(height: AppSpace.xxl),
           OrgEmpty(
             icon: Icons.calendar_month_rounded,
             title: t('لم يُنشر جدول بعد', 'No timetable published yet'),
@@ -379,7 +380,7 @@ class _TimetableView extends StatelessWidget {
         onRefresh: reload,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl),
           children: [for (final tt in p.timetables) ..._timetable(context, tt, reload)],
         ),
       );
@@ -414,14 +415,14 @@ class _TimetableView extends StatelessWidget {
     }
     final days = memberTimetableDays(tt);
     Widget heading(String text) => Padding(
-          padding: const EdgeInsets.only(top: 12, bottom: 6),
+          padding: const EdgeInsets.only(top: AppSpace.sm, bottom: AppSpace.xs),
           child: Text(text, style: AppType.bodyStrong(context).copyWith(color: c.primary)),
         );
     return [
       Text('${sched['name'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis, style: c.h2),
       if ('${sched['term_label'] ?? ''}'.isNotEmpty)
         Text('${sched['term_label']}', style: AppType.meta(context)),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       examPauseBanner(context, examPausesOf(tt)),
       if (extras.isNotEmpty) ...[
         heading(t('قادم خلال أسبوعين', 'Coming up (next 2 weeks)')),
@@ -446,7 +447,7 @@ class _TimetableView extends StatelessWidget {
       ],
       if (days.isEmpty)
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
           child: Text(t('لا حصص لك في هذا الجدول.', 'You have no sessions in this timetable.'),
               style: TextStyle(fontFamily: AppFonts.family, color: c.textMedium)),
         ),
@@ -468,7 +469,7 @@ class _TimetableView extends StatelessWidget {
             onTap: x['can_switch'] == true ? () => switchDate(x) : null,
           ),
       ],
-      const SizedBox(height: 16),
+      const SizedBox(height: AppSpace.md),
     ];
   }
 }
@@ -486,15 +487,15 @@ class _SlotRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: RowCard(
         accent: accent,
         onTap: onTap,
         child: Row(children: [
           Container(
             width: 76,
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-            decoration: BoxDecoration(color: accent.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(12)),
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.xs, horizontal: AppSpace.xxs),
+            decoration: BoxDecoration(color: accent.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(AppRadius.control)),
             child: Column(children: [
               Text(top, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr,
                   style: AppType.label(context).copyWith(color: accent)),
@@ -502,7 +503,7 @@ class _SlotRow extends StatelessWidget {
                   style: AppType.overline(context).copyWith(color: c.textLight)),
             ]),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(title, maxLines: 2, overflow: TextOverflow.ellipsis,
@@ -511,10 +512,10 @@ class _SlotRow extends StatelessWidget {
                 Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis,
                     style: AppType.meta(context)),
               if (hint != null) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpace.xxs),
                 Row(children: [
-                  Icon(Icons.wifi_tethering_rounded, size: 14, color: c.primary),
-                  const SizedBox(width: 4),
+                  Icon(Icons.wifi_tethering_rounded, size: AppIconSize.xs, color: c.primary),
+                  const SizedBox(width: AppSpace.xxs),
                   Flexible(
                     child: Text(hint!, maxLines: 2, overflow: TextOverflow.ellipsis,
                         style: AppType.meta(context).copyWith(color: c.primary)),

@@ -14,7 +14,6 @@ import 'package:provider/provider.dart';
 import '../../admin/admin_common.dart' show Debouncer, SheetHeader, asInt, asMap, asMapList, t;
 import '../../admin/admin_list.dart' show AdminAvatar;
 import '../org_providers.dart' show OrgApi, OrgSession, orgBase;
-import '../org_ui.dart' show orgText;
 import '../org_v3.dart' show orgCall;
 import 'gov_models.dart';
 
@@ -132,15 +131,15 @@ class GovInfoLine extends StatelessWidget {
     final c = context.colors;
     if (value.isEmpty) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(padding: const EdgeInsets.only(top: 2), child: Icon(icon, size: 16, color: color ?? c.textLight)),
-        const SizedBox(width: 8),
+        Padding(padding: const EdgeInsets.only(top: AppSpace.xxs / 2), child: Icon(icon, size: AppIconSize.sm, color: color ?? c.textLight)),
+        const SizedBox(width: AppSpace.xs),
         Expanded(
           child: Text.rich(
             TextSpan(children: [
-              TextSpan(text: '$label: ', style: orgText(context, size: 12.5, color: c.textMedium)),
-              TextSpan(text: value, style: orgText(context, size: 12.5, w: FontWeight.w700, color: color)),
+              TextSpan(text: '$label: ', style: AppType.label(context).copyWith(color: c.textMedium)),
+              TextSpan(text: value, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: color)),
             ]),
           ),
         ),
@@ -231,7 +230,7 @@ Future<GovUser?> pickOrgMember(BuildContext context, int orgId, {String? title, 
             if (!exclude.contains(asInt(asMap(m['user'])['id']))) m,
         ];
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             SheetHeader(title ?? t('اختر عضواً', 'Choose a member')),
             TextField(
@@ -241,12 +240,12 @@ Future<GovUser?> pickOrgMember(BuildContext context, int orgId, {String? title, 
               },
               decoration: InputDecoration(prefixIcon: const Icon(Icons.search_rounded), hintText: t('ابحث بالاسم أو البريد…', 'Search by name or e-mail…'), isDense: true),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             Flexible(
               child: shown.isEmpty
                   ? Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Text(t('لا نتائج', 'No results'), textAlign: TextAlign.center, style: orgText(ctx, color: c.textMedium)),
+                      padding: const EdgeInsets.all(AppSpace.lg),
+                      child: Text(t('لا نتائج', 'No results'), textAlign: TextAlign.center, style: AppType.row(ctx).copyWith(color: c.textMedium)),
                     )
                   : ListView(shrinkWrap: true, children: [
                       for (final m in shown)
@@ -255,7 +254,7 @@ Future<GovUser?> pickOrgMember(BuildContext context, int orgId, {String? title, 
                           child: ListTile(
                             onTap: () => Navigator.pop(ctx, GovUser(id: asInt(asMap(m['user'])['id']), name: '${asMap(m['user'])['name'] ?? ''}', email: asMap(m['user'])['email'] as String?, avatar: asMap(m['user'])['image_url'] as String?)),
                             leading: AdminAvatar(name: '${asMap(m['user'])['name'] ?? ''}', url: asMap(m['user'])['image_url'] as String?, size: 38),
-                            title: Text('${asMap(m['user'])['name'] ?? ''}', style: orgText(ctx, w: FontWeight.w700)),
+                            title: Text('${asMap(m['user'])['name'] ?? ''}', style: AppType.bodyStrong(ctx)),
                             subtitle: Text('${asMap(m['user'])['email'] ?? ''}', textDirection: TextDirection.ltr, maxLines: 1, overflow: TextOverflow.ellipsis),
                           ),
                         ),

@@ -68,11 +68,11 @@ class GovDashboardBody extends StatelessWidget {
         AppStatTile(icon: Icons.task_alt_rounded, label: t('قرارات آخر 30 يوماً', 'Decided (30 d)'), value: s.decided30d, color: c.success, onTap: onTile == null ? null : () => onTile!('decided')),
       ]),
       if (statuses.isNotEmpty) ...[
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.md),
         Text(t('حسب الحالة', 'By status'), style: appText(12, c: c.textLight)),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         ClipRRect(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadius.chip),
           child: SizedBox(
             height: 12,
             child: Row(children: [
@@ -80,30 +80,30 @@ class GovDashboardBody extends StatelessWidget {
             ]),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         Wrap(spacing: 10, runSpacing: 6, children: [
           for (final k in statuses)
             Row(mainAxisSize: MainAxisSize.min, children: [
               Container(width: 10, height: 10, decoration: BoxDecoration(color: govStatusColor(context, k), shape: BoxShape.circle)),
-              const SizedBox(width: 5),
+              const SizedBox(width: AppSpace.xxs),
               Flexible(child: Text('${itemStatusLabel(k)} ${s.byStatus[k]}', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w600, c: c.textMedium))),
             ]),
         ]),
       ],
       if (s.byType.isNotEmpty) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         Wrap(spacing: 6, runSpacing: 6, children: [
           for (final e in s.byType.entries)
             if (e.value > 0) AppBadgePill('${itemTypeLabel(e.key)} ${e.value}', color: c.textMedium, icon: govTypeIcon(e.key)),
         ]),
       ],
       if (s.onTimePct != null) ...[
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.md),
         Row(children: [
           Expanded(child: Text(t('الالتزام بالمهلة', 'SLA on time'), style: appText(12, c: c.textLight))),
           Text('${s.onTimePct!.toStringAsFixed(0)}%', style: appText(13, w: FontWeight.w800, c: appScoreColor(context, s.onTimePct))),
         ]),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         AppProgressBar(value: s.onTimePct, max: 100),
       ],
     ]);
@@ -161,7 +161,7 @@ class _GovDashboardCardState extends State<GovDashboardCard> {
     final c = context.colors;
     Widget body;
     if (_stats == null && !_failed) {
-      body = const AppShimmer(child: Column(children: [AppSkeletonBox(height: 70, width: double.infinity), SizedBox(height: 10), AppSkeletonBox(height: 12, width: double.infinity)]));
+      body = const AppShimmer(child: Column(children: [AppSkeletonBox(height: 70, width: double.infinity), SizedBox(height: AppSpace.sm), AppSkeletonBox(height: 12, width: double.infinity)]));
     } else if (_missing) {
       body = Text(t('تحتاج تحديث الخادم', 'Needs a server update'), style: appText(12.5, c: c.textMedium));
     } else if (_stats == null) {
@@ -170,15 +170,15 @@ class _GovDashboardCardState extends State<GovDashboardCard> {
       body = GovDashboardBody(stats: _stats!, onTile: _openTile, compact: widget.compact);
     }
     return AppCard(
-      margin: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+      margin: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(Icons.account_tree_rounded, size: 18, color: c.primary),
-          const SizedBox(width: 8),
+          Icon(Icons.account_tree_rounded, size: AppIconSize.md, color: c.primary),
+          const SizedBox(width: AppSpace.xs),
           Expanded(child: Text(widget.title ?? t('الطلبات والمعاملات', 'Requests & workflow'), style: appText(14.5, w: FontWeight.w800, c: c.textDark))),
-          IconButton(tooltip: t('تحديث', 'Refresh'), visualDensity: VisualDensity.compact, onPressed: _load, icon: Icon(Icons.refresh_rounded, size: 18, color: c.textLight)),
+          IconButton(tooltip: t('تحديث', 'Refresh'), visualDensity: VisualDensity.compact, onPressed: _load, icon: Icon(Icons.refresh_rounded, size: AppIconSize.md, color: c.textLight)),
         ]),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         body,
       ]),
     );

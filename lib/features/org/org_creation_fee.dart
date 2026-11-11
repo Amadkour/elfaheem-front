@@ -178,7 +178,7 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
     if (_loadError != null) {
       return Padding(
         key: const ValueKey('fee.error'),
-        padding: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.only(bottom: AppSpace.md),
         child: AppCard(child: AppErrorState(
           title: t('تعذّر تحميل رسوم الإنشاء', 'Could not load the organization fee'),
           message: _loadError,
@@ -188,7 +188,7 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
       );
     }
     if (s == null) {
-      return const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: AppSkeletonBox(width: double.infinity, height: 90));
+      return const Padding(padding: EdgeInsets.symmetric(vertical: AppSpace.xs), child: AppSkeletonBox(width: double.infinity, height: 90));
     }
     if (s['required'] != true) return const SizedBox.shrink();
     final p = asMap(s['payment']);
@@ -199,15 +199,15 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
     final isCard = methods.any((m) => m['id'] == _method && m['kind'] == 'card');
 
     return AppCard(
-      margin: const EdgeInsets.only(bottom: 14),
+      margin: const EdgeInsets.only(bottom: AppSpace.md),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
+            padding: const EdgeInsets.all(AppSpace.sm),
+            decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(AppRadius.control)),
             child: Icon(Icons.receipt_long_rounded, color: c.primary),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(t('رسوم إنشاء المؤسسة', 'Organization fee'), maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -216,7 +216,7 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
                   maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textLight)),
             ]),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           Flexible(
             child: FittedBox(
               fit: BoxFit.scaleDown,
@@ -224,7 +224,7 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
             ),
           ),
         ]),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         if (usable)
           AppBanner(
               icon: Icons.verified_rounded,
@@ -241,7 +241,7 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
         else ...[
           if (status == 'rejected' || status == 'failed')
             Padding(
-              padding: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.only(bottom: AppSpace.sm),
               child: AppBanner(
                   icon: Icons.info_outline_rounded,
                   color: c.danger,
@@ -257,7 +257,7 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
                     'No payment method is available right now — please contact the platform team.'))
           else ...[
             Text(t('اختر طريقة الدفع', 'Choose how to pay'), style: appText(12.5, w: FontWeight.w700, c: c.textMedium)),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             Wrap(spacing: 8, runSpacing: 8, children: [
               for (final m in methods)
                 AppChoiceChip(
@@ -267,7 +267,7 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
                   onTap: () => setState(() => _method = '${m['id']}'),
                 ),
             ]),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppPrimaryButton(
               label: isCard ? t('ادفع $price', 'Pay $price') : t('أرسل إيصال التحويل', 'Send the transfer receipt'),
               icon: isCard ? Icons.lock_rounded : Icons.upload_rounded,
@@ -275,11 +275,11 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
               onPressed: _busy || _method == null ? null : (isCard ? _payCard : _payTransfer),
             ),
             if (status == 'pending' && _token != null) ...[
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpace.xs),
               Center(
                 child: TextButton.icon(
                   onPressed: reload,
-                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  icon: const Icon(Icons.refresh_rounded, size: AppIconSize.md),
                   label: Text(t('أكملت الدفع؟ تحقّق الآن', 'Finished paying? Check now')),
                 ),
               ),
@@ -361,25 +361,25 @@ class _TransferSheetState extends State<_TransferSheet> {
     ].where((r) => (r.$2 ?? '').isNotEmpty).toList();
     final note = (bank ? d['bank_instructions'] : d['instapay_instructions']) as String?;
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.lg),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppSheetHeader(bank ? t('تحويل بنكي', 'Bank transfer') : t('إنستاباي', 'InstaPay')),
         AppBanner(icon: Icons.payments_rounded, text: t('حوّل ${widget.amount} ثم أرفق صورة الإيصال.', 'Transfer ${widget.amount}, then attach the receipt.')),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         for (final r in rows)
           Padding(
-            padding: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
             child: Row(children: [
               Expanded(flex: 2, child: Text(r.$1, style: appText(12.5, c: c.textLight))),
               Expanded(flex: 3, child: SelectableText(r.$2!, style: appText(13, w: FontWeight.w700, c: c.textDark))),
             ]),
           ),
         if ((note ?? '').isNotEmpty) Text(note!, style: appText(12, c: c.textMedium, h: 1.5)),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         AppField(controller: _name, label: t('اسم صاحب التحويل', 'Sender\'s name')),
         AppField(controller: _phone, label: t('هاتف المحوِّل (اختياري)', 'Sender\'s phone (optional)'), keyboard: TextInputType.phone, ltr: true),
         AppField(controller: _ref, label: t('رقم العملية (اختياري)', 'Reference number (optional)'), ltr: true),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         OutlinedButton.icon(
           onPressed: () async {
             final x = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 80, maxWidth: 2000);
@@ -390,7 +390,7 @@ class _TransferSheetState extends State<_TransferSheet> {
           label: Text(_image == null ? t('أرفق صورة الإيصال', 'Attach the receipt') : _image!.name,
               maxLines: 1, overflow: TextOverflow.ellipsis),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.md),
         AppPrimaryButton(label: t('إرسال للمراجعة', 'Send for review'), icon: Icons.send_rounded, busy: _busy, onPressed: _busy ? null : _send),
       ]),
     );

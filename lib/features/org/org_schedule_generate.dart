@@ -43,6 +43,7 @@ import 'org_schedule_remedies.dart';
 import 'org_timetable_parts.dart' show courseName;
 import 'org_ui.dart';
 import 'org_v3.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Pure
@@ -421,16 +422,16 @@ Future<void> showRulesSheet(BuildContext context, OrgScheduleProvider p, {requir
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         Widget row(Widget lead, String text, Widget trail) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5),
+              padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
               child: Row(children: [
                 SizedBox(width: 28, child: lead),
-                const SizedBox(width: 8),
-                Expanded(child: Text(text, style: orgText(ctx, size: 13))),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
+                Expanded(child: Text(text, style: AppType.label(ctx).copyWith(color: ctx.colors.textDark))),
+                const SizedBox(width: AppSpace.xs),
                 trail,
               ]),
             );
-        Widget tag(String s, Color col) => Text(s, style: orgText(ctx, size: 11.5, w: FontWeight.w700, color: col));
+        Widget tag(String s, Color col) => Text(s, style: AppType.meta(ctx).copyWith(fontWeight: FontWeight.w600, color: col));
         Future<void> save({required bool generate}) async {
           set(() => busy = true);
           final rules = {for (final e in flex.entries) e.key: e.value ? 'flexible' : 'locked'};
@@ -446,22 +447,22 @@ Future<void> showRulesSheet(BuildContext context, OrgScheduleProvider p, {requir
 
         var n = 0;
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(t('قواعد التوليد', 'Generation rules')),
             Text(
                 t('القواعد المقفلة لا تُكسر أبداً. القواعد المرنة تتراجع عند الحاجة فقط وبهذا الترتيب، وكل كسر يظهر اقتراحاً تقبله أو ترفضه.',
                     'Locked rules are never broken. Flexible rules give way only when needed, in this order, and every break comes back as a proposal you accept or reject.'),
-                style: orgText(ctx, size: 12, color: c.textMedium)),
-            const SizedBox(height: 10),
-            Text(t('قواعد ثابتة', 'Always locked'), style: orgText(ctx, size: 12.5, w: FontWeight.w800, color: c.textMedium)),
+                style: AppType.meta(ctx).copyWith(color: c.textMedium)),
+            const SizedBox(height: AppSpace.sm),
+            Text(t('قواعد ثابتة', 'Always locked'), style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
             for (final r in generationRules)
-              if (r.fixed) row(Icon(Icons.lock_rounded, size: 18, color: c.textMedium), t(r.ar, r.en), tag(t('مقفلة', 'Locked'), c.textMedium)),
-            const SizedBox(height: 10),
-            Text(t('قابلة للضبط — بترتيب التراجع', 'Adjustable — in the order they give way'), style: orgText(ctx, size: 12.5, w: FontWeight.w800, color: c.textMedium)),
+              if (r.fixed) row(Icon(Icons.lock_rounded, size: AppIconSize.md, color: c.textMedium), t(r.ar, r.en), tag(t('مقفلة', 'Locked'), c.textMedium)),
+            const SizedBox(height: AppSpace.sm),
+            Text(t('قابلة للضبط — بترتيب التراجع', 'Adjustable — in the order they give way'), style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
             for (final r in breakOrder)
               row(
-                CircleAvatar(radius: 12, backgroundColor: c.primary.withValues(alpha: 0.12), child: Text('${++n}', style: orgText(ctx, size: 11, w: FontWeight.w800, color: c.primary))),
+                CircleAvatar(radius: 12, backgroundColor: c.primary.withValues(alpha: 0.12), child: Text('${++n}', style: AppType.overline(ctx).copyWith(color: c.primary))),
                 t(r.ar, r.en),
                 SizedBox(
                   width: 128,
@@ -476,12 +477,12 @@ Future<void> showRulesSheet(BuildContext context, OrgScheduleProvider p, {requir
                   ),
                 ),
               ),
-            const SizedBox(height: 10),
-            Text(t('الملاذ الأخير', 'Last resorts'), style: orgText(ctx, size: 12.5, w: FontWeight.w800, color: c.textMedium)),
+            const SizedBox(height: AppSpace.sm),
+            Text(t('الملاذ الأخير', 'Last resorts'), style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
             for (final r in generationRules)
-              if (r.suggestionOnly) row(Icon(Icons.lightbulb_outline_rounded, size: 18, color: c.warning), t(r.ar, r.en), tag(t('اقتراح فقط', 'Suggestion only'), c.warning)),
+              if (r.suggestionOnly) row(Icon(Icons.lightbulb_outline_rounded, size: AppIconSize.md, color: c.warning), t(r.ar, r.en), tag(t('اقتراح فقط', 'Suggestion only'), c.warning)),
             if (canEdit) ...[
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpace.md),
               PrimaryButton(
                 isLoading: busy,
                 label: t('حفظ وإنشاء الجدول', 'Save & create timetable'),
@@ -509,30 +510,30 @@ class ConflictsPanel extends StatelessWidget {
     final done = _completionOf(context);
     final col = d.hard > 0 ? c.danger : (d.soft > 0 || (done != null && done.required > 0 && !done.isComplete) ? c.warning : c.success);
     return InkWell(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppRadius.control),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(color: col.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(14), border: Border.all(color: col.withValues(alpha: 0.3))),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+        decoration: BoxDecoration(color: col.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(AppRadius.control), border: Border.all(color: col.withValues(alpha: 0.3))),
         child: Wrap(spacing: 10, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
-          Icon(d.hard > 0 ? Icons.error_rounded : (d.soft > 0 ? Icons.warning_amber_rounded : Icons.verified_rounded), size: 18, color: col),
+          Icon(d.hard > 0 ? Icons.error_rounded : (d.soft > 0 ? Icons.warning_amber_rounded : Icons.verified_rounded), size: AppIconSize.md, color: col),
           if (done != null && done.required > 0)
             Text(done.isComplete ? t('الجدول مكتمل', 'Timetable complete') : t('مكتمل ${done.pct}٪', '${done.pct}% complete'),
-                style: orgText(context, size: 12.5, w: FontWeight.w800, color: col)),
+                style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: col)),
           Text(
               d.total == 0
                   ? t('لا تعارضات', 'No conflicts')
                   : t('${d.hard} إلزامي · ${d.soft} تنبيه', '${d.hard} hard · ${d.soft} warning(s)'),
-              style: orgText(context, size: 12.5, w: FontWeight.w800, color: col)),
-          for (final (type, n) in d.top) Text('$n × ${conflictTypeText(type)}', style: orgText(context, size: 12, color: c.textMedium)),
+              style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: col)),
+          for (final (type, n) in d.top) Text('$n × ${conflictTypeText(type)}', style: AppType.meta(context).copyWith(color: c.textMedium)),
           if (_independentOf(context) case final ind? when ind.containsKey('hard'))
             Text(
               asInt(ind['hard']) == 0 ? t('تحقق مستقل ✓', 'Independently verified ✓') : t('التحقق المستقل: ${asInt(ind['hard'])} خرق', 'Independent check: ${asInt(ind['hard'])} violation(s)'),
-              style: orgText(context, size: 12, w: FontWeight.w700, color: asInt(ind['hard']) == 0 ? c.success : c.danger),
+              style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: asInt(ind['hard']) == 0 ? c.success : c.danger),
             ),
           if (onTap != null && done != null && done.required > 0 && !done.isComplete)
-            Text(t('إجراءات سريعة', 'Quick actions'), style: orgText(context, size: 12.5, w: FontWeight.w800, color: c.primary)),
-          if (onTap != null) Icon(Icons.chevron_right_rounded, size: 18, color: c.textLight),
+            Text(t('إجراءات سريعة', 'Quick actions'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.primary)),
+          if (onTap != null) Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.textLight),
         ]),
       ),
     );
@@ -646,20 +647,20 @@ class _GenerationLivePanelState extends State<GenerationLivePanel> with SingleTi
                   budget != null
                       ? t('المدة ${liveClock(elapsed)} من ${liveClock(Duration(seconds: budget))} كحد أقصى', 'Elapsed ${liveClock(elapsed)} of up to ${liveClock(Duration(seconds: budget))}')
                       : t('المدة ${liveClock(elapsed)}', 'Elapsed ${liveClock(elapsed)}'),
-                  style: orgText(context, size: 12, color: c.textMedium),
+                  style: AppType.meta(context).copyWith(color: c.textMedium),
                 ),
                 if (current != null && open)
                   Text(
                     limit != null
                         ? t('هذه الخطوة: ${liveClock(inStep)} من ${liveClock(Duration(seconds: limit.round()))}', 'This step: ${liveClock(inStep)} of ${liveClock(Duration(seconds: limit.round()))}')
                         : t('هذه الخطوة: ${liveClock(inStep)}', 'This step: ${liveClock(inStep)}'),
-                    style: orgText(context, size: 12, color: c.textMedium),
+                    style: AppType.meta(context).copyWith(color: c.textMedium),
                   ),
               ]),
               if (current != null && open && limit != null && limit > 0) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpace.xxs),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
                   child: LinearProgressIndicator(
                     value: (inStep.inMilliseconds / (limit * 1000)).clamp(0.0, 1.0),
                     minHeight: 3,
@@ -670,14 +671,14 @@ class _GenerationLivePanelState extends State<GenerationLivePanel> with SingleTi
               ],
               if (hint != null && !widget.compact)
                 Padding(
-                  padding: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.only(top: AppSpace.xs),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+                    decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(AppRadius.chip)),
                     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Icon(Icons.hourglass_top_rounded, size: 16, color: c.primary),
-                      const SizedBox(width: 6),
-                      Expanded(child: Text(hint, style: orgText(context, size: 12, color: c.textMedium))),
+                      Icon(Icons.hourglass_top_rounded, size: AppIconSize.sm, color: c.primary),
+                      const SizedBox(width: AppSpace.xs),
+                      Expanded(child: Text(hint, style: AppType.meta(context).copyWith(color: c.textMedium))),
                     ]),
                   ),
                 ),
@@ -688,16 +689,16 @@ class _GenerationLivePanelState extends State<GenerationLivePanel> with SingleTi
     Widget stepRow(LiveStep s) {
       final now = s.done == false;
       return Padding(
-        padding: const EdgeInsets.only(top: 6),
+        padding: const EdgeInsets.only(top: AppSpace.xs),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           SizedBox(
             width: 18,
             height: 18,
             child: now
-                ? (open ? const Padding(padding: EdgeInsets.all(2), child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.remove_rounded, size: 16, color: c.textLight))
-                : Icon(s.improved == false ? Icons.trending_flat_rounded : Icons.check_circle_rounded, size: 17, color: s.improved == false ? c.textLight : c.success),
+                ? (open ? const Padding(padding: EdgeInsets.all(AppSpace.xxs / 2), child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.remove_rounded, size: AppIconSize.sm, color: c.textLight))
+                : Icon(s.improved == false ? Icons.trending_flat_rounded : Icons.check_circle_rounded, size: AppIconSize.sm, color: s.improved == false ? c.textLight : c.success),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           Expanded(
             child: Text(
               s.ms != null && s.ms! >= 1000 ? '${s.text} · ${liveClock(Duration(milliseconds: s.ms!))}' : s.text,
@@ -712,43 +713,43 @@ class _GenerationLivePanelState extends State<GenerationLivePanel> with SingleTi
       failed
           ? Icon(Icons.error_rounded, color: accent)
           : RotationTransition(turns: _spin, child: Icon(Icons.autorenew_rounded, color: accent)),
-      const SizedBox(width: 8),
-      Expanded(child: Text(liveHeadline(run, live), style: orgText(context, w: FontWeight.w800))),
+      const SizedBox(width: AppSpace.xs),
+      Expanded(child: Text(liveHeadline(run, live), style: AppType.bodyStrong(context))),
       if (widget.onCancel != null) TextButton(onPressed: widget.onCancel, child: Text(t('إلغاء', 'Cancel'), style: TextStyle(color: c.danger))),
     ]);
 
     final body = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       header,
-      if (failed && '${run['error'] ?? ''}'.isNotEmpty) Text('${run['error']}', style: orgText(context, size: 12, color: c.textMedium)),
+      if (failed && '${run['error'] ?? ''}'.isNotEmpty) Text('${run['error']}', style: AppType.meta(context).copyWith(color: c.textMedium)),
       if (!failed) ...[
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         ClipRRect(
-          borderRadius: BorderRadius.circular(5),
+          borderRadius: BorderRadius.circular(AppRadius.chip),
           child: LinearProgressIndicator(value: progress, minHeight: 6, color: accent, backgroundColor: accent.withValues(alpha: 0.12)),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         clockRow(),
       ],
       if (widget.compact && current != null) stepRow(current),
       if (!widget.compact) ...[
         if (steps.isNotEmpty) ...[
-          const SizedBox(height: 6),
-          Text(t('ما الذي يحدث الآن', 'What is happening'), style: orgText(context, size: 12, w: FontWeight.w800, color: c.textMedium)),
+          const SizedBox(height: AppSpace.xs),
+          Text(t('ما الذي يحدث الآن', 'What is happening'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
           if (steps.length > 4)
             InkWell(
               onTap: () => setState(() => _all = !_all),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
+                padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs / 2),
                 child: Text(_all ? t('أظهر الأخيرة فقط', 'Show the last few') : t('أظهر كل الخطوات (${steps.length})', 'Show every step (${steps.length})'),
-                    style: orgText(context, size: 11.5, color: c.primary)),
+                    style: AppType.meta(context).copyWith(color: c.primary)),
               ),
             ),
           for (final s in shown) stepRow(s),
         ],
         for (final (reason, n) in live?.top ?? const <(String, int)>[])
           Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text('• $n × ${unplacedReasonText(reason)}', style: orgText(context, size: 12, color: c.textMedium)),
+            padding: const EdgeInsets.only(top: AppSpace.xxs),
+            child: Text('• $n × ${unplacedReasonText(reason)}', style: AppType.meta(context).copyWith(color: c.textMedium)),
           ),
       ],
     ]);
@@ -756,17 +757,17 @@ class _GenerationLivePanelState extends State<GenerationLivePanel> with SingleTi
     if (widget.compact) {
       return Container(
         constraints: const BoxConstraints(maxWidth: 440),
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
         decoration: BoxDecoration(
           color: c.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadius.card),
           border: Border.all(color: accent.withValues(alpha: 0.35)),
           boxShadow: [BoxShadow(color: accent.withValues(alpha: 0.18), blurRadius: 24, offset: const Offset(0, 8))],
         ),
         child: body,
       );
     }
-    return Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: accent.withValues(alpha: 0.25))), child: AppMeshSurface(color: accent, style: AppMeshStyle.wash, radius: BorderRadius.circular(16), child: Padding(padding: const EdgeInsets.fromLTRB(14, 12, 14, 12), child: body)));
+    return Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: accent.withValues(alpha: 0.25))), child: AppMeshSurface(color: accent, style: AppMeshStyle.wash, radius: BorderRadius.circular(AppRadius.card), child: Padding(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm), child: body)));
   }
 }
 
@@ -785,7 +786,7 @@ class GenerationVeil extends StatelessWidget {
         child: Container(
           color: c.surface.withValues(alpha: 0.72),
           alignment: Alignment.center,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpace.md),
           child: SingleChildScrollView(child: GenerationLivePanel(run: run, onCancel: onCancel, compact: true)),
         ),
       ),
@@ -1105,18 +1106,18 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
     final autopilot = AutopilotReport.of(result);
     final ladder = LadderReport.of(result);
     if (runIsOpen(p.genRun)) {                       // the autopilot / a generation is writing the timetable
-      return ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
+      return ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg), children: [
         SheetHeader(t('جارٍ العمل على الجدول', 'Working on the timetable')),
         // a ladder run: the live overlay with the decision inline (the side panel is where the run is watched)
         if (LadderLive.of(p.genRun) != null) LadderLivePanel(p: p, inlineDecision: true) else GenerationLivePanel(run: p.genRun!, onCancel: () => p.cancelGeneration()),
       ]);
     }
     final pendingIds = pendingBlockIds(o.proposals);
-    return ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
+    return ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg), children: [
       SheetHeader(done.isComplete ? t('نتيجة التوليد', 'Generation result') : t('الإجراءات السريعة', 'Quick actions')),
       if (ladder != null)
         Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
           child: LadderResultCard(
             report: ladder,
             names: widget.names,
@@ -1129,11 +1130,11 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
       _completionCard(context, done, o),
       if (widget.canEdit && (done.problems > 0 || _needRegen)) _autopilotCard(context, done),
       if (autopilot != null)
-        Padding(padding: const EdgeInsets.only(top: 10), child: AutopilotSummaryCard(report: autopilot, onUndo: widget.canEdit ? () => _undoAutopilot(autopilot) : null)),
-      if (applying) const Padding(padding: EdgeInsets.only(top: 12), child: LinearProgressIndicator()),
+        Padding(padding: const EdgeInsets.only(top: AppSpace.sm), child: AutopilotSummaryCard(report: autopilot, onUndo: widget.canEdit ? () => _undoAutopilot(autopilot) : null)),
+      if (applying) const Padding(padding: EdgeInsets.only(top: AppSpace.sm), child: LinearProgressIndicator()),
       if (preflight != null && preflight!.findings.isNotEmpty && !done.isComplete)
         Padding(
-          padding: const EdgeInsets.only(top: 10),
+          padding: const EdgeInsets.only(top: AppSpace.sm),
           child: DataHealthCard(
             report: preflight!,
             courseNames: widget.names,
@@ -1148,7 +1149,7 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
         ),
       if (p.slots.isNotEmpty && (done.isComplete || done.unplaced == 0))
         Padding(
-          padding: const EdgeInsets.only(top: 10),
+          padding: const EdgeInsets.only(top: AppSpace.sm),
           child: QualityCard(
             report: QualityReport.of(p.slots, p.periods, days: ScheduleDraft.fromJson(p.schedule ?? const {}).days, rooms: p.rooms),
             people: _people,
@@ -1196,12 +1197,12 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
           child: ExpansionTile(
             tilePadding: EdgeInsets.zero,
             initiallyExpanded: done.hard > 0,
-            title: Text(t('التعارضات (${p.conflicts.length})', 'Conflicts (${p.conflicts.length})'), style: orgText(context, w: FontWeight.w800)),
+            title: Text(t('التعارضات (${p.conflicts.length})', 'Conflicts (${p.conflicts.length})'), style: AppType.bodyStrong(context)),
             subtitle: Text(
                 remedies == null && !remediesMissing
                     ? t('جارٍ حساب الحلول…', 'Working out the fixes…')
                     : t('لكل تعارض حلول مرتّبة — الأفضل أولاً', 'Every conflict has ranked ways out — best first'),
-                style: orgText(context, size: 12, color: c.textMedium)),
+                style: AppType.meta(context).copyWith(color: c.textMedium)),
             children: [
               if (remedies != null)
                 RemediesPanel(report: remedies!, courseNames: widget.names, onAccept: widget.canEdit ? _applyRemedy : null, busy: rmBusy)
@@ -1224,30 +1225,30 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
       if (d.pending > 0) t('${d.pending} اقتراح بانتظار قرارك', '${d.pending} proposal(s) pending'),
     ];
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: col.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(16), border: Border.all(color: col.withValues(alpha: 0.3))),
+      padding: const EdgeInsets.all(AppSpace.md),
+      decoration: BoxDecoration(color: col.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: col.withValues(alpha: 0.3))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(d.isComplete ? Icons.verified_rounded : Icons.pending_actions_rounded, color: col),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           Expanded(
             child: Text(
                 d.isComplete ? t('الجدول مكتمل وبلا تعارضات', 'Timetable complete, no conflicts') : t('الجدول مكتمل بنسبة ${d.pct}٪', 'Timetable is ${d.pct}% complete'),
-                style: orgText(context, size: 15, w: FontWeight.w800, color: col)),
+                style: AppType.section(context).copyWith(color: col)),
           ),
         ]),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         ClipRRect(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(AppRadius.chip),
           child: LinearProgressIndicator(value: d.pct / 100, minHeight: 7, color: col, backgroundColor: col.withValues(alpha: 0.15)),
         ),
-        const SizedBox(height: 8),
-        Text(parts.join(' · '), style: orgText(context, size: 12.5, color: c.textMedium)),
+        const SizedBox(height: AppSpace.xs),
+        Text(parts.join(' · '), style: AppType.label(context).copyWith(color: c.textMedium)),
         if (o.stopped == 'no_progress' || o.stopped == 'time_limit')
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: AppSpace.xxs),
             child: Text(t('انتهى التوليد بأفضل نتيجة ممكنة بالقواعد الحالية.', 'Generation finished with the best result the current rules allow.'),
-                style: orgText(context, size: 12, color: c.textMedium)),
+                style: AppType.meta(context).copyWith(color: c.textMedium)),
           ),
       ]),
     );
@@ -1257,27 +1258,27 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
   Widget _autopilotCard(BuildContext context, TimetableCompletion d) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.only(top: AppSpace.sm),
       child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(16), border: Border.all(color: c.primary.withValues(alpha: 0.3))),
+        padding: const EdgeInsets.all(AppSpace.sm),
+        decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.primary.withValues(alpha: 0.3))),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Icon(Icons.auto_fix_high_rounded, color: c.primary),
-            const SizedBox(width: 8),
-            Expanded(child: Text(_needRegen ? t('حُفظت تغييرات في البيانات — أعد الحل', 'Data changes saved — re-solve now') : t('دع النظام يصلح ما يستطيع', 'Let the system fix what it can'), style: orgText(context, size: 14, w: FontWeight.w800, color: c.primary))),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(child: Text(_needRegen ? t('حُفظت تغييرات في البيانات — أعد الحل', 'Data changes saved — re-solve now') : t('دع النظام يصلح ما يستطيع', 'Let the system fix what it can'), style: AppType.bodyStrong(context).copyWith(color: c.primary))),
           ]),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpace.xxs),
           Text(
               _needRegen
                   ? t('يُعاد التوليد بالبيانات الجديدة، ثم يُطبَّق أفضل حل تلقائي لكل تعارض يبقى، ولا يُفرض شيء.', 'The timetable is regenerated with the new data, then the best automatic fix of every remaining clash is applied; nothing is forced.')
                   : t('لكل تعارض (${d.hard}) وحصة بلا موعد (${d.unplaced}) يُطبَّق أفضل حل تلقائي بعد التحقق منه، وتُعاد جدولة ما يلزم فقط. ما يحتاج قراراً بشرياً يبقى لك.',
                       'For every clash (${d.hard}) and unplaced session (${d.unplaced}) the best automatic fix is applied after validation, and only what must move is re-solved. Whatever needs a human decision stays with you.'),
-              style: orgText(context, size: 12.5, color: c.textMedium)),
-          const SizedBox(height: 8),
+              style: AppType.label(context).copyWith(color: c.textMedium)),
+          const SizedBox(height: AppSpace.xs),
           Align(
             alignment: AlignmentDirectional.centerEnd,
-            child: FilledButton.icon(onPressed: _runAutopilot, icon: const Icon(Icons.auto_fix_high_rounded, size: 18), label: Text(_needRegen ? t('أعد الحل الآن', 'Re-solve now') : t('أصلح تلقائياً', 'Fix automatically'))),
+            child: FilledButton.icon(onPressed: _runAutopilot, icon: const Icon(Icons.auto_fix_high_rounded, size: AppIconSize.md), label: Text(_needRegen ? t('أعد الحل الآن', 'Re-solve now') : t('أصلح تلقائياً', 'Fix automatically'))),
           ),
         ]),
       ),
@@ -1288,35 +1289,35 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
     final c = context.colors;
     final names = {for (final f in a.fixes) _name({'course_id': f.courseId, 'kind': f.kind, 'group_no': f.group})}.toList();
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: RowCard(
         accent: c.primary,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(a.rule == null ? Icons.refresh_rounded : Icons.lock_open_rounded, size: 20, color: c.primary),
-            const SizedBox(width: 8),
-            Expanded(child: Text(quickRuleText(a.rule), style: orgText(context, w: FontWeight.w700))),
+            Icon(a.rule == null ? Icons.refresh_rounded : Icons.lock_open_rounded, size: AppIconSize.md, color: c.primary),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(child: Text(quickRuleText(a.rule), style: AppType.bodyStrong(context))),
           ]),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs),
           Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(color: c.success.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
-              child: Text(impactText(a.before, a.after), style: orgText(context, size: 12, w: FontWeight.w800, color: c.success)),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
+              decoration: BoxDecoration(color: c.success.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)),
+              child: Text(impactText(a.before, a.after), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.success)),
             ),
-            if (a.breaks > 0) Text(t('${a.breaks} اقتراح للمراجعة', '${a.breaks} proposal(s) to review'), style: orgText(context, size: 12, color: c.warning)),
+            if (a.breaks > 0) Text(t('${a.breaks} اقتراح للمراجعة', '${a.breaks} proposal(s) to review'), style: AppType.meta(context).copyWith(color: c.warning)),
           ]),
           if (names.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: AppSpace.xxs),
               child: Text('${t('يحل', 'Fixes')}: ${names.take(4).join('، ')}${names.length > 4 ? ' +${names.length - 4}' : ''}',
-                  maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12, color: c.textMedium)),
+                  maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
             ),
           Align(
             alignment: AlignmentDirectional.centerEnd,
             child: TextButton.icon(
               onPressed: applying ? null : () => _apply(a),
-              icon: const Icon(Icons.bolt_rounded, size: 18),
+              icon: const Icon(Icons.bolt_rounded, size: AppIconSize.md),
               label: Text(t('تطبيق', 'Apply')),
             ),
           ),
@@ -1333,15 +1334,15 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
         if (a.fixesLoad(asInt(u['course_id']), '${u['kind'] ?? 'lecture'}', u['group_no'] == null ? null : asInt(u['group_no']))) a
     ];
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: RowCard(
         accent: c.warning,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('${_name(u)} · ${t('${asInt(u['missing'], 1)} حصة', '${asInt(u['missing'], 1)} session(s)')}', style: orgText(context, w: FontWeight.w700)),
-          Text(unplacedReasonText(reason), style: orgText(context, size: 12, color: c.textMedium)),
+          Text('${_name(u)} · ${t('${asInt(u['missing'], 1)} حصة', '${asInt(u['missing'], 1)} session(s)')}', style: AppType.bodyStrong(context)),
+          Text(unplacedReasonText(reason), style: AppType.meta(context).copyWith(color: c.textMedium)),
           if ((u['core'] as List?)?.isNotEmpty == true)
-            Text(coreText([for (final r in u['core'] as List) '$r']), style: orgText(context, size: 12, w: FontWeight.w700, color: c.textMedium)),
-          Text(unplacedFixText(reason), style: orgText(context, size: 12, color: c.textLight)),
+            Text(coreText([for (final r in u['core'] as List) '$r']), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
+          Text(unplacedFixText(reason), style: AppType.meta(context).copyWith(color: c.textLight)),
           if (asMapList(u['explain']).isNotEmpty)
             Theme(
               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -1349,7 +1350,7 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
                 tilePadding: EdgeInsets.zero,
                 childrenPadding: EdgeInsets.zero,
                 dense: true,
-                title: Text(t('لماذا كل وقت مرفوض؟', 'Why is each time blocked?'), style: orgText(context, size: 12, w: FontWeight.w700, color: c.primary)),
+                title: Text(t('لماذا كل وقت مرفوض؟', 'Why is each time blocked?'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.primary)),
                 children: [
                   Align(
                     alignment: AlignmentDirectional.centerStart,
@@ -1364,11 +1365,11 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
             ),
           if (fixers.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.only(top: AppSpace.xs),
               child: Wrap(spacing: 6, runSpacing: 6, children: [
                 for (final a in fixers.take(3))
                   ActionChip(
-                    avatar: Icon(Icons.bolt_rounded, size: 16, color: c.primary),
+                    avatar: Icon(Icons.bolt_rounded, size: AppIconSize.sm, color: c.primary),
                     label: Text('${quickRuleText(a.rule)} · ${a.deltaPct}%', overflow: TextOverflow.ellipsis),
                     onPressed: applying ? null : () => _apply(a),
                   ),
@@ -1382,14 +1383,14 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
   Widget _lockedNote(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.only(top: AppSpace.xxs),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(Icons.lock_rounded, size: 16, color: c.textLight),
-        const SizedBox(width: 6),
+        Icon(Icons.lock_rounded, size: AppIconSize.sm, color: c.textLight),
+        const SizedBox(width: AppSpace.xs),
         Expanded(
           child: Text(
               '${t('لا تُخفَّف أبداً', 'Never relaxed')}: ${[for (final r in generationRules) if (r.fixed) t(r.ar, r.en)].join(' · ')}',
-              style: orgText(context, size: 11.5, color: c.textLight)),
+              style: AppType.meta(context).copyWith(color: c.textLight)),
         ),
       ]),
     );
@@ -1398,17 +1399,17 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
   Widget _note(BuildContext context, IconData icon, String text) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
       child: Row(children: [
-        Icon(icon, size: 18, color: c.textMedium),
-        const SizedBox(width: 8),
-        Expanded(child: Text(text, style: orgText(context, size: 12.5, color: c.textMedium))),
+        Icon(icon, size: AppIconSize.md, color: c.textMedium),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(child: Text(text, style: AppType.label(context).copyWith(color: c.textMedium))),
       ]),
     );
   }
 
   Widget _title(BuildContext context, String s) =>
-      Padding(padding: const EdgeInsets.only(top: 14, bottom: 6), child: Text(s, style: orgText(context, w: FontWeight.w800)));
+      Padding(padding: const EdgeInsets.only(top: AppSpace.md, bottom: AppSpace.xs), child: Text(s, style: AppType.bodyStrong(context)));
 
   Widget _proposal(BuildContext context, String block, List<Map<String, dynamic>> items) {
     final c = context.colors;
@@ -1417,13 +1418,13 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
     return RowCard(
       accent: dec == null ? c.warning : (dec == 'accepted' ? c.success : c.textLight),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('${_name(x)} · ${dayLabels()[x['day']] ?? x['day']}', style: orgText(context, w: FontWeight.w700)),
-        for (final i in items) Text('• ${brokenRuleText('${i['rule']}')}', style: orgText(context, size: 12, color: c.textMedium)),
+        Text('${_name(x)} · ${dayLabels()[x['day']] ?? x['day']}', style: AppType.bodyStrong(context)),
+        for (final i in items) Text('• ${brokenRuleText('${i['rule']}')}', style: AppType.meta(context).copyWith(color: c.textMedium)),
         if (dec != null)
-          Text(dec == 'accepted' ? t('مقبول', 'Accepted') : t('مرفوض', 'Rejected'), style: orgText(context, size: 12, w: FontWeight.w700))
+          Text(dec == 'accepted' ? t('مقبول', 'Accepted') : t('مرفوض', 'Rejected'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark))
         else if (widget.canEdit)
           busy.contains(block)
-              ? const Padding(padding: EdgeInsets.all(8), child: LinearProgressIndicator())
+              ? const Padding(padding: EdgeInsets.all(AppSpace.xs), child: LinearProgressIndicator())
               : Wrap(spacing: 8, children: [
                   TextButton.icon(onPressed: () => _decide(block, true), icon: Icon(Icons.check_rounded, color: c.success), label: Text(t('قبول', 'Accept'))),
                   TextButton.icon(onPressed: () => _decide(block, false), icon: Icon(Icons.close_rounded, color: c.danger), label: Text(t('رفض', 'Reject'))),

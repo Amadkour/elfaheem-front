@@ -46,7 +46,7 @@ class GovItemCard extends StatelessWidget {
     final pr = it.pendingRoute;
     final accent = it.overdue ? c.danger : (selected ? c.primary : null);
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 5, 16, 5),
+      margin: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
       decoration: BoxDecoration(
         color: selected ? c.primary.withValues(alpha: 0.06) : c.cardBg,
         borderRadius: BorderRadius.circular(c.radiusLarge - 4),
@@ -60,16 +60,16 @@ class GovItemCard extends StatelessWidget {
           onTap: onTap,
           onLongPress: onLongPress,
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(AppSpace.sm),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               if (selectMode)
                 Padding(
-                  padding: const EdgeInsetsDirectional.only(end: 10, top: 8),
+                  padding: const EdgeInsetsDirectional.only(end: AppSpace.sm, top: AppSpace.xs),
                   child: Icon(selected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded, color: selected ? c.primary : c.textLight),
                 )
               else ...[
                 IconBadge(govTypeIcon(it.type), govPriorityColor(context, it.priority), size: 42),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpace.sm),
               ],
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -78,9 +78,9 @@ class GovItemCard extends StatelessWidget {
                     GovTypePill(it.type),
                     GovStatusPill(it.status),
                   ]),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpace.xxs),
                   Text(it.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w800, c: c.textDark)),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AppSpace.xxs / 2),
                   Text(
                     [
                       if (it.sourceName.isNotEmpty) '${t('من', 'From')}: ${it.sourceName}',
@@ -91,7 +91,7 @@ class GovItemCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: appText(12, c: c.textMedium),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: AppSpace.xs),
                   Wrap(spacing: 6, runSpacing: 4, children: [
                     GovPriorityPill(it.priority),
                     GovDuePill(dueAt: it.dueAt, overdue: it.overdue),
@@ -153,14 +153,14 @@ Future<WorkItem?> showGovNewItemSheet(BuildContext context, GovApi api, {require
         }
 
         return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
+          padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 16 + MediaQuery.of(ctx).viewInsets.bottom),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             SheetHeader(t('معاملة جديدة', 'New item')),
             Wrap(spacing: 6, runSpacing: 6, children: [
               for (final x in const ['memo', 'request', 'complaint', 'custom'])
                 AppChoiceChip(label: itemTypeLabel(x), icon: govTypeIcon(x), selected: type == x, onTap: () => set(() => type = x)),
             ]),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             GovEntityPickField(
               label: t('الجهة المالكة', 'Owner entity'),
               entities: entities,
@@ -175,7 +175,7 @@ Future<WorkItem?> showGovNewItemSheet(BuildContext context, GovApi api, {require
               },
             ),
             if (cats.isNotEmpty) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               AppDropdown<int>(
                 value: category ?? 0,
                 decoration: InputDecoration(labelText: t('التصنيف', 'Category'), prefixIcon: const Icon(Icons.label_outline_rounded)),
@@ -187,7 +187,7 @@ Future<WorkItem?> showGovNewItemSheet(BuildContext context, GovApi api, {require
               ),
             ],
             if (type == 'request' || type == 'complaint') ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               GovForSection(
                 kind: forKind,
                 member: forMember,
@@ -204,17 +204,17 @@ Future<WorkItem?> showGovNewItemSheet(BuildContext context, GovApi api, {require
                 onClearMember: () => set(() => forMember = null),
               ),
             ],
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppField(controller: title, label: t('العنوان', 'Title')),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppField(controller: body, label: t('التفاصيل', 'Details'), maxLines: 4),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             Text(t('الأولوية', 'Priority'), style: appText(12, c: c.textLight)),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             Wrap(spacing: 6, runSpacing: 6, children: [
               for (final p in priorities) AppChoiceChip(label: priorityLabelOf(p), selected: priority == p, onTap: () => set(() => priority = p)),
             ]),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             GovDateField(
               label: t('الاستحقاق (اختياري — يُحسب من الأولوية)', 'Due (optional — defaults from the priority)'),
               value: due,
@@ -226,14 +226,14 @@ Future<WorkItem?> showGovNewItemSheet(BuildContext context, GovApi api, {require
               },
               onClear: () => set(() => due = null),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             AppSwitchTile(
               title: t('إحالتها فور الإنشاء', 'Route it right after creating'),
               subtitle: t('تفتح شاشة الإحالة بعد الحفظ', 'The route sheet opens after saving'),
               value: routeNow,
               onChanged: (v) => set(() => routeNow = v),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             AppPrimaryButton(
               label: t('إنشاء', 'Create'),
               icon: Icons.add_rounded,
@@ -515,7 +515,7 @@ class _GovItemsPageState extends State<GovItemsPage> {
     final body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       GovActingBanner(orgId: _orgId),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
         child: ItemFilterBar(
           filter: _filter,
           onChanged: _setFilter,
@@ -532,13 +532,13 @@ class _GovItemsPageState extends State<GovItemsPage> {
         ),
       ),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xxs),
         child: Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
           if (!_loading) Text(t('$_total معاملة', '$_total items'), style: appText(12, w: FontWeight.w700, c: c.textMedium)),
           for (final st in const ['open', 'in_review', 'pending_approval', 'in_council'])
             if (asInt(asMap(_facets['status'])[st]) > 0)
               AppBadgePill('${itemStatusLabel(st)} ${asInt(asMap(_facets['status'])[st])}', color: govStatusColor(context, st)),
-          const SizedBox(width: 4),
+          const SizedBox(width: AppSpace.xxs),
           if (newInRow) AppPill(icon: Icons.add_rounded, label: t('معاملة جديدة', 'New item'), onTap: _entities.isEmpty ? null : _newItem),
           if (canExport) AppPill(icon: Icons.file_download_rounded, label: t('تصدير', 'Export'), color: c.textMedium, onTap: () => widget.onExport!(_filter)),
           if (_items.isNotEmpty)
@@ -594,13 +594,13 @@ class _GovItemsPageState extends State<GovItemsPage> {
     return AppRefresh(
       onRefresh: () => _load(reset: true),
       child: ListView.builder(
-        padding: const EdgeInsets.only(top: 4, bottom: 90),
+        padding: const EdgeInsets.only(top: AppSpace.xxs, bottom: AppSpace.xxxl + AppSpace.lg),
         itemCount: _items.length + 1,
         itemBuilder: (context, i) {
           if (i == _items.length) {
-            if (_page >= _pages) return const SizedBox(height: 8);
+            if (_page >= _pages) return const SizedBox(height: AppSpace.xs);
             return Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppSpace.sm),
               child: Center(
                 child: _more
                     ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
@@ -637,7 +637,7 @@ class _BulkBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
       decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider)), boxShadow: c.cardShadow),
       child: Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
         Text(t('$count محددة', '$count selected'), style: appText(13, w: FontWeight.w800, c: c.textDark)),

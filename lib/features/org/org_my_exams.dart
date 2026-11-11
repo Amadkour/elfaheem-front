@@ -154,7 +154,7 @@ DateTime appToday() {
 
 /// The banner(s) for a timetable's exam pauses — nothing when no window is running or ahead.
 Widget examPauseBanner(BuildContext context, List<Map<String, dynamic>> pauses,
-    {EdgeInsetsGeometry padding = const EdgeInsets.only(bottom: 10), bool myExamsAction = true}) {
+    {EdgeInsetsGeometry padding = const EdgeInsets.only(bottom: AppSpace.sm), bool myExamsAction = true}) {
   final shown = activeExamPauses(pauses, appToday());
   if (shown.isEmpty) return const SizedBox.shrink();
   final c = context.colors;
@@ -246,7 +246,7 @@ class _MyExamsViewState extends State<_MyExamsView> {
         valueListenable: AppTime.version,
         builder: (context, _, _) => ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xxl),
           children: [
             if (error != null)
               AppBanner(
@@ -270,7 +270,7 @@ class _MyExamsViewState extends State<_MyExamsView> {
                   _dayTitle(day),
                   subtitle: t('${items.length} امتحان', items.length == 1 ? '1 exam' : '${items.length} exams'),
                 ),
-                for (final e in items) Padding(padding: const EdgeInsets.only(bottom: 10), child: _ExamCard(e: e)),
+                for (final e in items) Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: _ExamCard(e: e)),
               ],
             ],
           ],
@@ -379,19 +379,19 @@ class _ExamCard extends StatelessWidget {
     final accent = over ? c.textLight : (e.kind == 'midterm' ? c.primary : c.warning);
     return AppCard(
       onTap: e.teaching ? () => openTeacherSlotExam(context, e) : null,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpace.md),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(
           width: 78,
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-          decoration: BoxDecoration(color: accent.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(14)),
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.sm, horizontal: AppSpace.xs),
+          decoration: BoxDecoration(color: accent.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(AppRadius.control)),
           child: Column(children: [
             Text(AppTime.time(e.start!), textAlign: TextAlign.center, style: appText(13.5, w: FontWeight.w800, c: accent)),
-            const SizedBox(height: 2),
+            const SizedBox(height: AppSpace.xxs / 2),
             Text(AppTime.time(e.end ?? e.start!), textAlign: TextAlign.center, style: appText(11.5, c: c.textMedium)),
           ]),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
@@ -399,10 +399,10 @@ class _ExamCard extends StatelessWidget {
                 child: Text(e.courseName, maxLines: 2, overflow: TextOverflow.ellipsis,
                     style: appText(15, w: FontWeight.w800, c: over ? c.textMedium : c.textDark)),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: AppSpace.xs),
               AppTag(myExamKindLabel(e.kind), accent),
             ]),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             Wrap(spacing: 6, runSpacing: 6, children: [
               if (running) AppTag(t('جارٍ الآن', 'On now'), c.success, icon: Icons.circle),
               if (e.invigilating) AppTag(t('أنت مراقب', 'You invigilate'), c.primaryDark, icon: Icons.visibility_rounded),
@@ -410,7 +410,7 @@ class _ExamCard extends StatelessWidget {
               if (over) AppTag(t('انتهى', 'Over'), c.textLight),
             ]),
             if (e.roomNames.isNotEmpty) ...[
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpace.xs),
               _line(context, Icons.meeting_room_rounded,
                   e.invigilating && e.myRoomName != null
                       ? '${t('مكانك', 'Your room')}: ${e.myRoomName}${e.roomNames.length > 1 ? ' · ${t('كل الأماكن', 'all rooms')}: ${e.roomNames.join('، ')}' : ''}'
@@ -428,10 +428,10 @@ class _ExamCard extends StatelessWidget {
   Widget _line(BuildContext context, IconData icon, String text) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(top: 3),
+      padding: const EdgeInsets.only(top: AppSpace.xxs),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(icon, size: 15, color: c.textLight),
-        const SizedBox(width: 6),
+        Icon(icon, size: AppIconSize.xs, color: c.textLight),
+        const SizedBox(width: AppSpace.xs),
         Expanded(child: Text(text, style: appText(12.5, c: c.textMedium))),
       ]),
     );

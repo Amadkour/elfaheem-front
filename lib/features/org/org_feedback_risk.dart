@@ -127,7 +127,7 @@ class _OrgFeedbackSettingsPageState extends State<OrgFeedbackSettingsPage> {
             ? const AppListSkeleton(items: 3, withAvatar: false)
             : _s == null
                 ? AppEmpty(icon: Icons.error_outline_rounded, title: _error ?? '', actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load)
-                : ListView(padding: const EdgeInsets.all(16), children: [
+                : ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
                     AppCard(child: FeedbackSettingsForm(settings: _s!, busy: _busy, onSave: _save)),
                     AppSectionTitle(t('تصدير', 'Export')),
                     AppCard(child: FeedbackExportBar(onExport: _export, busy: _exporting)),
@@ -195,23 +195,23 @@ class RiskList extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final top = items.fold<double>(0, (m, e) => e.maxRisk > m ? e.maxRisk : m);
-    return ListView(padding: const EdgeInsets.all(16), children: [
+    return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
       AppBanner(
           icon: Icons.policy_outlined,
           text: t('إشارات للمراجعة البشرية فقط — لا تعني أن الطالب غشّ.', 'Signals for human review only — they do not mean a student cheated.')),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
       if (items.isEmpty)
         AppEmpty(icon: Icons.verified_user_outlined, title: t('لا امتحانات ذات مخاطر', 'No exams with risk signals'))
       else
         for (final e in items)
           AppCard(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(14),
+            margin: const EdgeInsets.only(bottom: AppSpace.sm),
+            padding: const EdgeInsets.all(AppSpace.md),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(e.displayTitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w800, c: c.textDark)),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               AppProgressBar(value: riskShare(e.maxRisk, top) * 100, color: e.needsReview > 0 ? c.warning : c.primary),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               Wrap(spacing: 8, runSpacing: 6, children: [
                 AppBadgePill('${t('محاولات مشبوهة', 'Risky attempts')}: ${e.riskyAttempts}', icon: Icons.flag_outlined),
                 AppBadgePill('${t('أعلى درجة خطورة', 'Highest risk')}: ${e.maxRisk.toStringAsFixed(1)}', color: c.warning),

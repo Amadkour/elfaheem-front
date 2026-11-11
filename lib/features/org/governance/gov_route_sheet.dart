@@ -45,12 +45,12 @@ class GovEntityPickField extends StatelessWidget {
               .where((e) => query.isEmpty || e.name.toLowerCase().contains(query.toLowerCase()) || e.dept.nameEn.toLowerCase().contains(query.toLowerCase()))
               .toList();
           return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               SheetHeader(label),
               if (entities.length > 6)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(bottom: AppSpace.xs),
                   child: TextField(
                     onChanged: (q) => set(() => query = q),
                     decoration: InputDecoration(hintText: t('ابحث…', 'Search…'), prefixIcon: const Icon(Icons.search_rounded), isDense: true),
@@ -72,8 +72,8 @@ class GovEntityPickField extends StatelessWidget {
                         leading: Container(
                           width: 40,
                           height: 40,
-                          decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(12)),
-                          child: Icon(govKindIcon(e.kind), color: c.primary, size: 21),
+                          decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(AppRadius.control)),
+                          child: Icon(govKindIcon(e.kind), color: c.primary, size: AppIconSize.md),
                         ),
                         title: Text(e.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: value?.id == e.id ? FontWeight.w800 : FontWeight.w600, c: c.textDark)),
                         subtitle: Text(
@@ -83,12 +83,12 @@ class GovEntityPickField extends StatelessWidget {
                           style: appText(12, c: c.textMedium),
                         ),
                         trailing: value?.id == e.id ? Icon(Icons.check_circle_rounded, color: c.primary) : null,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
                         tileColor: value?.id == e.id ? c.primary.withValues(alpha: 0.07) : null,
                       ),
                     ),
                   if (shown.isEmpty)
-                    Padding(padding: const EdgeInsets.all(20), child: Text(t('لا نتائج', 'No results'), textAlign: TextAlign.center, style: appText(13, c: c.textMedium))),
+                    Padding(padding: const EdgeInsets.all(AppSpace.lg), child: Text(t('لا نتائج', 'No results'), textAlign: TextAlign.center, style: appText(13, c: c.textMedium))),
                 ]),
               ),
             ]),
@@ -101,7 +101,7 @@ class GovEntityPickField extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return InkWell(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppRadius.control),
       onTap: () => _open(context),
       child: InputDecorator(
         isEmpty: value == null,
@@ -111,9 +111,9 @@ class GovEntityPickField extends StatelessWidget {
           suffixIcon: Icon(Icons.unfold_more_rounded, color: c.textLight),
           filled: true,
           fillColor: c.inputBg,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.divider)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.divider)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.md),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.divider)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.divider)),
         ),
         child: Text(value?.name ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w600, c: c.textDark)),
       ),
@@ -171,13 +171,13 @@ class GovRouteForm extends StatelessWidget {
     final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Text(t('إلى مَن؟', 'To whom?'), style: appText(12, c: c.textLight)),
-      const SizedBox(height: 6),
+      const SizedBox(height: AppSpace.xs),
       Row(children: [
         Expanded(child: AppChoiceChip(label: t('جهة', 'An entity'), icon: Icons.apartment_rounded, selected: !toPerson, onTap: () => onToPerson(false))),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpace.xs),
         Expanded(child: AppChoiceChip(label: t('شخص', 'A person'), icon: Icons.person_rounded, selected: toPerson, onTap: () => onToPerson(true))),
       ]),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       if (toPerson)
         GovPersonField(label: t('الشخص', 'Person'), person: target.user, onPick: onPickPerson)
       else
@@ -188,17 +188,17 @@ class GovRouteForm extends StatelessWidget {
           exclude: {?excludeDeptId},
           onChanged: onTargetDept,
         ),
-      const SizedBox(height: 16),
+      const SizedBox(height: AppSpace.md),
       Text(t('ماذا تطلب؟', 'What do you ask for?'), style: appText(12, c: c.textLight)),
-      const SizedBox(height: 6),
+      const SizedBox(height: AppSpace.xs),
       Wrap(spacing: 6, runSpacing: 6, children: [
         for (final a in actions) AppChoiceChip(label: routeActionLabel(a), icon: govActionIcon(a), selected: action == a, onTap: () => onAction(a)),
       ]),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       AppBanner(icon: govActionIcon(action), text: routeActionHelp(action)),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       AppField(controller: note, label: t('ملاحظة للمستلم (اختياري)', 'Note for the target (optional)'), maxLines: 3),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       GovDateField(
         label: t('مطلوب الرد قبل (اختياري)', 'Answer needed by (optional)'),
         value: dueAt,
@@ -211,10 +211,10 @@ class GovRouteForm extends StatelessWidget {
         onClear: () => onDue(null),
       ),
       if (error != null) ...[
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: error!),
       ],
-      const SizedBox(height: 14),
+      const SizedBox(height: AppSpace.md),
       AppPrimaryButton(label: submitLabel ?? t('إحالة', 'Route'), icon: Icons.send_rounded, busy: busy, onPressed: target.isEmpty ? null : onSubmit),
     ]);
   }
@@ -237,7 +237,7 @@ Future<Map<String, dynamic>?> showGovRouteBodySheet(
   final note = TextEditingController();
   return showAppSheet<Map<String, dynamic>>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
+          padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 16 + MediaQuery.of(ctx).viewInsets.bottom),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             SheetHeader(title ?? t('إحالة / توجيه', 'Route / forward')),
             GovRouteForm(
@@ -282,11 +282,11 @@ Future<WorkItem?> showGovRouteSheet(BuildContext context, GovApi api, WorkItem i
   final note = TextEditingController();
   return showAppSheet<WorkItem>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
+          padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 16 + MediaQuery.of(ctx).viewInsets.bottom),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             SheetHeader(title ?? '${t('إحالة', 'Route')} · ${item.ref}'),
             Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: ctx.colors.textMedium)),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             GovRouteForm(
               entities: list,
               target: target,

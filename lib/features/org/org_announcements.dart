@@ -349,8 +349,8 @@ class _OrgAnnouncementFeedState extends State<OrgAnnouncementFeed> {
     final items = _items;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       Row(children: [
-        Icon(Icons.campaign_rounded, color: c.primary, size: 20),
-        const SizedBox(width: 6),
+        Icon(Icons.campaign_rounded, color: c.primary, size: AppIconSize.md),
+        const SizedBox(width: AppSpace.xs),
         Flexible(
           child: Semantics(
             header: true,
@@ -358,7 +358,7 @@ class _OrgAnnouncementFeedState extends State<OrgAnnouncementFeed> {
                 maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
           ),
         ),
-        if (_unread > 0) ...[const SizedBox(width: 6), _CountBadge(_unread)],
+        if (_unread > 0) ...[const SizedBox(width: AppSpace.xs), _CountBadge(_unread)],
         const Spacer(),
         if ((items?.isNotEmpty ?? false))
           TextButton(
@@ -367,7 +367,7 @@ class _OrgAnnouncementFeedState extends State<OrgAnnouncementFeed> {
             child: Text(t('عرض الكل', 'See all'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
           ),
       ]),
-      const SizedBox(height: 6),
+      const SizedBox(height: AppSpace.xs),
       if (items == null && !_failed)
         const SizedBox(height: 170, child: AppListSkeleton(items: 2, padding: EdgeInsets.zero))
       else if (_failed)
@@ -380,17 +380,17 @@ class _OrgAnnouncementFeedState extends State<OrgAnnouncementFeed> {
         AppCard(
           child: Row(children: [
             Icon(Icons.mark_email_read_rounded, color: c.textLight),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Text(t('لا أخبار جديدة الآن — سنضعها هنا فور نشرها', "No news right now — it'll show up here"),
-                  style: orgText(context, color: c.textMedium)),
+                  style: AppType.row(context).copyWith(color: c.textMedium)),
             ),
           ]),
         )
       else
         for (final a in items.take(widget.limit ?? 3))
           Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.only(bottom: AppSpace.sm),
             child: AnnouncementCard(item: a, compact: true, onChanged: _replace),
           ),
     ]);
@@ -416,12 +416,12 @@ class _OrgAnnouncementFeedState extends State<OrgAnnouncementFeed> {
       onRefresh: _load,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 40),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl),
         itemCount: items!.length + 2,
         itemBuilder: (context, i) {
           if (i == 0) {
             return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.only(bottom: AppSpace.sm),
               child: Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
                 AppChoiceChip(
                     label: t('الكل', 'All'),
@@ -453,16 +453,16 @@ class _OrgAnnouncementFeedState extends State<OrgAnnouncementFeed> {
             }
             if (!canMore) {
               return Padding(
-                padding: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.only(top: AppSpace.xs),
                 child: Center(
                   child: Text(t('هذا كل شيء ($_total)', "That's everything ($_total)"),
-                      style: orgText(context, size: 12, color: c.textLight)),
+                      style: AppType.meta(context).copyWith(color: c.textLight)),
                 ),
               );
             }
             return Center(
               child: _more
-                  ? const Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(strokeWidth: 2.4))
+                  ? const Padding(padding: EdgeInsets.all(AppSpace.sm), child: CircularProgressIndicator(strokeWidth: 2.4))
                   : OutlinedButton.icon(
                       onPressed: () => _load(more: true),
                       icon: const Icon(Icons.expand_more_rounded),
@@ -473,7 +473,7 @@ class _OrgAnnouncementFeedState extends State<OrgAnnouncementFeed> {
           final a = items[i - 1];
           return Padding(
             key: ValueKey('ann-${a['id']}'),
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: AppSpace.sm),
             child: AnnouncementCard(item: a, onChanged: _replace),
           );
         },
@@ -518,8 +518,8 @@ class _CountBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(20)),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
+      decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(AppRadius.block)),
       child: Text(n > 99 ? '99+' : '$n', style: appText(11, w: FontWeight.w800, c: c.onHero)),
     );
   }
@@ -612,13 +612,13 @@ class _AnnouncementCardState extends State<AnnouncementCard> {
       onSeen: () => _ViewTracker.i.seen(_id),
       child: Material(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadius.block),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: _open,
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(AppRadius.block),
               border: Border.all(
                   color: urgent
                       ? c.danger.withValues(alpha: 0.55)
@@ -641,40 +641,40 @@ class _AnnouncementCardState extends State<AnnouncementCard> {
                     Container(
                       width: 28,
                       height: 28,
-                      decoration: BoxDecoration(color: accent.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(9)),
-                      child: Icon(annIcons[cat] ?? Icons.campaign_rounded, size: 16, color: accent),
+                      decoration: BoxDecoration(color: accent.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)),
+                      child: Icon(annIcons[cat] ?? Icons.campaign_rounded, size: AppIconSize.sm, color: accent),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpace.xs),
                     Expanded(
                       child: Text(source,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: orgText(context, size: 12, w: FontWeight.w700, color: c.textMedium)),
+                          style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
                     ),
-                    if (pinned) ...[Icon(Icons.push_pin_rounded, size: 15, color: c.warning), const SizedBox(width: 4)],
+                    if (pinned) ...[Icon(Icons.push_pin_rounded, size: AppIconSize.xs, color: c.warning), const SizedBox(width: AppSpace.xxs)],
                     if (unread) ...[
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(20)),
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
+                        decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(AppRadius.block)),
                         child: Text(t('جديد', 'New'), style: appText(10.5, w: FontWeight.w800, c: c.onHero)),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: AppSpace.xs),
                     ],
-                    Text(relTime(a['publish_at']), style: orgText(context, size: 11, color: c.textLight)),
+                    Text(relTime(a['publish_at']), style: AppType.meta(context).copyWith(color: c.textLight)),
                   ]),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.xs),
                   Text('${a['title']}',
                       maxLines: widget.compact ? 2 : 4,
                       overflow: TextOverflow.ellipsis,
                       style: orgText(context, size: widget.compact ? 14.5 : 15.5, w: FontWeight.w800)),
                   if ('${a['body'] ?? ''}'.trim().isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpace.xxs),
                     MentionText('${a['body']}'.trim(),
                         maxLines: widget.compact ? 2 : 5,
                         overflow: TextOverflow.ellipsis,
-                        style: orgText(context, size: 13, color: c.textMedium)),
+                        style: AppType.label(context).copyWith(color: c.textMedium)),
                   ],
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AppSpace.sm),
                   _ActionsBar(
                     likes: asInt(a['likes']),
                     dislikes: asInt(a['dislikes']),
@@ -723,7 +723,7 @@ class _ActionsBar extends StatelessWidget {
           color: c.success,
           tooltip: t('أعجبني', 'Like'),
           onTap: () => onReact('like')),
-      const SizedBox(width: 6),
+      const SizedBox(width: AppSpace.xs),
       _ReactButton(
           icon: reaction == 'dislike' ? Icons.thumb_down_alt_rounded : Icons.thumb_down_alt_outlined,
           count: dislikes,
@@ -731,7 +731,7 @@ class _ActionsBar extends StatelessWidget {
           color: c.danger,
           tooltip: t('لم يعجبني', 'Dislike'),
           onTap: () => onReact('dislike')),
-      const SizedBox(width: 8),
+      const SizedBox(width: AppSpace.xs),
       const Spacer(),
       if (link != null)
         Flexible(
@@ -743,9 +743,9 @@ class _ActionsBar extends StatelessWidget {
               foregroundColor: c.onHero,
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.symmetric(horizontal: dense ? 10 : 14, vertical: dense ? 6 : 10),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
             ),
-            icon: Icon(link!.icon, size: 17),
+            icon: Icon(link!.icon, size: AppIconSize.sm),
             label: Text(link!.cta,
                 maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
           ),
@@ -778,21 +778,21 @@ class _ReactButton extends StatelessWidget {
       message: tooltip,
       child: Material(
         color: active ? color.withValues(alpha: 0.14) : c.background,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.control),
           onTap: onTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppRadius.control),
               border: Border.all(color: active ? color.withValues(alpha: 0.5) : c.divider),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(icon, size: 17, color: active ? color : c.textMedium),
+              Icon(icon, size: AppIconSize.sm, color: active ? color : c.textMedium),
               if (count > 0) ...[
-                const SizedBox(width: 5),
+                const SizedBox(width: AppSpace.xxs),
                 Text('$count', style: appText(12.5, w: FontWeight.w800, c: active ? color : c.textMedium)),
               ],
             ]),
@@ -834,31 +834,31 @@ class _AnnouncementDetailState extends State<_AnnouncementDetail> {
     final dept = asMap(a['department']);
     return StatefulBuilder(builder: (context, set) {
       return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           AppSheetHeader(dept.isEmpty ? orgNameOf(asMap(a['organization'])) : orgNameOf(dept)),
           if (img.isNotEmpty)
             ClipRRect(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppRadius.card),
               child: AspectRatio(
                 aspectRatio: 16 / 8,
                 child: Image.network(orgFileUrl(img), fit: BoxFit.cover, errorBuilder: (_, _, _) => const SizedBox.shrink()),
               ),
             ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           Wrap(spacing: 6, runSpacing: 6, children: [
             AppBadgePill(annCategories()['${a['category']}'] ?? '${a['category']}',
                 icon: annIcons['${a['category']}'], color: a['category'] == 'urgent' ? c.danger : c.primary),
             if (a['is_pinned'] == true) AppBadgePill(t('مثبّت', 'Pinned'), icon: Icons.push_pin_rounded, color: c.warning),
             if (at != null) AppBadgePill(AppTime.dateTime(at), icon: Icons.schedule_rounded, color: c.textMedium),
           ]),
-          const SizedBox(height: 10),
-          Text('${a['title']}', style: orgText(context, size: 18, w: FontWeight.w800)),
+          const SizedBox(height: AppSpace.sm),
+          Text('${a['title']}', style: AppType.section(context)),
           if ('${a['body'] ?? ''}'.trim().isNotEmpty) ...[
-            const SizedBox(height: 8),
-            MentionText('${a['body']}'.trim(), selectable: true, style: orgText(context, size: 14, color: c.textMedium)),
+            const SizedBox(height: AppSpace.xs),
+            MentionText('${a['body']}'.trim(), selectable: true, style: AppType.row(context).copyWith(color: c.textMedium)),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           _ActionsBar(
             likes: asInt(a['likes']),
             dislikes: asInt(a['dislikes']),
@@ -871,7 +871,7 @@ class _AnnouncementDetailState extends State<_AnnouncementDetail> {
             onCta: () {},
           ),
           if (link != null) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpace.md),
             AppPrimaryButton(
               label: link.cta,
               icon: link.icon,
@@ -973,19 +973,19 @@ class _AnnCard extends StatelessWidget {
                 : null,
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           IconBadge(annIcons[cat] ?? Icons.campaign_rounded, cat == 'urgent' ? c.danger : c.primary, size: 42),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                if (row['is_pinned'] == true) Icon(Icons.push_pin_rounded, size: 15, color: c.warning),
+                if (row['is_pinned'] == true) Icon(Icons.push_pin_rounded, size: AppIconSize.xs, color: c.warning),
                 Expanded(
                     child: Text('${row['title']}',
                         maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600))),
               ]),
               if ('${row['body'] ?? ''}'.isNotEmpty)
                 Text('${row['body']}',
-                    maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12.5, color: c.textMedium)),
-              const SizedBox(height: 6),
+                    maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: c.textMedium)),
+              const SizedBox(height: AppSpace.xs),
               Wrap(spacing: 6, runSpacing: 4, children: [
                 StatusChip(scheduled ? t('مجدول', 'Scheduled') : statusLabel(status),
                     scheduled ? c.accent : statusColor(context, status)),
@@ -1121,12 +1121,12 @@ Future<void> showAnnouncementEditor(BuildContext context,
 
         final published = '${edit?['status']}' == 'published';
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             AppSheetHeader(edit == null ? t('إعلان جديد', 'New announcement') : t('تعديل الإعلان', 'Edit announcement')),
             if (published)
               Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.only(bottom: AppSpace.sm),
                 child: AppBanner(
                   icon: Icons.info_outline_rounded,
                   text: t('الإعلان منشور: تغيير الجمهور يحدّث قائمة المستهدفين ويُرسل للمنضمين الجدد فقط.',
@@ -1154,18 +1154,18 @@ Future<void> showAnnouncementEditor(BuildContext context,
               if (image != null)
                 Row(mainAxisSize: MainAxisSize.min, children: [
                   ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(AppRadius.chip),
                       child: Image.network(orgFileUrl(image), width: 52, height: 40, fit: BoxFit.cover,
                           errorBuilder: (_, _, _) => const SizedBox.shrink())),
                   IconButton(tooltip: t('إزالة', 'Remove'), onPressed: () => set(() => image = null), icon: Icon(Icons.close_rounded, color: c.textLight)),
                 ]),
             ]),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpace.md),
             AppSectionTitle(t('زر الإجراء', 'Call to action'),
                 subtitle: t('اختياري: أين يذهب العضو عند الضغط؟ نتتبّع الضغطات وإكمال النماذج.',
                     'Optional: where members go when they tap. Clicks and form completions are tracked.')),
             _LinkEditor(targets: targets, value: link, onChanged: (v) => set(() => link = v)),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpace.md),
             AppSectionTitle(t('الجمهور', 'Audience')),
             OrgAudiencePicker(
               value: audience,
@@ -1176,7 +1176,7 @@ Future<void> showAnnouncementEditor(BuildContext context,
               value: [for (final d in (audience['dept_ids'] as List)) asInt(d)],
               onChanged: (ids) => set(() => audience = {...audience, 'dept_ids': ids}),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             AppSwitchTile(
                 title: t('تثبيت في الأعلى', 'Pin to the top'),
                 icon: Icons.push_pin_rounded,
@@ -1188,7 +1188,7 @@ Future<void> showAnnouncementEditor(BuildContext context,
                 icon: Icons.notifications_active_rounded,
                 value: notify,
                 onChanged: (v) => set(() => notify = v)),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             Wrap(spacing: 8, runSpacing: 8, children: [
               _WhenChip(
                 icon: Icons.schedule_send_rounded,
@@ -1211,7 +1211,7 @@ Future<void> showAnnouncementEditor(BuildContext context,
                 onClear: expireAt == null ? null : () => set(() => expireAt = null),
               ),
             ]),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.md),
             if (canPublish)
               AppPrimaryButton(
                   busy: busy,
@@ -1223,11 +1223,11 @@ Future<void> showAnnouncementEditor(BuildContext context,
                   icon: Icons.send_rounded,
                   onPressed: () => save(publish: true)),
             if (!published) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               OutlinedButton(
                 onPressed: busy ? null : () => save(),
                 style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                    minimumSize: const Size.fromHeight(48), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control))),
                 child: Text(canPublish ? t('حفظ كمسودة', 'Save as draft') : t('حفظ وإرسال للاعتماد', 'Save for approval'),
                     style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
               ),
@@ -1250,11 +1250,11 @@ class _WhenChip extends StatelessWidget {
     final c = context.colors;
     final col = active ? c.primary : c.textMedium;
     return InputChip(
-      avatar: Icon(icon, size: 17, color: col),
+      avatar: Icon(icon, size: AppIconSize.sm, color: col),
       label: Text(label, style: appText(12.5, w: FontWeight.w700, c: col)),
       onPressed: onTap,
       onDeleted: onClear,
-      deleteIcon: const Icon(Icons.close_rounded, size: 16),
+      deleteIcon: const Icon(Icons.close_rounded, size: AppIconSize.sm),
       backgroundColor: active ? c.primary.withValues(alpha: 0.08) : c.background,
       side: BorderSide(color: active ? c.primary.withValues(alpha: 0.4) : c.divider),
     );
@@ -1430,13 +1430,13 @@ class _DeptAudience extends StatelessWidget {
         final depts = asMapList(snap.data?['departments']);
         if (depts.isEmpty) return const SizedBox.shrink();
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const SizedBox(height: 4),
-          Text(t('إدارات محددة (اختياري)', 'Specific departments (optional)'), style: orgText(context, size: 12.5, color: c.textLight)),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xxs),
+          Text(t('إدارات محددة (اختياري)', 'Specific departments (optional)'), style: AppType.label(context).copyWith(color: c.textLight)),
+          const SizedBox(height: AppSpace.xs),
           Wrap(spacing: 8, runSpacing: 6, children: [
             for (final d in depts)
               FilterChip(
-                avatar: Icon(deptIcon(d['icon']), size: 16, color: hexColor(d['color'], c.primary)),
+                avatar: Icon(deptIcon(d['icon']), size: AppIconSize.sm, color: hexColor(d['color'], c.primary)),
                 label: Text(orgNameOf(d), style: TextStyle(fontFamily: AppFonts.family)),
                 selected: value.contains(asInt(d['id'])),
                 onSelected: (on) {
@@ -1446,12 +1446,12 @@ class _DeptAudience extends StatelessWidget {
                 },
               ),
           ]),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpace.xxs),
           Text(
               value.isEmpty
                   ? t('بدون اختيار: يصل لكل من يطابق الأدوار أعلاه.', 'None picked: everyone matching the roles above.')
                   : t('يصل فقط لمن انضم لهذه الإدارات أو يعمل بها.', 'Only people who joined or work in these departments.'),
-              style: orgText(context, size: 11.5, color: c.textLight)),
+              style: AppType.meta(context).copyWith(color: c.textLight)),
         ]);
       },
     );
@@ -1545,7 +1545,7 @@ class _AnalyticsState extends State<OrgAnnouncementAnalyticsScreen> {
     final link = AnnLink.from(d['link']);
     final at = orgParseUtc(ann['publish_at']);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl),
       children: [
         AppHero(
           title: title,
@@ -1562,7 +1562,7 @@ class _AnalyticsState extends State<OrgAnnouncementAnalyticsScreen> {
           ],
         ),
         if (d['estimated'] == true) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           AppBanner(
             icon: Icons.info_outline_rounded,
             color: c.warning,
@@ -1571,18 +1571,18 @@ class _AnalyticsState extends State<OrgAnnouncementAnalyticsScreen> {
           ),
         ],
         if (asInt(tot['late_viewers']) > 0) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           AppBanner(
             icon: Icons.person_add_alt_1_rounded,
             text: t('${tot['late_viewers']} شاهدوه بعد انضمامهم لاحقاً للجمهور (غير محسوبين ضمن المستهدفين).',
                 '${tot['late_viewers']} joined the audience later and viewed it (not counted as targeted).'),
           ),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         AppSectionTitle(t('مسار التفاعل', 'Engagement funnel'),
             subtitle: t('من استُهدف حتى من أتمّ المطلوب', 'From who was targeted to who followed through')),
         AppCard(child: _Funnel(steps: asMapList(d['funnel']))),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         AppGrid(minTile: 150, children: [
           AppStatTile(icon: Icons.mark_email_read_rounded, label: t('نسبة الوصول', 'Reach'), value: '${rates['reach'] ?? 0}%', color: c.accent),
           AppStatTile(icon: Icons.visibility_rounded, label: t('نسبة المشاهدة', 'View rate'), value: '${rates['view'] ?? 0}%', color: c.primary),
@@ -1593,15 +1593,15 @@ class _AnalyticsState extends State<OrgAnnouncementAnalyticsScreen> {
           AppStatTile(
               icon: Icons.touch_app_rounded, label: t('إجمالي الضغطات', 'Total clicks'), value: '${tot['clicks_total'] ?? 0}', color: c.textMedium),
         ]),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         AppSectionTitle(t('آراء الجمهور', 'How people felt')),
         AppCard(child: _Sentiment(likes: asInt(tot['likes']), dislikes: asInt(tot['dislikes']))),
         if (asMapList(d['timeline']).isNotEmpty) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           AppSectionTitle(t('المشاهدات يوماً بيوم', 'Views day by day'), subtitle: t('أول 14 يوماً من النشر', 'First 14 days after publishing')),
           AppCard(child: _Timeline(days: asMapList(d['timeline']))),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         _PeopleSection(orgId: widget.orgId, announcementId: widget.announcementId, hasForm: hasForm, title: title),
       ],
     );
@@ -1622,13 +1622,13 @@ class _Funnel extends StatelessWidget {
       for (var i = 0; i < steps.length; i++) ...[
         if (i > 0)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
             child: Row(children: [
-              Icon(Icons.south_rounded, size: 14, color: c.textLight),
-              const SizedBox(width: 4),
+              Icon(Icons.south_rounded, size: AppIconSize.xs, color: c.textLight),
+              const SizedBox(width: AppSpace.xxs),
               Flexible(
                 child: Text(_drop(asInt(steps[i - 1]['count']), asInt(steps[i]['count'])),
-                    maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 11, color: c.textLight)),
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight)),
               ),
             ]),
           ),
@@ -1663,19 +1663,19 @@ class _FunnelBar extends StatelessWidget {
       final w = box.maxWidth;
       final bar = math.max(36.0, w * ratio.clamp(0.0, 1.0));
       return Stack(alignment: AlignmentDirectional.centerStart, children: [
-        Container(height: 42, decoration: BoxDecoration(color: c.background, borderRadius: BorderRadius.circular(12))),
+        Container(height: 42, decoration: BoxDecoration(color: c.background, borderRadius: BorderRadius.circular(AppRadius.control))),
         AnimatedContainer(
           duration: const Duration(milliseconds: 500),
           curve: Curves.easeOutCubic,
           height: 42,
           width: bar,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.control),
             gradient: LinearGradient(colors: [color.withValues(alpha: 0.85), color.withValues(alpha: 0.55)]),
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
           child: Row(children: [
             Expanded(
               child: Text(label,
@@ -1684,7 +1684,7 @@ class _FunnelBar extends StatelessWidget {
                   style: appText(13, w: FontWeight.w800, c: ratio > 0.35 ? c.onHero : c.textDark)),
             ),
             Text('$count', style: appText(14, w: FontWeight.w900, c: ratio > 0.92 ? c.onHero : c.textDark)),
-            const SizedBox(width: 6),
+            const SizedBox(width: AppSpace.xs),
             Text('${(ratio * 100).toStringAsFixed(0)}%',
                 style: appText(11.5, w: FontWeight.w700, c: ratio > 0.92 ? c.onHeroMuted : c.textLight)),
           ]),
@@ -1705,26 +1705,26 @@ class _Sentiment extends StatelessWidget {
     if (total == 0) {
       return Row(children: [
         Icon(Icons.sentiment_neutral_rounded, color: c.textLight),
-        const SizedBox(width: 10),
-        Expanded(child: Text(t('لم يتفاعل أحد بعد بإعجاب أو عدم إعجاب', 'No likes or dislikes yet'), style: orgText(context, color: c.textMedium))),
+        const SizedBox(width: AppSpace.sm),
+        Expanded(child: Text(t('لم يتفاعل أحد بعد بإعجاب أو عدم إعجاب', 'No likes or dislikes yet'), style: AppType.row(context).copyWith(color: c.textMedium))),
       ]);
     }
     final p = likes / total;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Row(children: [
-        Icon(Icons.thumb_up_alt_rounded, size: 18, color: c.success),
-        const SizedBox(width: 6),
+        Icon(Icons.thumb_up_alt_rounded, size: AppIconSize.md, color: c.success),
+        const SizedBox(width: AppSpace.xs),
         Text('$likes', style: appText(15, w: FontWeight.w900, c: c.success)),
         const Spacer(),
-        Text('${(p * 100).toStringAsFixed(0)}% ${t('إيجابي', 'positive')}', style: orgText(context, size: 12, color: c.textMedium)),
+        Text('${(p * 100).toStringAsFixed(0)}% ${t('إيجابي', 'positive')}', style: AppType.meta(context).copyWith(color: c.textMedium)),
         const Spacer(),
         Text('$dislikes', style: appText(15, w: FontWeight.w900, c: c.danger)),
-        const SizedBox(width: 6),
-        Icon(Icons.thumb_down_alt_rounded, size: 18, color: c.danger),
+        const SizedBox(width: AppSpace.xs),
+        Icon(Icons.thumb_down_alt_rounded, size: AppIconSize.md, color: c.danger),
       ]),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       ClipRRect(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadius.chip),
         child: SizedBox(
           height: 10,
           child: Row(children: [
@@ -1753,22 +1753,22 @@ class _Timeline extends StatelessWidget {
             child: Tooltip(
               message: '${d['day']} · ${d['views']} ${t('مشاهدة', 'views')} · ${d['clicks']} ${t('ضغطة', 'clicks')}',
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs / 2),
                 child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
                   if (asInt(d['views']) > 0)
                     FittedBox(child: Text('${d['views']}', style: appText(10, w: FontWeight.w700, c: c.textMedium))),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AppSpace.xxs / 2),
                   Container(
                     height: math.max(3.0, 78.0 * asInt(d['views']) / peak),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(5),
+                      borderRadius: BorderRadius.circular(AppRadius.chip),
                       gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [c.primary, c.primary.withValues(alpha: 0.45)]),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpace.xxs),
                   FittedBox(
                     child: Text('${d['day']}'.length >= 10 ? '${d['day']}'.substring(8, 10) : '${d['day']}',
                         style: appText(10, c: c.textLight)),
@@ -1840,7 +1840,7 @@ class _PeopleSectionState extends State<_PeopleSection> {
 
   Future<void> _export() async {
     final fmt = await showAppSheet<String>(context, (ctx) => SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             AppSheetHeader(t('تصدير «${annPeopleLists(widget.hasForm)[_list]}»', 'Export “${annPeopleLists(widget.hasForm)[_list]}”')),
             for (final (f, label, icon) in [
@@ -1886,7 +1886,7 @@ class _PeopleSectionState extends State<_PeopleSection> {
         child: ListView(scrollDirection: Axis.horizontal, children: [
           for (final e in lists.entries)
             Padding(
-              padding: const EdgeInsetsDirectional.only(end: 8),
+              padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
               child: AppChoiceChip(
                 label: _counts.containsKey(e.key) ? '${e.value} (${_counts[e.key]})' : e.value,
                 selected: _list == e.key,
@@ -1902,7 +1902,7 @@ class _PeopleSectionState extends State<_PeopleSection> {
             ),
         ]),
       ),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       TextField(
         controller: _search,
         onChanged: (_) {
@@ -1916,7 +1916,7 @@ class _PeopleSectionState extends State<_PeopleSection> {
           hintText: t('ابحث بالاسم أو البريد أو الهاتف', 'Search by name, e-mail or phone'),
         ),
       ),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
       if (_items == null)
         const SizedBox(height: 220, child: AppListSkeleton(items: 3, padding: EdgeInsets.zero))
       else if (_items!.isEmpty)
@@ -1929,7 +1929,7 @@ class _PeopleSectionState extends State<_PeopleSection> {
         if (_page < _pages)
           Center(
             child: _loading
-                ? const Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(strokeWidth: 2.4))
+                ? const Padding(padding: EdgeInsets.all(AppSpace.sm), child: CircularProgressIndicator(strokeWidth: 2.4))
                 : TextButton.icon(
                     onPressed: () => _load(more: true),
                     icon: const Icon(Icons.expand_more_rounded),
@@ -1965,39 +1965,39 @@ class _PersonRow extends StatelessWidget {
       if (p['delivered_at'] == null && p['in_snapshot'] == true) (Icons.block_rounded, t('لم يصله (غادر قبل الإرسال)', 'Not reached (left before delivery)'), c.danger),
     ];
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.divider)),
+      margin: const EdgeInsets.only(bottom: AppSpace.xs),
+      padding: const EdgeInsets.all(AppSpace.sm),
+      decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.divider)),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         AppAvatar(name: '${u['name'] ?? '?'}', url: u['image_url'] as String?, size: 40),
-        const SizedBox(width: 10),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Flexible(
                 child: Text('${u['name'] ?? '—'}',
-                    maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800)),
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
               ),
-              if (p['reaction'] == 'like') ...[const SizedBox(width: 6), Icon(Icons.thumb_up_alt_rounded, size: 16, color: c.success)],
-              if (p['reaction'] == 'dislike') ...[const SizedBox(width: 6), Icon(Icons.thumb_down_alt_rounded, size: 16, color: c.danger)],
+              if (p['reaction'] == 'like') ...[const SizedBox(width: AppSpace.xs), Icon(Icons.thumb_up_alt_rounded, size: AppIconSize.sm, color: c.success)],
+              if (p['reaction'] == 'dislike') ...[const SizedBox(width: AppSpace.xs), Icon(Icons.thumb_down_alt_rounded, size: AppIconSize.sm, color: c.danger)],
               if (p['in_snapshot'] != true) ...[
-                const SizedBox(width: 6),
+                const SizedBox(width: AppSpace.xs),
                 Tooltip(
                     message: t('انضم للجمهور بعد النشر', 'Joined the audience after publishing'),
-                    child: Icon(Icons.person_add_alt_1_rounded, size: 15, color: c.textLight)),
+                    child: Icon(Icons.person_add_alt_1_rounded, size: AppIconSize.xs, color: c.textLight)),
               ],
             ]),
             if ('${u['email'] ?? ''}'.isNotEmpty || role != null)
               Text([?role, if ('${u['email'] ?? ''}'.isNotEmpty) '${u['email']}'].join(' · '),
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 11.5, color: c.textLight)),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight)),
             if (facts.isNotEmpty) ...[
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpace.xs),
               Wrap(spacing: 10, runSpacing: 4, children: [
                 for (final (icon, text, col) in facts)
                   Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(icon, size: 13, color: col),
-                    const SizedBox(width: 3),
-                    Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 11, color: c.textMedium))),
+                    Icon(icon, size: AppIconSize.xs, color: col),
+                    const SizedBox(width: AppSpace.xxs),
+                    Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium))),
                   ]),
               ]),
             ],

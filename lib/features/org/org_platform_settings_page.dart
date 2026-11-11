@@ -125,7 +125,7 @@ class _OrgPlatformSettingsPageState extends State<OrgPlatformSettingsPage> {
 
     return AppRefresh(
       onRefresh: _load,
-      child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: [
+      child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xl), children: [
         AppHero(
           title: t('الوقت والميزات', 'Time & features'),
           subtitle: t('اضبط توقيت مؤسستك واختر الميزات التي تظهر لأعضائها.',
@@ -136,7 +136,7 @@ class _OrgPlatformSettingsPageState extends State<OrgPlatformSettingsPage> {
             AppHeroStat(icon: Icons.toggle_on_rounded, value: '${_features!.length - off}/${_features!.length}', label: t('ميزات مفعّلة', 'Features on')),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         AppCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             PlatformSectionHeader(
@@ -152,7 +152,7 @@ class _OrgPlatformSettingsPageState extends State<OrgPlatformSettingsPage> {
               onZone: (v) => setState(() => _zone = v),
               onFormat: (v) => setState(() => _fmt = v),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpace.md),
             AppPrimaryButton(
               label: t('حفظ', 'Save'),
               icon: Icons.check_rounded,
@@ -161,7 +161,7 @@ class _OrgPlatformSettingsPageState extends State<OrgPlatformSettingsPage> {
             ),
           ]),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         PlatformSectionHeader(
           icon: Icons.dashboard_customize_rounded,
           title: t('الميزات', 'Features'),
@@ -175,7 +175,7 @@ class _OrgPlatformSettingsPageState extends State<OrgPlatformSettingsPage> {
         else ...[
           if (_features!.length > 6)
             Padding(
-              padding: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.only(bottom: AppSpace.sm),
               child: TextField(
                 onChanged: (v) => setState(() => _q = v),
                 decoration: InputDecoration(
@@ -186,11 +186,11 @@ class _OrgPlatformSettingsPageState extends State<OrgPlatformSettingsPage> {
             ),
           for (final g in groups.entries) ...[
             Padding(
-              padding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
+              padding: const EdgeInsets.fromLTRB(AppSpace.xxs, AppSpace.xs, AppSpace.xxs, AppSpace.xs),
               child: Text(g.key, style: appText(12.5, w: FontWeight.w800, c: c.textMedium)),
             ),
             AppCard(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xxs),
               child: Column(children: [
                 for (final f in g.value)
                   AppSwitchTile(

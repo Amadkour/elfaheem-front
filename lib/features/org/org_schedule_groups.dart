@@ -16,7 +16,6 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart' show RowCard;
 import 'org_providers.dart';
 import 'org_timetable_parts.dart' show courseName;
-import 'org_ui.dart';
 import 'org_v3.dart';
 import 'org_page_header.dart' show OrgPageRefresh;
 import 'org_schedule_planning.dart' show orgStudioPage, studioSubtitle;
@@ -118,7 +117,7 @@ class _GroupsPageState extends State<_GroupsPage> {
     final others = [for (final g in asMapList(data?['groups'])) if (g['kind'] == from['kind'] && g['id'] != from['id']) g];
     final to = await showAdminSheet<Map<String, dynamic>>(
         context,
-        (ctx) => ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
+        (ctx) => ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg), children: [
               SheetHeader(t('نقل ${asMap(student['student'])['name']}', 'Move ${asMap(student['student'])['name']}')),
               for (final g in others)
                 ListTile(
@@ -126,7 +125,7 @@ class _GroupsPageState extends State<_GroupsPage> {
                   trailing: Text('${g['enrolled']}/${g['capacity']}'),
                   onTap: () => Navigator.pop(ctx, g),
                 ),
-              if (others.isEmpty) Padding(padding: const EdgeInsets.all(16), child: Text(t('لا توجد مجموعة أخرى', 'No other group'))),
+              if (others.isEmpty) Padding(padding: const EdgeInsets.all(AppSpace.md), child: Text(t('لا توجد مجموعة أخرى', 'No other group'))),
             ]));
     if (to == null || !mounted) return;
     final r = await orgCall(() => widget.p.api.post('$base/registrations/${student['registration_id']}/group', body: {'section_id': to['id']}),
@@ -141,7 +140,7 @@ class _GroupsPageState extends State<_GroupsPage> {
     final names = {for (final l in widget.p.loads) asInt(l['course_id']): courseName(l)};
     await showAdminSheet<void>(
         context,
-        (ctx) => ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
+        (ctx) => ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg), children: [
               SheetHeader('${asMap(student['student'])['name']}'),
               for (final x in asMapList(r.map['items']))
                 ListTile(
@@ -167,7 +166,7 @@ class _GroupsPageState extends State<_GroupsPage> {
         ? found.first
         : await showAdminSheet<Map<String, dynamic>>(
             context,
-            (ctx) => ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
+            (ctx) => ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg), children: [
                   SheetHeader(t('اختر الطالب', 'Choose the student')),
                   for (final m in found)
                     ListTile(title: Text('${asMap(m['user'])['name']}'), subtitle: Text('${m['student_code'] ?? ''}'), onTap: () => Navigator.pop(ctx, m)),
@@ -199,7 +198,7 @@ class _GroupsPageState extends State<_GroupsPage> {
     final c = context.colors;
     final canEdit = context.read<OrgSession>().can('schedule', 'update');
     final groups = asMapList(data?['groups']);
-    return ListView(padding: const EdgeInsets.all(16), children: [
+    return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
       Align(
         alignment: AlignmentDirectional.centerEnd,
         child: TextButton.icon(onPressed: _findStudent, icon: const Icon(Icons.person_search_rounded), label: Text(t('مجموعات طالب', 'A student\'s groups'))),
@@ -217,7 +216,7 @@ class _GroupsPageState extends State<_GroupsPage> {
         },
       ),
       if (course != null && canEdit) ...[
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
           ChoiceChip(label: Text(t('أبجدياً', 'Alphabetical')), selected: mode == 'alphabetical', onSelected: (_) => setState(() => mode = 'alphabetical')),
           ChoiceChip(label: Text(t('بالرقم الجامعي', 'By student ID')), selected: mode == 'student_code', onSelected: (_) => setState(() => mode = 'student_code')),
@@ -225,7 +224,7 @@ class _GroupsPageState extends State<_GroupsPage> {
           if (data != null) OutlinedButton.icon(onPressed: _export, icon: const Icon(Icons.file_download_rounded), label: Text(t('تصدير', 'Export'))),
         ]),
       ],
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       if (loading) const AppListSkeleton(),
       if (!loading && data != null && groups.isEmpty)
         AppEmpty(
@@ -235,13 +234,13 @@ class _GroupsPageState extends State<_GroupsPage> {
       if (!loading)
         for (final g in groups)
           Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.only(bottom: AppSpace.sm),
             child: RowCard(
               accent: asInt(g['enrolled']) > asInt(g['capacity']) ? c.danger : (g['kind'] == 'lab' ? c.purple : c.primary),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
-                  Expanded(child: Text(groupLabel(g), style: orgText(context, w: FontWeight.w800))),
-                  Text('${g['enrolled']}/${g['capacity']}', style: orgText(context, w: FontWeight.w700, color: c.textMedium)),
+                  Expanded(child: Text(groupLabel(g), style: AppType.bodyStrong(context))),
+                  Text('${g['enrolled']}/${g['capacity']}', style: AppType.bodyStrong(context).copyWith(color: c.textMedium)),
                 ]),
                 for (final s in asMapList(g['students']))
                   ListTile(

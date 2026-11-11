@@ -100,7 +100,7 @@ class GovSubmitForm extends StatelessWidget {
     final councilOffer = e != null && e.canSubmitToCouncil && !complaintOnly && type == 'request';
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Text(t('إلى أي جهة؟', 'To which entity?'), style: appText(12, c: c.textLight)),
-      const SizedBox(height: 6),
+      const SizedBox(height: AppSpace.xs),
       AppDropdown<int>(
         value: e?.id,
         hint: Text(t('اختر الجهة', 'Choose an entity')),
@@ -108,12 +108,12 @@ class GovSubmitForm extends StatelessWidget {
         items: [for (final x in entities) DropdownMenuItem(value: x.id, child: Text(x.name, maxLines: 1, overflow: TextOverflow.ellipsis))],
         onChanged: (v) => onEntity(entities.where((x) => x.id == v).firstOrNull),
       ),
-      if (e != null && (e.description ?? '').isNotEmpty) ...[const SizedBox(height: 6), Text(e.description!, style: appText(12, c: c.textMedium, h: 1.4))],
+      if (e != null && (e.description ?? '').isNotEmpty) ...[const SizedBox(height: AppSpace.xs), Text(e.description!, style: appText(12, c: c.textMedium, h: 1.4))],
       if (forWho != null) ...[const SizedBox(height: AppSpace.sm), forWho!],
       if (cats.isNotEmpty) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         Text(t('ما موضوعها؟', 'What is it about?'), style: appText(12, c: c.textLight)),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         Wrap(spacing: 6, runSpacing: 6, children: [
           for (final cat in cats)
             AppChoiceChip(
@@ -124,13 +124,13 @@ class GovSubmitForm extends StatelessWidget {
             ),
         ]),
         if (category?.formId != null) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           AppBanner(icon: Icons.assignment_rounded, text: t('هذا التصنيف له نموذج خاص؛ ستُفتح استمارته بعد الإرسال', 'This category has its own form; it opens after sending')),
         ],
       ],
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       Text(t('النوع', 'Type'), style: appText(12, c: c.textLight)),
-      const SizedBox(height: 6),
+      const SizedBox(height: AppSpace.xs),
       Wrap(spacing: 6, runSpacing: 6, children: [
         for (final x in types)
           AppChoiceChip(
@@ -141,7 +141,7 @@ class GovSubmitForm extends StatelessWidget {
           ),
       ]),
       if (councilOffer) ...[
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         AppSwitchTile(
           icon: Icons.gavel_rounded,
           title: t('عرضه على مجلس القسم', 'Put it before the Department Council'),
@@ -150,22 +150,22 @@ class GovSubmitForm extends StatelessWidget {
           onChanged: onToCouncil ?? (_) {},
         ),
         if (toCouncil) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs),
           AppBanner(icon: Icons.how_to_vote_outlined, color: c.purple, text: t('بصفتك مقدّم الطلب لا تصوّت عليه، ويُحسب النصاب من دونك', 'As the submitter you do not vote on it, and the quorum is counted without you')),
         ],
       ],
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       AppField(controller: title, label: t('العنوان', 'Title')),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       AppField(controller: body, label: t('التفاصيل', 'Details'), maxLines: 5),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       Text(t('الأولوية', 'Priority'), style: appText(12, c: c.textLight)),
-      const SizedBox(height: 6),
+      const SizedBox(height: AppSpace.xs),
       Wrap(spacing: 6, runSpacing: 6, children: [
         for (final p in priorities) AppChoiceChip(label: priorityLabelOf(p), selected: priority == p, onTap: () => onPriority(p)),
       ]),
       if (!forOthers) ...[
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         AppSwitchTile(
           icon: Icons.visibility_off_rounded,
           title: t('إخفاء هويتي', 'Hide my identity'),
@@ -174,23 +174,23 @@ class GovSubmitForm extends StatelessWidget {
           onChanged: onAnonymous,
         ),
       ],
-      const SizedBox(height: 6),
+      const SizedBox(height: AppSpace.xs),
       Text(t('مرفقات', 'Attachments'), style: appText(12, c: c.textLight)),
-      const SizedBox(height: 2),
+      const SizedBox(height: AppSpace.xxs / 2),
       Text(t('PDF أو صور أو مستندات Office — حتى 10 ميجابايت للملف', 'PDF, images or Office documents — up to 10 MB each'), style: appText(11.5, c: c.textLight)),
-      const SizedBox(height: 6),
-      if (attachments.isNotEmpty) ...[GovAttachmentChips(attachments: attachments, onRemove: onRemoveAttachment), const SizedBox(height: 6)],
+      const SizedBox(height: AppSpace.xs),
+      if (attachments.isNotEmpty) ...[GovAttachmentChips(attachments: attachments, onRemove: onRemoveAttachment), const SizedBox(height: AppSpace.xs)],
       Wrap(spacing: 6, runSpacing: 6, children: [
         ActionChip(
-          avatar: uploading ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.add_rounded, size: 16, color: appInk(context, c.primary)),
+          avatar: uploading ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.add_rounded, size: AppIconSize.sm, color: appInk(context, c.primary)),
           label: Text(t('إضافة ملف', 'Add file'), style: appText(12, w: FontWeight.w700, c: appInk(context, c.primary))),
           onPressed: uploading || attachments.length >= 10 ? null : onAddAttachment,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
         ),
       ]),
       if (e != null && e.chain.isNotEmpty && !(councilOffer && toCouncil)) ...[const SizedBox(height: AppSpace.sm), GovChainPreview(steps: e.chain)],
-      if (error != null) ...[const SizedBox(height: 10), AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: error!)],
-      const SizedBox(height: 14),
+      if (error != null) ...[const SizedBox(height: AppSpace.sm), AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: error!)],
+      const SizedBox(height: AppSpace.md),
       AppPrimaryButton(label: t('إرسال', 'Send'), icon: Icons.send_rounded, busy: busy, onPressed: e == null ? null : onSubmit),
     ]);
   }
@@ -351,8 +351,8 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        icon: Icon(Icons.check_circle_rounded, color: ctx.colors.success, size: 44),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.block)),
+        icon: Icon(Icons.check_circle_rounded, color: ctx.colors.success, size: AppIconSize.hero),
         title: Text(t('أُرسلت', 'Sent'), style: appText(16, w: FontWeight.w800)),
         content: Text('${m['message'] ?? t('استلمت الجهة معاملتك وسيصلك إشعار بكل تحديث', 'The entity received your item; you will be notified of every update')}\n\n${t('رقم المرجع', 'Reference')}: $ref',
             textAlign: TextAlign.center, style: appText(13.5, h: 1.5)),
@@ -380,7 +380,7 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
       child = AppEmpty(icon: Icons.apartment_rounded, title: t('لا جهات تستقبل المعاملات بعد', 'No entity receives items yet'));
     } else {
       child = SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl),
         child: GovSubmitForm(
           entities: _entities!,
           entity: _entity,
@@ -534,10 +534,10 @@ class _GovMyItemsPageState extends State<GovMyItemsPage> {
     // staff of this organization on the page of its own: the dashboard's header, "New request" its primary action
     final pushed = !widget.embedded && orgUsesDashboardHeader(context, widget.orgId);
     final body = Column(children: [
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       SizedBox(
         height: 40,
-        child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16), children: [
+        child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: AppSpace.md), children: [
           for (final e in filters.entries) ...[
             AppChoiceChip(
               label: e.value,
@@ -547,13 +547,13 @@ class _GovMyItemsPageState extends State<GovMyItemsPage> {
                 _load(reset: true);
               },
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: AppSpace.xs),
           ],
         ]),
       ),
       if (widget.onSubmit != null && !pushed)
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
           child: Align(alignment: AlignmentDirectional.centerEnd, child: AppPill(icon: Icons.add_rounded, label: t('معاملة جديدة', 'New request'), onTap: widget.onSubmit)),
         ),
       Expanded(child: _list()),
@@ -583,13 +583,13 @@ class _GovMyItemsPageState extends State<GovMyItemsPage> {
     return AppRefresh(
       onRefresh: () => _load(reset: true),
       child: ListView.builder(
-        padding: const EdgeInsets.only(top: 4, bottom: 40),
+        padding: const EdgeInsets.only(top: AppSpace.xxs, bottom: AppSpace.xxl),
         itemCount: _items.length + 1,
         itemBuilder: (context, i) {
           if (i == _items.length) {
-            if (_page >= _pages) return const SizedBox(height: 8);
+            if (_page >= _pages) return const SizedBox(height: AppSpace.xs);
             return Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppSpace.sm),
               child: Center(
                 child: _more
                     ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
@@ -668,15 +668,15 @@ class _GovMyAssignmentsPageState extends State<GovMyAssignmentsPage> {
     } else {
       body = AppRefresh(
         onRefresh: _load,
-        child: ListView(padding: const EdgeInsets.only(top: 6, bottom: 40), children: [
+        child: ListView(padding: const EdgeInsets.only(top: AppSpace.xs, bottom: AppSpace.xxl), children: [
           for (final a in _rows!)
             AppCard(
-              margin: const EdgeInsets.fromLTRB(16, 5, 16, 5),
-              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
+              padding: const EdgeInsets.all(AppSpace.sm),
               onTap: a.formId == null ? null : () => _open(a),
               child: Row(children: [
                 Icon(Icons.assignment_rounded, color: a.overdue ? c.danger : c.primary),
-                const SizedBox(width: 10),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(a.formTitle ?? '${t('نموذج', 'Form')} #${a.formId}', style: appText(14, w: FontWeight.w800, c: c.textDark)),

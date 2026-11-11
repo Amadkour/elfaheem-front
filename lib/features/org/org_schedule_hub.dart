@@ -11,7 +11,6 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../admin/admin_common.dart';
-import 'org_ui.dart';
 
 enum TimetableStage { setup, generate, review, publish }
 
@@ -138,26 +137,26 @@ class NextStepBanner extends StatelessWidget {
     final c = context.colors;
     final col = switch (tone) { 1 => c.success, 2 => c.warning, 3 => c.danger, _ => c.primary };
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpace.md),
       decoration: BoxDecoration(
         color: col.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: col.withValues(alpha: 0.35)),
       ),
       child: LayoutBuilder(builder: (context, box) {
         final text = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text(t('الخطوة التالية', 'Next step'), style: orgText(context, size: 11, w: FontWeight.w800, color: col)),
-          const SizedBox(height: 2),
-          Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, size: 15, w: FontWeight.w800)),
-          const SizedBox(height: 2),
-          Text(body, style: orgText(context, size: 12.5, color: c.textMedium)),
+          Text(t('الخطوة التالية', 'Next step'), style: AppType.overline(context).copyWith(color: col)),
+          const SizedBox(height: AppSpace.xxs / 2),
+          Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+          const SizedBox(height: AppSpace.xxs / 2),
+          Text(body, style: AppType.label(context).copyWith(color: c.textMedium)),
         ]);
         final button = action.isEmpty || onAction == null
             ? null
             : AppPrimaryButton(label: action, icon: Icons.arrow_forward_rounded, onPressed: onAction);
         final second = secondary == null || onSecondary == null
             ? null
-            : OutlinedButton.icon(onPressed: onSecondary, icon: Icon(secondaryIcon, size: 18), label: Text(secondary!, maxLines: 1, overflow: TextOverflow.ellipsis));
+            : OutlinedButton.icon(onPressed: onSecondary, icon: Icon(secondaryIcon, size: AppIconSize.md), label: Text(secondary!, maxLines: 1, overflow: TextOverflow.ellipsis));
         // AppPrimaryButton fills its width: it always sits in a bounded box
         final buttons = Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, crossAxisAlignment: WrapCrossAlignment.center, children: [
           if (second != null) second,
@@ -167,17 +166,17 @@ class NextStepBanner extends StatelessWidget {
           return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Icon(Icons.flag_rounded, color: col),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpace.sm),
               Expanded(child: text),
             ]),
-            if (button != null || second != null) ...[const SizedBox(height: 10), Align(alignment: AlignmentDirectional.centerEnd, child: buttons)],
+            if (button != null || second != null) ...[const SizedBox(height: AppSpace.sm), Align(alignment: AlignmentDirectional.centerEnd, child: buttons)],
           ]);
         }
         return Row(children: [
           Icon(Icons.flag_rounded, color: col),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.sm),
           Expanded(child: text),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           ConstrainedBox(constraints: const BoxConstraints(maxWidth: 440), child: buttons),
         ]);
       }),

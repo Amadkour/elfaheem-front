@@ -303,7 +303,7 @@ class _UnitCard extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs, top: AppSpace.sm),
-              child: Icon(Icons.chevron_right_rounded, size: 20, color: c.textLight),
+              child: Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.textLight),
             ),
           ]),
         ),
@@ -376,25 +376,25 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
                 ..addAll(((p['features'] as List?) ?? const []).map((e) => '$e'));
             });
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(edit == null ? t('إدارة خدمية جديدة', 'New service department') : t('تعديل الإدارة', 'Edit department')),
             if (edit == null)
               Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.only(bottom: AppSpace.sm),
                 child: Text(
                     t('الإدارات الخدمية: الإرشاد الأكاديمي، شؤون الطلاب، الامتحانات والكنترول، الخريجين، الرعاية الصحية، الشكاوى… أما الأقسام العلمية (نظم المعلومات، علوم الحاسب…) فتُدار من "الهيكل الأكاديمي".',
                         'Service departments: academic advising, student affairs, exams & control, alumni, healthcare, complaints… Academic departments (IS, CS, IT…) are managed in "Academic structure".'),
-                    style: orgText(ctx, size: 12, color: c.textLight)),
+                    style: AppType.meta(ctx).copyWith(color: c.textLight)),
               ),
             if (presets.isNotEmpty) ...[
               Text(t('ابدأ بإدارة جاهزة — أو اكتب اسماً خاصاً بالأسفل', 'Start from a ready-made one — or type your own below'),
-                  style: orgText(ctx, size: 12.5, color: c.textMedium)),
-              const SizedBox(height: 8),
+                  style: AppType.label(ctx).copyWith(color: c.textMedium)),
+              const SizedBox(height: AppSpace.xs),
               Wrap(spacing: 8, runSpacing: 8, children: [
                 for (final p in presets)
                   ChoiceChip(
-                    avatar: Icon(deptIcon(p['icon']), size: 16,
+                    avatar: Icon(deptIcon(p['icon']), size: AppIconSize.sm,
                         color: preset == p['key'] ? c.onHero : hexColor(p['color'], c.primary)),
                     label: Text(t('${p['name_ar']}', '${p['name_en']}'),
                         style: TextStyle(fontFamily: AppFonts.family, color: preset == p['key'] ? c.onHero : c.textDark)),
@@ -411,7 +411,7 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
             Field(controller: desc, label: t('ماذا تقدم هذه الإدارة؟', 'What does it do?'), maxLines: 2),
             if (canHead && parents.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: AppSpace.sm),
                 child: AppDropdown<int>(
                   value: parent,
                   decoration: InputDecoration(labelText: t('تتبع إدارة أخرى؟', 'Part of another department?')),
@@ -435,8 +435,8 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
             Row(children: [
               if ((logo ?? '').isNotEmpty)
                 Padding(
-                  padding: const EdgeInsetsDirectional.only(end: 10),
-                  child: ClipRRect(borderRadius: BorderRadius.circular(14),
+                  padding: const EdgeInsetsDirectional.only(end: AppSpace.sm),
+                  child: ClipRRect(borderRadius: BorderRadius.circular(AppRadius.control),
                       child: Image.network(logo!, width: 52, height: 52, fit: BoxFit.cover,
                           errorBuilder: (_, _, _) => const SizedBox(width: 52, height: 52))),
                 ),
@@ -454,26 +454,26 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
               if ((logo ?? '').isNotEmpty)
                 IconButton(tooltip: t('إزالة', 'Remove'), onPressed: () => set(() => logo = null), icon: Icon(Icons.close_rounded, color: c.textLight)),
             ]),
-            const SizedBox(height: 12),
-            Text(t('أو أيقونة ولون', 'or an icon and colour'), style: orgText(ctx, size: 12.5, color: c.textLight)),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.sm),
+            Text(t('أو أيقونة ولون', 'or an icon and colour'), style: AppType.label(ctx).copyWith(color: c.textLight)),
+            const SizedBox(height: AppSpace.xs),
             Wrap(spacing: 8, runSpacing: 8, children: [
               for (final e in deptIconChoices.entries)
                 InkWell(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadius.control),
                   onTap: () => set(() => icon = e.key),
                   child: Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(AppSpace.xs),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppRadius.control),
                       color: icon == e.key ? hexColor(color, c.primary).withValues(alpha: 0.18) : c.inputBg,
                       border: Border.all(color: icon == e.key ? hexColor(color, c.primary) : c.divider),
                     ),
-                    child: Icon(e.value, size: 20, color: icon == e.key ? hexColor(color, c.primary) : c.textMedium),
+                    child: Icon(e.value, size: AppIconSize.md, color: icon == e.key ? hexColor(color, c.primary) : c.textMedium),
                   ),
                 ),
             ]),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             Wrap(spacing: 10, children: [
               for (final h in palette)
                 GestureDetector(
@@ -489,27 +489,27 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
                   ),
                 ),
             ]),
-            const SizedBox(height: 14),
-            Text(t('الخدمات المفعّلة', 'Services switched on'), style: orgText(ctx, size: 12.5, color: c.textLight)),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.md),
+            Text(t('الخدمات المفعّلة', 'Services switched on'), style: AppType.label(ctx).copyWith(color: c.textLight)),
+            const SizedBox(height: AppSpace.xs),
             Wrap(spacing: 8, runSpacing: 6, children: [
               for (final e in featureLabels().entries)
                 FilterChip(
-                  avatar: Icon(_featureIcons[e.key], size: 16),
+                  avatar: Icon(_featureIcons[e.key], size: AppIconSize.sm),
                   label: Text(e.value, style: TextStyle(fontFamily: AppFonts.family)),
                   selected: features.contains(e.key),
                   onSelected: (on) => set(() => on ? features.add(e.key) : features.remove(e.key)),
                 ),
             ]),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpace.md),
             Text(t('كيف يصل إليها الطلاب؟ (يظهر في دليل الإدارات)', 'How do people reach it? (shown in the directory)'),
-                style: orgText(ctx, size: 12.5, color: c.textLight)),
-            const SizedBox(height: 6),
+                style: AppType.label(ctx).copyWith(color: c.textLight)),
+            const SizedBox(height: AppSpace.xs),
             Field(controller: location, label: t('المكان — مثلاً: مبنى ب، الدور الثاني', 'Where — e.g. Building B, 2nd floor')),
             Field(controller: hours, label: t('مواعيد العمل — مثلاً: الأحد–الخميس 9–2', 'Office hours — e.g. Sun–Thu 9–2')),
             AppEmailField(controller: email, label: t('البريد', 'E-mail')),
             PhoneInputField(controller: phone, label: t('الهاتف', 'Phone')),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             AppButton.primary(
               busy: busy,
               label: t('حفظ', 'Save'),
@@ -623,14 +623,14 @@ class _OrgDepartmentHubState extends State<OrgDepartmentHub> {
               )
             : null,
         child: Column(children: [
-          Container(margin: const EdgeInsets.fromLTRB(16, 8, 16, 4), decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: col.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))]), child: AppMeshSurface(color: col, radius: BorderRadius.circular(24), child: Padding(padding: const EdgeInsets.all(16), child: Row(children: [
+          Container(margin: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xxs), decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppRadius.block), boxShadow: [BoxShadow(color: col.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))]), child: AppMeshSurface(color: col, radius: BorderRadius.circular(AppRadius.block), child: Padding(padding: const EdgeInsets.all(AppSpace.md), child: Row(children: [
               Container(
                 width: 52,
                 height: 52,
-                decoration: BoxDecoration(color: c.onHero.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(16)),
-                child: Icon(deptIcon(_d['icon']), color: c.onHero, size: 28),
+                decoration: BoxDecoration(color: c.onHero.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(AppRadius.card)),
+                child: Icon(deptIcon(_d['icon']), color: c.onHero, size: AppIconSize.xl),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: AppSpace.md),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(orgNameOf(_d), style: AppType.section(context).copyWith(color: c.onHero)),
@@ -647,7 +647,7 @@ class _OrgDepartmentHubState extends State<OrgDepartmentHub> {
             indicatorColor: col,
             unselectedLabelColor: c.textMedium,
             labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
-            tabs: [for (final tb in tabs) Tab(icon: Icon(tb.$2, size: 20), text: tb.$1)],
+            tabs: [for (final tb in tabs) Tab(icon: Icon(tb.$2, size: AppIconSize.md), text: tb.$1)],
           ),
           Expanded(child: TabBarView(children: [for (final tb in tabs) tb.$3])),
         ]),
@@ -666,7 +666,7 @@ class _DeptOverview extends StatelessWidget {
     final c = context.colors;
     final k = asMap(d['counts']);
     final head = asMap(d['head']);
-    return ListView(padding: const EdgeInsets.only(top: 8, bottom: 40), children: [
+    return ListView(padding: const EdgeInsets.only(top: AppSpace.xs, bottom: AppSpace.xxl), children: [
       OrgGrid(children: [
         OrgStatTile(icon: Icons.groups_rounded, label: t('الفريق', 'Team'), value: k['team']),
         OrgStatTile(icon: Icons.support_agent_rounded, label: t('شكاوى مفتوحة', 'Open complaints'), value: k['open_complaints'],
@@ -678,14 +678,14 @@ class _DeptOverview extends StatelessWidget {
         OrgStatTile(icon: Icons.campaign_rounded, label: t('إعلانات منشورة', 'Live ads'), value: k['announcements'], color: c.primary),
       ]),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, 0),
         child: Section(
           title: t('بطاقة الإدارة', 'Department card'),
           icon: Icons.contact_mail_rounded,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(t('هكذا يراها الطلاب في دليل الإدارات', 'This is how students see it in the directory'),
-                style: orgText(context, size: 12, color: c.textLight)),
-            const SizedBox(height: 8),
+                style: AppType.meta(context).copyWith(color: c.textLight)),
+            const SizedBox(height: AppSpace.xs),
             OrgInfoRow(Icons.person_rounded, head.isEmpty ? null : '${t('الرئيس', 'Head')}: ${head['name']}'),
             OrgInfoRow(Icons.place_rounded, '${d['location'] ?? ''}'),
             OrgInfoRow(Icons.schedule_rounded, '${d['office_hours'] ?? ''}'),
@@ -693,7 +693,7 @@ class _DeptOverview extends StatelessWidget {
             OrgInfoRow(Icons.phone_rounded, '${d['phone'] ?? ''}', ltr: true),
             if ('${d['location'] ?? ''}${d['office_hours'] ?? ''}${d['email'] ?? ''}'.isEmpty)
               Text(t('أضف المكان ومواعيد العمل ليعرف الطلاب كيف يصلون إليكم', 'Add the place and office hours so students know how to reach you'),
-                  style: orgText(context, size: 12.5, color: c.warning)),
+                  style: AppType.label(context).copyWith(color: c.warning)),
           ]),
         ),
       ),
@@ -753,12 +753,12 @@ class _TeamBodyState extends State<_TeamBody> {
     await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
           final c = ctx.colors;
           return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               SheetHeader(t('إضافة للفريق', 'Add to the team')),
               if (people.isEmpty)
                 Text(t('أضف المدرسين والإداريين أولاً من صفحة الأعضاء', 'Add teachers and staff first from the People page'),
-                    style: orgText(ctx, color: c.textMedium))
+                    style: AppType.row(ctx).copyWith(color: c.textMedium))
               else
                 Flexible(
                   child: ListView(shrinkWrap: true, children: [
@@ -781,7 +781,7 @@ class _TeamBodyState extends State<_TeamBody> {
                     subtitle: t('يحصل على كل صلاحيات الإدارة (قابلة للتعديل من الأدوار)', 'Gets every right in this department (editable in Roles)'),
                     value: head,
                     onChanged: (v) => set(() => head = v)),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               AppButton.primary(
                 busy: busy,
                 label: t('إضافة', 'Add'),
@@ -829,25 +829,25 @@ class _TeamBodyState extends State<_TeamBody> {
                 ? OrgEmpty(icon: Icons.groups_rounded, title: t('الفريق فارغ', 'No team yet'),
                     message: t('أضف رئيس الإدارة والموظفين — صلاحياتهم تُمنح تلقائياً لهذه الإدارة فقط.',
                         'Add the head and staff — their rights apply to this department only, automatically.'))
-                : ListView(padding: const EdgeInsets.fromLTRB(0, 8, 0, 100), children: [
+                : ListView(padding: const EdgeInsets.fromLTRB(0, AppSpace.xs, 0, AppSpace.xxxl + AppSpace.xl), children: [
                     for (final r in rows)
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
                         child: RowCard(
                           accent: r['is_head'] == true ? c.warning : null,
                           child: Row(children: [
                             AdminAvatar(name: '${asMap(r['user'])['name']}', url: asMap(r['user'])['image_url'] as String?),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: AppSpace.sm),
                             Expanded(
                               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                 Row(children: [
-                                  Flexible(child: Text('${asMap(r['user'])['name']}', style: orgText(context, w: FontWeight.w800))),
+                                  Flexible(child: Text('${asMap(r['user'])['name']}', style: AppType.bodyStrong(context))),
                                   if (r['is_head'] == true) ...[
-                                    const SizedBox(width: 6),
+                                    const SizedBox(width: AppSpace.xs),
                                     OrgPill(t('الرئيس', 'Head'), color: c.warning, icon: Icons.star_rounded),
                                   ],
                                 ]),
-                                Text('${r['title'] ?? t('عضو الفريق', 'Team member')}', style: orgText(context, size: 12, color: c.textMedium)),
+                                Text('${r['title'] ?? t('عضو الفريق', 'Team member')}', style: AppType.meta(context).copyWith(color: c.textMedium)),
                               ]),
                             ),
                             PopupMenuButton<String>(
@@ -922,10 +922,10 @@ class _DeptDataLabState extends State<_DeptDataLab> {
               ? OrgEmpty(icon: Icons.science_rounded, title: t('لا مقررات مرتبطة بالإدارة', 'No courses linked to this department'),
                   message: t('اربط المقررات بالإدارة من صفحة المقررات لتظهر درجاتها هنا.',
                       'Link courses to this department from the Courses page to see their grades here.'))
-              : ListView(padding: const EdgeInsets.fromLTRB(0, 8, 0, 40), children: [
+              : ListView(padding: const EdgeInsets.fromLTRB(0, AppSpace.xs, 0, AppSpace.xxl), children: [
                   for (final r in rows)
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
                       child: OrgActionCard(
                         icon: Icons.table_chart_rounded,
                         color: r['enabled'] == true ? c.primary : c.textLight,

@@ -131,7 +131,7 @@ class _RolesTabState extends State<_RolesTab> {
         onRetry: _load,
         child: roles == null
             ? const SizedBox.shrink()
-            : ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 100), children: [
+            : ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxxl + AppSpace.xl), children: [
                 Padding(
                   padding: const EdgeInsets.only(bottom: AppSpace.sm),
                   child: Text(
@@ -250,12 +250,12 @@ class _OrgRoleEditorState extends State<OrgRoleEditor> {
 
   Widget _body(BuildContext context) {
     final c = context.colors;
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl), children: [
         if (!_editable)
           Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: AppSpace.sm),
             child: Text(t('هذا الدور معرّف في المؤسسة الأم — للعرض هنا فقط.', 'Defined by the parent organization — read only here.'),
-                style: orgText(context, color: c.warning)),
+                style: AppType.row(context).copyWith(color: c.warning)),
           ),
         Section(
           title: t('الهوية', 'Identity'),
@@ -315,7 +315,7 @@ class _PeopleTab extends StatelessWidget {
         final p = context.read<OrgPaged>();
         return Column(children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxs),
             child: SearchBox(hint: t('ابحث عن موظف أو مدرس', 'Search staff or teachers'), onChanged: p.setSearch),
           ),
           Expanded(
@@ -325,18 +325,18 @@ class _PeopleTab extends StatelessWidget {
                 final u = asMap(row['user']);
                 final teams = asMapList(row['departments']);
                 return Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
                   child: RowCard(
                     onTap: () => Navigator.of(context).push(MaterialPageRoute(
                         builder: (_) => ChangeNotifierProvider.value(value: s, child: OrgPersonAccess(userId: asInt(u['id']))))),
                     child: Row(children: [
                       AdminAvatar(name: '${u['name']}', url: u['image_url'] as String?),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSpace.sm),
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('${u['name']}', style: orgText(context, w: FontWeight.w800)),
+                          Text('${u['name']}', style: AppType.bodyStrong(context)),
                           Text(teams.isEmpty ? '${u['email']}' : teams.map((e) => e['title'] ?? '—').join(' · '),
-                              maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12, color: context.colors.textMedium)),
+                              maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: context.colors.textMedium)),
                         ]),
                       ),
                       Icon(Icons.chevron_right_rounded, color: context.colors.textLight),
@@ -409,7 +409,7 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
 
   Future<int?> _pickScope(BuildContext ctx, {bool allowOrg = true}) => showAdminSheet<int>(ctx, (c2) => ListView(
         shrinkWrap: true,
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
         children: [
           SheetHeader(t('أين تنطبق؟', 'Where does it apply?')),
           if (allowOrg)
@@ -430,7 +430,7 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
   Future<void> _assignRole() async {
     final role = await showAdminSheet<Map<String, dynamic>>(context, (ctx) => ListView(
           shrinkWrap: true,
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
           children: [
             SheetHeader(t('منح دور', 'Give a role')),
             for (final r in _roles)
@@ -461,7 +461,7 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
     await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
           final c = ctx.colors;
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               SheetHeader(t('صلاحيات خاصة — ${_deptName(scope == 0 ? null : scope)}', 'Personal rights — ${_deptName(scope == 0 ? null : scope)}')),
               Field(controller: note, label: t('السبب — مثلاً: قائم بالأعمال أثناء إجازة الرئيس', 'Why — e.g. acting head during leave')),
@@ -479,12 +479,12 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
                   child: Text(t('اختر', 'Pick')),
                 ),
               ),
-              Text(t('مسموح', 'Allow'), style: orgText(ctx, w: FontWeight.w800, color: c.success)),
+              Text(t('مسموح', 'Allow'), style: AppType.bodyStrong(ctx).copyWith(color: c.success)),
               OrgPermissionMatrix(catalog: _catalog!, value: allow, deptOnly: scope != 0, onChanged: (v) => set(() => allow = v)),
-              const SizedBox(height: 10),
-              Text(t('ممنوع (يتغلب على أي دور)', 'Deny (beats any role)'), style: orgText(ctx, w: FontWeight.w800, color: c.danger)),
+              const SizedBox(height: AppSpace.sm),
+              Text(t('ممنوع (يتغلب على أي دور)', 'Deny (beats any role)'), style: AppType.bodyStrong(ctx).copyWith(color: c.danger)),
               OrgPermissionMatrix(catalog: _catalog!, value: deny, deptOnly: scope != 0, tone: c.danger, onChanged: (v) => set(() => deny = v)),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
               AppButton.primary(
                 busy: busy,
                 label: t('حفظ', 'Save'),
@@ -523,13 +523,13 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
             ? const SizedBox.shrink()
             : AppRefresh(
                 onRefresh: _load,
-                child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
+                child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl), children: [
                   Section(
                     title: t('الأدوار', 'Roles'),
                     icon: Icons.badge_rounded,
                     trailing: canEdit ? TextButton.icon(onPressed: _assignRole, icon: const Icon(Icons.add_rounded), label: Text(t('منح', 'Give'))) : null,
                     child: asMapList(d['assignments']).isEmpty
-                        ? Text(t('لا أدوار بعد', 'No roles yet'), style: orgText(context, color: c.textMedium))
+                        ? Text(t('لا أدوار بعد', 'No roles yet'), style: AppType.row(context).copyWith(color: c.textMedium))
                         : Wrap(spacing: 8, runSpacing: 8, children: [
                             for (final a in asMapList(d['assignments']))
                               InputChip(
@@ -550,7 +550,7 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
                     trailing: canEdit ? TextButton.icon(onPressed: _grant, icon: const Icon(Icons.add_rounded), label: Text(t('إضافة', 'Add'))) : null,
                     child: asMapList(d['grants']).isEmpty
                         ? Text(t('لا شيء — الأدوار تكفي في أغلب الحالات', 'None — roles are enough most of the time'),
-                            style: orgText(context, color: c.textMedium))
+                            style: AppType.row(context).copyWith(color: c.textMedium))
                         : Column(children: [
                             for (final g in asMapList(d['grants']))
                               ListTile(
@@ -558,14 +558,14 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
                                 leading: IconBadge(g['expired'] == true ? Icons.history_rounded : Icons.key_rounded,
                                     g['expired'] == true ? c.textLight : c.accent, size: 38),
                                 title: Text('${g['note'] ?? t('صلاحيات خاصة', 'Personal rights')} · ${_deptName(g['dept_id'])}',
-                                    style: orgText(context, w: FontWeight.w700)),
+                                    style: AppType.bodyStrong(context)),
                                 subtitle: Text(
                                     [
                                       if (asMap(g['allow']).isNotEmpty) '✓ ${asMap(g['allow']).keys.join('، ')}',
                                       if (asMap(g['deny']).isNotEmpty) '✗ ${asMap(g['deny']).keys.join('، ')}',
                                       if (g['expires_at'] != null) '⏳ ${shortDate('${g['expires_at']}')}',
                                     ].join('   '),
-                                    style: orgText(context, size: 12, color: c.textMedium)),
+                                    style: AppType.meta(context).copyWith(color: c.textMedium)),
                                 trailing: canEdit && g['inherited'] != true
                                     ? IconButton(tooltip: t('حذف', 'Delete'), 
                                         icon: Icon(Icons.delete_outline_rounded, color: c.danger),
@@ -655,18 +655,18 @@ class OrgActivityPage extends StatelessWidget {
             final c = context.colors;
             final actor = asMap(row['actor']);
             return Padding(
-              padding: const EdgeInsets.fromLTRB(16, 3, 16, 3),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Column(children: [
                   IconBadge(_icon('${row['action']}'), c.primary, size: 34),
                   Container(width: 2, height: 22, color: c.divider),
                 ]),
-                const SizedBox(width: 10),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('${row['summary'] ?? row['action']}', style: orgText(context, size: 13)),
+                    Text('${row['summary'] ?? row['action']}', style: AppType.label(context).copyWith(color: context.colors.textDark)),
                     Text('${actor.isEmpty ? t('النظام', 'System') : actor['name']} · ${relTime(row['created_at'])}',
-                        style: orgText(context, size: 11.5, color: c.textLight)),
+                        style: AppType.meta(context).copyWith(color: c.textLight)),
                   ]),
                 ),
               ]),

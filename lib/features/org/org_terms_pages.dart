@@ -18,6 +18,7 @@ import 'org_providers.dart';
 import 'org_page_header.dart' show OrgPageRefresh;
 import 'org_ui.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 Map<String, String> _kinds() => {'text': t('نص', 'Text'), 'image': t('صورة', 'Image'), 'document': t('مستند', 'Document')};
 const _kindIcons = {'text': Icons.article_rounded, 'image': Icons.image_rounded, 'document': Icons.description_rounded};
@@ -72,7 +73,7 @@ class _OrgTermsAdminPageState extends State<OrgTermsAdminPage> {
     await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
           final c = ctx.colors;
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               SheetHeader(item == null ? t('بند جديد', 'New item') : t('تعديل البند', 'Edit item')),
               ChoiceRow<String>(label: t('النوع', 'Type'), options: _kinds(), value: kind, onChanged: (v) => set(() => kind = v)),
@@ -93,7 +94,7 @@ class _OrgTermsAdminPageState extends State<OrgTermsAdminPage> {
                       color: fileUrl == null ? null : c.success),
                   label: Text(fileUrl == null ? (kind == 'image' ? t('رفع صورة', 'Upload image') : t('رفع مستند', 'Upload document')) : '${fileName ?? ''}'),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.xs),
                 Field(controller: body, label: t('وصف قصير (اختياري)', 'Short description (optional)'), maxLines: 3),
               ],
               OrgAudiencePicker(value: audience, onChanged: (v) => set(() => audience = v)),
@@ -104,7 +105,7 @@ class _OrgTermsAdminPageState extends State<OrgTermsAdminPage> {
                   value: ack,
                   onChanged: (v) => set(() => ack = v)),
               OrgSwitchRow(title: t('ظاهر للأعضاء', 'Visible to members'), value: active, onChanged: (v) => set(() => active = v)),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               PrimaryButton(
                 isLoading: busy,
                 label: t('حفظ', 'Save'),
@@ -145,20 +146,20 @@ class _OrgTermsAdminPageState extends State<OrgTermsAdminPage> {
                 ? OrgEmpty(icon: Icons.gavel_rounded, title: t('لا لوائح بعد', 'No regulations yet'),
                     message: t('أضف لوائح المؤسسة نصاً أو صورة أو مستنداً، وحدّد من يراها.', 'Add your rules as text, images or documents and choose who sees each.'),
                     actionLabel: s.can('terms', 'insert') ? t('إضافة أول بند', 'Add the first item') : null, onAction: () => _edit())
-                : ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 100), children: [
+                : ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxxl + AppSpace.xl), children: [
                     for (final it in items)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.only(bottom: AppSpace.xs),
                         child: RowCard(
                           accent: it['is_active'] == false ? c.textLight : null,
                           onTap: s.can('terms', 'update') ? () => _edit(it) : null,
                           child: Row(children: [
                             IconBadge(_kindIcons['${it['kind']}'] ?? Icons.article_rounded, c.primary, size: 42),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: AppSpace.sm),
                             Expanded(
                               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                Text('${it['title']}', style: orgText(context, w: FontWeight.w800)),
-                                const SizedBox(height: 4),
+                                Text('${it['title']}', style: AppType.bodyStrong(context)),
+                                const SizedBox(height: AppSpace.xxs),
                                 Wrap(spacing: 6, runSpacing: 4, children: [
                                   OrgPill(_kinds()['${it['kind']}'] ?? ''),
                                   if (it['requires_ack'] == true)
@@ -227,7 +228,7 @@ class _OrgTermsViewState extends State<OrgTermsView> {
               ? OrgEmpty(icon: Icons.gavel_rounded, title: t('لا لوائح منشورة', 'No regulations published'))
               : AppRefresh(
                   onRefresh: _load,
-                  child: ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 40), children: [
+                  child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl), children: [
                     for (final it in items) TermCard(item: it, onAcked: _load),
                   ]),
                 ),
@@ -246,10 +247,10 @@ class TermCard extends StatelessWidget {
     final kind = '${item['kind']}';
     final needAck = item['requires_ack'] == true && item['acked'] != true;
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: AppSpace.sm),
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadius.block),
         border: Border.all(color: needAck ? c.warning.withValues(alpha: 0.5) : c.divider),
       ),
       clipBehavior: Clip.antiAlias,
@@ -261,17 +262,17 @@ class TermCard extends StatelessWidget {
                 errorBuilder: (_, _, _) => const SizedBox(height: 0)),
           ),
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpace.md),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               IconBadge(_kindIcons[kind] ?? Icons.article_rounded, c.primary, size: 36),
-              const SizedBox(width: 10),
-              Expanded(child: Text('${item['title']}', style: orgText(context, size: 15, w: FontWeight.w800))),
+              const SizedBox(width: AppSpace.sm),
+              Expanded(child: Text('${item['title']}', style: AppType.section(context))),
               if (item['acked'] == true) OrgPill(t('وافقت', 'Agreed'), icon: Icons.verified_rounded, color: c.success),
             ]),
             if ('${item['body'] ?? ''}'.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Text('${item['body']}', style: orgText(context, color: c.textMedium)),
+              const SizedBox(height: AppSpace.sm),
+              Text('${item['body']}', style: AppType.row(context).copyWith(color: c.textMedium)),
             ],
             if (kind == 'document')
               TextButton.icon(
@@ -280,7 +281,7 @@ class TermCard extends StatelessWidget {
                 label: Text('${item['file_name'] ?? t('فتح المستند', 'Open document')}'),
               ),
             if (needAck) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
               PrimaryButton(
                 isLoading: false,
                 label: t('قرأت وأوافق', 'I have read and agree'),

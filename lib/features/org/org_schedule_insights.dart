@@ -19,7 +19,7 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart' show RowCard;
 import 'org_common.dart' show dayLabels;
 import 'org_providers.dart' show orgDays;
-import 'org_ui.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Pre-flight (data health)
@@ -188,8 +188,8 @@ class DataHealthCard extends StatelessWidget {
       accent: col,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(r.clean ? Icons.health_and_safety_rounded : (r.blockers > 0 ? Icons.report_rounded : Icons.warning_amber_rounded), color: col, size: 20),
-          const SizedBox(width: 8),
+          Icon(r.clean ? Icons.health_and_safety_rounded : (r.blockers > 0 ? Icons.report_rounded : Icons.warning_amber_rounded), color: col, size: AppIconSize.md),
+          const SizedBox(width: AppSpace.xs),
           Expanded(
             child: Text(
               r.clean
@@ -197,11 +197,11 @@ class DataHealthCard extends StatelessWidget {
                   : r.blockers > 0
                       ? t('${r.blockers} مانع يوقف التوليد الكامل', '${r.blockers} blocker(s) prevent a complete timetable')
                       : t('${r.warnings} تنبيه على البيانات', '${r.warnings} data warning(s)'),
-              style: orgText(context, w: FontWeight.w800, color: col),
+              style: AppType.bodyStrong(context).copyWith(color: col),
             ),
           ),
         ]),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         // chips never grow past the card: each is bounded to the screen width (a Wrap gives none; a LayoutBuilder
         // is not allowed inside the card's intrinsic-height row)
         Wrap(spacing: 8, runSpacing: 4, children: [
@@ -213,28 +213,28 @@ class DataHealthCard extends StatelessWidget {
         ]),
         if (onAcceptAll != null && r.visible.where((f) => f.blocker && f.automatic).length >= 2)
           Padding(
-            padding: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.only(top: AppSpace.xs),
             child: FilledButton.tonalIcon(
               onPressed: busy.contains('*') ? null : onAcceptAll,
-              icon: busy.contains('*') ? SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: c.textMedium)) : const Icon(Icons.done_all_rounded, size: 16),
+              icon: busy.contains('*') ? SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: c.textMedium)) : const Icon(Icons.done_all_rounded, size: AppIconSize.sm),
               label: Text(t('قبول كل التوصيات المقترحة (${r.visible.where((f) => f.blocker && f.automatic).length})', 'Accept every recommended fix (${r.visible.where((f) => f.blocker && f.automatic).length})')),
               style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
             ),
           ),
         for (final f in r.visible.take(12))
           Padding(
-            padding: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.only(top: AppSpace.xs),
             child: InkWell(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppRadius.chip),
               onTap: onFix == null ? null : () => onFix!(f),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Icon(f.blocker ? Icons.block_rounded : Icons.info_outline_rounded, size: 16, color: f.blocker ? c.danger : c.warning),
-                const SizedBox(width: 8),
+                Icon(f.blocker ? Icons.block_rounded : Icons.info_outline_rounded, size: AppIconSize.sm, color: f.blocker ? c.danger : c.warning),
+                const SizedBox(width: AppSpace.xs),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(f.text, style: orgText(context, size: 12.5, w: FontWeight.w700)),
-                    if (who(f).isNotEmpty) Text(who(f), style: orgText(context, size: 11.5, color: c.textMedium)),
-                    if (f.fix.isNotEmpty && f.actions.isEmpty) Text('${t('الحل', 'Fix')}: ${f.fix}', style: orgText(context, size: 12, color: c.textMedium)),
+                    Text(f.text, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
+                    if (who(f).isNotEmpty) Text(who(f), style: AppType.meta(context).copyWith(color: c.textMedium)),
+                    if (f.fix.isNotEmpty && f.actions.isEmpty) Text('${t('الحل', 'Fix')}: ${f.fix}', style: AppType.meta(context).copyWith(color: c.textMedium)),
                     if (f.actions.isNotEmpty)
                       RankedActions(
                         actions: f.actions,
@@ -249,21 +249,21 @@ class DataHealthCard extends StatelessWidget {
               ]),
             ),
           ),
-        if (r.visible.length > 12) Padding(padding: const EdgeInsets.only(top: 6), child: Text(t('+${r.visible.length - 12} أخرى', '+${r.visible.length - 12} more'), style: orgText(context, size: 12, color: c.textLight))),
+        if (r.visible.length > 12) Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: Text(t('+${r.visible.length - 12} أخرى', '+${r.visible.length - 12} more'), style: AppType.meta(context).copyWith(color: c.textLight))),
         if (r.hidden.isNotEmpty) ...[
           Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Text(t('${r.hidden.length} توصية مرفوضة', '${r.hidden.length} rejected recommendation(s)'), style: orgText(context, size: 12, w: FontWeight.w700, color: c.textLight)),
+            padding: const EdgeInsets.only(top: AppSpace.sm),
+            child: Text(t('${r.hidden.length} توصية مرفوضة', '${r.hidden.length} rejected recommendation(s)'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textLight)),
           ),
           for (final f in r.hidden.take(6))
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: AppSpace.xxs),
               child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                Expanded(child: Text(f.text, maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12, color: c.textLight))),
+                Expanded(child: Text(f.text, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight))),
                 if (onRestore != null)
                   TextButton(
                     onPressed: busy.contains(f.key) ? null : () => onRestore!(f),
-                    style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 8)),
+                    style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs)),
                     child: Text(t('استعادة', 'Restore')),
                   ),
               ]),
@@ -275,9 +275,9 @@ class DataHealthCard extends StatelessWidget {
 
   Widget _rejectButton(BuildContext context, PreflightFinding f) => OutlinedButton.icon(
         onPressed: busy.contains(f.key) ? null : () => onReject!(f),
-        icon: const Icon(Icons.close_rounded, size: 16),
+        icon: const Icon(Icons.close_rounded, size: AppIconSize.sm),
         label: Text(t('رفض', 'Reject')),
-        style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 12), foregroundColor: context.colors.textMedium),
+        style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm), foregroundColor: context.colors.textMedium),
       );
 
   /// Accept · Reject under a recommendation of an OLDER server (one `action`, no ranked list). A manual-only fix
@@ -287,30 +287,30 @@ class DataHealthCard extends StatelessWidget {
     final wait = busy.contains(f.key);
     final spinner = SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: c.textMedium));
     return Padding(
-      padding: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.only(top: AppSpace.xs),
       child: Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
         if (f.automatic && onAccept != null)
           Tooltip(
             message: f.actionText,
             child: FilledButton.tonalIcon(
               onPressed: wait ? null : () => onAccept!(f, f.best ?? f.actions.first),
-              icon: wait ? spinner : const Icon(Icons.check_rounded, size: 16),
+              icon: wait ? spinner : const Icon(Icons.check_rounded, size: AppIconSize.sm),
               label: Text(t('قبول', 'Accept')),
-              style: FilledButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 12)),
+              style: FilledButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm)),
             ),
           )
         else if (!f.automatic)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(color: c.inputBg.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(8)),
-            child: Text(t('يُنفَّذ يدوياً', 'Fix by hand'), style: orgText(context, size: 11.5, color: c.textMedium)),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
+            decoration: BoxDecoration(color: c.inputBg.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(AppRadius.chip)),
+            child: Text(t('يُنفَّذ يدوياً', 'Fix by hand'), style: AppType.meta(context).copyWith(color: c.textMedium)),
           ),
         if (onReject != null)
           OutlinedButton.icon(
             onPressed: wait ? null : () => onReject!(f),
-            icon: wait && !(f.automatic && onAccept != null) ? spinner : const Icon(Icons.close_rounded, size: 16),
+            icon: wait && !(f.automatic && onAccept != null) ? spinner : const Icon(Icons.close_rounded, size: AppIconSize.sm),
             label: Text(t('رفض', 'Reject')),
-            style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 12), foregroundColor: c.textMedium),
+            style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm), foregroundColor: c.textMedium),
           ),
       ]),
     );
@@ -321,12 +321,12 @@ class DataHealthCard extends StatelessWidget {
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: maxWidth.isFinite ? maxWidth : 320),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(color: c.inputBg.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(8)),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
+        decoration: BoxDecoration(color: c.inputBg.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(AppRadius.chip)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 13, color: c.textMedium),
-          const SizedBox(width: 4),
-          Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 11.5, color: c.textMedium))),
+          Icon(icon, size: AppIconSize.xs, color: c.textMedium),
+          const SizedBox(width: AppSpace.xxs),
+          Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium))),
         ]),
       ),
     );
@@ -358,44 +358,44 @@ class _RankedActionsState extends State<RankedActions> {
     final hidden = widget.actions.length - shown.length;
     final spinner = SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: c.textMedium));
     return Padding(
-      padding: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.only(top: AppSpace.xs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         for (final a in shown)
           Padding(
-            padding: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
             child: Container(
-              padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+              padding: const EdgeInsets.fromLTRB(AppSpace.xs, AppSpace.xs, AppSpace.xs, AppSpace.xs),
               decoration: BoxDecoration(
                 color: (a.rank == 1 && a.auto ? c.success : c.textLight).withValues(alpha: 0.07),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(AppRadius.chip),
                 border: Border.all(color: (a.rank == 1 && a.auto ? c.success : c.divider).withValues(alpha: a.rank == 1 && a.auto ? 0.5 : 1)),
               ),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   _rankBadge(context, a),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpace.xs),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(a.text, style: orgText(context, size: 12.5, w: FontWeight.w700)),
-                      if (a.why.isNotEmpty) Text(a.why, style: orgText(context, size: 11.5, color: c.textMedium)),
+                      Text(a.text, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
+                      if (a.why.isNotEmpty) Text(a.why, style: AppType.meta(context).copyWith(color: c.textMedium)),
                     ]),
                   ),
                 ]),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpace.xxs),
                 Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
                   _scoreChip(context, a),
                   if (a.auto && widget.onAccept != null)
                     FilledButton.tonalIcon(
                       onPressed: widget.busy ? null : () => widget.onAccept!(a),
-                      icon: widget.busy ? spinner : const Icon(Icons.check_rounded, size: 16),
+                      icon: widget.busy ? spinner : const Icon(Icons.check_rounded, size: AppIconSize.sm),
                       label: Text(a.rank == 1 ? t('قبول (مقترح)', 'Accept (recommended)') : t('قبول', 'Accept')),
-                      style: FilledButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 12)),
+                      style: FilledButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm)),
                     )
                   else if (!a.auto)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: c.inputBg.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(8)),
-                      child: Text(t('يُنفَّذ يدوياً', 'By hand'), style: orgText(context, size: 11.5, color: c.textMedium)),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
+                      decoration: BoxDecoration(color: c.inputBg.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(AppRadius.chip)),
+                      child: Text(t('يُنفَّذ يدوياً', 'By hand'), style: AppType.meta(context).copyWith(color: c.textMedium)),
                     ),
                   if (identical(a, shown.last) && widget.trailing != null) widget.trailing!,
                 ]),
@@ -405,7 +405,7 @@ class _RankedActionsState extends State<RankedActions> {
         if (hidden > 0 || all && widget.actions.length > widget.visibleCount)
           TextButton(
             onPressed: () => setState(() => all = !all),
-            style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 8)),
+            style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs)),
             child: Text(all ? t('أقل', 'Fewer') : t('+$hidden حلول أخرى', '+$hidden more ways')),
           ),
       ]),
@@ -420,7 +420,7 @@ class _RankedActionsState extends State<RankedActions> {
       height: 26,
       alignment: Alignment.center,
       decoration: BoxDecoration(color: top ? c.success : c.inputBg, shape: BoxShape.circle),
-      child: Text('#${a.rank}', style: orgText(context, size: 11, w: FontWeight.w800, color: top ? c.onHero : c.textMedium)),
+      child: Text('#${a.rank}', style: AppType.overline(context).copyWith(color: top ? c.onHero : c.textMedium)),
     );
   }
 
@@ -428,9 +428,9 @@ class _RankedActionsState extends State<RankedActions> {
     final c = context.colors;
     final col = a.score >= 70 ? c.success : (a.score >= 40 ? c.warning : c.textLight);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
-      child: Text(t('الترجيح ${a.score}٪', 'Fit ${a.score}%'), style: orgText(context, size: 11, w: FontWeight.w700, color: col)),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
+      decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)),
+      child: Text(t('الترجيح ${a.score}٪', 'Fit ${a.score}%'), style: AppType.overline(context).copyWith(color: col)),
     );
   }
 }
@@ -481,15 +481,15 @@ class ExplainRows extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       for (final x in rows.take(max))
         Padding(
-          padding: const EdgeInsets.only(top: 3),
+          padding: const EdgeInsets.only(top: AppSpace.xxs),
           child: Text(
             '${labels['${x['day']}'] ?? x['day']} · ${[for (final p in (x['period_ids'] as List? ?? const [])) periodLabel?.call(asInt(p)) ?? 'P$p'].join('+')}: '
             '${[for (final r in (x['rules'] as List? ?? const [])) ruleShort('$r')].join('، ')}'
             '${_blockers(x)}',
-            style: orgText(context, size: 11.5, color: c.textMedium),
+            style: AppType.meta(context).copyWith(color: c.textMedium),
           ),
         ),
-      if (rows.length > max) Text(t('+${rows.length - max} وقتاً آخر', '+${rows.length - max} more times'), style: orgText(context, size: 11.5, color: c.textLight)),
+      if (rows.length > max) Text(t('+${rows.length - max} وقتاً آخر', '+${rows.length - max} more times'), style: AppType.meta(context).copyWith(color: c.textLight)),
     ]);
   }
 
@@ -613,54 +613,54 @@ class QualityCard extends StatelessWidget {
             height: 46,
             alignment: Alignment.center,
             decoration: BoxDecoration(color: col.withValues(alpha: 0.14), shape: BoxShape.circle, border: Border.all(color: col, width: 2)),
-            child: Text('${r.score}', style: orgText(context, size: 15, w: FontWeight.w800, color: col)),
+            child: Text('${r.score}', style: AppType.section(context).copyWith(color: col)),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${t('جودة الجدول', 'Timetable quality')} · ${qualityLabel(r.score)}', style: orgText(context, w: FontWeight.w800)),
+              Text('${t('جودة الجدول', 'Timetable quality')} · ${qualityLabel(r.score)}', style: AppType.bodyStrong(context)),
               Text(
                 t('توازن العبء ${pct(r.balance)} · تماسك الأيام ${pct(r.compactness)} · توزيع المقررات ${pct(r.spread)} · استغلال القاعات ${r.utilizationPct}٪',
                     'Workload balance ${pct(r.balance)} · compact days ${pct(r.compactness)} · course spread ${pct(r.spread)} · room use ${r.utilizationPct}%'),
-                style: orgText(context, size: 11.5, color: c.textMedium),
+                style: AppType.meta(context).copyWith(color: c.textMedium),
               ),
             ]),
           ),
         ]),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         Wrap(spacing: 10, runSpacing: 4, children: [
             for (final w in <Widget>[
-          Text(t('${r.sessions} حصة', '${r.sessions} sessions'), style: orgText(context, size: 12, color: c.textMedium)),
-          Text(t('${r.idle} فترة فراغ', '${r.idle} idle period(s)'), style: orgText(context, size: 12, color: r.idle > 0 ? c.warning : c.textMedium)),
-          Text(t('${r.repeats} تكرار في اليوم نفسه', '${r.repeats} same-day repeat(s)'), style: orgText(context, size: 12, color: r.repeats > 0 ? c.warning : c.textMedium)),
-          if (relaxed > 0) Text(t('$relaxed تفضيل غير مُلبّى', '$relaxed preference(s) relaxed'), style: orgText(context, size: 12, color: c.warning)),
-          if (broken > 0) Text(t('$broken قاعدة كُسرت باقتراح', '$broken rule(s) broken as proposals'), style: orgText(context, size: 12, color: c.warning)),
+          Text(t('${r.sessions} حصة', '${r.sessions} sessions'), style: AppType.meta(context).copyWith(color: c.textMedium)),
+          Text(t('${r.idle} فترة فراغ', '${r.idle} idle period(s)'), style: AppType.meta(context).copyWith(color: r.idle > 0 ? c.warning : c.textMedium)),
+          Text(t('${r.repeats} تكرار في اليوم نفسه', '${r.repeats} same-day repeat(s)'), style: AppType.meta(context).copyWith(color: r.repeats > 0 ? c.warning : c.textMedium)),
+          if (relaxed > 0) Text(t('$relaxed تفضيل غير مُلبّى', '$relaxed preference(s) relaxed'), style: AppType.meta(context).copyWith(color: c.warning)),
+          if (broken > 0) Text(t('$broken قاعدة كُسرت باقتراح', '$broken rule(s) broken as proposals'), style: AppType.meta(context).copyWith(color: c.warning)),
           if (solver != null && solver!['status'] != null)
             Text(
               '${solver!['status'] == 'OPTIMAL' ? t('حل أمثل', 'Optimal') : t('أفضل حل في الوقت', 'Best within the time')} · ${solver!['wall_s'] ?? '?'} ${t('ث', 's')}'
               '${solver!['deterministic'] == true ? ' · ${t('قابل للتكرار', 'reproducible')}' : ''}',
-              style: orgText(context, size: 12, color: c.textMedium),
+              style: AppType.meta(context).copyWith(color: c.textMedium),
             ),
             ])
               ConstrainedBox(constraints: BoxConstraints(maxWidth: wrapWidth(context)), child: w),
         ]),
         if (top.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(t('العبء الأسبوعي (فترات)', 'Weekly load (periods)'), style: orgText(context, size: 12, w: FontWeight.w800, color: c.textMedium)),
+          const SizedBox(height: AppSpace.xs),
+          Text(t('العبء الأسبوعي (فترات)', 'Weekly load (periods)'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
           for (final (uid, n) in top)
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: AppSpace.xxs),
               child: Row(children: [
-                SizedBox(width: 120, child: Text(people[uid] ?? '#$uid', maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12))),
-                const SizedBox(width: 8),
+                SizedBox(width: 120, child: Text(people[uid] ?? '#$uid', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: context.colors.textDark))),
+                const SizedBox(width: AppSpace.xs),
                 Expanded(
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(AppRadius.chip),
                     child: LinearProgressIndicator(value: n / maxLoad, minHeight: 8, color: c.primary, backgroundColor: c.primary.withValues(alpha: 0.12)),
                   ),
                 ),
-                const SizedBox(width: 8),
-                SizedBox(width: 24, child: Text('$n', textAlign: TextAlign.end, style: orgText(context, size: 12, w: FontWeight.w700))),
+                const SizedBox(width: AppSpace.xs),
+                SizedBox(width: 24, child: Text('$n', textAlign: TextAlign.end, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark))),
               ]),
             ),
         ],
@@ -721,32 +721,32 @@ class WhyHereSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final labels = dayLabels();
-    if (!why.found) return Text(t('لا يمكن تفسير هذه الحصة: عبء المقرر غير معروف.', 'Cannot explain this session: its course load is unknown.'), style: orgText(context, size: 12.5, color: c.textMedium));
+    if (!why.found) return Text(t('لا يمكن تفسير هذه الحصة: عبء المقرر غير معروف.', 'Cannot explain this session: its course load is unknown.'), style: AppType.label(context).copyWith(color: c.textMedium));
     final blocked = why.blockedBy.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       for (final f in why.facts)
         Padding(
-          padding: const EdgeInsets.only(top: 3),
+          padding: const EdgeInsets.only(top: AppSpace.xxs),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(Icons.check_circle_outline_rounded, size: 15, color: c.textMedium),
-            const SizedBox(width: 6),
-            Expanded(child: Text(f, style: orgText(context, size: 12.5))),
+            Icon(Icons.check_circle_outline_rounded, size: AppIconSize.xs, color: c.textMedium),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(child: Text(f, style: AppType.label(context).copyWith(color: context.colors.textDark))),
           ]),
         ),
       if (blocked.isNotEmpty)
         Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Text('${t('الأوقات الأخرى يمنعها', 'Other times are blocked by')}: ${blocked.take(4).map((e) => '${e.value} × ${ruleShort(e.key)}').join('، ')}', style: orgText(context, size: 12, color: c.textMedium)),
+          padding: const EdgeInsets.only(top: AppSpace.xs),
+          child: Text('${t('الأوقات الأخرى يمنعها', 'Other times are blocked by')}: ${blocked.take(4).map((e) => '${e.value} × ${ruleShort(e.key)}').join('، ')}', style: AppType.meta(context).copyWith(color: c.textMedium)),
         ),
       if (why.alternatives.isNotEmpty)
         Padding(
-          padding: const EdgeInsets.only(top: 4),
+          padding: const EdgeInsets.only(top: AppSpace.xxs),
           child: Text(
             '${t('بدائل حرة', 'Free alternatives')}: ${why.alternatives.take(4).map((a) => '${labels['${a['day']}'] ?? a['day']} ${[for (final p in (a['period_ids'] as List? ?? const [])) periodLabel?.call(asInt(p)) ?? 'P$p'].join('+')}').join('، ')}',
-            style: orgText(context, size: 12, color: c.textMedium),
+            style: AppType.meta(context).copyWith(color: c.textMedium),
           ),
         ),
-      for (final b in why.brokenRules) Padding(padding: const EdgeInsets.only(top: 4), child: Text('${t('قاعدة كُسرت هنا', 'Rule broken here')}: ${ruleShort('${b['rule']}')}', style: orgText(context, size: 12, color: c.warning))),
+      for (final b in why.brokenRules) Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text('${t('قاعدة كُسرت هنا', 'Rule broken here')}: ${ruleShort('${b['rule']}')}', style: AppType.meta(context).copyWith(color: c.warning))),
     ]);
   }
 }

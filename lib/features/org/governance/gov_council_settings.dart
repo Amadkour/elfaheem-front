@@ -18,7 +18,6 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, t;
 import '../org_page_header.dart' show OrgPushedPage, orgUsesDashboardHeader;
-import '../org_ui.dart' show orgText;
 import '../org_v3.dart' show orgCall, orgDay;
 import 'gov_api.dart';
 import 'gov_council_ui.dart';
@@ -144,7 +143,7 @@ class _GovCouncilSettingsFormState extends State<GovCouncilSettingsForm> {
               ],
               onChanged: widget.canEdit ? (v) => _set(() => _s.sessionDay = (v ?? 0) == 0 ? null : v) : null,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             _TapField(
               label: t('وقت الجلسة', 'Session time'),
               value: AppTime.clock(_s.sessionTime),
@@ -153,16 +152,16 @@ class _GovCouncilSettingsFormState extends State<GovCouncilSettingsForm> {
             ),
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(child: OrgNumberField(controller: _cutoff, label: t('إقفال الجدول قبل (أيام)', 'Agenda cut-off (days before)'), gap: false)),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpace.sm),
               Expanded(child: OrgNumberField(controller: _deadline, label: t('مهلة التصويت (ساعات)', 'Voting deadline (hours)'), gap: false)),
             ]),
             Text(
               t('يُجمَّع جدول الأعمال قبل الجلسة بأيام الإقفال، ويُفتح التصويت في موعد الجلسة ويُغلق بعد المهلة تلقائياً.',
                   'The agenda is compiled the cut-off days before the session; voting opens at the session time and closes by itself after the deadline.'),
-              style: orgText(context, size: 12, color: c.textMedium),
+              style: AppType.meta(context).copyWith(color: c.textMedium),
             ),
             if (_s.sessionDay != null) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               AppBanner(
                 icon: Icons.event_available_rounded,
                 text: t('الجلسة الدورية القادمة: ${govWhen(nextRegularDate(_s.sessionDay!, _s.sessionTime))}', 'Next regular session: ${govWhen(nextRegularDate(_s.sessionDay!, _s.sessionTime))}'),
@@ -174,7 +173,7 @@ class _GovCouncilSettingsFormState extends State<GovCouncilSettingsForm> {
           title: t('قواعد الاحتساب', 'Tally rules'),
           icon: Icons.rule_rounded,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(t('النصاب: ${_s.quorumPct}% من الأعضاء', 'Quorum: ${_s.quorumPct}% of the members'), style: orgText(context, w: FontWeight.w800)),
+            Text(t('النصاب: ${_s.quorumPct}% من الأعضاء', 'Quorum: ${_s.quorumPct}% of the members'), style: AppType.bodyStrong(context)),
             Slider(
               value: _s.quorumPct.toDouble(),
               min: 0,
@@ -184,8 +183,8 @@ class _GovCouncilSettingsFormState extends State<GovCouncilSettingsForm> {
               onChanged: widget.canEdit ? (v) => _set(() => _s.quorumPct = v.round()) : null,
             ),
             Text(t('إن صوّت أقل من النصاب لا يُحتسب البند ويُرحَّل إلى الجلسة التالية.', 'When fewer than the quorum vote, the item is not counted and carries to the next session.'),
-                style: orgText(context, size: 12, color: c.textMedium)),
-            const SizedBox(height: 12),
+                style: AppType.meta(context).copyWith(color: c.textMedium)),
+            const SizedBox(height: AppSpace.sm),
             _Choice(
               label: t('عند التعادل', 'On a tie'),
               options: {for (final r in tieRules) r: tieRuleLabel(r)},
@@ -205,7 +204,7 @@ class _GovCouncilSettingsFormState extends State<GovCouncilSettingsForm> {
               value: _s.noVoteRule == 'abstain',
               onChanged: widget.canEdit ? (v) => _set(() => _s.noVoteRule = v ? 'abstain' : 'ignore') : null,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             VoteRulePreview(settings: _s),
           ]),
         ),
@@ -216,21 +215,21 @@ class _GovCouncilSettingsFormState extends State<GovCouncilSettingsForm> {
             Wrap(spacing: 6, runSpacing: 6, children: [
               for (final h in _s.holidays)
                 InputChip(
-                  label: Text(h, textDirection: TextDirection.ltr, style: orgText(context, size: 12, w: FontWeight.w700)),
+                  label: Text(h, textDirection: TextDirection.ltr, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
                   onDeleted: widget.canEdit ? () => _set(() => _s.holidays = [..._s.holidays]..remove(h)) : null,
                 ),
               ActionChip(
-                avatar: const Icon(Icons.add_rounded, size: 18),
-                label: Text(t('إضافة تاريخ', 'Add a date'), style: orgText(context, size: 12, w: FontWeight.w700)),
+                avatar: const Icon(Icons.add_rounded, size: AppIconSize.md),
+                label: Text(t('إضافة تاريخ', 'Add a date'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
                 onPressed: widget.canEdit ? _addHoliday : null,
               ),
             ]),
             if (_s.holidays.isEmpty)
               Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(t('لا عطلات مسجّلة', 'No holidays yet'), style: orgText(context, size: 12, color: c.textMedium)),
+                padding: const EdgeInsets.only(top: AppSpace.xs),
+                child: Text(t('لا عطلات مسجّلة', 'No holidays yet'), style: AppType.meta(context).copyWith(color: c.textMedium)),
               ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             _Choice(
               label: t('إذا صادفت الجلسة عطلة', 'When the session falls on a holiday'),
               options: {for (final r in holidayRules) r: holidayRuleLabel(r)},
@@ -256,7 +255,7 @@ class _GovCouncilSettingsFormState extends State<GovCouncilSettingsForm> {
               ],
               onChanged: widget.canEdit ? (v) => _set(() => _s.chairUserId = (v ?? 0) == 0 ? null : v) : null,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppField(controller: _tz, label: t('المنطقة الزمنية', 'Timezone'), hint: t('فارغ = منطقة المؤسسة، مثل Africa/Cairo', 'Empty = the organization zone, e.g. Africa/Cairo'), ltr: true),
           ]),
         ),
@@ -272,48 +271,48 @@ class _GovCouncilSettingsFormState extends State<GovCouncilSettingsForm> {
               value: _s.autoAgenda,
               onChanged: widget.canEdit ? (v) => _set(() => _s.autoAgenda = v) : null,
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             AppBanner(
               icon: Icons.alt_route_rounded,
               text: t('المعاملات من هذه الأنواع أو التصنيفات التي تصل إلى القسم تُحال إلى المجلس للتصويت تلقائياً دون انتظار رئيس القسم.',
                   'Items of these types or categories that arrive at the department are routed to the council for a vote automatically, without waiting for the head.'),
             ),
-            const SizedBox(height: 12),
-            Text(t('الأنواع', 'Types'), style: orgText(context, size: 12.5, color: c.textLight)),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.sm),
+            Text(t('الأنواع', 'Types'), style: AppType.label(context).copyWith(color: c.textLight)),
+            const SizedBox(height: AppSpace.xs),
             Wrap(spacing: 8, runSpacing: 6, children: [
               for (final ty in itemTypes)
                 FilterChip(
-                  label: Text(itemTypeLabel(ty), style: orgText(context, size: 12, w: FontWeight.w700)),
+                  label: Text(itemTypeLabel(ty), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
                   selected: _s.autoAgendaTypes.contains(ty),
                   onSelected: widget.canEdit
                       ? (on) => _set(() => _s.autoAgendaTypes = on ? [..._s.autoAgendaTypes, ty] : ([..._s.autoAgendaTypes]..remove(ty)))
                       : null,
                 ),
             ]),
-            const SizedBox(height: 12),
-            Text(t('التصنيفات', 'Categories'), style: orgText(context, size: 12.5, color: c.textLight)),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.sm),
+            Text(t('التصنيفات', 'Categories'), style: AppType.label(context).copyWith(color: c.textLight)),
+            const SizedBox(height: AppSpace.xs),
             if (widget.categories.isEmpty)
-              Text(t('لا تصنيفات في القسم بعد — كل التصنيفات مشمولة', 'The department has no categories yet — every category is included'), style: orgText(context, size: 12, color: c.textMedium))
+              Text(t('لا تصنيفات في القسم بعد — كل التصنيفات مشمولة', 'The department has no categories yet — every category is included'), style: AppType.meta(context).copyWith(color: c.textMedium))
             else
               Wrap(spacing: 8, runSpacing: 6, children: [
                 for (final e in widget.categories.entries)
                   FilterChip(
-                    label: Text(e.value, style: orgText(context, size: 12, w: FontWeight.w700)),
+                    label: Text(e.value, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
                     selected: _s.autoAgendaCategoryIds.contains(e.key),
                     onSelected: widget.canEdit
                         ? (on) => _set(() => _s.autoAgendaCategoryIds = on ? [..._s.autoAgendaCategoryIds, e.key] : ([..._s.autoAgendaCategoryIds]..remove(e.key)))
                         : null,
                   ),
               ]),
-            const SizedBox(height: 4),
-            Text(t('قائمة فارغة = لا قيد على هذا المحور', 'An empty list = no restriction on that axis'), style: orgText(context, size: 11.5, color: c.textLight)),
+            const SizedBox(height: AppSpace.xxs),
+            Text(t('قائمة فارغة = لا قيد على هذا المحور', 'An empty list = no restriction on that axis'), style: AppType.meta(context).copyWith(color: c.textLight)),
           ]),
         ),
       if (widget.canEdit)
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
           child: AppPrimaryButton(
             label: t('حفظ الإعدادات', 'Save settings'),
             icon: Icons.save_rounded,
@@ -336,15 +335,15 @@ class _Block extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xs),
       child: AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Icon(icon, size: 18, color: c.primary),
-            const SizedBox(width: 8),
-            Expanded(child: Text(title, style: orgText(context, size: 15, w: FontWeight.w800))),
+            Icon(icon, size: AppIconSize.md, color: c.primary),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(child: Text(title, style: AppType.section(context))),
           ]),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           child,
         ]),
       ),
@@ -363,19 +362,19 @@ class _TapField extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         onTap: onTap,
         child: InputDecorator(
           isEmpty: value.isEmpty,
           decoration: InputDecoration(
             labelText: label,
             prefixIcon: Icon(icon, color: c.textLight),
-            suffixIcon: Icon(Icons.edit_rounded, color: c.textLight, size: 18),
+            suffixIcon: Icon(Icons.edit_rounded, color: c.textLight, size: AppIconSize.md),
             enabled: onTap != null,
           ),
-          child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w700)),
+          child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
         ),
       ),
     );
@@ -394,17 +393,17 @@ class _Choice extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: orgText(context, size: 12.5, color: c.textLight)),
-        const SizedBox(height: 6),
+        Text(label, style: AppType.label(context).copyWith(color: c.textLight)),
+        const SizedBox(height: AppSpace.xs),
         Wrap(spacing: 8, runSpacing: 6, children: [
           for (final e in options.entries)
             AppChoiceChip(label: e.value, selected: e.key == value, onTap: () => onChanged?.call(e.key)),
         ]),
         if (help != null) ...[
-          const SizedBox(height: 6),
-          Text(help!, style: orgText(context, size: 12, color: c.textMedium)),
+          const SizedBox(height: AppSpace.xs),
+          Text(help!, style: AppType.meta(context).copyWith(color: c.textMedium)),
         ],
       ]),
     );
@@ -435,17 +434,17 @@ class _VoteRulePreviewState extends State<VoteRulePreview> {
   Widget _stepper(String label, int value, ValueChanged<int> set, {int min = 0, int? max, Color? color}) {
     final c = context.colors;
     return Row(children: [
-      Expanded(child: Text(label, style: orgText(context, size: 12.5, w: FontWeight.w700, color: color))),
+      Expanded(child: Text(label, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: color))),
       IconButton(tooltip: t('تقليل', 'Decrease'), 
         visualDensity: VisualDensity.compact,
         onPressed: value > min ? () => set(value - 1) : null,
-        icon: const Icon(Icons.remove_circle_outline_rounded, size: 20),
+        icon: const Icon(Icons.remove_circle_outline_rounded, size: AppIconSize.md),
       ),
-      SizedBox(width: 26, child: Text('$value', textAlign: TextAlign.center, style: orgText(context, size: 14, w: FontWeight.w800, color: c.textDark))),
+      SizedBox(width: 26, child: Text('$value', textAlign: TextAlign.center, style: AppType.bodyStrong(context).copyWith(color: c.textDark))),
       IconButton(tooltip: t('زيادة', 'Increase'), 
         visualDensity: VisualDensity.compact,
         onPressed: max == null || value < max ? () => set(value + 1) : null,
-        icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+        icon: const Icon(Icons.add_circle_outline_rounded, size: AppIconSize.md),
       ),
     ]);
   }
@@ -457,20 +456,20 @@ class _VoteRulePreviewState extends State<VoteRulePreview> {
     final tally = VoteTally.compute(approve: _approve, reject: _reject, abstain: _abstain, eligible: _eligible, s: s, chairVote: _chair);
     final col = agendaStatusColor(context, tally.outcome);
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(
         color: c.primary.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: c.primary.withValues(alpha: 0.18)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(Icons.science_rounded, size: 18, color: c.primary),
-          const SizedBox(width: 8),
-          Expanded(child: Text(t('معاينة القواعد', 'Rule preview'), style: orgText(context, size: 14, w: FontWeight.w800))),
+          Icon(Icons.science_rounded, size: AppIconSize.md, color: c.primary),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: Text(t('معاينة القواعد', 'Rule preview'), style: AppType.bodyStrong(context))),
         ]),
-        Text(t('جرّب عيّنة لترى ما ستكون عليه النتيجة بهذه القواعد', 'Try a sample to see what these rules produce'), style: orgText(context, size: 11.5, color: c.textMedium)),
-        const SizedBox(height: 8),
+        Text(t('جرّب عيّنة لترى ما ستكون عليه النتيجة بهذه القواعد', 'Try a sample to see what these rules produce'), style: AppType.meta(context).copyWith(color: c.textMedium)),
+        const SizedBox(height: AppSpace.xs),
         _stepper(t('الأعضاء المؤهلون', 'Eligible members'), _eligible, (v) => setState(() {
               _eligible = v;
               if (_voted > v) {
@@ -483,18 +482,18 @@ class _VoteRulePreviewState extends State<VoteRulePreview> {
         _stepper(voteLabel('reject'), _reject, (v) => setState(() => _reject = v), max: _eligible - _approve - _abstain, color: c.danger),
         _stepper(voteLabel('abstain'), _abstain, (v) => setState(() => _abstain = v), max: _eligible - _approve - _reject, color: c.textMedium),
         if (s.tieRule == 'chair') ...[
-          const SizedBox(height: 6),
-          Text(t('صوت الرئيس (في العيّنة)', "The chair's vote (in the sample)"), style: orgText(context, size: 12, color: c.textLight)),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpace.xs),
+          Text(t('صوت الرئيس (في العيّنة)', "The chair's vote (in the sample)"), style: AppType.meta(context).copyWith(color: c.textLight)),
+          const SizedBox(height: AppSpace.xxs),
           Wrap(spacing: 6, runSpacing: 6, children: [
             AppChoiceChip(label: t('لم يصوّت', 'Did not vote'), selected: _chair == null, onTap: () => setState(() => _chair = null)),
             AppChoiceChip(label: voteLabel('approve'), selected: _chair == 'approve', onTap: () => setState(() => _chair = 'approve')),
             AppChoiceChip(label: voteLabel('reject'), selected: _chair == 'reject', onTap: () => setState(() => _chair = 'reject')),
           ]),
         ],
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         Divider(color: c.divider, height: 1),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
           AppBadgePill(voteOutcomeLabel(tally.outcome), color: col, icon: tally.quorumMet ? Icons.gavel_rounded : Icons.hourglass_empty_rounded),
           AppBadgePill(
@@ -503,7 +502,7 @@ class _VoteRulePreviewState extends State<VoteRulePreview> {
           ),
           AppBadgePill(t('${tally.approvePct.toStringAsFixed(0)}% موافقة', '${tally.approvePct.toStringAsFixed(0)}% approve'), color: c.primary),
         ]),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         AppProgressBar(value: tally.approvePct, color: col),
       ]),
     );
@@ -598,11 +597,11 @@ class _GovCouncilSettingsPageState extends State<GovCouncilSettingsPage> {
     } else {
       final canEdit = council.can['manage'] || govIsOrgAdmin(context);
       body = SingleChildScrollView(
-        padding: const EdgeInsets.only(top: 8, bottom: 24),
+        padding: const EdgeInsets.only(top: AppSpace.xs, bottom: AppSpace.lg),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           if (!canEdit)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xs),
               child: AppBanner(icon: Icons.lock_outline_rounded, text: t('للاطلاع فقط — يعدّل الإعدادات رئيس المجلس أو مدير المؤسسة', 'Read-only — the chair or the organization admin edits these settings')),
             ),
           GovCouncilSettingsForm(

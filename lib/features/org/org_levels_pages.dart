@@ -71,31 +71,31 @@ class PrereqRulesEditor extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (rules.isEmpty)
         Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Text(emptyText ?? t('لا شروط', 'No rules'), style: orgText(context, size: 12.5, color: c.textLight)),
+          padding: const EdgeInsets.only(bottom: AppSpace.xs),
+          child: Text(emptyText ?? t('لا شروط', 'No rules'), style: AppType.label(context).copyWith(color: c.textLight)),
         ),
       for (var i = 0; i < rules.length; i++)
         Container(
-          margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 4, 6),
+          margin: const EdgeInsets.only(bottom: AppSpace.xs),
+          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xs, AppSpace.xxs, AppSpace.xs),
           decoration: BoxDecoration(
             color: (rules[i].isValid ? c.primary : c.danger).withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.control),
           ),
           child: Row(children: [
-            Icon(Icons.rule_rounded, size: 18, color: rules[i].isValid ? c.primary : c.danger),
-            const SizedBox(width: 8),
+            Icon(Icons.rule_rounded, size: AppIconSize.md, color: rules[i].isValid ? c.primary : c.danger),
+            const SizedBox(width: AppSpace.xs),
             Expanded(
               child: Text(
                 rules[i].describe(levelName: _levelName, courseName: (id) => _courseLabel(byId, id)),
-                style: orgText(context, size: 12.5, w: FontWeight.w600),
+                style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark),
               ),
             ),
             IconButton(
               tooltip: t('تعديل', 'Edit'),
               visualDensity: VisualDensity.compact,
               onPressed: () => _edit(context, i),
-              icon: const Icon(Icons.edit_rounded, size: 18),
+              icon: const Icon(Icons.edit_rounded, size: AppIconSize.md),
             ),
             IconButton(
               tooltip: t('حذف', 'Remove'),
@@ -104,7 +104,7 @@ class PrereqRulesEditor extends StatelessWidget {
                 rules.removeAt(i);
                 onChanged();
               },
-              icon: Icon(Icons.close_rounded, size: 18, color: c.danger),
+              icon: Icon(Icons.close_rounded, size: AppIconSize.md, color: c.danger),
             ),
           ]),
         ),
@@ -112,7 +112,7 @@ class PrereqRulesEditor extends StatelessWidget {
         alignment: AlignmentDirectional.centerStart,
         child: TextButton.icon(
           onPressed: courses == null ? null : () => _edit(context),
-          icon: const Icon(Icons.add_rounded, size: 18),
+          icon: const Icon(Icons.add_rounded, size: AppIconSize.md),
           label: Text(t('إضافة شرط', 'Add a rule')),
         ),
       ),
@@ -176,7 +176,7 @@ class _RuleSheetState extends State<_RuleSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 20), // the sheet already lifts above the keyboard
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg), // the sheet already lifts above the keyboard
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         AppSheetHeader(widget.rule == null ? t('شرط جديد', 'New rule') : t('تعديل الشرط', 'Edit rule')),
         Wrap(spacing: 6, runSpacing: 6, children: [
@@ -187,7 +187,7 @@ class _RuleSheetState extends State<_RuleSheet> {
                   if (k == 'level_courses' && _num.text.trim().isEmpty) _num.text = '100';
                 })),
         ]),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.md),
         if (_type == 'courses_passed') ...[
           CourseSetField(
             title: t('المقررات', 'Courses'),
@@ -200,13 +200,13 @@ class _RuleSheetState extends State<_RuleSheet> {
             OrgNumberField(controller: _min, label: t('يكفي اجتياز عدد منها (فارغ = كلها)', 'Enough to pass this many (empty = all)')),
         ] else ...[
           if (_type == 'level_courses') ...[
-            Text(t('أي مستوى؟', 'Which level?'), style: orgText(context, size: 12.5, w: FontWeight.w800, color: c.textMedium)),
-            const SizedBox(height: 6),
+            Text(t('أي مستوى؟', 'Which level?'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
+            const SizedBox(height: AppSpace.xs),
             Wrap(spacing: 6, runSpacing: 6, children: [
               AppChoiceChip(label: t('المستوى السابق', 'The level below'), selected: _levelKey == null, onTap: () => setState(() => _levelKey = null)),
               for (final l in widget.levels) AppChoiceChip(label: l.label, selected: _levelKey == l.key, onTap: () => setState(() => _levelKey = l.key)),
             ]),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             AppSwitchTile(
               title: t('يشمل مقررات الفصل الصيفي', 'Include summer courses'),
               value: _summer,
@@ -216,10 +216,10 @@ class _RuleSheetState extends State<_RuleSheet> {
           OrgNumberField(controller: _num, label: _numLabel, decimals: 2),
           if (_type == 'min_average')
             Text(t('يُحسب من أفضل نتيجة للطالب في كل امتحان بمقررات المؤسسة.', 'Computed from the student\'s best result in each exam of the organization\'s courses.'),
-                style: orgText(context, size: 11.5, color: c.textLight)),
+                style: AppType.meta(context).copyWith(color: c.textLight)),
         ],
-        if (_err != null) Padding(padding: const EdgeInsets.only(top: 8), child: AppBanner(icon: Icons.error_outline_rounded, text: _err!, color: c.danger)),
-        const SizedBox(height: 14),
+        if (_err != null) Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: AppBanner(icon: Icons.error_outline_rounded, text: _err!, color: c.danger)),
+        const SizedBox(height: AppSpace.md),
         AppPrimaryButton(
           label: t('تم', 'Done'),
           icon: Icons.check_rounded,
@@ -408,7 +408,7 @@ class _OrgLevelsTabState extends State<OrgLevelsTab> with AutomaticKeepAliveClie
           AppHeroStat(icon: Icons.auto_mode_rounded, value: '$auto', label: t('انتقال تلقائي', 'Auto move-up')),
         ],
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       if (!editable)
         AppBanner(
           icon: Icons.account_tree_rounded,
@@ -417,7 +417,7 @@ class _OrgLevelsTabState extends State<OrgLevelsTab> with AutomaticKeepAliveClie
               'These levels come from "${orgNameOf(parent)}". Saving a change here creates your own copy.'),
         ),
       Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
         child: Wrap(spacing: 8, runSpacing: 8, children: [
           AppPill(icon: Icons.add_rounded, label: t('مستوى جديد', 'New level'), onTap: _busy ? () {} : () => _edit()),
           if (_levels.length > 1)
@@ -426,14 +426,14 @@ class _OrgLevelsTabState extends State<OrgLevelsTab> with AutomaticKeepAliveClie
       ),
       if (_levels.length > 1)
         Padding(
-          padding: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.only(bottom: AppSpace.xs),
           child: Text(t('اسحب ⠿ لتغيير الترتيب. شروط المستوى = ما يلزم لدخوله.', 'Drag ⠿ to reorder. A level\'s rules = what it takes to enter it.'),
-              style: orgText(context, size: 12, color: c.textLight)),
+              style: AppType.meta(context).copyWith(color: c.textLight)),
         ),
     ]);
 
     if (_levels.isEmpty) {
-      return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
+      return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl), children: [
         header,
         AppEmpty(
           icon: Icons.stairs_rounded,
@@ -448,7 +448,7 @@ class _OrgLevelsTabState extends State<OrgLevelsTab> with AutomaticKeepAliveClie
     return AppRefresh(
       onRefresh: _load,
       child: ReorderableListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl),
         header: header,
         buildDefaultDragHandles: false,
         itemCount: _levels.length,
@@ -498,15 +498,15 @@ class _LevelCard extends StatelessWidget {
         ? (resolved.isGeneral ? t('كل الأقسام', 'All departments') : t('أقسام مخصصة', 'Custom departments'))
         : (sourceLabel == null ? t('كل الأقسام (افتراضي)', 'All departments (default)') : t('موروث من $sourceLabel', 'Inherited from $sourceLabel'));
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: AppCard(
-        padding: const EdgeInsetsDirectional.fromSTEB(4, 12, 12, 12),
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xxs, AppSpace.sm, AppSpace.sm, AppSpace.sm),
         onTap: onTap,
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           ReorderableDragStartListener(
             index: index,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xs),
               child: Icon(Icons.drag_indicator_rounded, color: c.textLight),
             ),
           ),
@@ -514,14 +514,14 @@ class _LevelCard extends StatelessWidget {
             width: 40,
             height: 40,
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
-            child: Text('${index + 1}', style: orgText(context, size: 16, w: FontWeight.w800, color: c.primary)),
+            decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.control)),
+            child: Text('${index + 1}', style: AppType.section(context).copyWith(color: c.primary)),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Expanded(child: Text(l.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 15, w: FontWeight.w800))),
+                Expanded(child: Text(l.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context))),
                 PopupMenuButton<String>(
                   padding: EdgeInsets.zero,
                   onSelected: (v) => v == 'edit' ? onTap() : onRemove(),
@@ -531,45 +531,45 @@ class _LevelCard extends StatelessWidget {
                   ],
                 ),
               ]),
-              Text(t('${l.students} طالب', '${l.students} students'), style: orgText(context, size: 12, color: c.textMedium)),
-              const SizedBox(height: 8),
+              Text(t('${l.students} طالب', '${l.students} students'), style: AppType.meta(context).copyWith(color: c.textMedium)),
+              const SizedBox(height: AppSpace.xs),
               Row(children: [
-                Icon(resolved.inherited ? DirIcons.subArrowLeft : Icons.tune_rounded, size: 16,
+                Icon(resolved.inherited ? DirIcons.subArrowLeft : Icons.tune_rounded, size: AppIconSize.sm,
                     color: resolved.inherited ? c.textLight : c.primary),
-                const SizedBox(width: 4),
-                Flexible(child: Text(deptNote, style: orgText(context, size: 12, w: FontWeight.w700, color: resolved.inherited ? c.textMedium : c.primary))),
+                const SizedBox(width: AppSpace.xxs),
+                Flexible(child: Text(deptNote, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: resolved.inherited ? c.textMedium : c.primary))),
               ]),
               if (!resolved.isGeneral)
                 Padding(
-                  padding: const EdgeInsets.only(top: 4),
+                  padding: const EdgeInsets.only(top: AppSpace.xxs),
                   child: Wrap(spacing: 6, runSpacing: 4, children: [
                     for (final id in resolved.programIds!)
                       AppBadgePill(programName(id), color: resolved.inherited ? c.textMedium : c.primary, icon: Icons.account_tree_rounded),
                   ]),
                 ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               Wrap(spacing: 6, runSpacing: 4, children: [
                 for (final k in levelTermKinds)
                   if (k != 'summer' || l.hasSummer)
                     AppBadgePill('${termKindLabel(k)} · ${l.terms[k]!.length}', icon: Icons.menu_book_rounded,
                         color: l.terms[k]!.isEmpty ? c.warning : c.success),
               ]),
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpace.xs),
               if (index == 0)
-                Text(t('أول مستوى — يبدأ منه الطلاب', 'First level — students start here'), style: orgText(context, size: 12, color: c.textLight))
+                Text(t('أول مستوى — يبدأ منه الطلاب', 'First level — students start here'), style: AppType.meta(context).copyWith(color: c.textLight))
               else if (l.prerequisites.isEmpty)
                 Text(t('بلا شروط — الانتقال إليه يدوي فقط', 'No rules — students move here only by hand'),
-                    style: orgText(context, size: 12, color: c.warning))
+                    style: AppType.meta(context).copyWith(color: c.warning))
               else
                 for (final r in l.prerequisites)
                   Padding(
-                    padding: const EdgeInsets.only(top: 2),
+                    padding: const EdgeInsets.only(top: AppSpace.xxs / 2),
                     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Icon(Icons.check_circle_outline_rounded, size: 15, color: c.success),
-                      const SizedBox(width: 6),
+                      Icon(Icons.check_circle_outline_rounded, size: AppIconSize.xs, color: c.success),
+                      const SizedBox(width: AppSpace.xs),
                       Expanded(
                         child: Text(r.describe(courseName: (id) => _courseLabel(courses, id)),
-                            maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12)),
+                            maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: context.colors.textDark)),
                       ),
                     ]),
                   ),
@@ -649,17 +649,17 @@ class _LevelEditorState extends State<_LevelEditor> {
   Widget _section(BuildContext context, IconData icon, String title, List<Widget> children, {String? help}) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: AppCard(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xs),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Icon(icon, size: 18, color: c.primary),
-            const SizedBox(width: 8),
-            Expanded(child: Text(title, style: orgText(context, w: FontWeight.w800))),
+            Icon(icon, size: AppIconSize.md, color: c.primary),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(child: Text(title, style: AppType.bodyStrong(context))),
           ]),
-          if (help != null) Padding(padding: const EdgeInsets.only(top: 2), child: Text(help, style: orgText(context, size: 11.5, color: c.textLight))),
-          const SizedBox(height: 10),
+          if (help != null) Padding(padding: const EdgeInsets.only(top: AppSpace.xxs / 2), child: Text(help, style: AppType.meta(context).copyWith(color: c.textLight))),
+          const SizedBox(height: AppSpace.sm),
           ...children,
         ]),
       ),
@@ -678,12 +678,12 @@ class _LevelEditorState extends State<_LevelEditor> {
       AppSheetHeader(widget.index >= widget.all.length ? t('مستوى جديد', 'New level') : t('تعديل ${d.label}', 'Edit ${d.label}')),
       Flexible(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), // the sheet already lifts above the keyboard
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md), // the sheet already lifts above the keyboard
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             _section(context, Icons.badge_rounded, t('الاسم', 'Name'), [
               Field(controller: _ar, label: t('الاسم بالعربية (مثلاً: الفرقة الأولى)', 'Arabic name (e.g. الفرقة الأولى)')),
               Field(controller: _en, label: t('الاسم بالإنجليزية (مثلاً: Year 1)', 'English name (e.g. Year 1)'), ltr: true),
-              Text(t('المفتاح الثابت: ${d.key}', 'Fixed key: ${d.key}'), style: orgText(context, size: 11.5, color: c.textLight)),
+              Text(t('المفتاح الثابت: ${d.key}', 'Fixed key: ${d.key}'), style: AppType.meta(context).copyWith(color: c.textLight)),
             ]),
             _section(
               context,
@@ -707,10 +707,10 @@ class _LevelEditorState extends State<_LevelEditor> {
                           })),
                 ]),
                 if (d.programs == 'custom') ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AppSpace.sm),
                   if (widget.programs.isEmpty)
                     Text(t('لا أقسام علمية بعد — أنشئها من تبويب «الأقسام العلمية».', 'No academic departments yet — create them in "Departments".'),
-                        style: orgText(context, size: 12, color: c.warning))
+                        style: AppType.meta(context).copyWith(color: c.warning))
                   else
                     Wrap(spacing: 6, runSpacing: 6, children: [
                       for (final p in widget.programs)
@@ -755,7 +755,7 @@ class _LevelEditorState extends State<_LevelEditor> {
                     },
                     onChanged: () => setState(() {}),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.xs),
                 ],
               AppSwitchTile(
                 title: t('فصل صيفي (اختياري)', 'Summer term (optional)'),
@@ -842,7 +842,7 @@ class _MyLevelCardState extends State<MyLevelCard> {
     final stats = asMap(m['stats']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       AppSectionTitle(t('مستواك الدراسي', 'Your level'), subtitle: _lname(cur)),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       // the ladder
       SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -853,66 +853,66 @@ class _MyLevelCardState extends State<MyLevelCard> {
           ],
         ]),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       AppCard(
         child: next.isEmpty
             ? Row(children: [
                 Icon(Icons.emoji_events_rounded, color: c.success),
-                const SizedBox(width: 10),
-                Expanded(child: Text(t('أنت في أعلى مستوى 🎓', 'You\'re at the top level 🎓'), style: orgText(context, w: FontWeight.w800))),
+                const SizedBox(width: AppSpace.sm),
+                Expanded(child: Text(t('أنت في أعلى مستوى 🎓', 'You\'re at the top level 🎓'), style: AppType.bodyStrong(context))),
               ])
             : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
                   AppRing(value: next['auto'] == true ? asInt(next['percent']).toDouble() : null, label: t('نحو التالي', 'To next'), size: 72),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: AppSpace.md),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(t('المستوى التالي: ${_lname(next)}', 'Next: ${_lname(next)}'), style: orgText(context, w: FontWeight.w800)),
-                      const SizedBox(height: 2),
+                      Text(t('المستوى التالي: ${_lname(next)}', 'Next: ${_lname(next)}'), style: AppType.bodyStrong(context)),
+                      const SizedBox(height: AppSpace.xxs / 2),
                       Text(
                         next['auto'] != true
                             ? t('تنقلك المؤسسة إليه — لا شروط تلقائية', 'Your organization moves you there — no automatic rules')
                             : next['met'] == true
                                 ? t('استوفيت كل الشروط — سيتم نقلك الآن', 'All rules met — you\'re being moved up')
                                 : t('تنتقل تلقائياً عند استيفاء الشروط', 'You move up automatically once these are met'),
-                        style: orgText(context, size: 12, color: c.textMedium),
+                        style: AppType.meta(context).copyWith(color: c.textMedium),
                       ),
                     ]),
                   ),
                 ]),
-                if (rules.isNotEmpty) const SizedBox(height: 10),
+                if (rules.isNotEmpty) const SizedBox(height: AppSpace.sm),
                 for (final r in rules) _RuleRow(result: r, courses: courses),
               ]),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       Wrap(spacing: 8, runSpacing: 8, children: [
         AppStatChip(icon: Icons.task_alt_rounded, value: '${stats['passed_courses'] ?? 0}', label: t('مقرر مجتاز', 'courses passed')),
         AppStatChip(icon: Icons.schedule_rounded, value: '${stats['hours'] ?? 0}', label: t('ساعة', 'hours')),
         if (stats['average'] != null) AppStatChip(icon: Icons.insights_rounded, value: '${stats['average']}%', label: t('المتوسط', 'average')),
       ]),
       for (final term in asMapList(m['terms'])) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         _TermCard(term: term),
       ],
       if (asMapList(m['programs']).isNotEmpty) ...[
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         AppSectionTitle(t('الأقسام المتاحة في مستواك', 'Departments open at your level'),
             subtitle: t('للتسجيل في مقررات قسم يلزم استيفاء متطلباته', 'A department\'s courses need its prerequisites')),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         for (final p in asMapList(m['programs'])) _ProgramReadiness(p: p, courses: courses),
       ],
       if (asMapList(m['history']).isNotEmpty) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         for (final h in asMapList(m['history']).take(3))
           Padding(
-            padding: const EdgeInsets.only(bottom: 4),
+            padding: const EdgeInsets.only(bottom: AppSpace.xxs),
             child: Row(children: [
-              Icon(h['via'] == 'auto' ? Icons.auto_mode_rounded : Icons.person_rounded, size: 15, color: c.textLight),
-              const SizedBox(width: 6),
+              Icon(h['via'] == 'auto' ? Icons.auto_mode_rounded : Icons.person_rounded, size: AppIconSize.xs, color: c.textLight),
+              const SizedBox(width: AppSpace.xs),
               Expanded(
                 child: Text(
                   '${h['via'] == 'auto' ? t('انتقال تلقائي', 'Moved up automatically') : t('نقل من المؤسسة', 'Moved by your organization')} → ${_lname(levels.firstWhere((l) => l['key'] == h['to'], orElse: () => {'key': h['to']}))} · ${orgParseUtc(h['at']) == null ? '—' : AppTime.date(orgParseUtc(h['at'])!)}',
-                  style: orgText(context, size: 12, color: c.textMedium),
+                  style: AppType.meta(context).copyWith(color: c.textMedium),
                 ),
               ),
             ]),
@@ -932,17 +932,17 @@ class _LadderStep extends StatelessWidget {
     final col = switch (status) { 'done' => c.success, 'current' => c.primary, _ => c.textLight };
     return Container(
       constraints: const BoxConstraints(maxWidth: 140),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
       decoration: BoxDecoration(
         color: col.withValues(alpha: status == 'current' ? 0.14 : 0.07),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadius.block),
         border: Border.all(color: status == 'current' ? col : Colors.transparent, width: 1.4),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(status == 'done' ? Icons.check_circle_rounded : (status == 'current' ? Icons.my_location_rounded : Icons.lock_outline_rounded),
-            size: 15, color: col),
-        const SizedBox(width: 4),
-        Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12, w: FontWeight.w700, color: col))),
+            size: AppIconSize.xs, color: col),
+        const SizedBox(width: AppSpace.xxs),
+        Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: col))),
       ]),
     );
   }
@@ -959,25 +959,25 @@ class _RuleRow extends StatelessWidget {
     final r = result;
     final col = r.met ? c.success : (r.noData ? c.textLight : c.warning);
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.only(top: AppSpace.xs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(r.met ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded, size: 18, color: col),
-          const SizedBox(width: 8),
+          Icon(r.met ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded, size: AppIconSize.md, color: col),
+          const SizedBox(width: AppSpace.xs),
           Expanded(child: Text(r.rule.describe(courseName: (id) => _courseLabel(courses, id)), maxLines: 3, overflow: TextOverflow.ellipsis,
-              style: orgText(context, size: 12.5, w: FontWeight.w600))),
-          const SizedBox(width: 8),
-          Text(r.progressText, style: orgText(context, size: 12, w: FontWeight.w800, color: col)),
+              style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark))),
+          const SizedBox(width: AppSpace.xs),
+          Text(r.progressText, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: col)),
         ]),
         Padding(
-          padding: const EdgeInsetsDirectional.only(start: 26, top: 4),
+          padding: const EdgeInsetsDirectional.only(start: AppSpace.lg, top: AppSpace.xxs),
           child: AppProgressBar(value: r.progress * 100, color: col, height: 5),
         ),
         if (!r.met && r.missing.isNotEmpty)
           Padding(
-            padding: const EdgeInsetsDirectional.only(start: 26, top: 4),
+            padding: const EdgeInsetsDirectional.only(start: AppSpace.lg, top: AppSpace.xxs),
             child: Text(t('متبقٍ: ', 'Still to pass: ') + r.missing.take(4).map((id) => _courseLabel(courses, id)).join('، ') + (r.missing.length > 4 ? ' …' : ''),
-                maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, size: 11.5, color: c.textMedium)),
+                maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
           ),
       ]),
     );
@@ -998,31 +998,31 @@ class _TermCard extends StatelessWidget {
     return AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(term['kind'] == 'summer' ? Icons.wb_sunny_rounded : Icons.menu_book_rounded, color: c.primary, size: 20),
-          const SizedBox(width: 8),
-          Expanded(child: Text(t('${term['label_ar']}', '${term['label_en']}'), style: orgText(context, w: FontWeight.w800))),
+          Icon(term['kind'] == 'summer' ? Icons.wb_sunny_rounded : Icons.menu_book_rounded, color: c.primary, size: AppIconSize.md),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: Text(t('${term['label_ar']}', '${term['label_en']}'), style: AppType.bodyStrong(context))),
           if (courses.isNotEmpty) AppBadgePill('$done/${courses.length}', color: done == courses.length ? c.success : c.primary),
         ]),
         if (dates.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(top: 2),
+            padding: const EdgeInsets.only(top: AppSpace.xxs / 2),
             child: Text(
               '${shortDate('${dates['start_date']}')} → ${shortDate('${dates['end_date']}')}'
               '${status == 'current' ? t(' · جارٍ الآن', ' · in progress') : status == 'upcoming' ? t(' · قادم', ' · upcoming') : ''}',
-              style: orgText(context, size: 12, color: c.textMedium),
+              style: AppType.meta(context).copyWith(color: c.textMedium),
             ),
           ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         if (courses.isEmpty)
-          Text(t('لم تُحدَّد مقررات بعد', 'No courses set yet'), style: orgText(context, size: 12, color: c.textLight))
+          Text(t('لم تُحدَّد مقررات بعد', 'No courses set yet'), style: AppType.meta(context).copyWith(color: c.textLight))
         else
           for (final x in courses)
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: AppSpace.xxs),
               child: Row(children: [
-                Icon(x['passed'] == true ? Icons.check_circle_rounded : Icons.circle_outlined, size: 16, color: x['passed'] == true ? c.success : c.textLight),
-                const SizedBox(width: 8),
-                Expanded(child: Text(orgCourseName(x), maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12.5))),
+                Icon(x['passed'] == true ? Icons.check_circle_rounded : Icons.circle_outlined, size: AppIconSize.sm, color: x['passed'] == true ? c.success : c.textLight),
+                const SizedBox(width: AppSpace.xs),
+                Expanded(child: Text(orgCourseName(x), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: context.colors.textDark))),
               ]),
             ),
       ]),
@@ -1041,20 +1041,20 @@ class _ProgramReadiness extends StatelessWidget {
     final met = p['met'] == true;
     final rules = [for (final r in asMapList(p['rules'])) RuleResult.fromJson(r)];
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             AppBadgePill('${p['code']}', color: c.primary),
-            const SizedBox(width: 8),
-            Expanded(child: Text(orgNameOf(p), maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800))),
-            Icon(met ? Icons.lock_open_rounded : Icons.lock_rounded, size: 18, color: met ? c.success : c.warning),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(child: Text(orgNameOf(p), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context))),
+            Icon(met ? Icons.lock_open_rounded : Icons.lock_rounded, size: AppIconSize.md, color: met ? c.success : c.warning),
           ]),
           Text(
             met
                 ? t('مستوفٍ — يمكنك التسجيل في مقرراته', 'Ready — you can join its courses')
                 : t('ينقصك ${rules.where((r) => !r.met).length} من الشروط', '${rules.where((r) => !r.met).length} rule(s) still to meet'),
-            style: orgText(context, size: 12, color: met ? c.success : c.textMedium),
+            style: AppType.meta(context).copyWith(color: met ? c.success : c.textMedium),
           ),
           if (!met) for (final r in rules) _RuleRow(result: r, courses: courses),
         ]),
@@ -1071,7 +1071,7 @@ Future<void> showEnrollBlock(BuildContext context, Map<String, dynamic> reason) 
       final roadmap = reason['code'] == 'roadmap_prerequisites';
       final blocked = asMapList(reason['blocked']);
       return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           AppSheetHeader(roadmap ? t('خطوة قبل شراء المسار', 'One step before you buy this roadmap') : t('خطوة قبل التسجيل', 'One step before you join')),
           if (!roadmap)
@@ -1083,26 +1083,26 @@ Future<void> showEnrollBlock(BuildContext context, Map<String, dynamic> reason) 
               text: t('${blocked.length} من مقررات هذا المسار لها متطلبات لم تستوفها بعد — لن يُخصم أي مبلغ قبل استيفائها.',
                   '${blocked.length} course(s) in this roadmap have requirements you haven\'t met yet — nothing is charged until they\'re met.'),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             for (final b in blocked)
               Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.only(bottom: AppSpace.xs),
                 child: AppCard(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
-                      if ((b['code'] ?? '').toString().isNotEmpty) ...[AppBadgePill('${b['code']}', color: c.primary), const SizedBox(width: 8)],
+                      if ((b['code'] ?? '').toString().isNotEmpty) ...[AppBadgePill('${b['code']}', color: c.primary), const SizedBox(width: AppSpace.xs)],
                       Expanded(
-                        child: Text(t('${b['name_ar'] ?? b['name_en']}', '${b['name_en'] ?? b['name_ar']}'), maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(ctx, w: FontWeight.w800)),
+                        child: Text(t('${b['name_ar'] ?? b['name_en']}', '${b['name_en'] ?? b['name_ar']}'), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(ctx)),
                       ),
-                      Icon(Icons.lock_rounded, size: 18, color: c.warning),
+                      Icon(Icons.lock_rounded, size: AppIconSize.md, color: c.warning),
                     ]),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpace.xs),
                     ..._blockDetails(ctx, asMap(b['reason']), {...names, ...asMap(asMap(b['reason'])['course_names'])}),
                   ]),
                 ),
               ),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           AppPrimaryButton(label: t('حسناً', 'Got it'), onPressed: () => Navigator.pop(ctx)),
         ]),
       );
@@ -1122,15 +1122,15 @@ List<Widget> _blockDetails(BuildContext ctx, Map<String, dynamic> reason, Map<St
               'This course belongs to the ${prog['code'] ?? ''} department — meet its prerequisites first, even if your level moved up.')
           : t('أكمل المقررات السابقة المطلوبة لهذا المقرر أولاً.', 'Finish the courses this one requires first.'),
     ),
-    const SizedBox(height: 8),
+    const SizedBox(height: AppSpace.xs),
     for (final r in rules) _RuleRow(result: r, courses: names),
     for (final id in missing)
       Padding(
-        padding: const EdgeInsets.only(top: 6),
+        padding: const EdgeInsets.only(top: AppSpace.xs),
         child: Row(children: [
-          Icon(Icons.radio_button_unchecked_rounded, size: 18, color: c.warning),
-          const SizedBox(width: 8),
-          Expanded(child: Text(_courseLabel(names, id), style: orgText(ctx, size: 12.5, w: FontWeight.w600))),
+          Icon(Icons.radio_button_unchecked_rounded, size: AppIconSize.md, color: c.warning),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: Text(_courseLabel(names, id), style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: ctx.colors.textDark))),
         ]),
       ),
   ];

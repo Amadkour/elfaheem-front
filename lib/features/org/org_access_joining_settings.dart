@@ -63,11 +63,11 @@ class _JoinSettingsTabState extends State<_JoinSettingsTab> {
                         'A valid code AND a request: the code only sends the request, then you accept or reject it. Requests without a code are refused.')
                     : t('الطلبات تصلك لتقبلها أو ترفضها، والأكواد تعمل.', 'Requests come to you to accept or reject; codes work too.'))
             : t('الانضمام بالأكواد فقط — لا تظهر المؤسسة كخيار «طلب انضمام».', 'Codes only — people can\'t send a request.');
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl), children: [
       AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           AppSectionTitle(t('الانضمام إلى المؤسسة', 'Joining the organization'), subtitle: t('خاص بمؤسستك فقط', 'For your organization only')),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs),
           AppSwitchTile(
             icon: Icons.pause_circle_rounded,
             title: t('إيقاف الانضمام مؤقتاً', 'Pause all joining'),
@@ -103,16 +103,16 @@ class _JoinSettingsTabState extends State<_JoinSettingsTab> {
                 onChanged: (v) => setState(() => _withCode = v),
               ),
           ],
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs),
           AppBanner(icon: Icons.info_outline_rounded, text: summary, color: _paused! ? c.warning : c.primary),
         ]),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           AppSectionTitle(t('الانضمام للأقسام (الافتراضي)', 'Joining departments (default)'),
               subtitle: t('للأقسام التي لم تُضبط لها سياسة خاصة — يمكن لكل قسم تغييرها من صفحته', 'For departments without their own policy — each can override it on its page')),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           for (final (k, icon, title, sub) in [
             ('closed', Icons.lock_rounded, t('مغلق', 'Closed'), t('لا انضمام إلا بإضافة من الإدارة', 'Only staff add people')),
             ('approval', Icons.how_to_reg_rounded, t('بطلب وموافقة', 'Request + approval'), t('مدير القسم أو إدارة المؤسسة يقبل الطلب', 'The department manager or org admins decide')),
@@ -122,25 +122,25 @@ class _JoinSettingsTabState extends State<_JoinSettingsTab> {
                 t('الكود الصحيح يرسل الطلب، ثم يقرر المعتمد', 'A valid code sends the request, then an approver decides')),
           ])
             Padding(
-              padding: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
               child: InkWell(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AppRadius.control),
                 onTap: () => setState(() => _unit = k),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 160),
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(AppSpace.sm),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(AppRadius.control),
                     color: _unit == k ? c.primary.withValues(alpha: 0.08) : Colors.transparent,
                     border: Border.all(color: _unit == k ? c.primary : c.divider),
                   ),
                   child: Row(children: [
-                    Icon(icon, color: _unit == k ? c.primary : c.textMedium, size: 20),
-                    const SizedBox(width: 10),
+                    Icon(icon, color: _unit == k ? c.primary : c.textMedium, size: AppIconSize.md),
+                    const SizedBox(width: AppSpace.sm),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(title, style: orgText(context, w: FontWeight.w800)),
-                        Text(sub, style: orgText(context, size: 12, color: c.textMedium)),
+                        Text(title, style: AppType.bodyStrong(context)),
+                        Text(sub, style: AppType.meta(context).copyWith(color: c.textMedium)),
                       ]),
                     ),
                     if (_unit == k) Icon(Icons.check_circle_rounded, color: c.primary),
@@ -149,10 +149,10 @@ class _JoinSettingsTabState extends State<_JoinSettingsTab> {
               ),
             ),
           Text(t('القبول التلقائي والأكواد لا تتجاوز شروط القسم ولا سعته.', 'Auto-accept and codes never bypass a department\'s rules or capacity.'),
-              style: orgText(context, size: 11.5, color: c.textLight)),
+              style: AppType.meta(context).copyWith(color: c.textLight)),
         ]),
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: AppSpace.md),
       AppButton.primary(label: t('حفظ', 'Save'), icon: Icons.check_rounded, busy: _busy, onPressed: _busy ? null : _save),
     ]);
   }

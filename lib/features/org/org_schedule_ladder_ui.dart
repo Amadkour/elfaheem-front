@@ -32,6 +32,7 @@ import 'org_schedule_generate.dart' show LiveStep, liveClock, showRulesSheet, un
 import 'org_schedule_ladder.dart';
 import 'org_ui.dart' show orgText;
 import 'org_v3.dart' show runIsOpen;
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Small shared pieces
@@ -58,19 +59,19 @@ Color _modeColor(BuildContext context, String mode) {
 }
 
 Widget _pill(BuildContext context, String text, Color col, {IconData? icon}) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(999)),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
+      decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.pill)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        if (icon != null) ...[Icon(icon, size: 13, color: col), const SizedBox(width: 4)],
-        Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 11, w: FontWeight.w700, color: col))),
+        if (icon != null) ...[Icon(icon, size: AppIconSize.xs, color: col), const SizedBox(width: AppSpace.xxs)],
+        Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.overline(context).copyWith(color: col))),
       ]),
     );
 
 Widget _sectionTitle(BuildContext context, String text, {Widget? trailing}) => Padding(
-      padding: const EdgeInsets.only(top: 14, bottom: 6),
+      padding: const EdgeInsets.only(top: AppSpace.md, bottom: AppSpace.xs),
       // the trailing button shares the width (its label wraps) so a long label never pushes the title out
       child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-        Expanded(child: Text(text, style: orgText(context, size: 12.5, w: FontWeight.w800, color: context.colors.textMedium))),
+        Expanded(child: Text(text, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textMedium))),
         if (trailing != null) Flexible(child: Align(alignment: AlignmentDirectional.centerEnd, child: trailing)),
       ]),
     );
@@ -90,20 +91,20 @@ class _ModePicker extends StatelessWidget {
         Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.control),
             onTap: onChanged == null ? null : () => onChanged!(m),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 160),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
               decoration: BoxDecoration(
                 color: m == value ? _modeColor(context, m).withValues(alpha: 0.14) : c.inputBg,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppRadius.control),
                 border: Border.all(color: m == value ? _modeColor(context, m) : c.divider, width: m == value ? 1.4 : 1),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(ladderModeIcon(m), size: 15, color: m == value ? _modeColor(context, m) : c.textMedium),
-                const SizedBox(width: 4),
-                Text(ladderModeLabel(m), style: orgText(context, size: 11.5, w: FontWeight.w700, color: m == value ? _modeColor(context, m) : c.textMedium)),
+                Icon(ladderModeIcon(m), size: AppIconSize.xs, color: m == value ? _modeColor(context, m) : c.textMedium),
+                const SizedBox(width: AppSpace.xxs),
+                Text(ladderModeLabel(m), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: m == value ? _modeColor(context, m) : c.textMedium)),
               ]),
             ),
           ),
@@ -191,31 +192,31 @@ class _RungTile extends StatelessWidget {
           icon: Icon(icon),
         );
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
+      margin: const EdgeInsets.only(bottom: AppSpace.xs),
+      padding: const EdgeInsets.fromLTRB(AppSpace.xs, AppSpace.sm, AppSpace.xs, AppSpace.sm),
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         border: Border.all(color: rung.locked ? c.divider : col.withValues(alpha: 0.35)),
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (pinned || !enabled)
-          Padding(padding: const EdgeInsets.only(top: 4), child: Icon(pinned ? Icons.push_pin_rounded : Icons.drag_indicator_rounded, size: 20, color: c.textLight))
+          Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Icon(pinned ? Icons.push_pin_rounded : Icons.drag_indicator_rounded, size: AppIconSize.md, color: c.textLight))
         else
           ReorderableDragStartListener(
             index: index,
-            child: Padding(padding: const EdgeInsets.only(top: 4), child: Icon(Icons.drag_indicator_rounded, size: 20, color: c.textMedium)),
+            child: Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Icon(Icons.drag_indicator_rounded, size: AppIconSize.md, color: c.textMedium)),
           ),
-        const SizedBox(width: 6),
+        const SizedBox(width: AppSpace.xs),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              CircleAvatar(radius: 11, backgroundColor: col.withValues(alpha: 0.14), child: Text('${index + 1}', style: orgText(context, size: 11, w: FontWeight.w800, color: col))),
-              const SizedBox(width: 8),
-              Expanded(child: Text(name, style: orgText(context, size: 13.5, w: FontWeight.w800, color: rung.locked ? c.textMedium : c.textDark))),
+              CircleAvatar(radius: 11, backgroundColor: col.withValues(alpha: 0.14), child: Text('${index + 1}', style: AppType.overline(context).copyWith(color: col))),
+              const SizedBox(width: AppSpace.xs),
+              Expanded(child: Text(name, style: AppType.bodyStrong(context).copyWith(color: rung.locked ? c.textMedium : c.textDark))),
             ]),
-            if (why.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 3), child: Text(why, style: orgText(context, size: 12, color: c.textMedium))),
-            const SizedBox(height: 7),
+            if (why.isNotEmpty) Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text(why, style: AppType.meta(context).copyWith(color: c.textMedium))),
+            const SizedBox(height: AppSpace.xs),
             if (pinned)
               _pill(context, t('دائماً أولاً — لا يُكسر شيء', 'Always first — nothing is broken'), c.success, icon: Icons.check_rounded)
             else
@@ -295,15 +296,15 @@ class _LadderEditorState extends State<LadderEditor> {
     final o = cfg.options;
     void set(LadderOptions n) => widget.onChanged(cfg.copyWith(options: n));
     Widget two(Widget a, Widget b) => LayoutBuilder(builder: (ctx, box) {
-          if (box.maxWidth < 420) return Column(children: [a, const SizedBox(height: 8), b]);
-          return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: a), const SizedBox(width: 10), Expanded(child: b)]);
+          if (box.maxWidth < 420) return Column(children: [a, const SizedBox(height: AppSpace.xs), b]);
+          return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: a), const SizedBox(width: AppSpace.sm), Expanded(child: b)]);
         });
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       two(
         _IntField(label: t('ميزانية التشغيل (دقائق)', 'Run budget (minutes)'), value: (o.budgetS / 60).round(), min: 1, max: 120, enabled: _on, onChanged: (v) => set(o.copyWith(budgetS: v * 60))),
         _IntField(label: t('مهلة القرار (دقائق)', 'Decision timeout (minutes)'), value: (o.decisionTimeoutS / 60).round(), min: 1, max: 240, enabled: _on, onChanged: (v) => set(o.copyWith(decisionTimeoutS: v * 60))),
       ),
-      const SizedBox(height: 4),
+      const SizedBox(height: AppSpace.xxs),
       AppSwitchTile(
         title: t('زمن الحل حسب حجم الجدول', 'Solve time by size'),
         subtitle: o.solveS == null
@@ -315,27 +316,27 @@ class _LadderEditorState extends State<LadderEditor> {
       ),
       if (o.solveS != null) ...[
         _IntField(label: t('زمن المحاولة الواحدة (ثوانٍ)', 'One solve (seconds)'), value: o.solveS!, min: 3, max: 600, enabled: _on, onChanged: (v) => set(o.copyWith(solveS: v))),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
       ],
       two(
         _IntField(label: t('تجاوز السعة (%)', 'Over capacity (%)'), value: o.overflowPct, min: 0, max: 50, enabled: _on, onChanged: (v) => set(o.copyWith(overflowPct: v))),
         _IntField(label: t('أقصى قاعات جديدة', 'Max new rooms'), value: o.maxNewRooms, min: 0, max: 50, enabled: _on, onChanged: (v) => set(o.copyWith(maxNewRooms: v))),
       ),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       two(
         _IntField(label: t('أقصى فترات جديدة', 'Max new periods'), value: o.maxNewPeriods, min: 0, max: 10, enabled: _on, onChanged: (v) => set(o.copyWith(maxNewPeriods: v))),
         _IntField(label: t('أقصى أيام جديدة', 'Max new days'), value: o.maxNewDays, min: 0, max: 7, enabled: _on, onChanged: (v) => set(o.copyWith(maxNewDays: v))),
       ),
-      const SizedBox(height: 8),
-      Text(t('خيارات كل قرار', 'Options per decision'), style: orgText(context, size: 12, color: c.textMedium)),
-      const SizedBox(height: 4),
+      const SizedBox(height: AppSpace.xs),
+      Text(t('خيارات كل قرار', 'Options per decision'), style: AppType.meta(context).copyWith(color: c.textMedium)),
+      const SizedBox(height: AppSpace.xxs),
       AppDropdown<int>(
         value: o.forkOptions.clamp(1, 4),
         enabled: _on,
         items: [for (var n = 1; n <= 4; n++) DropdownMenuItem(value: n, child: Text('$n'))],
         onChanged: (v) => set(o.copyWith(forkOptions: v ?? o.forkOptions)),
       ),
-      const SizedBox(height: 4),
+      const SizedBox(height: AppSpace.xxs),
       AppSwitchTile(
         title: t('نتيجة قابلة للتكرار', 'Reproducible result'),
         subtitle: t('نفس البيانات ونفس البذرة يعطيان الجدول نفسه (أبطأ)', 'The same data and seed give the same timetable (slower)'),
@@ -353,7 +354,7 @@ class _LadderEditorState extends State<LadderEditor> {
       Text(
         t('السلّم هو ترتيب ما يُسمح بكسره عندما لا تجد حصة مكاناً: الأعلى أرخص ويُجرَّب أولاً. «تلقائي» يُكسر ويُسجَّل، «اسألني» يوقف التشغيل ويسألك، «مقفلة» لا تُكسر أبداً.',
             'The ladder is the order of what may give way when a session does not fit: the top is the cheapest and is tried first. "Auto" breaks and logs, "Ask me" pauses the run and asks you, "Locked" is never broken.'),
-        style: orgText(context, size: 12, color: c.textMedium),
+        style: AppType.meta(context).copyWith(color: c.textMedium),
       ),
       _sectionTitle(
         context,
@@ -369,7 +370,7 @@ class _LadderEditorState extends State<LadderEditor> {
         buildDefaultDragHandles: false,
         itemCount: ladder.length,
         onReorder: _reorder,
-        proxyDecorator: (child, _, _) => Material(color: Colors.transparent, elevation: 6, borderRadius: BorderRadius.circular(14), child: child),
+        proxyDecorator: (child, _, _) => Material(color: Colors.transparent, elevation: 6, borderRadius: BorderRadius.circular(AppRadius.control), child: child),
         itemBuilder: (ctx, i) => _RungTile(
           key: ValueKey(ladder[i].key),
           index: i,
@@ -385,48 +386,48 @@ class _LadderEditorState extends State<LadderEditor> {
       _sectionTitle(context, t('لا تُكسر أبداً', 'Never broken')),
       for (final f in cfg.fixed)
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 3),
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(Icons.lock_rounded, size: 16, color: c.textLight),
-            const SizedBox(width: 8),
-            Expanded(child: Text(f.text, style: orgText(context, size: 12.5, color: c.textMedium))),
+            Icon(Icons.lock_rounded, size: AppIconSize.sm, color: c.textLight),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(child: Text(f.text, style: AppType.label(context).copyWith(color: c.textMedium))),
           ]),
         ),
       InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadius.chip),
         onTap: () => setState(() => _options = !_options),
         child: Padding(
-          padding: const EdgeInsets.only(top: 14, bottom: 6),
+          padding: const EdgeInsets.only(top: AppSpace.md, bottom: AppSpace.xs),
           child: Row(children: [
-            Expanded(child: Text(t('الخيارات', 'Options'), style: orgText(context, size: 12.5, w: FontWeight.w800, color: c.textMedium))),
-            Icon(_options ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 20, color: c.textMedium),
+            Expanded(child: Text(t('الخيارات', 'Options'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium))),
+            Icon(_options ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: AppIconSize.md, color: c.textMedium),
           ]),
         ),
       ),
       if (_options) _options_(context),
       _sectionTitle(context, t('إعدادات محفوظة', 'Presets')),
       if (cfg.presets.isEmpty && !widget.canEdit)
-        Text(t('لا إعدادات محفوظة', 'No presets yet'), style: orgText(context, size: 12, color: c.textLight)),
+        Text(t('لا إعدادات محفوظة', 'No presets yet'), style: AppType.meta(context).copyWith(color: c.textLight)),
       Wrap(spacing: 6, runSpacing: 6, children: [
         for (final p in cfg.presets)
           InputChip(
-            avatar: Icon(Icons.bookmark_rounded, size: 16, color: c.primary),
+            avatar: Icon(Icons.bookmark_rounded, size: AppIconSize.sm, color: c.primary),
             label: Text(p.name, overflow: TextOverflow.ellipsis),
             tooltip: t('تطبيق هذا الإعداد', 'Apply this preset'),
             onPressed: _on && widget.onApplyPreset != null ? () => widget.onApplyPreset!(p) : null,
             onDeleted: _on && widget.onDeletePreset != null ? () => _deletePreset(p) : null,
-            deleteIcon: const Icon(Icons.close_rounded, size: 16),
+            deleteIcon: const Icon(Icons.close_rounded, size: AppIconSize.sm),
             deleteButtonTooltipMessage: t('حذف', 'Delete'),
           ),
         if (widget.canEdit && widget.onSavePreset != null)
           ActionChip(
-            avatar: Icon(Icons.bookmark_add_outlined, size: 16, color: c.primary),
+            avatar: Icon(Icons.bookmark_add_outlined, size: AppIconSize.sm, color: c.primary),
             label: Text(t('حفظ كإعداد…', 'Save as preset…')),
             onPressed: _on ? _savePreset : null,
           ),
       ]),
       if (widget.canEdit) ...[
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.md),
         AppSwitchTile(
           title: t('تلقائي بالكامل (لا تسألني)', 'Fully automatic (never ask me)'),
           subtitle: t('كل درجة «اسألني» يقررها النظام بنفسه ويُسجَّل القرار', 'Every "Ask me" rung is decided by the system and the decision is logged'),
@@ -435,7 +436,7 @@ class _LadderEditorState extends State<LadderEditor> {
           dense: true,
           onChanged: _on ? (v) => setState(() => _auto = v) : null,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         if (widget.onSaveAndGenerate != null)
           AppPrimaryButton(
             label: t('حفظ وتوليد الجدول', 'Save & generate'),
@@ -448,7 +449,7 @@ class _LadderEditorState extends State<LadderEditor> {
           if (widget.onLegacyRules != null)
             TextButton.icon(
               onPressed: widget.busy ? null : widget.onLegacyRules,
-              icon: const Icon(Icons.rule_rounded, size: 16),
+              icon: const Icon(Icons.rule_rounded, size: AppIconSize.sm),
               label: Text(t('القواعد القديمة…', 'Legacy rules…')),
             ),
         ]),
@@ -482,7 +483,7 @@ Future<void> showLadderSheet(BuildContext context, OrgScheduleProvider p, int si
         }
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             SheetHeader(t('سلّم التوليد', 'Generation ladder')),
             LadderEditor(
@@ -536,31 +537,31 @@ class LadderDecisionCard extends StatelessWidget {
     final d = decision;
     final rec = d.recommendedOption;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(
         color: c.warning.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: c.warning.withValues(alpha: 0.4)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           Icon(Icons.alt_route_rounded, color: c.warning),
-          const SizedBox(width: 8),
-          Expanded(child: Text(t('قرارك مطلوب', 'Your decision'), style: orgText(context, size: 14, w: FontWeight.w800, color: c.textDark))),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: Text(t('قرارك مطلوب', 'Your decision'), style: AppType.bodyStrong(context).copyWith(color: c.textDark))),
         ]),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpace.xxs),
         if (d.required > 0)
           Text(t('وُضعت ${d.placed} من ${d.required} حصة · ${d.unplaced} بلا موعد', '${d.placed} of ${d.required} placed · ${d.unplaced} unplaced'),
-              style: orgText(context, size: 12, w: FontWeight.w700, color: c.textMedium)),
-        if (d.situation.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text(d.situation, style: orgText(context, size: 12.5, color: c.textDark))),
+              style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
+        if (d.situation.isNotEmpty) Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text(d.situation, style: AppType.label(context).copyWith(color: c.textDark))),
         if (d.top.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.only(top: AppSpace.xs),
             child: Wrap(spacing: 6, runSpacing: 6, children: [for (final (reason, n) in d.top) _pill(context, '$n × ${unplacedReasonText(reason)}', c.textMedium)]),
           ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         for (final o in orderedOptions(d)) _OptionCard(option: o, onChoose: busy || !o.possible ? null : () => onChoose(o.id)),
-        if (busy) const Padding(padding: EdgeInsets.only(top: 4, bottom: 8), child: LinearProgressIndicator(minHeight: 3)),
+        if (busy) const Padding(padding: EdgeInsets.only(top: AppSpace.xxs, bottom: AppSpace.xs), child: LinearProgressIndicator(minHeight: 3)),
         AppPrimaryButton(
           label: t('دع النظام يقرر', 'Let the system decide'),
           icon: Icons.auto_mode_rounded,
@@ -569,9 +570,9 @@ class LadderDecisionCard extends StatelessWidget {
         ),
         if (rec != null)
           Padding(
-            padding: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.only(top: AppSpace.xs),
             child: Text(t('يطبّق التوصية: ${rec.name}', 'Applies the recommendation: ${rec.name}'),
-                textAlign: TextAlign.center, style: orgText(context, size: 11.5, color: c.textMedium)),
+                textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textMedium)),
           ),
       ]),
     );
@@ -594,46 +595,46 @@ class _OptionCard extends StatelessWidget {
     return Opacity(
       opacity: dim ? 0.6 : 1,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(10),
+        margin: const EdgeInsets.only(bottom: AppSpace.xs),
+        padding: const EdgeInsets.all(AppSpace.sm),
         decoration: BoxDecoration(
           color: c.cardBg,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadius.control),
           border: Border.all(color: border, width: o.recommended ? 1.6 : 1),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(o.isStop ? Icons.stop_circle_outlined : Icons.stairs_rounded, size: 18, color: o.isStop ? c.textMedium : c.primary),
-            const SizedBox(width: 6),
-            Expanded(child: Text(o.name, style: orgText(context, size: 13, w: FontWeight.w800, color: c.textDark))),
-            if (o.recommended) ...[const SizedBox(width: 6), _pill(context, t('موصى به', 'Recommended'), c.primary, icon: Icons.star_rounded)],
+            Icon(o.isStop ? Icons.stop_circle_outlined : Icons.stairs_rounded, size: AppIconSize.md, color: o.isStop ? c.textMedium : c.primary),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(child: Text(o.name, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark))),
+            if (o.recommended) ...[const SizedBox(width: AppSpace.xs), _pill(context, t('موصى به', 'Recommended'), c.primary, icon: Icons.star_rounded)],
           ]),
-          if (o.why.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 3), child: Text(o.why, style: orgText(context, size: 12, color: c.textMedium))),
+          if (o.why.isNotEmpty) Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text(o.why, style: AppType.meta(context).copyWith(color: c.textMedium))),
           Padding(
-            padding: const EdgeInsets.only(top: 5),
-            child: Text(impactText(o), style: orgText(context, size: 12.5, w: FontWeight.w700, color: impact?.complete == true ? c.success : c.textDark)),
+            padding: const EdgeInsets.only(top: AppSpace.xxs),
+            child: Text(impactText(o), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: impact?.complete == true ? c.success : c.textDark)),
           ),
           if (impact != null && impact.brokenByRung.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.only(top: AppSpace.xs),
               child: Wrap(spacing: 6, runSpacing: 6, children: [
                 for (final e in impact.brokenByRung.entries) _pill(context, '${rungName(e.key)} ×${e.value}', c.warning, icon: Icons.rule_rounded),
               ]),
             ),
           if (o.recommended && o.reason.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 5),
+              padding: const EdgeInsets.only(top: AppSpace.xxs),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Icon(Icons.lightbulb_outline_rounded, size: 14, color: c.primary),
-                const SizedBox(width: 4),
-                Expanded(child: Text(o.reason, style: orgText(context, size: 11.5, color: c.primary))),
+                Icon(Icons.lightbulb_outline_rounded, size: AppIconSize.xs, color: c.primary),
+                const SizedBox(width: AppSpace.xxs),
+                Expanded(child: Text(o.reason, style: AppType.meta(context).copyWith(color: c.primary))),
               ]),
             ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           SizedBox(
             width: double.infinity,
             child: o.recommended
-                ? FilledButton.tonalIcon(onPressed: onChoose, icon: const Icon(Icons.check_rounded, size: 18), label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis))
+                ? FilledButton.tonalIcon(onPressed: onChoose, icon: const Icon(Icons.check_rounded, size: AppIconSize.md), label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis))
                 : OutlinedButton(onPressed: onChoose, child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis)),
           ),
         ]),
@@ -697,17 +698,17 @@ class _DecisionDialogState extends State<_DecisionDialog> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Dialog(
-      insetPadding: const EdgeInsets.all(16),
+      insetPadding: const EdgeInsets.all(AppSpace.md),
       backgroundColor: c.cardBg,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.block)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 560),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.md),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(children: [
-              Expanded(child: Text(t('التوليد يسألك', 'The generation asks you'), style: orgText(context, size: 15, w: FontWeight.w800, color: c.textDark))),
-              IconButton(tooltip: t('إزالة', 'Remove'), onPressed: _busy ? null : _close, icon: Icon(Icons.close_rounded, color: c.textMedium, size: 20)),
+              Expanded(child: Text(t('التوليد يسألك', 'The generation asks you'), style: AppType.section(context).copyWith(color: c.textDark))),
+              IconButton(tooltip: t('إزالة', 'Remove'), onPressed: _busy ? null : _close, icon: Icon(Icons.close_rounded, color: c.textMedium, size: AppIconSize.md)),
             ]),
             LadderDecisionCard(decision: widget.decision, busy: _busy, onChoose: _choose),
           ]),
@@ -800,27 +801,27 @@ class _LadderOverlayState extends State<LadderOverlay> {
     final bar = live.required > 0 ? live.pct / 100 : (widget.progress == null ? null : widget.progress!.clamp(0, 100) / 100);
 
     Widget counter(String label, String value, Color col) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(color: col.withValues(alpha: 0.09), borderRadius: BorderRadius.circular(10)),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+          decoration: BoxDecoration(color: col.withValues(alpha: 0.09), borderRadius: BorderRadius.circular(AppRadius.chip)),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(value, style: orgText(context, size: 15, w: FontWeight.w800, color: col)),
-            Text(label, style: orgText(context, size: 10.5, color: c.textMedium)),
+            Text(value, style: AppType.section(context).copyWith(color: col)),
+            Text(label, style: AppType.meta(context).copyWith(color: c.textMedium)),
           ]),
         );
 
     Widget stepRow(LiveStep s) {
       final now = !s.done;
       return Padding(
-        padding: const EdgeInsets.only(top: 5),
+        padding: const EdgeInsets.only(top: AppSpace.xxs),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           SizedBox(
             width: 18,
             height: 18,
             child: now
-                ? (open ? const Padding(padding: EdgeInsets.all(2), child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.remove_rounded, size: 16, color: c.textLight))
-                : Icon(s.kind == 'decision' || s.kind == 'decided' ? Icons.alt_route_rounded : Icons.check_circle_rounded, size: 16, color: now ? c.textDark : c.textLight),
+                ? (open ? const Padding(padding: EdgeInsets.all(AppSpace.xxs / 2), child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.remove_rounded, size: AppIconSize.sm, color: c.textLight))
+                : Icon(s.kind == 'decision' || s.kind == 'decided' ? Icons.alt_route_rounded : Icons.check_circle_rounded, size: AppIconSize.sm, color: now ? c.textDark : c.textLight),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           Expanded(
             child: Text(
               s.elapsedS != null && s.elapsedS! >= 1 ? '${s.text} · ${liveClock(Duration(seconds: s.elapsedS!.round()))}' : s.text,
@@ -838,13 +839,13 @@ class _LadderOverlayState extends State<LadderOverlay> {
         child: failed
             ? Icon(Icons.error_rounded, color: accent)
             : live.isWaiting
-                ? Icon(Icons.pan_tool_rounded, color: accent, size: 22)
+                ? Icon(Icons.pan_tool_rounded, color: accent, size: AppIconSize.lg)
                 : open
-                    ? Padding(padding: const EdgeInsets.all(2), child: CircularProgressIndicator(strokeWidth: 2.4, color: accent))
+                    ? Padding(padding: const EdgeInsets.all(AppSpace.xxs / 2), child: CircularProgressIndicator(strokeWidth: 2.4, color: accent))
                     : Icon(Icons.check_circle_rounded, color: c.success),
       ),
-      const SizedBox(width: 8),
-      Expanded(child: Text(ladderHeadline(live), style: orgText(context, w: FontWeight.w800))),
+      const SizedBox(width: AppSpace.xs),
+      Expanded(child: Text(ladderHeadline(live), style: AppType.bodyStrong(context))),
       if (widget.onCancel != null && open)
         TextButton(onPressed: widget.busy ? null : widget.onCancel, child: Text(t('إلغاء', 'Cancel'), style: TextStyle(color: c.danger))),
     ]);
@@ -854,24 +855,24 @@ class _LadderOverlayState extends State<LadderOverlay> {
         budget != null && budget > 0
             ? t('المدة ${liveClock(elapsed)} من ${liveClock(Duration(seconds: budget))} كحد أقصى', 'Elapsed ${liveClock(elapsed)} of up to ${liveClock(Duration(seconds: budget))}')
             : t('المدة ${liveClock(elapsed)}', 'Elapsed ${liveClock(elapsed)}'),
-        style: orgText(context, size: 12, color: c.textMedium),
+        style: AppType.meta(context).copyWith(color: c.textMedium),
       ),
-      if (live.solves > 0) Text(t('${live.solves} محاولة حل', '${live.solves} solve(s)'), style: orgText(context, size: 12, color: c.textMedium)),
+      if (live.solves > 0) Text(t('${live.solves} محاولة حل', '${live.solves} solve(s)'), style: AppType.meta(context).copyWith(color: c.textMedium)),
     ]);
 
     Widget waitingBanner() => Container(
-          margin: const EdgeInsets.only(top: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: c.warning.withValues(alpha: 0.4))),
+          margin: const EdgeInsets.only(top: AppSpace.xs),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+          decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(AppRadius.control), border: Border.all(color: c.warning.withValues(alpha: 0.4))),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(live.decision!.situation.isEmpty ? t('التوليد متوقف بانتظار قرارك.', 'The run is paused for your decision.') : live.decision!.situation,
-                style: orgText(context, size: 12, color: c.textDark)),
+                style: AppType.meta(context).copyWith(color: c.textDark)),
             if (widget.onOpenDecision != null)
               Align(
                 alignment: AlignmentDirectional.centerEnd,
                 child: FilledButton.tonalIcon(
                   onPressed: widget.busy ? null : widget.onOpenDecision,
-                  icon: const Icon(Icons.alt_route_rounded, size: 18),
+                  icon: const Icon(Icons.alt_route_rounded, size: AppIconSize.md),
                   label: Text(t('اختر…', 'Choose…')),
                 ),
               ),
@@ -880,41 +881,41 @@ class _LadderOverlayState extends State<LadderOverlay> {
 
     final body = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       header,
-      if (failed && (widget.error ?? '').isNotEmpty) Text(widget.error!, style: orgText(context, size: 12, color: c.textMedium)),
+      if (failed && (widget.error ?? '').isNotEmpty) Text(widget.error!, style: AppType.meta(context).copyWith(color: c.textMedium)),
       if (!failed) ...[
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         ClipRRect(
-          borderRadius: BorderRadius.circular(5),
+          borderRadius: BorderRadius.circular(AppRadius.chip),
           child: LinearProgressIndicator(value: open ? bar : (bar ?? 1), minHeight: 6, color: accent, backgroundColor: accent.withValues(alpha: 0.12)),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         if (live.hasBest)
           Wrap(spacing: 6, runSpacing: 6, children: [
             counter(t('وُضعت', 'placed'), '${live.placed} / ${live.required}', c.success),
             counter(t('متبقية', 'remaining'), '${live.unplaced}', live.unplaced > 0 ? c.warning : c.success),
             counter(t('قواعد مكسورة', 'rules bent'), '${live.broken}', live.broken > 0 ? c.danger : c.success),
           ]),
-        if (live.hasBest) const SizedBox(height: 6),
+        if (live.hasBest) const SizedBox(height: AppSpace.xs),
         clock,
         if (budget != null && budget > 0 && open) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpace.xxs),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(AppRadius.chip),
             child: LinearProgressIndicator(value: (elapsed.inSeconds / budget).clamp(0.0, 1.0), minHeight: 3, color: c.purple, backgroundColor: c.purple.withValues(alpha: 0.15)),
           ),
         ],
         if (!widget.compact && live.rung != null && live.rung != 'free_moves' && open && !live.isWaiting)
           Container(
-            margin: const EdgeInsets.only(top: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(color: c.purple.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.only(top: AppSpace.xs),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+            decoration: BoxDecoration(color: c.purple.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(AppRadius.control)),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Icon(Icons.stairs_rounded, size: 16, color: c.purple),
-              const SizedBox(width: 6),
+              Icon(Icons.stairs_rounded, size: AppIconSize.sm, color: c.purple),
+              const SizedBox(width: AppSpace.xs),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(t('الدرجة الآن: ${live.rungLabel}', 'Relaxing now: ${live.rungLabel}'), style: orgText(context, size: 12.5, w: FontWeight.w700, color: c.textDark)),
-                  if (rungWhy(live.rung).isNotEmpty) Text(rungWhy(live.rung), style: orgText(context, size: 11.5, color: c.textMedium)),
+                  Text(t('الدرجة الآن: ${live.rungLabel}', 'Relaxing now: ${live.rungLabel}'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
+                  if (rungWhy(live.rung).isNotEmpty) Text(rungWhy(live.rung), style: AppType.meta(context).copyWith(color: c.textMedium)),
                 ]),
               ),
             ]),
@@ -922,15 +923,15 @@ class _LadderOverlayState extends State<LadderOverlay> {
       ],
       if (widget.compact && current != null && !live.isWaiting) stepRow(current),
       if (!widget.compact && steps.isNotEmpty) ...[
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         Row(children: [
-          Expanded(child: Text(t('ما الذي يحدث', 'What is happening'), style: orgText(context, size: 12, w: FontWeight.w800, color: c.textMedium))),
+          Expanded(child: Text(t('ما الذي يحدث', 'What is happening'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium))),
           if (steps.length > 6)
             InkWell(
               onTap: () => setState(() => _all = !_all),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                child: Text(_all ? t('الأخيرة فقط', 'Last few') : t('كل الخطوات (${steps.length})', 'Every step (${steps.length})'), style: orgText(context, size: 11.5, color: c.primary)),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs, vertical: AppSpace.xxs / 2),
+                child: Text(_all ? t('الأخيرة فقط', 'Last few') : t('كل الخطوات (${steps.length})', 'Every step (${steps.length})'), style: AppType.meta(context).copyWith(color: c.primary)),
               ),
             ),
         ]),
@@ -939,7 +940,7 @@ class _LadderOverlayState extends State<LadderOverlay> {
       if (waiting)
         widget.onDecide != null && !widget.compact
             ? Padding(
-                padding: const EdgeInsets.only(top: 10),
+                padding: const EdgeInsets.only(top: AppSpace.sm),
                 child: LadderDecisionCard(decision: live.decision!, busy: widget.busy, onChoose: (id) => widget.onDecide!(live.decision!.id, id)),
               )
             : waitingBanner(),
@@ -948,17 +949,17 @@ class _LadderOverlayState extends State<LadderOverlay> {
     if (widget.compact) {
       return Container(
         constraints: const BoxConstraints(maxWidth: 440),
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
         decoration: BoxDecoration(
           color: c.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadius.card),
           border: Border.all(color: accent.withValues(alpha: 0.35)),
           boxShadow: [BoxShadow(color: accent.withValues(alpha: 0.18), blurRadius: 24, offset: const Offset(0, 8))],
         ),
         child: body,
       );
     }
-    return Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: accent.withValues(alpha: 0.25))), child: AppMeshSurface(color: accent, style: AppMeshStyle.wash, radius: BorderRadius.circular(16), child: Padding(padding: const EdgeInsets.fromLTRB(14, 12, 14, 12), child: body)));
+    return Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: accent.withValues(alpha: 0.25))), child: AppMeshSurface(color: accent, style: AppMeshStyle.wash, radius: BorderRadius.circular(AppRadius.card), child: Padding(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm), child: body)));
   }
 }
 
@@ -1022,7 +1023,7 @@ class LadderVeil extends StatelessWidget {
     return Positioned.fill(
       child: Stack(children: [
         Positioned.fill(child: AbsorbPointer(child: Container(color: c.surface.withValues(alpha: 0.72)))),
-        Center(child: Padding(padding: const EdgeInsets.all(16), child: SingleChildScrollView(child: LadderLivePanel(p: p, compact: true)))),
+        Center(child: Padding(padding: const EdgeInsets.all(AppSpace.md), child: SingleChildScrollView(child: LadderLivePanel(p: p, compact: true)))),
       ]),
     );
   }
@@ -1062,29 +1063,29 @@ class _LadderOverlaySheet extends StatelessWidget {
               color: c.cardBg,
               surfaceTintColor: Colors.transparent,
               clipBehavior: Clip.antiAlias,
-              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet))),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(20, 12, 12, 4),
+                  padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.lg, AppSpace.sm, AppSpace.sm, AppSpace.xxs),
                   child: Row(children: [
-                    Expanded(child: Text(open ? t('جارٍ توليد الجدول', 'Generating the timetable') : t('انتهى التوليد', 'Generation finished'), style: orgText(context, size: 17, w: FontWeight.w800, color: c.textDark))),
+                    Expanded(child: Text(open ? t('جارٍ توليد الجدول', 'Generating the timetable') : t('انتهى التوليد', 'Generation finished'), style: AppType.section(context).copyWith(color: c.textDark))),
                     IconButton(tooltip: t('إغلاق', 'Close'), 
                       style: IconButton.styleFrom(backgroundColor: c.inputBg),
                       onPressed: open ? null : () => Navigator.pop(context),
-                      icon: Icon(Icons.close_rounded, color: c.textMedium, size: 20),
+                      icon: Icon(Icons.close_rounded, color: c.textMedium, size: AppIconSize.md),
                     ),
                   ]),
                 ),
                 Flexible(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                       if (ladder)
                         LadderLivePanel(p: p, inlineDecision: true)
                       else
-                        Text(t('لا تشغيل جارٍ', 'No run in progress'), style: orgText(context, size: 12.5, color: c.textMedium)),
+                        Text(t('لا تشغيل جارٍ', 'No run in progress'), style: AppType.label(context).copyWith(color: c.textMedium)),
                       if (!open) ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpace.sm),
                         AppPrimaryButton(label: t('إغلاق', 'Close'), icon: Icons.check_rounded, onPressed: () => Navigator.pop(context)),
                       ],
                     ]),
@@ -1131,10 +1132,10 @@ class LadderResultCard extends StatelessWidget {
     final best = r.bestBlocked;
 
     Widget line(IconData icon, String text, {Color? color, FontWeight w = FontWeight.w400}) => Padding(
-          padding: const EdgeInsets.only(top: 4),
+          padding: const EdgeInsets.only(top: AppSpace.xxs),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(icon, size: 15, color: color ?? c.textMedium),
-            const SizedBox(width: 6),
+            Icon(icon, size: AppIconSize.xs, color: color ?? c.textMedium),
+            const SizedBox(width: AppSpace.xs),
             Expanded(child: Text(text, style: orgText(context, size: 12, w: w, color: color ?? c.textMedium))),
           ]),
         );
@@ -1148,18 +1149,18 @@ class LadderResultCard extends StatelessWidget {
                   ? (Icons.remove_circle_outline_rounded, c.textLight)
                   : (Icons.radio_button_unchecked_rounded, c.textLight);
       return Padding(
-        padding: const EdgeInsets.only(top: 5),
+        padding: const EdgeInsets.only(top: AppSpace.xxs),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(icon, size: 16, color: ic),
-          const SizedBox(width: 6),
+          Icon(icon, size: AppIconSize.sm, color: ic),
+          const SizedBox(width: AppSpace.xs),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Expanded(child: Text(x.name, style: orgText(context, size: 12.5, w: FontWeight.w700, color: x.applied ? c.textDark : c.textMedium))),
-                const SizedBox(width: 6),
+                Expanded(child: Text(x.name, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: x.applied ? c.textDark : c.textMedium))),
+                const SizedBox(width: AppSpace.xs),
                 _pill(context, ladderModeLabel(x.mode), _modeColor(context, x.mode), icon: ladderModeIcon(x.mode)),
               ]),
-              Text(rungResultText(x), style: orgText(context, size: 11.5, color: c.textMedium)),
+              Text(rungResultText(x), style: AppType.meta(context).copyWith(color: c.textMedium)),
             ]),
           ),
         ]),
@@ -1177,21 +1178,21 @@ class LadderResultCard extends StatelessWidget {
     ];
 
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: col.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(16), border: Border.all(color: col.withValues(alpha: 0.3))),
+      padding: const EdgeInsets.all(AppSpace.sm),
+      decoration: BoxDecoration(color: col.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: col.withValues(alpha: 0.3))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(r.complete ? Icons.verified_rounded : Icons.stairs_rounded, color: col),
-          const SizedBox(width: 8),
-          Expanded(child: Text(ladderStatusText(r.status), style: orgText(context, size: 14, w: FontWeight.w800, color: col))),
-          const SizedBox(width: 6),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: Text(ladderStatusText(r.status), style: AppType.bodyStrong(context).copyWith(color: col))),
+          const SizedBox(width: AppSpace.xs),
           Text(
             [if (r.elapsedS > 0) liveClock(Duration(seconds: r.elapsedS.round())), if (r.solves > 0) t('${r.solves} حل', '${r.solves} solves')].join(' · '),
-            style: orgText(context, size: 11.5, color: c.textMedium),
+            style: AppType.meta(context).copyWith(color: c.textMedium),
           ),
         ]),
-        const SizedBox(height: 4),
-        Text(r.summaryText(), style: orgText(context, size: 12.5, color: c.textDark)),
+        const SizedBox(height: AppSpace.xxs),
+        Text(r.summaryText(), style: AppType.label(context).copyWith(color: c.textDark)),
         if (r.rungs.isNotEmpty) ...[
           _sectionTitle(context, t('الدرجات', 'Rungs')),
           for (final x in r.rungs) rungRow(x),
@@ -1200,7 +1201,7 @@ class LadderResultCard extends StatelessWidget {
           _sectionTitle(context, t('إضافات على البنية', 'Structural additions')),
           for (final s in structural) line(Icons.add_circle_outline_rounded, s, color: c.purple),
         ],
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         line(
           r.provenClean ? Icons.verified_user_rounded : Icons.gpp_bad_rounded,
           r.provenClean
@@ -1211,11 +1212,11 @@ class LadderResultCard extends StatelessWidget {
         ),
         if (!r.complete && r.status != 'cancelled' && r.status != 'invalid')
           Container(
-            margin: const EdgeInsets.only(top: 10),
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.warning.withValues(alpha: 0.4))),
+            margin: const EdgeInsets.only(top: AppSpace.sm),
+            padding: const EdgeInsets.all(AppSpace.sm),
+            decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.control), border: Border.all(color: c.warning.withValues(alpha: 0.4))),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(t('ما يمنع الاكتمال', 'What blocks completion'), style: orgText(context, size: 12.5, w: FontWeight.w800, color: c.textDark)),
+              Text(t('ما يمنع الاكتمال', 'What blocks completion'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
               if (r.blockedBy.isEmpty)
                 line(Icons.info_outline_rounded, t('لا درجة مقفلة تُكمل الجدول — راجع البيانات (الفترات، القاعات، الإتاحة).', 'No locked rung would complete it — check the data (periods, rooms, availability).'))
               else
@@ -1231,7 +1232,7 @@ class LadderResultCard extends StatelessWidget {
               if (onOpenLadder != null)
                 Align(
                   alignment: AlignmentDirectional.centerEnd,
-                  child: TextButton.icon(onPressed: onOpenLadder, icon: const Icon(Icons.stairs_rounded, size: 16), label: Text(t('افتح السلّم', 'Open the ladder'))),
+                  child: TextButton.icon(onPressed: onOpenLadder, icon: const Icon(Icons.stairs_rounded, size: AppIconSize.sm), label: Text(t('افتح السلّم', 'Open the ladder'))),
                 ),
             ]),
           ),
@@ -1243,15 +1244,15 @@ class LadderResultCard extends StatelessWidget {
               '${liveClock(Duration(seconds: d.atS.round()))} · ${t('اختير', 'chose')} «${d.chosenName}» ${decisionByText(d.by)}'
               '${d.followedRecommendation || d.recommended.isEmpty ? '' : ' (${t('الموصى به', 'recommended')}: ${rungName(d.recommended)})'}',
             ),
-          if (r.decisions.length > limitDecisions) Text(t('+${r.decisions.length - limitDecisions} أخرى', '+${r.decisions.length - limitDecisions} more'), style: orgText(context, size: 11.5, color: c.textLight)),
+          if (r.decisions.length > limitDecisions) Text(t('+${r.decisions.length - limitDecisions} أخرى', '+${r.decisions.length - limitDecisions} more'), style: AppType.meta(context).copyWith(color: c.textLight)),
         ],
         if (pending > 0 && (onAcceptAll != null || onOpenProposals != null)) ...[
-          const SizedBox(height: 10),
-          Text(t('$pending اقتراح بانتظار قرارك — النشر ينتظرها.', '$pending proposal(s) wait for your decision — publishing waits for them.'), style: orgText(context, size: 12, color: c.textMedium)),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.sm),
+          Text(t('$pending اقتراح بانتظار قرارك — النشر ينتظرها.', '$pending proposal(s) wait for your decision — publishing waits for them.'), style: AppType.meta(context).copyWith(color: c.textMedium)),
+          const SizedBox(height: AppSpace.xs),
           Wrap(spacing: 8, runSpacing: 6, children: [
             if (onAcceptAll != null)
-              FilledButton.tonalIcon(onPressed: onAcceptAll, icon: const Icon(Icons.done_all_rounded, size: 18), label: Text(t('قبول الكل ($pending)', 'Accept all ($pending)'))),
+              FilledButton.tonalIcon(onPressed: onAcceptAll, icon: const Icon(Icons.done_all_rounded, size: AppIconSize.md), label: Text(t('قبول الكل ($pending)', 'Accept all ($pending)'))),
             if (onOpenProposals != null) OutlinedButton(onPressed: onOpenProposals, child: Text(t('راجع الاقتراحات', 'Review the proposals'))),
           ]),
         ],

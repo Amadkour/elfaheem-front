@@ -37,6 +37,7 @@ import 'org_v3.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 class TimetableWizard extends StatefulWidget {
   const TimetableWizard({super.key, this.scheduleId});
@@ -288,12 +289,12 @@ class _TimetableWizardState extends State<TimetableWizard> {
             : Column(children: [
                 SizedBox(
                   height: 56,
-                  child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), children: [
+                  child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs), children: [
                     for (var i = 0; i < _steps.length; i++)
                       Padding(
-                        padding: const EdgeInsetsDirectional.only(end: 6),
+                        padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
                         child: ChoiceChip(
-                          avatar: Icon(_steps[i].$2, size: 16, color: i == _step ? c.onHero : c.textMedium),
+                          avatar: Icon(_steps[i].$2, size: AppIconSize.sm, color: i == _step ? c.onHero : c.textMedium),
                           label: Text('${i + 1}. ${_steps[i].$1}', style: TextStyle(fontFamily: AppFonts.family, color: i == _step ? c.onHero : c.textDark)),
                           selected: i == _step,
                           selectedColor: c.primary,
@@ -306,7 +307,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
                 ),
                 if (_locked)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
                     child: RowCard(
                       accent: c.warning,
                       child: Text(t('هذا الجدول منشور — أوقف نشره من الاستوديو لتعديل إعداده. النسخة المنشورة لا تتغير.',
@@ -314,23 +315,23 @@ class _TimetableWizardState extends State<TimetableWizard> {
                     ),
                   ),
                 Expanded(
-                  child: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
+                  child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg), children: [
                     Builder(builder: (context) => _body(context, d)),
                   ]),
                 ),
                 if (_error != null)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-                    child: Text(_error!, style: orgText(context, size: 12.5, color: c.danger)),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
+                    child: Text(_error!, style: AppType.label(context).copyWith(color: c.danger)),
                   ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
                   child: Row(children: [
                     if (_step > 0)
                       OutlinedButton.icon(onPressed: _busy ? null : () => _go(_step - 1), icon: const Icon(Icons.arrow_back_rounded), label: Text(t('السابق', 'Back'))),
                     const Spacer(),
-                    if (_dirty && !_locked) Text(t('غير محفوظ', 'Unsaved'), style: orgText(context, size: 12, color: c.warning)),
-                    const SizedBox(width: 8),
+                    if (_dirty && !_locked) Text(t('غير محفوظ', 'Unsaved'), style: AppType.meta(context).copyWith(color: c.warning)),
+                    const SizedBox(width: AppSpace.xs),
                     if (_step < 7)
                       SizedBox(
                         width: 160,
@@ -377,7 +378,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
         _ => _finish(context, d),
       };
 
-  Text _hint(BuildContext context, String s) => Text(s, style: orgText(context, size: 12, color: context.colors.textMedium));
+  Text _hint(BuildContext context, String s) => Text(s, style: AppType.meta(context).copyWith(color: context.colors.textMedium));
 
   // ── A ──
   Widget _details(BuildContext context, ScheduleDraft d) {
@@ -414,17 +415,17 @@ class _TimetableWizardState extends State<TimetableWizard> {
                     }
                   }),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         _TextIn(value: d.termLabel, label: t('وصف الفصل (اختياري)', 'Term label (optional)'), enabled: !_locked, onChanged: (v) => setState(() => d.termLabel = v)),
-        Text(t('الفترة التي يغطيها', 'The dates it covers'), style: orgText(context, size: 12.5, w: FontWeight.w800, color: context.colors.textMedium)),
-        const SizedBox(height: 6),
+        Text(t('الفترة التي يغطيها', 'The dates it covers'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textMedium)),
+        const SizedBox(height: AppSpace.xs),
         Row(children: [
           Expanded(
               child: OutlinedButton.icon(
                   onPressed: _locked ? null : () => pick(true),
                   icon: const Icon(Icons.play_arrow_rounded),
                   label: Text(d.start == null ? t('من', 'From') : shortDate(d.start!.toIso8601String())))),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           Expanded(
               child: OutlinedButton.icon(
                   onPressed: _locked ? null : () => pick(false),
@@ -480,15 +481,15 @@ class _TimetableWizardState extends State<TimetableWizard> {
           // the term's courses first, then the rest — every course stays selectable
           for (final l in [...shown.where((l) => termIds.contains(asInt(l['course_id']))), ...shown.where((l) => !termIds.contains(asInt(l['course_id'])))])
             FilterChip(
-              avatar: termIds.contains(asInt(l['course_id'])) ? Icon(Icons.event_available_rounded, size: 16, color: c.primary) : null,
+              avatar: termIds.contains(asInt(l['course_id'])) ? Icon(Icons.event_available_rounded, size: AppIconSize.sm, color: c.primary) : null,
               label: Text('${'${asMap(l['course'])['code'] ?? ''}'.isEmpty ? '' : '${asMap(l['course'])['code']} · '}${courseName(l)}',
                   style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
               selected: d.courseIds.contains(asInt(l['course_id'])),
               onSelected: _locked ? null : (on) => setState(() => on ? d.courseIds.add(asInt(l['course_id'])) : d.courseIds.remove(asInt(l['course_id']))),
             ),
         ]),
-        if (d.courseIds.isEmpty) Text(t('اختر مقرراً واحداً على الأقل', 'Pick at least one course'), style: orgText(context, size: 12, color: c.warning)),
-        const SizedBox(height: 14),
+        if (d.courseIds.isEmpty) Text(t('اختر مقرراً واحداً على الأقل', 'Pick at least one course'), style: AppType.meta(context).copyWith(color: c.warning)),
+        const SizedBox(height: AppSpace.md),
         _studentCount(context, d),
       ]),
     );
@@ -498,10 +499,10 @@ class _TimetableWizardState extends State<TimetableWizard> {
     final c = context.colors;
     final exact = termIds.isNotEmpty && d.courseIds.length == termIds.length && d.courseIds.containsAll(termIds);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: Row(children: [
-        Icon(Icons.event_available_rounded, size: 18, color: c.primary),
-        const SizedBox(width: 6),
+        Icon(Icons.event_available_rounded, size: AppIconSize.md, color: c.primary),
+        const SizedBox(width: AppSpace.xs),
         Expanded(
           child: Text(
             _orgCourses == null
@@ -509,7 +510,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
                 : termIds.isEmpty
                     ? t('لا مقرر مخطط لهذا الفصل — اختر المقررات يدوياً.', 'No course is planned for this term — pick the courses by hand.')
                     : t('${termIds.length} مقرر مخطط لهذا الفصل${exact ? ' — مختارة كلها فقط' : ''}', '${termIds.length} course(s) planned for this term${exact ? ' — exactly these are selected' : ''}'),
-            style: orgText(context, size: 12.5, color: c.textMedium),
+            style: AppType.label(context).copyWith(color: c.textMedium),
           ),
         ),
         if (termIds.isNotEmpty && !exact && !_locked)
@@ -527,8 +528,8 @@ class _TimetableWizardState extends State<TimetableWizard> {
           _countDirty = true;
         });
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(t('عدد الطلاب لكل مقرر', 'Students per course'), style: orgText(context, size: 13, w: FontWeight.w800)),
-      const SizedBox(height: 6),
+      Text(t('عدد الطلاب لكل مقرر', 'Students per course'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
+      const SizedBox(height: AppSpace.xs),
       SegmentedButton<String>(
         segments: [
           ButtonSegment(value: 'enrolled', icon: const Icon(Icons.how_to_reg_rounded), label: Text(t('الطلاب المشتركون', 'Subscribed students'))),
@@ -538,7 +539,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
         onSelectionChanged: _locked ? null : (v) => set(v.first),
       ),
       if (_countMode == 'manual') ...[
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         SizedBox(
           width: 220,
           child: TextFormField(
@@ -553,13 +554,13 @@ class _TimetableWizardState extends State<TimetableWizard> {
           ),
         ),
       ],
-      const SizedBox(height: 4),
+      const SizedBox(height: AppSpace.xxs),
       Text(
           _countMode == 'manual'
               ? t('يُطبَّق على كل المقررات المختارة (${d.courseIds.length})، وتُحسب المجموعات منه وفق سعة الأماكن.',
                   'Applied to every selected course (${d.courseIds.length}); groups are sized from it by room capacity.')
               : t('يُستخدم عدد المشتركين الفعليين في كل مقرر.', 'Each course uses its actual number of subscribed students.'),
-          style: orgText(context, size: 12, color: c.textMedium)),
+          style: AppType.meta(context).copyWith(color: c.textMedium)),
     ]);
   }
 
@@ -582,13 +583,13 @@ class _TimetableWizardState extends State<TimetableWizard> {
         _hint(context,
             t('يستخدم التوليد كل الأماكن النشطة المطابقة للنوع والسعة والإمكانات. الأماكن الموقوفة لا تُستخدم، والمتاحية النهائية يحددها الخادم.',
                 'Generation uses every active facility that matches the type, capacity and capabilities. Inactive ones are skipped; the server decides final availability.')),
-        if (active == 0) Text(t('لا يوجد مكان نشط — أضف قاعة أولاً', 'No active facility — add a room first'), style: orgText(context, color: c.warning)),
+        if (active == 0) Text(t('لا يوجد مكان نشط — أضف قاعة أولاً', 'No active facility — add a room first'), style: AppType.row(context).copyWith(color: c.warning)),
         for (final r in p.rooms)
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: IconBadge(r['kind'] == 'lab' ? Icons.science_rounded : r['kind'] == 'office' ? Icons.chair_rounded : Icons.meeting_room_rounded,
                 r['is_active'] == false ? c.textLight : c.primary, size: 38),
-            title: Text('${'${r['code'] ?? ''}'.isEmpty ? '' : '${r['code']} · '}${r['name']}', style: orgText(context, w: FontWeight.w700)),
+            title: Text('${'${r['code'] ?? ''}'.isEmpty ? '' : '${r['code']} · '}${r['name']}', style: AppType.bodyStrong(context)),
             subtitle: Text(
                 [
                   p.kindLabels['${r['kind']}'] ?? '${r['kind']}',
@@ -597,7 +598,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
                   if (((r['capabilities'] as List?) ?? const []).isNotEmpty) (r['capabilities'] as List).join(', '),
                   if (r['is_active'] == false) t('موقوف', 'inactive'),
                 ].join(' · '),
-                style: orgText(context, size: 12, color: c.textMedium)),
+                style: AppType.meta(context).copyWith(color: c.textMedium)),
             onTap: s.can('schedule', 'update') ? () => showRoomForm(context, p, r) : null,
           ),
       ]),
@@ -625,14 +626,14 @@ class _TimetableWizardState extends State<TimetableWizard> {
             ),
         ]),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       Section(
         title: t('الفترات اليومية (${p.periods.length})', 'Daily periods (${p.periods.length})'),
         icon: Icons.schedule_rounded,
         trailing: s.can('schedule', 'insert') ? IconButton(tooltip: t('إضافة فترة', 'Add a period'), onPressed: () => showPeriodForm(context, p, null), icon: Icon(Icons.add_circle_rounded, color: c.primary)) : null,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _hint(context, t('الفترات مشتركة بين كل جداول المؤسسة. يمكن تمييز فترات يتجنبها التوليد إن أمكن.', 'Periods are shared by every timetable. Mark the ones generation should avoid when it can.')),
-          if (p.periods.isEmpty) Text(t('أضف فترات اليوم الدراسي', 'Add the teaching periods'), style: orgText(context, color: c.warning)),
+          if (p.periods.isEmpty) Text(t('أضف فترات اليوم الدراسي', 'Add the teaching periods'), style: AppType.row(context).copyWith(color: c.warning)),
           for (final x in p.periods)
             CheckboxListTile(
               dense: true,
@@ -644,12 +645,12 @@ class _TimetableWizardState extends State<TimetableWizard> {
                         on == true ? avoidPeriods.add(asInt(x['id'])) : avoidPeriods.remove(asInt(x['id']));
                         d.settings['avoid_period_ids'] = avoidPeriods.toList()..sort();
                       }),
-              title: Text('${x['label']}  ${AppTime.clockRange('${x['start_time']}', '${x['end_time']}')}', style: orgText(context, w: FontWeight.w700)),
-              subtitle: Text(t('يُتجنب إن أمكن', 'avoid if possible'), style: orgText(context, size: 11.5, color: c.textLight)),
+              title: Text('${x['label']}  ${AppTime.clockRange('${x['start_time']}', '${x['end_time']}')}', style: AppType.bodyStrong(context)),
+              subtitle: Text(t('يُتجنب إن أمكن', 'avoid if possible'), style: AppType.meta(context).copyWith(color: c.textLight)),
             ),
         ]),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       Section(
         title: t('قواعد التوزيع', 'Distribution rules'),
         icon: Icons.rule_rounded,
@@ -665,7 +666,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
             enabled: !_locked,
             onChanged: (v) => setState(() => int.tryParse(v) == null ? d.settings.remove('max_periods_per_day_teacher') : d.settings['max_periods_per_day_teacher'] = int.parse(v)),
           ),
-          Text(t('أيام يتجنبها التوليد إن أمكن', 'Days to avoid if possible'), style: orgText(context, size: 12.5, w: FontWeight.w800, color: c.textMedium)),
+          Text(t('أيام يتجنبها التوليد إن أمكن', 'Days to avoid if possible'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
           Wrap(spacing: 6, runSpacing: 6, children: [
             for (final day in d.days)
               FilterChip(
@@ -701,7 +702,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
             contentPadding: EdgeInsets.zero,
             onTap: canEdit ? () => showLoadForm(context, p, l, onStudentAvailability: () => showAvailabilitySheet(context, p, 'course', asInt(l['course_id']), courseName(l))) : null,
             leading: IconBadge(Icons.menu_book_rounded, loadHints(l).isEmpty ? c.primary : c.warning, size: 38),
-            title: Text(courseName(l), style: orgText(context, w: FontWeight.w800)),
+            title: Text(courseName(l), style: AppType.bodyStrong(context)),
             subtitle: Text(
                 [
                   t('${asInt(l['sessions_per_week'], 1)} محاضرة × ${asInt(l['periods_per_session'], 1)} فترة', '${asInt(l['sessions_per_week'], 1)} lectures × ${asInt(l['periods_per_session'], 1)} period(s)'),
@@ -709,7 +710,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
                     t('${l['lab_sessions_per_week']} سكشن × ${asInt(l['lab_periods_per_session'], 1)}', '${l['lab_sessions_per_week']} labs × ${asInt(l['lab_periods_per_session'], 1)}'),
                   ...loadHints(l),
                 ].join(' · '),
-                style: orgText(context, size: 12, color: c.textMedium)),
+                style: AppType.meta(context).copyWith(color: c.textMedium)),
             trailing: const Icon(Icons.chevron_right_rounded),
           ),
       ]),
@@ -757,24 +758,24 @@ class _TimetableWizardState extends State<TimetableWizard> {
             'Candidates are ranked by the server by eligibility, preference and load. Labs suggest an assistant; teachers are allowed by the settings.')),
         for (final l in _selected(p, d))
           Container(
-            margin: const EdgeInsets.only(top: 8),
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(14)),
+            margin: const EdgeInsets.only(top: AppSpace.xs),
+            padding: const EdgeInsets.all(AppSpace.sm),
+            decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.control)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(courseName(l), style: orgText(context, w: FontWeight.w800)),
+              Text(courseName(l), style: AppType.bodyStrong(context)),
               Text(
                   '${t('المدرس', 'Teacher')}: ${l['teacher_id'] == null ? t('—  لم يُعيَّن', '— not assigned') : people[asInt(l['teacher_id'])] ?? '#${l['teacher_id']}'}',
-                  style: orgText(context, size: 12.5, color: l['teacher_id'] == null ? c.warning : c.textMedium)),
+                  style: AppType.label(context).copyWith(color: l['teacher_id'] == null ? c.warning : c.textMedium)),
               if (asInt(l['lab_sessions_per_week']) > 0)
                 Text(
                     '${t('المعيدون', 'Assistants')}: ${((l['assistant_ids'] as List?) ?? const []).isEmpty ? '—' : (l['assistant_ids'] as List).map((i) => people[asInt(i)] ?? '#$i').join('، ')}',
-                    style: orgText(context, size: 12.5, color: c.textMedium)),
+                    style: AppType.label(context).copyWith(color: c.textMedium)),
               if (canEdit)
                 Wrap(spacing: 6, children: [
-                  TextButton.icon(onPressed: () => assign(l, 'lecture'), icon: const Icon(Icons.person_search_rounded, size: 18), label: Text(t('مرشحو المحاضرة', 'Lecture candidates'))),
+                  TextButton.icon(onPressed: () => assign(l, 'lecture'), icon: const Icon(Icons.person_search_rounded, size: AppIconSize.md), label: Text(t('مرشحو المحاضرة', 'Lecture candidates'))),
                   if (asInt(l['lab_sessions_per_week']) > 0)
-                    TextButton.icon(onPressed: () => assign(l, 'lab'), icon: const Icon(Icons.science_rounded, size: 18), label: Text(t('مرشحو السكشن', 'Lab candidates'))),
-                  TextButton.icon(onPressed: () => showLoadForm(context, p, l), icon: const Icon(Icons.edit_rounded, size: 18), label: Text(t('تعديل', 'Edit'))),
+                    TextButton.icon(onPressed: () => assign(l, 'lab'), icon: const Icon(Icons.science_rounded, size: AppIconSize.md), label: Text(t('مرشحو السكشن', 'Lab candidates'))),
+                  TextButton.icon(onPressed: () => showLoadForm(context, p, l), icon: const Icon(Icons.edit_rounded, size: AppIconSize.md), label: Text(t('تعديل', 'Edit'))),
                 ]),
             ]),
           ),
@@ -797,7 +798,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
       trailing: s.can('schedule', 'update')
           ? TextButton.icon(
               onPressed: () => openAvailabilityRequests(context),
-              icon: const Icon(Icons.send_rounded, size: 18),
+              icon: const Icon(Icons.send_rounded, size: AppIconSize.md),
               label: Text(t('اطلبها منهم', 'Ask them')),
             )
           : null,
@@ -805,13 +806,13 @@ class _TimetableWizardState extends State<TimetableWizard> {
         _hint(context,
             t('"أوقات التواجد" و"غير متاح" قيود إلزامية. "مفضّل" و"يتجنبه" مرنة وقد تُخفَّف بعد احترام كل القيود الإلزامية.',
                 '"Available periods" and "unavailable" are hard rules. "Preferred" and "avoid" are soft and may be relaxed once every hard rule holds.')),
-        if (staff.isEmpty) Text(t('عيّن مدرسين ومعيدين للمقررات أولاً (خطوة الهيئة).', 'Assign teachers and assistants first (Staff step).'), style: orgText(context, color: c.warning)),
+        if (staff.isEmpty) Text(t('عيّن مدرسين ومعيدين للمقررات أولاً (خطوة الهيئة).', 'Assign teachers and assistants first (Staff step).'), style: AppType.row(context).copyWith(color: c.warning)),
         for (final m in staff)
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: AdminAvatar(name: '${asMap(m['user'])['name']}', url: asMap(m['user'])['image_url'] as String?, size: 36),
-            title: Text('${asMap(m['user'])['name']}', style: orgText(context, w: FontWeight.w700)),
-            subtitle: Text(m['role'] == 'teacher' ? t('مدرس', 'Teacher') : t('معيد', 'Teaching assistant'), style: orgText(context, size: 12, color: c.textMedium)),
+            title: Text('${asMap(m['user'])['name']}', style: AppType.bodyStrong(context)),
+            subtitle: Text(m['role'] == 'teacher' ? t('مدرس', 'Teacher') : t('معيد', 'Teaching assistant'), style: AppType.meta(context).copyWith(color: c.textMedium)),
             trailing: Wrap(children: [
               IconButton(
                 tooltip: t('أوقات التواجد', 'Available periods'),
@@ -857,16 +858,16 @@ class _TimetableWizardState extends State<TimetableWizard> {
         ]),
       ),
       if (hints.isNotEmpty) ...[
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         RowCard(
           accent: c.warning,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(t('قد يمنع هذا وضع بعض الحصص:', 'This may keep some sessions from being placed:'), style: orgText(context, w: FontWeight.w800)),
-            for (final h in hints) Text('• $h', style: orgText(context, size: 12.5)),
+            Text(t('قد يمنع هذا وضع بعض الحصص:', 'This may keep some sessions from being placed:'), style: AppType.bodyStrong(context)),
+            for (final h in hints) Text('• $h', style: AppType.label(context).copyWith(color: context.colors.textDark)),
           ]),
         ),
       ],
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
       Section(
         title: t('خيارات التوليد', 'Generation options'),
         icon: Icons.settings_suggest_rounded,
@@ -897,7 +898,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
           ),
         ]),
       ),
-      const SizedBox(height: 14),
+      const SizedBox(height: AppSpace.md),
       if (s.can('schedule', 'update') && !_locked)
         PrimaryButton(
           isLoading: _busy || running,
@@ -924,7 +925,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (run != null && (running || run['status'] == 'failed'))
         LadderLive.of(run) != null ? LadderLivePanel(p: p, inlineDecision: true) : GenerationLivePanel(run: run, onCancel: running ? () => p.cancelGeneration() : null),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
       if (!running && run?['status'] == 'failed')
         RowCard(accent: c.danger, child: Text(t('فشل التوليد ولم يتغير شيء في الجدول. ${run?['error'] ?? ''}', 'Generation failed and nothing in the timetable changed. ${run?['error'] ?? ''}'))),
       if (!running && run?['status'] == 'cancelled')
@@ -932,7 +933,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
       if (!running && result.isNotEmpty) ScheduleResultView(result: result, courseNames: courseNames, people: people),
       if (!running && result.isNotEmpty && sch['status'] != 'active')
         Padding(
-          padding: const EdgeInsets.only(top: 10),
+          padding: const EdgeInsets.only(top: AppSpace.sm),
           child: FilledButton.tonalIcon(
             onPressed: () => showGenerationResult(context, p, courseNames, canEdit: context.read<OrgSession>().can('schedule', 'update')),
             icon: const Icon(Icons.fact_check_rounded),
@@ -940,14 +941,14 @@ class _TimetableWizardState extends State<TimetableWizard> {
           ),
         ),
       if (!running && p.conflicts.isNotEmpty) ...[
-        OrgSectionTitle(t('التعارضات الحالية', 'Current clashes'), padding: const EdgeInsets.fromLTRB(4, 14, 4, 6)),
+        OrgSectionTitle(t('التعارضات الحالية', 'Current clashes'), padding: const EdgeInsets.fromLTRB(AppSpace.xxs, AppSpace.md, AppSpace.xxs, AppSpace.xs)),
         ConflictList(conflicts: p.conflicts, courseNames: courseNames),
       ],
       if (!running) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         Row(children: [
           Expanded(child: OutlinedButton.icon(onPressed: () => setState(() => _step = 4), icon: const Icon(Icons.tune_rounded), label: Text(t('تعديل الإعداد', 'Adjust setup')))),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           Expanded(child: FilledButton.icon(onPressed: () => setState(() => _step = 9), icon: const Icon(Icons.arrow_forward_rounded), label: Text(t('متابعة', 'Continue')))),
         ]),
       ],
@@ -970,19 +971,19 @@ class _TimetableWizardState extends State<TimetableWizard> {
               d.published
                   ? t('الجدول منشور ويراه الطلاب والهيئة.', 'The timetable is published; students and staff see it.')
                   : t('الجدول محفوظ كمسودة — لا يراه الطلاب حتى يُنشر.', 'The timetable is saved as a draft — students don\'t see it until it is published.'),
-              style: orgText(context, color: c.textMedium)),
+              style: AppType.row(context).copyWith(color: c.textMedium)),
           if (st == 'partial' || st == 'infeasible')
             Padding(
-              padding: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.only(top: AppSpace.xs),
               child: Text(t('تنبيه: النتيجة ${resultStatusLabels()[st]} — راجع الحصص غير المجدولة قبل النشر.', 'Note: the result is "${resultStatusLabels()[st]}" — review the unplaced sessions before publishing.'),
-                  style: orgText(context, size: 12.5, color: c.warning)),
+                  style: AppType.label(context).copyWith(color: c.warning)),
             ),
           if (errors > 0)
-            Text(t('$errors تعارض إلزامي يمنع النشر.', '$errors hard clash(es) block publishing.'), style: orgText(context, size: 12.5, color: c.danger)),
-          const SizedBox(height: 12),
+            Text(t('$errors تعارض إلزامي يمنع النشر.', '$errors hard clash(es) block publishing.'), style: AppType.label(context).copyWith(color: c.danger)),
+          const SizedBox(height: AppSpace.sm),
           PrimaryButton(isLoading: false, label: t('إبقاؤه مسودة وفتح الاستوديو', 'Keep as draft & open the studio'), onPressed: () => Navigator.of(context).pop(d.id)),
           if (!d.published && s.can('schedule', 'approve') && p.schedule != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             OutlinedButton.icon(
               onPressed: _busy
                   ? null

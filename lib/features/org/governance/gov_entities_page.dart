@@ -46,22 +46,22 @@ class GovEntityCard extends StatelessWidget {
     final c = context.colors;
     final e = entity;
     return AppCard(
-      margin: const EdgeInsets.fromLTRB(16, 5, 16, 5),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
+      padding: const EdgeInsets.all(AppSpace.sm),
       onTap: onTap,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
             width: 44,
             height: 44,
-            decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(14)),
-            child: Icon(govKindIcon(e.kind), color: c.primary, size: 23),
+            decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(AppRadius.control)),
+            child: Icon(govKindIcon(e.kind), color: c.primary, size: AppIconSize.lg),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(e.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w800, c: c.textDark)),
-              const SizedBox(height: 2),
+              const SizedBox(height: AppSpace.xxs / 2),
               Text(
                 [
                   entityKindLabel(e.kind),
@@ -73,11 +73,11 @@ class GovEntityCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: appText(12, c: c.textMedium),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpace.xs),
               Row(children: [
                 if (e.head != null) ...[
                   AdminAvatar(name: e.head!.name, url: e.head!.avatar, size: 22),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpace.xs),
                   Expanded(child: Text('${t('الرئيس', 'Head')}: ${e.head!.name}', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: c.textDark))),
                 ] else
                   Expanded(child: Text(t('بلا رئيس بعد', 'No head yet'), style: appText(12, c: c.warning))),
@@ -85,9 +85,9 @@ class GovEntityCard extends StatelessWidget {
             ]),
           ),
           if (onChangeKind != null)
-            IconButton(visualDensity: VisualDensity.compact, tooltip: t('تغيير النوع', 'Change kind'), onPressed: onChangeKind, icon: Icon(Icons.swap_vert_rounded, size: 20, color: c.textLight)),
+            IconButton(visualDensity: VisualDensity.compact, tooltip: t('تغيير النوع', 'Change kind'), onPressed: onChangeKind, icon: Icon(Icons.swap_vert_rounded, size: AppIconSize.md, color: c.textLight)),
         ]),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         Wrap(spacing: 6, runSpacing: 4, children: [
           AppBadgePill('${t('مفتوحة', 'Open')} ${e.counts.open}', color: c.primary, icon: Icons.inbox_rounded),
           AppBadgePill('${t('بانتظار القرار', 'Pending decision')} ${e.counts.pendingDecision}', color: c.warning, icon: Icons.gavel_rounded),
@@ -96,19 +96,19 @@ class GovEntityCard extends StatelessWidget {
           if (e.can['decide']) AppBadgePill(t('أقرّر هنا', 'I decide here'), color: c.success, icon: Icons.verified_rounded),
         ]),
         if (council != null) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           InkWell(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.control),
             onTap: onOpenCouncil,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(color: c.purple.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+              decoration: BoxDecoration(color: c.purple.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(AppRadius.control)),
               child: Row(children: [
-                Icon(Icons.groups_2_rounded, size: 18, color: c.purple),
-                const SizedBox(width: 8),
+                Icon(Icons.groups_2_rounded, size: AppIconSize.md, color: c.purple),
+                const SizedBox(width: AppSpace.xs),
                 Expanded(child: Text(council!.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w700, c: c.textDark))),
                 Text(t('${council!.members} عضو', '${council!.members} members'), style: appText(11.5, c: c.textMedium)),
-                if (onOpenCouncil != null) Icon(Icons.chevron_right_rounded, size: 18, color: c.textLight),
+                if (onOpenCouncil != null) Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.textLight),
               ]),
             ),
           ),
@@ -131,26 +131,26 @@ Future<bool> showGovEntitySheet(BuildContext context, GovApi api, {List<Map<Stri
   final r = await showAppSheet<bool>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
+          padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 16 + MediaQuery.of(ctx).viewInsets.bottom),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             SheetHeader(t('جهة جديدة', 'New entity')),
             Text(t('النوع', 'Kind'), style: appText(12, c: c.textLight)),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             Wrap(spacing: 6, runSpacing: 6, children: [
               for (final k in entityKinds.where((k) => k != 'council'))
                 AppChoiceChip(label: entityKindLabel(k), icon: govKindIcon(k), selected: kind == k, onTap: () => set(() => kind = k)),
             ]),
             if (kind == 'scientific') ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               AppBanner(icon: Icons.groups_2_rounded, color: c.purple, text: t('يُنشأ مجلس القسم تلقائياً مع القسم العلمي، ورئيسه رئيس القسم', 'A department council is created with a scientific department; its head chairs it')),
             ],
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppField(controller: ar, label: t('الاسم بالعربية', 'Arabic name')),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppField(controller: en, label: t('الاسم بالإنجليزية', 'English name'), ltr: true),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppField(controller: desc, label: t('ماذا تفعل هذه الجهة؟', 'What does it do?'), maxLines: 2),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             if (kind == 'scientific' && programs.isNotEmpty) ...[
               AppDropdown<int>(
                 value: program ?? 0,
@@ -161,7 +161,7 @@ Future<bool> showGovEntitySheet(BuildContext context, GovApi api, {List<Map<Stri
                 ],
                 onChanged: (v) => set(() => program = v == 0 ? null : v),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
             ],
             OrgMemberPickField(
               label: t('رئيس الجهة', 'Entity head'),
@@ -175,7 +175,7 @@ Future<bool> showGovEntitySheet(BuildContext context, GovApi api, {List<Map<Stri
               value: acceptsComplaints,
               onChanged: (v) => set(() => acceptsComplaints = v),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             AppPrimaryButton(
               label: t('إنشاء', 'Create'),
               icon: Icons.add_rounded,
@@ -217,7 +217,7 @@ Future<bool> showGovKindSheet(BuildContext context, GovApi api, Entity e, {List<
   final r = await showAppSheet<bool>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             SheetHeader('${t('نوع', 'Kind of')} ${e.name}'),
             Wrap(spacing: 6, runSpacing: 6, children: [
@@ -225,11 +225,11 @@ Future<bool> showGovKindSheet(BuildContext context, GovApi api, Entity e, {List<
                 AppChoiceChip(label: entityKindLabel(k), icon: govKindIcon(k), selected: kind == k, onTap: () => set(() => kind = k)),
             ]),
             if (kind == 'scientific' && e.kind != 'scientific') ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               AppBanner(icon: Icons.groups_2_rounded, color: c.purple, text: t('سيُنشأ مجلس القسم مع التغيير', 'The department council is created with the change')),
             ],
             if (kind == 'scientific' && programs.isNotEmpty) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               AppDropdown<int>(
                 value: program ?? 0,
                 decoration: InputDecoration(labelText: t('القسم الأكاديمي', 'Academic department'), prefixIcon: const Icon(Icons.school_rounded)),
@@ -240,7 +240,7 @@ Future<bool> showGovKindSheet(BuildContext context, GovApi api, Entity e, {List<
                 onChanged: (v) => set(() => program = v == 0 ? null : v),
               ),
             ],
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpace.md),
             AppPrimaryButton(
               label: t('حفظ', 'Save'),
               icon: Icons.save_rounded,
@@ -338,10 +338,10 @@ class _GovEntitiesPageState extends State<GovEntitiesPage> {
     } else {
       body = AppRefresh(
         onRefresh: _load,
-        child: ListView(padding: const EdgeInsets.only(top: 6, bottom: 90), children: [
+        child: ListView(padding: const EdgeInsets.only(top: AppSpace.xs, bottom: AppSpace.xxxl + AppSpace.lg), children: [
           if (canCreate)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xs),
               child: Align(
                 alignment: AlignmentDirectional.centerEnd,
                 child: AppPill(
@@ -458,12 +458,12 @@ class GovCategoryTile extends StatelessWidget {
     final c = context.colors;
     final cat = category;
     return AppCard(
-      margin: const EdgeInsets.fromLTRB(16, 5, 16, 5),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
+      padding: const EdgeInsets.all(AppSpace.sm),
       onTap: onEdit,
       child: Row(children: [
         Icon(cat.kind == 'complaint' ? Icons.support_agent_rounded : (cat.kind == 'request' ? Icons.inbox_rounded : Icons.label_outline_rounded), color: cat.isActive ? c.primary : c.textLight),
-        const SizedBox(width: 10),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(cat.name, style: appText(14, w: FontWeight.w800, c: cat.isActive ? c.textDark : c.textLight)),
@@ -477,7 +477,7 @@ class GovCategoryTile extends StatelessWidget {
           ]),
         ),
         if (onDeactivate != null && cat.isActive)
-          IconButton(tooltip: t('إيقاف', 'Deactivate'), onPressed: onDeactivate, icon: Icon(Icons.visibility_off_outlined, color: c.danger, size: 20)),
+          IconButton(tooltip: t('إيقاف', 'Deactivate'), onPressed: onDeactivate, icon: Icon(Icons.visibility_off_outlined, color: c.danger, size: AppIconSize.md)),
       ]),
     );
   }
@@ -493,19 +493,19 @@ Future<bool> showGovCategorySheet(BuildContext context, GovApi api, int deptId, 
   final r = await showAppSheet<bool>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
+          padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 16 + MediaQuery.of(ctx).viewInsets.bottom),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             SheetHeader(edit == null ? t('تصنيف جديد', 'New category') : t('تعديل التصنيف', 'Edit category')),
             Wrap(spacing: 6, runSpacing: 6, children: [
               for (final k in const ['complaint', 'request', 'other']) AppChoiceChip(label: categoryKindLabel(k), selected: kind == k, onTap: () => set(() => kind = k)),
             ]),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppField(controller: ar, label: t('الاسم بالعربية', 'Arabic name')),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppField(controller: en, label: t('الاسم بالإنجليزية', 'English name'), ltr: true),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppField(controller: desc, label: t('وصف (اختياري)', 'Description (optional)'), maxLines: 2),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             if (forms.isNotEmpty) ...[
               AppDropdown<int>(
                 value: form ?? 0,
@@ -516,20 +516,20 @@ Future<bool> showGovCategorySheet(BuildContext context, GovApi api, int deptId, 
                 ],
                 onChanged: (v) => set(() => form = v == 0 ? null : v),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
             ],
             Row(children: [
               Expanded(child: AppField(controller: key, label: t('المفتاح (اختياري)', 'Key (optional)'), ltr: true)),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpace.sm),
               SizedBox(width: 110, child: OrgNumberField(controller: order, label: t('الترتيب', 'Order'), gap: false)),
             ]),
             if (edit != null) ...[
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpace.xs),
               AppSwitchTile(title: t('مفعّل', 'Active'), value: active, onChanged: (v) => set(() => active = v)),
             ],
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             if (edit != null) Text(t('يُمكن إيقاف تصنيف لا تعديل مفتاحه', 'A category can be switched off; its key stays'), style: appText(11.5, c: c.textLight)),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             AppPrimaryButton(
               label: edit == null ? t('إنشاء', 'Create') : t('حفظ', 'Save'),
               icon: Icons.save_rounded,
@@ -617,10 +617,10 @@ class _CategoriesTabState extends State<_CategoriesTab> {
     if (_rows == null) return AppEmpty(icon: Icons.cloud_off_rounded, title: t('تعذّر التحميل', 'Could not load'), actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load);
     return AppRefresh(
       onRefresh: _load,
-      child: ListView(padding: const EdgeInsets.only(top: 6, bottom: 40), children: [
+      child: ListView(padding: const EdgeInsets.only(top: AppSpace.xs, bottom: AppSpace.xxl), children: [
         if (canEdit)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xs),
             child: Align(
               alignment: AlignmentDirectional.centerEnd,
               child: AppPill(

@@ -59,17 +59,17 @@ Future<String?> _askNote(BuildContext context, {required String title, required 
 }
 
 Widget _banner(BuildContext context, IconData icon, Color color, String text) => Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: AppSpace.sm),
+      padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(width: 10),
-        Expanded(child: Text(text, style: orgText(context, size: 12.5))),
+        Icon(icon, color: color, size: AppIconSize.md),
+        const SizedBox(width: AppSpace.sm),
+        Expanded(child: Text(text, style: AppType.label(context).copyWith(color: context.colors.textDark))),
       ]),
     );
 
@@ -115,7 +115,7 @@ class OrgUnitJoinHub extends StatelessWidget {
           indicatorColor: c.primary,
           unselectedLabelColor: c.textMedium,
           labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
-          tabs: [for (final x in tabs) Tab(icon: Icon(x.$2, size: 18), text: x.$1)],
+          tabs: [for (final x in tabs) Tab(icon: Icon(x.$2, size: AppIconSize.md), text: x.$1)],
         ),
         Expanded(child: TabBarView(children: [for (final x in tabs) x.$3])),
       ]),
@@ -239,12 +239,12 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
           final choice = f['type'] == 'select' || f['type'] == 'multiselect';
           final bound = _bindOptions(bind);
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               SheetHeader(index == null ? t('حقل جديد', 'New field') : t('تعديل الحقل', 'Edit field')),
               Field(controller: label, label: t('السؤال / عنوان الحقل', 'Question / field label')),
-              Text(t('ربط ببيانات المؤسسة الموثّقة', 'Link to the institution\'s trusted record'), style: orgText(ctx, size: 12.5, w: FontWeight.w800, color: c.textMedium)),
-              const SizedBox(height: 6),
+              Text(t('ربط ببيانات المؤسسة الموثّقة', 'Link to the institution\'s trusted record'), style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
+              const SizedBox(height: AppSpace.xs),
               Wrap(spacing: 8, runSpacing: 6, children: [
                 ChoiceChip(label: Text(t('بدون ربط', 'Not linked')), selected: bind == null, onSelected: (_) => set(() => f.remove('bind'))),
                 for (final e in bindLabels().entries)
@@ -260,18 +260,18 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
               ]),
               if (bind != null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 6),
+                  padding: const EdgeInsets.only(top: AppSpace.xs),
                   child: Text(
                       t('الخيارات تأتي من إعدادات المؤسسة، ويُقارن الخادم الإجابة بسجل الطالب الموثّق — لا يستطيع الطالب تجاوز سجله بإجابته.',
                           'Options come from the institution\'s settings, and the server compares the answer with the student\'s trusted record — an answer can\'t override the record.'),
-                      style: orgText(ctx, size: 11.5, color: c.textLight)),
+                      style: AppType.meta(ctx).copyWith(color: c.textLight)),
                 ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               Wrap(spacing: 8, runSpacing: 8, children: [
                 for (final e in fieldTypes().entries)
                   if (bind == null || e.key == 'select' || e.key == 'multiselect')
                     ChoiceChip(
-                      avatar: Icon(fieldIcons[e.key], size: 16, color: f['type'] == e.key ? c.onHero : c.textMedium),
+                      avatar: Icon(fieldIcons[e.key], size: AppIconSize.sm, color: f['type'] == e.key ? c.onHero : c.textMedium),
                       label: Text(e.value, style: TextStyle(fontFamily: AppFonts.family, color: f['type'] == e.key ? c.onHero : c.textDark)),
                       selected: f['type'] == e.key,
                       selectedColor: c.primary,
@@ -279,25 +279,25 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
                       onSelected: (_) => set(() => f['type'] = e.key),
                     ),
               ]),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               if (bind != null) ...[
                 Text(t('الإجابات المقبولة (فارغ = كل الخيارات)', 'Accepted answers (none = every option)'),
-                    style: orgText(ctx, size: 12.5, w: FontWeight.w800, color: c.textMedium)),
-                const SizedBox(height: 6),
+                    style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
+                const SizedBox(height: AppSpace.xs),
                 if (bound.isEmpty)
                   Text(t('لا خيارات معرّفة في إعدادات المؤسسة بعد', 'No options are configured for the institution yet'),
-                      style: orgText(ctx, size: 12, color: c.warning)),
+                      style: AppType.meta(ctx).copyWith(color: c.warning)),
                 Wrap(spacing: 8, runSpacing: 6, children: [
                   for (final e in bound.entries)
                     FilterChip(
                         label: Text(e.value), selected: allowed.contains(e.key), onSelected: (on) => set(() => on ? allowed.add(e.key) : allowed.remove(e.key))),
                 ]),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpace.sm),
               ] else if (choice)
                 Field(controller: opts, label: t('الخيارات (خيار في كل سطر)', 'Options (one per line)'), maxLines: 5),
               Field(controller: help, label: t('توضيح يساعد المتقدم (اختياري)', 'Helper text (optional)')),
               OrgSwitchRow(title: t('إجباري', 'Required'), value: f['required'] == true, onChanged: (v) => set(() => f['required'] = v)),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               AppButton.primary(
                 busy: false,
                 label: t('تم', 'Done'),
@@ -338,7 +338,7 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
       return OrgAsync(loading: !_failed, failed: _failed, onRetry: _load, child: const SizedBox.shrink());
     }
     final featureOff = widget.unitType == 'dept' && widget.features != null && !widget.features!.contains('members');
-    Text label(String x) => Text(x, style: orgText(context, size: 12.5, w: FontWeight.w800, color: c.textMedium));
+    Text label(String x) => Text(x, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium));
     final assistants = {
       for (final m in _staff) asInt(asMap(m['user'])['id']): '${asMap(m['user'])['name']} · ${memberRoleLabels()['${m['role']}'] ?? m['role']}'
     };
@@ -348,7 +348,7 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
         if (didPop) return;
         if (await _leave() && context.mounted) Navigator.of(context).pop();
       },
-      child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
+      child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl), children: [
         if (featureOff)
           _banner(context, Icons.toggle_off_rounded, c.warning,
               t('خدمة "الأعضاء" غير مفعّلة لهذه الإدارة — فعّلها من تعديل الإدارة ليعمل الانضمام.',
@@ -362,26 +362,26 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(t('اختر طريقة أو أكثر — الإضافة اليدوية من تبويب الأعضاء متاحة دائماً.',
                     'Pick one or more ways — manual add from the Members tab always works.'),
-                style: orgText(context, size: 12, color: c.textMedium)),
-            const SizedBox(height: 8),
+                style: AppType.meta(context).copyWith(color: c.textMedium)),
+            const SizedBox(height: AppSpace.xs),
             Wrap(spacing: 8, runSpacing: 6, children: [
               for (final e in joinPathLabels().entries)
                 FilterChip(label: Text(e.value), selected: d.paths.contains(e.key), onSelected: (on) => setState(() => d.togglePath(e.key, on))),
             ]),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             if (d.closed)
-              Text(joinMethodHelp('closed'), style: orgText(context, size: 12, color: c.textMedium))
+              Text(joinMethodHelp('closed'), style: AppType.meta(context).copyWith(color: c.textMedium))
             else
               for (final k in joinPathLabels().keys)
                 if (d.paths.contains(k))
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text('• ${joinPathHelp(k)}', style: orgText(context, size: 12, color: c.textMedium)),
+                    padding: const EdgeInsets.only(bottom: AppSpace.xxs),
+                    child: Text('• ${joinPathHelp(k)}', style: AppType.meta(context).copyWith(color: c.textMedium)),
                   ),
           ]),
         ),
         if (!d.closed) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           Section(
             title: t('من يستطيع الانضمام', 'Who can join'),
             icon: Icons.filter_alt_rounded,
@@ -393,16 +393,16 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
                       onSelected: (on) => setState(() => on ? d.roles.add(e.key) : d.roles.remove(e.key))),
               ]),
               if (d.targetsStudents) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.sm),
                 label(t('الدفعة', 'Cohort')),
                 ChoiceRow<String>(options: audienceCohortLabels(), value: d.cohort, onChanged: (v) => setState(() => d.cohort = v)),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.sm),
                 label(t('الفرق / المستويات (فارغ = الكل)', 'Years / levels (none = all)')),
                 if (!_levelsKnown)
-                  Text(t('لا تملك صلاحية عرض إعدادات المستويات', 'You can\'t view the level settings'), style: orgText(context, size: 12, color: c.textLight))
+                  Text(t('لا تملك صلاحية عرض إعدادات المستويات', 'You can\'t view the level settings'), style: AppType.meta(context).copyWith(color: c.textLight))
                 else if (_levels.isEmpty)
                   Text(t('لم تُعرّف فرق / مستويات للمؤسسة بعد — أضفها من الهيكل الأكاديمي.', 'No years / levels are configured yet — add them in Academic structure.'),
-                      style: orgText(context, size: 12, color: c.textLight)),
+                      style: AppType.meta(context).copyWith(color: c.textLight)),
                 Wrap(spacing: 8, runSpacing: 6, children: [
                   for (final l in _levels)
                     FilterChip(
@@ -411,9 +411,9 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
                         onSelected: (on) => setState(() => on ? d.levels.add('${l['key']}') : d.levels.remove('${l['key']}'))),
                 ]),
               ],
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               label(t('من الأقسام العلمية (فارغ = الكل)', 'From academic departments (none = all)')),
-              if (_programs.isEmpty) Text(t('لا أقسام علمية', 'No academic departments'), style: orgText(context, size: 12, color: c.textLight)),
+              if (_programs.isEmpty) Text(t('لا أقسام علمية', 'No academic departments'), style: AppType.meta(context).copyWith(color: c.textLight)),
               Wrap(spacing: 8, runSpacing: 6, children: [
                 for (final p in _programs)
                   FilterChip(
@@ -421,12 +421,12 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
                       selected: d.programIds.contains(asInt(p['id'])),
                       onSelected: (on) => setState(() => on ? d.programIds.add(asInt(p['id'])) : d.programIds.remove(asInt(p['id'])))),
               ]),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               OrgNumberField(controller: _capacity, label: t('الحد الأقصى للأعضاء (اختياري)', 'Maximum members (optional)')),
             ]),
           ),
           if (d.needsApprover) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             Section(
               title: t('من يعتمد الطلبات', 'Who approves'),
               icon: Icons.verified_user_rounded,
@@ -436,16 +436,16 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
                   value: d.approver,
                   onChanged: (v) => setState(() => d.approver = v),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: AppSpace.xs),
                 Text(
                     d.approver == 'manager'
                         ? t('يصل كل طلب لمدير الوحدة. يستطيع مدير المؤسسة القرار أيضاً.', 'Every request goes to the unit manager. Organization admins can decide too.')
                         : t('يصل كل طلب للمساعدين المحددين فقط (ولمدير المؤسسة). لا يقرر أحد في طلبه.',
                             'Requests go only to the chosen assistants (and organization admins). Nobody decides their own request.'),
-                    style: orgText(context, size: 12, color: c.textMedium)),
+                    style: AppType.meta(context).copyWith(color: c.textMedium)),
                 if (d.approver == 'assistants') ...[
-                  const SizedBox(height: 8),
-                  if (assistants.isEmpty) Text(t('لا يوجد هيئة معاونة أو إداريون', 'No staff members'), style: orgText(context, size: 12, color: c.textLight)),
+                  const SizedBox(height: AppSpace.xs),
+                  if (assistants.isEmpty) Text(t('لا يوجد هيئة معاونة أو إداريون', 'No staff members'), style: AppType.meta(context).copyWith(color: c.textLight)),
                   Wrap(spacing: 8, runSpacing: 6, children: [
                     for (final e in assistants.entries)
                       FilterChip(
@@ -457,7 +457,7 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
               ]),
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           Section(
             title: t('عند غياب البيانات الموثّقة', 'When the trusted record is missing'),
             icon: Icons.fact_check_rounded,
@@ -472,44 +472,44 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
                       ? t('يصبح الطلب قيد المراجعة ويكتب المعتمد ملاحظة التحقق قبل القبول (حتى مع القبول التلقائي).',
                           'The request waits for review and the approver writes a verification note before accepting (even with automatic acceptance).')
                       : t('يُرفض الطلب إن لم تكن بيانات الطالب مسجّلة.', 'The request is refused when the student\'s data isn\'t on record.'),
-                  style: orgText(context, size: 12, color: c.textMedium)),
+                  style: AppType.meta(context).copyWith(color: c.textMedium)),
             ]),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           Section(
             title: t('نموذج الأهلية (${d.fields.length})', 'Eligibility form (${d.fields.length})'),
             icon: Icons.dynamic_form_rounded,
             trailing: TextButton.icon(onPressed: () => _editField(), icon: const Icon(Icons.add_rounded), label: Text(t('حقل', 'Field'))),
             child: d.fields.isEmpty
                 ? Padding(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(AppSpace.sm),
                     child: Text(t('اختياري — أسئلة يجيب عنها المتقدم. اربطها بالفرقة أو الدفعة أو القسم ليتحقق منها الخادم.',
                         'Optional — questions the applicant answers. Link them to the year, cohort or department so the server checks them.'),
-                        style: orgText(context, size: 12, color: c.textMedium)))
+                        style: AppType.meta(context).copyWith(color: c.textMedium)))
                 : Column(children: [
                     for (var i = 0; i < d.fields.length; i++)
                       ListTile(
                         contentPadding: EdgeInsets.zero,
                         leading: Icon(fieldIcons[d.fields[i]['type']] ?? Icons.short_text_rounded, color: c.primary),
-                        title: Text('${d.fields[i]['label']}', style: orgText(context, w: FontWeight.w700)),
+                        title: Text('${d.fields[i]['label']}', style: AppType.bodyStrong(context)),
                         subtitle: Text([
                           fieldTypes()[d.fields[i]['type']] ?? '',
                           if (d.fields[i]['required'] == true) t('إجباري', 'required'),
                           if (d.fields[i]['bind'] != null) '🔗 ${bindLabels()[d.fields[i]['bind']]}',
-                        ].join(' · '), style: orgText(context, size: 12, color: c.textMedium)),
+                        ].join(' · '), style: AppType.meta(context).copyWith(color: c.textMedium)),
                         onTap: () => _editField(i),
                         trailing: IconButton(tooltip: t('حذف', 'Delete'), onPressed: () => setState(() => d.fields.removeAt(i)), icon: Icon(Icons.delete_outline_rounded, color: c.danger)),
                       ),
                   ]),
           ),
         ],
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.md),
         if (_error != null) _banner(context, Icons.error_outline_rounded, c.danger, _error!),
         AppButton.primary(busy: _busy, label: t('حفظ سياسة الانضمام', 'Save join policy'), onPressed: _dirty ? _save : null),
         if (_dirty)
           Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(t('تغييرات غير محفوظة', 'Unsaved changes'), textAlign: TextAlign.center, style: orgText(context, size: 12, color: c.warning)),
+            padding: const EdgeInsets.only(top: AppSpace.xs),
+            child: Text(t('تغييرات غير محفوظة', 'Unsaved changes'), textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.warning)),
           ),
       ]),
     );
@@ -552,13 +552,13 @@ class _CodesTabState extends State<_CodesTab> {
   Future<void> _showPlain(String code) => showAdminSheet<void>(context, (ctx) {
         final c = ctx.colors;
         return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.xl),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             SheetHeader(t('كود الانضمام الجديد', 'New join code')),
             SelectableText(code,
                 textDirection: TextDirection.ltr,
                 style: TextStyle(fontFamily: AppFonts.display, fontSize: 30, letterSpacing: 5, fontWeight: FontWeight.w800, color: c.primary)),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             OutlinedButton.icon(
               onPressed: () async {
                 await Clipboard.setData(ClipboardData(text: code));
@@ -567,12 +567,12 @@ class _CodesTabState extends State<_CodesTab> {
               icon: const Icon(Icons.copy_rounded),
               label: Text(t('نسخ', 'Copy')),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             Text(
                 t('يظهر الكود مرة واحدة فقط — انسخه الآن. يصلح للانضمام إلى «${widget.unitName}» فقط في هذه المؤسسة، ولا يتجاوز شروط الأهلية أو السعة.',
                     'Shown once only — copy it now. It works only for joining "${widget.unitName}" in this organization and never bypasses the eligibility rules or capacity.'),
                 textAlign: TextAlign.center,
-                style: orgText(ctx, size: 12.5, color: c.textMedium)),
+                style: AppType.label(ctx).copyWith(color: c.textMedium)),
           ]),
         );
       });
@@ -594,19 +594,19 @@ class _CodesTabState extends State<_CodesTab> {
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               SheetHeader(row == null ? t('كود جديد', 'New code') : t('تعديل الكود', 'Edit code')),
               Field(controller: labelC, label: t('وصف داخلي (مثلاً: دفعة 2026)', 'Internal label (e.g. Class of 2026)')),
-              Text(t('مدة الصلاحية (اختياري)', 'Validity (optional)'), style: orgText(ctx, size: 12.5, w: FontWeight.w800, color: c.textMedium)),
-              const SizedBox(height: 6),
+              Text(t('مدة الصلاحية (اختياري)', 'Validity (optional)'), style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
+              const SizedBox(height: AppSpace.xs),
               Row(children: [
                 Expanded(
                     child: OutlinedButton.icon(
                         onPressed: () => pick(true),
                         icon: const Icon(Icons.play_arrow_rounded),
                         label: Text(from == null ? t('من الآن', 'From now') : shortDate(from!.toIso8601String())))),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
                 Expanded(
                     child: OutlinedButton.icon(
                         onPressed: () => pick(false),
@@ -615,7 +615,7 @@ class _CodesTabState extends State<_CodesTab> {
               ]),
               if (from != null || until != null)
                 TextButton(onPressed: () => set(() => from = until = null), child: Text(t('بلا حدود زمنية', 'No time limits'))),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               if (row == null)
                 OrgSwitchRow(
                     title: t('استخدام واحد فقط', 'One use only'),
@@ -702,7 +702,7 @@ class _CodesTabState extends State<_CodesTab> {
             ? const SizedBox.shrink()
             : AppRefresh(
                 onRefresh: _load,
-                child: ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 100), children: [
+                child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxxl + AppSpace.xl), children: [
                   _banner(context, Icons.info_outline_rounded, c.primary,
                       t('الأكواد تُنشأ على الخادم ولا تُعرض كاملة إلا مرة واحدة. الكود يخص هذه الوحدة فقط ولا يتجاوز شروط الأهلية.',
                           'Codes are created by the server and shown in full only once. A code is for this unit only and never bypasses eligibility.')),
@@ -721,17 +721,17 @@ class _CodesTabState extends State<_CodesTab> {
     final revoked = r['status'] == 'revoked';
     final from = orgParseUtc(r['valid_from']), until = orgParseUtc(r['valid_until']);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: RowCard(
         accent: live ? c.success : null,
         child: Row(children: [
           IconBadge(Icons.vpn_key_rounded, live ? c.success : c.textLight, size: 42),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${r['hint'] ?? ''}${'${r['label'] ?? ''}'.isEmpty ? '' : ' · ${r['label']}'}', textDirection: TextDirection.ltr,
-                  style: orgText(context, w: FontWeight.w800)),
-              const SizedBox(height: 4),
+                  style: AppType.bodyStrong(context)),
+              const SizedBox(height: AppSpace.xxs),
               Wrap(spacing: 6, runSpacing: 4, children: [
                 StatusChip(codeStateLabels()[state] ?? state, live ? c.success : (revoked ? c.danger : c.warning)),
                 OrgPill(r['max_uses'] == null ? t('${r['uses']} استخدام', '${r['uses']} uses') : '${r['uses']} / ${r['max_uses']}',
@@ -774,7 +774,7 @@ class _RequestsTab extends StatelessWidget {
         final p = context.watch<OrgPaged>();
         return PagedList<OrgPaged>(
           header: Padding(
-            padding: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.only(top: AppSpace.xs),
             child: FilterChips<String>(
               value: '${p.filters['status'] ?? ''}',
               options: {...requestStatusLabels(), '': t('الكل', 'All')},
@@ -840,20 +840,20 @@ class JoinRequestCard extends StatelessWidget {
     final checks = asMap(row['checks']);
     final missingCourses = (asMap(checks['entry_courses'])['missing'] as List?) ?? const [];
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
       child: RowCard(
         accent: pending ? (verify ? c.warning : c.primary) : null,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             AdminAvatar(name: '${u['name'] ?? ''}', url: u['image_url'] as String?),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${u['name'] ?? '#${row['user_id']}'}', maxLines: 2, overflow: TextOverflow.ellipsis,
                     style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
                 if (showUnit && unit.isNotEmpty)
-                  Text('${unitKindLabel('${unit['unit_type']}')} · ${orgNameOf(unit)}', style: orgText(context, size: 12, color: c.textMedium)),
-                Text(relTime(row['created_at']), style: orgText(context, size: 11.5, color: c.textLight)),
+                  Text('${unitKindLabel('${unit['unit_type']}')} · ${orgNameOf(unit)}', style: AppType.meta(context).copyWith(color: c.textMedium)),
+                Text(relTime(row['created_at']), style: AppType.meta(context).copyWith(color: c.textLight)),
                 // the status under the name: beside it, a narrow phone had no room left for the name
                 if (!pending) ...[
                   const SizedBox(height: AppSpace.xxs),
@@ -864,22 +864,22 @@ class JoinRequestCard extends StatelessWidget {
           ]),
           if (row['code_verified'] == true)
             Padding(
-              padding: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.only(top: AppSpace.xs),
               child: OrgPill(t('✓ الكود صحيح', '✓ Code verified'), color: c.success),
             ),
           if (verify && pending)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: AppSpace.xs),
               child: _banner(context, Icons.fact_check_rounded, c.warning,
                   t('بعض بيانات المتقدم غير مسجّلة لدى المؤسسة — تحقق منها واكتب ملاحظة قبل القبول.',
                       'Some of the applicant\'s data is not on record — verify it and write a note before accepting.')),
             ),
           if (missingCourses.isNotEmpty)
             Text(t('لم يجتز ${missingCourses.length} من متطلبات الالتحاق', '${missingCourses.length} entry course(s) not passed'),
-                style: orgText(context, size: 12, color: c.danger)),
+                style: AppType.meta(context).copyWith(color: c.danger)),
           if (answers.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.only(top: AppSpace.xs),
               child: Wrap(spacing: 6, runSpacing: 4, children: [
                 // the form field's own label (`answer_labels`, sent by the server); an older server sends only the key
                 for (final e in answers.entries)
@@ -887,10 +887,10 @@ class JoinRequestCard extends StatelessWidget {
                       color: c.textMedium),
               ]),
             ),
-          if ('${row['note'] ?? ''}'.isNotEmpty) Text('💬 ${row['note']}', style: orgText(context, size: 12.5)),
+          if ('${row['note'] ?? ''}'.isNotEmpty) Text('💬 ${row['note']}', style: AppType.label(context).copyWith(color: context.colors.textDark)),
           if (pending)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: AppSpace.xs),
               child: Wrap(spacing: 8, children: [
                 AppButton.secondary(size: AppButtonSize.sm, onPressed: () => _decide(context, true), icon: Icons.check_rounded, label: t('قبول', 'Accept')),
                 AppButton.ghost(size: AppButtonSize.sm, onPressed: () => _decide(context, false), icon: Icons.close_rounded, label: t('رفض', 'Reject')),
@@ -960,33 +960,33 @@ class _UnitMembersTabState extends State<_UnitMembersTab> {
               ? OrgEmpty(icon: Icons.groups_rounded, title: t('لا أعضاء بعد', 'No members yet'))
               : AppRefresh(
                   onRefresh: _load,
-                  child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+                  child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xxl), children: [
                     if (widget.canRemove)
                       Align(
                         alignment: AlignmentDirectional.centerEnd,
                         child: Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.only(bottom: AppSpace.xs),
                           child: AppButton.tonal(size: AppButtonSize.sm, onPressed: _addManually, icon: Icons.person_add_alt_1_rounded, label: t('إضافة يدوية', 'Add manually')),
                         ),
                       ),
                     if (rows.isEmpty) OrgEmpty(icon: Icons.groups_rounded, title: t('لا أعضاء بعد', 'No members yet')),
                     for (final r in rows)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
+                        padding: const EdgeInsets.only(bottom: AppSpace.xs),
                         child: RowCard(
                           child: Row(children: [
                             AdminAvatar(name: '${asMap(r['user'])['name']}', url: asMap(r['user'])['image_url'] as String?),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: AppSpace.sm),
                             Expanded(
                               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                Text('${asMap(r['user'])['name']}', style: orgText(context, w: FontWeight.w800)),
+                                Text('${asMap(r['user'])['name']}', style: AppType.bodyStrong(context)),
                                 Text(
                                     [
                                       if (r['stage'] != null) '${r['stage']}',
                                       if (r['joined_via'] != null) '${r['joined_via']}',
                                       if (r['joined_at'] != null) shortDate('${r['joined_at']}'),
                                     ].join(' · '),
-                                    style: orgText(context, size: 12, color: c.textMedium)),
+                                    style: AppType.meta(context).copyWith(color: c.textMedium)),
                               ]),
                             ),
                             if (widget.canRemove)
@@ -1053,24 +1053,24 @@ class _ManualAddSheetState extends State<_ManualAddSheet> {
     final c = context.colors;
     final items = [for (final m in _items ?? const <Map<String, dynamic>>[]) if (!widget.exclude.contains(asInt(asMap(m['user'])['id']))) m];
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(t('إضافة أعضاء يدوياً', 'Add members manually'), style: orgText(context, size: 16, w: FontWeight.w800)),
-        const SizedBox(height: 4),
+        Text(t('إضافة أعضاء يدوياً', 'Add members manually'), style: AppType.section(context)),
+        const SizedBox(height: AppSpace.xxs),
         Text(t('أي عضو في المؤسسة: طلاب، مدرسون، معيدون، إداريون.', 'Any organization member: students, teachers, assistants, staff.'),
-            style: orgText(context, size: 12, color: c.textMedium)),
-        const SizedBox(height: 10),
+            style: AppType.meta(context).copyWith(color: c.textMedium)),
+        const SizedBox(height: AppSpace.sm),
         TextField(
           controller: _q,
           onChanged: (_) => _search(),
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.search_rounded),
             hintText: t('ابحث بالاسم أو البريد أو الكود أو @اسم المستخدم', 'Name, e-mail, code or @username'),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
             isDense: true,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         Flexible(
           child: OrgAsync(
             loading: _items == null && !_failed,
@@ -1100,7 +1100,7 @@ class _ManualAddSheetState extends State<_ManualAddSheet> {
                   ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         AppButton.primary(
           busy: false,
           label: t('إضافة (${_picked.length})', 'Add (${_picked.length})'),
@@ -1169,20 +1169,20 @@ class _OrgJoinUnitsTabState extends State<OrgJoinUnitsTab> {
     await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
           final c = ctx.colors;
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               SheetHeader(t('لدي كود انضمام', 'I have a join code')),
               Text(t('الكود يخص إدارة أو قسماً واحداً. إن كان لها نموذج أهلية فافتحها من القائمة لتعبئته.',
                   'A code belongs to one unit. If that unit has an eligibility form, open it from the list to fill it in.'),
-                  style: orgText(ctx, size: 12.5, color: c.textMedium)),
-              const SizedBox(height: 10),
+                  style: AppType.label(ctx).copyWith(color: c.textMedium)),
+              const SizedBox(height: AppSpace.sm),
               TextField(
                 controller: code,
                 textCapitalization: TextCapitalization.characters,
                 textDirection: TextDirection.ltr,
-                decoration: InputDecoration(hintText: 'ABCD234567', errorText: err, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
+                decoration: InputDecoration(hintText: 'ABCD234567', errorText: err, border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control))),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               AppButton.primary(
                 busy: busy,
                 label: t('انضمام', 'Join'),
@@ -1231,7 +1231,7 @@ class _OrgJoinUnitsTabState extends State<OrgJoinUnitsTab> {
       final pol = asMap(u['policy']);
       final my = u['my_status'] as String?;
       return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
         child: OrgActionCard(
           icon: unitKindIcon('${u['unit_type']}'),
           color: my == 'member' ? c.success : (u['full'] == true ? c.textLight : c.primary),
@@ -1249,10 +1249,10 @@ class _OrgJoinUnitsTabState extends State<OrgJoinUnitsTab> {
 
     return AppRefresh(
       onRefresh: _load,
-      child: ListView(padding: const EdgeInsets.only(top: 8, bottom: 40), children: [
-        if (_error != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: _banner(context, Icons.error_outline_rounded, c.danger, _error!)),
+      child: ListView(padding: const EdgeInsets.only(top: AppSpace.xs, bottom: AppSpace.xxl), children: [
+        if (_error != null) Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.md), child: _banner(context, Icons.error_outline_rounded, c.danger, _error!)),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xxs),
           child: OrgActionCard(
             icon: Icons.vpn_key_rounded,
             color: c.accent2,
@@ -1275,18 +1275,18 @@ class _OrgJoinUnitsTabState extends State<OrgJoinUnitsTab> {
           OrgSectionTitle(t('طلباتي', 'My requests')),
           for (final r in _mine)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
               child: RowCard(
                 child: Row(children: [
                   IconBadge(unitKindIcon('${r['unit_type']}'), statusColor(context, '${r['status']}'), size: 40),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(_unitOf(r) == null ? unitKindLabel('${r['unit_type']}') : orgNameOf(_unitOf(r)), style: orgText(context, w: FontWeight.w800)),
-                      Text(relTime(r['created_at']), style: orgText(context, size: 12, color: c.textMedium)),
+                      Text(_unitOf(r) == null ? unitKindLabel('${r['unit_type']}') : orgNameOf(_unitOf(r)), style: AppType.bodyStrong(context)),
+                      Text(relTime(r['created_at']), style: AppType.meta(context).copyWith(color: c.textMedium)),
                       if (r['status'] == 'pending' && r['needs_verification'] == true)
-                        Text(t('ينتظر التحقق من بياناتك', 'Waiting for your data to be verified'), style: orgText(context, size: 12, color: c.warning)),
-                      if ('${r['note'] ?? ''}'.isNotEmpty) Text('💬 ${r['note']}', style: orgText(context, size: 12.5)),
+                        Text(t('ينتظر التحقق من بياناتك', 'Waiting for your data to be verified'), style: AppType.meta(context).copyWith(color: c.warning)),
+                      if ('${r['note'] ?? ''}'.isNotEmpty) Text('💬 ${r['note']}', style: AppType.label(context).copyWith(color: context.colors.textDark)),
                     ]),
                   ),
                   StatusChip(requestStatusLabels()['${r['status']}'] ?? '${r['status']}', statusColor(context, '${r['status']}')),
@@ -1419,20 +1419,20 @@ class _OrgUnitJoinScreenState extends State<OrgUnitJoinScreen> {
         useWebCard: true,
         maxWith: 720,
         appBar: ScreenAppBar(title: orgNameOf(u)),
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
+        child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl), children: [
           RowCard(
             child: Row(children: [
               IconBadge(unitKindIcon('${u['unit_type']}'), c.primary, size: 48),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(orgNameOf(u), style: orgText(context, size: 16, w: FontWeight.w800)),
-                  Text('${unitKindLabel('${u['unit_type']}')} · ${joinPathsText(pol)}', style: orgText(context, size: 12.5, color: c.textMedium)),
+                  Text(orgNameOf(u), style: AppType.section(context)),
+                  Text('${unitKindLabel('${u['unit_type']}')} · ${joinPathsText(pol)}', style: AppType.label(context).copyWith(color: c.textMedium)),
                 ]),
               ),
             ]),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           if (done != null)
             _result(context, done)
           else if (_my == 'member')
@@ -1458,10 +1458,10 @@ class _OrgUnitJoinScreenState extends State<OrgUnitJoinScreen> {
                   _ => '',
                 }),
             if (_fields.isNotEmpty) ...[
-              OrgSectionTitle(t('بيانات الأهلية', 'Eligibility details'), padding: const EdgeInsets.fromLTRB(4, 6, 4, 6)),
+              OrgSectionTitle(t('بيانات الأهلية', 'Eligibility details'), padding: const EdgeInsets.fromLTRB(AppSpace.xxs, AppSpace.xs, AppSpace.xxs, AppSpace.xs)),
               Text(t('تُقارن إجاباتك بسجلك لدى المؤسسة، والقرار النهائي للخادم.', 'Your answers are compared with your record at the institution; the server decides.'),
-                  style: orgText(context, size: 12, color: c.textLight)),
-              const SizedBox(height: 8),
+                  style: AppType.meta(context).copyWith(color: c.textLight)),
+              const SizedBox(height: AppSpace.xs),
               for (final f in _fields)
                 OrgDynamicField(
                   field: f,
@@ -1475,7 +1475,7 @@ class _OrgUnitJoinScreenState extends State<OrgUnitJoinScreen> {
                 ),
             ],
             if (unitAcceptsCode(pol)) ...[
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpace.xs),
               TextField(
                 controller: _code,
                 textCapitalization: TextCapitalization.characters,
@@ -1484,21 +1484,21 @@ class _OrgUnitJoinScreenState extends State<OrgUnitJoinScreen> {
                 decoration: InputDecoration(
                   labelText: unitNeedsCode(pol) ? t('كود الانضمام', 'Join code') : t('كود الانضمام (اختياري)', 'Join code (optional)'),
                   errorText: _codeError,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
             ],
             if (_check != null) _checkCard(context, _check!),
             if (_error != null && _check == null) _banner(context, Icons.error_outline_rounded, c.danger, _error!),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             if (_fields.isNotEmpty)
               OutlinedButton.icon(
                 onPressed: _busy ? null : _dryRun,
                 icon: const Icon(Icons.rule_rounded),
                 label: Text(t('هل أستطيع الانضمام؟', 'Can I join?')),
               ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             AppButton.primary(
               busy: _busy,
               label: unitNeedsApproval(pol) ? t('إرسال الطلب', 'Send request') : t('انضمام', 'Join'),
@@ -1530,15 +1530,15 @@ class _OrgUnitJoinScreenState extends State<OrgUnitJoinScreen> {
     final verify = req['needs_verification'] == true;
     return Column(children: [
       IconBadge(joined ? Icons.celebration_rounded : Icons.hourglass_top_rounded, joined ? c.success : c.warning, size: 64),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       Text(
           joined
               ? t('تم الانضمام 🎉', 'You\'re in 🎉')
               : r['code_verified'] == true
                   ? t('تم التحقق من الكود — طلبك بانتظار الموافقة', 'Code verified — request submitted, awaiting approval')
                   : t('أُرسل طلبك', 'Your request was sent'),
-          style: orgText(context, size: 18, w: FontWeight.w800), textAlign: TextAlign.center),
-      const SizedBox(height: 6),
+          style: AppType.section(context), textAlign: TextAlign.center),
+      const SizedBox(height: AppSpace.xs),
       Text(
           joined
               ? (widget.unit['unit_type'] == 'program'
@@ -1549,8 +1549,8 @@ class _OrgUnitJoinScreenState extends State<OrgUnitJoinScreen> {
                       'Some of your data isn\'t on record, so a staff member will verify it, then decide. Follow it in "My requests".')
                   : t('سيراجعه المسؤول وتصلك النتيجة. تابع الحالة من "طلباتي".', 'The person in charge will review it and you\'ll be told. Follow it in "My requests".'),
           textAlign: TextAlign.center,
-          style: orgText(context, color: c.textMedium)),
-      const SizedBox(height: 16),
+          style: AppType.row(context).copyWith(color: c.textMedium)),
+      const SizedBox(height: AppSpace.md),
       AppButton.primary(busy: false, label: t('تم', 'Done'), onPressed: () => Navigator.of(context).pop(true)),
     ]);
   }

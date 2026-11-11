@@ -28,6 +28,7 @@ import 'org_v3.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 const bool kOrgSchedulingMocks = !kReleaseMode && bool.fromEnvironment('ORG_SCHEDULING_MOCKS');
 
@@ -448,7 +449,7 @@ class _CoursePlansPageState extends State<TimetableCoursesView> {
 
     return AppRefresh(
       onRefresh: _load,
-      child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
+      child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl), children: [
         if (d.unsupported)
           RowCard(
               accent: c.warning,
@@ -464,8 +465,8 @@ class _CoursePlansPageState extends State<TimetableCoursesView> {
           _stat(context, t('فترات أسبوعياً', 'Periods / week'), '$periods', Icons.schedule_rounded, c.accent2),
           _stat(context, t('تحتاج حلاً', 'Need a fix'), '$blocking', Icons.error_outline_rounded, blocking > 0 ? c.danger : c.success),
         ]),
-        const SizedBox(height: 16),
-        if (loads.isEmpty) Padding(padding: const EdgeInsets.all(16), child: Text(t('لا مقررات في هذا الجدول.', 'No courses in this timetable.'))),
+        const SizedBox(height: AppSpace.md),
+        if (loads.isEmpty) Padding(padding: const EdgeInsets.all(AppSpace.md), child: Text(t('لا مقررات في هذا الجدول.', 'No courses in this timetable.'))),
         for (final l in loads) _courseCard(context, l, results[asInt(l['course_id'])]!, editable),
       ]),
     );
@@ -473,15 +474,15 @@ class _CoursePlansPageState extends State<TimetableCoursesView> {
 
   Widget _stat(BuildContext context, String label, String value, IconData icon, Color color) => Container(
         width: 160,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(14)),
+        padding: const EdgeInsets.all(AppSpace.sm),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(AppRadius.control)),
         child: Row(children: [
           Icon(icon, color: color),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(value, style: orgText(context, size: 18, w: FontWeight.w800)),
-            Text(label, style: orgText(context, size: 11.5, color: context.colors.textMedium)),
+            Text(value, style: AppType.section(context)),
+            Text(label, style: AppType.meta(context).copyWith(color: context.colors.textMedium)),
           ])),
         ]),
       );
@@ -495,7 +496,7 @@ class _CoursePlansPageState extends State<TimetableCoursesView> {
       onTap: editable ? () => _edit(l) : null,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Expanded(child: Text(courseName(l), style: orgText(context, w: FontWeight.w800))),
+          Expanded(child: Text(courseName(l), style: AppType.bodyStrong(context))),
           if (widget.canEdit)
             IconButton(
               tooltip: t('تعديل متطلبات المقرر', 'Edit the course requirements'),
@@ -507,7 +508,7 @@ class _CoursePlansPageState extends State<TimetableCoursesView> {
             ),
           if (editable) const Icon(Icons.chevron_right_rounded),
         ]),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpace.xxs),
         Text(
             [
               plan.expectedStudents != null
@@ -517,15 +518,15 @@ class _CoursePlansPageState extends State<TimetableCoursesView> {
               if (r.labGroups > 0) '${t('سكاشن', 'Labs')}: ${sizes(r.labSizes)} (${roomKindLabel('${l['lab_room_kind'] ?? 'lab'}')})',
               t('${r.weeklyPeriods} فترة/أسبوع', '${r.weeklyPeriods} periods/week'),
             ].join(' · '),
-            style: orgText(context, size: 12, color: c.textMedium)),
+            style: AppType.meta(context).copyWith(color: c.textMedium)),
         for (final i in r.issues)
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: AppSpace.xxs),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Icon(i.severity == 'error' ? Icons.error_rounded : (i.severity == 'warning' ? Icons.warning_amber_rounded : Icons.info_outline_rounded),
-                  size: 16, color: i.severity == 'error' ? c.danger : (i.severity == 'warning' ? c.warning : c.textLight)),
-              const SizedBox(width: 6),
-              Expanded(child: Text(i.text, style: orgText(context, size: 12))),
+                  size: AppIconSize.sm, color: i.severity == 'error' ? c.danger : (i.severity == 'warning' ? c.warning : c.textLight)),
+              const SizedBox(width: AppSpace.xs),
+              Expanded(child: Text(i.text, style: AppType.meta(context).copyWith(color: context.colors.textDark))),
             ]),
           ),
       ]),
@@ -568,7 +569,7 @@ Future<CoursePlan?> showCoursePlanSheet(BuildContext context, OrgScheduleProvide
         final c = ctx.colors;
         final r = planCourse(draft(), load, p.rooms);
         Widget field(String label, TextEditingController ctl, String hint) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.only(bottom: AppSpace.sm),
               child: TextField(
                 controller: ctl,
                 keyboardType: TextInputType.number,
@@ -582,7 +583,7 @@ Future<CoursePlan?> showCoursePlanSheet(BuildContext context, OrgScheduleProvide
         Widget groupsRow(String label, int derived, int? value, ValueChanged<int?> on) => Row(children: [
               Expanded(
                   child: Text(value == null ? '$label: $derived ${t('(تلقائي)', '(auto)')}' : '$label: $value',
-                      style: orgText(ctx, w: FontWeight.w700))),
+                      style: AppType.bodyStrong(ctx))),
               IconButton(tooltip: t('تقليل', 'Decrease'), onPressed: (value ?? derived) > 1 ? () => set(() => on((value ?? derived) - 1)) : null, icon: const Icon(Icons.remove_circle_outline_rounded)),
               IconButton(tooltip: t('زيادة', 'Increase'), onPressed: (value ?? derived) < 40 ? () => set(() => on((value ?? derived) + 1)) : null, icon: const Icon(Icons.add_circle_outline_rounded)),
               if (value != null) TextButton(onPressed: () => set(() => on(null)), child: Text(t('تلقائي', 'Auto'))),
@@ -603,16 +604,16 @@ Future<CoursePlan?> showCoursePlanSheet(BuildContext context, OrgScheduleProvide
         }
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(courseName(load)),
             field(t('العدد المتوقع للطلاب', 'Expected students'), expected,
                 t('فارغ = عدد المسجلين حالياً (${plan.enrolledStudents})', 'Empty = currently enrolled (${plan.enrolledStudents})')),
             if (plan.history != null)
               Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.only(bottom: AppSpace.sm),
                 child: ActionChip(
-                  avatar: Icon(source == 'history' ? Icons.check_rounded : Icons.history_rounded, size: 18),
+                  avatar: Icon(source == 'history' ? Icons.check_rounded : Icons.history_rounded, size: AppIconSize.md),
                   label: Text(t('آخر فصل مكتمل${plan.history!.yearLabel == null ? '' : ' (${plan.history!.yearLabel})'}: ${plan.history!.students} طالب — تقدير مبدئي',
                       'Last completed offering${plan.history!.yearLabel == null ? '' : ' (${plan.history!.yearLabel})'}: ${plan.history!.students} students — a starting estimate')),
                   onPressed: () => set(() {
@@ -628,18 +629,18 @@ Future<CoursePlan?> showCoursePlanSheet(BuildContext context, OrgScheduleProvide
               groupsRow(t('مجموعات السكشن', 'Lab groups'), groupsNeeded(draft().students, num(labSize) ?? num(lecSize)), labGroups, (v) => labGroups = v),
             ],
             if (r.lectureGroups > 1 || r.labGroups > 1) ...[
-              const SizedBox(height: 8),
-              Text(t('من يدرّس كل مجموعة', 'Who teaches each group'), style: orgText(ctx, w: FontWeight.w800)),
-              const SizedBox(height: 6),
-              for (var i = 0; i < r.lectureGroups && r.lectureGroups > 1; i++) Padding(padding: const EdgeInsets.only(bottom: 8), child: staffPick('lecture', i + 1, r.lectureSizes[i])),
-              for (var i = 0; i < r.labGroups && r.labGroups > 1; i++) Padding(padding: const EdgeInsets.only(bottom: 8), child: staffPick('lab', i + 1, r.labSizes[i])),
+              const SizedBox(height: AppSpace.xs),
+              Text(t('من يدرّس كل مجموعة', 'Who teaches each group'), style: AppType.bodyStrong(ctx)),
+              const SizedBox(height: AppSpace.xs),
+              for (var i = 0; i < r.lectureGroups && r.lectureGroups > 1; i++) Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: staffPick('lecture', i + 1, r.lectureSizes[i])),
+              for (var i = 0; i < r.labGroups && r.labGroups > 1; i++) Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: staffPick('lab', i + 1, r.labSizes[i])),
             ],
             for (final i in r.issues)
               Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Text('• ${i.text}', style: orgText(ctx, size: 12.5, color: i.severity == 'error' ? c.danger : (i.severity == 'warning' ? c.warning : c.textMedium))),
+                padding: const EdgeInsets.only(bottom: AppSpace.xs),
+                child: Text('• ${i.text}', style: AppType.label(ctx).copyWith(color: i.severity == 'error' ? c.danger : (i.severity == 'warning' ? c.warning : c.textMedium))),
               ),
-            if (err != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(err!, style: orgText(ctx, color: c.danger))),
+            if (err != null) Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: Text(err!, style: AppType.row(ctx).copyWith(color: c.danger))),
             PrimaryButton(
               isLoading: busy,
               label: t('حفظ', 'Save'),

@@ -86,7 +86,7 @@ class _GovSettingsFormState extends State<GovSettingsForm> {
     final onChanged = widget.onChanged;
     final kinds = ['*', ...entityKinds];
     String kindLabel(String k) => k == '*' ? t('أي جهة', 'Any entity') : entityKindLabel(k);
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xl), children: [
       AppSectionTitle(t('مسارات الإحالة', 'Routing rules')),
       AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -100,10 +100,10 @@ class _GovSettingsFormState extends State<GovSettingsForm> {
             },
           ),
           if (s.mode == 'rules') ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             for (var i = 0; i < s.rules.length; i++)
               Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.only(bottom: AppSpace.xs),
                 child: Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
                   SizedBox(
                     width: 180,
@@ -152,13 +152,13 @@ class _GovSettingsFormState extends State<GovSettingsForm> {
             ),
             if (s.rules.isEmpty)
               Padding(
-                padding: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.only(top: AppSpace.xs),
                 child: AppBanner(icon: Icons.info_outline_rounded, text: t('بلا مسارات مسموحة لن تُقبل أي إحالة بين الجهات', 'With no allowed route, no item can be routed between entities')),
               ),
           ],
         ]),
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: AppSpace.md),
       AppSectionTitle(t('مهلة الرد (ساعات) لكل أولوية', 'SLA hours per priority')),
       AppCard(
         child: Wrap(spacing: 12, runSpacing: 12, children: [
@@ -177,7 +177,7 @@ class _GovSettingsFormState extends State<GovSettingsForm> {
             ),
         ]),
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: AppSpace.md),
       AppSectionTitle(t('البريد الإلكتروني', 'E-mail')),
       AppCard(
         child: AppSwitchTile(
@@ -190,7 +190,7 @@ class _GovSettingsFormState extends State<GovSettingsForm> {
           },
         ),
       ),
-      const SizedBox(height: 20),
+      const SizedBox(height: AppSpace.lg),
       AppPrimaryButton(label: t('حفظ الإعدادات', 'Save settings'), busy: widget.busy, onPressed: widget.busy ? null : widget.onSave),
     ]);
   }

@@ -287,7 +287,7 @@ class ItemFilterControls extends StatelessWidget {
         selected: f.types,
         onChanged: (v) => onChanged(f.copyWith(types: v)),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       GovChipSelect(
         label: t('الحالة', 'Status'),
         icon: Icons.flag_outlined,
@@ -295,7 +295,7 @@ class ItemFilterControls extends StatelessWidget {
         selected: f.statuses,
         onChanged: (v) => onChanged(f.copyWith(statuses: v)),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       LayoutBuilder(builder: (context, box) {
         final from = GovDateField(
           label: t('من تاريخ', 'From'),
@@ -315,11 +315,11 @@ class ItemFilterControls extends StatelessWidget {
           },
           onClear: () => onChanged(f.copyWith(dateTo: null)),
         );
-        if (box.maxWidth < 420) return Column(children: [from, const SizedBox(height: 10), to]);
-        return Row(children: [Expanded(child: from), const SizedBox(width: 10), Expanded(child: to)]);
+        if (box.maxWidth < 420) return Column(children: [from, const SizedBox(height: AppSpace.sm), to]);
+        return Row(children: [Expanded(child: from), const SizedBox(width: AppSpace.sm), Expanded(child: to)]);
       }),
       if (showEntity && entities.isNotEmpty) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         AppDropdown<int>(
           value: f.deptId ?? 0,
           decoration: InputDecoration(labelText: t('الجهة المالكة', 'Owner entity'), prefixIcon: const Icon(Icons.apartment_rounded)),
@@ -331,7 +331,7 @@ class ItemFilterControls extends StatelessWidget {
         ),
       ],
       if (showEntity && entities.isNotEmpty) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         AppDropdown<int>(
           value: f.sourceDeptId ?? 0,
           decoration: InputDecoration(labelText: t('الجهة المصدر', 'Source entity'), prefixIcon: const Icon(Icons.outbox_rounded)),
@@ -342,7 +342,7 @@ class ItemFilterControls extends StatelessWidget {
           onChanged: (v) => onChanged(f.copyWith(sourceDeptId: v == null || v == 0 ? null : v)),
         ),
       ],
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       if (onPickPerson != null)
         GovPersonField(
           label: t('المسؤول (المسند إليه)', 'Assignee'),
@@ -364,7 +364,7 @@ class ItemFilterControls extends StatelessWidget {
           onChanged: (v) => onChanged(f.copyWith(assigneeId: v == null || v == 0 ? null : v)),
         ),
       if (categories.isNotEmpty) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         AppDropdown<int>(
           value: f.categoryId ?? 0,
           decoration: InputDecoration(labelText: t('التصنيف', 'Category'), prefixIcon: const Icon(Icons.label_outline_rounded)),
@@ -375,7 +375,7 @@ class ItemFilterControls extends StatelessWidget {
           onChanged: (v) => onChanged(f.copyWith(categoryId: v == null || v == 0 ? null : v)),
         ),
       ],
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       GovChipSelect(
         label: t('نتيجة التصويت', 'Vote outcome'),
         icon: Icons.how_to_vote_outlined,
@@ -383,7 +383,7 @@ class ItemFilterControls extends StatelessWidget {
         selected: f.outcomes,
         onChanged: (v) => onChanged(f.copyWith(outcomes: v)),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       AppDropdown<String>(
         value: f.sort,
         decoration: InputDecoration(labelText: t('الترتيب', 'Sort'), prefixIcon: const Icon(Icons.sort_rounded)),
@@ -417,7 +417,7 @@ Future<ItemFilter?> showItemFilterSheet(
           ),
           Flexible(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
               child: ItemFilterControls(
                 filter: draft,
                 onChanged: (f) => set(() => draft = f),
@@ -430,7 +430,7 @@ Future<ItemFilter?> showItemFilterSheet(
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.md),
             child: AppPrimaryButton(label: t('تطبيق', 'Apply'), icon: Icons.check_rounded, onPressed: () => Navigator.pop(ctx, draft)),
           ),
         ]);
@@ -531,14 +531,14 @@ class _ItemFilterBarState extends State<ItemFilterBar> {
               onChanged: (q) => widget.onChanged(f.copyWith(q: q)),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           _FilterButton(
             count: n,
             open: wide && _open,
             onTap: wide ? () => setState(() => _open = !_open) : _openSheet,
           ),
           if (widget.onSaveFilter != null || widget.savedFilters.isNotEmpty) ...[
-            const SizedBox(width: 4),
+            const SizedBox(width: AppSpace.xxs),
             PopupMenuButton<Object>(
               tooltip: t('الفلاتر المحفوظة', 'Saved filters'),
               icon: Icon(Icons.bookmark_border_rounded, color: c.textMedium),
@@ -558,7 +558,7 @@ class _ItemFilterBarState extends State<ItemFilterBar> {
                       if (widget.onDeleteFilter != null)
                         IconButton(
                           tooltip: t('حذف', 'Delete'),
-                          icon: Icon(Icons.delete_outline_rounded, size: 18, color: c.danger),
+                          icon: Icon(Icons.delete_outline_rounded, size: AppIconSize.md, color: c.danger),
                           onPressed: () {
                             Navigator.pop(context);
                             unawaited(widget.onDeleteFilter!(s));
@@ -573,8 +573,8 @@ class _ItemFilterBarState extends State<ItemFilterBar> {
                   PopupMenuItem<Object>(
                     value: 'save',
                     child: Row(children: [
-                      const Icon(Icons.bookmark_add_outlined, size: 18),
-                      const SizedBox(width: 8),
+                      const Icon(Icons.bookmark_add_outlined, size: AppIconSize.md),
+                      const SizedBox(width: AppSpace.xs),
                       Text(t('حفظ الفلتر الحالي…', 'Save current filter…')),
                     ]),
                   ),
@@ -584,19 +584,19 @@ class _ItemFilterBarState extends State<ItemFilterBar> {
           ],
         ]),
         if (widget.showQuick) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           SizedBox(
             height: 40,
             child: ListView(scrollDirection: Axis.horizontal, children: [
               for (final e in _quickOptions().entries) ...[
                 AppChoiceChip(label: e.value.$1, icon: e.value.$2, selected: f.quick == e.key, onTap: () => widget.onChanged(f.withQuick(e.key))),
-                const SizedBox(width: 6),
+                const SizedBox(width: AppSpace.xs),
               ],
             ]),
           ),
         ],
         if (chips.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
             for (final ch in chips)
               InputChip(
@@ -605,18 +605,18 @@ class _ItemFilterBarState extends State<ItemFilterBar> {
                 deleteIconColor: c.textMedium,
                 backgroundColor: c.primary.withValues(alpha: 0.07),
                 side: BorderSide(color: c.primary.withValues(alpha: 0.2)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
                 visualDensity: VisualDensity.compact,
               ),
             TextButton.icon(
               onPressed: () => widget.onChanged(f.cleared(keepDept: !widget.showEntity)),
-              icon: Icon(Icons.filter_alt_off_rounded, size: 16, color: c.danger),
+              icon: Icon(Icons.filter_alt_off_rounded, size: AppIconSize.sm, color: c.danger),
               label: Text(t('مسح الكل', 'Clear all'), style: appText(12, w: FontWeight.w700, c: c.danger)),
             ),
           ]),
         ],
         if (wide && _open) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           AppCard(
             child: ItemFilterControls(
               filter: f,
@@ -655,21 +655,21 @@ class _FilterButton extends StatelessWidget {
     final on = count > 0 || open;
     return Material(
       color: on ? c.primary.withValues(alpha: 0.10) : c.inputBg,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppRadius.control),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         onTap: onTap,
         child: Container(
           height: 46,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: on ? c.primary.withValues(alpha: 0.3) : c.divider)),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppRadius.control), border: Border.all(color: on ? c.primary.withValues(alpha: 0.3) : c.divider)),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.tune_rounded, size: 19, color: on ? c.primary : c.textMedium),
+            Icon(Icons.tune_rounded, size: AppIconSize.md, color: on ? c.primary : c.textMedium),
             if (count > 0) ...[
-              const SizedBox(width: 6),
+              const SizedBox(width: AppSpace.xs),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-                decoration: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 1),
+                decoration: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(AppRadius.chip)),
                 child: Text('$count', style: appText(11, w: FontWeight.w800, c: c.onHero)),
               ),
             ],
@@ -727,7 +727,7 @@ class _SearchFieldState extends State<_SearchField> {
         suffixIcon: _ctrl.text.isEmpty
             ? null
             : IconButton(tooltip: t('مسح', 'Clear'), 
-                icon: const Icon(Icons.close_rounded, size: 18),
+                icon: const Icon(Icons.close_rounded, size: AppIconSize.md),
                 onPressed: () {
                   _ctrl.clear();
                   _debounce.flush(() => widget.onChanged(''));
@@ -737,10 +737,10 @@ class _SearchFieldState extends State<_SearchField> {
         filled: true,
         fillColor: c.inputBg,
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(vertical: 13, horizontal: 12),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.divider)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.divider)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.primary, width: 1.6)),
+        contentPadding: const EdgeInsets.symmetric(vertical: AppSpace.sm, horizontal: AppSpace.sm),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.divider)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.divider)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.primary, width: 1.6)),
       ),
     );
   }

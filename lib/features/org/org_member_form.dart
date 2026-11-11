@@ -22,6 +22,7 @@ import 'org_dynamic_form.dart' show orgOption;
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 /// Membership roles of POST /members (`MemberIn.role`); positions and permission bundles are separate (below).
 const orgMemberRoles = ['student', 'teacher', 'teacher_assistant', 'admin_assistant', 'org_admin'];
@@ -124,7 +125,7 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
         final c = ctx.colors;
         final student = role == 'student';
         final teaching = role == 'teacher' || role == 'teacher_assistant';
-        Text label(String x) => Text(x, style: orgText(ctx, size: 12.5, w: FontWeight.w800, color: c.textMedium));
+        Text label(String x) => Text(x, style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: c.textMedium));
         Future<void> pickDate(bool isStart) async {
           final now = DateTime.now();
           final d = await showDatePicker(
@@ -137,15 +138,15 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
         }
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(edit == null ? t('إضافة عضو', 'Add a member') : t('عضوية ${u['name']}', '${u['name']}\'s membership')),
             if (edit == null) ...[
               if (roleOptions.length > 1) ...[
                 label(t('الدور', 'Role')),
-                const SizedBox(height: 6),
+                const SizedBox(height: AppSpace.xs),
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.only(bottom: AppSpace.sm),
                   child: Wrap(spacing: 8, runSpacing: 6, children: [
                     for (final r in roleOptions)
                       ChoiceChip(label: Text(orgRoleLabels()[r] ?? r), selected: role == r, onSelected: (_) => set(() => role = r)),
@@ -168,7 +169,7 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
                 if (!v) expires = null;
               }),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             Row(children: [
               Expanded(
                 child: OutlinedButton.icon(
@@ -178,7 +179,7 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
                 ),
               ),
               if (limited) ...[
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () => pickDate(false),
@@ -189,30 +190,30 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
               ],
             ]),
             Padding(
-              padding: const EdgeInsets.only(top: 4, bottom: 10),
+              padding: const EdgeInsets.only(top: AppSpace.xxs, bottom: AppSpace.sm),
               child: Text(
                   limited
                       ? t('عند الانتهاء تتوقف عضويته في هذه المؤسسة فقط — حسابه وعضوياته الأخرى تبقى. يمكن تمديدها لاحقاً.',
                           'When it ends, only this organization\'s membership stops — the account and other memberships stay. You can extend it later.')
                       : t('تبقى نشطة حتى تُوقفها.', 'Stays active until you stop it.'),
-                  style: orgText(ctx, size: 11.5, color: c.textLight)),
+                  style: AppType.meta(ctx).copyWith(color: c.textLight)),
             ),
             // ── academic data (trusted — staff only) ──
             if (student) ...[
               label(t('الفرقة / المستوى', 'Year / level')),
               if (data.levels.isEmpty)
-                Text(t('لم تُعرّف مستويات للمؤسسة بعد', 'No levels are configured yet'), style: orgText(ctx, size: 12, color: c.textLight)),
+                Text(t('لم تُعرّف مستويات للمؤسسة بعد', 'No levels are configured yet'), style: AppType.meta(ctx).copyWith(color: c.textLight)),
               Wrap(spacing: 8, runSpacing: 6, children: [
                 for (final l in data.levels)
                   ChoiceChip(label: Text(orgOption(l).$2), selected: level == '${l['key']}', onSelected: (on) => set(() => level = on ? '${l['key']}' : null)),
               ]),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
               label(t('الدفعة', 'Cohort')),
               Wrap(spacing: 8, children: [
                 for (final e in memberCohortLabels().entries)
                   ChoiceChip(label: Text(e.value), selected: cohort == e.key, onSelected: (on) => set(() => cohort = on ? e.key : null)),
               ]),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
             ],
             if (teaching) ...[
               OrgPickField<int>(
@@ -226,16 +227,16 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
               ),
               if (program == null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 4),
+                  padding: const EdgeInsets.only(top: AppSpace.xxs),
                   child: Text(
                       data.allowGeneral
                           ? t('مدرس عام: يدرّس المقررات العامة، ومقررات الأقسام مسموحة حسب إعدادات المؤسسة.',
                               'General teacher: teaches general courses; department courses are allowed by the institution\'s settings.')
                           : t('مدرس عام: يدرّس المقررات العامة فقط (إعدادات المؤسسة لا تسمح للعام بمقررات الأقسام).',
                               'General teacher: general courses only (the institution doesn\'t allow general teachers on department courses).'),
-                      style: orgText(ctx, size: 11.5, color: c.textLight)),
+                      style: AppType.meta(ctx).copyWith(color: c.textLight)),
                 ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
             ],
             if (!student) ...[
               OrgNumberField(controller: exp, label: t('سنوات الخبرة (اختياري)', 'Years of experience (optional)')),
@@ -258,12 +259,12 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
                         onChanged: (v) => set(() => head = v)),
                 ],
                 if (data.roles.isNotEmpty) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: AppSpace.xs),
                   Row(children: [
                     Expanded(child: label(t('أدوار وصلاحيات إضافية (اختياري)', 'Extra roles & permissions (optional)'))),
                     if (s.can('roles', 'insert'))
                       TextButton.icon(
-                        icon: const Icon(Icons.add_rounded, size: 18),
+                        icon: const Icon(Icons.add_rounded, size: AppIconSize.md),
                         label: Text(t('دور جديد', 'New role')),
                         onPressed: () async {
                           final r = await Navigator.of(ctx).push<dynamic>(MaterialPageRoute(builder: (_) => const OrgRoleEditor()));
@@ -290,22 +291,22 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
                   ]),
                   if (extraRoles.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.only(top: 4, bottom: 8),
+                      padding: const EdgeInsets.only(top: AppSpace.xxs, bottom: AppSpace.xs),
                       child: Text(
                           dept == null
                               ? t('تُطبَّق على المؤسسة كلها.', 'Applies to the whole organization.')
                               : t('تُطبَّق داخل الإدارة المختارة فقط.', 'Applies inside the selected department only.'),
-                          style: orgText(ctx, size: 11.5, color: c.textLight)),
+                          style: AppType.meta(ctx).copyWith(color: c.textLight)),
                     ),
                 ],
               ],
             ],
             if (err != null)
               Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: c.danger.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
-                child: Text(err!, style: orgText(ctx, size: 12.5, color: c.danger)),
+                margin: const EdgeInsets.only(bottom: AppSpace.sm),
+                padding: const EdgeInsets.all(AppSpace.sm),
+                decoration: BoxDecoration(color: c.danger.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(AppRadius.control)),
+                child: Text(err!, style: AppType.label(ctx).copyWith(color: c.danger)),
               ),
             AppButton.primary(
               busy: busy,
@@ -383,12 +384,12 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
 Future<void> showGeneratedPassword(BuildContext context, String login, String password) => showAdminSheet<void>(
     context,
     (c2) => Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.xl),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             SheetHeader(t('بيانات الدخول', 'Login details')),
             SelectableText('$login\n$password',
                 textDirection: TextDirection.ltr, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             Text(t('تظهر مرة واحدة فقط — انسخها الآن.', 'Shown once — copy it now.')),
           ]),
         ));
@@ -406,11 +407,11 @@ Future<Map<String, dynamic>?> showMembershipExtend(BuildContext context, Map<Str
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(t('تمديد العضوية', 'Extend membership')),
-            Text(membershipPeriodText(row), style: orgText(ctx, color: c.textMedium)),
-            const SizedBox(height: 10),
+            Text(membershipPeriodText(row), style: AppType.row(ctx).copyWith(color: c.textMedium)),
+            const SizedBox(height: AppSpace.sm),
             ChoiceRow<bool>(
               options: {true: t('دائمة', 'Permanent'), false: t('حتى تاريخ', 'Until a date')},
               value: permanent,
@@ -434,8 +435,8 @@ Future<Map<String, dynamic>?> showMembershipExtend(BuildContext context, Map<Str
                   value: reactivate,
                   onChanged: (v) => set(() => reactivate = v)),
             Field(controller: note, label: t('ملاحظة للسجل (اختياري)', 'Note for the log (optional)')),
-            if (err != null) Text(err!, style: orgText(ctx, size: 12.5, color: c.danger)),
-            const SizedBox(height: 8),
+            if (err != null) Text(err!, style: AppType.label(ctx).copyWith(color: c.danger)),
+            const SizedBox(height: AppSpace.xs),
             AppButton.primary(
               busy: busy,
               label: t('حفظ', 'Save'),
@@ -535,7 +536,7 @@ class _OrgMemberPickFieldState extends State<OrgMemberPickField> {
           alignment: AlignmentDirectional.centerEnd,
           child: TextButton.icon(
             onPressed: _addNew,
-            icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+            icon: const Icon(Icons.person_add_alt_1_rounded, size: AppIconSize.md),
             label: Text(t('إضافة عضو جديد', 'Add new member')),
           ),
         ),

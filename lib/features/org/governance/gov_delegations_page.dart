@@ -87,10 +87,10 @@ class GovDelegationForm extends StatelessWidget {
             ? t('تفويض كامل: يقرر المفوَّض في كل معاملات هذه الجهة كأنه رئيسها، ويدير مجلسها إن وُجد.', 'Global: the delegate decides on every item of this entity as its head would, and manages its council if any.')
             : t('تفويض محدد: يقرر المفوَّض فقط في المعاملات التي تطابق كل محور تحدده (محور فارغ = بلا قيد).', 'Scoped: the delegate decides only on items matching every axis you set (an empty axis = no restriction).'),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       GovPersonField(label: t('المفوَّض إليه', 'Delegate to'), person: person, onPick: onPickPerson),
       if (!global) ...[
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.md),
         GovChipSelect(
           label: t('أنواع المعاملات', 'Item types'),
           icon: Icons.category_outlined,
@@ -99,9 +99,9 @@ class GovDelegationForm extends StatelessWidget {
           onChanged: onTypes,
         ),
         if (categories.isNotEmpty) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           Text(t('التصنيفات', 'Categories'), style: appText(12, c: c.textLight)),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs),
           Wrap(spacing: 6, runSpacing: 6, children: [
             for (final cat in categories)
               AppChoiceChip(
@@ -112,9 +112,9 @@ class GovDelegationForm extends StatelessWidget {
           ]),
         ],
         if (forms.isNotEmpty) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           Text(t('النماذج', 'Forms'), style: appText(12, c: c.textLight)),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs),
           Wrap(spacing: 6, runSpacing: 6, children: [
             for (final f in forms)
               AppChoiceChip(
@@ -126,7 +126,7 @@ class GovDelegationForm extends StatelessWidget {
           ]),
         ],
         if (hasCouncil) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs),
           AppSwitchTile(
             icon: Icons.groups_2_rounded,
             title: t('إدارة المجلس', 'Council management'),
@@ -136,7 +136,7 @@ class GovDelegationForm extends StatelessWidget {
           ),
         ],
       ],
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       LayoutBuilder(builder: (context, box) {
         final from = GovDateField(
           label: t('يبدأ (اختياري)', 'Starts (optional)'),
@@ -159,13 +159,13 @@ class GovDelegationForm extends StatelessWidget {
           },
           onClear: () => onEnds(null),
         );
-        if (box.maxWidth < 420) return Column(children: [from, const SizedBox(height: 10), to]);
-        return Row(children: [Expanded(child: from), const SizedBox(width: 10), Expanded(child: to)]);
+        if (box.maxWidth < 420) return Column(children: [from, const SizedBox(height: AppSpace.sm), to]);
+        return Row(children: [Expanded(child: from), const SizedBox(width: AppSpace.sm), Expanded(child: to)]);
       }),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       AppField(controller: note, label: t('ملاحظة (اختياري)', 'Note (optional)'), maxLines: 2),
-      if (error != null) ...[const SizedBox(height: 10), AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: error!)],
-      const SizedBox(height: 14),
+      if (error != null) ...[const SizedBox(height: AppSpace.sm), AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: error!)],
+      const SizedBox(height: AppSpace.md),
       AppPrimaryButton(
         label: global ? t('منح التفويض الكامل', 'Grant global delegation') : t('منح التفويض', 'Grant delegation'),
         icon: Icons.swap_horiz_rounded,
@@ -199,17 +199,17 @@ class GovDelegationCard extends StatelessWidget {
                 ? t('لاحقاً', 'Upcoming')
                 : t('منتهٍ', 'Ended');
     return AppCard(
-      margin: const EdgeInsets.fromLTRB(16, 5, 16, 5),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
+      padding: const EdgeInsets.all(AppSpace.sm),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           AdminAvatar(name: d.to.name, url: d.to.avatar, size: 40),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(d.to.name, style: appText(14, w: FontWeight.w800, c: c.textDark)),
               if (showEntity && d.dept != null) Text(d.dept!.name, style: appText(12, c: c.textMedium)),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpace.xxs),
               Wrap(spacing: 6, runSpacing: 4, children: [
                 AppBadgePill(state, color: col),
                 AppBadgePill(delegationModeLabel(d.mode), color: d.isGlobal ? c.warning : c.primary, icon: d.isGlobal ? Icons.all_inclusive_rounded : Icons.tune_rounded),
@@ -226,7 +226,7 @@ class GovDelegationCard extends StatelessWidget {
           if (onRevoke != null && d.revokedAt == null)
             IconButton(tooltip: t('إلغاء التفويض', 'Revoke'), onPressed: onRevoke, icon: Icon(Icons.cancel_outlined, color: c.danger)),
         ]),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         Text(
           [
             if (d.startsAt != null || d.endsAt != null) '${d.startsAt == null ? '…' : govWhen(d.startsAt)} → ${d.endsAt == null ? t('مفتوح', 'open') : govWhen(d.endsAt)}',
@@ -262,7 +262,7 @@ class GovActingBannerBody extends StatelessWidget {
         '${d.from?.name ?? d.dept?.name ?? ''}${d.dept != null && d.from != null ? ' (${d.dept!.name})' : ''}${d.endsAt == null ? '' : ' · ${t('حتى', 'until')} ${govWhen(d.endsAt)}'}${d.isGlobal ? '' : ' · ${delegationModeLabel(d.mode)}'}',
     ];
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
       child: AppBanner(
         icon: Icons.swap_horiz_rounded,
         color: c.warning,
@@ -330,7 +330,7 @@ Future<bool> showGovDelegationSheet(
   final note = TextEditingController();
   final r = await showAppSheet<bool>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
+          padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 16 + MediaQuery.of(ctx).viewInsets.bottom),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             SheetHeader(mode == 'global' ? t('تفويض كامل', 'Global delegation') : t('تفويض محدد', 'Scoped delegation')),
             GovDelegationForm(
@@ -492,10 +492,10 @@ class _GovDelegationsPageState extends State<GovDelegationsPage> {
     } else {
       body = AppRefresh(
         onRefresh: _load,
-        child: ListView(padding: const EdgeInsets.only(top: 6, bottom: 40), children: [
+        child: ListView(padding: const EdgeInsets.only(top: AppSpace.xs, bottom: AppSpace.xxl), children: [
           if (canManage)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xs),
               child: Wrap(spacing: 8, runSpacing: 8, children: [
                 AppPill(icon: Icons.tune_rounded, label: t('تفويض محدد', 'Delegate (scoped)'), onTap: () => _delegate('scoped')),
                 AppPill(icon: Icons.all_inclusive_rounded, label: t('تفويض كامل', 'Global delegation'), color: c.warning, onTap: () => _delegate('global')),

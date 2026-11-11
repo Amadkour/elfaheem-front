@@ -556,7 +556,7 @@ class InvitationsList extends StatelessWidget {
         onAction: onInvite,
       ),
       builder: (context, list) => ListView(
-        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 100),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xxxl + AppSpace.xl),
         children: [
           for (final i in list)
             Padding(

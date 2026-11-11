@@ -138,11 +138,11 @@ class _FormCard extends StatelessWidget {
             builder: (_) => ChangeNotifierProvider.value(value: s, child: OrgFormResponsesScreen(form: row)))),
         child: Row(children: [
           IconBadge(Icons.assignment_rounded, c.primary, size: 42),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${row['title']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 5),
+              const SizedBox(height: AppSpace.xxs),
               Wrap(spacing: 6, runSpacing: 4, children: [
                 StatusChip(statusLabel('${row['status']}'), statusColor(context, '${row['status']}')),
                 OrgPill(_formKinds()[row['kind']] ?? '${row['kind']}'),
@@ -225,13 +225,13 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
           final c = ctx.colors;
           final needsOptions = f['type'] == 'select' || f['type'] == 'multiselect';
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               SheetHeader(index == null ? t('حقل جديد', 'New field') : t('تعديل الحقل', 'Edit field')),
               Wrap(spacing: 8, runSpacing: 8, children: [
                 for (final e in fieldTypes().entries)
                   ChoiceChip(
-                    avatar: Icon(fieldIcons[e.key], size: 16, color: f['type'] == e.key ? c.onHero : c.textMedium),
+                    avatar: Icon(fieldIcons[e.key], size: AppIconSize.sm, color: f['type'] == e.key ? c.onHero : c.textMedium),
                     label: Text(e.value, style: TextStyle(fontFamily: AppFonts.family, color: f['type'] == e.key ? c.onHero : c.textDark)),
                     selected: f['type'] == e.key,
                     selectedColor: c.primary,
@@ -239,13 +239,13 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
                     onSelected: (_) => set(() => f['type'] = e.key),
                   ),
               ]),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpace.md),
               Field(controller: label, label: t('السؤال / عنوان الحقل', 'Question / field label')),
               if (needsOptions)
                 Field(controller: opts, label: t('الخيارات (خيار في كل سطر)', 'Options (one per line)'), maxLines: 5),
               Field(controller: help, label: t('توضيح يساعد المستخدم (اختياري)', 'Helper text (optional)')),
               OrgSwitchRow(title: t('إجباري', 'Required'), value: f['required'] == true, onChanged: (v) => set(() => f['required'] = v)),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               PrimaryButton(
                 isLoading: false,
                 label: t('تم', 'Done'),
@@ -330,7 +330,7 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
 
   Widget _body(BuildContext context) {
     final c = context.colors;
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl), children: [
         Section(
           title: t('عن النموذج', 'About the form'),
           icon: Icons.assignment_rounded,
@@ -360,9 +360,9 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
           trailing: TextButton.icon(onPressed: () => _editField(), icon: const Icon(Icons.add_rounded), label: Text(t('سؤال', 'Question'))),
           child: _fields.isEmpty
               ? Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(AppSpace.md),
                   child: Text(t('ابدأ بإضافة أول سؤال — الاسم والبريد معروفان لدينا تلقائياً', 'Add the first question — we already know the name and e-mail'),
-                      textAlign: TextAlign.center, style: orgText(context, color: c.textMedium)))
+                      textAlign: TextAlign.center, style: AppType.row(context).copyWith(color: c.textMedium)))
               : ReorderableListView(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -376,16 +376,16 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
                       // a Material (not a coloured box) under the ListTile, so its ink shows
                       Padding(
                         key: ValueKey('f$i${_fields[i]['label']}'),
-                        padding: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.only(bottom: AppSpace.xs),
                         child: Material(
                         color: c.inputBg,
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(AppRadius.control),
                         child: ListTile(
                           leading: ReorderableDragStartListener(index: i, child: Icon(Icons.drag_indicator_rounded, color: c.textLight)),
-                          title: Text('${_fields[i]['label']}', style: orgText(context, w: FontWeight.w700)),
+                          title: Text('${_fields[i]['label']}', style: AppType.bodyStrong(context)),
                           subtitle: Text(
                               '${fieldTypes()[_fields[i]['type']] ?? ''}${_fields[i]['required'] == true ? ' · ${t('إجباري', 'required')}' : ''}',
-                              style: orgText(context, size: 12, color: c.textMedium)),
+                              style: AppType.meta(context).copyWith(color: c.textMedium)),
                           onTap: () => _editField(i),
                           trailing: IconButton(tooltip: t('حذف', 'Delete'), 
                               onPressed: () => setState(() => _fields.removeAt(i)),
@@ -398,11 +398,11 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
         ),
         PrimaryButton(isLoading: _busy, label: t('حفظ وفتح للاستقبال', 'Save & open'), icon: Icons.rocket_launch_rounded,
             iconBefore: true, onPressed: () => _save(open: true)),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         OutlinedButton(
           onPressed: _busy ? null : () => _save(),
           style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control))),
           child: Text(t('حفظ كمسودة', 'Save as draft'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
         ),
       ]);
@@ -455,7 +455,7 @@ class OrgFormResponsesScreen extends StatelessWidget {
   }
 
   Widget _list(OrgPaged p, int? dept) => Column(children: [
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         FilterChips<String>(
           options: {
             '': t('الكل', 'All'),
@@ -527,18 +527,18 @@ class _ResponseTile extends StatelessWidget {
     final u = asMap(row['user']);
     final st = '${row['status']}';
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 5, 16, 5),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
       child: RowCard(
         accent: st == 'submitted' ? c.warning : null,
         onTap: () => _openResponse(context, row, form, dept),
         child: Row(children: [
           AdminAvatar(name: '${u['name'] ?? '?'}', url: u['image_url'] as String?),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${u['name'] ?? ''}', style: orgText(context, w: FontWeight.w800)),
+              Text('${u['name'] ?? ''}', style: AppType.bodyStrong(context)),
               Text('${row['ref'] ?? ''} · ${relTime(row['created_at'])}', textDirection: TextDirection.ltr,
-                  style: orgText(context, size: 12, color: c.textMedium)),
+                  style: AppType.meta(context).copyWith(color: c.textMedium)),
             ]),
           ),
           StatusChip(statusLabel(st), statusColor(context, st)),
@@ -609,32 +609,32 @@ Future<void> _openResponse(BuildContext context, Map<String, dynamic> row, Map<S
             ? (v ? '✓' : '—')
             : '${v ?? '—'}';
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         SheetHeader('${row['ref'] ?? ''}'),
         OrgPersonFrom(t('مقدم الطلب', 'From'), asMap(row['user'])),
         KeyValue(t('التاريخ', 'Date'), shortDateTime('${row['created_at']}')),
         const Divider(height: 24),
         for (final f in fields) ...[
-          Text('${f['label']}', style: orgText(ctx, size: 12, color: c.textLight)),
-          const SizedBox(height: 2),
+          Text('${f['label']}', style: AppType.meta(ctx).copyWith(color: c.textLight)),
+          const SizedBox(height: AppSpace.xxs / 2),
           if (f['type'] == 'file')
             Wrap(spacing: 6, children: [
               for (final a in asMapList(answers[f['key']]))
-                ActionChip(avatar: const Icon(Icons.attach_file_rounded, size: 16), label: Text('${a['name']}'),
+                ActionChip(avatar: const Icon(Icons.attach_file_rounded, size: AppIconSize.sm), label: Text('${a['name']}'),
                     onPressed: () => openFileUrl('${a['url']}')),
             ])
           else
-            Text(show(answers[f['key']]), style: orgText(ctx, w: FontWeight.w700)),
-          const SizedBox(height: 12),
+            Text(show(answers[f['key']]), style: AppType.bodyStrong(ctx)),
+          const SizedBox(height: AppSpace.sm),
         ],
         if ('${row['reviewer_note'] ?? ''}'.isNotEmpty)
           KeyValue(t('ملاحظة المراجع', 'Reviewer note'), '${row['reviewer_note']}'),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         if (s.can('forms', 'approve', dept)) ...[
           Row(children: [
             Expanded(child: PrimaryButton(isLoading: false, background: c.success, label: t('موافقة', 'Approve'), onPressed: () => decide('approved'))),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpace.sm),
             Expanded(child: PrimaryButton(isLoading: false, background: c.danger, label: t('رفض مع سبب', 'Decline'), onPressed: () => decide('rejected'))),
           ]),
         ],
@@ -721,11 +721,11 @@ class _MaterialTile extends StatelessWidget {
         onTap: () => openFileUrl('${row['file_url'] ?? row['link_url'] ?? ''}'),
         child: Row(children: [
           IconBadge(_icon('${row['file_name'] ?? ''}'), c.primary, size: 42),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${row['title']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpace.xxs),
               Wrap(spacing: 6, children: [
                 OrgPill(members ? t('للأعضاء', 'Members') : t('للفريق فقط', 'Team only'),
                     color: members ? c.success : c.textMedium, icon: members ? Icons.public_rounded : Icons.lock_rounded),
@@ -768,11 +768,11 @@ Future<void> _addMaterial(BuildContext context, int? deptId, List<String> folder
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(t('إضافة للمكتبة', 'Add to the library')),
             InkWell(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(AppRadius.card),
               onTap: () async {
                 set(() => busy = true);
                 final f = await orgPickAndUpload('${s.base}/uploads');
@@ -786,22 +786,22 @@ Future<void> _addMaterial(BuildContext context, int? deptId, List<String> folder
               },
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(22),
+                padding: const EdgeInsets.all(AppSpace.lg),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(AppRadius.card),
                   color: c.primary.withValues(alpha: 0.06),
                   border: Border.all(color: c.primary.withValues(alpha: 0.35), width: 1.4),
                 ),
                 child: Column(children: [
                   busy ? const AppLoadingIndicator(size: 36) : Icon(file == null ? Icons.cloud_upload_rounded : Icons.check_circle_rounded,
-                      size: 36, color: file == null ? c.primary : c.success),
-                  const SizedBox(height: 8),
+                      size: AppIconSize.hero, color: file == null ? c.primary : c.success),
+                  const SizedBox(height: AppSpace.xs),
                   Text(file == null ? t('اختر ملفاً (حتى 20 ميجابايت)', 'Choose a file (up to 20 MB)') : '${file!['name']}',
-                      style: orgText(ctx, w: FontWeight.w700)),
+                      style: AppType.bodyStrong(ctx)),
                 ]),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             if (file == null) Field(controller: link, label: t('أو ضع رابطاً', 'or paste a link'), ltr: true),
             Field(controller: title, label: t('اسم واضح للملف', 'A clear title')),
             Field(controller: folder, label: t('المجلد (مثلاً: لوائح، نماذج)', 'Folder (e.g. Regulations, Templates)')),
@@ -814,7 +814,7 @@ Future<void> _addMaterial(BuildContext context, int? deptId, List<String> folder
                 subtitle: t('إن لم تفعّلها يبقى الملف لفريق الإدارة فقط', 'Off = only the department team sees it'),
                 value: members,
                 onChanged: (v) => set(() => members = v)),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             PrimaryButton(
               isLoading: busy,
               label: t('حفظ', 'Save'),
@@ -945,13 +945,13 @@ class _ComplaintCard extends StatelessWidget {
               PositionedDirectional(top: 0, end: 0,
                   child: Container(width: 10, height: 10, decoration: BoxDecoration(color: c.danger, shape: BoxShape.circle))),
           ]),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${row['subject']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
               Text('${row['ref']} · ${asMap(row['user'])['name'] ?? ''} · ${relTime(row['created_at'])}',
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12, color: c.textMedium)),
-              const SizedBox(height: 6),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
+              const SizedBox(height: AppSpace.xs),
               Wrap(spacing: 6, runSpacing: 4, children: [
                 StatusChip(statusLabel(st), statusColor(context, st)),
                 OrgPill(priorityLabel('${row['priority']}'), color: priorityColor(context, '${row['priority']}')),
@@ -1044,7 +1044,7 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
     final depts = asMapList(r['items'])
         .where((d) => d['id'] != _d?['dept_id'] && ((d['features'] as List?) ?? const []).contains('complaints'))
         .toList();
-    final picked = await showAdminSheet<int>(context, (ctx) => ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
+    final picked = await showAdminSheet<int>(context, (ctx) => ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg), children: [
           SheetHeader(t('تحويل إلى إدارة', 'Transfer to a department')),
           for (final d in depts)
             ListTile(
@@ -1129,7 +1129,7 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                 Expanded(
                   child: AppRefresh(
                     onRefresh: _load,
-                    child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 16), children: [
+                    child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.md), children: [
                       Section(
                         title: '${d['subject']}',
                         icon: Icons.support_agent_rounded,
@@ -1141,8 +1141,8 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                             if (d['due_at'] != null && d['overdue'] != true)
                               OrgPill('${t('الرد قبل', 'Reply by')} ${shortDateTime('${d['due_at']}')}', color: c.textMedium, icon: Icons.timer_rounded),
                           ]),
-                          const SizedBox(height: 10),
-                          Text('${d['body']}', style: orgText(context)),
+                          const SizedBox(height: AppSpace.sm),
+                          Text('${d['body']}', style: AppType.row(context)),
                           for (final a in asMapList(d['attachments']))
                             TextButton.icon(onPressed: () => openFileUrl('${a['url']}'), icon: const Icon(Icons.attach_file_rounded), label: Text('${a['name']}')),
                           const Divider(height: 22),
@@ -1152,9 +1152,9 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                           if (d['assigned_to'] != null) KeyValue(t('المسؤول', 'Handled by'), '${asMap(d['assigned_to'])['name']}'),
                           if (d['rating'] != null) KeyValue(t('التقييم', 'Rating'), '${'★' * asInt(d['rating'])} ${d['rating_note'] ?? ''}'),
                           if (canAct && asMapList(d['assignable']).isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Text(t('إسناد إلى', 'Assign to'), style: orgText(context, size: 12, color: c.textLight)),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: AppSpace.xs),
+                            Text(t('إسناد إلى', 'Assign to'), style: AppType.meta(context).copyWith(color: c.textLight)),
+                            const SizedBox(height: AppSpace.xxs),
                             Wrap(spacing: 6, runSpacing: 6, children: [
                               for (final u in asMapList(d['assignable']))
                                 ChoiceChip(
@@ -1172,7 +1172,7 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                 ),
                 if (canAct && d['status'] != 'closed')
                   Container(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.xs, AppSpace.sm, AppSpace.sm),
                     decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider))),
                     child: Column(children: [
                       // a Wrap: on a narrow phone the second chip goes under the first instead of overflowing
@@ -1185,14 +1185,14 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                           onSelected: (_) => setState(() => _internal = false),
                         ),
                         ChoiceChip(
-                          avatar: const Icon(Icons.lock_rounded, size: 15),
+                          avatar: const Icon(Icons.lock_rounded, size: AppIconSize.xs),
                           label: Text(t('ملاحظة داخلية', 'Internal note'), style: TextStyle(fontFamily: AppFonts.family)),
                           selected: _internal,
                           onSelected: (_) => setState(() => _internal = true),
                         ),
                       ]),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: AppSpace.xs),
                       Row(children: [
                         Expanded(
                           child: TextField(
@@ -1204,11 +1204,11 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                               hintText: _internal ? t('لا يراها صاحب الشكوى', 'Not visible to the person') : t('اكتب رداً لطيفاً وواضحاً…', 'Write a kind, clear reply…'),
                               filled: true,
                               fillColor: _internal ? c.warning.withValues(alpha: 0.08) : c.inputBg,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.card), borderSide: BorderSide.none),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpace.xs),
                         IconButton.filled(tooltip: t('إرسال', 'Send'), 
                           style: IconButton.styleFrom(backgroundColor: _internal ? c.warning : c.primary),
                           onPressed: _sending ? null : _send,
@@ -1250,29 +1250,29 @@ class ComplaintBubble extends StatelessWidget {
       alignment: mineSide ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
       child: Container(
         constraints: const BoxConstraints(maxWidth: 520),
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        margin: const EdgeInsets.only(bottom: AppSpace.xs),
+        padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.xs, AppSpace.sm, AppSpace.xs),
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadius.card),
           border: internal ? Border.all(color: c.warning.withValues(alpha: 0.4)) : null,
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(mainAxisSize: MainAxisSize.min, children: [
-            if (internal) ...[Icon(Icons.lock_rounded, size: 13, color: c.warning), const SizedBox(width: 4)],
+            if (internal) ...[Icon(Icons.lock_rounded, size: AppIconSize.xs, color: c.warning), const SizedBox(width: AppSpace.xxs)],
             Flexible(child: Text(
                 internal
                     ? t('ملاحظة داخلية', 'Internal note')
                     : fromStaff
                         ? (staffView ? '${sender['name'] ?? ''}' : t('فريق الإدارة', 'Department team'))
                         : (sender.isEmpty ? t('صاحب الشكوى', 'The person') : '${sender['name']}'),
-                style: orgText(context, size: 11.5, w: FontWeight.w800, color: internal ? c.warning : c.textMedium))),
+                style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: internal ? c.warning : c.textMedium))),
           ]),
-          const SizedBox(height: 3),
-          Text('${m['body']}', style: orgText(context)),
+          const SizedBox(height: AppSpace.xxs),
+          Text('${m['body']}', style: AppType.row(context)),
           for (final a in asMapList(m['attachments']))
-            TextButton.icon(onPressed: () => openFileUrl('${a['url']}'), icon: const Icon(Icons.attach_file_rounded, size: 16), label: Text('${a['name']}')),
-          Text(relTime(m['created_at']), style: orgText(context, size: 10.5, color: c.textLight)),
+            TextButton.icon(onPressed: () => openFileUrl('${a['url']}'), icon: const Icon(Icons.attach_file_rounded, size: AppIconSize.sm), label: Text('${a['name']}')),
+          Text(relTime(m['created_at']), style: AppType.meta(context).copyWith(color: c.textLight)),
         ]),
       ),
     );

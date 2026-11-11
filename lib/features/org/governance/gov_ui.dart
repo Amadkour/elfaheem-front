@@ -211,12 +211,12 @@ class GovKV extends StatelessWidget {
     if (value.trim().isEmpty) return const SizedBox.shrink();
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppRadius.chip),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(icon, size: 16, color: c.textLight),
-          const SizedBox(width: 8),
+          Icon(icon, size: AppIconSize.sm, color: c.textLight),
+          const SizedBox(width: AppSpace.xs),
           Text('$label: ', style: appText(12.5, c: c.textLight)),
           Expanded(child: Text(value, style: appText(12.5, w: FontWeight.w700, c: c.textDark))),
         ]),
@@ -239,10 +239,10 @@ class GovChipSelect extends StatelessWidget {
     final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        if (icon != null) ...[Icon(icon, size: 15, color: c.textLight), const SizedBox(width: 6)],
+        if (icon != null) ...[Icon(icon, size: AppIconSize.xs, color: c.textLight), const SizedBox(width: AppSpace.xs)],
         Flexible(child: Text(label, style: appText(12, c: c.textLight))),
       ]),
-      const SizedBox(height: 6),
+      const SizedBox(height: AppSpace.xs),
       Wrap(spacing: 6, runSpacing: 6, children: [
         for (final e in options.entries)
           AppChoiceChip(
@@ -273,19 +273,19 @@ class GovDateField extends StatelessWidget {
     final c = context.colors;
     final text = value == null ? '' : (withTime ? govWhen(value) : govDay(value));
     return InkWell(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppRadius.control),
       onTap: onPick,
       child: InputDecorator(
         isEmpty: text.isEmpty,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon, color: c.textLight),
-          suffixIcon: value == null ? null : IconButton(tooltip: t('مسح', 'Clear'), icon: Icon(Icons.close_rounded, size: 18, color: c.textLight), onPressed: onClear),
+          suffixIcon: value == null ? null : IconButton(tooltip: t('مسح', 'Clear'), icon: Icon(Icons.close_rounded, size: AppIconSize.md, color: c.textLight), onPressed: onClear),
           filled: true,
           fillColor: c.inputBg,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.divider)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.divider)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.md),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.divider)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.divider)),
         ),
         child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w600, c: c.textDark)),
       ),
@@ -335,7 +335,7 @@ class GovPeopleList extends StatelessWidget {
     if (loading) return const AppListSkeleton(items: 4, padding: EdgeInsets.zero);
     if (shown.isEmpty) {
       return Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSpace.lg),
         child: Text(query.isEmpty ? t('اكتب اسماً للبحث', 'Type a name to search') : t('لا نتائج', 'No results'),
             textAlign: TextAlign.center, style: appText(13, c: c.textMedium)),
       );
@@ -350,7 +350,7 @@ class GovPeopleList extends StatelessWidget {
             title: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark)),
             subtitle: p.email == null ? null : Text(p.email!, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: appText(12, c: c.textMedium)),
             trailing: selectedId == p.id ? Icon(Icons.check_circle_rounded, color: c.primary) : null,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
             tileColor: selectedId == p.id ? c.primary.withValues(alpha: 0.07) : null,
           ),
         ),
@@ -406,7 +406,7 @@ class _PeopleSheetState extends State<_PeopleSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         SheetHeader(widget.title ?? t('اختر شخصاً', 'Pick a person')),
         TextField(
@@ -422,11 +422,11 @@ class _PeopleSheetState extends State<_PeopleSheet> {
             isDense: true,
             filled: true,
             fillColor: c.inputBg,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.divider)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.divider)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.divider)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.divider)),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         Flexible(
           child: GovPeopleList(
             people: _people,
@@ -454,7 +454,7 @@ class GovPersonField extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return InkWell(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppRadius.control),
       onTap: onPick,
       child: InputDecorator(
         isEmpty: person == null,
@@ -463,12 +463,12 @@ class GovPersonField extends StatelessWidget {
           prefixIcon: Icon(Icons.person_search_rounded, color: c.textLight),
           suffixIcon: person == null || onClear == null
               ? Icon(Icons.unfold_more_rounded, color: c.textLight)
-              : IconButton(tooltip: t('مسح', 'Clear'), icon: Icon(Icons.close_rounded, size: 18, color: c.textLight), onPressed: onClear),
+              : IconButton(tooltip: t('مسح', 'Clear'), icon: Icon(Icons.close_rounded, size: AppIconSize.md, color: c.textLight), onPressed: onClear),
           filled: true,
           fillColor: c.inputBg,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.divider)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.divider)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.md),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.divider)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.divider)),
         ),
         child: Text(person?.name ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w600, c: c.textDark)),
       ),
@@ -486,7 +486,7 @@ Future<String?> askGovNote(BuildContext context,
   final r = await showAppSheet<String>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         return Padding(
-          padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
+          padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 16 + MediaQuery.of(ctx).viewInsets.bottom),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             SheetHeader(title),
             AppField(
@@ -499,19 +499,19 @@ Future<String?> askGovNote(BuildContext context,
             ),
             if (error != null)
               Padding(
-                padding: const EdgeInsetsDirectional.only(start: 4, bottom: 8),
+                padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs, bottom: AppSpace.xs),
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Icon(Icons.error_outline_rounded, size: 16, color: c.danger),
-                  const SizedBox(width: 6),
+                  Icon(Icons.error_outline_rounded, size: AppIconSize.sm, color: c.danger),
+                  const SizedBox(width: AppSpace.xs),
                   Expanded(child: Text(error!, style: appText(12.5, w: FontWeight.w600, c: c.danger))),
                 ]),
               ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: danger ? c.danger : c.primary,
                 minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
               ),
               onPressed: () {
                 final v = ctrl.text.trim();
@@ -538,7 +538,7 @@ class GovNeedsServer extends StatelessWidget {
   const GovNeedsServer({super.key});
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpace.md),
         child: AppBanner(
           icon: Icons.cloud_off_rounded,
           color: context.colors.warning,

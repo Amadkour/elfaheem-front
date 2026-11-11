@@ -35,6 +35,7 @@ import 'org_ui.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/design/app_table_export.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppDropdown;
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Model (pure)
@@ -1005,8 +1006,8 @@ class _ExportSheetState extends State<_ExportSheet> {
     final sheets = _sheets;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       SheetHeader(t('تصدير الجدول', 'Export the timetable')),
-      Text('${widget.title} · ${widget.sourceLabel}', style: orgText(context, size: 12, color: c.textMedium)),
-      const SizedBox(height: 10),
+      Text('${widget.title} · ${widget.sourceLabel}', style: AppType.meta(context).copyWith(color: c.textMedium)),
+      const SizedBox(height: AppSpace.sm),
       OrgSectionTitle(t('لمن؟', 'For whom?')),
       Wrap(spacing: 6, runSpacing: 6, children: [
         for (final s in exportScopes)
@@ -1020,7 +1021,7 @@ class _ExportSheetState extends State<_ExportSheet> {
           ),
       ]),
       if (scope == 'member') ...[
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         Wrap(spacing: 6, children: [
           for (final k in const ['teacher', 'assistant', 'room', 'group'])
             ChoiceChip(
@@ -1032,9 +1033,9 @@ class _ExportSheetState extends State<_ExportSheet> {
               }),
             ),
         ]),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         if (ofKind.isEmpty)
-          Text(t('لا أحد من هذا النوع في الجدول', 'Nobody of this kind in the timetable'), style: orgText(context, size: 12, color: c.textMedium))
+          Text(t('لا أحد من هذا النوع في الجدول', 'Nobody of this kind in the timetable'), style: AppType.meta(context).copyWith(color: c.textMedium))
         else
           AppDropdown<String>(
             initialValue: ofKind.any((m) => m.key == member?.key) ? member!.key : ofKind.first.key,
@@ -1044,7 +1045,7 @@ class _ExportSheetState extends State<_ExportSheet> {
             onChanged: (k) => setState(() => member = ofKind.firstWhere((m) => m.key == k)),
           ),
       ],
-      const SizedBox(height: 14),
+      const SizedBox(height: AppSpace.md),
       OrgSectionTitle(t('الصيغة', 'Format')),
       SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -1059,7 +1060,7 @@ class _ExportSheetState extends State<_ExportSheet> {
           onSelectionChanged: (v) => setState(() => format = v.first),
         ),
       ),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
       Text(
         sheets.isEmpty
             ? t('لا يوجد ما يُصدَّر', 'Nothing to export')
@@ -1068,9 +1069,9 @@ class _ExportSheetState extends State<_ExportSheet> {
                     'A calendar file (.ics) for Google / Apple / Outlook: a weekly event per session${widget.from != null ? ' from the first to the last day of the term' : ' for the coming weeks'}')
                 : t('${sheets.length} ${sheets.length == 1 ? 'جدول' : 'جداول'}${sheets.length > 1 ? ' + صفحة نظرة عامة' : ''} · خلايا مدمجة للحصص الممتدة · لون لكل مقرر · ملخص تحت كل جدول',
                     '${sheets.length} timetable${sheets.length == 1 ? '' : 's'}${sheets.length > 1 ? ' + an overview page' : ''} · merged cells for long sessions · a colour per course · a summary under each'),
-        style: orgText(context, size: 12, color: c.textMedium),
+        style: AppType.meta(context).copyWith(color: c.textMedium),
       ),
-      const SizedBox(height: 14),
+      const SizedBox(height: AppSpace.md),
       PrimaryButton(label: t('إنشاء الملف', 'Create the file'), isLoading: busy, onPressed: busy || sheets.isEmpty ? null : _save),
     ]);
   }

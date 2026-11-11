@@ -805,7 +805,7 @@ class _SearchBar extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
               child: Row(children: [
-                Icon(Icons.search_rounded, size: 20, color: c.textMedium),
+                Icon(Icons.search_rounded, size: AppIconSize.md, color: c.textMedium),
                 const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Text(hint, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textMedium, fontWeight: FontWeight.w400)),
@@ -839,20 +839,20 @@ class _ChipButton extends StatelessWidget {
       child: Tooltip(
         message: '$label (Ctrl+K)',
         child: Padding(
-          padding: const EdgeInsets.all(2),
+          padding: const EdgeInsets.all(AppSpace.xxs / 2),
           child: Material(
             color: c.heroGlass,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: c.heroGlassBorder)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control), side: BorderSide(color: c.heroGlassBorder)),
             child: InkWell(
               key: const ValueKey('org.header.search'),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppRadius.control),
               onTap: onTap,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(icon, size: 20, color: c.onHero),
+                    Icon(icon, size: AppIconSize.md, color: c.onHero),
                     if (!compact) ...[
                       const SizedBox(width: AppSpace.xs),
                       Text(label, style: AppType.row(context).copyWith(color: c.onHero)),
@@ -898,7 +898,7 @@ class OrgHeaderButton extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(icon, size: 20, color: c.textMedium),
+                  Icon(icon, size: AppIconSize.md, color: c.textMedium),
                   const SizedBox(width: AppSpace.xs),
                   Text(label, style: AppType.row(context).copyWith(color: c.textDark)),
                 ]),

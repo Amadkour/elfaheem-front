@@ -19,7 +19,6 @@ import 'org_page_kit.dart' show OrgSegmented;
 import 'org_providers.dart';
 import 'org_registrar.dart';
 import 'org_registrar_midterm.dart' show RegMidtermPane, RegMidtermPaneState;
-import 'org_ui.dart' show orgText;
 import 'org_v3.dart';
 
 String _pub(int orgId) => '$orgBase/public/$orgId/registrar';
@@ -231,14 +230,14 @@ class _OrgRegistrationScreenState extends State<OrgRegistrationScreen> {
   Future<void> _exception(Map<String, dynamic> o) async {
     final ctrl = TextEditingController();
     final ok = await showAppSheet<bool>(context, (ctx) => Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpace.md),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppSectionTitle(t('طلب استثناء', 'Request an exception'), subtitle: _courseTitle(asMap(o['course']))),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             AppBanner(icon: Icons.info_outline_rounded, text: t('يراجعه المرشد / شؤون الطلاب، وستصلك النتيجة.', 'Your advisor / registrar reviews it and you will be notified.')),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppField(controller: ctrl, label: t('السبب', 'Reason'), maxLines: 3),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppPrimaryButton(label: t('إرسال', 'Send'), icon: Icons.send_rounded, onPressed: () => Navigator.pop(ctx, true)),
           ]),
         ));
@@ -262,11 +261,11 @@ class _OrgRegistrationScreenState extends State<OrgRegistrationScreen> {
                 ],
               );
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpace.md),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               if (lec.isNotEmpty) group(t('المحاضرة', 'Lecture'), lec, pickL, (v) => pickL = v),
               if (lab.isNotEmpty) group(t('العملي', 'Lab'), lab, pickB, (v) => pickB = v),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               AppPrimaryButton(label: t('إضافة للسلة', 'Add to cart'), icon: Icons.add_shopping_cart_rounded,
                   onPressed: () => Navigator.pop(ctx, true)),
             ]),
@@ -296,7 +295,7 @@ class _OrgRegistrationScreenState extends State<OrgRegistrationScreen> {
                 Expanded(
                   child: AppRefresh(
                     onRefresh: _load,
-                    child: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
+                    child: ListView(padding: const EdgeInsets.only(bottom: AppSpace.lg), children: [
                       AppHero(
                         title: termTitle(term),
                         subtitle: windowText('${term['window']}'),
@@ -310,11 +309,11 @@ class _OrgRegistrationScreenState extends State<OrgRegistrationScreen> {
                       if ((_terms ?? const []).length > 1)
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
                           child: Row(children: [
                             for (final x in _terms!)
                               Padding(
-                                padding: const EdgeInsetsDirectional.only(end: 8),
+                                padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
                                 child: AppChoiceChip(label: termTitle(x), selected: asInt(x['id']) == _termId, onTap: () {
                                   setState(() {
                                     _termId = asInt(x['id']);
@@ -328,17 +327,17 @@ class _OrgRegistrationScreenState extends State<OrgRegistrationScreen> {
                         ),
                       if (_data?['below_min'] == true && asInt(lim['min']) > 0)
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
                           child: AppBanner(icon: Icons.info_outline_rounded, color: c.warning,
                               text: t('الحد الأدنى للعبء ${lim['min']} ساعة هذا الفصل', 'The minimum load this term is ${lim['min']} hours')),
                         ),
                       if (lim['graduating'] == true)
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
                           child: AppBanner(icon: Icons.school_rounded, color: c.success,
                               text: t('أنت طالب متوقع تخرجه: يمكنك تسجيل كل ما تبقى لك', 'You are graduating: you may register everything you have left')),
                         ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpace.xs),
                       if (_items.isEmpty)
                         AppEmpty(icon: Icons.menu_book_rounded, title: t('لا توجد مقررات مطروحة بعد', 'No courses offered yet'))
                       else
@@ -359,7 +358,7 @@ class _OrgRegistrationScreenState extends State<OrgRegistrationScreen> {
                   SafeArea(
                     top: false,
                     child: AppCard(
-                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
                       child: Row(children: [
                         Expanded(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
@@ -369,7 +368,7 @@ class _OrgRegistrationScreenState extends State<OrgRegistrationScreen> {
                                 style: appText(12, c: after.over ? c.danger : c.textMedium), maxLines: 1, overflow: TextOverflow.ellipsis),
                           ]),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpace.xs),
                         Flexible(
                           child: AppPrimaryButton(label: t('سجّل', 'Register'), icon: Icons.check_rounded, busy: _busy, onPressed: _submit),
                         ),
@@ -393,11 +392,11 @@ class _SectionTile extends StatelessWidget {
     final c = context.colors;
     final seats = asInt(section['seats']);
     return AppCard(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: AppSpace.xs),
       onTap: onTap,
       child: Row(children: [
         Icon(selected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded, color: selected ? c.primary : c.textLight),
-        const SizedBox(width: 10),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(sectionLabel(section), style: appText(14, w: FontWeight.w700)),
@@ -405,7 +404,7 @@ class _SectionTile extends StatelessWidget {
                 style: appText(12, c: c.textMedium), maxLines: 2, overflow: TextOverflow.ellipsis),
           ]),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpace.xs),
         AppBadgePill(seats > 0 ? t('$seats مقعد', '$seats seats') : t('ممتلئة', 'Full'), color: seats > 0 ? c.success : c.warning),
       ]),
     );
@@ -440,18 +439,18 @@ class _OfferingCard extends StatelessWidget {
     final canEx = blocks.isNotEmpty && blocks.every((b) => b['exception'] == true);
     final secs = asMapList(offering['sections']);
     return AppCard(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(_courseTitle(course), style: appText(15, w: FontWeight.w700), maxLines: 2, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 2),
+              const SizedBox(height: AppSpace.xxs / 2),
               Text('${asDouble(course['credits']).toStringAsFixed(0)} ${t('ساعات', 'credits')} · ${courseKindText('${course['kind']}')}',
                   style: appText(12, c: c.textMedium)),
             ]),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           if (live)
             AppBadgePill(status == 'waitlisted' && reg['waitlist_position'] != null
                     ? t('انتظار #${reg['waitlist_position']}', 'Waitlist #${reg['waitlist_position']}')
@@ -462,36 +461,36 @@ class _OfferingCard extends StatelessWidget {
                 color: offering['full'] == true ? c.warning : c.primary),
         ]),
         if (secs.isNotEmpty) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs),
           Text([for (final s in secs.take(3)) '${sectionLabel(s)}: ${[for (final m in asMapList(s['meetings'])) meetingText(m)].join('، ')}'].join('\n'),
               style: appText(12, c: c.textLight), maxLines: 3, overflow: TextOverflow.ellipsis),
         ],
         for (final b in blocks)
           Padding(
-            padding: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.only(top: AppSpace.xs),
             child: Row(children: [
-              Icon(Icons.block_rounded, size: 16, color: c.danger),
-              const SizedBox(width: 6),
+              Icon(Icons.block_rounded, size: AppIconSize.sm, color: c.danger),
+              const SizedBox(width: AppSpace.xs),
               Expanded(child: Text(blockText(b, courseName: courseName), style: appText(12, c: c.danger))),
             ]),
           ),
         for (final w in warnings)
           Padding(
-            padding: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.only(top: AppSpace.xs),
             child: Row(children: [
-              Icon(Icons.info_outline_rounded, size: 16, color: c.warning),
-              const SizedBox(width: 6),
+              Icon(Icons.info_outline_rounded, size: AppIconSize.sm, color: c.warning),
+              const SizedBox(width: AppSpace.xs),
               Expanded(child: Text(registrarCodeText('${w['code']}'), style: appText(12, c: c.textMedium))),
             ]),
           ),
         if (asMapList(offering['alternatives']).isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.only(top: AppSpace.xs),
             child: Text(
                 '${t('بدائل متاحة', 'Available alternatives')}: ${[for (final a in asMapList(offering['alternatives'])) sectionLabel(a)].join('، ')}',
                 style: appText(12, c: c.primary)),
           ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, children: [
           if (live)
             AppPill(icon: Icons.remove_circle_outline_rounded, label: t('حذف / انسحاب', 'Drop / withdraw'), color: c.danger, onTap: onDrop)
@@ -522,18 +521,18 @@ class RegQueueSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpace.lg),
       child: ValueListenableBuilder<Map<String, dynamic>>(
         valueListenable: progress,
         builder: (_, req, _) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpace.xxs),
           const Center(child: SizedBox(width: 36, height: 36, child: CircularProgressIndicator(strokeWidth: 3))),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.md),
           Text(regQueueText('${req['status']}', depth: req['queue_depth'] == null ? null : asInt(req['queue_depth'])),
-              key: const ValueKey('reg.queue.text'), textAlign: TextAlign.center, style: orgText(context, size: 15, w: FontWeight.w800, color: c.textDark)),
-          const SizedBox(height: 6),
+              key: const ValueKey('reg.queue.text'), textAlign: TextAlign.center, style: AppType.section(context).copyWith(color: c.textDark)),
+          const SizedBox(height: AppSpace.xs),
           Text(t('يمكنك إغلاق التطبيق — النتيجة تُحفظ في «طلباتي».', 'You may close the app — the result is kept under "My requests".'),
-              textAlign: TextAlign.center, style: orgText(context, size: 12.5, color: c.textMedium)),
+              textAlign: TextAlign.center, style: AppType.label(context).copyWith(color: c.textMedium)),
         ]),
       ),
     );
@@ -550,14 +549,14 @@ class RegResultSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpace.md),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Icon(ok ? Icons.check_circle_rounded : Icons.error_outline_rounded, size: 48, color: ok ? c.success : c.warning),
-        const SizedBox(height: 8),
+        Icon(ok ? Icons.check_circle_rounded : Icons.error_outline_rounded, size: AppIconSize.hero, color: ok ? c.success : c.warning),
+        const SizedBox(height: AppSpace.xs),
         Text(ok ? t('تم التسجيل', 'Registered') : t('راجع النتيجة', 'Check the result'),
             textAlign: TextAlign.center, style: appText(16, w: FontWeight.w700)),
-        const SizedBox(height: 8),
-        for (final l in lines) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(l, style: appText(13))),
+        const SizedBox(height: AppSpace.xs),
+        for (final l in lines) Padding(padding: const EdgeInsets.only(bottom: AppSpace.xxs), child: Text(l, style: appText(13))),
       ]),
     );
   }
@@ -638,7 +637,7 @@ class RecordView extends StatelessWidget {
     final audit = asMap(data['audit']);
     final prog = asMap(data['program']);
     final standing = '${data['standing'] ?? ''}';
-    return ListView(padding: const EdgeInsets.only(bottom: 24), children: [
+    return ListView(padding: const EdgeInsets.only(bottom: AppSpace.lg), children: [
       AppHero(
         title: prog.isEmpty ? t('السجل الأكاديمي', 'Academic record') : t('${prog['name_ar'] ?? prog['code']}', '${prog['name_en'] ?? prog['code']}'),
         subtitle: [standingText(standing), if (data['level'] != null) t('المستوى ${data['level']}', 'Level ${data['level']}')]
@@ -652,13 +651,13 @@ class RecordView extends StatelessWidget {
       ),
       if (standing == 'probation')
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
           child: AppBanner(icon: Icons.warning_amber_rounded, color: c.danger,
               text: t('أنت تحت الإنذار الأكاديمي — حدّك الأقصى للساعات أقل، تواصل مع مرشدك', 'You are on probation — your maximum load is lower; talk to your advisor')),
         ),
       if (audit['eligible'] == true)
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
           child: AppBanner(icon: Icons.celebration_rounded, color: c.success,
               text: t('استوفيت متطلبات التخرج — بانتظار الاعتماد النهائي', 'You meet the graduation requirements — awaiting final approval')),
         ),
@@ -666,19 +665,19 @@ class RecordView extends StatelessWidget {
         AppSectionTitle(t('متطلبات التخرج', 'Degree requirements')),
         for (final g in asMapList(audit['groups']))
           AppCard(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Row(children: [
                 Expanded(child: Text(t('${g['label_ar'] ?? g['key']}', '${g['label_en'] ?? g['key']}'), style: appText(14, w: FontWeight.w700))),
                 Text('${asDouble(g['have']).toStringAsFixed(0)} / ${asDouble(g['need']).toStringAsFixed(0)}',
                     style: appText(13, w: FontWeight.w700, c: g['done'] == true ? c.success : c.textMedium)),
               ]),
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpace.xs),
               AppProgressBar(value: asDouble(g['have']), max: asDouble(g['need'], 1) <= 0 ? 1 : asDouble(g['need']),
                   color: g['done'] == true ? c.success : c.primary),
               if ((g['missing_required'] as List?)?.isNotEmpty == true)
                 Padding(
-                  padding: const EdgeInsets.only(top: 6),
+                  padding: const EdgeInsets.only(top: AppSpace.xs),
                   child: Text(t('مقررات إجبارية متبقية: ${(g['missing_required'] as List).length}', 'Required courses left: ${(g['missing_required'] as List).length}'),
                       style: appText(12, c: c.textMedium)),
                 ),
@@ -690,24 +689,24 @@ class RecordView extends StatelessWidget {
         AppEmpty(icon: Icons.history_edu_rounded, title: t('لا توجد مقررات بعد', 'No courses yet')),
       for (final tr in asMapList(data['terms']))
         AppCard(
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+          margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(children: [
               Expanded(child: Text(termTitle(asMap(tr['term'])), style: appText(14, w: FontWeight.w700))),
               if (tr['term_gpa'] != null) AppBadgePill('${t('معدل الفصل', 'Term GPA')} ${gpaText(tr['term_gpa'])}', color: c.primary),
             ]),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             for (final x in asMapList(tr['courses']))
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
                 child: Row(children: [
                   Expanded(
                     child: Text(_courseTitle(x), style: appText(13, c: x['counted'] == false && x['letter'] != null ? c.textLight : null),
                         maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpace.xs),
                   Text(asDouble(x['credits']).toStringAsFixed(0), style: appText(12, c: c.textMedium)),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpace.sm),
                   SizedBox(
                     width: 56,
                     child: Text(x['letter'] != null ? '${x['letter']}' : regStatusText('${x['status']}'),
@@ -776,10 +775,10 @@ class _OrgTeachScreenState extends State<OrgTeachScreen> {
         onRetry: _load,
         child: (_items ?? const []).isEmpty
             ? AppEmpty(icon: Icons.class_rounded, title: t('لا توجد شعب مسندة إليك', 'No sections assigned to you'))
-            : ListView(padding: const EdgeInsets.symmetric(vertical: 12), children: [
+            : ListView(padding: const EdgeInsets.symmetric(vertical: AppSpace.sm), children: [
                 for (final x in _items!)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
                     child: AppActionCard(
                       icon: Icons.grading_rounded,
                       title: _courseTitle(asMap(x['course'])),
@@ -936,17 +935,17 @@ class _GradesScreenState extends State<_GradesScreen> {
           Expanded(
             child: items.isEmpty
                 ? AppEmpty(icon: Icons.groups_rounded, title: t('لا يوجد طلاب مسجلون', 'No registered students'))
-                : ListView(padding: const EdgeInsets.symmetric(vertical: 12), children: [
+                : ListView(padding: const EdgeInsets.symmetric(vertical: AppSpace.sm), children: [
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
                       child: AppBanner(icon: Icons.info_outline_rounded,
                           text: t('اكتب الدرجة من 100 ويُحسب التقدير تلقائياً. المحروم من الامتحان يأخذ $deny.',
                               'Enter the score out of 100 — the letter is computed. A student denied the exam gets $deny.')),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpace.xs),
                     for (final i in items)
                       AppCard(
-                        margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
                         child: Row(children: [
                           Expanded(
                             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -958,9 +957,9 @@ class _GradesScreenState extends State<_GradesScreen> {
                               ].join(' · '), style: appText(12, c: i['denied'] == true ? c.danger : c.textMedium), maxLines: 1, overflow: TextOverflow.ellipsis),
                             ]),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: AppSpace.xs),
                           if (i['letter'] != null) Padding(
-                            padding: const EdgeInsetsDirectional.only(end: 8),
+                            padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
                             child: AppBadgePill('${i['letter']}', color: c.primary),
                           ),
                           SizedBox(
@@ -982,7 +981,7 @@ class _GradesScreenState extends State<_GradesScreen> {
             SafeArea(
               top: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
                 child: Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: [
                   AppPrimaryButton(label: t('حفظ', 'Save'), icon: Icons.save_rounded, busy: _busy, onPressed: _save),
                   if (widget.canSubmit)
@@ -1116,24 +1115,24 @@ class _OrgAdvisingScreenState extends State<OrgAdvisingScreen> {
         onRetry: _load,
         child: AppRefresh(
           onRefresh: _load,
-          child: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
+          child: ListView(padding: const EdgeInsets.only(bottom: AppSpace.lg), children: [
             AppSectionTitle(t('حالات تحتاج رأيك', 'Cases for you'), subtitle: '${cases.length}'),
             if (cases.isEmpty) AppEmpty(icon: Icons.task_alt_rounded, title: t('لا توجد حالات', 'No cases')),
             for (final d in cases)
               AppCard(
-                margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   Text(decisionKindText('${d['kind']}'), style: appText(12, c: c.textMedium)),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpace.xxs),
                   Text([for (final u in (asMap(d['affected'])['students'] as List? ?? const [])) names[asInt(u)] ?? '#$u'].join('، '),
                       style: appText(15, w: FontWeight.w700)),
                   if ('${d['description'] ?? ''}'.isNotEmpty) Text('${d['description']}', style: appText(13, c: c.textMedium)),
                   Wrap(spacing: 6, runSpacing: 6, children: [
                     for (final b in (asMap(d['affected'])['blocks'] as List? ?? const [])) AppBadgePill(registrarCodeText('$b'), color: c.warning),
                   ]),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.xs),
                   AppBanner(icon: Icons.recommend_rounded, text: '${t('التوصية', 'Recommended')}: ${decisionActionText(asMap(d['recommendation']))}'),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.xs),
                   Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, children: [
                     AppPill(icon: Icons.check_rounded, label: t('قبول التوصية', 'Accept'), color: c.success, onTap: () => _decide(d, 'accept')),
                     AppPill(icon: Icons.close_rounded, label: t('رفض', 'Reject'), color: c.danger, onTap: () => _decide(d, 'reject')),
@@ -1143,7 +1142,7 @@ class _OrgAdvisingScreenState extends State<OrgAdvisingScreen> {
             AppSectionTitle(t('طلابي', 'My advisees'), subtitle: '${students.length}'),
             for (final s in students)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
                 child: AppActionCard(
                   icon: Icons.person_rounded,
                   color: s['standing'] == 'probation' ? c.danger : c.primary,
@@ -1276,16 +1275,16 @@ class _OrgConsentsScreenState extends State<OrgConsentsScreen> {
         onRetry: _load,
         child: items.isEmpty
             ? AppEmpty(icon: Icons.event_available_rounded, title: t('لا توجد طلبات', 'No requests'))
-            : ListView(padding: const EdgeInsets.symmetric(vertical: 12), children: [
+            : ListView(padding: const EdgeInsets.symmetric(vertical: AppSpace.sm), children: [
                 for (final d in items)
                   AppCard(
-                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                    margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                       Text('${d['title']}', style: appText(14, w: FontWeight.w700)),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: AppSpace.xs),
                       Text([for (final x in asMapList(asMap(asMap(d['recommendation'])['params'])['cells'])) cell(x)].join(' · '),
                           style: appText(13, c: c.textMedium)),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpace.xs),
                       if (d['status'] == 'open')
                         Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, children: [
                           AppPill(icon: Icons.check_rounded, label: t('أوافق', 'I agree'), color: c.success, onTap: () => _answer(d, true)),
@@ -1381,15 +1380,15 @@ class _OrgMyWeekScreenState extends State<OrgMyWeekScreen> {
         loading: _terms == null || (_termId != null && _data == null && !_failed),
         failed: _failed,
         onRetry: _loadTerms,
-        child: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
+        child: ListView(padding: const EdgeInsets.only(bottom: AppSpace.lg), children: [
           if ((_terms ?? const []).length > 1)
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
               child: Row(children: [
                 for (final x in _terms!)
                   Padding(
-                    padding: const EdgeInsetsDirectional.only(end: 8),
+                    padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
                     child: AppChoiceChip(label: termTitle(x), selected: asInt(x['id']) == _termId, onTap: () {
                       setState(() {
                         _termId = asInt(x['id']);
@@ -1407,7 +1406,7 @@ class _OrgMyWeekScreenState extends State<OrgMyWeekScreen> {
             AppSectionTitle(dayText(day)),
             for (final x in list)
               AppCard(
-                margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
                 child: Row(children: [
                   SizedBox(
                     width: 72,
@@ -1426,8 +1425,8 @@ class _OrgMyWeekScreenState extends State<OrgMyWeekScreen> {
                       ].join(' · '), style: appText(12, c: c.textMedium), maxLines: 2, overflow: TextOverflow.ellipsis),
                     ]),
                   ),
-                  const SizedBox(width: 8),
-                  Icon(x['kind'] == 'lab' ? Icons.science_rounded : Icons.co_present_rounded, color: c.primary, size: 20),
+                  const SizedBox(width: AppSpace.xs),
+                  Icon(x['kind'] == 'lab' ? Icons.science_rounded : Icons.co_present_rounded, color: c.primary, size: AppIconSize.md),
                 ]),
               ),
           ],
