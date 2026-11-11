@@ -46,7 +46,7 @@ Widget _fieldPair(Widget a, Widget? b) => LayoutBuilder(builder: (context, box) 
       if (box.maxWidth < 460) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [a, ?b]);
       return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Expanded(child: a),
-        if (b != null) ...[const SizedBox(width: 10), Expanded(child: b)],
+        if (b != null) ...[const SizedBox(width: AppSpace.sm), Expanded(child: b)],
       ]);
     });
 const paperFileExtensions = ['pdf', 'docx', 'doc', 'png', 'jpg', 'jpeg'];
@@ -147,26 +147,26 @@ class SlotExamSheet extends StatelessWidget {
     final c = context.colors;
     final e = exam;
     return AppSheetContent(title: courseName, children: [
-      if (when != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(when!, style: appText(13, c: c.textMedium))),
+      if (when != null) Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: Text(when!, style: AppType.label(context))),
       if (e == null) ...[
         AppBanner(icon: Icons.edit_note_rounded, text: t('لم يُنشأ الاختبار بعد. تنشئه الآن؟', 'The exam isn\'t created yet. Create it now?')),
-        const SizedBox(height: 12),
-        AppPrimaryButton(label: t('أنشئ الاختبار الآن', 'Create the exam now'), icon: Icons.add_task_rounded, onPressed: () => onPick('create')),
-        TextButton(onPressed: () => onPick(null), child: Text(t('ليس الآن', 'Not now'))),
+        AppSpace.gapSm,
+        AppButton.primary(label: t('أنشئ الاختبار الآن', 'Create the exam now'), icon: Icons.add_task_rounded, expand: true, onPressed: () => onPick('create')),
+        AppButton.ghost(onPressed: () => onPick(null), expand: true, label: t('ليس الآن', 'Not now')),
       ] else ...[
         AppBanner(
             icon: Icons.task_alt_rounded,
             color: c.success,
             text: '${e['title'] ?? ''} · ${examStatusLabel('${e['status'] ?? ''}')}'),
-        const SizedBox(height: 12),
-        AppPrimaryButton(label: t('النتائج والتصحيح', 'Results and marking'), icon: Icons.leaderboard_rounded, onPressed: () => onPick('results')),
-        const SizedBox(height: 8),
-        OutlinedButton.icon(onPressed: () => onPick('paper'), icon: const Icon(Icons.print_rounded, size: 18), label: Text(t('ورقة الامتحان للطباعة', 'Printable exam paper'))),
-        const SizedBox(height: 8),
-        OutlinedButton.icon(onPressed: () => onPick('edit'), icon: const Icon(Icons.edit_outlined, size: 18), label: Text(t('تعديل الاختبار', 'Edit the exam'))),
+        AppSpace.gapSm,
+        AppButton.primary(label: t('النتائج والتصحيح', 'Results and marking'), icon: Icons.leaderboard_rounded, expand: true, onPressed: () => onPick('results')),
+        AppSpace.gapXs,
+        AppButton.secondary(onPressed: () => onPick('paper'), icon: Icons.print_rounded, expand: true, label: t('ورقة الامتحان للطباعة', 'Printable exam paper')),
+        AppSpace.gapXs,
+        AppButton.secondary(onPressed: () => onPick('edit'), icon: Icons.edit_outlined, expand: true, label: t('تعديل الاختبار', 'Edit the exam')),
       ],
       if (canChangeTime)
-        TextButton.icon(onPressed: () => onPick('time'), icon: const Icon(Icons.schedule_rounded, size: 18), label: Text(t('تغيير الموعد', 'Change the time'))),
+        AppButton.ghost(onPressed: () => onPick('time'), icon: Icons.schedule_rounded, expand: true, label: t('تغيير الموعد', 'Change the time')),
     ]);
   }
 }
@@ -250,9 +250,9 @@ class QuickStartChooser extends StatelessWidget {
             child: TextButton.icon(
               key: const ValueKey('exam.quick.classic'),
               onPressed: onClassic,
-              icon: Icon(Icons.sensors_rounded, size: 18, color: context.colors.textMedium),
+              icon: Icon(Icons.sensors_rounded, size: AppIconSize.sm, color: context.colors.textMedium),
               label: Text(t('اختبار تقليدي (مسابقة مباشرة في الغرفة)', 'Classic exam (live quiz in the room)'),
-                  textAlign: TextAlign.center, style: appText(13, c: context.colors.textMedium)),
+                  textAlign: TextAlign.center, style: AppType.label(context)),
             ),
           ),
         ),
@@ -291,26 +291,31 @@ class _ModeCard extends StatelessWidget {
   final String title, text;
   final VoidCallback? onTap;
 
+  /// A way that is not open here (no course to generate from) stays visible, faded.
+  static const double _disabledOpacity = .55;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Opacity(opacity: onTap == null ? .55 : 1, child: AppCard(
+    final tint = appTintOn(context, c.primary);
+    return Opacity(opacity: onTap == null ? _disabledOpacity : 1, child: AppCard(
       onTap: onTap,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(AppSpace.lg),
       child: Row(children: [
         Container(
-          width: 52, height: 52, alignment: Alignment.center,
-          decoration: BoxDecoration(color: c.primary.withValues(alpha: .1), borderRadius: BorderRadius.circular(14)),
-          child: Icon(icon, color: c.primary, size: 28),
+          width: AppTouch.primary, height: AppTouch.primary, alignment: Alignment.center,
+          decoration: BoxDecoration(color: tint, borderRadius: AppRadius.controlAll),
+          child: Icon(icon, color: appInkOn(context, c.primary, tint), size: AppIconSize.lg),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: AppSpace.md),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: appText(17, w: FontWeight.w800, c: c.textDark)),
-            const SizedBox(height: 2),
-            Text(text, style: appText(13, c: c.textMedium)),
+            Text(title, style: AppType.section(context)),
+            const SizedBox(height: AppSpace.xxs),
+            Text(text, style: AppType.body(context)),
           ]),
         ),
+        const SizedBox(width: AppSpace.xs),
         Icon(Icons.chevron_right_rounded, color: c.textLight),
       ]),
     ));
@@ -507,20 +512,20 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
       // a desktop window: the builder reads as one column, not as 1400 px wide cards
       child: Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: quickScreenMaxWidth), child: !_started
           ? SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.lg),
               child: QuickStartChooser(onPick: _start, canGenerate: q.courseId != null, onClassic: widget.onClassic, canImportForms: quickFormsAvailable))
           : Column(children: [
               Expanded(
-                child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 16), children: [
+                child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.md), children: [
                   AppField(controller: _title, label: t('اسم الاختبار', 'Exam name'), onChanged: (v) => q.title = v),
-                  const SizedBox(height: 12),
-                  Wrap(spacing: 8, runSpacing: 8, children: [
+                  AppSpace.gapSm,
+                  Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                     AppChoiceChip(label: t('أسئلة في التطبيق', 'Questions in the app'), icon: Icons.quiz_outlined, selected: !q.isFile,
                         onTap: () => setState(() => q.source = QuickSource.questions)),
                     AppChoiceChip(label: t('رفع ملف الامتحان', 'Upload the exam file'), icon: Icons.upload_file_rounded, selected: q.isFile,
                         onTap: () => setState(() => q.source = QuickSource.file)),
                   ]),
-                  const SizedBox(height: 12),
+                  AppSpace.gapSm,
                   if (q.isFile)
                     QuickFilePanel(
                       fileName: q.fileName,
@@ -533,15 +538,15 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
                     if (q.courseId != null)
                       ParentComponent(
                           featureKey: kExamAutoCreateKey,
-                          child: Padding(padding: const EdgeInsets.only(bottom: 10), child: QuickGenerateCard(onTap: _busy ? null : _generate))),
+                          child: Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: QuickGenerateCard(onTap: _busy ? null : _generate))),
                     if (_genNotice.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.only(bottom: AppSpace.sm),
                         child: AppBanner(icon: Icons.info_outline_rounded, color: c.warning, text: _genNotice),
                       ),
                     for (var i = 0; i < q.questions.length; i++)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.only(bottom: AppSpace.sm),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                           if (_reviewing(q.questions[i]))
                             GenReviewBar(
@@ -566,36 +571,40 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
                     if (q.questions.isEmpty)
                       AppEmpty(icon: Icons.post_add_rounded, title: t('أضف أول سؤال', 'Add the first question'),
                           message: t('اختر نوع السؤال من الأسفل', 'Pick a question type below')),
-                    const SizedBox(height: 6),
-                    Wrap(spacing: 8, runSpacing: 8, children: [
+                    const SizedBox(height: AppSpace.xs),
+                    Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                       for (final ty in quickQuestionTypes)
                         AppPill(icon: quickTypeIcon(ty), label: quickTypeLabel(ty), onTap: () => setState(() => q.questions.add(QuickQuestion.ofType(ty)))),
                     ]),
                   ],
-                  const SizedBox(height: 14),
+                  AppSpace.gapMd,
                   QuickAdvancedPanel(exam: q, sessions: _sessions, onChanged: () => setState(() {}), onFullEditor: _busy ? null : () => _save(publish: false, editor: true)),
                   if (errors.isNotEmpty) ...[
-                    const SizedBox(height: 10),
+                    AppSpace.gapSm,
                     AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: errors.map(quickCodeText).join('\n')),
                   ],
                 ]),
               ),
-              SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                  child: Row(children: [
-                    Flexible(child: TextButton(onPressed: _busy ? null : () => _save(publish: false), child: Text(t('حفظ كمسودة', 'Save as draft')))),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 2,
-                      child: AppPrimaryButton(
-                          label: t('نشر · ${fmtPoints(q.totalPoints)} درجة', 'Publish · ${fmtPoints(q.totalPoints)} pts'),
-                          icon: Icons.send_rounded,
-                          busy: _busy,
-                          onPressed: _busy ? null : () => _save(publish: true)),
-                    ),
-                  ]),
+              DecoratedBox(
+                decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider, width: AppBorder.hairline))),
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
+                    child: Row(children: [
+                      Flexible(child: AppButton.ghost(onPressed: _busy ? null : () => _save(publish: false), label: t('حفظ كمسودة', 'Save as draft'))),
+                      const SizedBox(width: AppSpace.xs),
+                      Expanded(
+                        flex: 2,
+                        child: AppButton.primary(
+                            label: t('نشر · ${fmtPoints(q.totalPoints)} درجة', 'Publish · ${fmtPoints(q.totalPoints)} pts'),
+                            icon: Icons.send_rounded,
+                            expand: true,
+                            busy: _busy,
+                            onPressed: _busy ? null : () => _save(publish: true)),
+                      ),
+                    ]),
+                  ),
                 ),
               ),
             ]))),
@@ -632,22 +641,22 @@ class _QuickFilePanelState extends State<QuickFilePanel> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           Icon(widget.fileName == null ? Icons.upload_file_rounded : Icons.insert_drive_file_rounded, color: c.primary),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Text(widget.fileName ?? t('PDF أو Word أو صورة', 'PDF, Word or a photo'),
-                maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: widget.fileName == null ? c.textMedium : c.textDark)),
+                maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: widget.fileName == null ? c.textMedium : c.textDark)),
           ),
-          const SizedBox(width: 8),
-          OutlinedButton(onPressed: widget.onPick, child: Text(widget.fileName == null ? t('اختر ملفاً', 'Choose a file') : t('تغيير', 'Change'))),
+          const SizedBox(width: AppSpace.xs),
+          AppButton.secondary(onPressed: widget.onPick, size: AppButtonSize.sm, label: widget.fileName == null ? t('اختر ملفاً', 'Choose a file') : t('تغيير', 'Change')),
         ]),
-        const SizedBox(height: 12),
+        AppSpace.gapSm,
         Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: _points, label: t('الدرجة الكاملة', 'Full mark'), min: 0, step: 0.5, decimals: 2, onChanged: (v) => widget.onPoints(v?.toDouble() ?? 0))),
-        const SizedBox(height: 8),
+        AppSpace.gapXs,
         Text(
           widget.offline
               ? t('اطبع الملف للقاعة، ثم أدخل درجة كل طالب من النتائج.', 'Print it for the room, then enter each student\'s mark from the results.')
               : t('يفتح الطلاب الملف ويرفعون ملف إجابتهم، وتصححها أنت من النتائج.', 'Students open the file and upload their answer; you mark it from the results.'),
-          style: appText(12.5, c: c.textMedium),
+          style: AppType.meta(context),
         ),
       ]),
     );
@@ -671,6 +680,9 @@ class QuickQuestionCard extends StatefulWidget {
 
 class _QuickQuestionCardState extends State<QuickQuestionCard> {
   QuickQuestion get q => widget.question;
+
+  /// The points box beside the type: room for "12.5" and its label.
+  static const double _pointsWidth = AppTouch.min * 1.75;
   late final _prompt = TextEditingController(text: q.prompt);
   late final _points = TextEditingController(text: fmtPoints(q.points));
   late final _key = TextEditingController(text: q.keyText);
@@ -708,16 +720,16 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return AppCard(
-      padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 6, 14),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.xs, AppSpace.md),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          AppBadgePill('${widget.index + 1}', color: c.primary),
-          const SizedBox(width: 8),
+          Text('${widget.index + 1}', style: AppType.headline(context).copyWith(height: 1, fontFeatures: const [FontFeature.liningFigures()])),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
               child: Text(quickTypeLabel(q.type),
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: c.textMedium))),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600))),
           SizedBox(
-            width: 84,
+            width: _pointsWidth,
             child: TextField(
               controller: _points,
               keyboardType: _numKeyboard,
@@ -729,10 +741,10 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
               },
             ),
           ),
-          IconButton(onPressed: widget.onRemove, icon: Icon(Icons.delete_outline_rounded, color: c.danger), tooltip: t('حذف', 'Delete')),
+          AppIconButton(onPressed: widget.onRemove, icon: Icons.delete_outline_rounded, tooltip: t('حذف', 'Delete')),
         ]),
         Padding(
-          padding: const EdgeInsetsDirectional.only(end: 8),
+          padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
           child: TextField(
             controller: _prompt,
             minLines: 1,
@@ -745,7 +757,7 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
             },
           ),
         ),
-        const SizedBox(height: 8),
+        AppSpace.gapXs,
         ...switch (q.type) {
           'true_false' => _trueFalse(context),
           'fill_blank' => _blanks(context),
@@ -756,19 +768,18 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
         _difficulty(context),
         if (widget.errors.isNotEmpty)
           Padding(
-            padding: const EdgeInsetsDirectional.only(top: 6, end: 8),
-            child: Text(widget.errors.map(quickCodeText).join(' · '), style: appText(12.5, c: c.danger)),
+            padding: const EdgeInsetsDirectional.only(top: AppSpace.xs, end: AppSpace.xs),
+            child: Text(widget.errors.map(quickCodeText).join(' · '), style: AppType.meta(context).copyWith(color: c.danger)),
           ),
       ]),
     );
   }
 
   Widget _difficulty(BuildContext context) {
-    final c = context.colors;
     return Padding(
       padding: const EdgeInsetsDirectional.only(top: AppSpace.sm, end: AppSpace.xs),
-      child: Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
-        Text(t('الصعوبة', 'Difficulty'), style: appText(12.5, w: FontWeight.w700, c: c.textMedium)),
+      child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        Text(t('الصعوبة', 'Difficulty'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600)),
         for (var i = 1; i <= 5; i++)
           AppChoiceChip(
               label: '$i',
@@ -789,7 +800,7 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
     }
 
     return [
-      Wrap(spacing: 8, runSpacing: 8, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         AppChoiceChip(label: t('صح', 'True'), icon: Icons.check_rounded, selected: d.tfCorrect == true, onTap: () => pick(true)),
         AppChoiceChip(label: t('خطأ', 'False'), icon: Icons.close_rounded, selected: d.tfCorrect == false, onTap: () => pick(false)),
       ]),
@@ -805,7 +816,7 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
         Padding(
           padding: const EdgeInsetsDirectional.only(bottom: AppSpace.xs, end: AppSpace.xs),
           child: Text(t('في النص $marks فراغات و${d.blanks.length} إجابات', 'The text has $marks blanks and ${d.blanks.length} answer lists'),
-              style: appText(12.5, c: c.warning)),
+              style: AppType.meta(context).copyWith(color: appInkOn(context, c.warning, c.cardBg))),
         ),
       for (var i = 0; i < d.blanks.length; i++)
         Row(key: ValueKey('blank.${d.blanks[i].uid}'), children: [
@@ -827,13 +838,13 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
                   widget.onChanged();
                 },
                 tooltip: t('حذف', 'Remove'),
-                icon: Icon(Icons.close_rounded, size: 18, color: c.textLight)),
+                icon: Icon(Icons.close_rounded, size: AppIconSize.sm, color: c.textLight)),
         ]),
       Align(
         alignment: AlignmentDirectional.centerStart,
-        child: TextButton.icon(onPressed: () => setState(() => d.blanks.add(TextItem())), icon: const Icon(Icons.add_rounded, size: 18), label: Text(t('فراغ', 'Blank'))),
+        child: TextButton.icon(onPressed: () => setState(() => d.blanks.add(TextItem())), icon: const Icon(Icons.add_rounded, size: AppIconSize.sm), label: Text(t('فراغ', 'Blank'))),
       ),
-      Text(t('افصل الإجابات المقبولة بفواصل', 'Separate accepted answers with commas'), style: appText(12, c: c.textLight)),
+      Text(t('افصل الإجابات المقبولة بفواصل', 'Separate accepted answers with commas'), style: AppType.meta(context)),
     ];
   }
 
@@ -853,7 +864,7 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
               },
             ),
           ),
-          Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: Icon(Icons.swap_horiz_rounded, size: 18, color: c.textLight)),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs), child: Icon(Icons.swap_horiz_rounded, size: AppIconSize.sm, color: c.textLight)),
           Expanded(
             child: TextField(
               controller: _ctl('pr.${p.uid}', p.right),
@@ -875,11 +886,11 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
                   widget.onChanged();
                 },
                 tooltip: t('حذف', 'Remove'),
-                icon: Icon(Icons.close_rounded, size: 18, color: c.textLight)),
+                icon: Icon(Icons.close_rounded, size: AppIconSize.sm, color: c.textLight)),
         ]),
       Align(
         alignment: AlignmentDirectional.centerStart,
-        child: TextButton.icon(onPressed: () => setState(() => d.pairs.add(MatchPair())), icon: const Icon(Icons.add_rounded, size: 18), label: Text(t('زوج', 'Pair'))),
+        child: TextButton.icon(onPressed: () => setState(() => d.pairs.add(MatchPair())), icon: const Icon(Icons.add_rounded, size: AppIconSize.sm), label: Text(t('زوج', 'Pair'))),
       ),
     ];
   }
@@ -904,21 +915,20 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
               onChanged: (v) => o.text = v,
             ),
           ),
-          if (q.options.length > 2) IconButton(onPressed: () => _removeOption(o), tooltip: t('حذف الخيار', 'Remove option'), icon: Icon(Icons.close_rounded, size: 18, color: c.textLight)),
+          if (q.options.length > 2) IconButton(onPressed: () => _removeOption(o), tooltip: t('حذف الخيار', 'Remove option'), icon: Icon(Icons.close_rounded, size: AppIconSize.sm, color: c.textLight)),
         ])),
       Align(
         alignment: AlignmentDirectional.centerStart,
-        child: TextButton.icon(onPressed: _addOption, icon: const Icon(Icons.add_rounded, size: 18), label: Text(t('خيار', 'Choice'))),
+        child: TextButton.icon(onPressed: _addOption, icon: const Icon(Icons.add_rounded, size: AppIconSize.sm), label: Text(t('خيار', 'Choice'))),
       ),
-      Text(t('اضغط الدائرة بجانب الإجابة الصحيحة', 'Tap the circle next to the right answer'), style: appText(12, c: c.textLight)),
+      Text(t('اضغط الدائرة بجانب الإجابة الصحيحة', 'Tap the circle next to the right answer'), style: AppType.meta(context)),
     ];
   }
 
   List<Widget> _essay(BuildContext context) {
-    final c = context.colors;
     return [
       Padding(
-        padding: const EdgeInsetsDirectional.only(end: 8),
+        padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
         child: AppSwitchTile(
           title: t('تصحيح تلقائي', 'Auto-grading'),
           subtitle: q.autoGrade ? t('يقترح النظام الدرجة وتراجعها أنت', 'The system grades it; you can review') : t('تصححه أنت يدوياً', 'You mark it by hand'),
@@ -931,7 +941,7 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
         ),
       ),
       if (q.autoGrade) ...[
-        Wrap(spacing: 6, runSpacing: 6, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final k in EssayKey.values)
             AppChoiceChip(
               label: essayKeyLabel(k),
@@ -942,9 +952,9 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
               },
             ),
         ]),
-        const SizedBox(height: 8),
+        AppSpace.gapXs,
         Padding(
-          padding: const EdgeInsetsDirectional.only(end: 8),
+          padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
           child: TextField(
             controller: _key,
             minLines: q.keyBy == EssayKey.model ? 3 : 2,
@@ -957,8 +967,8 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(essayKeyHint(q.keyBy), style: appText(12, c: c.textLight)),
+          padding: const EdgeInsets.only(top: AppSpace.xxs),
+          child: Text(essayKeyHint(q.keyBy), style: AppType.meta(context)),
         ),
       ],
     ];
@@ -1022,7 +1032,7 @@ class _QuickAdvancedPanelState extends State<QuickAdvancedPanel> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(children: [
         Expanded(
-          child: Text('$label: ${v == null ? t('غير محدد', 'not set') : AppTime.dateTime(v)}', style: appText(13.5, c: c.textDark)),
+          child: Text('$label: ${v == null ? t('غير محدد', 'not set') : AppTime.dateTime(v)}', style: AppType.row(context)),
         ),
         IconButton(
             onPressed: () async {
@@ -1031,7 +1041,7 @@ class _QuickAdvancedPanelState extends State<QuickAdvancedPanel> {
             },
             tooltip: t('اختيار الموعد', 'Pick a date'),
             icon: Icon(Icons.edit_calendar_rounded, color: c.primary)),
-        if (v != null) IconButton(onPressed: () => _set(() => set(null)), tooltip: t('مسح', 'Clear'), icon: Icon(Icons.close_rounded, size: 18, color: c.textLight)),
+        if (v != null) IconButton(onPressed: () => _set(() => set(null)), tooltip: t('مسح', 'Clear'), icon: Icon(Icons.close_rounded, size: AppIconSize.sm, color: c.textLight)),
       ]),
     );
   }
@@ -1046,8 +1056,8 @@ class _QuickAdvancedPanelState extends State<QuickAdvancedPanel> {
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           leading: Icon(Icons.tune_rounded, color: c.textMedium),
-          title: Text(t('متقدم', 'Advanced'), style: appText(14.5, w: FontWeight.w700, c: c.textDark)),
-          subtitle: Text(_summary(), maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
+          title: Text(t('متقدم', 'Advanced'), style: AppType.section(context)),
+          subtitle: Text(_summary(), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
           // the top gap keeps the first row's floating labels inside the tile, which clips its children
           childrenPadding: const EdgeInsets.fromLTRB(14, AppSpace.xs, 14, 14),
           expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1079,9 +1089,9 @@ class _QuickAdvancedPanelState extends State<QuickAdvancedPanel> {
                 dense: true,
                 onChanged: (v) => _set(() => q.highStakes = v)),
             const SizedBox(height: 6),
-            Text(t('متى يرى الطالب نتيجته؟', 'When does a student see the result?'), style: appText(13, w: FontWeight.w700, c: c.textDark)),
+            Text(t('متى يرى الطالب نتيجته؟', 'When does a student see the result?'), style: AppType.bodyStrong(context)),
             const SizedBox(height: 6),
-            Wrap(spacing: 6, runSpacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final p in resultsPolicies)
                 AppChoiceChip(label: resultsPolicyLabel(p), selected: q.resultsPolicy == p, onTap: () => _set(() => q.resultsPolicy = p)),
             ]),
@@ -1091,7 +1101,7 @@ class _QuickAdvancedPanelState extends State<QuickAdvancedPanel> {
               online ? AppField(controller: _passcode, label: t('رمز دخول (اختياري)', 'Passcode (optional)'), ltr: true,
                   onChanged: (v) => q.passcode = v) : null,
             ),
-            const SizedBox(height: 8),
+            AppSpace.gapXs,
             Align(
               alignment: AlignmentDirectional.centerStart,
               child: TextButton.icon(
