@@ -19,7 +19,8 @@ import 'package:flutter/material.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
-import '../../../design/app_kit.dart' show appText, appCompactNumber, AppShimmer, AppSkeletonBox;
+import '../../../design/app_kit.dart'
+    show appCompactNumber, AppButton, AppShimmer, AppSkeletonBox, AppStatePlate, AppStatusBadge, AppTone;
 import '../../../design/app_tokens.dart';
 import '../../../utils/widget/app_navigator.dart';
 import '../../student/models.dart';
@@ -221,7 +222,7 @@ class InstructorCoursesSection extends StatelessWidget {
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       _Header(count: loading ? null : total),
-      const SizedBox(height: 14),
+      SizedBox(height: AppSpace.sectionHead.bottom),
       AnimatedSwitcher(
         duration: AppMotion.of(context).base,
         child: KeyedSubtree(key: ValueKey(loading ? 'loading' : (courses.isEmpty ? 'empty' : 'list')), child: body),
@@ -230,7 +231,8 @@ class InstructorCoursesSection extends StatelessWidget {
   }
 }
 
-/// The profile's section header (accent bar · icon · title) with the course count beside the title.
+/// The profile's section header in the editorial face (a quiet glyph · the title) with the course count beside the
+/// title as a small pill; the heading brings no space above itself (the page sets the rhythm).
 class _Header extends StatelessWidget {
   const _Header({this.count});
 
@@ -240,28 +242,17 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Row(children: [
-      Container(
-        width: 3,
-        height: 20,
-        decoration: BoxDecoration(gradient: c.primaryGradient, borderRadius: BorderRadius.circular(2)),
-      ),
-      const SizedBox(width: 10),
-      Icon(Icons.menu_book_rounded, color: c.primary, size: 18),
+      Icon(Icons.menu_book_rounded, color: c.textMedium, size: AppIconSize.md),
       const SizedBox(width: AppSpace.xs),
-      Flexible(child: Text('courses'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: c.h4)),
+      Flexible(
+        child: Semantics(
+          header: true,
+          child: Text('courses'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+        ),
+      ),
       if (count != null && count! > 0) ...[
         const SizedBox(width: AppSpace.xs),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 2),
-          decoration: BoxDecoration(
-            color: c.primary.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(AppRadius.chip),
-          ),
-          child: Text(
-            appCompactNumber(count!),
-            style: appText(12, w: FontWeight.w600, c: coursePrimaryInk(context)),
-          ),
-        ),
+        AppStatusBadge(label: appCompactNumber(count!), tone: AppTone.neutral, dense: true),
       ],
     ]);
   }
@@ -305,30 +296,12 @@ class _ShowMore extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final ink = coursePrimaryInk(context);
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: AppTouch.min),
-      child: OutlinedButton(
+  Widget build(BuildContext context) => AppButton.secondary(
+        expand: true,
+        busy: busy,
+        label: 'instructor_courses_more'.tr,
         onPressed: busy ? null : onTap,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: ink,
-          side: BorderSide(color: c.divider),
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
-        ),
-        child: busy
-            ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: ink))
-            : Text(
-                'instructor_courses_more'.tr,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: appText(14, w: FontWeight.w600, c: ink),
-              ),
-      ),
-    );
-  }
+      );
 }
 
 /// The teacher has no public course yet: one calm line in a hairline card.
@@ -342,21 +315,16 @@ class _CoursesEmpty extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.lg),
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: c.divider),
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.08), shape: BoxShape.circle),
-          child: Icon(Icons.menu_book_outlined, size: 20, color: coursePrimaryInk(context)),
-        ),
+        const AppStatePlate(icon: Icons.menu_book_rounded, size: AppTouch.min * 2),
         const SizedBox(height: AppSpace.sm),
         Text(
           'instructor_courses_empty'.tr,
           textAlign: TextAlign.center,
-          style: appText(14, w: FontWeight.w400, c: c.textMedium, h: 1.5),
+          style: AppType.body(context).copyWith(height: 1.5),
         ),
       ]),
     );
@@ -374,8 +342,8 @@ class _CoursesSkeleton extends StatelessWidget {
       final shape = courseCardShapeFor(box.maxWidth);
       final deco = BoxDecoration(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: c.divider),
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       );
       Widget lines(int i) => Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
             AppSkeletonBox(width: 120.0 + (i * 37) % 70, height: 13),
@@ -389,7 +357,7 @@ class _CoursesSkeleton extends StatelessWidget {
               padding: const EdgeInsets.all(AppSpace.sm),
               decoration: deco,
               child: Row(children: [
-                const AppSkeletonBox(width: 104, height: 80, radius: 12),
+                const AppSkeletonBox(width: 104, height: 80, radius: AppRadius.control),
                 const SizedBox(width: AppSpace.sm),
                 Expanded(child: lines(i)),
               ]),

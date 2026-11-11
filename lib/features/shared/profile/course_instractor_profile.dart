@@ -4,9 +4,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -22,11 +20,9 @@ import '../../auth/teacher_document_provider.dart';
 import '../../student/models.dart';
 import '../../teacher/courses/component/teacher_stats.dart';
 import '../../teacher/home/home_screen.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'instructor_courses_section.dart';
-import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
-import 'package:flutter_education_app/design/app_back_button.dart';
-import 'package:flutter_education_app/design/app_gradients.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppEase, AppReveal, AppTilt;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SCREEN
@@ -49,13 +45,7 @@ class InstructorProfileScreen extends StatefulWidget {
       _InstructorProfileScreenState();
 }
 
-class _InstructorProfileScreenState extends State<InstructorProfileScreen>
-    with TickerProviderStateMixin {
-  late AnimationController _heroAnim;
-  late AnimationController _contentAnim;
-  late Animation<double> _fadeIn;
-  late Animation<Offset> _slideUp;
-
+class _InstructorProfileScreenState extends State<InstructorProfileScreen> {
   /// The teacher's public, personal courses (GET /courses?teacher_id=…&scope=personal), page by page.
   late final InstructorCoursesController _courses =
       InstructorCoursesController(teacherId: widget.teacher.id);
@@ -63,26 +53,6 @@ class _InstructorProfileScreenState extends State<InstructorProfileScreen>
   @override
   void initState() {
     super.initState();
-    _heroAnim = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-    _contentAnim = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-
-    _fadeIn = CurvedAnimation(parent: _contentAnim, curve: Curves.easeOut);
-    _slideUp = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
-        .animate(
-      CurvedAnimation(parent: _contentAnim, curve: Curves.easeOutCubic),
-    );
-
-    _heroAnim.forward();
-    Future.delayed(const Duration(milliseconds: 200), () {
-      if (mounted) _contentAnim.forward();
-    });
-
     _courses.load();
 
     // Load approved public docs for this teacher
@@ -96,43 +66,37 @@ class _InstructorProfileScreenState extends State<InstructorProfileScreen>
   @override
   void dispose() {
     _courses.dispose();
-    _heroAnim.dispose();
-    _contentAnim.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(
-        statusBarColor: Colors.transparent,
-      ),
-      child: BasePage( key: const ValueKey('course_instructor'), useWebCard: true, width: AppWidth.content, appBar: ScreenAppBar(title: widget.teacher.name),
-        child: LayoutBuilder(
-          builder: (ctx, constraints) => constraints.maxWidth > 800
-              ? _WideLayout(
-            teacher: widget.teacher,
-            heroAnim: _heroAnim,
-            fadeIn: _fadeIn,
-            slideUp: _slideUp,
-            studentView: widget.studentView,
-            stats: widget.stats,
-            courses: _courses,
-          )
-              : _NarrowLayout(
-            teacher: widget.teacher,
-            heroAnim: _heroAnim,
-            fadeIn: _fadeIn,
-            slideUp: _slideUp,
-            studentView: widget.studentView,
-            stats: widget.stats,
-            courses: _courses,
-          ),
+    return BasePage( key: const ValueKey('course_instructor'), useWebCard: true, width: AppWidth.content, appBar: ScreenAppBar(title: widget.teacher.name),
+      child: LayoutBuilder(
+        builder: (ctx, constraints) => constraints.maxWidth > _wideFrom
+            ? _WideLayout(
+          teacher: widget.teacher,
+          studentView: widget.studentView,
+          stats: widget.stats,
+          courses: _courses,
+        )
+            : _NarrowLayout(
+          teacher: widget.teacher,
+          studentView: widget.studentView,
+          stats: widget.stats,
+          courses: _courses,
         ),
       ),
     );
   }
+
+  /// From this width the profile card is a column beside the sections.
+  static const double _wideFrom = 800;
 }
+
+/// ONE orchestrated entrance (system.md §6): the hero leads, the figures and the about card follow it once; the
+/// sections further down are simply there.
+Widget _enter(int i, Widget child) => AppReveal(index: i, group: 'instructor', child: child);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NARROW LAYOUT
@@ -140,18 +104,12 @@ class _InstructorProfileScreenState extends State<InstructorProfileScreen>
 
 class _NarrowLayout extends StatelessWidget {
   final TeacherProfileData teacher;
-  final AnimationController heroAnim;
-  final Animation<double> fadeIn;
-  final Animation<Offset> slideUp;
   final bool studentView;
   final TeacherStats? stats;
   final InstructorCoursesController courses;
 
   const _NarrowLayout({
     required this.teacher,
-    required this.heroAnim,
-    required this.fadeIn,
-    required this.slideUp,
     required this.studentView,
     this.stats,
     required this.courses,
@@ -159,41 +117,27 @@ class _NarrowLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
+    final side = AppSpace.gutter(MediaQuery.sizeOf(context).width);
+    return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      slivers: [
-        _HeroSliverAppBar(teacher: teacher, anim: heroAnim),
-        SliverToBoxAdapter(
-          child: FadeTransition(
-            opacity: fadeIn,
-            child: SlideTransition(
-              position: slideUp,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 20),
-                    _StatsRow(teacher: teacher),
-                    const SizedBox(height: 24),
-                    _BadgesRow(teacher: teacher),
-                    const SizedBox(height: 24),
-                    _AboutCard(teacher: teacher),
-                    const SizedBox(height: 24),
-                    InstructorCoursesBlock(controller: courses),
-                    const SizedBox(height: 24),
-                    _DocumentsSection(teacherId: teacher.id),
-                    const SizedBox(height: 24),
-                    _RatingSection(teacher: teacher, studentView: studentView),
-                    const SizedBox(height: 24),
-                    if (stats != null) ParentComponent(featureKey: 'instructor.teacher_stats', child: StatsRow(stats: stats!, isFull: true)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+      padding: EdgeInsets.fromLTRB(side, AppSpace.sm, side, AppSpace.xxl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _enter(0, _InstructorHero(teacher: teacher)),
+          const SizedBox(height: AppSpace.md),
+          _enter(1, _StatsRow(teacher: teacher)),
+          _enter(2, _AboutSection(teacher: teacher)),
+          const SizedBox(height: AppSpace.xl),
+          InstructorCoursesBlock(controller: courses),
+          _DocumentsSection(teacherId: teacher.id),
+          _RatingSection(teacher: teacher, studentView: studentView),
+          if (stats != null) ...[
+            const SizedBox(height: AppSpace.xl),
+            ParentComponent(featureKey: 'instructor.teacher_stats', child: StatsRow(stats: stats!, isFull: true)),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -204,82 +148,52 @@ class _NarrowLayout extends StatelessWidget {
 
 class _WideLayout extends StatelessWidget {
   final TeacherProfileData teacher;
-  final AnimationController heroAnim;
-  final Animation<double> fadeIn;
-  final Animation<Offset> slideUp;
   final bool studentView;
   final TeacherStats? stats;
   final InstructorCoursesController courses;
 
   const _WideLayout({
     required this.teacher,
-    required this.heroAnim,
-    required this.fadeIn,
-    required this.slideUp,
     required this.studentView,
     this.stats,
     required this.courses,
   });
+
+  /// The profile column's width.
+  static const double _column = 320;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Left sticky column
+        // Start column: the profile card
         SizedBox(
-          width: 320,
+          width: _column,
           child: SingleChildScrollView(
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 16,
-              left: 24,
-              right: 12,
-              bottom: 40,
-            ),
-            child: FadeTransition(
-              opacity: heroAnim,
-              child: Column(
-                children: [
-                  _ProfileCard(teacher: teacher),
-                  const SizedBox(height: 16),
-                  _BadgesRow(teacher: teacher),
-                ],
-              ),
-            ),
+            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.lg, AppSpace.md, AppSpace.sm, AppSpace.xxl),
+            child: _enter(0, ParentComponent(featureKey: 'instructor.profile_card', child: _InstructorHero(teacher: teacher, column: true))),
           ),
         ),
 
-        // Right scrollable column
+        // The sections
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 24, 40),
-            child: FadeTransition(
-              opacity: fadeIn,
-              child: SlideTransition(
-                position: slideUp,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(height: MediaQuery.of(context).padding.top + 16),
-                    _SectionHeader(
-                      icon: Icons.info_outline_rounded,
-                      title: 'about'.tr,
-                    ),
-                    const SizedBox(height: 12),
-                    _AboutCard(teacher: teacher),
-                    const SizedBox(height: 28),
-                    _StatsRow(teacher: teacher),
-                    const SizedBox(height: 28),
-                    InstructorCoursesBlock(controller: courses),
-                    const SizedBox(height: 28),
-                    _DocumentsSection(teacherId: teacher.id),
-                    const SizedBox(height: 28),
-                    _RatingSection(teacher: teacher, studentView: studentView),
-                    const SizedBox(height: 28),
-                    if (stats != null) ParentComponent(featureKey: 'instructor.teacher_stats', child: StatsRow(stats: stats!, isFull: true)),
-                  ],
-                ),
-              ),
+            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.md, AppSpace.lg, AppSpace.xxl),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _enter(1, _StatsRow(teacher: teacher)),
+                _enter(2, _AboutSection(teacher: teacher)),
+                const SizedBox(height: AppSpace.xl),
+                InstructorCoursesBlock(controller: courses),
+                _DocumentsSection(teacherId: teacher.id),
+                _RatingSection(teacher: teacher, studentView: studentView),
+                if (stats != null) ...[
+                  const SizedBox(height: AppSpace.xl),
+                  ParentComponent(featureKey: 'instructor.teacher_stats', child: StatsRow(stats: stats!, isFull: true)),
+                ],
+              ],
             ),
           ),
         ),
@@ -289,231 +203,94 @@ class _WideLayout extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HERO SLIVER APP BAR
+// HERO  (the page's one block: sky, the instructors' tone)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _HeroSliverAppBar extends StatelessWidget {
+/// The teacher's hero block (D-622): the avatar on a paper ring, the name in the editorial face with the verified
+/// mark, the specialization, and the badges as paper chips. A row on a phone, a centred card in the wide column.
+class _InstructorHero extends StatelessWidget {
   final TeacherProfileData teacher;
-  final AnimationController anim;
 
-  const _HeroSliverAppBar({required this.teacher, required this.anim});
+  /// The wide page's start column (a centred stack) rather than the phone's row.
+  final bool column;
+
+  const _InstructorHero({required this.teacher, this.column = false});
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return SliverAppBar(
-      expandedHeight: 300,
-      pinned: true,
-      stretch: true,
-      automaticallyImplyLeading: false,
-      backgroundColor: c.cardBg,
-      flexibleSpace: FlexibleSpaceBar(
-        stretchModes: const [
-          StretchMode.zoomBackground,
-          StretchMode.blurBackground,
-        ],
-        background: Stack(
-          fit: StackFit.expand,
-          children: [
-            const AppMeshSurface(),
-            Positioned(
-              top: -40,
-              right: -40,
-              child: Container(
-                width: 200,
-                height: 200,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: context.colors.onHero.withValues(alpha: 0.06),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 40,
-              left: -60,
-              child: Container(
-                width: 160,
-                height: 160,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: context.colors.onHero.withValues(alpha: 0.04),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                height: 120,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      c.background.withValues(alpha: 0.9),
-                    ],
+    final spec = (AppConfig.lang == 'ar'
+            ? teacher.teacherProfile?.specialization?.nameAr
+            : teacher.teacherProfile?.specialization?.nameEn) ??
+        '';
+    return RepaintBoundary(
+      child: AppTilt(
+        radius: AppRadius.block,
+        maxTilt: 2.5,
+        glare: true,
+        child: AppBlock(
+          tone: AppBlockTone.sky,
+          hero: true,
+          child: Builder(builder: (context) {
+            final b = AppBlock.colorsOf(context);
+            final name = Row(
+              mainAxisSize: column ? MainAxisSize.min : MainAxisSize.max,
+              mainAxisAlignment: column ? MainAxisAlignment.center : MainAxisAlignment.start,
+              children: [
+                Flexible(
+                  child: Semantics(
+                    header: true,
+                    child: Text(
+                      teacher.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: column ? TextAlign.center : TextAlign.start,
+                      style: AppType.headline(context).copyWith(color: b.ink),
+                    ),
                   ),
                 ),
-              ),
-            ),
-            Positioned(
-              bottom: 50,
-              left: 20,
-              right: 20,
-              child: FadeTransition(
-                opacity: anim,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    InstructorAvatar(
-                      teacher: teacher,
-                      size: 80,
-                      canOpen: false,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  teacher.name,
-                                  style: TextStyle(
-                                    color: context.colors.onHero,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: -0.5,
-                                    height: 1.1,
-                                  ),
-                                ),
-                              ),
-                              if (teacher.isVerified) ...[
-                                const SizedBox(width: 6),
-                                Icon(
-                                  Icons.verified_rounded,
-                                  color: context.colors.onHero,
-                                  size: 18,
-                                ),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            (AppConfig.lang == 'ar'
-                                ? teacher
-                                .teacherProfile
-                                ?.specialization
-                                ?.nameAr
-                                : teacher
-                                .teacherProfile
-                                ?.specialization
-                                ?.nameEn) ??
-                                '',
-                            style: TextStyle(
-                              color: context.colors.onHero.withValues(alpha: 0.75),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+                if (teacher.isVerified) ...[
+                  const SizedBox(width: AppSpace.xs),
+                  Icon(Icons.verified_rounded, color: b.accentInk(c.primary), size: AppIconSize.md),
+                ],
+              ],
+            );
+            final who = Column(
+              crossAxisAlignment: column ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                name,
+                if (spec.isNotEmpty) ...[
+                  const SizedBox(height: AppSpace.xxs),
+                  Text(spec,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.label(context).copyWith(color: b.muted)),
+                ],
+                const SizedBox(height: AppSpace.sm),
+                _BadgesRow(teacher: teacher, center: column),
+              ],
+            );
+            final avatar = InstructorAvatar(teacher: teacher, size: _avatar, canOpen: false);
+            if (column) {
+              return Column(children: [avatar, const SizedBox(height: AppSpace.md), who]);
+            }
+            return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              avatar,
+              const SizedBox(width: AppSpace.md),
+              Expanded(child: who),
+            ]);
+          }),
         ),
       ),
     );
   }
+
+  static const double _avatar = AppSettingsHeader.avatar;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PROFILE CARD  (wide left panel)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ProfileCard extends StatelessWidget {
-  final TeacherProfileData teacher;
-
-  const _ProfileCard({required this.teacher});
-
-  @override
-  Widget build(BuildContext context) => ParentComponent(
-    featureKey: 'instructor.profile_card',
-    child: _featureContent(context),
-  );
-
-  Widget _featureContent(BuildContext context) {
-    final c = context.colors;
-    return DecoratedBox(decoration: BoxDecoration(borderRadius: c.brLarge, boxShadow: [
-          BoxShadow(
-            color: context.colors.primary.withValues(alpha: 0.4),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ]), child: AppMeshSurface(radius: c.brLarge, child: Padding(padding: const EdgeInsets.all(24), child: Column(
-        children: [
-          InstructorAvatar(teacher: teacher, size: 96, canOpen: false),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Flexible(
-                child: Text(
-                  teacher.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: context.colors.onHero,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.3,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              if (teacher.isVerified) ...[
-                const SizedBox(width: 6),
-                Icon(
-                  Icons.verified_rounded,
-                  color: context.colors.onHero,
-                  size: 18,
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: context.colors.onHero.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              teacher.teacherProfile?.teachingType.toUpperCase() ??
-                  'teacher'.tr.toUpperCase(),
-              style: TextStyle(
-                color: context.colors.onHero,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.4,
-              ),
-            ),
-          ),
-        ],
-      ))));
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// AVATAR  (unchanged from original)
+// AVATAR
 // ─────────────────────────────────────────────────────────────────────────────
 
 class InstructorAvatar extends StatelessWidget {
@@ -522,6 +299,9 @@ class InstructorAvatar extends StatelessWidget {
   final bool canOpen;
   final bool showTitle;
   final bool showImage;
+
+  /// The initials' size as a share of the avatar (they scale with it).
+  static const double _initialsShare = 0.35;
 
   const InstructorAvatar({
     super.key,
@@ -542,21 +322,15 @@ class InstructorAvatar extends StatelessWidget {
     Widget w = Container(
       width: size,
       height: size,
+      // the profile's own avatar sits on a paper ring (no drop shadow, D-612); a small one in a list keeps a hairline
       decoration: !canOpen
           ? BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: context.colors.background, width: 3),
-        boxShadow: [
-          BoxShadow(
-            color: context.colors.heroShade.withValues(alpha: 0.2),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        border: Border.all(color: context.colors.cardBg, width: AppSettingsHeader.ring),
       )
           : BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: context.colors.background, width: 1),
+        border: Border.all(color: context.colors.background, width: AppBorder.hairline),
       ),
       child: ClipOval(
         child: (teacher.imageUrl ?? '').isNotEmpty
@@ -575,11 +349,9 @@ class InstructorAvatar extends StatelessWidget {
           child: Center(
             child: Text(
               teacher.initials,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                color: context.colors.primary,
-                fontSize: size * 0.35,
-                fontWeight: FontWeight.w600,
+              style: AppType.display(context).copyWith(
+                color: context.colors.blockAccentInk(context.colors.primary, context.colors.cardBg),
+                fontSize: size * _initialsShare,
               ),
             ),
           ),
@@ -661,31 +433,42 @@ class _StatsRow extends StatelessWidget {
     child: _featureContent(context),
   );
 
+  /// A server word ("free", "paid") as a figure: its first letter capitalised, never all caps.
+  static String _sentence(String s) => s.isEmpty ? s : s.characters.first.toUpperCase() + s.characters.skip(1).string;
+
   Widget _featureContent(BuildContext context) {
+    final c = context.colors;
     final tp = teacher.teacherProfile;
-    return Row(
-      children: [
-        _StatTile(
-          icon: Icons.workspace_premium_rounded,
-          value: tp != null ? '${tp.experienceYears}y' : '—',
-          label: 'experience'.tr,
-          color: context.colors.warning,
+    // one paper card parted by hairlines: years of experience lead (gold marks an achievement), the rest is ink
+    return AppCard(
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.md, horizontal: AppSpace.xs),
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            _StatTile(
+              icon: Icons.workspace_premium_rounded,
+              value: tp != null ? '${tp.experienceYears}y' : '—',
+              label: 'experience'.tr,
+              color: c.accent2,
+              count: true,
+            ),
+            VerticalDivider(width: AppSpace.md, thickness: AppBorder.hairline, color: c.divider),
+            _StatTile(
+              icon: Icons.payments_rounded,
+              value: tp == null ? '—' : _sentence(tp.paymentType),
+              label: 'pricing'.tr,
+              color: c.textMedium,
+            ),
+            VerticalDivider(width: AppSpace.md, thickness: AppBorder.hairline, color: c.divider),
+            _StatTile(
+              icon: Icons.calendar_today_rounded,
+              value: teacher.createdAt.year.toString(),
+              label: 'joined'.tr,
+              color: c.textMedium,
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        _StatTile(
-          icon: Icons.payments_outlined,
-          value: tp?.paymentType.toUpperCase() ?? '—',
-          label: 'pricing'.tr,
-          color: context.colors.accent2,
-        ),
-        const SizedBox(width: 12),
-        _StatTile(
-          icon: Icons.calendar_today_outlined,
-          value: teacher.createdAt.year.toString(),
-          label: 'joined'.tr,
-          color: context.colors.primary,
-        ),
-      ],
+      ),
     );
   }
 }
@@ -696,59 +479,56 @@ class _StatTile extends StatelessWidget {
   final String label;
   final Color color;
 
+  /// Counts up once (a number); a word is simply shown.
+  final bool count;
+
   const _StatTile({
     required this.icon,
     required this.value,
     required this.label,
     required this.color,
+    this.count = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final style = AppType.figure(context);
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-        decoration: BoxDecoration(
-          color: c.cardBg,
-          borderRadius: c.brMedium,
-          boxShadow: c.cardShadow,
-          border: Border.all(color: c.divider.withValues(alpha: 0.5)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 18),
-            ),
-            const SizedBox(height: 8),
-            Text(value, style: c.bodyBold.copyWith(fontSize: 15, height: 1)),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: c.caption.copyWith(fontSize: 10),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: c.blockAccentInk(color, c.cardBg), size: AppIconSize.md),
+          const SizedBox(height: AppSpace.xs),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: count ? AppCountUp(value, style: style) : Text(value, maxLines: 1, style: style),
+          ),
+          const SizedBox(height: AppSpace.xxs / 2),
+          Text(
+            label,
+            style: AppType.meta(context),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BADGES ROW  (unchanged from original)
+// BADGES ROW
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _BadgesRow extends StatelessWidget {
   final TeacherProfileData teacher;
 
-  const _BadgesRow({required this.teacher});
+  /// Centred (the wide column's card) or from the start (the phone's row).
+  final bool center;
+
+  const _BadgesRow({required this.teacher, this.center = false});
 
   @override
   Widget build(BuildContext context) => ParentComponent(
@@ -759,46 +539,23 @@ class _BadgesRow extends StatelessWidget {
   Widget _featureContent(BuildContext context) {
     final badges = <_BadgeData>[
       if (teacher.isVerified)
-        _BadgeData(
-          icon: Icons.verified_rounded,
-          label: 'verified'.tr,
-          color: context.colors.primary,
-        ),
+        _BadgeData(icon: Icons.verified_rounded, label: 'verified'.tr, tone: AppTone.brand),
       if (teacher.isActive)
-        _BadgeData(
-          icon: Icons.circle,
-          label: 'active'.tr,
-          color: context.colors.success,
-        ),
+        _BadgeData(icon: Icons.circle, label: 'active'.tr, tone: AppTone.success),
       if (teacher.teacherProfile?.paymentType == 'free')
-        _BadgeData(
-          icon: Icons.auto_awesome_rounded,
-          label: 'free'.tr,
-          color: Color.lerp(context.colors.warning, context.colors.danger, 0.5)!,
-        ),
+        _BadgeData(icon: Icons.auto_awesome_rounded, label: 'free'.tr, tone: AppTone.neutral),
       if (teacher.teacherProfile?.teachingType == 'both')
-        _BadgeData(
-          icon: Icons.devices_rounded,
-          label: 'live_and_recorded'.tr,
-          color: context.colors.purple,
-        )
+        _BadgeData(icon: Icons.devices_rounded, label: 'live_and_recorded'.tr, tone: AppTone.neutral)
       else if (teacher.teacherProfile?.teachingType == 'live')
-        _BadgeData(
-          icon: Icons.wifi_tethering_rounded,
-          label: 'live_only'.tr,
-          color: context.colors.danger,
-        )
+        _BadgeData(icon: Icons.wifi_tethering_rounded, label: 'live_only'.tr, tone: AppTone.neutral)
       else if (teacher.teacherProfile?.teachingType == 'recorded')
-          _BadgeData(
-            icon: Icons.videocam_outlined,
-            label: 'record'.tr,
-            color: context.colors.accent2,
-          ),
+        _BadgeData(icon: Icons.videocam_rounded, label: 'record'.tr, tone: AppTone.neutral),
     ];
 
     return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+      alignment: center ? WrapAlignment.center : WrapAlignment.start,
+      spacing: AppSpace.xs,
+      runSpacing: AppSpace.xs,
       children: badges.map((b) => _Badge(data: b)).toList(),
     );
   }
@@ -807,15 +564,16 @@ class _BadgesRow extends StatelessWidget {
 class _BadgeData {
   final IconData icon;
   final String label;
-  final Color color;
+  final AppTone tone;
 
   const _BadgeData({
     required this.icon,
     required this.label,
-    required this.color,
+    required this.tone,
   });
 }
 
+/// A badge on the hero block: a paper pill on a warm hairline, the glyph in its meaning's ink, the label in ink.
 class _Badge extends StatelessWidget {
   final _BadgeData data;
 
@@ -823,25 +581,26 @@ class _Badge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      constraints: const BoxConstraints(minHeight: AppIconSize.xl),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
       decoration: BoxDecoration(
-        color: data.color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: data.color.withValues(alpha: 0.3)),
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(data.icon, color: data.color, size: 12),
-          const SizedBox(width: 5),
-          Text(
-            data.label,
-            style: TextStyle(
-              color: data.color,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.2,
+          Icon(data.icon, color: appToneInk(context, data.tone), size: AppIconSize.xs),
+          const SizedBox(width: AppSpace.xxs),
+          Flexible(
+            child: Text(
+              data.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppType.label(context).copyWith(color: c.textDark),
             ),
           ),
         ],
@@ -851,8 +610,24 @@ class _Badge extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ABOUT CARD  (unchanged from original)
+// ABOUT
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// "About" in the editorial rhythm: the heading, then the card.
+class _AboutSection extends StatelessWidget {
+  final TeacherProfileData teacher;
+
+  const _AboutSection({required this.teacher});
+
+  @override
+  Widget build(BuildContext context) => ParentComponent(
+        featureKey: 'instructor.about',
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _SectionHeader(icon: Icons.info_rounded, title: 'about'.tr),
+          _AboutCard(teacher: teacher),
+        ]),
+      );
+}
 
 class _AboutCard extends StatefulWidget {
   final TeacherProfileData teacher;
@@ -867,66 +642,41 @@ class _AboutCardState extends State<_AboutCard> {
   bool _expanded = false;
 
   @override
-  Widget build(BuildContext context) => ParentComponent(
-    featureKey: 'instructor.about',
-    child: _featureContent(context),
-  );
-
-  Widget _featureContent(BuildContext context) {
+  Widget build(BuildContext context) {
     final c = context.colors;
     final about = widget.teacher.teacherProfile?.about;
     final hasAbout = about != null && about.isNotEmpty;
     final text = hasAbout ? about : 'no_bio_hint'.tr;
+    final style = AppType.body(context).copyWith(
+      height: 1.7,
+      color: hasAbout ? c.textDark : c.textMedium,
+      fontStyle: hasAbout ? null : FontStyle.italic,
+    );
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: c.brMedium,
-        boxShadow: c.cardShadow,
-        border: Border.all(color: c.divider.withValues(alpha: 0.5)),
-      ),
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpace.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AnimatedCrossFade(
-            firstChild: Text(
+          // the card grows from where it is to the whole text and back (interruptible)
+          AnimatedSize(
+            duration: AppMotion.of(context).slow,
+            curve: AppEase.out,
+            alignment: AlignmentDirectional.topStart,
+            child: Text(
               text,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: c.body.copyWith(
-                fontSize: 13,
-                height: 1.7,
-                color: hasAbout ? null : c.secondText,
-                fontStyle: hasAbout ? null : FontStyle.italic,
-              ),
+              maxLines: _expanded ? null : 3,
+              overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+              style: style,
             ),
-            secondChild: Text(
-              text,
-              style: c.body.copyWith(
-                fontSize: 13,
-                height: 1.7,
-                color: hasAbout ? null : c.secondText,
-                fontStyle: hasAbout ? null : FontStyle.italic,
-              ),
-            ),
-            crossFadeState: _expanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 300),
           ),
           if (text.length > 120) ...[
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: () => setState(() => _expanded = !_expanded),
-              child: Text(
-                _expanded ? 'show_less'.tr : 'show_more'.tr,
-                style: TextStyle(
-                  color: context.colors.primary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+            const SizedBox(height: AppSpace.xs),
+            AppButton.ghost(
+              size: AppButtonSize.sm,
+              label: _expanded ? 'show_less'.tr : 'show_more'.tr,
+              trailingIcon: _expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+              onPressed: () => setState(() => _expanded = !_expanded),
             ),
           ],
         ],
@@ -936,7 +686,7 @@ class _AboutCardState extends State<_AboutCard> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DOCUMENTS SECTION  ← NEW
+// DOCUMENTS SECTION
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _DocumentsSection extends StatelessWidget {
@@ -957,7 +707,7 @@ class _DocumentsSection extends StatelessWidget {
     if (provider.isLoadingPublic) {
       return const Center(
         child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 20),
+          padding: EdgeInsets.symmetric(vertical: AppSpace.lg),
           child: AppLoadingIndicator(),
         ),
       );
@@ -966,16 +716,15 @@ class _DocumentsSection extends StatelessWidget {
     if (docs.isEmpty) return const SizedBox.shrink();
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // ── Section header ────────────────────────────────────────────────────
         _SectionHeader(
-          icon: Icons.workspace_premium_outlined,
+          icon: Icons.workspace_premium_rounded,
           title: 'verified_documents'.tr,
         ),
-        const SizedBox(height: 14),
 
-        // ── Cards grid ────────────────────────────────────────────────────────
+        // ── Cards ─────────────────────────────────────────────────────────────
         ...docs.map((doc) => _DocumentCard(doc: doc)),
       ],
     );
@@ -990,65 +739,50 @@ class _DocumentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final well = appTintOn(context, c.primary, surface: c.cardBg);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: c.cardShadow,
-        border: Border.all(color: c.divider.withValues(alpha: 0.5)),
-      ),
+    return AppCard(
+      margin: const EdgeInsets.only(bottom: AppSpace.sm),
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header row
           Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AppSpace.md),
             child: Row(
               children: [
-                // Icon bubble
+                // Icon well
                 Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        context.colors.primary.withValues(alpha: 0.15),
-                        context.colors.primary.withValues(alpha: 0.08),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  width: AppTouch.min - AppSpace.xxs,
+                  height: AppTouch.min - AppSpace.xxs,
+                  decoration: BoxDecoration(color: well, borderRadius: AppRadius.chipAll),
                   child: Icon(
                     doc.isPdf
                         ? Icons.picture_as_pdf_rounded
-                        : Icons.image_outlined,
-                    color: context.colors.primary,
-                    size: 20,
+                        : Icons.image_rounded,
+                    color: appInkOn(context, c.primary, well),
+                    size: AppIconSize.md,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpace.sm),
 
-                // Title + verified badge
+                // Title + status
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(doc.title, style: c.bodyBold.copyWith(fontSize: 13)),
-                      const SizedBox(height: 4),
+                      Text(doc.title, style: AppType.bodyStrong(context)),
+                      const SizedBox(height: AppSpace.xxs),
                       // the real review status: the teacher (and reviewing admins) also get pending / rejected
                       // documents here; everyone else gets approved ones only
                       Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
+                        spacing: AppSpace.xs,
+                        runSpacing: AppSpace.xxs,
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           DocStatusBadge(status: doc.status),
-                          Text(
-                            _fmtDate(doc.uploadedAt),
-                            style: c.caption.copyWith(fontSize: 10),
-                          ),
+                          Text(_fmtDate(doc.uploadedAt), style: AppType.meta(context)),
                         ],
                       ),
                     ],
@@ -1061,14 +795,14 @@ class _DocumentCard extends StatelessWidget {
           // Image preview (for image docs)
           if (doc.isImage)
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
               child: _DocImagePreview(url: doc.fileUrl),
             ),
 
           // PDF chip (for pdf docs)
           if (doc.isPdf)
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
               child: _PdfChip(
                 fileName: doc.fileName ?? 'document.pdf',
                 fileUrl: doc.fileUrl,
@@ -1090,34 +824,12 @@ class DocStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final (IconData icon, Color color, String label) = switch (status) {
-      'approved' => (Icons.verified_rounded, c.success, 'verified'.tr),
-      'rejected' => (Icons.cancel_outlined, c.danger, 'doc_rejected'.tr),
-      _ => (Icons.hourglass_top_rounded, c.warning, 'doc_pending'.tr),
+    final (IconData icon, AppTone tone, String label) = switch (status) {
+      'approved' => (Icons.verified_rounded, AppTone.success, 'verified'.tr),
+      'rejected' => (Icons.cancel_rounded, AppTone.danger, 'doc_rejected'.tr),
+      _ => (Icons.hourglass_top_rounded, AppTone.warning, 'doc_pending'.tr),
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 11, color: color),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontFamily: AppFonts.display, fontSize: 10, fontWeight: FontWeight.w700, color: color),
-            ),
-          ),
-        ],
-      ),
-    );
+    return AppStatusBadge(label: label, tone: tone, icon: icon, dense: true);
   }
 }
 
@@ -1128,6 +840,9 @@ class _DocImagePreview extends StatelessWidget {
 
   const _DocImagePreview({required this.url});
 
+  /// The preview's height, and the broken-image placeholder's.
+  static const double _height = 180, _brokenHeight = 100;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -1136,22 +851,22 @@ class _DocImagePreview extends StatelessWidget {
       child: Hero(
         tag: 'doc_$url',
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.control),
           child: Image.network(
             url,
             width: double.infinity,
-            height: 180,
+            height: _height,
             fit: BoxFit.cover,
             errorBuilder: (_, _, _) => Container(
               width: double.infinity,
-              height: 100,
+              height: _brokenHeight,
               decoration: BoxDecoration(
                 color: c.inputBg,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppRadius.control),
               ),
               child: Icon(
-                Icons.broken_image_outlined,
-                size: 32,
+                Icons.broken_image_rounded,
+                size: AppIconSize.xl,
                 color: c.textLight,
               ),
             ),
@@ -1187,6 +902,7 @@ class _DocImagePreview extends StatelessWidget {
   }
 }
 
+/// A PDF document: a paper chip on a hairline, the file glyph in the danger tone made legible, opens the file.
 class _PdfChip extends StatelessWidget {
   final String fileName;
   final String fileUrl;
@@ -1196,36 +912,32 @@ class _PdfChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return InkWell(
-      onTap: () async {
-        await launchUrl(Uri.parse(fileUrl));
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: context.colors.danger.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: context.colors.danger.withValues(alpha: 0.2),
+    return Material(
+      color: c.cardBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.chip),
+        side: BorderSide(color: c.divider, width: AppBorder.hairline),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.chip),
+        onTap: () async {
+          await launchUrl(Uri.parse(fileUrl));
+        },
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: AppTouch.min),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.picture_as_pdf_rounded, size: AppIconSize.sm, color: c.blockAccentInk(c.danger, c.cardBg)),
+                const SizedBox(width: AppSpace.xs),
+                Flexible(
+                  child: Text(fileName, style: AppType.label(context).copyWith(color: c.textDark), overflow: TextOverflow.ellipsis),
+                ),
+              ],
+            ),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.picture_as_pdf_rounded,
-              size: 16,
-              color: context.colors.danger,
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                fileName,
-                style: c.body.copyWith(fontSize: 12),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -1233,7 +945,7 @@ class _PdfChip extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RATING SECTION  (unchanged from original)
+// RATING SECTION
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _RatingSection extends StatelessWidget {
@@ -1250,13 +962,12 @@ class _RatingSection extends StatelessWidget {
 
   Widget _featureContent(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _SectionHeader(
           icon: Icons.star_half_rounded,
           title: 'ratings_and_reviews'.tr,
         ),
-        const SizedBox(height: 12),
         if (studentView)
           RatingWidget(
             type: RateType.doctor,
@@ -1273,6 +984,8 @@ class _RatingSection extends StatelessWidget {
 // SECTION HEADER
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// A section heading in the editorial rhythm (32 above, 12 under): the section face in ink after a quiet glyph —
+/// no accent bar.
 class _SectionHeader extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -1282,21 +995,20 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Row(
-      children: [
-        Container(
-          width: 3,
-          height: 20,
-          decoration: BoxDecoration(
-            gradient: c.primaryGradient,
-            borderRadius: BorderRadius.circular(2),
+    return Padding(
+      padding: EdgeInsets.only(top: AppSpace.sectionHead.top, bottom: AppSpace.sectionHead.bottom),
+      child: Row(
+        children: [
+          Icon(icon, color: c.textMedium, size: AppIconSize.md),
+          const SizedBox(width: AppSpace.xs),
+          Flexible(
+            child: Semantics(
+              header: true,
+              child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+            ),
           ),
-        ),
-        const SizedBox(width: 10),
-        Icon(icon, color: context.colors.primary, size: 18),
-        const SizedBox(width: 8),
-        Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: c.h4)),
-      ],
+        ],
+      ),
     );
   }
 }

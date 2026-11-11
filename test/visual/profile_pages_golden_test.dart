@@ -24,7 +24,10 @@ import 'package:flutter_education_app/config/storage_service.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/features/auth/teacher_document_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/change_password_widget.dart';
+import 'package:flutter_education_app/features/shared/profile/course_instractor_profile.dart';
+import 'package:flutter_education_app/features/student/models.dart' show TeacherProfileData;
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_screen.dart';
 import 'package:flutter_education_app/features/shared/profile/update_account_widget.dart';
@@ -42,6 +45,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../auth/profile_link_test.dart' show courseJson, teacherJson;
 import '../support/fake_api.dart';
+import '../ui/instructor_courses_section_test.dart' show teacherCourses;
 import 'home_screens_golden_test.dart' show pubspecFonts;
 
 String _sdkFonts() {
@@ -118,6 +122,7 @@ Map<String, FakeHandler> _routes() => {
               {'id': 22, 'amount': 900, 'status': 'rejected', 'method': 'instapay', 'requested_at': '2026-09-02T15:40:00', 'currency': 'EGP', 'rejection_reason': 'Wrong InstaPay id'},
             ],
           },
+      'GET /api/v1/courses': teacherCourses(5),
       'GET /api/v1/devices/teacher/switch-requests': (_) => {
             'items': [
               {'id': 5, 'student_name': 'Mariam Adel', 'student_email': 'mariam@example.test', 'old_device': 'Samsung A54', 'new_device': 'iPhone 15', 'reason': 'My old phone broke', 'created_at': '2026-11-10T09:00:00', 'course_name': 'Algebra 2'},
@@ -136,6 +141,7 @@ Widget _host(Widget child, {required bool dark, String role = 'student'}) {
       ChangeNotifierProvider(create: (_) => ProfileProvider(storage: _storage)),
       ChangeNotifierProvider(create: (_) => TeacherHomeProvider()),
       ChangeNotifierProvider(create: (_) => TeacherDeviceRequestsProvider()),
+      ChangeNotifierProvider(create: (_) => TeacherDocumentProvider()),
       ChangeNotifierProvider.value(value: theme),
       ChangeNotifierProvider(create: (_) => LangProvider(storage: _storage)),
     ],
@@ -227,6 +233,26 @@ PublicProfileResult _teacher() {
   return PublicProfileResult(PublicProfileStatus.found, profile: PublicProfile.fromJson(j));
 }
 
+TeacherProfileData _instructor() => TeacherProfileData.fromJson({
+      'id': 42,
+      'name': 'Dr. Omar Hassan',
+      'is_verified': true,
+      'is_active': true,
+      'created_at': '2023-09-01T10:00:00',
+      'teacher_profile': {
+        'id': 3,
+        'user_id': 42,
+        'experience_years': 12,
+        'specialization': {'id': 1, 'name_ar': 'الرياضيات', 'name_en': 'Mathematics'},
+        'teaching_type': 'both',
+        'payment_type': 'paid',
+        'about': 'I teach secondary maths and physics, from first principles to exam practice. Every lesson ends with '
+            'a short set of problems and a worked solution, and my students can ask questions in the live sessions '
+            'every week. I have prepared students for the national exam since 2013.',
+        'created_at': '2023-09-01T10:00:00',
+      },
+    });
+
 void main() {
   late FakeApi api;
   setUpAll(() async {
@@ -256,6 +282,7 @@ void main() {
           }
         }
       }));
+  testWidgets('instructor', (t) => _render(t, 'instructor', () => InstructorProfileScreen(teacher: _instructor())));
   testWidgets('payouts', (t) => _render(t, 'payouts', () => const TeacherPayoutsScreen(), role: 'teacher'));
   testWidgets('change password', (t) => _render(t, 'change_password', () => const ChangePasswordScreen()));
   testWidgets('edit account', (t) => _render(t, 'edit_account', () => const EditAccountScreen(isTeacher: false)));
