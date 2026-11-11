@@ -7,16 +7,13 @@
 /// present counter (default 0).
 library;
 
-import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/core/app_time.dart';
 
 import 'attendance_strings.dart';
 import 'attendance_widgets.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppSheetHeader;
+import 'package:flutter_education_app/design/app_kit.dart';
 
 /// Plain data so this file does not depend on the teacher model classes.
 class LauncherSession {
@@ -70,27 +67,12 @@ class TeacherAttendanceLauncher extends StatelessWidget {
   final List<LauncherSession> sessions;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors.primary;
-    return GestureDetector(
-      onTap: () => showSessionPickerSheet(context, sessions),
-      child: Container(
-        height: 36,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: c.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(CupertinoIcons.qrcode_viewfinder, color: c, size: 17),
-          const SizedBox(width: 6),
-          Text(attT('att_launch_btn'),
-              style: TextStyle(
-                  color: c, fontWeight: FontWeight.w700, fontFamily: AppFonts.family, fontSize: 12)),
-        ]),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppButton.tonal(
+        size: AppButtonSize.sm,
+        icon: CupertinoIcons.qrcode_viewfinder,
+        label: attT('att_launch_btn'),
+        onPressed: () => showSessionPickerSheet(context, sessions),
+      );
 }
 
 Future<void> showSessionPickerSheet(BuildContext context, List<LauncherSession> sessions) {
@@ -111,50 +93,24 @@ Future<void> showSessionPickerSheet(BuildContext context, List<LauncherSession> 
           AppSheetHeader(attT('att_launch_title')),
           Expanded(
             child: inverted.isEmpty
-                ? Center(
-                    child: Text(attT('att_launch_empty'),
-                        style: TextStyle(fontFamily: AppFonts.family, color: context.colors.textMedium)))
+                ? AppEmpty(icon: CupertinoIcons.calendar, title: attT('att_launch_empty'))
                 : ListView.separated(
                     controller: scroll,
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
                     itemCount: inverted.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    separatorBuilder: (_, _) => AppSpace.gapXs,
                     itemBuilder: (_, i) {
                       final s = inverted[i];
-                      final cc = context.colors;
-                      final c = cc.primary;
                       final isToday = launcherIsToday(s, nowUtc: now);
                       final focus = s.id == focusId;
-                      final marked = isToday || focus;
                       final when = s.date == null ? null : AppTime.date(s.date!, pattern: 'EEE d MMM');
                       final tag = isToday ? attT('att_launch_today') : (focus ? attT('att_launch_next') : null);
-                      return ListTile(
-                        tileColor: marked ? c.withValues(alpha: 0.06) : null,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            side: BorderSide(color: marked ? c.withValues(alpha: 0.45) : cc.divider, width: focus ? 1.5 : 1)),
-                        leading: CircleAvatar(
-                          backgroundColor: c.withValues(alpha: 0.12),
-                          child: Text('${s.number}',
-                              style: TextStyle(fontFamily: AppFonts.family, color: c, fontWeight: FontWeight.w600)),
-                        ),
-                        title: Text(s.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w500, color: cc.textDark)),
-                        subtitle: when == null && tag == null
-                            ? null
-                            : Text(
-                                [?tag, ?when].join(' · '),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                    fontFamily: AppFonts.family,
-                                    fontSize: 12,
-                                    fontWeight: marked ? FontWeight.w600 : FontWeight.w400,
-                                    color: marked ? c : cc.textMedium),
-                              ),
-                        trailing: const Icon(CupertinoIcons.forward, size: 16),
+                      return _LessonRow(
+                        number: s.number,
+                        name: s.name,
+                        tag: tag,
+                        when: when,
+                        marked: isToday || focus,
                         onTap: () {
                           Navigator.of(sheetCtx).pop();
                           showTeacherAttendanceSheet(context, s.id, title: s.name);
@@ -166,4 +122,74 @@ Future<void> showSessionPickerSheet(BuildContext context, List<LauncherSession> 
         ]),
     ),
   );
+}
+
+
+/// One lesson in the picker: the number in a quiet well, the name, the tag + date. The lesson the teacher most likely
+/// wants (today's, else the next) sits on the sky schedule tone; the rest are paper on a hairline.
+class _LessonRow extends StatelessWidget {
+  const _LessonRow({
+    required this.number,
+    required this.name,
+    required this.marked,
+    required this.onTap,
+    this.tag,
+    this.when,
+  });
+
+  final int number;
+  final String name;
+  final String? tag;
+  final String? when;
+  final bool marked;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final bg = marked ? c.blockSky : c.cardBg;
+    final b = AppBlockColors.of(context, marked ? AppBlockTone.sky : AppBlockTone.paper);
+    return Material(
+      color: bg,
+      shape: RoundedRectangleBorder(
+          borderRadius: AppRadius.cardAll,
+          side: marked ? BorderSide.none : BorderSide(color: c.divider, width: AppBorder.hairline)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: AppTouch.primary),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.sm, AppSpace.sm),
+            child: Row(children: [
+              Container(
+                width: AppTouch.min - AppSpace.xs,
+                height: AppTouch.min - AppSpace.xs,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: marked ? c.cardBg : c.inputBg, shape: BoxShape.circle),
+                child: Text('$number', style: AppType.figure(context).copyWith(color: c.textDark)),
+              ),
+              AppSpace.gapSm,
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: b.ink)),
+                  if (tag != null || when != null)
+                    Text(
+                      [?tag, ?when].join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.meta(context).copyWith(
+                          color: marked ? b.accentInk(c.primary) : b.muted,
+                          fontWeight: marked ? FontWeight.w600 : FontWeight.w400),
+                    ),
+                ]),
+              ),
+              AppSpace.gapXs,
+              Icon(CupertinoIcons.forward, size: AppIconSize.sm, color: b.muted),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
 }

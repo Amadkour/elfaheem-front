@@ -14,7 +14,7 @@ import '../../../config/theme/theme_config_provider.dart';
 import 'attendance_strings.dart';
 import 'attendance_live_screen.dart';
 import 'teacher_attendance_controller.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 String _mmss(Duration d) =>
     '${d.inMinutes.toString().padLeft(2, '0')}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
@@ -45,7 +45,11 @@ class AttendanceTeacherBanner extends StatelessWidget {
 
   Widget _bar(BuildContext context, TeacherAttendanceController t) {
     final closing = t.isClosing;
-    final color = closing ? context.colors.heroEnd(context.colors.warning) : context.colors.heroEnd(context.colors.success);
+    final c = context.colors;
+    // Warm Editorial: the deep emerald while it runs (attendance open = the success colour), the deep warning while
+    // it closes; flat, no gradient.
+    final color = closing ? c.heroEnd(c.warning) : c.heroEnd(c.success);
+    final ink = c.onHero;
     final code = t.code?.code ?? '';
     return Directionality(
       textDirection: Directionality.of(context),
@@ -59,51 +63,48 @@ class AttendanceTeacherBanner extends StatelessWidget {
               if (nav != null) openAttendanceLive(nav);
             },
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.xxs, AppSpace.xxs, AppSpace.xxs),
               child: Row(children: [
-                Icon(closing ? Icons.lock_clock_rounded : Icons.sensors_rounded,
-                    color: context.colors.onHero, size: 20),
-                const SizedBox(width: 10),
+                Icon(closing ? Icons.lock_clock_rounded : Icons.sensors_rounded, color: ink, size: AppIconSize.md),
+                AppSpace.gapXs,
                 if (!closing && t.usesCode && code.length == 6)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                    decoration: BoxDecoration(
-                        color: context.colors.onHero.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
-                    child: Text('${code.substring(0, 3)} ${code.substring(3)}',
-                        style: TextStyle(
-                            fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: 2, color: context.colors.onHero)),
+                  Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
+                      decoration: BoxDecoration(
+                          color: c.heroGlass,
+                          borderRadius: AppRadius.chipAll,
+                          border: Border.all(color: c.heroGlassBorder, width: AppBorder.hairline)),
+                      child: Text('${code.substring(0, 3)} ${code.substring(3)}',
+                          style: AppType.figure(context).copyWith(color: ink, letterSpacing: AppSpace.xxs / 2)),
+                    ),
                   )
                 else
                   Flexible(
                     child: Text(
                       closing ? attT('att_t_closing', args: {'n': '${t.closingLeft}'}) : attT('att_t_running'),
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w700, color: context.colors.onHero),
+                      style: AppType.label(context).copyWith(color: ink, fontWeight: FontWeight.w600),
                     ),
                   ),
                 if (t.lessonTitle != null && t.lessonTitle!.isNotEmpty) ...[
-                  const SizedBox(width: 10),
+                  AppSpace.gapXs,
                   Flexible(
                     child: Text(t.lessonTitle!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontFamily: AppFonts.family, fontSize: 12, color: context.colors.onHero.withValues(alpha: 0.9))),
+                        maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.onHeroMuted)),
                   ),
                 ],
                 const Spacer(),
-                Icon(Icons.people_alt_rounded, color: context.colors.onHero, size: 17),
-                const SizedBox(width: 4),
-                Text('${t.code?.presentCount ?? 0}',
-                    style: TextStyle(fontWeight: FontWeight.w900, color: context.colors.onHero, fontSize: 15)),
+                Icon(Icons.people_alt_rounded, color: ink, size: AppIconSize.sm),
+                const SizedBox(width: AppSpace.xxs),
+                Text('${t.code?.presentCount ?? 0}', style: AppType.figure(context).copyWith(color: ink)),
                 if (!closing) ...[
-                  const SizedBox(width: 10),
-                  Icon(Icons.timer_outlined, color: context.colors.onHero, size: 16),
-                  const SizedBox(width: 3),
-                  Text(_mmss(t.registrationLeft),
-                      style: TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w800, color: context.colors.onHero)),
+                  AppSpace.gapXs,
+                  Icon(Icons.timer_outlined, color: ink, size: AppIconSize.sm),
+                  const SizedBox(width: AppSpace.xxs),
+                  Text(_mmss(t.registrationLeft), style: AppType.figure(context).copyWith(color: ink)),
                 ],
                 if (!closing)
                   // No tooltip here (no Overlay above the Navigator): the label goes to screen readers only.
@@ -112,12 +113,12 @@ class AttendanceTeacherBanner extends StatelessWidget {
                     label: MaterialLocalizations.of(context).closeButtonTooltip,
                     excludeSemantics: true,
                     child: IconButton(
-                      visualDensity: VisualDensity.compact,
+                      constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
                       onPressed: () {
                         HapticFeedback.lightImpact();
                         t.close();
                       },
-                      icon: Icon(Icons.stop_circle_rounded, color: context.colors.onHero, size: 24),
+                      icon: Icon(Icons.stop_circle_rounded, color: ink, size: AppIconSize.lg),
                     ),
                   ),
               ]),

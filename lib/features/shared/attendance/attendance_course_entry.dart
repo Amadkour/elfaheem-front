@@ -1,17 +1,15 @@
 /// features/attendance/attendance_course_entry.dart
 ///
 /// ONE attendance entry per COURSE (replaces the per-lesson buttons):
-///   [AttendanceCourseEntry]        student — premium bar for the course profile
-///   [TeacherAttendanceCourseEntry] teacher — premium card for the teacher course profile
+///   [AttendanceCourseEntry]        student — an emerald block on the course profile
+///   [TeacherAttendanceCourseEntry] teacher — a block on the teacher course profile
 ///
-/// Student: glows green and pulses while an attendance is open for the course; shows the
+/// Student: an emerald block with a breathing live dot while an attendance is open for the course; shows the
 /// Bluetooth icon when the phone is offline ("check in via classmate"). On the WEB it only
 /// appears when the teacher allowed web attendance for the open session.
 library;
 
 import 'dart:async';
-import 'dart:math' as math;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -27,99 +25,65 @@ import 'attendance_strings.dart';
 import 'attendance_widgets.dart';
 import 'teacher_attendance_controller.dart';
 import 'teacher_attendance_launcher.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
-import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
-import 'package:flutter_education_app/design/app_shine.dart';
-import 'package:flutter_education_app/design/app_gradients.dart';
+import 'attendance_ui.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppPressScale;
 
 // ════════════════════════════════════════════════════════════════════════════
-//  Shared premium surface (gradient + shimmer + optional pulse)
+//  Shared entry surface (Warm Editorial: a tinted block, no gradient, no shine)
 // ════════════════════════════════════════════════════════════════════════════
 
-class _PremiumSurface extends StatefulWidget {
-  const _PremiumSurface({
-    required this.onTap,
-    required this.from,
-    required this.to,
-    required this.child,
-    this.live = false,
-    this.height = 48,
-  });
+/// The course profile's attendance entry: a whole block that is a button. Emerald while attendance is open (the one
+/// moment that matters: "you can check in now"), paper otherwise. It presses in; the live dot carries the motion.
+class _EntrySurface extends StatelessWidget {
+  const _EntrySurface({required this.onTap, required this.live, required this.child});
 
   final VoidCallback onTap;
-  final Color from;
-  final Color to;
-  final Widget child;
   final bool live;
-  final double height;
+  final Widget child;
 
   @override
-  State<_PremiumSurface> createState() => _PremiumSurfaceState();
+  Widget build(BuildContext context) => AppPressScale(
+        child: AppBlock(
+          tone: live ? AppBlockTone.emerald : AppBlockTone.paper,
+          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.sm, AppSpace.sm),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
+          child: child,
+        ),
+      );
 }
 
-class _PremiumSurfaceState extends State<_PremiumSurface> with SingleTickerProviderStateMixin {
-  // the live glow's pulse (the light sweep is the shared AppShineBand, same 2.6 s)
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600));
-  bool _pressed = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    syncMotionLoop(context, _c, rest: 0); // Reduce motion: no pulse
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
+/// Title + one quiet line, both in the block's ink; they flex and ellipsize.
+class _EntryText extends StatelessWidget {
+  const _EntryText({required this.title, this.subtitle});
+  final String title;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
-    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapCancel: () => setState(() => _pressed = false),
-      onTapUp: (_) => setState(() => _pressed = false),
-      onTap: () {
-        HapticFeedback.selectionClick();
-        widget.onTap();
-      },
-      child: AnimatedScale(
-        scale: _pressed ? 0.98 : 1,
-        duration: const Duration(milliseconds: 110),
-        child: AnimatedBuilder(
-          animation: _c,
-          builder: (_, child) {
-            final pulse = widget.live && !still ? (0.5 - 0.5 * math.cos(_c.value * 2 * math.pi)) : 0.0;
-            return Container(
-              height: widget.height,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: AppGradients.blend(context, color: widget.from),
-                boxShadow: [
-                  BoxShadow(
-                    color: widget.to.withValues(alpha: 0.30 + 0.22 * pulse),
-                    blurRadius: 14 + 10 * pulse,
-                    spreadRadius: 1.5 * pulse,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Stack(children: [
-                  const Positioned.fill(child: AppShineBand()),
-                  child!,
-                ]),
-              ),
-            );
-          },
-          child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: widget.child),
-        ),
-      ),
-    );
+    final b = AppBlock.colorsOf(context);
+    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: b.ink)),
+      if (subtitle != null)
+        Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: b.muted)),
+    ]);
+  }
+}
+
+/// The "live" tag: the breathing dot and the word, in the block's accent ink.
+class _LiveTag extends StatelessWidget {
+  const _LiveTag();
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = AppBlock.colorsOf(context).accentInk(context.colors.success);
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      AttLiveDot(color: ink),
+      Text(attT('att_btn_live'), maxLines: 1, style: AppType.label(context).copyWith(color: ink, fontWeight: FontWeight.w600)),
+    ]);
   }
 }
 
@@ -203,52 +167,29 @@ class _AttendanceCourseEntryState extends State<AttendanceCourseEntry> {
 
     return ValueListenableBuilder<bool>(
       valueListenable: AppConnectivity.instance.online,
-      builder: (_, online, _) => _PremiumSurface(
+      builder: (_, online, _) => _EntrySurface(
         live: true,
-        from: c.success,
-        to: c.success.withValues(alpha: 0.78),
         onTap: () async {
           await showStudentCheckInSheet(context, courseId: widget.courseId, title: widget.title);
           if (mounted) _refresh();
         },
-        child: Row(children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(color: context.colors.onHero.withValues(alpha: 0.2), shape: BoxShape.circle),
-            child: Icon(online ? Icons.how_to_reg_rounded : Icons.bluetooth_searching_rounded,
-                color: context.colors.onHero, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(
-                !online
-                    ? attT('att_btn_checkin_offline')
-                    : attT('att_btn_checkin_now'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    fontFamily: AppFonts.family, fontSize: 14, fontWeight: FontWeight.w800, color: context.colors.onHero),
+        child: Builder(builder: (context) {
+          final b = AppBlock.colorsOf(context);
+          return Row(children: [
+            AttIconWell(
+                icon: online ? Icons.how_to_reg_rounded : Icons.bluetooth_searching_rounded, color: c.primary, fill: true),
+            AppSpace.gapSm,
+            Expanded(
+              child: _EntryText(
+                title: !online ? attT('att_btn_checkin_offline') : attT('att_btn_checkin_now'),
+                subtitle: _checked ? attT('att_entry_open') : null,
               ),
-              if (_checked)
-                Text(
-                  attT('att_entry_open'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 10.5, color: context.colors.onHero.withValues(alpha: 0.85)),
-                ),
-            ]),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(color: context.colors.onHero.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(8)),
-            child: Text(attT('att_btn_live'),
-                style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: context.colors.onHero, letterSpacing: 0.6)),
-          ),
-          const SizedBox(width: 6),
-          Icon(Icons.chevron_right_rounded, color: context.colors.onHero, size: 22),
-        ]),
+            ),
+            AppSpace.gapXs,
+            const _LiveTag(),
+            Icon(Icons.chevron_right_rounded, color: b.muted, size: AppIconSize.lg),
+          ]);
+        }),
       ),
     );
   }
@@ -263,7 +204,7 @@ class _AttendanceCourseEntryState extends State<AttendanceCourseEntry> {
 /// or the lesson picker (newest first) when there is none.
 class TeacherAttendanceCourseEntry extends StatelessWidget {
   const TeacherAttendanceCourseEntry({super.key, required this.sessions, this.target,
-      this.padding = const EdgeInsets.fromLTRB(16, 4, 16, 8)});
+      this.padding = const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xs)});
 
   /// Course order 1…n (the picker shows them inverted).
   final List<LauncherSession> sessions;
@@ -286,13 +227,10 @@ class TeacherAttendanceCourseEntry extends StatelessWidget {
             // The web app is waiting for the classroom location from this phone.
             if (t.webLocationRequested && !kIsWeb) ...[
               const _WebLocationRequestCard(),
-              const SizedBox(height: 8),
+              AppSpace.gapXs,
             ],
-            _PremiumSurface(
-            height: 60,
+            _EntrySurface(
             live: running,
-            from: running ? c.success : c.primary,
-            to: running ? c.success.withValues(alpha: 0.78) : c.heroEnd(c.primary), // M22: theme ink, not purple
             onTap: () {
               if (running) {
                 openAttendanceLive(context);
@@ -302,42 +240,35 @@ class TeacherAttendanceCourseEntry extends StatelessWidget {
                 showSessionPickerSheet(context, sessions);
               }
             },
-            child: Row(children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(color: context.colors.onHero.withValues(alpha: 0.2), shape: BoxShape.circle),
-                child: Icon(running ? Icons.sensors_rounded : Icons.qr_code_2_rounded, color: context.colors.onHero, size: 21),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(running ? attT('att_t_running') : attT('att_launch_btn'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          fontFamily: AppFonts.family, fontSize: 14.5, fontWeight: FontWeight.w800, color: context.colors.onHero)),
-                  Text(
-                    running
+            child: Builder(builder: (context) {
+              final b = AppBlock.colorsOf(context);
+              return Row(children: [
+                AttIconWell(icon: running ? Icons.sensors_rounded : Icons.qr_code_2_rounded, color: c.primary, fill: running),
+                AppSpace.gapSm,
+                Expanded(
+                  child: _EntryText(
+                    title: running ? attT('att_t_running') : attT('att_launch_btn'),
+                    subtitle: running
                         ? '${attT('att_t_present')}: ${t.code?.presentCount ?? 0}'
                         : (target?.name ?? attT('att_t_entry_sub')),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, color: context.colors.onHero.withValues(alpha: 0.85)),
                   ),
-                ]),
-              ),
-              if (running)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: context.colors.onHero.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(10)),
-                  child: Text(t.code?.code ?? '------',
-                      style: TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w900, color: context.colors.onHero, letterSpacing: 2)),
                 ),
-              const SizedBox(width: 6),
-              Icon(Icons.chevron_right_rounded, color: context.colors.onHero, size: 24),
-            ]),
+                if (running) ...[
+                  AppSpace.gapXs,
+                  // the running code reads left to right in both languages
+                  Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
+                      decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.chipAll),
+                      child: Text(t.code?.code ?? '------',
+                          style: AppType.figure(context).copyWith(color: c.textDark, letterSpacing: AppSpace.xxs / 2)),
+                    ),
+                  ),
+                ],
+                Icon(Icons.chevron_right_rounded, color: b.muted, size: AppIconSize.lg),
+              ]);
+            }),
           ),
           ]),
         );
@@ -365,28 +296,23 @@ class _WebLocationRequestCardState extends State<_WebLocationRequestCard> {
   }
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
-        decoration: BoxDecoration(
-          gradient: AppGradients.blend(context, color: context.colors.warning),
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [BoxShadow(color: context.colors.warning.withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 6))],
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tint = appTintOn(context, c.warning);
+    final ink = appInkOn(context, c.warning, tint);
+    return Container(
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.xs, AppSpace.xs, AppSpace.xs),
+      decoration: BoxDecoration(color: tint, borderRadius: AppRadius.cardAll),
+      child: Row(children: [
+        Icon(Icons.location_searching_rounded, color: ink, size: AppIconSize.md),
+        AppSpace.gapSm,
+        Expanded(
+          child: Text(attT('att_t_web_asks_body'),
+              style: AppType.label(context).copyWith(color: ink, fontWeight: FontWeight.w600)),
         ),
-        child: Row(children: [
-          Icon(Icons.location_searching_rounded, color: context.colors.onHero),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(attT('att_t_web_asks_body'),
-                style: TextStyle(fontFamily: AppFonts.family, color: context.colors.onHero, fontSize: 12.5, fontWeight: FontWeight.w700)),
-          ),
-          const SizedBox(width: 8),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: context.colors.onHero, foregroundColor: context.colors.heroEnd(context.colors.warning)),
-            onPressed: _busy ? null : _share,
-            child: _busy
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : Text(attT('att_t_share_now'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
-          ),
-        ]),
-      );
+        AppSpace.gapXs,
+        AppButton.primary(size: AppButtonSize.sm, busy: _busy, label: attT('att_t_share_now'), onPressed: _busy ? null : _share),
+      ]),
+    );
+  }
 }
