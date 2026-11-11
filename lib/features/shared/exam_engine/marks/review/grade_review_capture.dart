@@ -82,7 +82,7 @@ class GradeCaptureHud extends StatelessWidget {
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(checking ? Icons.hourglass_top_rounded : Icons.collections_outlined, size: 16, color: c.onHero),
             const SizedBox(width: AppSpace.xs),
-            Flexible(child: Text(gradeCounterText(sheets, read, waiting), maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: c.onHero))),
+            Flexible(child: Text(gradeCounterText(sheets, read, waiting), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: c.onHero, fontWeight: FontWeight.w600))),
           ]),
         ),
       ),
@@ -491,7 +491,7 @@ class _GradeCaptureScreenState extends State<GradeCaptureScreen> with WidgetsBin
                 TextButton.icon(
                   onPressed: _tally.capturing ? null : _pickAndUpload,
                   icon: Icon(Icons.upload_file_rounded, color: c.onHero),
-                  label: Text(t('رفع صور بدلًا من الكاميرا', 'Upload images instead'), style: appText(13, c: c.onHero)),
+                  label: Text(t('رفع صور بدلًا من الكاميرا', 'Upload images instead'), style: AppType.label(context).copyWith(color: c.onHero)),
                 ),
             ]),
           ),

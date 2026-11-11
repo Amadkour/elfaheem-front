@@ -114,7 +114,7 @@ class _GradeStartFormState extends State<GradeStartForm> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final body = appText(13, c: c.textMedium, h: 1.4);
+    final body = AppType.label(context).copyWith(height: 1.4);
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Text(
         _mode == MarkMode.review
@@ -162,9 +162,9 @@ class _GradeStartFormState extends State<GradeStartForm> {
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(t('نموذج الورقة', 'Paper template'), style: appText(12, c: c.textLight)),
+              Text(t('نموذج الورقة', 'Paper template'), style: AppType.meta(context).copyWith(color: c.textLight)),
               Text(_tpl == null ? t('اختر نموذجًا', 'Choose a template') : '${_tpl!.name} · ${t('من', 'out of')} ${markNumberText(_tpl!.totalMax)}',
-                  maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark)),
+                  maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
             ]),
           ),
           Icon(Icons.chevron_right_rounded, color: c.textLight),
@@ -215,7 +215,7 @@ class _GradeStartFormState extends State<GradeStartForm> {
                     '${s.mode == MarkMode.review ? t('مراجعة', 'Review') : t('استيراد', 'Import')} · ${s.columnKey} · ${s.counts.read}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: appText(13.5, w: FontWeight.w600, c: c.textDark),
+                    style: AppType.bodyStrong(context),
                   ),
                 ),
                 Icon(Icons.chevron_right_rounded, color: c.textLight),

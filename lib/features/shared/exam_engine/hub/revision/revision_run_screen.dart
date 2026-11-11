@@ -306,13 +306,13 @@ class _RevisionRunScreenState extends State<RevisionRunScreen> {
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(Icons.check_circle_rounded, size: AppIconSize.xs, color: c.success),
                   const SizedBox(width: AppSpace.xs),
-                  Flexible(child: Text('${q.name} · ${q.degree}', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: c.onHero))),
+                  Flexible(child: Text('${q.name} · ${q.degree}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: c.onHero, fontWeight: FontWeight.w600))),
                 ]),
               ),
       ),
       if (_retakeTip != null) ...[
         const SizedBox(height: AppSpace.xxs),
-        Text(_retakeTip!, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: appText(13, w: FontWeight.w700, c: c.onHero)),
+        Text(_retakeTip!, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: AppType.label(context).copyWith(color: c.onHero, fontWeight: FontWeight.w600)),
       ],
       if (waiting > 0 && !_flow.showing)
         Padding(
@@ -353,8 +353,8 @@ class _RevisionRunScreenState extends State<RevisionRunScreen> {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Text(gradeRowName(r.row), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: c.onHero)),
-                Text('${i + 1} / ${_papers.length} · $status', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.onHeroMuted)),
+                Text(gradeRowName(r.row), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: c.onHero, fontWeight: FontWeight.w600)),
+                Text('${i + 1} / ${_papers.length} · $status', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.onHeroMuted)),
               ]),
             ),
           ),

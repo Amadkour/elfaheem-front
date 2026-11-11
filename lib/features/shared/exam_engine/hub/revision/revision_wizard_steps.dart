@@ -784,7 +784,7 @@ class _ScriptVisual extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final s = appText(22, w: FontWeight.w700, c: context.colors.textDark).copyWith(fontFamily: AppFonts.family, fontFamilyFallback: AppFonts.fallback);
+    final s = AppType.figureLarge(context).copyWith(fontFamily: AppFonts.family, fontFamilyFallback: AppFonts.fallback);
     if (script == DigitScript.auto) {
       return Row(mainAxisSize: MainAxisSize.min, textDirection: TextDirection.ltr, children: [Text('12', style: s), const SizedBox(width: AppSpace.xs), Text('١٢', style: s)]);
     }
@@ -800,7 +800,7 @@ class _KindVisual extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = context.colors.textDark;
-    if (kind == WriteKind.printed) return Text(script == DigitScript.arabic ? '٧٥' : '75', textDirection: TextDirection.ltr, style: appText(26, w: FontWeight.w700, c: color).copyWith(fontFamily: AppFonts.family, fontFamilyFallback: AppFonts.fallback));
+    if (kind == WriteKind.printed) return Text(script == DigitScript.arabic ? '٧٥' : '75', textDirection: TextDirection.ltr, style: AppType.figureLarge(context).copyWith(color: color, fontFamily: AppFonts.family, fontFamilyFallback: AppFonts.fallback));
     return CustomPaint(size: const Size(72, 40), painter: _HandPainter(color, arabic: script == DigitScript.arabic));
   }
 }
