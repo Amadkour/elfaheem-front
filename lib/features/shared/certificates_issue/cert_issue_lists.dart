@@ -426,12 +426,12 @@ class CertListBody extends StatelessWidget {
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         FilledButton.icon(
           onPressed: busy ? null : onAddPerson,
-          icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+          icon: const Icon(Icons.person_add_alt_1_rounded, size: AppIconSize.md),
           label: Text('ci_add_person'.tr),
         ),
         OutlinedButton.icon(
           onPressed: busy || !canIssue || rows.isEmpty ? null : onIssueAll,
-          icon: const Icon(Icons.workspace_premium_outlined, size: 18),
+          icon: const Icon(Icons.workspace_premium_outlined, size: AppIconSize.md),
           label: Text('ci_issue_list'.tr),
         ),
       ]),
@@ -480,14 +480,14 @@ class CertListBody extends StatelessWidget {
                       if (others.isNotEmpty)
                         Text(others.join(' · '), style: AppType.meta(context), maxLines: 2, overflow: TextOverflow.ellipsis),
                       if (r['student_id'] != null)
-                        Text('ci_on_platform'.tr, style: appText(11, w: FontWeight.w500, c: c.success)),
+                        Text('ci_on_platform'.tr, style: AppType.meta(context).copyWith(color: c.success, fontWeight: FontWeight.w500)),
                     ]),
                   ),
                   if (onRemove != null)
                     IconButton(
                       tooltip: 'ci_remove'.tr,
                       onPressed: busy ? null : () => onRemove!(k),
-                      icon: Icon(Icons.delete_outline_rounded, size: 20, color: c.textMedium),
+                      icon: Icon(Icons.delete_outline_rounded, size: AppIconSize.md, color: c.textMedium),
                     ),
                 ]),
               ),

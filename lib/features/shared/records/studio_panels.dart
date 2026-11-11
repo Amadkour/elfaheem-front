@@ -40,7 +40,7 @@ class _Caption extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: Row(children: [
-        Expanded(child: Text(text, style: appText(12.5, w: FontWeight.w700, c: c.textDark))),
+        Expanded(child: Text(text, style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600))),
         ?trailing,
       ]),
     );
@@ -74,7 +74,7 @@ class StudioTimeField extends StatelessWidget {
       decoration: BoxDecoration(color: lit ? c.primaryTint : c.inputBg, borderRadius: AppRadius.chipAll),
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, c: c.textMedium, h: 1.3)),
+        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
         Directionality(
           textDirection: TextDirection.ltr,
           child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -83,7 +83,7 @@ class StudioTimeField extends StatelessWidget {
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(studioTimecode(value),
-                    key: idKey == null ? null : ValueKey('studio.time.$idKey'), style: _tab(appText(14, w: FontWeight.w700, c: c.textDark, h: 1.2))),
+                    key: idKey == null ? null : ValueKey('studio.time.$idKey'), style: _tab(AppType.bodyStrong(context).copyWith(color: c.textDark))),
               ),
             ),
             if (onNudge != null) nudge(_frame, Icons.chevron_right_rounded, t('إطار للأمام', 'One frame later')),
@@ -162,7 +162,7 @@ class _Pick extends StatelessWidget {
 }
 
 /// A short note in the panel.
-Widget _note(String text, {Key? key}) => Builder(builder: (context) => Text(text, key: key, style: appText(12, c: context.colors.textMedium, h: 1.45)));
+Widget _note(String text, {Key? key}) => Builder(builder: (context) => Text(text, key: key, style: AppType.meta(context).copyWith(color: context.colors.textMedium)));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Edit
@@ -221,7 +221,7 @@ class StudioEditPanel extends StatelessWidget {
     final on = enabled;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       _Caption(t('عند المؤشر', 'At the playhead'),
-          trailing: Text(studioTimecode(position), textDirection: TextDirection.ltr, style: _tab(appText(12.5, w: FontWeight.w700, c: c.textMedium)))),
+          trailing: Text(studioTimecode(position), textDirection: TextDirection.ltr, style: _tab(AppType.label(context).copyWith(color: c.textMedium, fontWeight: FontWeight.w600)))),
       _cells([
         _action('split', t('تقسيم', 'Split'), Icons.call_split_rounded, on ? onSplit : null, tip: t('تقسيم عند المؤشر (S)', 'Split at the playhead (S)'), primary: true),
       ]),
@@ -246,7 +246,7 @@ class StudioEditPanel extends StatelessWidget {
         const SizedBox(height: AppSpace.xxs),
         if (marked)
           Text(t('المدة ${studioTimecode(markOut! - markIn!)}', 'Length ${studioTimecode(markOut! - markIn!)}'),
-              key: const ValueKey('studio.marks.length'), style: _tab(appText(12, c: c.textMedium))),
+              key: const ValueKey('studio.marks.length'), style: _tab(AppType.meta(context).copyWith(color: c.textMedium))),
         const SizedBox(height: AppSpace.xs),
         _cells([
           _action('remove_marked', t('حذف الفترة', 'Remove it'), Icons.content_cut_rounded, on && marked ? onRemoveMarked : null,
@@ -259,13 +259,13 @@ class StudioEditPanel extends StatelessWidget {
       if (sel != null) ...[
         _Caption(t('الجزء المحدد', 'The selected part'),
             trailing: Text(t('الجزء ${selectedClip! + 1} من ${edit.clips.length}', 'Part ${selectedClip! + 1} of ${edit.clips.length}'),
-                style: appText(12, c: c.textMedium))),
+                style: AppType.meta(context).copyWith(color: c.textMedium))),
         _cells([
           StudioTimeField(label: t('يبدأ من الأصل', 'Starts at (original)'), value: sel.start, idKey: 'clip_start', onNudge: on ? (b) => onNudgeClip?.call(true, b) : null),
           StudioTimeField(label: t('ينتهي عند', 'Ends at'), value: sel.end, idKey: 'clip_end', onNudge: on ? (b) => onNudgeClip?.call(false, b) : null),
         ], ltr: true),
         const SizedBox(height: AppSpace.xxs),
-        Text(t('المدة ${studioTimecode(sel.length)}', 'Length ${studioTimecode(sel.length)}'), style: _tab(appText(12, c: c.textMedium))),
+        Text(t('المدة ${studioTimecode(sel.length)}', 'Length ${studioTimecode(sel.length)}'), style: _tab(AppType.meta(context).copyWith(color: c.textMedium))),
         const SizedBox(height: AppSpace.xs),
         _action('delete_clip', t('حذف هذا الجزء', 'Delete this part'), Icons.delete_outline_rounded, on && edit.clips.length > 1 ? onDeleteClip : null,
             tip: t('حذف الجزء وضم ما حوله (Delete)', 'Delete the part and join what is around it (Delete)'), danger: true),
@@ -476,13 +476,13 @@ class _StudioOverlayPanelState extends State<StudioOverlayPanel> {
                 else
                   Icon(o.isText ? Icons.title_rounded : Icons.image_outlined, size: AppIconSize.md, color: c.textMedium),
                 const SizedBox(width: AppSpace.xs),
-                Expanded(child: Text(o.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w600, c: c.textDark))),
+                Expanded(child: Text(o.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600))),
                 const SizedBox(width: AppSpace.xs),
                 Flexible(
                   child: widget.edit.overlayOut(o) != null
                       ? Text('${mmssShort(widget.edit.overlayOut(o)!.$1)} – ${mmssShort(widget.edit.overlayOut(o)!.$2)}',
-                          maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: _tab(appText(11.5, c: c.textMedium)))
-                      : Text(t('في جزء محذوف', 'In a removed part'), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.warning)),
+                          maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: _tab(AppType.meta(context).copyWith(color: c.textMedium)))
+                      : Text(t('في جزء محذوف', 'In a removed part'), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.warning)),
                 ),
               ]),
             ),
@@ -500,7 +500,7 @@ class _StudioOverlayPanelState extends State<StudioOverlayPanel> {
     void set(StudioAnim a) => widget.onChange?.call(isIn ? o.copyWith(inAnim: a) : o.copyWith(outAnim: a), commit: true, kind: StudioStepKind.overlayAnim);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       _Caption(isIn ? t('الظهور', 'Comes in') : t('الاختفاء', 'Goes out'),
-          trailing: anim == StudioAnim.none ? null : Text('${dur.toStringAsFixed(1)} s', textDirection: TextDirection.ltr, style: _tab(appText(12, c: context.colors.textMedium)))),
+          trailing: anim == StudioAnim.none ? null : Text('${dur.toStringAsFixed(1)} s', textDirection: TextDirection.ltr, style: _tab(AppType.meta(context).copyWith(color: context.colors.textMedium)))),
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final a in StudioAnim.values)
           if (a.fits(o.kind))
@@ -544,7 +544,7 @@ class _StudioOverlayPanelState extends State<StudioOverlayPanel> {
           onPressed: () => widget.onSelect?.call(null),
           icon: const Icon(Icons.arrow_back_rounded),
         ),
-        Expanded(child: Text(o.isText ? t('تعديل النص', 'Edit the text') : t('تعديل الصورة', 'Edit the picture'), style: appText(14, w: FontWeight.w700, c: c.textDark))),
+        Expanded(child: Text(o.isText ? t('تعديل النص', 'Edit the text') : t('تعديل الصورة', 'Edit the picture'), style: AppType.bodyStrong(context).copyWith(color: c.textDark))),
         IconButton(
           key: const ValueKey('studio.overlay.duplicate'),
           tooltip: t('نسخة', 'Duplicate'),
@@ -603,7 +603,7 @@ class _StudioOverlayPanelState extends State<StudioOverlayPanel> {
           },
         ),
         const SizedBox(height: AppSpace.sm),
-        _Caption(t('الحجم', 'Size'), trailing: Text('${(o.size * 100).round()}', style: _tab(appText(12, c: c.textMedium)))),
+        _Caption(t('الحجم', 'Size'), trailing: Text('${(o.size * 100).round()}', style: _tab(AppType.meta(context).copyWith(color: c.textMedium)))),
         Slider(
           key: const ValueKey('studio.text.size'),
           min: 0.025,
@@ -638,7 +638,7 @@ class _StudioOverlayPanelState extends State<StudioOverlayPanel> {
       ]);
     } else {
       body.addAll([
-        _Caption(t('الحجم', 'Size'), trailing: Text('${(o.w * 100).round()}%', style: _tab(appText(12, c: c.textMedium)))),
+        _Caption(t('الحجم', 'Size'), trailing: Text('${(o.w * 100).round()}%', style: _tab(AppType.meta(context).copyWith(color: c.textMedium)))),
         Slider(
           key: const ValueKey('studio.image.size'),
           min: 0.05,
@@ -651,7 +651,7 @@ class _StudioOverlayPanelState extends State<StudioOverlayPanel> {
     }
     body.addAll([
       const SizedBox(height: AppSpace.sm),
-      _Caption(t('الشفافية', 'Opacity'), trailing: Text('${(o.opacity * 100).round()}%', style: _tab(appText(12, c: c.textMedium)))),
+      _Caption(t('الشفافية', 'Opacity'), trailing: Text('${(o.opacity * 100).round()}%', style: _tab(AppType.meta(context).copyWith(color: c.textMedium)))),
       Slider(
         key: const ValueKey('studio.overlay.opacity'),
         min: 0.1,
@@ -841,7 +841,7 @@ class StudioHistoryPanel extends StatelessWidget {
                     ].where((x) => x.isNotEmpty).join(' · '),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: _tab(appText(11, c: c.textMedium)),
+                    style: _tab(AppType.meta(context).copyWith(color: c.textMedium)),
                   ),
                 ]),
               ),
@@ -856,7 +856,7 @@ class StudioHistoryPanel extends StatelessWidget {
         t('${h.steps.length - 1} خطوة · ${h.undone > 0 ? '${h.undone} متراجَع عنها' : 'كلها مطبقة'}',
             '${h.steps.length - 1} steps · ${h.undone > 0 ? '${h.undone} undone' : 'all applied'}'),
         key: const ValueKey('studio.history.count'),
-        style: appText(12, c: c.textMedium),
+        style: AppType.meta(context).copyWith(color: c.textMedium),
       ),
       const SizedBox(height: AppSpace.xs),
       ...rows,

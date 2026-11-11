@@ -178,7 +178,7 @@ class IssuePhotosHeader extends StatelessWidget {
                 style: AppType.section(context),
               ),
             ),
-            Text('$done / $total', style: appText(13, w: FontWeight.w600, c: c.textMedium)),
+            Text('$done / $total', style: AppType.row(context).copyWith(color: c.textMedium, fontWeight: FontWeight.w600)),
           ]),
           const SizedBox(height: AppSpace.xs),
           ClipRRect(
@@ -191,7 +191,7 @@ class IssuePhotosHeader extends StatelessWidget {
             onPressed: busy ? null : onBulk,
             icon: busy
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.photo_library_outlined, size: 18),
+                : const Icon(Icons.photo_library_outlined, size: AppIconSize.md),
             label: Text(busy ? _t('جارٍ الرفع…', 'Uploading…') : _t('رفع عدة صور معًا', 'Upload several photos')),
           ),
           const SizedBox(height: AppSpace.xs),
@@ -247,7 +247,7 @@ class IssuePhotoRow extends StatelessWidget {
                 done ? _t('الصورة جاهزة', 'Photo added') : (ids.isNotEmpty ? ids.first : _t('بحاجة إلى صورة', 'Needs a photo')),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: appText(12.5, c: done ? c.success : c.textMedium),
+                style: AppType.meta(context).copyWith(color: done ? c.success : c.textMedium),
               ),
             ]),
           ),

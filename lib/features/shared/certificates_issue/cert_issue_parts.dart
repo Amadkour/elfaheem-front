@@ -42,17 +42,17 @@ class IssueStepper extends StatelessWidget {
         final active = i == current;
         final col = active || done ? c.primary : c.textLight;
         final dot = Container(
-          width: 28,
-          height: 28,
+          width: AppSpace.xl - AppSpace.xxs,
+          height: AppSpace.xl - AppSpace.xxs,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: active ? c.primary : (done ? c.primary.withValues(alpha: 0.12) : c.cardBg),
-            border: Border.all(color: col, width: 1.4),
+            border: Border.all(color: col, width: AppBorder.strong),
           ),
           child: done
-              ? Icon(Icons.check_rounded, size: 16, color: c.primary)
-              : Text('${i + 1}', style: appText(12, w: FontWeight.w600, c: active ? c.onHero : col)),
+              ? Icon(Icons.check_rounded, size: AppIconSize.sm, color: c.primary)
+              : Text('${i + 1}', style: AppType.label(context).copyWith(color: active ? c.onHero : col, fontWeight: FontWeight.w600)),
         );
         final tappable = onTap != null && i < current;
         items.add(Semantics(
@@ -72,7 +72,7 @@ class IssueStepper extends StatelessWidget {
                   if (showLabels) ...[
                     const SizedBox(width: AppSpace.xs),
                     Text(labels[i],
-                        style: appText(13, w: active ? FontWeight.w600 : FontWeight.w500, c: active ? c.textDark : c.textMedium)),
+                        style: AppType.label(context).copyWith(fontWeight: active ? FontWeight.w600 : FontWeight.w500, color: active ? c.textDark : c.textMedium)),
                   ],
                 ]),
               ),
@@ -82,7 +82,7 @@ class IssueStepper extends StatelessWidget {
         if (i < labels.length - 1) {
           items.add(Expanded(
             child: Container(
-              height: 1.4,
+              height: AppBorder.strong,
               margin: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
               color: i < current ? c.primary : c.divider,
             ),
@@ -133,7 +133,7 @@ class IssueStepBar extends StatelessWidget {
           if (onBack != null)
             TextButton.icon(
               onPressed: onBack,
-              icon: const Icon(Icons.arrow_back_rounded, size: 18),
+              icon: const Icon(Icons.arrow_back_rounded, size: AppIconSize.md),
               label: Text('ci_back'.tr),
             ),
           Expanded(
@@ -152,8 +152,8 @@ class IssueStepBar extends StatelessWidget {
               style: FilledButton.styleFrom(minimumSize: const Size(AppTouch.min * 2, AppTouch.min)),
               onPressed: busy ? null : onNext,
               icon: busy
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                  : Icon(nextIcon, size: 18),
+                  ? const SizedBox(width: AppIconSize.sm, height: AppIconSize.sm, child: CircularProgressIndicator(strokeWidth: AppBorder.focus))
+                  : Icon(nextIcon, size: AppIconSize.md),
               label: Text(nextLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ),
@@ -310,7 +310,7 @@ class IssueCourseList extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
                   child: Row(children: [
                     Icon(co.id == selectedId ? Icons.check_circle_rounded : Icons.menu_book_rounded,
-                        size: 20, color: co.id == selectedId ? c.primary : c.textMedium),
+                        size: AppIconSize.md, color: co.id == selectedId ? c.primary : c.textMedium),
                     const SizedBox(width: AppSpace.sm),
                     Expanded(
                       child: Text(co.name, style: AppType.row(context), maxLines: 2, overflow: TextOverflow.ellipsis),
@@ -415,7 +415,7 @@ class IssueColumnChips extends StatelessWidget {
             ),
             child: Text(
               '${i + 1}. ${columns[i].label}${columns[i].required ? '' : ' (${'ci_optional'.tr})'}',
-              style: appText(12, w: FontWeight.w600, c: c.primary),
+              style: AppType.label(context).copyWith(color: c.primary, fontWeight: FontWeight.w600),
             ),
           ),
       ]),
@@ -427,7 +427,7 @@ class IssueColumnChips extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('ci_example_line'.tr, style: AppType.meta(context)),
             const SizedBox(height: AppSpace.xxs),
-            SelectableText(certExampleLine(columns), style: appText(13, w: FontWeight.w500, c: c.textDark)),
+            SelectableText(certExampleLine(columns), style: AppType.label(context).copyWith(color: c.textDark)),
           ]),
         ),
       ],
@@ -481,7 +481,7 @@ class IssuePastePanel extends StatelessWidget {
           const SizedBox(width: AppSpace.xs),
           Expanded(child: Text('ci_checking'.tr, style: AppType.meta(context))),
         ] else if (error != null)
-          Expanded(child: Text(error!, style: appText(12, w: FontWeight.w500, c: c.danger)))
+          Expanded(child: Text(error!, style: AppType.label(context).copyWith(color: c.danger)))
         else if (parsedCount != null)
           Expanded(
             child: Text('ci_lines_read'.tr.replaceAll('{n}', '$parsedCount'), style: AppType.meta(context)),
@@ -529,12 +529,12 @@ class IssueUploadPanel extends StatelessWidget {
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         OutlinedButton.icon(
           onPressed: onSample == null ? null : () => onSample!('xlsx'),
-          icon: const Icon(Icons.table_chart_outlined, size: 18),
+          icon: const Icon(Icons.table_chart_outlined, size: AppIconSize.md),
           label: Text('ci_sample_xlsx'.tr),
         ),
         OutlinedButton.icon(
           onPressed: onSample == null ? null : () => onSample!('csv'),
-          icon: const Icon(Icons.description_outlined, size: 18),
+          icon: const Icon(Icons.description_outlined, size: AppIconSize.md),
           label: Text('ci_sample_csv'.tr),
         ),
       ]),
@@ -551,7 +551,7 @@ class IssueUploadPanel extends StatelessWidget {
               if (busy)
                 SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2.4, color: c.primary))
               else
-                Icon(Icons.upload_file_rounded, size: 32, color: c.primary),
+                Icon(Icons.upload_file_rounded, size: AppIconSize.xl, color: c.primary),
               const SizedBox(height: AppSpace.xs),
               Text(busy ? 'ci_checking'.tr : (fileName ?? 'ci_pick_file'.tr),
                   textAlign: TextAlign.center, style: AppType.row(context), maxLines: 2, overflow: TextOverflow.ellipsis),
@@ -563,7 +563,7 @@ class IssueUploadPanel extends StatelessWidget {
       ),
       if (error != null) ...[
         const SizedBox(height: AppSpace.xs),
-        Text(error!, style: appText(12, w: FontWeight.w500, c: c.danger)),
+        Text(error!, style: AppType.label(context).copyWith(color: c.danger)),
       ] else if (parsedCount != null) ...[
         const SizedBox(height: AppSpace.xs),
         Text('ci_lines_read'.tr.replaceAll('{n}', '$parsedCount'), style: AppType.meta(context)),
@@ -665,7 +665,7 @@ class IssueSearchPanel extends StatelessWidget {
           ),
           TextButton.icon(
             onPressed: onSelectAll,
-            icon: Icon(allOn ? Icons.deselect_rounded : Icons.select_all_rounded, size: 18, color: c.primary),
+            icon: Icon(allOn ? Icons.deselect_rounded : Icons.select_all_rounded, size: AppIconSize.md, color: c.primary),
             label: Text(allOn ? 'ci_unselect_all'.tr : 'ci_select_all'.tr),
           ),
         ]),
@@ -688,9 +688,9 @@ class IssueRecipientTabs extends StatelessWidget {
     return SegmentedButton<RecipientTab>(
       showSelectedIcon: false,
       segments: [
-        ButtonSegment(value: RecipientTab.search, icon: const Icon(Icons.person_search_rounded, size: 18), label: Text('ci_tab_search'.tr)),
-        ButtonSegment(value: RecipientTab.paste, icon: const Icon(Icons.content_paste_rounded, size: 18), label: Text('ci_tab_paste'.tr)),
-        ButtonSegment(value: RecipientTab.upload, icon: const Icon(Icons.upload_file_rounded, size: 18), label: Text('ci_tab_upload'.tr)),
+        ButtonSegment(value: RecipientTab.search, icon: const Icon(Icons.person_search_rounded, size: AppIconSize.md), label: Text('ci_tab_search'.tr)),
+        ButtonSegment(value: RecipientTab.paste, icon: const Icon(Icons.content_paste_rounded, size: AppIconSize.md), label: Text('ci_tab_paste'.tr)),
+        ButtonSegment(value: RecipientTab.upload, icon: const Icon(Icons.upload_file_rounded, size: AppIconSize.md), label: Text('ci_tab_upload'.tr)),
       ],
       selected: {tab},
       onSelectionChanged: (s) => onTab(s.first),
@@ -739,8 +739,8 @@ class IssueReviewHeader extends StatelessWidget {
         if (onClear != null && summary.total > 0)
           TextButton.icon(
             onPressed: onClear,
-            icon: Icon(Icons.clear_all_rounded, size: 18, color: c.textMedium),
-            label: Text('ci_clear'.tr, style: appText(13, c: c.textMedium)),
+            icon: Icon(Icons.clear_all_rounded, size: AppIconSize.md, color: c.textMedium),
+            label: Text('ci_clear'.tr, style: AppType.body(context).copyWith(color: c.textMedium)),
           ),
       ]),
       const SizedBox(height: AppSpace.xxs),
@@ -785,7 +785,7 @@ class IssueReviewHeader extends StatelessWidget {
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
             Row(children: [
-              Icon(Icons.copy_all_rounded, size: 18, color: c.warning),
+              Icon(Icons.copy_all_rounded, size: AppIconSize.md, color: c.warning),
               const SizedBox(width: AppSpace.xs),
               Expanded(
                 child: Text('ci_duplicates_n'.tr.replaceAll('{n}', '${summary.duplicates}'), style: AppType.row(context)),
@@ -795,7 +795,7 @@ class IssueReviewHeader extends StatelessWidget {
               alignment: AlignmentDirectional.centerEnd,
               child: TextButton.icon(
                 onPressed: onRemoveDuplicates,
-                icon: const Icon(Icons.cleaning_services_outlined, size: 18),
+                icon: const Icon(Icons.cleaning_services_outlined, size: AppIconSize.md),
                 label: Text('ci_remove_duplicates'.tr),
               ),
             ),
@@ -869,7 +869,7 @@ class IssueReviewRow extends StatelessWidget {
               state == RowState.ready
                   ? Icons.check_circle_rounded
                   : (state == RowState.attention ? Icons.error_outline_rounded : Icons.block_rounded),
-              size: 18,
+              size: AppIconSize.md,
               color: col,
             ),
           ),
@@ -896,7 +896,7 @@ class IssueReviewRow extends StatelessWidget {
                 for (final i in issues)
                   Padding(
                     padding: const EdgeInsets.only(top: AppSpace.xxs),
-                    child: Text('• ${i.text(columns)}', style: appText(12, w: FontWeight.w500, c: c.danger)),
+                    child: Text('• ${i.text(columns)}', style: AppType.label(context).copyWith(color: c.danger)),
                   ),
               ]),
             ),
@@ -904,12 +904,12 @@ class IssueReviewRow extends StatelessWidget {
           IconButton(
             tooltip: 'ci_edit'.tr,
             onPressed: onEdit,
-            icon: Icon(Icons.edit_outlined, size: 20, color: c.textMedium),
+            icon: Icon(Icons.edit_outlined, size: AppIconSize.md, color: c.textMedium),
           ),
           IconButton(
             tooltip: 'ci_remove'.tr,
             onPressed: onRemove,
-            icon: Icon(Icons.delete_outline_rounded, size: 20, color: c.textMedium),
+            icon: Icon(Icons.delete_outline_rounded, size: AppIconSize.md, color: c.textMedium),
           ),
         ]),
         if (row.match == MatchState.ambiguous && row.candidates.isNotEmpty) ...[
@@ -955,11 +955,11 @@ class IssueReviewRow extends StatelessWidget {
       _ => (Icons.person_outline_rounded, manual ? 'ci_manual_recipient'.tr : 'ci_unmatched'.tr, c.textMedium),
     };
     return Row(children: [
-      Icon(icon, size: 14, color: col),
+      Icon(icon, size: AppIconSize.xs, color: col),
       const SizedBox(width: AppSpace.xxs),
-      Flexible(child: Text(text, style: appText(12, w: FontWeight.w500, c: col), maxLines: 2, overflow: TextOverflow.ellipsis)),
+      Flexible(child: Text(text, style: AppType.label(context).copyWith(color: col), maxLines: 2, overflow: TextOverflow.ellipsis)),
       const SizedBox(width: AppSpace.xs),
-      Text(_stateLabel(state), style: appText(11, w: FontWeight.w600, c: c.textLight)),
+      Text(_stateLabel(state), style: AppType.overline(context).copyWith(color: c.textLight, letterSpacing: 0)),
     ]);
   }
 }
@@ -1137,10 +1137,10 @@ class IssueBatchProgressCard extends StatelessWidget {
         const SizedBox(height: AppSpace.xs),
         Wrap(spacing: AppSpace.md, runSpacing: AppSpace.xxs, children: [
           Text('ci_progress_n'.tr.replaceAll('{d}', '${batch.done}').replaceAll('{t}', '${batch.total}'), style: AppType.row(context)),
-          if (batch.failed > 0) Text('ci_failed_n'.tr.replaceAll('{n}', '${batch.failed}'), style: appText(13, w: FontWeight.w500, c: c.danger)),
+          if (batch.failed > 0) Text('ci_failed_n'.tr.replaceAll('{n}', '${batch.failed}'), style: AppType.label(context).copyWith(color: c.danger)),
           if (batch.email && batch.emailed > 0) Text('ci_emailed_n'.tr.replaceAll('{n}', '${batch.emailed}'), style: AppType.meta(context)),
           if (batch.email && batch.emailFailed > 0)
-            Text('ci_email_failed_n'.tr.replaceAll('{n}', '${batch.emailFailed}'), style: appText(12, w: FontWeight.w500, c: c.warning)),
+            Text('ci_email_failed_n'.tr.replaceAll('{n}', '${batch.emailFailed}'), style: AppType.label(context).copyWith(color: c.warning)),
         ]),
         if (failed && batch.error != null) ...[
           const SizedBox(height: AppSpace.xs),
@@ -1154,7 +1154,7 @@ class IssueBatchProgressCard extends StatelessWidget {
                 onPressed: downloading != null ? null : onZip,
                 icon: downloading == 'zip'
                     ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.folder_zip_outlined, size: 18),
+                    : const Icon(Icons.folder_zip_outlined, size: AppIconSize.md),
                 label: Text('ci_download_zip'.tr),
               ),
             if (batch.hasPdf)
@@ -1162,13 +1162,13 @@ class IssueBatchProgressCard extends StatelessWidget {
                 onPressed: downloading != null ? null : onPdf,
                 icon: downloading == 'pdf'
                     ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.picture_as_pdf_outlined, size: 18),
+                    : const Icon(Icons.picture_as_pdf_outlined, size: AppIconSize.md),
                 label: Text('ci_download_pdf'.tr),
               ),
             if (onViewIssued != null)
               OutlinedButton.icon(
                 onPressed: onViewIssued,
-                icon: const Icon(Icons.list_alt_rounded, size: 18),
+                icon: const Icon(Icons.list_alt_rounded, size: AppIconSize.md),
                 label: Text('ci_view_issued'.tr),
               ),
           ]),
@@ -1179,7 +1179,7 @@ class IssueBatchProgressCard extends StatelessWidget {
             alignment: AlignmentDirectional.centerStart,
             child: TextButton.icon(
               onPressed: onIssueMore,
-              icon: const Icon(Icons.add_rounded, size: 18),
+              icon: const Icon(Icons.add_rounded, size: AppIconSize.md),
               label: Text('ci_issue_more'.tr),
             ),
           ),
@@ -1222,7 +1222,7 @@ class IssueBatchTile extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.10), borderRadius: AppRadius.chipAll),
-              child: Icon(batch.isCourse ? Icons.school_rounded : Icons.workspace_premium_rounded, color: c.primary, size: 20),
+              child: Icon(batch.isCourse ? Icons.school_rounded : Icons.workspace_premium_rounded, color: c.primary, size: AppIconSize.md),
             ),
             const SizedBox(width: AppSpace.sm),
             Expanded(
@@ -1237,7 +1237,7 @@ class IssueBatchTile extends StatelessWidget {
                 Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
                   AppBadgePill(_statusText(batch), color: col),
                   Text('ci_progress_n'.tr.replaceAll('{d}', '${batch.done}').replaceAll('{t}', '${batch.total}'), style: AppType.meta(context)),
-                  if (batch.failed > 0) Text('ci_failed_n'.tr.replaceAll('{n}', '${batch.failed}'), style: appText(12, c: c.danger)),
+                  if (batch.failed > 0) Text('ci_failed_n'.tr.replaceAll('{n}', '${batch.failed}'), style: AppType.meta(context).copyWith(color: c.danger)),
                 ]),
               ]),
             ),
@@ -1305,7 +1305,7 @@ class IssuedCertTile extends StatelessWidget {
           ]),
         ),
         if (onView != null)
-          IconButton(tooltip: 'ci_view'.tr, onPressed: onView, icon: Icon(Icons.visibility_outlined, size: 20, color: c.textMedium)),
+          IconButton(tooltip: 'ci_view'.tr, onPressed: onView, icon: Icon(Icons.visibility_outlined, size: AppIconSize.md, color: c.textMedium)),
         PopupMenuButton<String>(
           tooltip: 'ci_more'.tr,
           icon: Icon(Icons.more_vert_rounded, color: c.textMedium),
@@ -1331,7 +1331,7 @@ class IssuedCertTile extends StatelessWidget {
   }
 
   Widget _menuRow(IconData icon, String label) => Row(children: [
-        Icon(icon, size: 18),
+        Icon(icon, size: AppIconSize.md),
         const SizedBox(width: AppSpace.sm),
         Flexible(child: Text(label)),
       ]);
@@ -1398,9 +1398,9 @@ class _CountChip extends StatelessWidget {
           border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 16, color: color),
+          Icon(icon, size: AppIconSize.sm, color: color),
           const SizedBox(width: AppSpace.xxs + 2),
-          Flexible(child: Text(text, style: appText(12, w: FontWeight.w600, c: context.colors.textDark))),
+          Flexible(child: Text(text, style: AppType.label(context).copyWith(color: context.colors.textDark, fontWeight: FontWeight.w600))),
         ]),
       );
 }
@@ -1431,7 +1431,7 @@ class IssueErrorBox extends StatelessWidget {
         if (onRetry != null)
           Align(
             alignment: AlignmentDirectional.centerEnd,
-            child: TextButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh_rounded, size: 18), label: Text('ci_retry'.tr)),
+            child: TextButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh_rounded, size: AppIconSize.md), label: Text('ci_retry'.tr)),
           ),
       ]),
     );

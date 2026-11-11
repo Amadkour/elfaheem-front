@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 
 import '../../admin/admin_common.dart' show t;
 import 'records_api.dart';
@@ -55,26 +56,22 @@ class RecordCover extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final h = width * 9 / 16;
-    final mark = Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: [c.primary.withValues(alpha: 0.22), c.primary.withValues(alpha: 0.08)],
-        ),
+    final tone = AppBlockColors.of(context, item.isAudio ? AppBlockTone.sky : AppBlockTone.peach);
+    final mark = ColoredBox(
+      color: tone.surface,
+      child: Center(
+        child: Icon(item.isAudio ? Icons.graphic_eq_rounded : Icons.videocam_rounded, color: tone.muted, size: h * 0.38),
       ),
-      alignment: Alignment.center,
-      child: Icon(item.isAudio ? Icons.graphic_eq_rounded : Icons.videocam_rounded, color: c.primary, size: h * 0.42),
     );
     final url = item.coverUrl;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.chip),
+      borderRadius: AppRadius.chipAll,
       child: SizedBox(
         width: width,
         height: h,
         child: Stack(fit: StackFit.expand, children: [
           if (showImage && url != null && url.startsWith('http'))
-            Image.network(url, fit: BoxFit.cover, errorBuilder: (_, _, _) => mark)
+            AppParallaxImage(image: Image.network(url, fit: BoxFit.cover, errorBuilder: (_, _, _) => mark))
           else
             mark,
           if (playMark && item.canPlay)
@@ -88,13 +85,14 @@ class RecordCover extends StatelessWidget {
             ),
           if (item.durationSeconds > 0)
             PositionedDirectional(
-              end: 4,
-              bottom: 4,
+              end: AppSpace.xxs,
+              bottom: AppSpace.xxs,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                decoration: BoxDecoration(color: c.heroShade.withValues(alpha: 0.72), borderRadius: BorderRadius.circular(6)),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs + AppSpace.xxs / 4, vertical: AppSpace.xxs / 4),
+                decoration: BoxDecoration(color: c.heroShade.withValues(alpha: 0.72), borderRadius: BorderRadius.circular(AppRadius.pill)),
                 child: Text(mmss(item.durationSeconds),
-                    style: appText(10.5, w: FontWeight.w700, c: c.onHero), textDirection: TextDirection.ltr),
+                    style: AppType.overline(context).copyWith(color: c.onHero, letterSpacing: 0, fontFeatures: const [FontFeature.tabularFigures()]),
+                    textDirection: TextDirection.ltr),
               ),
             ),
         ]),
@@ -160,11 +158,11 @@ class RecordTile extends StatelessWidget {
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(r.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark, h: 1.3)),
-              const SizedBox(height: 2),
-              Text(facts.join(' · '), maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium, h: 1.35)),
-              const SizedBox(height: AppSpace.xxs),
-              Wrap(spacing: 6, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              Text(r.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+              const SizedBox(height: AppSpace.xxs / 2),
+              Text(facts.join(' · '), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+              const SizedBox(height: AppSpace.xs),
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
                 if (!r.isDone || r.retryMode != null) AppBadgePill(recordStatusLabel(r), color: color, icon: recordStatusIcon(r)),
                 if (made != null) AppBadgePill(made, color: c.primary, icon: Icons.content_cut_rounded),
               ]),
@@ -177,7 +175,7 @@ class RecordTile extends StatelessWidget {
               height: AppTouch.min,
               child: Center(
                 child: Icon(selected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                    color: selected ? c.primary : c.textLight, size: 24,
+                    color: selected ? c.primary : c.textLight, size: AppIconSize.lg,
                     semanticLabel: selected ? t('محدد', 'Selected') : t('غير محدد', 'Not selected')),
               ),
             )
@@ -193,10 +191,10 @@ class RecordTile extends StatelessWidget {
         if (r.inProgress && r.status != 'recording') ...[
           const SizedBox(height: AppSpace.xs),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(AppRadius.pill),
             child: LinearProgressIndicator(
               value: r.progress == null ? null : (r.progress! / 100).clamp(0.0, 1.0),
-              minHeight: 4,
+              minHeight: AppSpace.xxs,
               color: c.primary,
               backgroundColor: c.primary.withValues(alpha: 0.12),
             ),
@@ -207,7 +205,7 @@ class RecordTile extends StatelessWidget {
           Row(children: [
             Expanded(
               child: Text(r.error ?? t('تعذّر إكمال العمل', 'The work could not finish'),
-                  maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(12, c: c.danger, h: 1.35)),
+                  maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: appInk(context, c.danger))),
             ),
             if (onRetry != null && r.retryMode != 'auto') ...[
               const SizedBox(width: AppSpace.xs),
@@ -219,10 +217,12 @@ class RecordTile extends StatelessWidget {
       ]),
     );
     if (!selected && !highlighted) return tile;
+    // chosen / pointed at: the 2 px emerald ring the kit's focus uses, just outside the card's edge
     return DecoratedBox(
+      position: DecorationPosition.foreground,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(c.radiusLarge - 2),
-        border: Border.all(color: c.primary, width: 2),
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: c.primary, width: AppBorder.focus),
       ),
       child: tile,
     );
@@ -239,24 +239,17 @@ class RecordsGroupHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final at = group.at;
     return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xxs, AppSpace.md, AppSpace.xxs, AppSpace.xs),
-      child: Row(children: [
-        Icon(Icons.videocam_outlined, size: 18, color: c.textMedium),
-        const SizedBox(width: AppSpace.xs),
-        Expanded(
-          child: Text(group.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
-        ),
-        const SizedBox(width: AppSpace.xs),
-        Flexible(
-          child: Text(
-            [if (at != null) AppTime.date(at), recordsCountText(group.items.length)].join(' · '),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: appText(12, c: c.textMedium),
-          ),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xxs, AppSpace.lg, AppSpace.xxs, AppSpace.sm),
+      // the meeting as an editorial heading, its date and count on a quiet line under it
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+        Text(group.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+        Text(
+          [if (at != null) AppTime.date(at), recordsCountText(group.items.length)].join(' · '),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppType.meta(context),
         ),
       ]),
     );
@@ -315,7 +308,6 @@ class RecordsLayout extends StatelessWidget {
     }
     final selecting = selected.isNotEmpty;
     final groups = groupRecords(items);
-    final c = context.colors;
     final total = items.fold<double>(0, (s, r) => s + r.durationSeconds);
     final running = items.where((r) => r.inProgress).length;
     return ListView.builder(
@@ -333,12 +325,13 @@ class RecordsLayout extends StatelessWidget {
                 if (running > 0) t('$running قيد العمل', '$running in progress'),
               ].join(' · '),
               key: const ValueKey('records.summary'),
-              style: appText(12.5, w: FontWeight.w600, c: c.textMedium),
+              style: AppType.label(context),
             ),
           );
         }
         final g = groups[i - 1];
-        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        // the page's one entrance: the first groups rise in once per visit (AppReveal caps it at 8)
+        return AppReveal(index: i - 1, group: 'records.library', child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
           RecordsGroupHeader(group: g),
           // two recordings to a row while there is room
           LayoutBuilder(builder: (context, box) {
@@ -355,21 +348,21 @@ class RecordsLayout extends StatelessWidget {
                 );
             if (box.maxWidth < 900) {
               return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                for (final r in g.items) ...[tile(r), const SizedBox(height: AppSpace.xs)],
+                for (final r in g.items) ...[tile(r), const SizedBox(height: AppSpace.sm)],
               ]);
             }
             return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               for (var k = 0; k < g.items.length; k += 2) ...[
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Expanded(child: tile(g.items[k])),
-                  const SizedBox(width: AppSpace.xs),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(child: k + 1 < g.items.length ? tile(g.items[k + 1]) : const SizedBox.shrink()),
                 ]),
-                const SizedBox(height: AppSpace.xs),
+                const SizedBox(height: AppSpace.sm),
               ],
             ]);
           }),
-        ]);
+        ]));
       },
     );
   }
@@ -405,7 +398,7 @@ class RecordsSelectionBar extends StatelessWidget {
             ),
             Expanded(
               child: Text(t('محدد: ', 'Selected: ') + recordsCountText(count),
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
             ),
             const SizedBox(width: AppSpace.xs),
             Flexible(
@@ -465,19 +458,19 @@ class MergeOrderLayout extends StatelessWidget {
     final mixed = items.any((r) => r.isAudio) && items.any((r) => !r.isAudio);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       Text(t('رتّب التسجيلات كما تريد أن تُعرض في الملف الواحد.', 'Put the recordings in the order the single file should play them.'),
-          style: appText(12.5, c: c.textMedium, h: 1.45)),
+          style: AppType.meta(context).copyWith(color: c.textMedium)),
       const SizedBox(height: AppSpace.xs),
       for (var i = 0; i < items.length; i++) ...[
         AppCard(
           key: ValueKey('records.merge.item.${items[i].id}'),
           padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xxs, AppSpace.xxs, AppSpace.xxs),
           child: Row(children: [
-            Text('${i + 1}', style: appText(13, w: FontWeight.w800, c: c.primary)),
+            Text('${i + 1}', style: AppType.row(context).copyWith(color: c.primary, fontWeight: FontWeight.w600)),
             const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(items[i].title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: c.textDark)),
-                Text(items[i].facts().join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textMedium)),
+                Text(items[i].title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
+                Text(items[i].facts().join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
               ]),
             ),
             IconButton(
@@ -501,7 +494,7 @@ class MergeOrderLayout extends StatelessWidget {
       Text(
         t('المدة الكلية ${mmss(mergedDuration(items))}', 'Total length ${mmss(mergedDuration(items))}') +
             (mixed ? t(' · التسجيلات الصوتية تظهر بخلفية سوداء', ' · audio-only parts show a black frame') : ''),
-        style: appText(12.5, w: FontWeight.w600, c: c.textDark),
+        style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600),
       ),
       const SizedBox(height: AppSpace.sm),
       title,

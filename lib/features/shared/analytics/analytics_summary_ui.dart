@@ -28,6 +28,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
+import 'package:flutter_education_app/design/chrome_button.dart' show ChromeIconButton;
 
 import 'analytics_summary.dart';
 import 'analytics_ui.dart' show anPct, anTr, anFmt;
@@ -128,8 +130,9 @@ const double kAnWide = 960;
 // Surface
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Paper (D-612): the card surface on a warm hairline, radius `card`, no resting shadow — the hero is the block.
 class AnSurface extends StatelessWidget {
-  const AnSurface({super.key, required this.child, this.padding = const EdgeInsets.all(16)});
+  const AnSurface({super.key, required this.child, this.padding = AppSpace.card});
 
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -142,9 +145,8 @@ class AnSurface extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: c.divider.withValues(alpha: 0.7), width: 0.8),
-        boxShadow: c.cardShadow,
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: child,
     );
@@ -160,18 +162,17 @@ class _CardTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w800, c: c.textDark)),
+          Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
           if (subtitle != null) ...[
-            const SizedBox(height: 2),
-            Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium, h: 1.35)),
+            const SizedBox(height: AppSpace.xxs),
+            Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
           ],
         ]),
       ),
-      if (trailing != null) const SizedBox(width: 12),
+      if (trailing != null) AppSpace.gapSm,
       ?trailing,
     ]);
   }
@@ -200,13 +201,13 @@ class AnSummaryLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, box) {
       final wide = box.maxWidth >= kAnTwoColumns;
-      const gap = SizedBox(height: 16, width: 16);
+      const gap = AppSpace.gapMd;
       if (!wide) {
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xl),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             header,
-            gap,
+            AppSpace.gapLg,
             hero,
             if (tiles != null) ...[gap, tiles!],
             if (insights != null) ...[gap, insights!],
@@ -216,16 +217,16 @@ class AnSummaryLayout extends StatelessWidget {
         );
       }
       final side = [?insights, ...lists];
-      final pad = box.maxWidth >= kAnWide ? 32.0 : 24.0;
+      final pad = box.maxWidth >= kAnWide ? AppSpace.xl : AppSpace.lg;
       return Align(
         alignment: AlignmentDirectional.topCenter,
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: AppWidth.wide.max),
           child: Padding(
-            padding: EdgeInsets.fromLTRB(pad, 16, pad, 40),
+            padding: EdgeInsets.fromLTRB(pad, AppSpace.md, pad, AppSpace.xxl),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               header,
-              const SizedBox(height: 24),
+              AppSpace.gapLg,
               hero,
               if (tiles != null) ...[gap, tiles!],
               gap,
@@ -261,20 +262,19 @@ class AnPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     // a tab's first page: the shell's bar above already says it (D-551), so only the line under the title remains here
     final titled = !ShellChrome.ownsHeaderOf(context);
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.only(top: AppSpace.xs),
         child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              if (titled) Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(28, w: FontWeight.w800, c: c.textDark, h: 1.15)),
+              if (titled) Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context)),
               if (subtitle != null) ...[
-                if (titled) const SizedBox(height: 4),
-                Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(titled ? 13.5 : 15, c: c.textMedium, h: 1.35)),
+                if (titled) const SizedBox(height: AppSpace.xxs),
+                Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.body(context)),
               ],
             ]),
           ),
@@ -285,7 +285,7 @@ class AnPageHeader extends StatelessWidget {
   }
 }
 
-/// A round 48×48 icon button for the header (refresh for mouse users …).
+/// The header's icon button (refresh for mouse users …): the kit's paper chrome plate in a 48 px target.
 class AnHeaderIcon extends StatelessWidget {
   const AnHeaderIcon({super.key, required this.icon, required this.tooltip, required this.onTap});
 
@@ -294,21 +294,7 @@ class AnHeaderIcon extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: c.cardBg,
-        shape: CircleBorder(side: BorderSide(color: c.divider)),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onTap,
-          child: SizedBox(width: 48, height: 48, child: Icon(icon, size: 21, color: c.textMedium)),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => ChromeIconButton(icon: icon, label: tooltip, onTap: onTap);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -339,11 +325,12 @@ class AnActivityRings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final track = context.colors.isDark ? 0.20 : 0.14;
+    final track = context.colors.isDark ? 0.22 : 0.16;
+    // the rings draw in once with the hero's entrance; still under Reduce motion
     return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 900),
-      curve: Curves.easeOutCubic,
+      tween: Tween(begin: appMotionOff(context) ? 1 : 0, end: 1),
+      duration: appMotionOff(context) ? Duration.zero : const Duration(milliseconds: 900),
+      curve: AppEase.out,
       builder: (_, t, child) => SizedBox(
         width: size,
         height: size,
@@ -408,96 +395,109 @@ class AnSummaryHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    return AnSurface(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-      child: LayoutBuilder(builder: (context, box) {
-        final ringSize = box.maxWidth >= 520 ? 168.0 : (box.maxWidth >= 330 ? 132.0 : 112.0);
-        final stack = box.maxWidth < 300;
-        final ringsW = Semantics(
-          label: '${overallLabel ?? anTr('an2_overall', 'Overall')} ${anPct(overall)}',
-          child: AnActivityRings(
-            size: ringSize,
-            values: [for (final r in rings) r.value],
-            colors: [for (final r in rings) anMetricColor(context, r.metric)],
-            center: ExcludeSemantics(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Text(anPct(overall), style: appText(ringSize * 0.17, w: FontWeight.w800, c: c.textDark, h: 1.0)),
-                const SizedBox(height: 2),
-                Text(overallLabel ?? anTr('an2_overall', 'Overall'), style: appText(ringSize * 0.075 + 2, w: FontWeight.w600, c: c.textMedium)),
-              ]),
+    // The screen's one memorable thing (system.md §1): a peach hero block — the sentence in the editorial headline,
+    // the rings drawing in once, the overall figure rolling to its value — that leans toward a mouse (AppTilt).
+    return AppTilt(
+      radius: AppRadius.block,
+      child: AppBlock(
+        hero: true,
+        child: LayoutBuilder(builder: (context, box) => _body(context, box)),
+      ),
+    );
+  }
+
+  Widget _figure(BuildContext context, double ringSize, String label, {required bool lone}) {
+    final b = AppBlock.colorsOf(context);
+    return ExcludeSemantics(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        AppCountUp(anPct(overall),
+            roll: true,
+            memoryKey: 'an.hero.overall',
+            textDirection: TextDirection.ltr,
+            style: AppType.figureLarge(context).copyWith(color: b.ink, fontSize: ringSize * (lone ? 0.2 : 0.17), height: 1)),
+        const SizedBox(height: AppSpace.xxs),
+        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: b.muted)),
+      ]),
+    );
+  }
+
+  Widget _body(BuildContext context, BoxConstraints box) {
+    final b = AppBlock.colorsOf(context);
+    final wide = box.maxWidth >= 600;
+    final title = AppType.headline(context).copyWith(color: b.ink);
+    final ringSize = box.maxWidth >= 520 ? 168.0 : (box.maxWidth >= 330 ? 132.0 : 112.0);
+    final stack = box.maxWidth < 300;
+    final ringsW = Semantics(
+      label: '${overallLabel ?? anTr('an2_overall', 'Overall')} ${anPct(overall)}',
+      child: AnActivityRings(
+        size: ringSize,
+        values: [for (final r in rings) r.value],
+        colors: [for (final r in rings) anMetricColor(context, r.metric)],
+        center: _figure(context, ringSize, overallLabel ?? anTr('an2_overall', 'Overall'), lone: false),
+      ),
+    );
+    final legend = Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+      for (var i = 0; i < rings.length; i++) ...[
+        if (i > 0) const SizedBox(height: AppSpace.sm),
+        _LegendRow(spec: rings[i]),
+      ],
+    ]);
+    final foot = footer == null ? const <Widget>[] : [AppSpace.gapLg, footer!];
+    if (rings.length == 1) {
+      // a lone ring already says its figure in the middle: no legend, the sentence beside it
+      final small = wide ? 140.0 : (box.maxWidth >= 330 ? 112.0 : 96.0);
+      final lone = rings.first;
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Semantics(
+            label: '${overallLabel ?? anMetricLabel(lone.metric)} ${anPct(overall)}',
+            child: AnActivityRings(
+              size: small,
+              values: [lone.value],
+              colors: [anMetricColor(context, lone.metric)],
+              center: _figure(context, small, overallLabel ?? anMetricLabel(lone.metric), lone: true),
             ),
           ),
-        );
-        final legend = Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-          for (var i = 0; i < rings.length; i++) ...[
-            if (i > 0) const SizedBox(height: 12),
-            _LegendRow(spec: rings[i]),
-          ],
-        ]);
-        if (rings.length == 1) {
-          // a lone ring already says its figure in the middle: no legend, the sentence beside it
-          final small = box.maxWidth < 600 ? (box.maxWidth >= 330 ? 112.0 : 96.0) : 140.0;
-          final lone = rings.first;
-          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Row(children: [
-              Semantics(
-                label: '${overallLabel ?? anMetricLabel(lone.metric)} ${anPct(overall)}',
-                child: AnActivityRings(
-                  size: small,
-                  values: [lone.value],
-                  colors: [anMetricColor(context, lone.metric)],
-                  center: ExcludeSemantics(
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      Text(anPct(overall), style: appText(small * 0.2, w: FontWeight.w800, c: c.textDark, h: 1.0)),
-                      const SizedBox(height: 2),
-                      Text(overallLabel ?? anMetricLabel(lone.metric), style: appText(11, w: FontWeight.w600, c: c.textMedium)),
-                    ]),
-                  ),
-                ),
-              ),
-              SizedBox(width: box.maxWidth >= 600 ? 32 : 20),
-              Expanded(child: Text(headline, style: appText(box.maxWidth >= 600 ? 21 : 17, w: FontWeight.w700, c: c.textDark, h: 1.4))),
+          wide ? AppSpace.gapXl : AppSpace.gapLg,
+          Expanded(child: Text(headline, style: title)),
+        ]),
+        ...foot,
+      ]);
+    }
+    if (wide) {
+      // wide: rings on the start, the sentence over a legend laid out across
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          ringsW,
+          AppSpace.gapXl,
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(headline, style: title),
+              AppSpace.gapLg,
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                for (var i = 0; i < rings.length; i++) ...[
+                  if (i > 0) AppSpace.gapMd,
+                  Expanded(child: _LegendRow(spec: rings[i])),
+                ],
+              ]),
             ]),
-            if (footer != null) ...[const SizedBox(height: 16), footer!],
-          ]);
-        }
-        if (box.maxWidth >= 600) {
-          // wide: rings on the start, the sentence over a legend laid out across
-          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-              ringsW,
-              const SizedBox(width: 32),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(headline, style: appText(21, w: FontWeight.w700, c: c.textDark, h: 1.35)),
-                  const SizedBox(height: 20),
-                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    for (var i = 0; i < rings.length; i++) ...[
-                      if (i > 0) const SizedBox(width: 16),
-                      Expanded(child: _LegendRow(spec: rings[i])),
-                    ],
-                  ]),
-                ]),
-              ),
-            ]),
-            if (footer != null) ...[const SizedBox(height: 16), footer!],
-          ]);
-        }
-        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(headline, style: appText(17.5, w: FontWeight.w700, c: c.textDark, h: 1.4)),
-          const SizedBox(height: 20),
-          if (stack) ...[Center(child: ringsW), const SizedBox(height: 16), legend]
-          else
-            Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-              ringsW,
-              SizedBox(width: box.maxWidth >= 520 ? 32 : 20),
-              Expanded(child: legend),
-            ]),
-          if (footer != null) ...[const SizedBox(height: 16), footer!],
-        ]);
-      }),
-    );
+          ),
+        ]),
+        ...foot,
+      ]);
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(headline, style: title),
+      AppSpace.gapLg,
+      if (stack) ...[Center(child: ringsW), AppSpace.gapMd, legend]
+      else
+        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          ringsW,
+          box.maxWidth >= 520 ? AppSpace.gapXl : AppSpace.gapLg,
+          Expanded(child: legend),
+        ]),
+      ...foot,
+    ]);
   }
 }
 
@@ -508,7 +508,7 @@ class _LegendRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
+    final b = AppBlock.colorsOf(context);
     final col = anMetricColor(context, spec.metric);
     final d = spec.delta;
     final sem = StringBuffer('${anMetricLabel(spec.metric)} ${anPct(spec.value)}');
@@ -518,21 +518,21 @@ class _LegendRow extends StatelessWidget {
       container: true,
       child: ExcludeSemantics(
         child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-          Container(width: 4, height: 36, decoration: BoxDecoration(color: col, borderRadius: BorderRadius.circular(4))),
-          const SizedBox(width: 10),
+          // the metric's colour, as a short rule — the same colour as its ring
+          Container(width: AppSpace.xxs, height: AppSpace.xl, decoration: BoxDecoration(color: col, borderRadius: AppRadius.chipAll)),
+          AppSpace.gapSm,
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(anMetricLabel(spec.metric), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: c.textMedium)),
-              const SizedBox(height: 1),
+              Text(anMetricLabel(spec.metric), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: b.muted)),
               Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                Text(anPct(spec.value), style: appText(19, w: FontWeight.w800, c: c.textDark, h: 1.15)),
+                Text(anPct(spec.value), textDirection: TextDirection.ltr, style: AppType.figure(context).copyWith(color: b.ink)),
                 if (d != null) ...[
-                  const SizedBox(width: 8),
-                  Flexible(child: AnDeltaChip(delta: d)),
+                  AppSpace.gapXs,
+                  Flexible(child: AnDeltaChip(delta: d, onBlock: true)),
                 ],
               ]),
               if (spec.detail != null)
-                Text(spec.detail!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, c: c.textLight)),
+                Text(spec.detail!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: b.muted)),
             ]),
           ),
         ]),
@@ -545,31 +545,41 @@ String _signed(double d) => '${d >= 0.5 ? '+' : (d <= -0.5 ? '−' : '±')}${d.a
 
 /// "+6 vs class" — green up, red down, grey level; the arrow says it too.
 class AnDeltaChip extends StatelessWidget {
-  const AnDeltaChip({super.key, required this.delta, this.suffix});
+  const AnDeltaChip({super.key, required this.delta, this.suffix, this.onBlock = false});
 
   final double delta;
   final String? suffix;
 
+  /// Sits on a tinted block (the hero): the ink is lifted to read on the block's surface at AA, and the pill turns
+  /// paper so a green or red tint never sits on peach.
+  final bool onBlock;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final b = onBlock ? AppBlock.colorsOf(context) : null;
     final up = delta >= 0.5, down = delta <= -0.5;
     final tone = up ? c.success : (down ? c.danger : c.textLight);
+    final ink = b != null ? b.accentInk(tone) : appInk(context, tone);
+    final style = AppType.overline(context).copyWith(color: ink, letterSpacing: 0);
     return FittedBox(
       fit: BoxFit.scaleDown,
       alignment: AlignmentDirectional.centerStart,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
+        decoration: BoxDecoration(
+          color: b != null ? c.cardBg.withValues(alpha: 0.7) : tone.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+        ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           if (!up && !down)
-            Text(anTr('an2_same_as_class', 'Same as class'), style: appText(10.5, w: FontWeight.w700, c: c.textMedium))
+            Text(anTr('an2_same_as_class', 'Same as class'), style: style.copyWith(color: b?.muted ?? c.textMedium))
           else ...[
-            Icon(up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, size: 11, color: appInk(context, tone)),
-            const SizedBox(width: 2),
-            Text(_signed(delta), textDirection: TextDirection.ltr, style: appText(11, w: FontWeight.w800, c: appInk(context, tone))),
-            const SizedBox(width: 3),
-            Text(suffix ?? anTr('an2_vs_class', 'vs class'), style: appText(10.5, w: FontWeight.w600, c: appInk(context, tone))),
+            Icon(up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, size: AppIconSize.xs, color: ink),
+            const SizedBox(width: AppSpace.xxs / 2),
+            Text(_signed(delta), textDirection: TextDirection.ltr, style: style),
+            const SizedBox(width: AppSpace.xxs),
+            Text(suffix ?? anTr('an2_vs_class', 'vs class'), style: style.copyWith(fontWeight: FontWeight.w500)),
           ],
         ]),
       ),
@@ -599,7 +609,7 @@ class AnStatTiles extends StatelessWidget {
     final shown = tiles.take(4).toList();
     return LayoutBuilder(builder: (context, box) {
       final cols = box.maxWidth >= 640 ? shown.length : 2;
-      const gap = 12.0;
+      const gap = AppSpace.sm;
       final w = (box.maxWidth - gap * (cols - 1)) / cols;
       return Wrap(spacing: gap, runSpacing: gap, children: [
         for (final t in shown)
@@ -633,16 +643,16 @@ class AnInsightCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return AnSurface(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Icon(Icons.auto_awesome_rounded, size: 18, color: appInk(context, c.primary)),
-          const SizedBox(width: 8),
-          Expanded(child: Text(title, style: appText(16, w: FontWeight.w800, c: c.textDark))),
+          Icon(Icons.auto_awesome_rounded, size: AppIconSize.sm, color: c.textMedium),
+          AppSpace.gapXs,
+          Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context))),
         ]),
-        const SizedBox(height: 8),
+        AppSpace.gapXs,
         for (var i = 0; i < rows.length; i++) ...[
-          if (i > 0) Divider(height: 1, thickness: 0.7, color: c.divider.withValues(alpha: 0.7), indent: 44),
+          if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider, indent: AppSpace.xl + AppSpace.sm),
           _InsightRow(row: rows[i]),
         ],
       ]),
@@ -664,31 +674,31 @@ class _InsightRow extends StatelessWidget {
       AnTone.good => (c.success, Icons.celebration_rounded),
     };
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: AppRadius.controlAll,
       onTap: row.onTap,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 48),
+        constraints: const BoxConstraints(minHeight: AppTouch.min),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(color: tone.withValues(alpha: 0.13), shape: BoxShape.circle),
-              child: Icon(icon, size: 16, color: appInk(context, tone)),
+              width: AppSpace.xl,
+              height: AppSpace.xl,
+              decoration: BoxDecoration(color: appTintOn(context, tone), shape: BoxShape.circle),
+              child: Icon(icon, size: AppIconSize.sm, color: appInk(context, tone)),
             ),
-            const SizedBox(width: 12),
+            AppSpace.gapSm,
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.only(top: 5),
-                child: Text(row.text, style: appText(13.5, w: FontWeight.w500, c: c.textDark, h: 1.45)),
+                padding: const EdgeInsets.only(top: AppSpace.xxs + AppSpace.xxs / 2),
+                child: Text(row.text, style: AppType.row(context)),
               ),
             ),
             if (row.onTap != null) ...[
-              const SizedBox(width: 8),
+              AppSpace.gapXs,
               Padding(
-                padding: const EdgeInsets.only(top: 7),
-                child: Icon(Icons.chevron_right_rounded, size: 20, color: c.textLight),
+                padding: const EdgeInsets.only(top: AppSpace.xxs),
+                child: Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.textLight),
               ),
             ],
           ]),
@@ -702,6 +712,7 @@ class _InsightRow extends StatelessWidget {
 // Segmented control
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// The metric switch: the kit's pill track ([AppTabs], the chosen pill solid primary). Keeps its typed API.
 class AnSegmented<T> extends StatelessWidget {
   const AnSegmented({super.key, required this.options, required this.value, required this.onChanged});
 
@@ -711,46 +722,11 @@ class AnSegmented<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      height: 40,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: c.isDark ? c.background : c.divider.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        for (final (v, label) in options)
-          Flexible(
-            child: Semantics(
-              button: true,
-              selected: v == value,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => onChanged(v),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOut,
-                  alignment: Alignment.center,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(
-                    color: v == value ? c.cardBg : Colors.transparent,
-                    borderRadius: BorderRadius.circular(9),
-                    boxShadow: v == value
-                        ? [BoxShadow(color: Colors.black.withValues(alpha: c.isDark ? 0.3 : 0.08), blurRadius: 6, offset: const Offset(0, 1))]
-                        : null,
-                  ),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(label,
-                        maxLines: 1,
-                        style: appText(12.5, w: v == value ? FontWeight.w800 : FontWeight.w600, c: v == value ? c.textDark : c.textMedium)),
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ]),
+    final i = options.indexWhere((o) => o.$1 == value);
+    return AppTabs(
+      items: [for (final (_, label) in options) AppTabItem(label)],
+      index: i < 0 ? 0 : i,
+      onChanged: (k) => onChanged(options[k].$1),
     );
   }
 }
@@ -804,7 +780,7 @@ class AnCourseBars extends StatelessWidget {
     final hasClass = shown.any((r) => r.classValue != null);
     final hasFlag = shown.any((r) => r.flag);
     return AnSurface(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xs),
       child: LayoutBuilder(builder: (context, box) {
         final seg = metrics.length > 1
             ? AnSegmented<AnMetric>(
@@ -816,21 +792,21 @@ class AnCourseBars extends StatelessWidget {
         final inline = seg != null && box.maxWidth >= 560;
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           _CardTitle(title, trailing: inline ? seg : null),
-          if (seg != null && !inline) ...[const SizedBox(height: 12), seg],
-          const SizedBox(height: 8),
+          if (seg != null && !inline) ...[AppSpace.gapSm, seg],
+          AppSpace.gapXs,
           if (shown.isEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Text(anTr('chart_no_data', 'No data yet'), textAlign: TextAlign.center, style: appText(13, c: c.textLight)),
+              padding: const EdgeInsets.symmetric(vertical: AppSpace.lg),
+              child: Text(anTr('chart_no_data', 'No data yet'), textAlign: TextAlign.center, style: AppType.meta(context)),
             ),
           for (final r in shown) _BarRow(row: r, color: col),
           if (hasClass || hasFlag) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpace.xxs),
             _BarsLegend(color: col, you: youLabel ?? anTr('an2_you', 'You'), classMark: hasClass, flag: hasFlag),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpace.xxs),
           ],
           if (onShowAll != null) ...[
-            Divider(height: 16, thickness: 0.7, color: c.divider.withValues(alpha: 0.7)),
+            Divider(height: AppSpace.md, thickness: AppBorder.hairline, color: c.divider),
             AnShowAllRow(label: showAllLabel ?? anFmt('an2_show_all', {'n': rows.length}, 'Show all ({n})'), onTap: onShowAll!),
           ],
         ]);
@@ -858,27 +834,28 @@ class _BarRow extends StatelessWidget {
       container: true,
       child: ExcludeSemantics(
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadius.controlAll,
           onTap: row.onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 9),
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
                 if (row.flag) ...[
-                  Container(width: 7, height: 7, decoration: BoxDecoration(color: c.warning, shape: BoxShape.circle)),
-                  const SizedBox(width: 6),
+                  Container(width: AppSpace.xs, height: AppSpace.xs, decoration: BoxDecoration(color: c.warning, shape: BoxShape.circle)),
+                  const SizedBox(width: AppSpace.xs),
                 ],
                 Expanded(
-                  child: Text(row.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
+                  child: Text(row.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
                 ),
-                const SizedBox(width: 8),
+                AppSpace.gapXs,
                 if (row.detail != null) ...[
-                  Text(row.detail!, style: appText(11.5, c: c.textLight)),
-                  const SizedBox(width: 8),
+                  Text(row.detail!, style: AppType.meta(context)),
+                  AppSpace.gapXs,
                 ],
-                Text(anPct(v), style: appText(14, w: FontWeight.w800, c: v == null ? c.textLight : c.textDark)),
+                Text(anPct(v), textDirection: TextDirection.ltr, style: AppType.bodyStrong(context).copyWith(
+                    color: v == null ? c.textLight : c.textDark, fontFeatures: const [FontFeature.tabularFigures()])),
               ]),
-              const SizedBox(height: 8),
+              AppSpace.gapXs,
               _Bar(value: v, marker: row.classValue, color: color),
             ]),
           ),
@@ -903,15 +880,13 @@ class _Bar extends StatelessWidget {
       return SizedBox(
         height: 14,
         child: Stack(alignment: AlignmentDirectional.centerStart, clipBehavior: Clip.none, children: [
-          Container(height: 8, decoration: BoxDecoration(color: color.withValues(alpha: c.isDark ? 0.18 : 0.13), borderRadius: BorderRadius.circular(8))),
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: pct),
-            duration: const Duration(milliseconds: 700),
-            curve: Curves.easeOutCubic,
-            builder: (_, t, _) => Container(
-              width: math.max(t > 0 ? 8 : 0, w * t),
-              height: 8,
-              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)),
+          Container(height: AppSpace.xs, decoration: BoxDecoration(color: color.withValues(alpha: c.isDark ? 0.18 : 0.13), borderRadius: BorderRadius.circular(AppRadius.pill))),
+          AppFill(
+            value: pct,
+            builder: (_, t) => Container(
+              width: math.max(t > 0 ? AppSpace.xs : 0, w * t),
+              height: AppSpace.xs,
+              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(AppRadius.pill)),
             ),
           ),
           if (marker != null)
@@ -943,24 +918,25 @@ class _BarsLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Wrap(spacing: 16, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+    final label = AppType.meta(context);
+    return Wrap(spacing: AppSpace.md, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
       if (classMark) ...[
         Row(mainAxisSize: MainAxisSize.min, children: [
-          Container(width: 14, height: 8, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4))),
-          const SizedBox(width: 6),
-          Text(you, style: appText(11.5, w: FontWeight.w600, c: c.textMedium)),
+          Container(width: AppIconSize.xs, height: AppSpace.xs, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(AppRadius.pill))),
+          const SizedBox(width: AppSpace.xs),
+          Text(you, style: label),
         ]),
         Row(mainAxisSize: MainAxisSize.min, children: [
-          Container(width: 3, height: 12, decoration: BoxDecoration(color: c.textDark.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(2))),
-          const SizedBox(width: 6),
-          Text(anTr('an2_class_avg', 'Class average'), style: appText(11.5, w: FontWeight.w600, c: c.textMedium)),
+          Container(width: 3, height: AppSpace.sm, decoration: BoxDecoration(color: c.textDark.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(AppRadius.pill))),
+          const SizedBox(width: AppSpace.xs),
+          Text(anTr('an2_class_avg', 'Class average'), style: label),
         ]),
       ],
       if (flag)
         Row(mainAxisSize: MainAxisSize.min, children: [
-          Container(width: 7, height: 7, decoration: BoxDecoration(color: c.warning, shape: BoxShape.circle)),
-          const SizedBox(width: 6),
-          Text(anTr('an_needs_attention', 'Needs attention'), style: appText(11.5, w: FontWeight.w600, c: c.textMedium)),
+          Container(width: AppSpace.xs, height: AppSpace.xs, decoration: BoxDecoration(color: c.warning, shape: BoxShape.circle)),
+          const SizedBox(width: AppSpace.xs),
+          Text(anTr('an_needs_attention', 'Needs attention'), style: label),
         ]),
     ]);
   }
@@ -976,14 +952,15 @@ class AnShowAllRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final ink = appInk(context, c.primary);
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: AppRadius.controlAll,
       onTap: onTap,
       child: SizedBox(
-        height: 44,
+        height: AppTouch.min,
         child: Row(children: [
-          Expanded(child: Text(label, style: appText(13.5, w: FontWeight.w700, c: appInk(context, c.primary)))),
-          Icon(expanded ? Icons.keyboard_arrow_up_rounded : Icons.chevron_right_rounded, size: 20, color: appInk(context, c.primary)),
+          Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: ink, fontWeight: FontWeight.w600))),
+          Icon(expanded ? Icons.keyboard_arrow_up_rounded : Icons.chevron_right_rounded, size: AppIconSize.md, color: ink),
         ]),
       ),
     );
@@ -1019,36 +996,37 @@ class _AnCompactListState extends State<AnCompactList> {
     if (widget.rows.isEmpty && widget.empty == null) return const SizedBox.shrink();
     final rows = _open ? widget.rows : widget.rows.take(widget.visible).toList();
     final more = widget.rows.length > widget.visible;
+    final rule = Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider);
     return AnSurface(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         _CardTitle(widget.title, subtitle: widget.subtitle),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpace.xxs),
         if (widget.rows.isEmpty)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            child: Text(widget.empty!, textAlign: TextAlign.center, style: appText(13, c: c.textLight, h: 1.45)),
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.lg),
+            child: Text(widget.empty!, textAlign: TextAlign.center, style: AppType.meta(context)),
           ),
         AnimatedSize(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
+          duration: AppMotion.of(context).base,
+          curve: AppEase.out,
           alignment: AlignmentDirectional.topStart,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             for (var i = 0; i < rows.length; i++) ...[
-              if (i > 0) Divider(height: 1, thickness: 0.7, color: c.divider.withValues(alpha: 0.7)),
+              if (i > 0) rule,
               rows[i],
             ],
           ]),
         ),
         if (more) ...[
-          Divider(height: 1, thickness: 0.7, color: c.divider.withValues(alpha: 0.7)),
+          rule,
           AnShowAllRow(
             expanded: _open,
             label: _open ? anTr('an2_show_less', 'Show less') : anFmt('an2_show_all', {'n': widget.rows.length}, 'Show all ({n})'),
             onTap: () => setState(() => _open = !_open),
           ),
         ] else
-          const SizedBox(height: 8),
+          AppSpace.gapXs,
       ]),
     );
   }
@@ -1076,27 +1054,26 @@ class AnExamRow extends StatelessWidget {
       child: ExcludeSemantics(
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadius.controlAll,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 56),
+            constraints: const BoxConstraints(minHeight: AppTouch.primary),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
+              padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
               child: Row(children: [
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
-                    const SizedBox(height: 2),
-                    Text(course, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
+                    Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+                    const SizedBox(height: AppSpace.xxs / 2),
+                    Text(course, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
                   ]),
                 ),
-                const SizedBox(width: 12),
+                AppSpace.gapSm,
                 Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Text(anPct(score), style: appText(15, w: FontWeight.w800, c: c.textDark)),
-                  const SizedBox(height: 2),
+                  Text(anPct(score), textDirection: TextDirection.ltr, style: AppType.figure(context)),
                   Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(p ? Icons.check_circle_rounded : Icons.error_rounded, size: 12, color: appInk(context, tone)),
-                    const SizedBox(width: 3),
-                    Text(word, style: appText(11, w: FontWeight.w700, c: appInk(context, tone))),
+                    Icon(p ? Icons.check_circle_rounded : Icons.error_rounded, size: AppIconSize.xs, color: appInk(context, tone)),
+                    const SizedBox(width: AppSpace.xxs),
+                    Text(word, style: AppType.meta(context).copyWith(color: appInk(context, tone), fontWeight: FontWeight.w600)),
                   ]),
                 ]),
               ]),
@@ -1124,9 +1101,9 @@ class AnPersonRow extends StatelessWidget {
       final low = v != null && v < limit;
       final ink = low ? appInk(context, c.danger) : c.textMedium;
       return Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 13, color: ink),
-        const SizedBox(width: 3),
-        Text(anPct(v), style: appText(12, w: FontWeight.w800, c: ink)),
+        Icon(icon, size: AppIconSize.xs, color: ink),
+        const SizedBox(width: AppSpace.xxs),
+        Text(anPct(v), textDirection: TextDirection.ltr, style: AppType.meta(context).copyWith(color: ink, fontWeight: FontWeight.w600)),
       ]);
     }
 
@@ -1137,30 +1114,34 @@ class AnPersonRow extends StatelessWidget {
       child: ExcludeSemantics(
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadius.controlAll,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 56),
+            constraints: const BoxConstraints(minHeight: AppTouch.primary),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
+              padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
               child: Row(children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.12), shape: BoxShape.circle),
-                  child: Text(initial, style: appText(14, w: FontWeight.w800, c: appInk(context, c.primary))),
-                ),
-                const SizedBox(width: 12),
+                // the initial on the student's own stable tone (peach / sky), never the reserved emerald
+                Builder(builder: (context) {
+                  final tone = AppBlockColors.of(context, AppBlockTone.forKey(name));
+                  return Container(
+                    width: AppSpace.xxl * 0.75,
+                    height: AppSpace.xxl * 0.75,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: tone.surface, shape: BoxShape.circle),
+                    child: Text(initial, style: AppType.bodyStrong(context).copyWith(color: tone.ink)),
+                  );
+                }),
+                AppSpace.gapSm,
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
-                    const SizedBox(height: 2),
-                    Text(course, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
+                    Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+                    const SizedBox(height: AppSpace.xxs / 2),
+                    Text(course, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
                   ]),
                 ),
-                const SizedBox(width: 8),
+                AppSpace.gapXs,
                 figure(Icons.event_available_rounded, attendance, kAnLowAttendance),
-                const SizedBox(width: 10),
+                AppSpace.gapSm,
                 figure(Icons.quiz_rounded, exams, kAnLowExams),
               ]),
             ),
@@ -1184,24 +1165,25 @@ class AnSummarySkeleton extends StatelessWidget {
     return AppShimmer(
       child: AnSummaryLayout(
         header: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(height: 8),
-          AppSkeletonBox(width: 160, height: 26),
-          SizedBox(height: 10),
-          AppSkeletonBox(width: 220, height: 12),
+          SizedBox(height: AppSpace.xs),
+          AppSkeletonBox(width: 160, height: AppSpace.lg),
+          SizedBox(height: AppSpace.sm),
+          AppSkeletonBox(width: 220, height: AppSpace.sm),
         ]),
-        hero: AnSurface(
-          padding: const EdgeInsets.all(20),
+        // the hero's shape: a block, not a card
+        hero: AppBlock(
+          hero: true,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const AppSkeletonBox(height: 16),
-            const SizedBox(height: 8),
-            const AppSkeletonBox(width: 180, height: 16),
-            const SizedBox(height: 20),
+            const AppSkeletonBox(height: AppSpace.lg),
+            AppSpace.gapXs,
+            const AppSkeletonBox(width: 180, height: AppSpace.lg),
+            AppSpace.gapLg,
             Row(children: [
               const AppSkeletonBox(width: 120, height: 120, radius: 60),
-              const SizedBox(width: 20),
+              AppSpace.gapLg,
               Expanded(
                 child: Column(children: [
-                  for (var i = 0; i < 3; i++) ...[if (i > 0) const SizedBox(height: 14), const AppSkeletonBox(height: 28)],
+                  for (var i = 0; i < 3; i++) ...[if (i > 0) AppSpace.gapSm, const AppSkeletonBox(height: AppSpace.xl)],
                 ]),
               ),
             ]),

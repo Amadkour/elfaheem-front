@@ -233,18 +233,18 @@ class StudioTopBar extends StatelessWidget implements PreferredSizeWidget {
               Text(t('الاستوديو', 'Studio'),
                   maxLines: 1,
                   textScaler: TextScaler.noScaling,
-                  style: appText(11, w: FontWeight.w700, c: bay.accent, h: 1.2)),
+                  style: AppType.overline(context).copyWith(color: bay.accent, letterSpacing: 0)),
               Text(title,
                   key: const ValueKey('studio.title_bar'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textScaler: TextScaler.noScaling,
-                  style: appText(14.5, w: FontWeight.w600, c: bay.ink, h: 1.25)),
+                  style: AppType.bodyStrong(context).copyWith(color: bay.ink)),
             ]),
           ),
           if (facts.isNotEmpty && MediaQuery.sizeOf(context).width >= 1100) ...[
             const SizedBox(width: AppSpace.md),
-            Text(facts.join('  ·  '), textDirection: TextDirection.ltr, maxLines: 1, style: _tabular(appText(12, c: bay.faint))),
+            Text(facts.join('  ·  '), textDirection: TextDirection.ltr, maxLines: 1, style: _tabular(AppType.meta(context).copyWith(color: bay.faint))),
           ],
           if (saveState != StudioSaveState.idle)
             Tooltip(
@@ -255,7 +255,7 @@ class StudioTopBar extends StatelessWidget implements PreferredSizeWidget {
                   Icon(saveIcon, size: AppIconSize.sm, color: saveTone, key: const ValueKey('studio.autosave')),
                   if (wide) ...[
                     const SizedBox(width: AppSpace.xxs),
-                    Text(saveText, maxLines: 1, textScaler: TextScaler.noScaling, style: appText(11.5, c: saveTone)),
+                    Text(saveText, maxLines: 1, textScaler: TextScaler.noScaling, style: AppType.meta(context).copyWith(color: saveTone)),
                   ],
                 ]),
               ),
@@ -339,7 +339,7 @@ class _BayChip extends StatelessWidget {
                 ],
                 Text(label,
                     textScaler: TextScaler.noScaling,
-                    style: _tabular(appText(12, w: FontWeight.w700, c: lit ? bay.accent : bay.muted))),
+                    style: _tabular(AppType.label(context).copyWith(color: lit ? bay.accent : bay.muted, fontWeight: FontWeight.w600))),
               ]),
             ),
           ),
@@ -855,8 +855,8 @@ class StudioToolPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    Widget caption(String text) => Text(text, style: appText(12.5, w: FontWeight.w600, c: c.textDark));
-    Widget note(String text, {Key? key}) => Text(text, key: key, style: appText(12, c: c.textMedium, h: 1.45));
+    Widget caption(String text) => Text(text, style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600));
+    Widget note(String text, {Key? key}) => Text(text, key: key, style: AppType.meta(context).copyWith(color: c.textMedium));
     Widget here(String key, String label, IconData icon, String tip, VoidCallback? onTap) => AppButton(
           key: ValueKey('studio.$key'),
           label: label,
@@ -921,7 +921,7 @@ class StudioToolPanel extends StatelessWidget {
               if (item.size > 0) t('الحجم الحالي ${weight(item.size)}', 'Now ${weight(item.size)}'),
               if (duration > 0) t('الجديد حتى نحو ${weight(ceiling)}', 'New: up to about ${weight(ceiling)}'),
             ].join(' · '),
-            style: _tabular(appText(13, w: FontWeight.w600, c: c.textDark, h: 1.4)),
+            style: _tabular(AppType.row(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
           ),
           if (height != null && height! > sourceHeight && sourceHeight > 0) ...[
             const SizedBox(height: AppSpace.xxs),
@@ -952,7 +952,7 @@ class StudioToolPanel extends StatelessWidget {
         Widget badge(String s, {bool on = true}) => CircleAvatar(
               radius: 12,
               backgroundColor: on ? c.primary : c.inputBg,
-              child: Text(s, style: _tabular(appText(11, w: FontWeight.w700, c: on ? c.onHero : c.textMedium))),
+              child: Text(s, style: _tabular(AppType.overline(context).copyWith(color: on ? c.onHero : c.textMedium, letterSpacing: 0))),
             );
         Widget row(RecordItem r, Widget lead, {bool picked = false, String? tag}) => AnimatedContainer(
               duration: AppMotion.of(context).fast,
@@ -970,8 +970,8 @@ class StudioToolPanel extends StatelessWidget {
                 const SizedBox(width: AppSpace.xs),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                    Text(tag ?? r.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w600, c: c.textDark)),
-                    Text(r.facts().join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textMedium)),
+                    Text(tag ?? r.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
+                    Text(r.facts().join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
                   ]),
                 ),
               ]),
@@ -1023,7 +1023,7 @@ class _InspectorHead extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
           Text(tool.label, key: const ValueKey('studio.tool_title'), style: AppType.section(context)),
           const SizedBox(height: 2),
-          Text(tool.description, style: appText(12.5, c: c.textMedium, h: 1.45)),
+          Text(tool.description, style: AppType.meta(context).copyWith(color: c.textMedium)),
         ]),
       ),
     ]);
@@ -1071,9 +1071,9 @@ class StudioSummary extends StatelessWidget {
         const SizedBox(width: AppSpace.xs),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text(line, style: _tabular(appText(13.5, w: FontWeight.w600, c: bad ? c.danger : c.textDark, h: 1.35))),
+            Text(line, style: _tabular(AppType.row(context).copyWith(color: bad ? c.danger : c.textDark, fontWeight: FontWeight.w600))),
             if (!bad)
-              Text(t('الأصل ${mmss(original)}', 'Original ${mmss(original)}'), style: _tabular(appText(11.5, c: c.textMedium))),
+              Text(t('الأصل ${mmss(original)}', 'Original ${mmss(original)}'), style: _tabular(AppType.meta(context).copyWith(color: c.textMedium))),
           ]),
         ),
       ]),
@@ -1157,7 +1157,7 @@ class _StudioSaveForm extends StatelessWidget {
               t('يُحفظ مسودة لا يراها الطلاب. بعد أن تجهز اختر نشرها مادة جديدة أو استبدال الأصل.',
                   "Saved as a draft students don't see. Once it is ready, publish it as a new material or in place of the original."),
               key: const ValueKey('studio.draft.note'),
-              style: appText(12, c: c.textMedium, h: 1.4),
+              style: AppType.meta(context).copyWith(color: c.textMedium),
             ),
           ),
         ])
@@ -1183,7 +1183,7 @@ class _StudioSaveForm extends StatelessWidget {
         const SizedBox(height: AppSpace.xs),
         Text(
           t('يُحذف الأصل من القائمة ومن السحابة بعد نجاح التعديل فقط.', 'The original is deleted from the list and the drive only once the edit is done.'),
-          style: appText(12, c: c.warning, h: 1.4),
+          style: AppType.meta(context).copyWith(color: c.warning),
         ),
       ],
     ]);
@@ -1318,7 +1318,7 @@ class StudioJobCard extends StatelessWidget {
         Expanded(
           child: Row(children: [
             Icon(i < at ? Icons.check_circle_rounded : (i == at ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded),
-                size: 14, color: i <= at ? (c.isDark ? c.textDark : c.primary) : c.textLight),
+                size: AppIconSize.xs, color: i <= at ? (c.isDark ? c.textDark : c.primary) : c.textLight),
             const SizedBox(width: 3),
             Flexible(
               child: Text(studioStageLabel(s),
@@ -1350,11 +1350,11 @@ class StudioJobCard extends StatelessWidget {
           Icon(icon, size: AppIconSize.sm, color: tone),
           const SizedBox(width: AppSpace.xs),
           Expanded(
-            child: Text(r.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w600, c: c.textDark)),
+            child: Text(r.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
           ),
           if (r.inProgress && r.progress != null) ...[
             const SizedBox(width: AppSpace.xs),
-            Text('${r.progress}%', key: ValueKey('studio.job.pct.${r.id}'), style: _tabular(appText(13, w: FontWeight.w700, c: c.textDark))),
+            Text('${r.progress}%', key: ValueKey('studio.job.pct.${r.id}'), style: _tabular(AppType.row(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600))),
           ],
         ]),
         if (r.inProgress) ...[
@@ -1378,7 +1378,7 @@ class StudioJobCard extends StatelessWidget {
           Row(children: [
             Expanded(
               child: Text([recordStatusLabel(r), ?etaText].join(' · '),
-                  maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textMedium, h: 1.3)),
+                  maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
             ),
             if (onCancel != null)
               TextButton.icon(
@@ -1392,7 +1392,7 @@ class StudioJobCard extends StatelessWidget {
         ] else if (r.isFailed) ...[
           const SizedBox(height: AppSpace.xxs),
           Text(r.cancelled ? t('أوقفت هذا التعديل. يمكنك إعادته متى شئت.', 'You stopped this edit. You can run it again any time.') : (r.error ?? t('تعذّر إكمال العمل', 'The work could not finish')),
-              style: appText(12, c: r.cancelled ? c.textMedium : c.danger, h: 1.35)),
+              style: AppType.meta(context).copyWith(color: r.cancelled ? c.textMedium : c.danger)),
           if ((onRetry != null && r.retryMode != 'auto') || actionsFor != null) ...[
             const SizedBox(height: AppSpace.xs),
             Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
@@ -1467,8 +1467,8 @@ class StudioJobCard extends StatelessWidget {
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(head, style: appText(14.5, w: FontWeight.w600, c: c.textDark, h: 1.3)),
-              if (sub != null) Text(sub, style: appText(12, c: c.textMedium, h: 1.35)),
+              Text(head, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
+              if (sub != null) Text(sub, style: AppType.meta(context).copyWith(color: c.textMedium)),
             ]),
           ),
         ]),
@@ -1585,7 +1585,7 @@ class _Stage extends StatelessWidget {
                           key: const ValueKey('studio.stage_note'),
                           padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs + 1),
                           decoration: BoxDecoration(color: bay.ink.withValues(alpha: 0.92), borderRadius: BorderRadius.circular(14)),
-                          child: Text(note!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: bay.deck)),
+                          child: Text(note!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: bay.deck, fontWeight: FontWeight.w600)),
                         ),
                       ),
                     ),
@@ -1803,10 +1803,10 @@ class StudioKeysHint extends StatelessWidget {
               borderRadius: BorderRadius.circular(5),
               border: Border.all(color: c.divider),
             ),
-            child: Text(k, textDirection: TextDirection.ltr, style: appText(11, w: FontWeight.w700, c: c.textDark)),
+            child: Text(k, textDirection: TextDirection.ltr, style: AppType.overline(context).copyWith(color: c.textDark, letterSpacing: 0)),
           ),
           const SizedBox(width: AppSpace.xxs),
-          Flexible(child: Text(what, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textMedium))),
+          Flexible(child: Text(what, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium))),
         ]);
     return Padding(
       padding: const EdgeInsets.only(top: AppSpace.lg),

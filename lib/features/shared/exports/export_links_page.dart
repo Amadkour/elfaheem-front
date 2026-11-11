@@ -286,7 +286,7 @@ class ExportLinkCard extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(color: fmtColor.withValues(alpha: 0.12), borderRadius: AppRadius.chipAll),
-              child: Icon(exportFormatIcon(fmt), color: fmtColor, size: 20),
+              child: Icon(exportFormatIcon(fmt), color: fmtColor, size: AppIconSize.md),
             ),
             const SizedBox(width: AppSpace.sm),
             Expanded(
@@ -361,7 +361,7 @@ class ExportLinkUrlBox extends StatelessWidget {
       decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll, border: Border.all(color: c.divider)),
       child: Directionality(
         textDirection: TextDirection.ltr,
-        child: SelectableText(url, style: appText(13, w: FontWeight.w500, c: c.textDark)),
+        child: SelectableText(url, style: AppType.label(context).copyWith(color: c.textDark)),
       ),
     );
   }
@@ -665,7 +665,7 @@ class ExportShareLinkBody extends StatelessWidget {
     Widget note(IconData icon, String text) => Padding(
           padding: const EdgeInsets.only(top: AppSpace.xs),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Padding(padding: const EdgeInsets.only(top: 2), child: Icon(icon, size: 16, color: c.textLight)),
+            Padding(padding: const EdgeInsets.only(top: 2), child: Icon(icon, size: AppIconSize.sm, color: c.textLight)),
             const SizedBox(width: AppSpace.xs),
             Expanded(child: Text(text, style: meta)),
           ]),
@@ -708,7 +708,7 @@ class ExportShareLinkBody extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       file,
       AppSpace.gapMd,
-      Text(tx('exs_link_who', 'Who can open it', 'من يمكنه فتحه'), style: AppType.section(context).copyWith(fontSize: 14)),
+      Text(tx('exs_link_who', 'Who can open it', 'من يمكنه فتحه'), style: AppType.bodyStrong(context)),
       AppSpace.gapXs,
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         AppChoiceChip(

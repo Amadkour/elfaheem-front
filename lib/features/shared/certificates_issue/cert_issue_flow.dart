@@ -948,12 +948,12 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         OutlinedButton.icon(
           onPressed: _openList,
-          icon: const Icon(Icons.folder_open_rounded, size: 18),
+          icon: const Icon(Icons.folder_open_rounded, size: AppIconSize.md),
           label: Text('ci_open_list'.tr),
         ),
         OutlinedButton.icon(
           onPressed: _draft.isEmpty ? null : _saveList,
-          icon: const Icon(Icons.bookmark_add_outlined, size: 18),
+          icon: const Icon(Icons.bookmark_add_outlined, size: AppIconSize.md),
           label: Text('ci_save_list'.tr),
         ),
       ]),
@@ -1122,7 +1122,7 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
               ),
           ] else
             Row(children: [
-              Icon(_withEmail ? Icons.mark_email_read_outlined : Icons.mail_lock_outlined, size: 18, color: context.colors.textMedium),
+              Icon(_withEmail ? Icons.mark_email_read_outlined : Icons.mail_lock_outlined, size: AppIconSize.md, color: context.colors.textMedium),
               const SizedBox(width: AppSpace.xs),
               Expanded(child: Text(_withEmail ? 'ci_email_on'.tr : 'ci_email_off'.tr, style: AppType.meta(context))),
             ]),
