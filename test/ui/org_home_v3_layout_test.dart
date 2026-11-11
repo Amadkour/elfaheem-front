@@ -260,6 +260,9 @@ void main() {
     await showOnce(tester, home(OrgHomeData.fromJson(memberPayload())!, admin: false), size: const Size(390, 844));
     expect(find.byType(OrgTaskRow), findsNWidgets(2));
     expect(find.text('Approve'), findsNothing);
+    // the phone home opens on its hero (D-631): the departments come into view a scroll further down
+    await tester.drag(find.byType(ListView).first, const Offset(0, -300));
+    await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('My departments'), findsOneWidget);
     expect(tester.getTopLeft(find.byType(OrgNeedsYouSection)).dy, lessThan(tester.getTopLeft(find.byType(OrgDepartmentsSection)).dy));
     await tester.pumpWidget(const SizedBox());
