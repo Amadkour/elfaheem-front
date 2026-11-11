@@ -200,24 +200,11 @@ void main() {
     );
   });
 
-  testWidgets('Reduce motion parks the card\'s light sweep; otherwise it crosses and rests', (t) async {
-    Widget card(bool still) => MediaQuery(
-      data: MediaQueryData(disableAnimations: still),
-      child: layoutHost(_scroll(HomeJourneyCard(journey: _journey(), onTap: () {}))),
-    );
-    await t.pumpWidget(card(true));
-    await t.pump(const Duration(milliseconds: 600));
-    final band = find.descendant(of: find.byType(AppShineBand), matching: find.byType(Transform));
-    expect(band, findsNothing, reason: 'Reduce motion: no band');
-    await t.pumpWidget(card(false));
-    await t.pump(const Duration(milliseconds: 600));
-    expect(band, findsOneWidget, reason: 'the band crosses in the first part of the cycle');
-    await t.pump(const Duration(milliseconds: 1400));
-    expect(band, findsNothing, reason: 'then rests out of sight for the rest of the 6 s');
-    expect(t.binding.hasScheduledFrame, isFalse, reason: 'resting costs no frames (a timer starts the next pass)');
-    await t.pump(const Duration(milliseconds: 4300));
-    await t.pump(const Duration(milliseconds: 300));
-    expect(band, findsOneWidget, reason: 'the next pass starts by itself');
+  testWidgets('the journey card is calm: no light sweep, no frame scheduled at rest (the home leads with Continue)', (t) async {
+    await t.pumpWidget(layoutHost(_scroll(HomeJourneyCard(journey: _journey(), onTap: () {}))));
+    await t.pump(const Duration(seconds: 2));
+    expect(find.byType(AppShineBand), findsNothing);
+    expect(t.binding.hasScheduledFrame, isFalse, reason: 'nothing loops on the card');
     await t.pumpWidget(const SizedBox());
   });
 

@@ -1,5 +1,11 @@
+// lib/features/student/reward/rewards_screen.dart — achievements (RewardsProvider; not routed from the student
+// shell today). Editorial theme: the overview leads with ONE gold block (achievements are what gold is for,
+// system.md §2) holding a drawn trophy and the points rolling (AppOdometer); the courses as round covers; the detail
+// view's achievements, leaderboard and tips as paper cards with editorial section titles; ranks are drawn medals
+// (vector), never emoji.
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/design/app_gradients.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/config/app_config.dart' as Helpers;
@@ -7,7 +13,6 @@ import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import 'rewards_provider.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class RewardsScreen extends StatelessWidget {
   const RewardsScreen({super.key});
@@ -18,20 +23,17 @@ class RewardsScreen extends StatelessWidget {
       textDirection: Helpers.pageDirection,
       child: Consumer<RewardsProvider>(
         builder: (_, provider, _) => AnimatedSwitcher(
-          duration: const Duration(milliseconds: 350),
+          duration: AppMotion.of(context).base,
+          switchInCurve: AppEase.out,
+          switchOutCurve: AppEase.out,
           transitionBuilder: (child, anim) => FadeTransition(
             opacity: anim,
-            child:   SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0.04, 0),
-                end:   Offset.zero,
-              ).animate(anim),
+            child: SlideTransition(
+              position: Tween<Offset>(begin: const Offset(0.04, 0), end: Offset.zero).animate(anim),
               child: child,
             ),
           ),
-          child: provider.showDetail
-              ? const _DetailView(key: ValueKey('detail'))
-              : const _OverviewView(key: ValueKey('overview')),
+          child: provider.showDetail ? const _DetailView(key: ValueKey('detail')) : const _OverviewView(key: ValueKey('overview')),
         ),
       ),
     );
@@ -48,7 +50,7 @@ class _OverviewView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<RewardsProvider>();
-    final courses  = provider.enrolledCourses;
+    final courses = provider.enrolledCourses;
 
     return Scaffold(
       backgroundColor: context.colors.background,
@@ -59,87 +61,45 @@ class _OverviewView extends StatelessWidget {
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, AppSpace.xs, AppSpace.md + AppSpace.xxs, AppSpace.xl),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // ── Trophy ───────────────────────────────────────────────
-                    GestureDetector(
-                      onTap: provider.openDetail,
-                      child: Container(
-                        width:  double.infinity,
-                        height: 220,
-                        decoration: BoxDecoration(
-                          gradient: AppGradients.brand(context),
-                          borderRadius:
-                              BorderRadius.circular(context.colors.radiusLarge),
-                          boxShadow: context.colors.primaryShadow,
-                        ),
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // Decorative circles
-                            Positioned(
-                              top:   -30,
-                              right: -30,
-                              child: Container(
-                                width:  140,
-                                height: 140,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: context.colors.onHero.withValues(alpha: 0.08),
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              bottom: -20,
-                              left:   -20,
-                              child: Container(
-                                width:  100,
-                                height: 100,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: context.colors.onHero.withValues(alpha: 0.06),
-                                ),
-                              ),
-                            ),
-                            Icon(Icons.emoji_events_rounded,
-                                size: 100, color: context.colors.warning),
-                          ],
+                    // ── the trophy block: the page's one memorable element ─────────────
+                    RepaintBoundary(
+                      child: AppTilt(
+                        radius: AppRadius.block,
+                        maxTilt: 2.5,
+                        glare: true,
+                        child: AppBlock(
+                          tone: AppBlockTone.gold,
+                          hero: true,
+                          onTap: provider.openDetail,
+                          child: _TrophyHero(points: provider.totalPoints),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 28),
-                    // ── Enrolled courses grid ─────────────────────────────────
                     if (courses.isNotEmpty) ...[
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text('كورساتي', style: context.colors.h2),
+                      Padding(
+                        padding: AppSpace.sectionHead,
+                        child: Text('كورساتي', style: AppType.section(context)),
                       ),
-                      const SizedBox(height: 16),
                       GridView.builder(
                         shrinkWrap: true,
-                        physics:    const NeverScrollableScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount:   2,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing:  16,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: AppSpace.md,
+                          mainAxisSpacing: AppSpace.md,
                           childAspectRatio: 0.9,
                         ),
                         itemCount: courses.length > 4 ? 4 : courses.length,
-                        itemBuilder: (_, i) =>
-                            _CourseCircle(course: courses[i]),
+                        itemBuilder: (_, i) => _CourseCircle(course: courses[i]),
                       ),
-                    ] else
-                      Column(
-                        children: [
-                           Icon(Icons.school_outlined,
-                              size: 64, color: context.colors.textLight),
-                          const SizedBox(height: 12),
-                          Text('سجّل في كورس لتبدأ رحلتك!',
-                              style: context.colors.body),
-                        ],
-                      ),
+                    ] else ...[
+                      AppSpace.gapLg,
+                      const AppEmpty(icon: Icons.school_outlined, title: 'سجّل في كورس لتبدأ رحلتك!', tone: AppBlockTone.gold),
+                    ],
                   ],
                 ),
               ),
@@ -151,6 +111,46 @@ class _OverviewView extends StatelessWidget {
   }
 }
 
+/// The trophy and the points: a drawn cup on a paper plate, the figure rolling to its value.
+class _TrophyHero extends StatelessWidget {
+  const _TrophyHero({required this.points});
+
+  final int points;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ink = AppBlock.colorsOf(context);
+    return Row(children: [
+      AppTiltLayer(
+        child: Container(
+          width: AppTouch.min * 2,
+          height: AppTouch.min * 2,
+          decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.block)),
+          child: Icon(Icons.emoji_events_rounded, size: AppTouch.min + AppSpace.xs, color: ink.accentInk(c.accent2)),
+        ),
+      ),
+      AppSpace.gapLg,
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('الإنجازات', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: ink.muted)),
+          const SizedBox(height: AppSpace.xxs),
+          Wrap(crossAxisAlignment: WrapCrossAlignment.end, spacing: AppSpace.xs, children: [
+            AppOdometer('$points',
+                memoryKey: 'rewards.points',
+                style: AppType.figureLarge(context).copyWith(color: ink.ink, fontSize: AppType.display(context).fontSize, height: 1.1)),
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
+              child: Text('نقطة', style: AppType.section(context).copyWith(color: ink.ink)),
+            ),
+          ]),
+        ]),
+      ),
+      Icon(Icons.chevron_right_rounded, size: AppIconSize.lg, color: ink.muted),
+    ]);
+  }
+}
+
 class _CourseCircle extends StatelessWidget {
   final dynamic course;
 
@@ -158,31 +158,34 @@ class _CourseCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // the cover takes the room the grid cell leaves above the name (a phone's narrow cell never overflows)
     return Column(
       children: [
-        Container(
-          width:  120,
-          height: 120,
+        Expanded(
+          child: AspectRatio(
+          aspectRatio: 1,
+          child: Container(
           decoration: BoxDecoration(
-            shape:     BoxShape.circle,
-            boxShadow: context.colors.cardShadow,
+            shape: BoxShape.circle,
+            border: Border.all(color: context.colors.divider, width: AppBorder.hairline),
           ),
           child: ClipOval(
             child: AppNetworkImage(
               url: course.imageUrl as String,
               fit: BoxFit.cover,
               heroTag: "reward-screen-${course.id}",
-
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        ),
+        ),
+        AppSpace.gapXs,
         Text(
           course.name as String,
-          style:     context.colors.label.copyWith(color: context.colors.textDark),
+          style: AppType.row(context),
           textAlign: TextAlign.center,
-          maxLines:  2,
-          overflow:  TextOverflow.ellipsis,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
       ],
     );
@@ -205,42 +208,29 @@ class _DetailView extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            ScreenAppBar(title: 'إنجازاتي'),
+            const ScreenAppBar(title: 'إنجازاتي'),
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, 0, AppSpace.md + AppSpace.xxs, AppSpace.xl),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // ── Avatar + laurel + points ───────────────────────────
                     _UserTrophy(provider: provider),
-                    const SizedBox(height: 24),
-                    // ── Achievements ─────────────────────────────────────────
                     _Section(
-                      title:    'الإنجازات 🏆',
-                      color:    context.colors.primary,
-                      children: provider.achievements
-                          .map((a) => _AchievementRow(item: a))
-                          .toList(),
+                      title: 'الإنجازات',
+                      icon: Icons.emoji_events_rounded,
+                      children: provider.achievements.map((a) => _AchievementRow(item: a)).toList(),
                     ),
-                    const SizedBox(height: 16),
-                    // ── Leaderboard ──────────────────────────────────────────
                     _Section(
-                      title:    'لوحة المتصدرين 🥇',
-                      color:    context.colors.accent,
-                      children: provider.leaderboard
-                          .map((e) => _LeaderRow(entry: e))
-                          .toList(),
+                      title: 'لوحة المتصدرين',
+                      icon: Icons.leaderboard_rounded,
+                      children: provider.leaderboard.map((e) => _LeaderRow(entry: e)).toList(),
                     ),
-                    const SizedBox(height: 16),
-                    // ── Tips ─────────────────────────────────────────────────
                     _Section(
-                      title:    'هل تريد أن تصبح الطالب المتفوق؟ 🔥',
-                      color:    context.colors.danger,
-                      children: provider.tips
-                          .map((a) => _AchievementRow(item: a))
-                          .toList(),
+                      title: 'هل تريد أن تصبح الطالب المتفوق؟',
+                      icon: Icons.tips_and_updates_rounded,
+                      children: provider.tips.map((a) => _AchievementRow(item: a)).toList(),
                     ),
                   ],
                 ),
@@ -260,95 +250,62 @@ class _UserTrophy extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Stack(
-          alignment: Alignment.bottomCenter,
-          children: [
-            // Laurel icon background
-            Container(
-              width:  110,
-              height: 110,
-              decoration: BoxDecoration(
-                shape:     BoxShape.circle,
-                color:     context.colors.accent.withValues(alpha: 0.1),
-                border: Border.all(
-                    color: context.colors.accent.withValues(alpha: 0.3), width: 3),
-              ),
-              child:  Icon(Icons.person_rounded,
-                  size: 60, color: context.colors.accent),
-            ),
-            // Ribbon
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              decoration: BoxDecoration(
-                color:        context.colors.accent,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                'أحمد محمد',
-                style: TextStyle(
-                  color:      context.colors.onHero,
-                  fontWeight: FontWeight.w800,
-                  fontSize:   13,
-                  fontFamily: AppFonts.display,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Text(
-          '${provider.totalPoints} نقطة',
-          style: context.colors.h2.copyWith(color: context.colors.primary),
-        ),
-      ],
+    return AppBlock(
+      tone: AppBlockTone.gold,
+      child: Builder(builder: (context) {
+        final c = context.colors;
+        final ink = AppBlock.colorsOf(context);
+        return Row(children: [
+          Container(
+            width: AppTouch.primary,
+            height: AppTouch.primary,
+            decoration: BoxDecoration(color: c.cardBg, shape: BoxShape.circle),
+            child: Icon(Icons.person_rounded, size: AppIconSize.xl, color: ink.accentInk(c.accent2)),
+          ),
+          AppSpace.gapMd,
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('أحمد محمد', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: ink.ink)),
+              const SizedBox(height: AppSpace.xxs),
+              AppOdometer('${provider.totalPoints} نقطة', memoryKey: 'rewards.points.detail', style: AppType.figure(context).copyWith(color: ink.ink)),
+            ]),
+          ),
+        ]);
+      }),
     );
   }
 }
 
+/// A group of rows on a paper card under an editorial heading with a quiet glyph.
 class _Section extends StatelessWidget {
-  final String       title;
-  final Color        color;
+  final String title;
+  final IconData icon;
   final List<Widget> children;
 
-  const _Section({
-    required this.title,
-    required this.color,
-    required this.children,
-  });
+  const _Section({required this.title, required this.icon, required this.children});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color:        context.colors.cardBg,
-        borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-        boxShadow:    context.colors.cardShadow,
+    final c = context.colors;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(
+        padding: AppSpace.sectionHead,
+        child: Row(children: [
+          Icon(icon, size: AppIconSize.md, color: c.textMedium),
+          AppSpace.gapXs,
+          Expanded(child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context))),
+        ]),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color:        color.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.only(
-                topRight: Radius.circular(context.colors.radiusMedium),
-                topLeft:  Radius.circular(context.colors.radiusMedium),
-              ),
-            ),
-            child: Text(title,
-                style: context.colors.h3.copyWith(color: color, fontSize: 14)),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Column(children: children),
-          ),
-        ],
+      AppCard(
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
+        child: Column(children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider, indent: AppSpace.md, endIndent: AppSpace.md),
+            children[i],
+          ],
+        ]),
       ),
-    );
+    ]);
   }
 }
 
@@ -359,27 +316,29 @@ class _AchievementRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final earned = item.earned as bool;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              item.title as String,
-              style: context.colors.label.copyWith(
-                color:      earned ? context.colors.textDark : context.colors.textLight,
-                decoration: earned ? null : TextDecoration.lineThrough,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: AppTouch.min),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                item.title as String,
+                style: AppType.row(context).copyWith(color: earned ? c.textDark : c.textLight),
               ),
             ),
-          ),
-          Icon(
-            earned ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
-            color: earned ? context.colors.success : context.colors.textLight,
-            size:  20,
-          ),
-        ],
+            AppSpace.gapXs,
+            Icon(
+              earned ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+              color: earned ? appInk(context, c.success) : c.textLight,
+              size: AppIconSize.md,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -390,24 +349,47 @@ class _LeaderRow extends StatelessWidget {
 
   const _LeaderRow({required this.entry});
 
-  static const _medals = ['🥇', '🥈', '🥉'];
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: AppTouch.min),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+        child: Row(
+          children: [
+            _Medal(rank: entry.rank),
+            AppSpace.gapSm,
+            Expanded(child: Text(entry.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context))),
+            Text('${entry.points}', style: AppType.figure(context).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A drawn medal: the top three on the gold tint (top marks are what gold is for), the rest a quiet numbered disc.
+class _Medal extends StatelessWidget {
+  const _Medal({required this.rank});
+
+  final int rank;
 
   @override
   Widget build(BuildContext context) {
-    final medal =
-        entry.rank <= 3 ? _medals[entry.rank - 1] : '${entry.rank}.';
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        children: [
-          Text(entry.name,
-              style: context.colors.label.copyWith(color: context.colors.textDark)),
-          const Spacer(),
-          Text(medal,
-              style: const TextStyle(fontSize: 18)),
-        ],
+    final c = context.colors;
+    final top = rank <= 3;
+    return Container(
+      width: AppIconSize.xl,
+      height: AppIconSize.xl,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: top ? c.blockGold : c.inputBg,
+        shape: BoxShape.circle,
+        border: Border.all(color: top ? c.blockAccentInk(c.accent2, c.blockGold) : c.divider, width: AppBorder.strong),
       ),
+      child: Text('$rank',
+          style: AppType.label(context).copyWith(
+              fontWeight: FontWeight.w600, color: top ? c.blockAccentInk(c.accent2, c.blockGold) : c.textMedium)),
     );
   }
 }

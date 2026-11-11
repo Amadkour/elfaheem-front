@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
+import 'package:flutter_education_app/features/student/home/home_continue.dart';
 import 'package:flutter_education_app/features/student/home/home_event_rows.dart';
 import 'package:flutter_education_app/features/student/home/home_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -138,8 +139,30 @@ void main() {
         UpcomingList(events: h.upcoming, onTap: (_) {}),
         StudentCourseSummary(courses: h.coursesProgress, onOpen: (_) {}, onShowAll: () {}),
         StudentCourseSummary(courses: h.coursesProgress.take(1).toList()),
+        StudentCourseSummary(courses: h.coursesProgress, featuredId: 11, onOpen: (_) {}, onShowAll: () {}),
       ]),
     );
+  });
+
+  testWidgets('the editorial blocks: Continue learning (phone and wide), a free day with and without a next class', (tester) async {
+    final h = full();
+    final x = h.coursesProgress.first;
+    await expectNoLayoutErrors(
+      tester,
+      () => ListView(children: [
+        StudentContinueBlock(course: x, line: '$longEn $longAr', onOpen: () {}),
+        StudentContinueBlock(course: h.coursesProgress.last, line: longEn),
+        StudentFreeDayBlock(next: h.upcoming.first, onOpenNext: () {}, onTimetable: () {}),
+        const StudentFreeDayBlock(),
+      ]),
+    );
+  });
+
+  test('the Continue block offers the first unfinished course of the focus order, none when all are done', () {
+    final h = full();
+    expect(homeContinueCourse(h.coursesProgress)!.courseId, 11);
+    expect(homeContinueCourse([for (final x in h.coursesProgress) if (x.progress >= 100) x]), isNull);
+    expect(homeContinueCourse(const []), isNull);
   });
 
   test('course summary order: the soonest next lecture, then the furthest along, finished last', () {

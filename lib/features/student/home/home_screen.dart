@@ -2,6 +2,10 @@
 //
 //   header        greeting · name · calendar · notifications · ContextSwitcher (Personal ↔ organizations) · search
 //   Personal (StudentHomeBody, plain values from ONE call — GET /api/v1/me/home, MeHomeService):
+//     continue    the editorial lead under the greeting (StudentContinueBlock, home_continue.dart): the ONE course to
+//                 pick up now on the emerald block — next lecture, the progress filling and its figure rolling, one
+//                 Continue button; "My courses" below leaves it out. A free day draws the sky block instead of a
+//                 folded "Today" (StudentFreeDayBlock: what comes next · Full timetable)
 //     live now    HomeLiveNow: a course session / meeting on air that I may join (one tap), only while it runs — the
 //                 page's one strong accent (no "next up" hero card: it repeated Today's first row, which now says
 //                 "Ends in … · room" / "Starts in …")
@@ -24,6 +28,8 @@
 //                 never awaited for the first paint; each leaf listens on its own)
 //   Organization: OrgMemberHome of the selected organization (from the same payload's org_overview).
 //
+// Motion: ONE orchestrated entrance — the greeting block leads, the first two blocks under it follow 50 ms apart
+// (HomeEntrance); everything below simply is there (no fade-up on every section).
 // Loading: one coordinated AppListSkeleton; failure: ErrorRetry (+ auto-retry when back online); an older server
 // without /me/home gets the same body from today's separate calls (MeHomeService's legacy composition).
 // No context.watch at the top: the header, the search box and the feeds listen at the leaves.
@@ -50,6 +56,7 @@ import 'package:flutter_education_app/features/shared/course/home_course_list.da
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxEntry, InboxItem, InboxScreen, inboxEntryCounts, inboxEntryShown;
 import 'package:flutter_education_app/features/shared/roadmap/journey_page.dart';
 import 'package:flutter_education_app/features/shared/roadmap/recommendations.dart' show showInterestsSheet;
+import 'package:flutter_education_app/features/student/home/home_continue.dart';
 import 'package:flutter_education_app/features/student/home/home_event_rows.dart';
 import 'package:flutter_education_app/features/student/home/home_journey.dart';
 import 'package:flutter_education_app/features/student/home/home_live.dart';
@@ -208,8 +215,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 slivers: [
                   SliverToBoxAdapter(child: header),
                   // the desktop header carries the search at its end
-                  SliverToBoxAdapter(child: HomeNarrowOnly(child: Padding(padding: const EdgeInsets.only(bottom: 16), child: search()))),
-                  const SliverToBoxAdapter(child: SizedBox(height: 8)),
+                  SliverToBoxAdapter(child: HomeNarrowOnly(child: Padding(padding: const EdgeInsets.only(bottom: AppSpace.md), child: search()))),
+                  const SliverToBoxAdapter(child: SizedBox(height: AppSpace.xs)),
                   SliverToBoxAdapter(
                     child: ListenableBuilder(
                       listenable: Listenable.merge([homeTabs, AppModeController.instance]),
@@ -363,7 +370,7 @@ class StudentHomeBody extends StatelessWidget {
     if (data.guest) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         const HomeEntrance(index: 1, child: ParentComponent(key: ValueKey('student_home.upcoming_banner'), child: GuestPromoCard())),
-        const SizedBox(height: 16),
+        AppSpace.gapMd,
         ?feeds,
       ]);
     }
@@ -373,8 +380,8 @@ class StudentHomeBody extends StatelessWidget {
         if (data.error != null && !data.loading)
           ErrorRetry(message: data.error!, onRetry: onRetry ?? () {})
         else
-          const AppListSkeleton(items: 6, padding: EdgeInsets.fromLTRB(20, 0, 20, 0)),
-        const SizedBox(height: 16),
+          const AppListSkeleton(items: 6, padding: EdgeInsets.symmetric(horizontal: kStudentHomeInset)),
+        AppSpace.gapMd,
         ?feeds,
       ]);
     }
@@ -432,10 +439,27 @@ class _Sections extends StatelessWidget {
     // unread notifications to it (every count once)
     final entryShown = inboxEntryShown(inboxCounts, unread: home.notificationsUnread);
     final unread = entryShown ? 0 : home.notificationsUnread;
+    // ONE orchestrated entrance: the greeting (index 0, the header) leads and the first two blocks under it follow;
+    // the rest of the page is simply there
     var i = 1;
-    Widget enter(Widget w) => HomeEntrance(index: i++, child: w);
+    Widget enter(Widget w) => i > 2 ? w : HomeEntrance(index: i++, child: w);
     final live = data.liveNow;
+    final events = [...home.today, ...home.upcoming];
     final anyCount = todo > 0 || unread > 0 || data.orgWaiting > 0;
+
+    // ── the lead: the course to pick up now, on the emerald block (its line is the course list's own)
+    final featured = homeContinueCourse(home.coursesProgress, events: events);
+    final cont = featured == null
+        ? null
+        : enter(Padding(
+            padding: const EdgeInsets.symmetric(horizontal: kStudentHomeInset),
+            child: StudentContinueBlock(
+              course: featured,
+              line: homeNextLectureLine(featured,
+                  event: homeCourseNextEvents(events)[featured.courseId], last: homeCourseLastEvents(events)[featured.courseId]),
+              onOpen: body.onOpenCourse == null ? null : () => body.onOpenCourse!(featured.courseId),
+            ),
+          ));
 
     // ── what waits for me: one slim row of the counts above zero (the greeting says "all caught up" otherwise);
     //    the inbox is not one of them: its own entry below carries its count
@@ -467,7 +491,16 @@ class _Sections extends StatelessWidget {
 
     // ── today: one line per item, live first, 3 + "Show all"; a free day folds by itself and names what comes next
     //    ("This week" left the home: the schedule page has the week, the folded line names the next class)
-    final today = enter(HomeSection(
+    final today = home.today.isEmpty
+        ? enter(Padding(
+            padding: const EdgeInsets.symmetric(horizontal: kStudentHomeInset),
+            child: StudentFreeDayBlock(
+              next: home.firstUpcoming,
+              onOpenNext: home.firstUpcoming == null ? null : () => _open(home.firstUpcoming),
+              onTimetable: () => body.onTab('my_schedule'),
+            ),
+          ))
+        : enter(HomeSection(
       id: 'student.today',
       title: 'home_today'.tr,
       count: home.today.length,
@@ -487,7 +520,8 @@ class _Sections extends StatelessWidget {
     ));
 
     // ── my courses, summarized (the full cards live on the courses tab)
-    final courses = enter(HomeSection(
+    final others = featured == null ? home.coursesProgress.length : home.coursesProgress.length - 1;
+    final courses = home.coursesProgress.isNotEmpty && others == 0 ? null : enter(HomeSection(
       id: 'student.courses',
       title: 'my_courses'.tr,
       count: home.coursesProgress.length,
@@ -497,7 +531,7 @@ class _Sections extends StatelessWidget {
       onAction: home.coursesProgress.isEmpty ? () => body.onTab('my_courses') : null,
       child: home.coursesProgress.isEmpty
           ? Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: kStudentHomeInset),
               child: AppEmpty(
                 icon: Icons.auto_stories_rounded,
                 title: 'home_s_no_courses'.tr,
@@ -506,7 +540,13 @@ class _Sections extends StatelessWidget {
                 onAction: () => body.onTab('my_courses'),
               ),
             )
-          : StudentCourseSummary(courses: home.coursesProgress, events: [...home.today, ...home.upcoming], onOpen: body.onOpenCourse, onShowAll: () => body.onTab('my_courses')),
+          : StudentCourseSummary(
+              courses: home.coursesProgress,
+              events: events,
+              featuredId: featured?.courseId,
+              onOpen: body.onOpenCourse,
+              onShowAll: () => body.onTab('my_courses'),
+            ),
     ));
 
     // ── the ONE journey card (D-120), under the courses and with them on every layout; no clear field → nothing
@@ -516,9 +556,9 @@ class _Sections extends StatelessWidget {
     final coursesBlock = j == null && !invite
         ? courses
         : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            courses,
+            ?courses,
             enter(Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+              padding: EdgeInsets.fromLTRB(kStudentHomeInset, courses == null ? 0 : AppSpace.md, kStudentHomeInset, 0),
               child: j != null
                   ? HomeJourneyCard(
                       journey: j,
@@ -544,15 +584,15 @@ class _Sections extends StatelessWidget {
       // phone: needs you · today · courses · inbox. The desktop dashboard: what happens (today, my courses) beside
       // what waits (needs you as a list, the inbox); with nothing waiting the courses card takes the side column
       HomeDashboard(
-        narrow: [?needs, today, coursesBlock, ?inbox],
-        main: [today, if (needs != null || inbox != null) coursesBlock],
-        side: needs == null && inbox == null ? [coursesBlock] : [?needs, ?inbox],
+        narrow: [?cont, ?needs, today, ?coursesBlock, ?inbox],
+        main: [?cont, today, if (needs != null || inbox != null) ?coursesBlock],
+        side: needs == null && inbox == null ? [?coursesBlock] : [?needs, ?inbox],
       ),
       ?body.feeds,
     ]);
   }
 
-  static const _bannerPad = EdgeInsets.fromLTRB(20, 0, 20, 24);
+  static const _bannerPad = EdgeInsets.fromLTRB(kStudentHomeInset, 0, kStudentHomeInset, AppSpace.lg);
 
   void _open(CalEvent? e) {
     if (e == null) {
@@ -575,9 +615,9 @@ class _Feeds extends StatelessWidget {
     final guest = GuestState.active;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       // ── Featured (ads) — after personal content, never above the greeting
-      const HomeAdsSlider(padding: EdgeInsets.fromLTRB(20, 4, 20, 14)), // the sections' 20 px inset
+      const HomeAdsSlider(padding: EdgeInsets.fromLTRB(kStudentHomeInset, AppSpace.xxs, kStudentHomeInset, AppSpace.md)), // the sections' inset
       // ── Organizations (join a university / faculty)
-      if (!guest) const ParentComponent(key: ValueKey('student_home.org'), child: Padding(padding: EdgeInsets.symmetric(horizontal: 20), child: HomeOrgMix())),
+      if (!guest) const ParentComponent(key: ValueKey('student_home.org'), child: Padding(padding: EdgeInsets.symmetric(horizontal: kStudentHomeInset), child: HomeOrgMix())),
       // ── the marketing call (GET /teacher/student-dashboard): other courses · categories · best teachers
       Consumer<HomeProvider>(builder: (context, provider, _) => _MarketingFeeds(provider: provider, guest: guest)),
     ]);
@@ -592,14 +632,15 @@ class _MarketingFeeds extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (provider.isLoading && !provider.hasData) {
-      return const Padding(padding: EdgeInsets.only(top: 12), child: AppListSkeleton(items: 2, padding: EdgeInsets.fromLTRB(20, 0, 20, 0)));
+      return const Padding(
+          padding: EdgeInsets.only(top: AppSpace.sm), child: AppListSkeleton(items: 2, padding: EdgeInsets.symmetric(horizontal: kStudentHomeInset)));
     }
     final categories = context.read<CategoriesProvider>().categories;
     // every feed uses the home's section title; an empty feed draws nothing (no empty box below the fold)
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       // ── guests: the catalogue's enrolled list is empty, their own courses live in "My courses"
       if (guest && provider.myCourses.isNotEmpty) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.xl),
         ParentComponent(
           featureKey: 'student_home.courses',
           child: HomeSectionTitle(
@@ -608,7 +649,7 @@ class _MarketingFeeds extends StatelessWidget {
             onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CoursesListScreen(homeCourses: provider.myCourses, forMyCourses: true))),
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.sm),
         ParentComponent(
           featureKey: 'student_home.courses',
           child: HomeCourseList(
@@ -625,7 +666,7 @@ class _MarketingFeeds extends StatelessWidget {
 
       // ── Other courses (at most 8 here; "Show more" lists them all)
       if (provider.otherCourses.isNotEmpty) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.xl),
         ParentComponent(
           featureKey: 'student_home.other_courses',
           child: HomeSectionTitle(
@@ -634,7 +675,7 @@ class _MarketingFeeds extends StatelessWidget {
             onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CoursesListScreen(homeCourses: provider.otherCourses, forMyCourses: false))),
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.sm),
         ParentComponent(
           featureKey: 'student_home.other_courses',
           child: HomeCourseList(
@@ -648,11 +689,11 @@ class _MarketingFeeds extends StatelessWidget {
             hasMore: false,
           ),
         ),
-        const SizedBox(height: 28),
       ],
 
       // ── Categories
       if (categories.isNotEmpty) ...[
+        const SizedBox(height: AppSpace.xl),
         ParentComponent(
           featureKey: 'student_home.category',
           child: HomeSectionTitle(
@@ -661,18 +702,18 @@ class _MarketingFeeds extends StatelessWidget {
             onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CategoriesScreen())),
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.sm),
         const ParentComponent(featureKey: 'student_home.category', child: CategoriesRow()),
-        const SizedBox(height: 28),
       ],
 
       // ── Best teachers (no list page exists, so no "Show more")
       if (provider.instructors.isNotEmpty) ...[
+        const SizedBox(height: AppSpace.xl),
         ParentComponent(featureKey: 'student_home.best_teachers', child: HomeSectionTitle('best_teachers'.tr)),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.sm),
         ParentComponent(featureKey: 'student_home.best_teachers', child: InstructorsRow()),
       ],
-      const SizedBox(height: 32),
+      const SizedBox(height: AppSpace.xl),
     ]);
   }
 }

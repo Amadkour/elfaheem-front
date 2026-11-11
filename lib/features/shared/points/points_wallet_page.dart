@@ -3,7 +3,9 @@
 // status and the history (ledger kinds as text).
 //
 //   PointsWalletPage({openPlan})   the page; `openPlan` opens the plan sheet on arrival (the `live_plan` deep link)
-//   PointsWalletView               the plain-values body (test/ui/points_layout_test.dart)
+//   PointsWalletView               the plain-values body (test/ui/points_layout_test.dart): the balance is the page's
+//                                  ONE block (peach, the hero lean) with the figure rolling (AppOdometer); the plan,
+//                                  the top-ups and the history are paper — the history ONE card of hairline rows
 //   TopupForm                      "Buy points": amount (≥ topup_min, its money price), method, receipt → submit;
 //                                  method "Card" (Part 3 §13) → POST /me/points/checkout → the provider's payment
 //                                  page and the status sheet (points_card_checkout.dart)
@@ -16,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -129,49 +132,89 @@ class PointsWalletView extends StatelessWidget {
     final c = context.colors;
     final w = wallet;
     final p = plan;
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-      children: [
-        if (w == null && error == null)
-          const AppListSkeleton(items: 5, withAvatar: false)
-        else if (w == null)
-          AppBanner(
-              icon: Icons.error_outline_rounded,
-              text: error!,
-              color: c.danger,
-              action: onRetry == null
-                  ? null
-                  : IconButton(tooltip: t('أعد المحاولة', 'Try again'), onPressed: onRetry, icon: const Icon(Icons.refresh_rounded)))
-        else ...[
-          if (p != null && p.needed) ...[
-            LivePlanSummary(plan: p, nowUtc: nowUtc, onTap: onOpenPlan),
-            const SizedBox(height: 12),
-          ],
-          PointsBalanceCard(wallet: w, onBuy: onBuy),
-          if (error != null) ...[
-            const SizedBox(height: 10),
-            AppBanner(icon: Icons.error_outline_rounded, text: error!, color: c.danger),
-          ],
-          if (w.topups.isNotEmpty) ...[
-            AppSectionTitle(t('طلبات الشحن', 'My top-ups'),
-                subtitle: w.pendingTopups > 0 ? t('${w.pendingTopups} قيد المراجعة', '${w.pendingTopups} under review') : null),
-            for (final x in w.topups) TopupTile(topup: x),
-          ],
-          AppSectionTitle(t('سجل النقاط', 'History')),
-          if (w.history.isEmpty)
-            AppEmpty(
-                icon: Icons.receipt_long_rounded,
-                title: t('لا حركات بعد', 'No activity yet'),
-                message: t('تظهر هنا كل نقطة تُضاف أو تُصرف.', 'Every point added or spent shows here.'))
-          else
-            for (final e in w.history) LedgerTile(entry: e),
+    return LayoutBuilder(builder: (context, box) {
+      final side = AppSpace.gutter(box.maxWidth);
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(side, AppSpace.sm, side, AppSpace.xl),
+        children: [
+          AppWidthBox(
+            width: AppWidth.reading,
+            gutters: false,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              if (w == null && error == null)
+                const AppListSkeleton(items: 5, withAvatar: false)
+              else if (w == null)
+                AppBanner(
+                    icon: Icons.error_outline_rounded,
+                    text: error!,
+                    color: c.danger,
+                    action: onRetry == null
+                        ? null
+                        : IconButton(tooltip: t('أعد المحاولة', 'Try again'), onPressed: onRetry, icon: const Icon(Icons.refresh_rounded)))
+              else ...[
+                PointsBalanceCard(wallet: w, onBuy: onBuy),
+                if (error != null) ...[
+                  AppSpace.gapSm,
+                  AppBanner(icon: Icons.error_outline_rounded, text: error!, color: c.danger),
+                ],
+                if (p != null && p.needed) ...[
+                  AppSpace.gapMd,
+                  LivePlanSummary(plan: p, nowUtc: nowUtc, onTap: onOpenPlan),
+                ],
+                if (w.topups.isNotEmpty) ...[
+                  _WalletHeading(t('طلبات الشحن', 'My top-ups'),
+                      subtitle: w.pendingTopups > 0 ? t('${w.pendingTopups} قيد المراجعة', '${w.pendingTopups} under review') : null),
+                  for (final x in w.topups) TopupTile(topup: x),
+                ],
+                _WalletHeading(t('سجل النقاط', 'History')),
+                if (w.history.isEmpty)
+                  AppEmpty(
+                      icon: Icons.receipt_long_rounded,
+                      title: t('لا حركات بعد', 'No activity yet'),
+                      message: t('تظهر هنا كل نقطة تُضاف أو تُصرف.', 'Every point added or spent shows here.'))
+                else
+                  // one paper card, the moves parted by warm hairlines (not a row of floating lines on the canvas)
+                  AppCard(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xxs),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      for (var i = 0; i < w.history.length; i++) ...[
+                        if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+                        LedgerTile(entry: w.history[i]),
+                      ],
+                    ]),
+                  ),
+              ],
+            ]),
+          ),
         ],
-      ],
-    );
+      );
+    });
   }
 }
 
+/// A section heading of the wallet: the editorial section face, 32 above it, 12 under it (system.md §4).
+class _WalletHeading extends StatelessWidget {
+  const _WalletHeading(this.title, {this.subtitle});
+
+  final String title;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: AppSpace.sectionHead,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Semantics(header: true, child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context))),
+          if (subtitle != null) ...[
+            const SizedBox(height: AppSpace.xxs),
+            Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+          ],
+        ]),
+      );
+}
+
+/// The balance: the wallet's one block (peach, the hero lean), the figure rolling to its value, the price of a point
+/// and ONE "Buy points".
 class PointsBalanceCard extends StatelessWidget {
   const PointsBalanceCard({super.key, required this.wallet, this.onBuy});
 
@@ -180,34 +223,61 @@ class PointsBalanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final w = wallet;
-    return AppCard(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(12)),
-            child: Icon(Icons.account_balance_wallet_rounded, color: c.primary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(t('رصيدك', 'Your balance'), style: appText(12, c: c.textLight)),
-              Text('${w.balance} ${t('نقطة', 'points')}',
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(24, w: FontWeight.w800, c: c.textDark)),
-            ]),
-          ),
-        ]),
-        const SizedBox(height: 8),
-        Text(
-          t('النقطة = ${moneyText(w.pricePerPoint, w.currency)} · أقل شحن ${w.topupMin} نقطة',
-              '1 point = ${moneyText(w.pricePerPoint, w.currency)} · minimum top-up ${w.topupMin} points'),
-          style: appText(12, c: c.textMedium),
+    return RepaintBoundary(
+      child: AppTilt(
+        radius: AppRadius.block,
+        maxTilt: 2.5,
+        glare: true,
+        child: AppBlock(
+          tone: AppBlockTone.peach,
+          hero: true,
+          child: Builder(builder: (context) {
+            final c = context.colors;
+            final ink = AppBlock.colorsOf(context);
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Row(children: [
+                Icon(Icons.account_balance_wallet_rounded, size: AppIconSize.md, color: ink.accentInk(c.primary)),
+                const SizedBox(width: AppSpace.xs),
+                Expanded(
+                  child: Text(t('رصيدك', 'Your balance'),
+                      maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: ink.muted)),
+                ),
+              ]),
+              AppSpace.gapXs,
+              Semantics(
+                label: '${w.balance} ${t('نقطة', 'points')}',
+                excludeSemantics: true,
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.end,
+                  spacing: AppSpace.xs,
+                  children: [
+                    // the key figure at the display size: the sans with tabular digits, so the drum keeps its width
+                    AppOdometer('${w.balance}',
+                        memoryKey: 'points.balance',
+                        style: AppType.figureLarge(context).copyWith(color: ink.ink, fontSize: AppType.display(context).fontSize, height: 1.1)),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpace.xs),
+                      child: Text(t('نقطة', 'points'), style: AppType.section(context).copyWith(color: ink.ink)),
+                    ),
+                  ],
+                ),
+              ),
+              AppSpace.gapXs,
+              Text(
+                t('النقطة = ${moneyText(w.pricePerPoint, w.currency)} · أقل شحن ${w.topupMin} نقطة',
+                    '1 point = ${moneyText(w.pricePerPoint, w.currency)} · minimum top-up ${w.topupMin} points'),
+                style: AppType.meta(context).copyWith(color: ink.muted),
+              ),
+              AppSpace.gapLg,
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: AppButton.primary(label: t('شراء نقاط', 'Buy points'), icon: Icons.add_card_rounded, onPressed: onBuy),
+              ),
+            ]);
+          }),
         ),
-        const SizedBox(height: 12),
-        AppPrimaryButton(label: t('شراء نقاط', 'Buy points'), icon: Icons.add_card_rounded, onPressed: onBuy),
-      ]),
+      ),
     );
   }
 }
@@ -221,6 +291,14 @@ Color topupStatusColor(BuildContext context, TopupStatus s) {
     TopupStatus.unknown => c.textLight,
   };
 }
+
+/// The kit tone of a top-up's status (its badge).
+AppTone topupStatusTone(TopupStatus s) => switch (s) {
+      TopupStatus.pending => AppTone.warning,
+      TopupStatus.approved => AppTone.success,
+      TopupStatus.rejected => AppTone.danger,
+      TopupStatus.unknown => AppTone.neutral,
+    };
 
 class TopupTile extends StatelessWidget {
   const TopupTile({super.key, required this.topup, this.trailing, this.showUser = false});
@@ -236,45 +314,55 @@ class TopupTile extends StatelessWidget {
     final col = topupStatusColor(context, x.status);
     final when = x.createdAt == null ? '' : AppTime.dateTime(x.createdAt!);
     final user = x.user;
+    final meta = AppType.meta(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: AppCard(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AppSpace.sm),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(x.isCard ? Icons.credit_card_rounded : Icons.add_card_rounded, color: col, size: 22),
-            const SizedBox(width: 10),
+            Container(
+              width: AppIconSize.hero,
+              height: AppIconSize.hero,
+              decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)),
+              child: Icon(x.isCard ? Icons.credit_card_rounded : Icons.add_card_rounded, color: appInk(context, col), size: AppIconSize.md),
+            ),
+            AppSpace.gapSm,
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 if (showUser && user != null)
-                  Text(user.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark)),
+                  Text(user.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
                 Text('${x.points} ${t('نقطة', 'points')} · ${x.amountText}',
-                    maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(showUser ? 13 : 14, w: FontWeight.w700, c: c.textDark)),
-                Text([x.methodText, if (when.isNotEmpty) when].join(' · '),
-                    maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textLight)),
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: showUser ? AppType.row(context) : AppType.bodyStrong(context)),
+                Text([x.methodText, if (when.isNotEmpty) when].join(' · '), maxLines: 2, overflow: TextOverflow.ellipsis, style: meta),
                 if (showUser && x.isCard && x.paymentId != null)
                   Text('${t('رقم العملية', 'Payment id')}: ${x.paymentId}',
                       key: ValueKey('topup.payment_id.${x.id}'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textDirection: TextDirection.ltr,
-                      style: appText(12, c: c.textLight)),
+                      style: meta),
                 if (showUser && user != null && user.contact.isNotEmpty)
-                  Text(user.contact, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textLight)),
-                if (x.note != null) Text(x.note!, maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
+                  Text(user.contact, maxLines: 1, overflow: TextOverflow.ellipsis, style: meta),
+                if (x.note != null) Text(x.note!, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.body(context).copyWith(color: c.textMedium)),
               ]),
             ),
-            const SizedBox(width: 8),
+            AppSpace.gapXs,
             // a long status ("Waiting for payment") ellipsizes instead of pushing the amount off a phone
-            ConstrainedBox(constraints: const BoxConstraints(maxWidth: 130), child: AppBadgePill(x.statusText, color: col)),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: AppTouch.min * 2 + AppSpace.xl),
+              child: AppStatusBadge(label: x.statusText, tone: topupStatusTone(x.status)),
+            ),
           ]),
-          if (trailing != null) ...[const SizedBox(height: 8), trailing!],
+          if (trailing != null) ...[AppSpace.gapXs, trailing!],
         ]),
       ),
     );
   }
 }
 
+/// One move of the points history: in (emerald) or out (danger) · what it was · when · the signed amount and the
+/// balance after it. A row: the wallet draws the rows in one card, the admin's history in a list.
 class LedgerTile extends StatelessWidget {
   const LedgerTile({super.key, required this.entry});
 
@@ -290,27 +378,35 @@ class LedgerTile extends StatelessWidget {
       if (e.note != null) e.note!,
       if (e.byName != null) e.byName!,
     ].join(' · ');
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(children: [
-        CircleAvatar(
-          radius: 17,
-          backgroundColor: col.withValues(alpha: 0.12),
-          child: Icon(e.delta >= 0 ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded, size: 18, color: col),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(e.kindText, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w600, c: c.textDark)),
-            if (sub.isNotEmpty) Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textLight)),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: AppTouch.primary),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
+        child: Row(children: [
+          Container(
+            width: AppIconSize.xl,
+            height: AppIconSize.xl,
+            decoration: BoxDecoration(color: col.withValues(alpha: 0.12), shape: BoxShape.circle),
+            child: Icon(e.delta >= 0 ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded, size: AppIconSize.sm, color: appInk(context, col)),
+          ),
+          AppSpace.gapSm,
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(e.kindText, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+              if (sub.isNotEmpty) Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+            ]),
+          ),
+          AppSpace.gapXs,
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            // signed figures read left to right in both languages ("−300", never "300−")
+            Text(e.deltaText,
+                textDirection: TextDirection.ltr,
+                style: AppType.figure(context).copyWith(color: appInk(context, col), fontFeatures: const [FontFeature.tabularFigures()])),
+            Text('= ${e.balanceAfter}',
+                textDirection: TextDirection.ltr, style: AppType.meta(context).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
           ]),
-        ),
-        const SizedBox(width: 8),
-        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text(e.deltaText, style: appText(15, w: FontWeight.w800, c: col)),
-          Text('= ${e.balanceAfter}', style: appText(11, c: c.textLight)),
         ]),
-      ]),
+      ),
     );
   }
 }
@@ -416,7 +512,7 @@ class _TopupFormState extends State<TopupForm> {
     final n = parsePoints(_points.text);
     final price = n == null || n <= 0 ? null : moneyText(w.priceOf(n), w.currency);
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + MediaQuery.viewInsetsOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md + MediaQuery.viewInsetsOf(context).bottom),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         AppSheetHeader(t('شراء نقاط', 'Buy points')),
         AppNumberField(
@@ -426,7 +522,7 @@ class _TopupFormState extends State<TopupForm> {
           min: w.topupMin,
           onChanged: (_) => setState(() => _error = null),
         ),
-        const SizedBox(height: 8),
+        AppSpace.gapXs,
         AppBanner(
           icon: Icons.payments_rounded,
           color: c.primary,
@@ -434,47 +530,47 @@ class _TopupFormState extends State<TopupForm> {
               ? t('النقطة = ${moneyText(w.pricePerPoint, w.currency)}', '1 point = ${moneyText(w.pricePerPoint, w.currency)}')
               : t('المبلغ المطلوب: $price', 'Amount to pay: $price'),
         ),
-        const SizedBox(height: 12),
+        AppSpace.gapSm,
         AppDropdown<String>(
           value: _method,
           decoration: InputDecoration(labelText: t('طريقة الدفع', 'Payment method')),
           items: [for (final m in w.methods) DropdownMenuItem(value: m, child: Text(pointsMethodText(m)))],
           onChanged: _saving ? null : (v) => setState(() { _method = v; _error = null; }),
         ),
-        const SizedBox(height: 12),
+        AppSpace.gapSm,
         if (_card)
           Text(
               t('ستنتقل إلى صفحة الدفع الآمنة لمزوّد الدفع؛ تُضاف النقاط فور تأكيد الدفع، دون إيصال أو مراجعة.',
                   "You go to the payment provider's secure page; the points are added as soon as the payment is confirmed, no receipt or review needed."),
               key: const ValueKey('topup_form.card_note'),
-              style: appText(12, c: c.textLight, h: 1.4))
+              style: AppType.meta(context))
         else ...[
-          OutlinedButton.icon(
+          AppButton.secondary(
+            label: _receipt == null ? t('إرفاق إيصال الدفع (صورة أو PDF)', 'Attach the payment receipt (image or PDF)') : _receipt!.$1,
+            icon: _receipt == null ? Icons.upload_file_rounded : Icons.check_circle_rounded,
+            expand: true,
             onPressed: _saving ? null : _pick,
-            icon: Icon(_receipt == null ? Icons.upload_file_rounded : Icons.check_circle_rounded,
-                color: _receipt == null ? c.primary : c.success),
-            label: Text(_receipt == null ? t('إرفاق إيصال الدفع (صورة أو PDF)', 'Attach the payment receipt (image or PDF)') : _receipt!.$1,
-                maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs),
           Text(t('حوّل المبلغ ثم أرفق الإيصال؛ تُضاف النقاط بعد مراجعة الإدارة.',
                   'Transfer the amount, then attach the receipt; the points are added once the admin reviews it.'),
-              style: appText(12, c: c.textLight, h: 1.4)),
+              style: AppType.meta(context)),
         ],
         if (_error != null) ...[
-          const SizedBox(height: 10),
+          AppSpace.gapSm,
           AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger),
         ],
-        const SizedBox(height: 16),
+        AppSpace.gapMd,
         if (_card)
-          AppPrimaryButton(
+          AppButton.primary(
+              expand: true,
               key: const ValueKey('topup_form.pay_card'),
               label: price == null ? t('ادفع بالبطاقة', 'Pay by card') : t('ادفع $price بالبطاقة', 'Pay $price by card'),
               icon: Icons.credit_card_rounded,
               busy: _saving,
               onPressed: _saving ? null : _send)
         else
-          AppPrimaryButton(label: t('إرسال الطلب', 'Send request'), icon: Icons.send_rounded, busy: _saving, onPressed: _saving ? null : _send),
+          AppButton.primary(expand: true, label: t('إرسال الطلب', 'Send request'), icon: Icons.send_rounded, busy: _saving, onPressed: _saving ? null : _send),
       ]),
     );
   }

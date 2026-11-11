@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
 import '../../../shared/category/categories_provider.dart';
 import '../../../shared/category/categories_screen.dart';
 
@@ -16,11 +16,10 @@ class CategoriesRow extends StatelessWidget {
     return Consumer<CategoriesProvider>(
       builder: (context, provider, child) {
         if (provider.isLoadingCategory) {
-          return SizedBox(
-            height: 112,
-            child: Center(
-              child: AppLoadingIndicator(),
-            ),
+          // warm bones while the categories load, never a spinner (the kit's loading rule)
+          return const SizedBox(
+            height: AppTouch.min * 2 + AppSpace.md,
+            child: AppListSkeleton(items: 1, padding: EdgeInsets.symmetric(horizontal: AppSpace.md + AppSpace.xxs)),
           );
         }
 
@@ -33,10 +32,10 @@ class CategoriesRow extends StatelessWidget {
           // avatar + a two-line name (L7: one line cut most names)
           height: min(context.width / 6, 100) + 8 + 2 * 1.15 * max(11, min(context.width / 6, 100) / 7) * MediaQuery.textScalerOf(context).scale(1),
           child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md + AppSpace.xxs),
             scrollDirection: Axis.horizontal,
             itemCount: categories.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 14),
+            separatorBuilder: (_, _) => AppSpace.gapMd,
             itemBuilder: (_, i) {
               final cat = categories[i];
               return GestureDetector(

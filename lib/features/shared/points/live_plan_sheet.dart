@@ -118,7 +118,7 @@ class _LivePlanSheetState extends State<LivePlanSheet> {
 
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
           AppSheetHeader(livePlanReasonText(widget.reason) ?? t('باقة الاجتماعات المباشرة', 'Live-meeting plan')),
           LivePlanView(
@@ -176,7 +176,7 @@ class LivePlanView extends StatelessWidget {
     final p = plan;
     if (p == null) {
       return error == null
-          ? const SizedBox(height: 220, child: AppListSkeleton(items: 3, withAvatar: false))
+          ? const SizedBox(height: AppTouch.min * 4 + AppSpace.lg, child: AppListSkeleton(items: 3, withAvatar: false))
           : AppBanner(
               icon: Icons.error_outline_rounded,
               text: error!,
@@ -189,8 +189,8 @@ class LivePlanView extends StatelessWidget {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         AppBanner(icon: Icons.all_inclusive_rounded, text: pointsCodeText('plan_not_needed')!, color: c.success),
         if (onClose != null) ...[
-          const SizedBox(height: 14),
-          AppPrimaryButton(label: t('حسناً', 'OK'), icon: Icons.check_rounded, onPressed: onClose),
+          AppSpace.gapMd,
+          AppButton.primary(expand: true, label: t('حسناً', 'OK'), icon: Icons.check_rounded, onPressed: onClose),
         ],
       ]);
     }
@@ -203,11 +203,11 @@ class LivePlanView extends StatelessWidget {
           color: c.warning,
           text: '${livePlanReasonText(kDailyLimitReason)}. ${t('اشترك لتبدأ اجتماعك الآن بلا حد، أو عد غداً.', 'Subscribe to start your meeting now without a limit, or come back tomorrow.')}',
         ),
-        const SizedBox(height: 12),
+        AppSpace.gapSm,
       ],
       LivePlanSummary(plan: p, nowUtc: nowUtc),
-      const SizedBox(height: 12),
-      Wrap(spacing: 8, runSpacing: 8, children: [
+      AppSpace.gapSm,
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         PlanFact(icon: Icons.stars_rounded, value: '${p.pricePoints}', label: t('نقطة', 'points')),
         PlanFact(icon: Icons.event_available_rounded, value: '${p.days}', label: t('يوماً', 'days')),
         PlanFact(icon: Icons.timer_outlined, value: '${p.freeMinutes}', label: t('دقيقة مجانية بدونها', 'free minutes without it')),
@@ -224,22 +224,23 @@ class LivePlanView extends StatelessWidget {
             label: t('رصيدك', 'your balance'),
             color: p.canAfford ? c.success : c.warning),
       ]),
-      const SizedBox(height: 12),
+      AppSpace.gapMd,
       Text(
         p.dailyFreeMinutes > 0
             ? t('بدون الباقة يكون كل اجتماع تنشئه مجانياً لأول ${p.freeMinutes} دقيقة من البث، وبحد ${p.dailyFreeMinutes} دقيقة مجانية في اليوم لكل اجتماعاتك، ثم يتوقف. مع الباقة تصبح اجتماعاتك بلا حد زمني لمدة ${p.days} يوماً.',
                 'Without the plan each meeting you create is free for its first ${p.freeMinutes} live minutes, up to ${p.dailyFreeMinutes} free minutes a day over all your meetings, then it stops. With the plan your meetings have no time limit for ${p.days} days.')
             : t('بدون الباقة يكون كل اجتماع تنشئه مجانياً لأول ${p.freeMinutes} دقيقة من البث، ثم يتوقف. مع الباقة تصبح اجتماعاتك بلا حد زمني لمدة ${p.days} يوماً.',
                 'Without the plan each meeting you create is free for its first ${p.freeMinutes} live minutes, then it stops. With the plan your meetings have no time limit for ${p.days} days.'),
-        style: appText(13, c: c.textMedium, h: 1.5),
+        style: AppType.body(context),
       ),
       if (p.hasDailyCap) ...[
-        const SizedBox(height: 6),
+        AppSpace.gapXs,
         Text(dailyFreeLeftText(p.dailyLeft, p.dailyFreeMinutes),
-            key: const ValueKey('live_plan.daily_left_text'), style: appText(12.5, w: FontWeight.w700, c: p.dailyLeft > 0 ? c.textDark : c.warning)),
+            key: const ValueKey('live_plan.daily_left_text'),
+            style: AppType.bodyStrong(context).copyWith(color: p.dailyLeft > 0 ? c.textDark : appInk(context, c.warning))),
       ],
       if (onAutoRenew != null) ...[
-        const SizedBox(height: 8),
+        AppSpace.gapXs,
         AppSwitchTile(
           key: const ValueKey('live_plan.auto_renew'),
           icon: Icons.autorenew_rounded,
@@ -251,7 +252,7 @@ class LivePlanView extends StatelessWidget {
         ),
       ],
       if (insufficient) ...[
-        const SizedBox(height: 12),
+        AppSpace.gapSm,
         AppBanner(
           icon: Icons.account_balance_wallet_outlined,
           color: c.warning,
@@ -260,14 +261,15 @@ class LivePlanView extends StatelessWidget {
         ),
       ],
       if (error != null) ...[
-        const SizedBox(height: 12),
+        AppSpace.gapSm,
         AppBanner(icon: Icons.error_outline_rounded, text: error!, color: c.danger),
       ],
-      const SizedBox(height: 16),
+      AppSpace.gapLg,
       if (insufficient && onWallet != null)
-        AppPrimaryButton(label: t('اشحن نقاطاً', 'Buy points'), icon: Icons.add_card_rounded, onPressed: onWallet)
+        AppButton.primary(expand: true, label: t('اشحن نقاطاً', 'Buy points'), icon: Icons.add_card_rounded, onPressed: onWallet)
       else
-        AppPrimaryButton(
+        AppButton.primary(
+          expand: true,
           label: p.active
               ? t('مدّد ${p.days} يوماً · ${p.pricePoints} نقطة', 'Extend ${p.days} days · ${p.pricePoints} points')
               : t('اشترك · ${p.pricePoints} نقطة', 'Subscribe · ${p.pricePoints} points'),
@@ -276,18 +278,15 @@ class LivePlanView extends StatelessWidget {
           onPressed: busy ? null : onSubscribe,
         ),
       if (!insufficient && onWallet != null) ...[
-        const SizedBox(height: 6),
-        TextButton.icon(
-          onPressed: onWallet,
-          icon: const Icon(Icons.account_balance_wallet_outlined, size: 18),
-          label: Text(t('محفظة النقاط', 'Points wallet')),
-        ),
+        AppSpace.gapXs,
+        AppButton.ghost(label: t('محفظة النقاط', 'Points wallet'), icon: Icons.account_balance_wallet_outlined, expand: true, onPressed: onWallet),
       ],
     ]);
   }
 }
 
-/// A small fact pill (icon · value · label) that wraps its text instead of overflowing on a phone.
+/// A small fact pill (icon · value · label) that wraps its text instead of overflowing on a phone: the input well
+/// with a hairline, the icon in the fact's tone, the value as a tabular figure.
 class PlanFact extends StatelessWidget {
   const PlanFact({super.key, required this.icon, required this.value, required this.label, this.color});
 
@@ -300,20 +299,21 @@ class PlanFact extends StatelessWidget {
     final c = context.colors;
     final col = color ?? c.primary;
     return Container(
-      padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 12, 6),
+      constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xs, AppSpace.md, AppSpace.xs),
       decoration: BoxDecoration(
-        color: col.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: col.withValues(alpha: 0.18)),
+        color: c.inputBg,
+        borderRadius: BorderRadius.circular(AppRadius.control),
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 16, color: col),
-        const SizedBox(width: 6),
+        Icon(icon, size: AppIconSize.sm, color: appInk(context, col)),
+        const SizedBox(width: AppSpace.xs),
         Flexible(
           child: Text.rich(
             TextSpan(children: [
-              TextSpan(text: value, style: appText(13, w: FontWeight.w800, c: c.textDark)),
-              TextSpan(text: ' $label', style: appText(11.5, w: FontWeight.w600, c: c.textMedium)),
+              TextSpan(text: value, style: AppType.figure(context).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+              TextSpan(text: ' $label', style: AppType.meta(context)),
             ]),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -324,7 +324,8 @@ class PlanFact extends StatelessWidget {
   }
 }
 
-/// One line of status: "Active until … · N days left" or "Not subscribed".
+/// One line of status: "Active until … · N days left" or "Not subscribed" — a paper card; an active plan wears the
+/// emerald mark (done / covered), a missing one the primary's.
 class LivePlanSummary extends StatelessWidget {
   const LivePlanSummary({super.key, required this.plan, required this.nowUtc, this.onTap});
 
@@ -358,25 +359,26 @@ class LivePlanSummary extends StatelessWidget {
               ].join(' · ');
     final col = active ? c.success : c.primary;
     return AppCard(
-      padding: const EdgeInsets.all(14),
+      padding: AppSpace.card,
       onTap: onTap,
       child: Row(children: [
         Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
-          child: Icon(active ? Icons.verified_rounded : Icons.videocam_rounded, color: col, size: 22),
+          width: AppIconSize.hero,
+          height: AppIconSize.hero,
+          decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)),
+          child: Icon(active ? Icons.verified_rounded : Icons.videocam_rounded, color: appInk(context, col), size: AppIconSize.md),
         ),
-        const SizedBox(width: 12),
+        AppSpace.gapSm,
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w700, c: c.textDark)),
+            Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
             if (sub != null) ...[
-              const SizedBox(height: 2),
-              Text(sub, maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textLight)),
+              const SizedBox(height: AppSpace.xxs / 2),
+              Text(sub, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
             ],
           ]),
         ),
-        if (onTap != null) Icon(Icons.chevron_right_rounded, color: c.textLight),
+        if (onTap != null) Icon(Icons.chevron_right_rounded, color: c.textLight, size: AppIconSize.lg),
       ]),
     );
   }
