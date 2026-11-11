@@ -17,7 +17,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../admin/admin_common.dart' show t;
 import 'calendar_models.dart';
-import 'schedule_parts.dart' show calTint;
+import 'schedule_parts.dart' show CalLiveDot, calTint;
 
 /// Lays [child] out with unbounded height and clips it to the box: text scaled up never throws an overflow.
 class _Clip extends StatelessWidget {
@@ -69,7 +69,7 @@ class CalEventBlock extends StatelessWidget {
       e.title,
       maxLines: compact ? 1 : (height > 60 ? 2 : 1),
       overflow: TextOverflow.ellipsis,
-      style: appText(compact ? 10 : 11.5, w: FontWeight.w800, c: muted ? c.textMedium : c.textDark).copyWith(
+      style: appText(compact ? 10 : 11.5, w: FontWeight.w600, c: muted ? c.textMedium : c.textDark).copyWith(
           decoration: struck ? TextDecoration.lineThrough : null, decorationColor: c.textLight, height: 1.2),
     );
     final ch = e.change;
@@ -83,7 +83,7 @@ class CalEventBlock extends StatelessWidget {
                 ? Icons.person_pin_rounded
                 : null;
     final marker = live
-        ? Container(width: 7, height: 7, decoration: BoxDecoration(color: c.danger, shape: BoxShape.circle))
+        ? const CalLiveDot(size: AppSpace.xxs + 2)
         : markerIcon != null
             ? Icon(markerIcon, size: 12, color: e.cancelled ? c.danger : appInk(context, color))
             : e.isMeeting && !e.isOwner && e.myStatus != null && !e.ended
@@ -92,8 +92,8 @@ class CalEventBlock extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: calTint(c, color, muted ? 0.05 : (pending ? 0.09 : 0.14)),
-        borderRadius: BorderRadius.circular(compact ? 6 : AppRadius.chip),
-        border: BorderDirectional(start: BorderSide(color: color, width: compact ? 2.5 : 3.5)),
+        borderRadius: BorderRadius.circular(compact ? AppSpace.xxs + 2 : AppRadius.chip - 2),
+        border: BorderDirectional(start: BorderSide(color: color, width: compact ? AppBorder.focus + 0.5 : AppSpace.xxs - 1)),
       ),
       padding: EdgeInsetsDirectional.fromSTEB(compact ? 4 : 7, compact ? 1 : 4, 4, 1),
       child: _Clip(
@@ -138,7 +138,7 @@ class _Counts extends StatelessWidget {
             Row(mainAxisSize: MainAxisSize.min, children: [
               Icon(calStatusIcon(k), size: 11, color: calStatusColor(c, k)),
               const SizedBox(width: 2),
-              Text('${counts[k]}', style: appText(10, w: FontWeight.w700, c: calStatusColor(c, k))),
+              Text('${counts[k]}', style: appText(10, w: FontWeight.w600, c: calStatusColor(c, k))),
             ]),
       ]),
     );
@@ -306,7 +306,7 @@ class _CalTimeGridState extends State<CalTimeGrid> {
                             p.name.isEmpty ? t('امتحانات', 'Exams') : p.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: appText(9.5, w: FontWeight.w700, c: appInk(context, c.warning)),
+                            style: appText(9.5, w: FontWeight.w600, c: appInk(context, c.warning)),
                           ),
                         ),
                 ),
@@ -400,14 +400,14 @@ class _DayHead extends StatelessWidget {
       child: FittedBox(
         fit: BoxFit.scaleDown,
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(label, style: appText(11, w: FontWeight.w700, c: isToday ? appInk(context, c.primary) : c.textLight)),
+          Text(label, style: appText(11, w: FontWeight.w600, c: isToday ? appInk(context, c.primary) : c.textLight)),
           const SizedBox(height: 3),
           Container(
             width: 30,
             height: 30,
             alignment: Alignment.center,
             decoration: BoxDecoration(color: isToday ? c.primary : Colors.transparent, shape: BoxShape.circle),
-            child: Text('${day.day}', style: appText(15, w: FontWeight.w800, c: isToday ? context.colors.onHero : c.textDark)),
+            child: Text('${day.day}', style: appText(15, w: FontWeight.w600, c: isToday ? context.colors.onHero : c.textDark)),
           ),
         ]),
       ),
@@ -476,7 +476,7 @@ class _DayColumnState extends State<_DayColumn> {
         behavior: HitTestBehavior.opaque,
         onTapUp: (d) => widget.onTapSlot(_at(calSnap(d.localPosition.dy - hh / 4, hh, step: 30))),
         child: Stack(clipBehavior: Clip.hardEdge, children: [
-          Positioned.fill(child: CustomPaint(painter: _GridPainter(hh, c.divider, widget.now != null ? c.primary.withValues(alpha: 0.03) : null))),
+          Positioned.fill(child: CustomPaint(painter: _GridPainter(hh, c.divider, widget.now != null ? c.blockSky.withValues(alpha: 0.45) : null))),
           if (_hover != null && candidates.isNotEmpty)
             Positioned(
               top: _hover! / 60 * hh,
@@ -492,7 +492,7 @@ class _DayColumnState extends State<_DayColumn> {
                 child: _Clip(
                   child: Padding(
                     padding: const EdgeInsets.all(3),
-                    child: Text(AppTime.clockMinutes(_hover!), maxLines: 1, style: appText(10, w: FontWeight.w700, c: appInk(context, c.primary))),
+                    child: Text(AppTime.clockMinutes(_hover!), maxLines: 1, style: appText(10, w: FontWeight.w600, c: appInk(context, c.primary))),
                   ),
                 ),
               ),
@@ -636,7 +636,7 @@ class CalMonthGrid extends StatelessWidget {
                 width: colW,
                 child: Center(
                   child: Text(AppTime.date(AppTime.fromZone(DateTime(days[k].year, days[k].month, days[k].day, 12)), pattern: 'EEE'),
-                      maxLines: 1, overflow: TextOverflow.clip, style: appText(11, w: FontWeight.w700, c: c.textLight)),
+                      maxLines: 1, overflow: TextOverflow.clip, style: appText(11, w: FontWeight.w600, c: c.textLight)),
                 ),
               ),
           ]),
@@ -691,9 +691,9 @@ class _MonthCell extends StatelessWidget {
                 : paused != null
                     ? Color.alphaBlend(calTint(c, c.warning, 0.07), inMonth ? c.cardBg : c.background)
                     : today
-                        ? Color.alphaBlend(calTint(c, c.primary, 0.05), c.cardBg)
+                        ? c.blockSky
                         : (inMonth ? c.cardBg : c.background),
-            border: Border.all(color: today ? c.primary.withValues(alpha: 0.35) : c.divider.withValues(alpha: 0.6), width: today ? 1 : 0.5),
+            border: Border.all(color: c.divider.withValues(alpha: 0.6), width: AppBorder.hairline / 2),
           ),
           padding: const EdgeInsets.all(3),
           child: _Clip(
@@ -705,7 +705,7 @@ class _MonthCell extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(color: today ? c.primary : Colors.transparent, shape: BoxShape.circle),
                   child: Text('${day.day}',
-                      style: appText(12, w: FontWeight.w800, c: today ? context.colors.onHero : (inMonth ? c.textDark : c.textLight))),
+                      style: appText(12, w: FontWeight.w600, c: today ? context.colors.onHero : (inMonth ? c.textDark : c.textLight))),
                 ),
                 if (paused != null && !dense)
                   Expanded(
@@ -716,7 +716,7 @@ class _MonthCell extends StatelessWidget {
                         const SizedBox(width: 2),
                         Flexible(
                           child: Text(paused!.name.isEmpty ? t('امتحانات', 'Exams') : paused!.name,
-                              maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(9.5, w: FontWeight.w700, c: appInk(context, c.warning))),
+                              maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(9.5, w: FontWeight.w600, c: appInk(context, c.warning))),
                         ),
                       ]),
                     ),
@@ -742,7 +742,7 @@ class _MonthCell extends StatelessWidget {
                     ),
                   ),
                 if (more > 0)
-                  Text('+$more ${t('أخرى', 'more')}', maxLines: 1, style: appText(10, w: FontWeight.w700, c: appInk(context, c.primary))),
+                  Text('+$more ${t('أخرى', 'more')}', maxLines: 1, style: appText(10, w: FontWeight.w600, c: appInk(context, c.primary))),
               ],
             ]),
           ),

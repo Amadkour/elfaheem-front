@@ -22,6 +22,7 @@ import 'package:flutter_education_app/features/shared/calendar/calendar_models.d
 import 'package:flutter_education_app/features/shared/calendar/schedule_page.dart';
 import 'package:flutter_education_app/features/shared/calendar/schedule_store.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'home_screens_golden_test.dart' show pubspecFonts;
 
@@ -196,6 +197,8 @@ Future<void> _render(WidgetTester tester, String name, CalView? Function(Size si
     for (final size in sizes) {
       for (final lang in const ['ar', 'en']) {
         for (final dark in const [false, true]) {
+          final only = Platform.environment['SCHEDULE_ONLY'];
+          if (only != null && only.isNotEmpty && !only.split(',').contains('${size.width.toInt()}_${lang}_${dark ? 'dark' : 'light'}')) continue;
           AppConfig.lang = lang;
           tester.view.devicePixelRatio = 1;
           tester.view.physicalSize = size;
@@ -261,6 +264,7 @@ void main() {
   });
   setUp(() {
     AppConfig.disableList = [];
+    SharedPreferences.setMockInitialValues({});
   });
 
   testWidgets('schedule: default view (phone agenda · desktop week)', (tester) async {
