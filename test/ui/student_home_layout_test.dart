@@ -144,6 +144,30 @@ void main() {
     );
   });
 
+  // D-631 worst cases (break-ui): long course names, a huge course count, every course done, none — through the
+  // phone tiles, the shortcut grid and the desktop stat row (the harness renders both widths)
+  testWidgets('premium pieces: course tiles, shortcuts and the stat row under worst-case data', (tester) async {
+    final many = full();
+    await expectNoLayoutErrors(tester, () => body(StudentHomeData(home: many, now: now, orgWaiting: 99999)));
+    final huge = MeHome.fromJson({
+      'today': const [],
+      'upcoming': const [],
+      'courses_progress': [
+        for (var i = 0; i < 240; i++)
+          {'course_id': i + 1, 'name_ar': '$longAr $i', 'name_en': '$longEn $i', 'progress': i.isEven ? 100 : 37.5},
+      ],
+    });
+    await expectNoLayoutErrors(tester, () => body(StudentHomeData(home: huge, now: now)));
+    await expectNoLayoutErrors(
+      tester,
+      () => ListView(children: [
+        StudentCourseTiles(courses: huge.coursesProgress, onOpen: (_) {}),
+        StudentCourseTiles(courses: huge.coursesProgress.take(1).toList(), featuredId: 1),
+        const StudentCourseTiles(courses: []),
+      ]),
+    );
+  });
+
   testWidgets('the editorial blocks: Continue learning (phone and wide), a free day with and without a next class', (tester) async {
     final h = full();
     final x = h.coursesProgress.first;

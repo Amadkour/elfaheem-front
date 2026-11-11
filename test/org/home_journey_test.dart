@@ -134,6 +134,8 @@ void main() {
       ),
     )));
     await t.pump();
+    // the phone home puts the shortcut grid above it (D-631): bring the card into view first
+    await t.ensureVisible(find.byKey(const ValueKey('home_journey.continue')));
     await t.tap(find.byKey(const ValueKey('home_journey.continue')));
     expect(opened, homeJourney(home.journey)!.next.id);
     await t.tap(find.text(homeJourney(home.journey)!.title));
@@ -150,6 +152,7 @@ void main() {
     )));
     await t.pump();
     expect(find.byType(HomeJourneyInvite), findsOneWidget);
+    await t.ensureVisible(find.byKey(const ValueKey('home_journey.pick')));
     await t.tap(find.byKey(const ValueKey('home_journey.pick')));
     expect(picked, 1);
     // recommendations off, Organization mode, or no hint: nothing

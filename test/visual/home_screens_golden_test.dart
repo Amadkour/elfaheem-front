@@ -457,6 +457,19 @@ Widget _header(String name, String? summary) => HomeHeader(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
     );
 
+/// The student home's header as the screen draws it (D-631): the forest hero, its ring and its one call to action;
+/// the search beside it on a desktop.
+Widget _studentHeader(String name, String? summary, MeHome home) => HomeHeader(
+      name: name,
+      subtitle: summary,
+      greetingHero: true,
+      ring: studentAverageProgress(home),
+      cta: AppGreetingHeroButton(label: 'home_full_timetable'.tr, icon: Icons.calendar_month_rounded, onTap: () {}),
+      wideTrailing: AppSearchField(hint: 'search'.tr, onChanged: (_) {}),
+      actions: const [QuickMeetingIcon()],
+      shellActions: const [CalendarEntryIcon(), NotificationIcon(unreadCount: 0)],
+    );
+
 // teacher
 ScheduleSession _session(int id, String name, String start, String end, {bool ongoing = false, int? untilStart, int inDays = 0}) =>
     ScheduleSession(
@@ -803,7 +816,7 @@ void main() {
             child: _width(
                 kHomeWideMax,
                 Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  _header(tr('سارة محمود', 'Sara Mahmoud'), studentDaySummary(_studentHome(), 1, _now)),
+                  _studentHeader(tr('سارة محمود', 'Sara Mahmoud'), studentDaySummary(_studentHome(), 1, _now), _studentHome()),
                   StudentHomeBody(data: StudentHomeData(home: _studentHome(), now: _now, liveNow: _liveSession()), onTab: (_) {}, onOpenCourse: (_) {}),
                 ]))));
   });
@@ -815,7 +828,7 @@ void main() {
             child: _width(
                 kHomeWideMax,
                 Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  _header(tr('سارة محمود', 'Sara Mahmoud'), studentDaySummary(_studentFreeDay(), 0, _now)),
+                  _studentHeader(tr('سارة محمود', 'Sara Mahmoud'), studentDaySummary(_studentFreeDay(), 0, _now), _studentFreeDay()),
                   StudentHomeBody(data: StudentHomeData(home: _studentFreeDay(), now: _now), onTab: (_) {}, onOpenCourse: (_) {}),
                 ]))));
   });
