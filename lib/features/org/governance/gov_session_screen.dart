@@ -20,7 +20,6 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show SheetHeader, asDouble, asInt, asMap, asMapList, askText, t;
 import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
-import '../org_ui.dart' show orgText;
 import '../org_v3.dart' show orgCall, orgParseUtc, orgUtc;
 import 'gov_api.dart';
 import 'gov_council_ui.dart';
@@ -62,7 +61,7 @@ class VoteResultView extends StatelessWidget {
     final remaining = (base - voted).clamp(0, 1 << 30);
     final pct = approvePct ?? (approve + reject == 0 ? 0.0 : approve / (approve + reject) * 100);
     final bar = ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppRadius.chip),
       child: SizedBox(
         height: compact ? 8 : 12,
         child: base == 0
@@ -83,30 +82,30 @@ class VoteResultView extends StatelessWidget {
       if (!decided && live) AppBadgePill(t('مباشر', 'Live'), color: c.warning, icon: Icons.sensors_rounded),
     ]);
     if (compact) {
-      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [bar, const SizedBox(height: 6), counts]);
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [bar, const SizedBox(height: AppSpace.xs), counts]);
     }
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(
         color: c.inputBg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         border: Border.all(color: c.divider),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(Icons.how_to_vote_rounded, size: 17, color: c.primary),
-          const SizedBox(width: 6),
-          Expanded(child: Text(live && !decided ? t('النتيجة الحالية', 'Current result') : t('النتيجة', 'Result'), style: orgText(context, size: 13.5, w: FontWeight.w800))),
-          Text(t('${pct.toStringAsFixed(0)}% موافقة', '${pct.toStringAsFixed(0)}% approve'), style: orgText(context, size: 12.5, w: FontWeight.w800, color: c.primary)),
+          Icon(Icons.how_to_vote_rounded, size: AppIconSize.sm, color: c.primary),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: Text(live && !decided ? t('النتيجة الحالية', 'Current result') : t('النتيجة', 'Result'), style: AppType.bodyStrong(context))),
+          Text(t('${pct.toStringAsFixed(0)}% موافقة', '${pct.toStringAsFixed(0)}% approve'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.primary)),
         ]),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         bar,
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         counts,
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         Text(
           eligible > 0 ? t('صوّت $voted من $eligible عضواً', '$voted of $eligible members voted') : t('صوّت $voted', '$voted voted'),
-          style: orgText(context, size: 11.5, color: c.textMedium),
+          style: AppType.meta(context).copyWith(color: c.textMedium),
         ),
       ]),
     );
@@ -149,14 +148,14 @@ class _MyVoteRowState extends State<MyVoteRow> {
         : (widget.enabled ? t('صوّتّ: ${voteLabel(v)} — تغيير؟', 'You voted ${voteLabel(v)} — change?') : t('صوّتّ: ${voteLabel(v)}', 'You voted ${voteLabel(v)}'));
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        Icon(v == null ? Icons.ballot_outlined : voteIcon(v), size: 16, color: v == null ? c.textLight : voteColor(context, v)),
-        const SizedBox(width: 6),
-        Expanded(child: Text(title, style: orgText(context, size: 12.5, w: FontWeight.w700, color: v == null ? c.textMedium : voteColor(context, v)))),
+        Icon(v == null ? Icons.ballot_outlined : voteIcon(v), size: AppIconSize.sm, color: v == null ? c.textLight : voteColor(context, v)),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(child: Text(title, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: v == null ? c.textMedium : voteColor(context, v)))),
         if (widget.busy) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
       ]),
       if (widget.enabled || v != null) ...[
-        const SizedBox(height: 8),
-        Wrap(spacing: 8, runSpacing: 6, children: [
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final opt in voteValues)
             _VoteChip(
               label: voteLabel(opt),
@@ -171,19 +170,19 @@ class _MyVoteRowState extends State<MyVoteRow> {
             TextButton.icon(
               style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
               onPressed: () => setState(() => _noteOpen = !_noteOpen),
-              icon: Icon(_noteOpen ? Icons.expand_less_rounded : Icons.notes_rounded, size: 18),
-              label: Text(t('ملاحظة', 'Note'), style: orgText(context, size: 12, w: FontWeight.w700, color: c.primary)),
+              icon: Icon(_noteOpen ? Icons.expand_less_rounded : Icons.notes_rounded, size: AppIconSize.md),
+              label: Text(t('ملاحظة', 'Note'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.primary)),
             ),
         ]),
         if (_noteOpen && widget.withNote && widget.enabled) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           AppField(controller: _note, label: t('ملاحظة مع صوتك (اختياري)', 'A note with your vote (optional)'), maxLines: 2),
           if (v != null)
             Align(
               alignment: AlignmentDirectional.centerEnd,
               child: TextButton(
                 onPressed: widget.busy || widget.onVote == null ? null : () => widget.onVote!(v, _note.text.trim().isEmpty ? null : _note.text.trim()),
-                child: Text(t('حفظ الملاحظة', 'Save the note'), style: orgText(context, size: 12, w: FontWeight.w700, color: c.primary)),
+                child: Text(t('حفظ الملاحظة', 'Save the note'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.primary)),
               ),
             ),
         ],
@@ -207,22 +206,22 @@ class _VoteChip extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
           decoration: BoxDecoration(
             color: selected ? color : c.inputBg,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppRadius.control),
             border: Border.all(color: selected ? color : c.divider),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 16, color: selected ? c.onHero : (dim ? c.textLight : color)),
-            const SizedBox(width: 6),
+            Icon(icon, size: AppIconSize.sm, color: selected ? c.onHero : (dim ? c.textLight : color)),
+            const SizedBox(width: AppSpace.xs),
             Flexible(
               child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: orgText(context, size: 12.5, w: FontWeight.w700, color: selected ? c.onHero : (dim ? c.textLight : c.textDark))),
+                  style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: selected ? c.onHero : (dim ? c.textLight : c.textDark))),
             ),
           ]),
         ),
@@ -245,22 +244,22 @@ class VotersList extends StatelessWidget {
     final c = context.colors;
     if (votes.isEmpty) return const SizedBox.shrink();
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(t('المصوّتون (${votes.length})', 'Voters (${votes.length})'), style: orgText(context, size: 12.5, w: FontWeight.w800, color: c.textMedium)),
-      const SizedBox(height: 6),
+      Text(t('المصوّتون (${votes.length})', 'Voters (${votes.length})'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
+      const SizedBox(height: AppSpace.xs),
       for (final v in votes)
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 3),
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             AppAvatar(name: v.user.name, url: v.user.avatar, size: 28),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.xs),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Wrap(spacing: 6, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                  Text(v.user.name, style: orgText(context, size: 12.5, w: FontWeight.w700)),
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                  Text(v.user.name, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
                   AppBadgePill(voteLabel(v.vote), icon: voteIcon(v.vote), color: voteColor(context, v.vote)),
-                  if (v.at != null) Text(govWhen(v.at), style: orgText(context, size: 11, color: c.textLight)),
+                  if (v.at != null) Text(govWhen(v.at), style: AppType.meta(context).copyWith(color: c.textLight)),
                 ]),
-                if ((v.note ?? '').trim().isNotEmpty) Text(v.note!, style: orgText(context, size: 12, color: c.textMedium)),
+                if ((v.note ?? '').trim().isNotEmpty) Text(v.note!, style: AppType.meta(context).copyWith(color: c.textMedium)),
               ]),
             ),
           ]),
@@ -303,7 +302,7 @@ class SessionHeader extends StatelessWidget {
         ],
       ),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
         child: AppCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             GovPillRow([
@@ -312,7 +311,7 @@ class SessionHeader extends StatelessWidget {
               if (s.isVoting && closes != null) AppBadgePill(t('يُغلق بعد ${countdownText(closes, now: now)}', 'closes in ${countdownText(closes, now: now)}'), icon: Icons.timer_rounded, color: c.warning),
               if (s.isVoting && pending > 0) AppBadgePill(t('$pending بنود قيد التصويت', '$pending items being voted'), color: c.primary),
             ]),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             GovInfoLine(Icons.event_rounded, t('موعد الجلسة', 'Scheduled'), govWhen(s.scheduledAt)),
             GovInfoLine(Icons.campaign_rounded, t('نُشر جدول الأعمال', 'Agenda published'), govWhen(s.publishedAt)),
             GovInfoLine(Icons.how_to_vote_rounded, t('فُتح التصويت', 'Voting opened'), govWhen(s.votingOpensAt)),
@@ -320,8 +319,8 @@ class SessionHeader extends StatelessWidget {
             GovInfoLine(Icons.lock_clock_rounded, t('أُغلقت', 'Closed'), govWhen(s.closedAt)),
             GovInfoLine(Icons.groups_rounded, t('الأعضاء المؤهّلون', 'Eligible members'), s.eligibleCount == null ? '' : '${s.eligibleCount}'),
             if ((s.notes ?? '').trim().isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(s.notes!, style: orgText(context, size: 12.5, color: c.textMedium)),
+              const SizedBox(height: AppSpace.xs),
+              Text(s.notes!, style: AppType.label(context).copyWith(color: c.textMedium)),
             ],
           ]),
         ),
@@ -373,12 +372,12 @@ class AgendaRow extends StatelessWidget {
     final open = !a.decided && a.status != 'withdrawn' && sessionStatus != 'closed' && sessionStatus != 'cancelled';
     final statusCol = agendaStatusColor(context, a.status);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
       child: AppCard(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AppSpace.sm),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           InkWell(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.control),
             onTap: onOpenItem,
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               ?dragHandle,
@@ -386,10 +385,10 @@ class AgendaRow extends StatelessWidget {
                 width: 30,
                 height: 30,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(color: statusCol.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-                child: Text('${a.order}', style: orgText(context, size: 13, w: FontWeight.w800, color: statusCol)),
+                decoration: BoxDecoration(color: statusCol.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)),
+                child: Text('${a.order}', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: statusCol)),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   GovPillRow([
@@ -397,12 +396,12 @@ class AgendaRow extends StatelessWidget {
                     AppBadgePill(itemTypeLabel(it.type), color: c.primary),
                     AppBadgePill(agendaStatusLabel(a.status), color: statusCol),
                   ]),
-                  const SizedBox(height: 6),
-                  Text(it.title, style: orgText(context, size: 14, w: FontWeight.w800)),
+                  const SizedBox(height: AppSpace.xs),
+                  Text(it.title, style: AppType.bodyStrong(context)),
                   if (it.sourceName.isNotEmpty || it.ownerDept != null)
                     Text(
                       [if (it.sourceName.isNotEmpty) t('من: ${it.sourceName}', 'From: ${it.sourceName}'), if (it.ownerDept != null) t('لدى: ${it.ownerDept!.name}', 'With: ${it.ownerDept!.name}')].join(' · '),
-                      style: orgText(context, size: 12, color: c.textMedium),
+                      style: AppType.meta(context).copyWith(color: c.textMedium),
                     ),
                 ]),
               ),
@@ -410,7 +409,7 @@ class AgendaRow extends StatelessWidget {
             ]),
           ),
           if (showResult) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             VoteResultView(
               approve: a.approve,
               reject: a.reject,
@@ -423,29 +422,29 @@ class AgendaRow extends StatelessWidget {
             ),
           ],
           if (a.excluded && open) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             AppBanner(
               icon: Icons.how_to_vote_outlined,
               color: c.purple,
               text: t('هذا البند من تقديمك — لا تصوّت عليه، ويُحسب النصاب من دونك.', 'You submitted this item — you do not vote on it, and the quorum is counted without you.'),
             ),
           ] else if (canVote || myVote != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             MyVoteRow(value: myVote, enabled: canVote, busy: voteBusy, onVote: onVote),
           ],
           if (showVoters && a.votes.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             VotersList(votes: a.votes),
           ],
           if ((showVoters || manager) && a.excludedUsers.isNotEmpty) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             Text(
               t('لا يصوّت (مقدّم البند): ${a.excludedUsers.map((u) => u.name).join('، ')}', 'Does not vote (submitted the item): ${a.excludedUsers.map((u) => u.name).join(', ')}'),
-              style: orgText(context, size: 12, color: c.textMedium),
+              style: AppType.meta(context).copyWith(color: c.textMedium),
             ),
           ],
           if (decidedElsewhere) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             AppBanner(
               icon: Icons.info_outline_rounded,
               color: c.warning,
@@ -454,40 +453,40 @@ class AgendaRow extends StatelessWidget {
             ),
           ],
           if (a.escalatedItemId != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             GovPillRow([AppBadgePill(t('صُعِّد إلى مجلس الكلية', 'Escalated to the faculty council'), icon: DirIcons.northEast, color: c.purple)]),
           ],
           if ((a.note ?? '').trim().isNotEmpty && !(a.note ?? '').contains('decided_elsewhere')) ...[
-            const SizedBox(height: 6),
-            Text(a.note!, style: orgText(context, size: 12, color: c.textMedium)),
+            const SizedBox(height: AppSpace.xs),
+            Text(a.note!, style: AppType.meta(context).copyWith(color: c.textMedium)),
           ],
           if (a.decidedAt != null) ...[
-            const SizedBox(height: 4),
-            Text(t('حُسم ${govWhen(a.decidedAt)}', 'Decided ${govWhen(a.decidedAt)}'), style: orgText(context, size: 11.5, color: c.textLight)),
+            const SizedBox(height: AppSpace.xxs),
+            Text(t('حُسم ${govWhen(a.decidedAt)}', 'Decided ${govWhen(a.decidedAt)}'), style: AppType.meta(context).copyWith(color: c.textLight)),
           ],
           if (manager && (onRemove != null || onPostpone != null || onEscalate != null) && open) ...[
-            const SizedBox(height: 6),
-            Wrap(spacing: 4, children: [
+            const SizedBox(height: AppSpace.xs),
+            Wrap(spacing: AppSpace.xxs, children: [
               if (onRemove != null && sessionStatus == 'draft')
                 TextButton.icon(
                   style: TextButton.styleFrom(visualDensity: VisualDensity.compact, foregroundColor: c.danger),
                   onPressed: onRemove,
-                  icon: const Icon(Icons.remove_circle_outline_rounded, size: 18),
-                  label: Text(t('إزالة', 'Remove'), style: orgText(context, size: 12, w: FontWeight.w700, color: c.danger)),
+                  icon: const Icon(Icons.remove_circle_outline_rounded, size: AppIconSize.md),
+                  label: Text(t('إزالة', 'Remove'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.danger)),
                 ),
               if (onPostpone != null)
                 TextButton.icon(
                   style: TextButton.styleFrom(visualDensity: VisualDensity.compact, foregroundColor: c.purple),
                   onPressed: onPostpone,
-                  icon: const Icon(Icons.update_rounded, size: 18),
-                  label: Text(t('تأجيل', 'Postpone'), style: orgText(context, size: 12, w: FontWeight.w700, color: c.purple)),
+                  icon: const Icon(Icons.update_rounded, size: AppIconSize.md),
+                  label: Text(t('تأجيل', 'Postpone'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.purple)),
                 ),
               if (onEscalate != null && canEscalate && a.escalatedItemId == null)
                 TextButton.icon(
                   style: TextButton.styleFrom(visualDensity: VisualDensity.compact, foregroundColor: c.primary),
                   onPressed: onEscalate,
-                  icon: const Icon(DirIcons.northEast, size: 18),
-                  label: Text(t('تصعيد لمجلس الكلية', 'Escalate to the faculty council'), style: orgText(context, size: 12, w: FontWeight.w700, color: c.primary)),
+                  icon: const Icon(DirIcons.northEast, size: AppIconSize.md),
+                  label: Text(t('تصعيد لمجلس الكلية', 'Escalate to the faculty council'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.primary)),
                 ),
             ]),
           ],
@@ -536,17 +535,17 @@ class GovMinutesView extends StatelessWidget {
     Widget line(String label, String value) => value.isEmpty
         ? const SizedBox.shrink()
         : Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs / 2),
             child: Text.rich(TextSpan(children: [
-              TextSpan(text: '$label: ', style: orgText(context, size: 12.5, color: c.textMedium)),
-              TextSpan(text: value, style: orgText(context, size: 12.5, w: FontWeight.w700)),
+              TextSpan(text: '$label: ', style: AppType.label(context).copyWith(color: c.textMedium)),
+              TextSpan(text: value, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
             ])),
           );
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         Icon(Icons.description_rounded, color: c.primary),
-        const SizedBox(width: 8),
-        Expanded(child: Text(title ?? t('محضر الجلسة', 'Session minutes'), style: orgText(context, size: 16, w: FontWeight.w800))),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(child: Text(title ?? t('محضر الجلسة', 'Session minutes'), style: AppType.section(context))),
         if (copyText.isNotEmpty)
           IconButton(
             tooltip: t('نسخ النص', 'Copy the text'),
@@ -557,9 +556,9 @@ class GovMinutesView extends StatelessWidget {
             icon: Icon(Icons.copy_rounded, color: c.primary),
           ),
       ]),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       AppCard(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(AppSpace.md),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           line(t('المجلس', 'Council'), council),
           line(t('الجلسة', 'Session'), session),
@@ -570,11 +569,11 @@ class GovMinutesView extends StatelessWidget {
         ]),
       ),
       if (items.isEmpty && summaryText.isEmpty && copyText.isNotEmpty) ...[
-        const SizedBox(height: 10),
-        AppCard(child: SelectableText(copyText, style: orgText(context, size: 12.5))),
+        const SizedBox(height: AppSpace.sm),
+        AppCard(child: SelectableText(copyText, style: AppType.label(context).copyWith(color: context.colors.textDark))),
       ],
       for (var i = 0; i < items.length; i++) ...[
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         Builder(builder: (context) {
           final x = items[i];
           final it = x['item'] is Map ? asMap(x['item']) : x;
@@ -583,16 +582,16 @@ class GovMinutesView extends StatelessWidget {
           final decision = x['decision'] is Map ? asMap(x['decision']) : null;
           final decisionText = decision == null ? _nameOf(x['decision'] ?? x['decision_text']) : '${decision['text'] ?? decision['note'] ?? (decision['outcome'] == null ? '' : itemStatusLabel('${decision['outcome']}'))}';
           return AppCard(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(AppSpace.sm),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               GovPillRow([
                 AppBadgePill('${x['order'] ?? i + 1}', color: c.textMedium),
                 if ('${it['ref'] ?? ''}'.isNotEmpty) AppBadgePill('${it['ref']}', color: c.textMedium),
                 if (outcome.isNotEmpty) AppBadgePill(voteOutcomeLabel(outcome), color: agendaStatusColor(context, outcome), icon: Icons.gavel_rounded),
               ]),
-              const SizedBox(height: 6),
-              Text('${it['title'] ?? x['title'] ?? ''}', style: orgText(context, size: 13.5, w: FontWeight.w800)),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
+              Text('${it['title'] ?? x['title'] ?? ''}', style: AppType.bodyStrong(context)),
+              const SizedBox(height: AppSpace.xs),
               VoteResultView(
                 approve: asInt(votes['approve'] ?? votes['approve_count']),
                 reject: asInt(votes['reject'] ?? votes['reject_count']),
@@ -603,8 +602,8 @@ class GovMinutesView extends StatelessWidget {
                 compact: true,
               ),
               if (decisionText.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(t('القرار: $decisionText', 'Decision: $decisionText'), style: orgText(context, size: 12.5, color: c.textMedium)),
+                const SizedBox(height: AppSpace.xs),
+                Text(t('القرار: $decisionText', 'Decision: $decisionText'), style: AppType.label(context).copyWith(color: c.textMedium)),
               ],
             ]),
           );
@@ -661,8 +660,8 @@ class _AgendaCandidatePickerState extends State<AgendaCandidatePicker> {
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (widget.items.isEmpty)
         Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(t('لا معاملات بانتظار المجلس حالياً', 'No items are waiting for the council right now'), textAlign: TextAlign.center, style: orgText(context, color: c.textMedium)),
+          padding: const EdgeInsets.all(AppSpace.md),
+          child: Text(t('لا معاملات بانتظار المجلس حالياً', 'No items are waiting for the council right now'), textAlign: TextAlign.center, style: AppType.row(context).copyWith(color: c.textMedium)),
         )
       else ...[
         if (widget.items.length > 6)
@@ -678,13 +677,13 @@ class _AgendaCandidatePickerState extends State<AgendaCandidatePicker> {
                 onChanged: (v) => setState(() => v == true ? _picked.add(it.id) : _picked.remove(it.id)),
                 controlAffinity: ListTileControlAffinity.leading,
                 contentPadding: EdgeInsets.zero,
-                title: Text(it.title, style: orgText(context, w: FontWeight.w700)),
+                title: Text(it.title, style: AppType.bodyStrong(context)),
                 subtitle: Text([it.ref, itemTypeLabel(it.type), itemStatusLabel(it.status), if (it.sourceName.isNotEmpty) it.sourceName].where((x) => x.isNotEmpty).join(' · '),
-                    style: orgText(context, size: 11.5, color: c.textMedium)),
+                    style: AppType.meta(context).copyWith(color: c.textMedium)),
               ),
           ]),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         AppPrimaryButton(
           label: widget.confirmLabel ?? t('إضافة ${_picked.length} إلى جدول الأعمال', 'Add ${_picked.length} to the agenda'),
           icon: Icons.playlist_add_rounded,
@@ -735,15 +734,15 @@ class _SessionEditBodyState extends State<SessionEditBody> {
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
       AppField(controller: _title, label: t('عنوان الجلسة (اختياري)', 'Session title (optional)')),
       InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         onTap: _pick,
         child: InputDecorator(
           isEmpty: _at == null,
-          decoration: InputDecoration(labelText: t('موعد الجلسة', 'Session date & time'), prefixIcon: Icon(Icons.event_rounded, color: c.textLight), suffixIcon: Icon(Icons.edit_calendar_rounded, color: c.textLight, size: 18)),
-          child: Text(_at == null ? '' : govWhen(_at), maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w700)),
+          decoration: InputDecoration(labelText: t('موعد الجلسة', 'Session date & time'), prefixIcon: Icon(Icons.event_rounded, color: c.textLight), suffixIcon: Icon(Icons.edit_calendar_rounded, color: c.textLight, size: AppIconSize.md)),
+          child: Text(_at == null ? '' : govWhen(_at), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
         ),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       AppField(controller: _notes, label: t('ملاحظات', 'Notes'), maxLines: 3),
       AppPrimaryButton(
         label: t('حفظ', 'Save'),
@@ -887,7 +886,7 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
     var busy = false;
     await showAppSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
           return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               SheetHeader(t('إضافة بنود', 'Add items')),
               Flexible(
@@ -915,7 +914,7 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
     var busy = false;
     await showAppSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
           return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md),
             child: SingleChildScrollView(
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 SheetHeader(t('تعديل الجلسة', 'Edit the session')),
@@ -950,7 +949,7 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
     final m = r.map;
     final minutes = m['minutes'] is Map ? asMap(m['minutes']) : (s.minutes ?? const <String, dynamic>{});
     await showAppSheet<void>(context, (ctx) => Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.md),
           child: SingleChildScrollView(
             child: GovMinutesView(
               minutes: minutes,
@@ -1054,8 +1053,8 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
     }
     if (pills.isEmpty) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Wrap(spacing: 8, runSpacing: 8, children: pills),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
+      child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: pills),
     );
   }
 
@@ -1119,17 +1118,17 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
       final reorderable = s.can['manage'] && s.status == 'draft' && agenda.length > 1;
       body = AppRefresh(
         onRefresh: _load,
-        child: ListView(padding: const EdgeInsets.only(bottom: 32), children: [
+        child: ListView(padding: const EdgeInsets.only(bottom: AppSpace.xl), children: [
           SessionHeader(session: s, now: _now),
           _actions(s),
           if (s.status == 'cancelled')
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
               child: AppBanner(icon: Icons.cancel_rounded, color: c.danger, text: t('أُلغيت هذه الجلسة', 'This session was cancelled')),
             ),
           if (s.isVoting && s.can['vote'] && s.pendingMyVotes > 0)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
               child: AppBanner(icon: Icons.how_to_vote_rounded, color: c.warning, text: t('${s.pendingMyVotes} بنود بانتظار صوتك', '${s.pendingMyVotes} items are waiting for your vote')),
             ),
           AppSectionTitle(t('جدول الأعمال', 'Agenda'), subtitle: reorderable ? t('اسحب المقبض لإعادة الترتيب', 'Drag the handle to reorder') : null),
@@ -1154,7 +1153,7 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
                 handle: ReorderableDragStartListener(
                   key: ValueKey('handle.${agenda[i].id}'),
                   index: i,
-                  child: Padding(padding: const EdgeInsetsDirectional.only(end: 6, top: 4), child: Icon(Icons.drag_indicator_rounded, color: c.textLight)),
+                  child: Padding(padding: const EdgeInsetsDirectional.only(end: AppSpace.xs, top: AppSpace.xxs), child: Icon(Icons.drag_indicator_rounded, color: c.textLight)),
                 ),
               ),
             )

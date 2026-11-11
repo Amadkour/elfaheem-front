@@ -13,7 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../admin/admin_common.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 enum GridFilterKind { all, cohort, teacher, assistant, room, group, student }
 
@@ -131,7 +131,7 @@ class TimetableFilterBar extends StatelessWidget {
         if (k == GridFilterKind.all || k == GridFilterKind.student || (options[k]?.isNotEmpty ?? false)) k,
     ];
     final active = filter.kind != GridFilterKind.all && filter.value != null;
-    final style = TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w700, color: c.textDark);
+    final style = AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark);
 
     final Widget value = switch (filter.kind) {
       GridFilterKind.all => Text(
@@ -165,7 +165,7 @@ class TimetableFilterBar extends StatelessWidget {
                   ),
                   style: style,
                   dropdownColor: c.cardBg,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadius.control),
                   items: [
                     for (final e in values.entries)
                       DropdownMenuItem(
@@ -183,10 +183,10 @@ class TimetableFilterBar extends StatelessWidget {
         Expanded(
           child: Container(
             height: 44,
-            padding: const EdgeInsetsDirectional.only(start: 4, end: 4),
+            padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs, end: AppSpace.xxs),
             decoration: BoxDecoration(
               color: c.cardBg,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppRadius.control),
               border: Border.all(color: active ? c.primary.withValues(alpha: 0.6) : c.divider),
             ),
             child: Row(
@@ -201,8 +201,8 @@ class TimetableFilterBar extends StatelessWidget {
                         value: k,
                         child: Row(
                           children: [
-                            Icon(k == filter.kind ? Icons.check_rounded : Icons.filter_alt_outlined, size: 18, color: k == filter.kind ? c.primary : c.textLight),
-                            const SizedBox(width: 10),
+                            Icon(k == filter.kind ? Icons.check_rounded : Icons.filter_alt_outlined, size: AppIconSize.md, color: k == filter.kind ? c.primary : c.textLight),
+                            const SizedBox(width: AppSpace.sm),
                             Flexible(child: Text(gridFilterLabel(k), overflow: TextOverflow.ellipsis)),
                           ],
                         ),
@@ -210,40 +210,40 @@ class TimetableFilterBar extends StatelessWidget {
                   ],
                   child: Container(
                     constraints: const BoxConstraints(maxWidth: 150),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+                    decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(AppRadius.chip)),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.filter_list_rounded, size: 16, color: c.primary),
-                        const SizedBox(width: 6),
+                        Icon(Icons.filter_list_rounded, size: AppIconSize.sm, color: c.primary),
+                        const SizedBox(width: AppSpace.xs),
                         Flexible(
                           child: Text(
                             gridFilterLabel(filter.kind),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: style.copyWith(color: c.primary, fontSize: 12.5, fontWeight: FontWeight.w800),
+                            style: style.copyWith(color: c.primary, fontSize: 12.5, fontWeight: FontWeight.w600),
                           ),
                         ),
-                        Icon(Icons.arrow_drop_down_rounded, size: 18, color: c.primary),
+                        Icon(Icons.arrow_drop_down_rounded, size: AppIconSize.md, color: c.primary),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
                 Expanded(child: value),
                 if (filter.kind != GridFilterKind.all)
                   IconButton(
                     tooltip: t('مسح التصفية', 'Clear filter'),
                     visualDensity: VisualDensity.compact,
-                    icon: Icon(Icons.close_rounded, size: 18, color: c.textMedium),
+                    icon: Icon(Icons.close_rounded, size: AppIconSize.md, color: c.textMedium),
                     onPressed: () => onChanged(GridFilter.none),
                   ),
               ],
             ),
           ),
         ),
-        if (trailing != null) ...[const SizedBox(width: 8), trailing!],
+        if (trailing != null) ...[const SizedBox(width: AppSpace.xs), trailing!],
       ],
     );
   }
@@ -260,12 +260,12 @@ class TimetableLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final style = TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, fontWeight: FontWeight.w700, color: c.textMedium);
+    final style = AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium);
     Widget item(Widget mark, String label) => Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         mark,
-        const SizedBox(width: 5),
+        const SizedBox(width: AppSpace.xxs),
         Flexible(child: Text(label, style: style)),
       ],
     );
@@ -274,7 +274,7 @@ class TimetableLegend extends StatelessWidget {
       height: 10,
       decoration: BoxDecoration(
         color: col.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(AppRadius.chip),
         border: BorderDirectional(start: BorderSide(color: col, width: 3)),
       ),
     );
@@ -284,13 +284,13 @@ class TimetableLegend extends StatelessWidget {
         if (kinds.contains(k) || (k == 'section' && kinds.contains('tutorial'))) k,
     ];
     return Wrap(
-      spacing: 14,
-      runSpacing: 4,
+      spacing: AppSpace.md,
+      runSpacing: AppSpace.xxs,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         for (final k in shown.isEmpty ? const ['lecture'] : shown) item(swatch(sessionKindColor(c, k)), sessionKindLabel(k)),
-        item(Icon(Icons.error_rounded, size: 13, color: c.danger), conflicts > 0 ? t('تعارض ($conflicts)', 'Conflict ($conflicts)') : t('تعارض', 'Conflict')),
-        item(Icon(Icons.push_pin_rounded, size: 12, color: c.textMedium), t('مثبتة', 'Pinned')),
+        item(Icon(Icons.error_rounded, size: AppIconSize.xs, color: c.danger), conflicts > 0 ? t('تعارض ($conflicts)', 'Conflict ($conflicts)') : t('تعارض', 'Conflict')),
+        item(Icon(Icons.push_pin_rounded, size: AppIconSize.xs, color: c.textMedium), t('مثبتة', 'Pinned')),
       ],
     );
   }

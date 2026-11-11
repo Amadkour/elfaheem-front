@@ -9,7 +9,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 
 import '../admin/admin_common.dart';
-import 'org_ui.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 String hhmmOf(TimeOfDay x) => '${x.hour.toString().padLeft(2, '0')}:${x.minute.toString().padLeft(2, '0')}';
 
@@ -44,9 +44,9 @@ class ClockField extends StatelessWidget {
     final c = context.colors;
     final shown = AppTime.clock(value);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         onTap: !enabled
             ? null
             : () async {
@@ -58,12 +58,12 @@ class ClockField extends StatelessWidget {
             labelText: label,
             filled: true,
             fillColor: c.inputBg,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-            prefixIcon: Icon(Icons.schedule_rounded, color: c.primary, size: 20),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide.none),
+            prefixIcon: Icon(Icons.schedule_rounded, color: c.primary, size: AppIconSize.md),
             isDense: true,
           ),
           child: Text(shown.isEmpty ? t('اختر الوقت', 'Pick a time') : shown,
-              maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w700, color: shown.isEmpty ? c.textLight : c.textDark)),
+              maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: shown.isEmpty ? c.textLight : c.textDark)),
         ),
       ),
     );

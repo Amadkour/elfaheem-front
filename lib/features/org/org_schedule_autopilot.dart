@@ -23,8 +23,8 @@ import 'package:flutter_education_app/design/app_kit.dart' show AppPrimaryButton
 import '../admin/admin_common.dart';
 import 'org_providers.dart';
 import 'org_schedule_reassign.dart' show ReassignMetrics;
-import 'org_ui.dart' show orgText;
 import 'org_v3.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 /// What the Timetable section should open next time it builds: 'generate' (the term cards) or 'open:<schedule id>'.
 final ValueNotifier<String?> timetableRequest = ValueNotifier<String?>(null);
@@ -202,8 +202,8 @@ class DataFixPicker extends StatelessWidget {
       Text(
           t('قبل التوليد يقترح فحص البيانات هذه الإصلاحات. ما تختاره يُحفظ فوراً ويبقى بعد أي تراجع؛ تغييرات الأشخاص والقاعات غير مختارة افتراضياً.',
               'Before generating, the data check suggests these fixes. What you tick is saved at once and stays after any undo; changes to people and rooms start unticked.'),
-          style: orgText(context, size: 12.5, color: c.textMedium)),
-      const SizedBox(height: 6),
+          style: AppType.label(context).copyWith(color: c.textMedium)),
+      const SizedBox(height: AppSpace.xs),
       for (final f in plan.fixes)
         CheckboxListTile(
           dense: true,
@@ -211,12 +211,12 @@ class DataFixPicker extends StatelessWidget {
           controlAffinity: ListTileControlAffinity.leading,
           value: selected.contains(f.key),
           onChanged: onToggle == null ? null : (v) => onToggle!(f.key, v == true),
-          title: Text(f.text, style: orgText(context, size: 13, w: FontWeight.w700)),
+          title: Text(f.text, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
           subtitle: Text(
             [if (f.finding.isNotEmpty) f.finding, if (f.why.isNotEmpty) f.why, if (f.people) t('يغيّر أشخاصاً أو قاعات', 'changes people or rooms')].join(' · '),
-            style: orgText(context, size: 11.5, color: f.people ? c.warning : c.textMedium),
+            style: AppType.meta(context).copyWith(color: f.people ? c.warning : c.textMedium),
           ),
-          secondary: f.people ? Icon(Icons.warning_amber_rounded, color: c.warning, size: 18) : null,
+          secondary: f.people ? Icon(Icons.warning_amber_rounded, color: c.warning, size: AppIconSize.md) : null,
         ),
     ]);
   }
@@ -227,14 +227,14 @@ Future<List<String>?> askDataFixes(BuildContext context, DataFixPlan plan) {
   final selected = <String>{...plan.defaults};
   return showAdminSheet<List<String>>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(t('إصلاحات البيانات قبل التوليد', 'Data fixes before generating')),
             DataFixPicker(plan: plan, selected: selected, onToggle: (k, on) => set(() => on ? selected.add(k) : selected.remove(k))),
-            const SizedBox(height: 12),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              FilledButton.icon(onPressed: () => Navigator.pop(ctx, selected.toList()), icon: const Icon(Icons.auto_fix_high_rounded, size: 18), label: Text(t('ابدأ (${selected.length} إصلاح)', 'Start (${selected.length} fix(es))'))),
-              OutlinedButton.icon(onPressed: () => Navigator.pop(ctx, const <String>[]), icon: const Icon(Icons.skip_next_rounded, size: 18), label: Text(t('بلا إصلاحات بيانات', 'Without data fixes'))),
+            const SizedBox(height: AppSpace.sm),
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+              FilledButton.icon(onPressed: () => Navigator.pop(ctx, selected.toList()), icon: const Icon(Icons.auto_fix_high_rounded, size: AppIconSize.md), label: Text(t('ابدأ (${selected.length} إصلاح)', 'Start (${selected.length} fix(es))'))),
+              OutlinedButton.icon(onPressed: () => Navigator.pop(ctx, const <String>[]), icon: const Icon(Icons.skip_next_rounded, size: AppIconSize.md), label: Text(t('بلا إصلاحات بيانات', 'Without data fixes'))),
               TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t('إلغاء', 'Cancel'))),
             ]),
           ]),
@@ -286,38 +286,38 @@ class TermTimetableCard extends StatelessWidget {
     final col = need.ready ? c.primary : c.warning;
     final when = need.current ? t('الفصل الحالي', 'current term') : t('الفصل القادم', 'next term');
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpace.md),
       decoration: BoxDecoration(
         color: col.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: col.withValues(alpha: 0.35)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(need.ready ? Icons.auto_awesome_rounded : Icons.flag_rounded, color: col),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(t('${need.label} بلا جدول بعد', '${need.label} has no timetable yet'), style: orgText(context, size: 15, w: FontWeight.w800)),
+              Text(t('${need.label} بلا جدول بعد', '${need.label} has no timetable yet'), style: AppType.section(context)),
               Text(
                 need.ready
                     ? t('$when · بضغطة واحدة: يُنشأ الجدول من مقررات الفصل، يُولَّد، وتُصلَح تعارضاته تلقائياً، ثم تراجعه وتنشره.',
                         '$when · One tap: the timetable is created from the term\'s courses, generated, its conflicts fixed automatically, then you review and publish.')
                     : t('$when · ينقص قبل التوليد: ${need.blockedTexts.join(' · ')}', '$when · Needed before generating: ${need.blockedTexts.join(' · ')}'),
-                style: orgText(context, size: 12.5, color: c.textMedium),
+                style: AppType.label(context).copyWith(color: c.textMedium),
               ),
             ]),
           ),
         ]),
         if (onGenerate != null || onSetup != null) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           Align(
             alignment: AlignmentDirectional.centerEnd,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 280),
               child: need.ready
                   ? AppPrimaryButton(label: t('ولّد الجدول الآن', 'Generate now'), icon: Icons.auto_awesome_rounded, busy: busy, onPressed: busy ? null : onGenerate)
-                  : OutlinedButton.icon(onPressed: onSetup, icon: const Icon(Icons.tune_rounded, size: 18), label: Text(t('أكمل الإعداد', 'Complete the setup'))),
+                  : OutlinedButton.icon(onPressed: onSetup, icon: const Icon(Icons.tune_rounded, size: AppIconSize.md), label: Text(t('أكمل الإعداد', 'Complete the setup'))),
             ),
           ),
         ],
@@ -341,64 +341,64 @@ class AutopilotSummaryCard extends StatelessWidget {
     final r = report;
     final col = r.complete ? c.success : (r.after.hard > 0 ? c.danger : c.warning);
     Widget delta(String label, int before, int after) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(8), border: Border.all(color: c.textLight.withValues(alpha: 0.25))),
-          child: Text('$label $before ← $after', textDirection: TextDirection.rtl, style: orgText(context, size: 11.5, w: FontWeight.w700, color: after < before ? c.success : (after > before ? c.danger : c.textMedium))),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
+          decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.chip), border: Border.all(color: c.textLight.withValues(alpha: 0.25))),
+          child: Text('$label $before ← $after', textDirection: TextDirection.rtl, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: after < before ? c.success : (after > before ? c.danger : c.textMedium))),
         );
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: col.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(16), border: Border.all(color: col.withValues(alpha: 0.3))),
+      padding: const EdgeInsets.all(AppSpace.sm),
+      decoration: BoxDecoration(color: col.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: col.withValues(alpha: 0.3))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.auto_fix_high_rounded, color: col),
-          const SizedBox(width: 8),
-          Expanded(child: Text(t('الإصلاح التلقائي', 'Automatic fixing'), style: orgText(context, size: 14, w: FontWeight.w800, color: col))),
-          Text(t('${r.rounds} جولة', '${r.rounds} round(s)'), style: orgText(context, size: 11.5, color: c.textMedium)),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: Text(t('الإصلاح التلقائي', 'Automatic fixing'), style: AppType.bodyStrong(context).copyWith(color: col))),
+          Text(t('${r.rounds} جولة', '${r.rounds} round(s)'), style: AppType.meta(context).copyWith(color: c.textMedium)),
         ]),
-        const SizedBox(height: 4),
-        Text(autopilotStopText(r.stopped), style: orgText(context, size: 12.5, color: c.textMedium)),
-        const SizedBox(height: 8),
-        Wrap(spacing: 6, runSpacing: 6, children: [
+        const SizedBox(height: AppSpace.xxs),
+        Text(autopilotStopText(r.stopped), style: AppType.label(context).copyWith(color: c.textMedium)),
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           delta(t('تعارض إلزامي', 'hard'), r.before.hard, r.after.hard),
           delta(t('بلا مكان', 'unplaced'), r.before.unplaced, r.after.unplaced),
           delta(t('تنبيه', 'warnings'), r.before.warnings, r.after.warnings),
           delta(t('الدرجة', 'score'), r.before.score, r.after.score),
         ]),
         if (r.applied.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(t('ما طُبّق (${r.applied.length})', 'Applied (${r.applied.length})'), style: orgText(context, size: 12.5, w: FontWeight.w800)),
+          const SizedBox(height: AppSpace.xs),
+          Text(t('ما طُبّق (${r.applied.length})', 'Applied (${r.applied.length})'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
           for (final x in r.applied.take(limit))
             Padding(
-              padding: const EdgeInsets.only(top: 3),
+              padding: const EdgeInsets.only(top: AppSpace.xxs),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Icon(Icons.check_circle_rounded, size: 14, color: c.success),
-                const SizedBox(width: 6),
-                Expanded(child: Text(x.text, style: orgText(context, size: 12, color: c.textMedium))),
+                Icon(Icons.check_circle_rounded, size: AppIconSize.xs, color: c.success),
+                const SizedBox(width: AppSpace.xs),
+                Expanded(child: Text(x.text, style: AppType.meta(context).copyWith(color: c.textMedium))),
               ]),
             ),
-          if (r.applied.length > limit) Text(t('+${r.applied.length - limit} أخرى', '+${r.applied.length - limit} more'), style: orgText(context, size: 11.5, color: c.textLight)),
+          if (r.applied.length > limit) Text(t('+${r.applied.length - limit} أخرى', '+${r.applied.length - limit} more'), style: AppType.meta(context).copyWith(color: c.textLight)),
         ],
         if (r.left.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(t('يحتاج قرارك (${r.left.length})', 'Needs your decision (${r.left.length})'), style: orgText(context, size: 12.5, w: FontWeight.w800)),
+          const SizedBox(height: AppSpace.xs),
+          Text(t('يحتاج قرارك (${r.left.length})', 'Needs your decision (${r.left.length})'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
           for (final x in r.left.take(limit))
             Padding(
-              padding: const EdgeInsets.only(top: 3),
+              padding: const EdgeInsets.only(top: AppSpace.xxs),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Icon(Icons.person_rounded, size: 14, color: c.warning),
-                const SizedBox(width: 6),
-                Expanded(child: Text(x.text, style: orgText(context, size: 12, color: c.textMedium))),
+                Icon(Icons.person_rounded, size: AppIconSize.xs, color: c.warning),
+                const SizedBox(width: AppSpace.xs),
+                Expanded(child: Text(x.text, style: AppType.meta(context).copyWith(color: c.textMedium))),
               ]),
             ),
-          if (r.left.length > limit) Text(t('+${r.left.length - limit} أخرى', '+${r.left.length - limit} more'), style: orgText(context, size: 11.5, color: c.textLight)),
+          if (r.left.length > limit) Text(t('+${r.left.length - limit} أخرى', '+${r.left.length - limit} more'), style: AppType.meta(context).copyWith(color: c.textLight)),
         ],
         if (onUndo != null && r.canUndo) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           Align(
             alignment: AlignmentDirectional.centerEnd,
             child: OutlinedButton.icon(
               onPressed: onUndo,
-              icon: const Icon(Icons.undo_rounded, size: 18),
+              icon: const Icon(Icons.undo_rounded, size: AppIconSize.md),
               label: Text(r.beforeSlots == 0 ? t('تراجع (جدول فارغ)', 'Undo (back to an empty timetable)') : t('تراجع عن كل شيء', 'Undo everything')),
             ),
           ),

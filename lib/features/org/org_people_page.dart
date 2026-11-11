@@ -25,7 +25,6 @@ import 'org_v3.dart';
 import 'org_page_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import '../admin/admin_table_export.dart' show exportPagedList, orgMembersExport;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_username.dart';
 
 /// Members of the organization (D-103 page anatomy, org_page_kit.dart): the kind as ONE segmented control
@@ -347,20 +346,20 @@ class OrgMemberRowView extends StatelessWidget {
         onTap: onTap,
         child: Row(children: [
           AdminAvatar(name: name, url: imageUrl),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
               if (username != null) AppUsernameLine(username),
-              Text(email, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
+              Text(email, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: AppType.meta(context).copyWith(color: c.textMedium)),
               if (chips.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Wrap(spacing: 6, runSpacing: 4, children: chips),
+                const SizedBox(height: AppSpace.xs),
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: chips),
               ],
               if (period != null && period!.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(period!, style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: periodEnded ? c.danger : c.textLight)),
+                  padding: const EdgeInsets.only(top: AppSpace.xxs),
+                  child: Text(period!, style: AppType.meta(context).copyWith(color: periodEnded ? c.danger : c.textLight)),
                 ),
             ]),
           ),
@@ -398,24 +397,24 @@ Future<void> _permissions(BuildContext context, OrgMembersProvider p, Map<String
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(t('صلاحيات ${(row['user'] as Map)['name']}', 'Permissions · ${(row['user'] as Map)['name']}')),
             Text(t('اختر ما يستطيع المساعد الإداري فعله في كل قسم. "عرض" يُضاف تلقائياً مع أي صلاحية أخرى.', 'Choose what this assistant can do in each module. "View" is added automatically with any other right.'),
-                style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.textMedium)),
-            const SizedBox(height: 10),
+                style: AppType.label(ctx).copyWith(color: c.textMedium)),
+            const SizedBox(height: AppSpace.sm),
             for (final m in _modules)
               Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(16)),
+                margin: const EdgeInsets.only(bottom: AppSpace.xs),
+                padding: const EdgeInsets.all(AppSpace.sm),
+                decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.card)),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(modLabel[m]!, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 6),
-                  Wrap(spacing: 8, children: [
+                  const SizedBox(height: AppSpace.xs),
+                  Wrap(spacing: AppSpace.xs, children: [
                     for (final a in _actions)
                       FilterChip(
-                        label: Text(actLabel[a]!, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
+                        label: Text(actLabel[a]!, style: AppType.label(context).copyWith(color: context.colors.textDark)),
                         selected: cur[m]!.contains(a),
                         onSelected: (on) => set(() {
                           if (on) {

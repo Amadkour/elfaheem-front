@@ -25,12 +25,13 @@ import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 Widget _errorBox(BuildContext context, String text) => Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: context.colors.danger.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
-      child: Text(text, style: orgText(context, size: 12.5, color: context.colors.danger)),
+      margin: const EdgeInsets.only(bottom: AppSpace.sm),
+      padding: const EdgeInsets.all(AppSpace.sm),
+      decoration: BoxDecoration(color: context.colors.danger.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(AppRadius.control)),
+      child: Text(text, style: AppType.label(context).copyWith(color: context.colors.danger)),
     );
 
 String courseName(Map l) {
@@ -71,9 +72,9 @@ class _CapabilityPickerState extends State<_CapabilityPicker> {
   Widget build(BuildContext context) {
     final all = {...widget.suggestions, ...widget.value}.toList()..sort();
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(widget.label, style: orgText(context, size: 12.5, w: FontWeight.w800, color: context.colors.textMedium)),
-      const SizedBox(height: 6),
-      Wrap(spacing: 6, runSpacing: 6, children: [
+      Text(widget.label, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textMedium)),
+      const SizedBox(height: AppSpace.xs),
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final x in all)
           FilterChip(
               label: Text(x),
@@ -120,32 +121,32 @@ Future<bool> showRoomForm(BuildContext context, OrgScheduleProvider p, Map<Strin
         final c = ctx.colors;
         final kinds = p.kindLabels;
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(e == null ? t('مكان جديد', 'New facility') : t('تعديل المكان', 'Edit facility')),
             Row(children: [
               SizedBox(width: 120, child: Field(controller: code, label: t('الكود', 'Code'), ltr: true)),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               Expanded(child: Field(controller: name, label: t('الاسم', 'Name'))),
             ]),
-            Text(t('النوع', 'Type'), style: orgText(ctx, size: 12.5, w: FontWeight.w800, color: c.textMedium)),
-            const SizedBox(height: 6),
-            Wrap(spacing: 8, runSpacing: 6, children: [
+            Text(t('النوع', 'Type'), style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
+            const SizedBox(height: AppSpace.xs),
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final k in kinds.entries) ChoiceChip(label: Text(k.value), selected: kind == k.key, onSelected: (_) => set(() => kind = k.key)),
             ]),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             Row(children: [
               Expanded(child: OrgNumberField(controller: cap, label: t('السعة', 'Capacity'))),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               Expanded(child: Field(controller: building, label: t('المبنى', 'Building'))),
             ]),
             Field(controller: location, label: t('المكان بالتفصيل (الدور، الجناح…)', 'Location (floor, wing…)')),
             Row(children: [
               if (image.text.trim().isNotEmpty)
                 Padding(
-                  padding: const EdgeInsetsDirectional.only(end: 10),
+                  padding: const EdgeInsetsDirectional.only(end: AppSpace.sm),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppRadius.control),
                     child: Image.network(image.text.trim(), width: 48, height: 48, fit: BoxFit.cover, errorBuilder: (_, _, _) => const SizedBox(width: 48, height: 48)),
                   ),
                 ),
@@ -161,7 +162,7 @@ Future<bool> showRoomForm(BuildContext context, OrgScheduleProvider p, Map<Strin
               ),
               if (image.text.trim().isNotEmpty) IconButton(tooltip: t('مسح', 'Clear'), onPressed: () => set(image.clear), icon: Icon(Icons.close_rounded, color: c.textLight)),
             ]),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             _CapabilityPicker(label: t('الإمكانات (أجهزة، معدات…)', 'Capabilities (equipment…)'), value: caps, suggestions: allCaps, onChanged: () => set(() {})),
             OrgSwitchRow(
                 title: t('حصري', 'Exclusive'),
@@ -268,11 +269,11 @@ Future<void> showFacilityTypes(BuildContext context, OrgScheduleProvider p) asyn
         }
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(t('أنواع الأماكن', 'Facility types')),
-            Text('${t('الأنواع الأساسية', 'Built-in')}: ${p.builtinKinds.map(roomKindLabel).join('، ')}', style: orgText(ctx, size: 12, color: c.textMedium)),
-            const SizedBox(height: 8),
+            Text('${t('الأنواع الأساسية', 'Built-in')}: ${p.builtinKinds.map(roomKindLabel).join('، ')}', style: AppType.meta(ctx).copyWith(color: c.textMedium)),
+            const SizedBox(height: AppSpace.xs),
             for (var i = 0; i < items.length; i++)
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -323,20 +324,20 @@ Future<void> showOfficeMembers(BuildContext context, OrgScheduleProvider p, Map<
         final c = ctx.colors;
         final max = room['max_members'] == null ? null : asInt(room['max_members']);
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader('${t('الموجودون في', 'Occupants of')} ${room['name']}'),
-            Text(max == null ? t('${picked.length} شخص', '${picked.length} people') : '${picked.length} / $max', style: orgText(ctx, color: c.textMedium)),
-            const SizedBox(height: 8),
-            if (people.isEmpty) Text(t('أضف أعضاء هيئة أولاً', 'Add staff members first'), style: orgText(ctx, color: c.textLight)),
-            Wrap(spacing: 8, runSpacing: 6, children: [
+            Text(max == null ? t('${picked.length} شخص', '${picked.length} people') : '${picked.length} / $max', style: AppType.row(ctx).copyWith(color: c.textMedium)),
+            const SizedBox(height: AppSpace.xs),
+            if (people.isEmpty) Text(t('أضف أعضاء هيئة أولاً', 'Add staff members first'), style: AppType.row(ctx).copyWith(color: c.textLight)),
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final e in people.entries)
                 FilterChip(
                     label: Text(e.value),
                     selected: picked.containsKey(e.key),
                     onSelected: (on) => set(() => on ? picked[e.key] = '' : picked.remove(e.key))),
             ]),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             if (err != null) _errorBox(ctx, err!),
             PrimaryButton(
               isLoading: busy,
@@ -381,7 +382,7 @@ Future<int?> showStaffCandidates(BuildContext context, OrgScheduleProvider p, in
         enabled: ok,
         onTap: ok ? () => Navigator.pop(ctx, id) : null,
         leading: AdminAvatar(name: '${u['name']}', url: u['image_url'] as String?, size: 38),
-        title: Text('${u['name']}', style: orgText(ctx, w: FontWeight.w700)),
+        title: Text('${u['name']}', style: AppType.bodyStrong(ctx)),
         subtitle: Text(
             ok
                 ? [
@@ -393,12 +394,12 @@ Future<int?> showStaffCandidates(BuildContext context, OrgScheduleProvider p, in
                     if (x['experience_level'] != null) t('خبرة ${x['experience_level']} سنة', '${x['experience_level']} yrs'),
                   ].join(' · ')
                 : '${x['reason_text'] ?? x['reason']}',
-            style: orgText(ctx, size: 12, color: ok ? c.textMedium : c.danger)),
+            style: AppType.meta(ctx).copyWith(color: ok ? c.textMedium : c.danger)),
         trailing: current.contains(id) ? Icon(Icons.check_circle_rounded, color: c.success) : null,
       );
     }
 
-    return ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
+    return ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg), children: [
       SheetHeader(kind == 'lab' ? t('مرشحون للسكشن', 'Lab candidates') : t('مرشحون للمحاضرة', 'Lecture candidates')),
       Text(
           kind == 'lab'
@@ -406,18 +407,18 @@ Future<int?> showStaffCandidates(BuildContext context, OrgScheduleProvider p, in
                   ? t('السكشن للمعيدين فقط (حسب إعدادات المؤسسة).', 'Labs are for teaching assistants only (institution settings).')
                   : t('يُقترح معيد، ويُسمح للمدرس بتدريس السكشن حسب الإعدادات.', 'A teaching assistant is suggested; teachers may teach labs by the settings.'))
               : t('مرتبون حسب الأنسب: من يفضّل المقرر، ثم الأقل حملاً والأكثر إتاحة.', 'Best first: who prefers the course, then lighter load and more availability.'),
-          style: orgText(ctx, size: 12, color: c.textMedium)),
-      const SizedBox(height: 6),
+          style: AppType.meta(ctx).copyWith(color: c.textMedium)),
+      const SizedBox(height: AppSpace.xs),
       if (eligible.isEmpty)
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(AppSpace.sm),
           child: Text(t('لا يوجد مرشح مؤهل. أضف عضو هيئة للقسم أو راجع إعداد المدرسين العامين.', 'No eligible candidate. Add a staff member to the department or check the general-teacher setting.'),
-              style: orgText(ctx, color: c.warning)),
+              style: AppType.row(ctx).copyWith(color: c.warning)),
         ),
       for (final x in eligible) row(x),
       if (not.isNotEmpty) ...[
         const Divider(),
-        Text(t('غير مؤهلين', 'Not eligible'), style: orgText(ctx, size: 12.5, w: FontWeight.w800, color: c.textMedium)),
+        Text(t('غير مؤهلين', 'Not eligible'), style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
         for (final x in not) row(x, ok: false),
       ],
     ]);
@@ -455,15 +456,15 @@ Future<void> showStaffPrefs(BuildContext context, OrgScheduleProvider p, int use
           'avoid': t('يتجنّبه (مرن)', 'Avoid (soft)'),
         };
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader('${t('تفضيلات', 'Preferences of')} $name'),
             Text(
                 t('"غير متاح" قيد إلزامي لا يُكسر إلا باستثناء معتمد. "مفضّل" و"يتجنّبه" تفضيلات قد تُخفَّف عند الضرورة.',
                     '"Unavailable" is a hard rule, broken only by an approved override. "Preferred" and "Avoid" are preferences the generator may relax when needed.'),
-                style: orgText(ctx, size: 12, color: c.textMedium)),
-            const SizedBox(height: 8),
-            Wrap(spacing: 8, children: [
+                style: AppType.meta(ctx).copyWith(color: c.textMedium)),
+            const SizedBox(height: AppSpace.xs),
+            Wrap(spacing: AppSpace.xs, children: [
               for (final b in brushes.entries)
                 ChoiceChip(
                   avatar: CircleAvatar(radius: 6, backgroundColor: col(b.key)),
@@ -472,21 +473,21 @@ Future<void> showStaffPrefs(BuildContext context, OrgScheduleProvider p, int use
                   onSelected: (_) => set(() => brush = b.key),
                 ),
             ]),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             AppHScroll(
               child: Table(defaultColumnWidth: const FixedColumnWidth(62), children: [
                 TableRow(children: [
                   const SizedBox(),
                   for (final d in days)
                     Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: Text(dayLabels()[d] ?? d, textAlign: TextAlign.center, style: orgText(ctx, size: 11.5, w: FontWeight.w800))),
+                        padding: const EdgeInsets.all(AppSpace.xxs),
+                        child: Text(dayLabels()[d] ?? d, textAlign: TextAlign.center, style: AppType.meta(ctx).copyWith(fontWeight: FontWeight.w600, color: ctx.colors.textDark))),
                 ]),
                 for (final per in p.periods)
                   TableRow(children: [
                     Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: Text('${per['label']}', textAlign: TextAlign.center, style: orgText(ctx, size: 11.5, color: c.textMedium))),
+                        padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
+                        child: Text('${per['label']}', textAlign: TextAlign.center, style: AppType.meta(ctx).copyWith(color: c.textMedium))),
                     for (final d in days)
                       Builder(builder: (_) {
                         final k = '$d|${per['id']}';
@@ -495,12 +496,12 @@ Future<void> showStaffPrefs(BuildContext context, OrgScheduleProvider p, int use
                           onTap: locked ? null : () => set(() => mode[k] == brush ? mode.remove(k) : mode[k] = brush),
                           child: Container(
                             height: 36,
-                            margin: const EdgeInsets.all(3),
+                            margin: const EdgeInsets.all(AppSpace.xxs),
                             decoration: BoxDecoration(
                               color: mode[k] == null ? c.inputBg : col(mode[k]).withValues(alpha: locked ? 0.45 : 0.9),
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(AppRadius.chip),
                             ),
-                            child: locked ? Icon(Icons.lock_rounded, size: 14, color: c.onHero) : null,
+                            child: locked ? Icon(Icons.lock_rounded, size: AppIconSize.xs, color: c.onHero) : null,
                           ),
                         );
                       }),
@@ -508,17 +509,17 @@ Future<void> showStaffPrefs(BuildContext context, OrgScheduleProvider p, int use
               ]),
             ),
             if (fromRequest.isNotEmpty)
-              Text(t('🔒 من رد طلب المواعيد — يُعدَّل من هناك', '🔒 From their availability reply — edited there'), style: orgText(ctx, size: 11.5, color: c.textLight)),
-            const SizedBox(height: 10),
-            Text(t('المقررات المفضّلة', 'Preferred courses'), style: orgText(ctx, size: 12.5, w: FontWeight.w800, color: c.textMedium)),
-            Wrap(spacing: 6, runSpacing: 6, children: [
+              Text(t('🔒 من رد طلب المواعيد — يُعدَّل من هناك', '🔒 From their availability reply — edited there'), style: AppType.meta(ctx).copyWith(color: c.textLight)),
+            const SizedBox(height: AppSpace.sm),
+            Text(t('المقررات المفضّلة', 'Preferred courses'), style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final l in p.loads)
                 FilterChip(
                     label: Text(courseName(l)),
                     selected: courses.contains(asInt(l['course_id'])),
                     onSelected: (on) => set(() => on ? courses.add(asInt(l['course_id'])) : courses.remove(asInt(l['course_id'])))),
             ]),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             if (err != null) _errorBox(ctx, err!),
             PrimaryButton(
               isLoading: busy,
@@ -581,13 +582,13 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         Widget stepper(String label, int v, int min, int max, ValueChanged<int> on) => Row(children: [
-              Expanded(child: Text(label, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, color: c.textDark))),
+              Expanded(child: Text(label, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, color: c.textDark))),
               IconButton(tooltip: t('تقليل', 'Decrease'), onPressed: v > min ? () => set(() => on(v - 1)) : null, icon: const Icon(Icons.remove_circle_outline_rounded)),
-              Text('$v', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              Text('$v', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
               IconButton(tooltip: t('زيادة', 'Increase'), onPressed: v < max ? () => set(() => on(v + 1)) : null, icon: const Icon(Icons.add_circle_outline_rounded)),
             ]);
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(courseName(l)),
             // ── lecture ──
@@ -619,12 +620,12 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
               value: room ?? 'any',
               onChanged: (v) => set(() => room = v == 'any' ? null : v),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             _CapabilityPicker(label: t('إمكانات مطلوبة للمحاضرة', 'Capabilities the lecture needs'), value: caps, suggestions: allCaps, onChanged: () => set(() {})),
             // ── sizes: group size = the smaller of the course maximum and the room capacity ──
             Row(children: [
               Expanded(child: OrgNumberField(controller: expected, label: t('العدد المتوقع للطلاب', 'Expected enrolment'))),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               Expanded(child: OrgNumberField(controller: lecMax, label: t('أقصى حجم لمجموعة النظري', 'Max theory group'))),
             ]),
             OrgSwitchRow(
@@ -633,17 +634,17 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
               value: practical,
               onChanged: (v) => set(() => practical = v),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             // ── lab ──
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppSpace.sm),
               decoration: BoxDecoration(
-                  color: c.purple.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(16), border: Border.all(color: c.purple.withValues(alpha: 0.25))),
+                  color: c.purple.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.purple.withValues(alpha: 0.25))),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
-                  Icon(Icons.science_rounded, color: c.purple, size: 20),
-                  const SizedBox(width: 6),
-                  Flexible(child: Text(t('السكشن / المعمل', 'Section / lab'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark))),
+                  Icon(Icons.science_rounded, color: c.purple, size: AppIconSize.md),
+                  const SizedBox(width: AppSpace.xs),
+                  Flexible(child: Text(t('السكشن / المعمل', 'Section / lab'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, color: c.textDark))),
                 ]),
                 stepper(t('عدد السكاشن أسبوعياً (0 = لا يوجد)', 'Labs per week (0 = none)'), labSessions, 0, 14, (v) => labSessions = v),
                 if (labSessions > 0) ...[
@@ -656,9 +657,9 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
                     value: labRoom,
                     onChanged: (v) => set(() => labRoom = v),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.xs),
                   Row(children: [
-                    Expanded(child: Text(t('المعيدون', 'Teaching assistants'), style: orgText(ctx, size: 12.5, w: FontWeight.w800, color: c.textMedium))),
+                    Expanded(child: Text(t('المعيدون', 'Teaching assistants'), style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: c.textMedium))),
                     TextButton.icon(
                       onPressed: () async {
                         final id = await showStaffCandidates(ctx, p, cid, 'lab', current: assistants);
@@ -666,11 +667,11 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
                         final isTeacher = p.staff.any((m) => asInt(asMap(m['user'])['id']) == id && m['role'] == 'teacher');
                         set(() => isTeacher ? teacher = id : assistants.add(id));
                       },
-                      icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+                      icon: const Icon(Icons.auto_awesome_rounded, size: AppIconSize.md),
                       label: Text(t('اقتراح', 'Suggest')),
                     ),
                   ]),
-                  Wrap(spacing: 8, children: [
+                  Wrap(spacing: AppSpace.xs, children: [
                     for (final u in p.staffOf('teacher_assistant'))
                       FilterChip(
                         label: Text('${u['name']}'),
@@ -684,13 +685,13 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
                       assistants.isEmpty
                           ? t('بدون معيد يدرّسه المدرس إن سمحت الإعدادات، وإلا يرفض الخادم الحفظ.', 'Without an assistant the teacher teaches it if the settings allow; otherwise the server refuses.')
                           : t('يدرّسه المعيد في وقت منفصل عن المحاضرة.', 'Taught by the assistant, at a different time from the lecture.'),
-                      style: orgText(ctx, size: 11.5, color: c.textMedium)),
-                  const SizedBox(height: 8),
+                      style: AppType.meta(ctx).copyWith(color: c.textMedium)),
+                  const SizedBox(height: AppSpace.xs),
                   _CapabilityPicker(label: t('إمكانات مطلوبة للسكشن', 'Capabilities the lab needs'), value: labCaps, suggestions: allCaps, onChanged: () => set(() {})),
                 ],
               ]),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             OrgPickField<int>(
               label: t('مساعد إداري (اختياري)', 'Admin assistant (optional)'),
               icon: Icons.badge_rounded,
@@ -700,10 +701,10 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
               onChanged: (v) => set(() => adm = v),
             ),
             if (onStudentAvailability != null) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
               OutlinedButton.icon(onPressed: onStudentAvailability, icon: const Icon(Icons.groups_rounded), label: Text(t('أوقات حضور الطلاب', 'Student availability'))),
             ],
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             if (err != null) _errorBox(ctx, err!),
             PrimaryButton(
               isLoading: busy,
@@ -777,20 +778,20 @@ class ScheduleResultView extends StatelessWidget {
     final col = switch (st) { 'feasible' => c.success, 'feasible_relaxed' => c.primary, 'partial' => c.warning, _ => c.danger };
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: col.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(18), border: Border.all(color: col.withValues(alpha: 0.35))),
+        padding: const EdgeInsets.all(AppSpace.md),
+        decoration: BoxDecoration(color: col.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: col.withValues(alpha: 0.35))),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(st == 'feasible' || st == 'feasible_relaxed' ? Icons.verified_rounded : Icons.report_rounded, color: col, size: 28),
-          const SizedBox(width: 10),
+          Icon(st == 'feasible' || st == 'feasible_relaxed' ? Icons.verified_rounded : Icons.report_rounded, color: col, size: AppIconSize.xl),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(resultStatusLabels()[st] ?? st, style: orgText(context, size: 15, w: FontWeight.w800, color: col)),
-              const SizedBox(height: 2),
-              Text(resultStatusHelp(st), style: orgText(context, size: 12.5, color: c.textMedium)),
+              Text(resultStatusLabels()[st] ?? st, style: AppType.section(context).copyWith(color: col)),
+              const SizedBox(height: AppSpace.xxs / 2),
+              Text(resultStatusHelp(st), style: AppType.label(context).copyWith(color: c.textMedium)),
               if (stats.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Wrap(spacing: 6, runSpacing: 4, children: [
+                  padding: const EdgeInsets.only(top: AppSpace.xs),
+                  child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                     OrgPill(t('${stats['sessions_placed']} من ${stats['sessions_required']} حصة', '${stats['sessions_placed']} of ${stats['sessions_required']} sessions'),
                         icon: Icons.event_available_rounded, color: col),
                     if (stats['soft_cost'] != null)
@@ -802,7 +803,7 @@ class ScheduleResultView extends StatelessWidget {
         ]),
       ),
       if (unscheduled.isNotEmpty) ...[
-        OrgSectionTitle(t('حصص لم تُجدول (${unscheduled.length})', 'Sessions not placed (${unscheduled.length})'), padding: const EdgeInsets.fromLTRB(4, 14, 4, 6)),
+        OrgSectionTitle(t('حصص لم تُجدول (${unscheduled.length})', 'Sessions not placed (${unscheduled.length})'), padding: const EdgeInsets.fromLTRB(AppSpace.xxs, AppSpace.md, AppSpace.xxs, AppSpace.xs)),
         for (final u in unscheduled)
           ListTile(
             dense: true,
@@ -810,42 +811,42 @@ class ScheduleResultView extends StatelessWidget {
             leading: Icon(u['kind'] == 'lab' ? Icons.science_rounded : Icons.menu_book_rounded, color: c.warning),
             title: Text(
                 '${courseNames[asInt(u['course_id'])] ?? '#${u['course_id']}'}${u['kind'] == 'lab' ? ' · ${t('سكشن', 'lab')}' : ''} — ${t('${u['missing']} ناقصة', '${u['missing']} missing')}',
-                style: orgText(context, w: FontWeight.w700)),
+                style: AppType.bodyStrong(context)),
             subtitle: Text(
                 [
                   scheduleReasonText('${u['reason'] ?? u['type']}'),
                   if (asMap(u['blocking']).isNotEmpty)
                     '${t('الأسباب', 'Blocked by')}: ${asMap(u['blocking']).entries.map((e) => '${scheduleReasonText(e.key)} ×${e.value}').join('، ')}',
                 ].where((x) => x.isNotEmpty).join('\n'),
-                style: orgText(context, size: 12, color: c.textMedium)),
+                style: AppType.meta(context).copyWith(color: c.textMedium)),
           ),
       ],
       if (relaxed.isNotEmpty) ...[
-        OrgSectionTitle(t('تفضيلات خُففت', 'Preferences relaxed'), padding: const EdgeInsets.fromLTRB(4, 14, 4, 6)),
+        OrgSectionTitle(t('تفضيلات خُففت', 'Preferences relaxed'), padding: const EdgeInsets.fromLTRB(AppSpace.xxs, AppSpace.md, AppSpace.xxs, AppSpace.xs)),
         for (final x in relaxed)
           ListTile(
             dense: true,
             contentPadding: EdgeInsets.zero,
             leading: Icon(Icons.tune_rounded, color: c.primary),
-            title: Text(people[asInt(x['user_id'])] ?? '#${x['user_id']}', style: orgText(context, w: FontWeight.w700)),
+            title: Text(people[asInt(x['user_id'])] ?? '#${x['user_id']}', style: AppType.bodyStrong(context)),
             subtitle: Text(
                 [
                   if (asInt(x['avoided_cell_used']) > 0) t('${x['avoided_cell_used']} حصة في وقت يتجنّبه', '${x['avoided_cell_used']} in avoided times'),
                   if (asInt(x['outside_preferred']) > 0) t('${x['outside_preferred']} خارج أوقاته المفضّلة', '${x['outside_preferred']} outside preferred times'),
                   if (x['experience_level'] != null) t('الخبرة المسجّلة: ${x['experience_level']} سنة', 'Recorded experience: ${x['experience_level']} yrs'),
                 ].join(' · '),
-                style: orgText(context, size: 12, color: c.textMedium)),
+                style: AppType.meta(context).copyWith(color: c.textMedium)),
           ),
       ],
       if (suggestions.isNotEmpty) ...[
-        OrgSectionTitle(t('اقتراحات', 'Suggestions'), padding: const EdgeInsets.fromLTRB(4, 14, 4, 6)),
+        OrgSectionTitle(t('اقتراحات', 'Suggestions'), padding: const EdgeInsets.fromLTRB(AppSpace.xxs, AppSpace.md, AppSpace.xxs, AppSpace.xs)),
         for (final x in suggestions)
           ListTile(
             dense: true,
             contentPadding: EdgeInsets.zero,
             leading: Icon(Icons.lightbulb_rounded, color: c.accent2),
-            title: Text(scheduleReasonText('${x['reason']}'), style: orgText(context, w: FontWeight.w700)),
-            subtitle: Text('${x['text'] ?? ''}', textDirection: TextDirection.ltr, style: orgText(context, size: 12, color: c.textMedium)),
+            title: Text(scheduleReasonText('${x['reason']}'), style: AppType.bodyStrong(context)),
+            subtitle: Text('${x['text'] ?? ''}', textDirection: TextDirection.ltr, style: AppType.meta(context).copyWith(color: c.textMedium)),
           ),
       ],
     ]);
@@ -868,14 +869,14 @@ class ConflictList extends StatelessWidget {
           contentPadding: EdgeInsets.zero,
           leading: Icon(x['severity'] == 'error' ? Icons.error_rounded : Icons.warning_amber_rounded, color: x['severity'] == 'error' ? c.danger : c.warning),
           title: Text(x['text_ar'] != null ? t('${x['text_ar']}', '${x['text_en'] ?? x['text_ar']}') : conflictTypeText('${x['type']}'),
-              style: orgText(context, w: FontWeight.w700)),
+              style: AppType.bodyStrong(context)),
           subtitle: Text(
               [
                 if (x['day'] != null) dayLabels()['${x['day']}'] ?? '${x['day']}',
                 ((x['course_ids'] as List?) ?? const []).map((i) => courseNames[asInt(i)] ?? '#$i').join(' / '),
                 if (x['severity'] == 'error') t('قيد إلزامي', 'hard rule') else t('تنبيه', 'warning'),
               ].where((s) => s.isNotEmpty).join(' · '),
-              style: orgText(context, size: 12, color: c.textMedium)),
+              style: AppType.meta(context).copyWith(color: c.textMedium)),
         ),
     ]);
   }

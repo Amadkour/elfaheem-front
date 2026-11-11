@@ -47,6 +47,7 @@ import 'org_v3.dart';
 import 'org_page_header.dart' show OrgPageRefresh;
 import 'org_page_kit.dart' show OrgFab, OrgPrimaryAction;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 class OrgSchedulePage extends StatelessWidget {
   const OrgSchedulePage({super.key});
@@ -109,16 +110,16 @@ class _ScheduleView extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(16)),
+            margin: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xxs),
+            decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.card)),
             child: TabBar(
               dividerColor: Colors.transparent,
               indicatorSize: TabBarIndicatorSize.tab,
               // the brand gradient (its ink keeps AA): a raw light primary under white text was unreadable
-              indicator: BoxDecoration(gradient: c.primaryGradient, borderRadius: BorderRadius.circular(14)),
+              indicator: BoxDecoration(gradient: c.primaryGradient, borderRadius: BorderRadius.circular(AppRadius.control)),
               labelColor: c.onHero,
               unselectedLabelColor: c.textMedium,
-              labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 13),
+              labelStyle: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark),
               tabs: [
                 Tab(text: t('الجداول', 'Timetables'), height: 40),
                 Tab(text: t('المقررات والهيئة', 'Courses & staff'), height: 40),
@@ -146,7 +147,7 @@ class _SetupTab extends StatelessWidget {
     final s = context.watch<OrgSession>();
     final c = context.colors;
     return AppRefresh(onRefresh: p.loadSetup, child: ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl),
       children: [
         Section(
           title: t('الفترات الدراسية', 'Periods'),
@@ -159,7 +160,7 @@ class _SetupTab extends StatelessWidget {
               : null,
           child: p.periods.isEmpty
               ? Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(AppSpace.sm),
                   child: Text(t('أضف فترات اليوم الدراسي (مثال: ${AppTime.clockRange('08:30', '10:00')}).', 'Add the teaching periods of the day (e.g. ${AppTime.clockRange('08:30', '10:00')}).')),
                 )
               : Column(
@@ -172,21 +173,21 @@ class _SetupTab extends StatelessWidget {
                           backgroundColor: c.primary.withValues(alpha: 0.12),
                           child: Text(
                             '${x['order']}',
-                            style: TextStyle(color: c.primary, fontWeight: FontWeight.w800),
+                            style: TextStyle(color: c.primary, fontWeight: FontWeight.w600),
                           ),
                         ),
                         title: Text(
                           '${x['label']}',
-                          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700),
+                          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600),
                         ),
                         subtitle: Text(periodRange(asMap(x))),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (s.can('schedule', 'update')) IconButton(tooltip: t('تعديل', 'Edit'), icon: const Icon(Icons.edit_rounded, size: 20), onPressed: () => showPeriodForm(context, p, x)),
+                            if (s.can('schedule', 'update')) IconButton(tooltip: t('تعديل', 'Edit'), icon: const Icon(Icons.edit_rounded, size: AppIconSize.md), onPressed: () => showPeriodForm(context, p, x)),
                             if (s.can('schedule', 'delete'))
                               IconButton(tooltip: t('حذف', 'Delete'), 
-                                icon: Icon(Icons.delete_outline_rounded, size: 20, color: c.danger),
+                                icon: Icon(Icons.delete_outline_rounded, size: AppIconSize.md, color: c.danger),
                                 onPressed: () async {
                                   if (await confirm(context, message: t('حذف الفترة؟', 'Delete this period?'), danger: true)) p.deletePeriod(asInt(x['id']));
                                 },
@@ -197,7 +198,7 @@ class _SetupTab extends StatelessWidget {
                   ],
                 ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         Section(
           title: t('القاعات والمعامل والمكاتب', 'Rooms, labs & offices'),
           icon: Icons.meeting_room_rounded,
@@ -214,7 +215,7 @@ class _SetupTab extends StatelessWidget {
                 )
               : null,
           child: p.rooms.isEmpty
-              ? Padding(padding: const EdgeInsets.all(12), child: Text(t('أضف القاعات والمعامل والمكاتب وسعة كل منها.', 'Add halls, labs, offices and their capacity.')))
+              ? Padding(padding: const EdgeInsets.all(AppSpace.sm), child: Text(t('أضف القاعات والمعامل والمكاتب وسعة كل منها.', 'Add halls, labs, offices and their capacity.')))
               : Column(
                   children: [
                     for (final r in p.rooms)
@@ -231,7 +232,7 @@ class _SetupTab extends StatelessWidget {
                         ),
                         title: Text(
                           '${'${r['code'] ?? ''}'.isEmpty ? '' : '${r['code']} · '}${r['name']}',
-                          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700),
+                          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600),
                         ),
                         subtitle: Text(
                           [
@@ -248,17 +249,17 @@ class _SetupTab extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             if (s.can('schedule', 'update') && r['kind'] == 'office')
-                              IconButton(tooltip: t('الموجودون بالمكتب', 'Office occupants'), icon: const Icon(Icons.groups_rounded, size: 20), onPressed: () => showOfficeMembers(context, p, r)),
+                              IconButton(tooltip: t('الموجودون بالمكتب', 'Office occupants'), icon: const Icon(Icons.groups_rounded, size: AppIconSize.md), onPressed: () => showOfficeMembers(context, p, r)),
                             if (s.can('schedule', 'update'))
                               IconButton(
                                 tooltip: t('الفترات المتاحة لهذا المكان', 'When this place is available'),
-                                icon: const Icon(Icons.event_available_rounded, size: 20),
+                                icon: const Icon(Icons.event_available_rounded, size: AppIconSize.md),
                                 onPressed: () => showAvailabilitySheet(context, p, 'room', asInt(r['id']), '${t('أوقات إتاحة', 'Available periods of')} ${r['name']}'),
                               ),
-                            if (s.can('schedule', 'update')) IconButton(tooltip: t('تعديل', 'Edit'), icon: const Icon(Icons.edit_rounded, size: 20), onPressed: () => showRoomForm(context, p, r)),
+                            if (s.can('schedule', 'update')) IconButton(tooltip: t('تعديل', 'Edit'), icon: const Icon(Icons.edit_rounded, size: AppIconSize.md), onPressed: () => showRoomForm(context, p, r)),
                             if (s.can('schedule', 'delete'))
                               IconButton(tooltip: t('حذف', 'Delete'), 
-                                icon: Icon(Icons.delete_outline_rounded, size: 20, color: c.danger),
+                                icon: Icon(Icons.delete_outline_rounded, size: AppIconSize.md, color: c.danger),
                                 onPressed: () => deleteRoom(context, p, r),
                               ),
                           ],
@@ -280,7 +281,7 @@ Future<void> showPeriodForm(BuildContext context, OrgScheduleProvider p, Map<Str
     context,
     (ctx) => StatefulBuilder(
       builder: (ctx, set) => SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
         child: Column(
           children: [
             SheetHeader(e == null ? t('فترة جديدة', 'New period') : t('تعديل الفترة', 'Edit period')),
@@ -290,7 +291,7 @@ Future<void> showPeriodForm(BuildContext context, OrgScheduleProvider p, Map<Str
                 Expanded(
                   child: ClockField(label: t('يبدأ', 'Starts'), value: from, onChanged: (v) => set(() => from = v)),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: ClockField(label: t('ينتهي', 'Ends'), value: to, onChanged: (v) => set(() => to = v)),
                 ),
@@ -331,18 +332,18 @@ class _PlanningTab extends StatelessWidget {
     final people = {for (final m in p.staff) asInt(asMap(m['user'])['id']): '${asMap(m['user'])['name']}'};
 
     return AppRefresh(onRefresh: p.loadSetup, child: ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl),
       children: [
         if (p.periods.isEmpty)
           Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: AppSpace.sm),
             child: RowCard(accent: c.warning, child: Text(t('أضف الفترات أولاً من تبويب "الفترات والأماكن" ليظهر التخطيط كاملاً.', 'Add periods in the "Periods & rooms" tab first.'))),
           ),
         Section(
           title: t('متطلبات المقررات', 'Course requirements'),
           icon: Icons.fact_check_rounded,
           child: p.loads.isEmpty
-              ? Padding(padding: const EdgeInsets.all(12), child: Text(t('لا توجد مقررات في المؤسسة.', 'No courses in this organization.')))
+              ? Padding(padding: const EdgeInsets.all(AppSpace.sm), child: Text(t('لا توجد مقررات في المؤسسة.', 'No courses in this organization.')))
               : Column(
                   children: [
                     for (final l in p.loads)
@@ -357,7 +358,7 @@ class _PlanningTab extends StatelessWidget {
                             : null,
                         title: Text(
                           courseName(l),
-                          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
+                          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600),
                         ),
                         subtitle: Text(
                           [
@@ -373,29 +374,29 @@ class _PlanningTab extends StatelessWidget {
                   ],
                 ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         Section(
           title: t('أوقات التواجد والتفضيلات', 'Staff availability & preferences'),
           trailing: TextButton.icon(
             onPressed: () => openAvailabilityRequests(context),
-            icon: const Icon(Icons.send_rounded, size: 18),
+            icon: const Icon(Icons.send_rounded, size: AppIconSize.md),
             label: Text(t('اطلبها منهم', 'Ask them')),
           ),
           icon: Icons.event_available_rounded,
           child: p.staff.isEmpty
-              ? Padding(padding: const EdgeInsets.all(12), child: Text(t('أضف مدرسين وهيئة معاونة أولاً.', 'Add teachers and staff first.')))
+              ? Padding(padding: const EdgeInsets.all(AppSpace.sm), child: Text(t('أضف مدرسين وهيئة معاونة أولاً.', 'Add teachers and staff first.')))
               : Column(
                   children: [
                     Text(
                       t('"أوقات التواجد" و"غير متاح" قيود إلزامية؛ "مفضّل" و"يتجنبه" تفضيلات مرنة.', '"Available periods" and "unavailable" are hard rules; "preferred" and "avoid" are soft.'),
-                      style: orgText(context, size: 12, color: c.textMedium),
+                      style: AppType.meta(context).copyWith(color: c.textMedium),
                     ),
                     for (final m in p.staff)
                       ListTile(
                         leading: AdminAvatar(name: '${asMap(m['user'])['name']}', url: asMap(m['user'])['image_url'] as String?, size: 36),
                         title: Text(
                           '${asMap(m['user'])['name']}',
-                          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700),
+                          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600),
                         ),
                         subtitle: Text(
                           {'teacher': t('مدرس', 'Teacher'), 'teacher_assistant': t('معيد', 'Teaching assistant'), 'admin_assistant': t('مساعد إداري', 'Admin assistant')}['${m['role']}'] ?? '',
@@ -433,35 +434,35 @@ Future<String?> showConflictPreview(BuildContext context, List<Map<String, dynam
   return showAdminSheet<String>(context, (ctx) {
     final c = ctx.colors;
     Widget option(String key, IconData icon, Color col, String title, String sub) => Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: OrgActionCard(icon: icon, color: col, title: title, subtitle: sub, onTap: () => Navigator.pop(ctx, key)),
     );
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SheetHeader(t('يوجد تعارض في هذا الموعد', 'This time clashes')),
           for (final x in conflicts)
             Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: AppSpace.xs),
+              padding: const EdgeInsets.all(AppSpace.sm),
               decoration: BoxDecoration(
                 color: c.danger.withValues(alpha: 0.07),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AppRadius.control),
                 border: Border.all(color: c.danger.withValues(alpha: 0.3)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(x['elsewhere'] == true ? Icons.link_rounded : Icons.warning_amber_rounded, color: c.danger, size: 20),
-                  const SizedBox(width: 10),
+                  Icon(x['elsewhere'] == true ? Icons.link_rounded : Icons.warning_amber_rounded, color: c.danger, size: AppIconSize.md),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(t('${x['text_ar'] ?? x['type']}', '${x['text_en'] ?? x['type']}'), style: orgText(ctx, w: FontWeight.w800)),
-                        if ((x['courses'] as List? ?? const []).isNotEmpty) Text((x['courses'] as List).join(' · '), style: orgText(ctx, size: 12, color: c.textMedium)),
+                        Text(t('${x['text_ar'] ?? x['type']}', '${x['text_en'] ?? x['type']}'), style: AppType.bodyStrong(ctx)),
+                        if ((x['courses'] as List? ?? const []).isNotEmpty) Text((x['courses'] as List).join(' · '), style: AppType.meta(ctx).copyWith(color: c.textMedium)),
                       ],
                     ),
                   ),
@@ -470,14 +471,14 @@ Future<String?> showConflictPreview(BuildContext context, List<Map<String, dynam
             ),
           if (elsewhere)
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
               child: Text(
                 t('بعض التعارضات في جداول أخرى مفعّلة ولا يمكن حذفها من هنا.', 'Some clashes are in other active timetables and can\'t be removed from here.'),
-                style: orgText(ctx, size: 12, color: c.textMedium),
+                style: AppType.meta(ctx).copyWith(color: c.textMedium),
               ),
             ),
-          Text(t('كيف نحافظ على استقرار الجدول؟', 'How should the timetable stay stable?'), style: orgText(ctx, w: FontWeight.w800)),
-          const SizedBox(height: 8),
+          Text(t('كيف نحافظ على استقرار الجدول؟', 'How should the timetable stay stable?'), style: AppType.bodyStrong(ctx)),
+          const SizedBox(height: AppSpace.xs),
           if (canReplace && removable)
             option(
               'shift',
@@ -536,16 +537,16 @@ Future<void> showAvailabilitySheet(BuildContext context, OrgScheduleProvider p, 
       builder: (ctx, set) {
         final c = ctx.colors;
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SheetHeader(title),
               Text(
                 sel.isEmpty ? t('غير محدد: متاح في كل الأوقات', 'Not set: available at any time') : t('المحدد فقط هو المتاح', 'Only the highlighted cells are available'),
-                style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: sel.isEmpty ? c.success : c.textMedium),
+                style: AppType.label(ctx).copyWith(color: sel.isEmpty ? c.success : c.textMedium),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Table(
@@ -556,11 +557,11 @@ Future<void> showAvailabilitySheet(BuildContext context, OrgScheduleProvider p, 
                         const SizedBox(),
                         for (final d in days)
                           Padding(
-                            padding: const EdgeInsets.all(4),
+                            padding: const EdgeInsets.all(AppSpace.xxs),
                             child: Text(
                               labels[d]!,
                               textAlign: TextAlign.center,
-                              style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, fontWeight: FontWeight.w800, color: c.textDark),
+                              style: AppType.meta(ctx).copyWith(fontWeight: FontWeight.w600, color: c.textDark),
                             ),
                           ),
                       ],
@@ -569,11 +570,11 @@ Future<void> showAvailabilitySheet(BuildContext context, OrgScheduleProvider p, 
                       TableRow(
                         children: [
                           Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
                             child: Text(
                               '${per['label']}',
                               textAlign: TextAlign.center,
-                              style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: c.textMedium),
+                              style: AppType.meta(ctx).copyWith(color: c.textMedium),
                             ),
                           ),
                           for (final d in days)
@@ -584,9 +585,9 @@ Future<void> showAvailabilitySheet(BuildContext context, OrgScheduleProvider p, 
                               }),
                               child: Container(
                                 height: 38,
-                                margin: const EdgeInsets.all(3),
-                                decoration: BoxDecoration(color: sel.contains('$d|${per['id']}') ? c.primary : c.inputBg, borderRadius: BorderRadius.circular(10)),
-                                child: sel.contains('$d|${per['id']}') ? Icon(Icons.check_rounded, color: c.onHero, size: 18) : null,
+                                margin: const EdgeInsets.all(AppSpace.xxs),
+                                decoration: BoxDecoration(color: sel.contains('$d|${per['id']}') ? c.primary : c.inputBg, borderRadius: BorderRadius.circular(AppRadius.chip)),
+                                child: sel.contains('$d|${per['id']}') ? Icon(Icons.check_rounded, color: c.onHero, size: AppIconSize.md) : null,
                               ),
                             ),
                         ],
@@ -594,7 +595,7 @@ Future<void> showAvailabilitySheet(BuildContext context, OrgScheduleProvider p, 
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               Wrap(
                 children: [
                   TextButton(onPressed: () => set(sel.clear), child: Text(t('متاح دائماً', 'Always available'))),
@@ -686,10 +687,10 @@ class _TimetablesTab extends StatelessWidget {
           AppHeroStat(icon: Icons.schedule_rounded, value: '${p.periods.length}', label: t('فترات', 'periods')),
         ],
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       for (final n in needs)
         Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
           child: TermTimetableCard(
             need: n,
             onGenerate: s.can('schedule', 'update') ? () => _generateTerm(context, p, n) : null,
@@ -698,7 +699,7 @@ class _TimetablesTab extends StatelessWidget {
         ),
       if (p.periods.isEmpty || p.rooms.isEmpty)
         Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
           child: AppBanner(
             icon: Icons.flag_rounded,
             color: c.warning,
@@ -718,13 +719,13 @@ class _TimetablesTab extends StatelessWidget {
         ),
         onTap: () => openExamTimetables(context, p, canEdit: s.can('schedule', 'update'), canApprove: s.can('schedule', 'approve'), canExport: s.can('schedule', 'export')),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
     ];
     return Stack(
       children: [
         AppRefresh(onRefresh: p.loadSetup, child: p.schedules.isEmpty
             ? ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
+                padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxxl + AppSpace.lg),
                 children: [
                   ...intro,
                   OrgEmpty(
@@ -737,26 +738,26 @@ class _TimetablesTab extends StatelessWidget {
                 ],
               )
             : ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
+                padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxxl + AppSpace.lg),
                 children: [
                   ...intro,
                   for (final x in p.schedules)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.only(bottom: AppSpace.xs),
                       child: RowCard(
                         accent: x['status'] == 'active' ? c.success : null,
                         onTap: () => p.open(asInt(x['id'])),
                         child: Row(
                           children: [
                             IconBadge(Icons.calendar_month_rounded, x['status'] == 'active' ? c.success : c.primary),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: AppSpace.sm),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     '${x['name']}',
-                                    style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark),
+                                    style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, color: c.textDark),
                                   ),
                                   Text(
                                     [
@@ -764,7 +765,7 @@ class _TimetablesTab extends StatelessWidget {
                                       '${x['slots'] ?? 0} ${t('حصة', 'slots')}',
                                       if (asMap(x['result'])['status'] != null) resultStatusLabels()['${asMap(x['result'])['status']}'] ?? '',
                                     ].join(' · '),
-                                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium),
+                                    style: AppType.meta(context).copyWith(color: c.textMedium),
                                   ),
                                 ],
                               ),
@@ -882,7 +883,7 @@ class _StudioState extends State<_Studio> {
       context,
       (ctx) => ListView(
         shrinkWrap: true,
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
         children: [
           SheetHeader(t('اختر الطالب', 'Choose the student')),
           for (final m in found) ListTile(title: Text('${asMap(m['user'])['name']}'), subtitle: Text('${m['student_code'] ?? asMap(m['user'])['gmail'] ?? ''}'), onTap: () => Navigator.pop(ctx, m)),
@@ -1041,7 +1042,7 @@ class _StudioState extends State<_Studio> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+          padding: const EdgeInsets.fromLTRB(AppSpace.xs, AppSpace.xs, AppSpace.xs, 0),
           child: Row(
             children: [
               AppBackButton(onPressed: p.closeSchedule),
@@ -1062,8 +1063,8 @@ class _StudioState extends State<_Studio> {
                       value: i,
                       child: Row(
                         children: [
-                          Icon(more[i].$1, size: 18),
-                          const SizedBox(width: 10),
+                          Icon(more[i].$1, size: AppIconSize.md),
+                          const SizedBox(width: AppSpace.sm),
                           Flexible(child: Text(more[i].$2)),
                         ],
                       ),
@@ -1076,12 +1077,12 @@ class _StudioState extends State<_Studio> {
         // published exam windows of this term pause these weekly sessions on their dates (exam timetable: pause_weekly)
         if (examPausesOf(sch).isNotEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-            child: examPauseBanner(context, examPausesOf(sch), padding: const EdgeInsets.only(bottom: 4), myExamsAction: false),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 0),
+            child: examPauseBanner(context, examPausesOf(sch), padding: const EdgeInsets.only(bottom: AppSpace.xxs), myExamsAction: false),
           ),
         if ((s.can('schedule', 'update') || active) && journey.next != NextAction.wait)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xs),
             child: NextStepBanner(
               title: nextText.$1,
               body: nextText.$2,
@@ -1095,21 +1096,21 @@ class _StudioState extends State<_Studio> {
           ),
         // one toolbar: Create timetable (the ONE generation action, no questions) · its rules · add · publish; rest under ⋮
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
           child: Wrap(
-            spacing: 8,
-            runSpacing: 6,
+            spacing: AppSpace.xs,
+            runSpacing: AppSpace.xs,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               if (canEdit)
                 ActionChip(
-                  avatar: running ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.auto_awesome_rounded, size: 18, color: c.primary),
+                  avatar: running ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.auto_awesome_rounded, size: AppIconSize.md, color: c.primary),
                   label: Text(running ? t('جارٍ الإنشاء…', 'Creating…') : t('إنشاء الجدول', 'Create timetable')),
                   onPressed: running ? null : () => createTimetable(context, p),
                 ),
               if (canEdit && !running && (errors > 0 || unplaced > 0))
                 ActionChip(
-                  avatar: Icon(Icons.auto_fix_high_rounded, size: 18, color: c.primary),
+                  avatar: Icon(Icons.auto_fix_high_rounded, size: AppIconSize.md, color: c.primary),
                   label: Text(t('إصلاح تلقائي', 'AI fix')),
                   tooltip: t('يطبّق أفضل حل تلقائي لكل تعارض ويعيد حل ما يلزم، ثم يعرض ما بقي لقرارك', 'Applies the best automatic fix of every clash, re-solves what it must, then shows what is left for you'),
                   onPressed: () => _autopilot(context, p),
@@ -1122,7 +1123,7 @@ class _StudioState extends State<_Studio> {
               ),
               if (s.can('schedule', 'insert') && !active)
                 ActionChip(
-                  avatar: Icon(Icons.add_rounded, size: 18, color: c.primary),
+                  avatar: Icon(Icons.add_rounded, size: AppIconSize.md, color: c.primary),
                   label: Text(t('إضافة حصة', 'Add session')),
                   onPressed: editable ? () => _slotSheet(context, p, null, null, null) : null,
                 ),
@@ -1130,7 +1131,7 @@ class _StudioState extends State<_Studio> {
                 Tooltip(
                   message: errors > 0 ? t('النشر ممنوع حتى تُحل التعارضات الإلزامية', 'Publishing is blocked until the hard clashes are fixed') : '',
                   child: ActionChip(
-                    avatar: Icon(errors > 0 ? Icons.block_rounded : Icons.publish_rounded, size: 18, color: errors > 0 ? c.textLight : c.success),
+                    avatar: Icon(errors > 0 ? Icons.block_rounded : Icons.publish_rounded, size: AppIconSize.md, color: errors > 0 ? c.textLight : c.success),
                     label: Text(errors > 0 ? t('النشر ممنوع ($errors)', 'Publish blocked ($errors)') : t('نشر', 'Publish')),
                     onPressed: running ? null : () => _publish(context, p, result, errors, courseNames),
                   ),
@@ -1140,14 +1141,14 @@ class _StudioState extends State<_Studio> {
         ),
         if (run != null && (running || run['schedule_id'] == null || asInt(run['schedule_id']) == asInt(sch['id'])) && (running || run['status'] == 'failed'))
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
             // a ladder run: the live overlay; a waiting run offers "Choose…" here (the dialog), the wide side panel
             // shows the decision inline
             child: ladderLive != null ? LadderLivePanel(p: p) : GenerationLivePanel(run: run, onCancel: running ? () => p.cancelGeneration() : null),
           )
         else if (p.slots.isNotEmpty || result.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
             child: Align(
               alignment: AlignmentDirectional.centerStart,
               child: ConflictsPanel(
@@ -1158,7 +1159,7 @@ class _StudioState extends State<_Studio> {
           ),
         // one line: the filter bar (grid only) + the grid / courses switch; the colour key under it
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xxs),
           child: Row(
             children: [
               if (_view == 0)
@@ -1178,13 +1179,13 @@ class _StudioState extends State<_Studio> {
                 )
               else
                 const Spacer(),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               SegmentedButton<int>(
                 showSelectedIcon: false,
                 style: const ButtonStyle(visualDensity: VisualDensity.compact),
                 segments: [
-                  ButtonSegment(value: 0, icon: const Icon(Icons.grid_view_rounded, size: 18), tooltip: t('الجدول', 'Grid')),
-                  ButtonSegment(value: 1, icon: const Icon(Icons.menu_book_rounded, size: 18), tooltip: t('المقررات', 'Courses')),
+                  ButtonSegment(value: 0, icon: const Icon(Icons.grid_view_rounded, size: AppIconSize.md), tooltip: t('الجدول', 'Grid')),
+                  ButtonSegment(value: 1, icon: const Icon(Icons.menu_book_rounded, size: AppIconSize.md), tooltip: t('المقررات', 'Courses')),
                 ],
                 selected: {_view},
                 onSelectionChanged: (v) => setState(() => _view = v.first),
@@ -1194,7 +1195,7 @@ class _StudioState extends State<_Studio> {
         ),
         if (_view == 0 && p.slots.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 2, 18, 6),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs / 2, AppSpace.md, AppSpace.xs),
             child: Align(
               alignment: AlignmentDirectional.centerStart,
               child: TimetableLegend(kinds: {for (final x in p.slots) '${x['kind'] ?? 'lecture'}'}, conflicts: errors),
@@ -1208,7 +1209,7 @@ class _StudioState extends State<_Studio> {
                   : p.periods.isEmpty
                   ? OrgEmpty(icon: Icons.inbox_rounded, title: t('أضف الفترات أولاً', 'Add periods first'))
                   : Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
                       child: TimetableBoard(
                         days: days,
                         periods: p.periods,
@@ -1221,7 +1222,7 @@ class _StudioState extends State<_Studio> {
                               '${per['label']}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 12, color: c.textDark),
+                              style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark),
                             ),
                             Text(
                               clockOf(per['start_time']),
@@ -1266,10 +1267,10 @@ class _StudioState extends State<_Studio> {
                     Expanded(child: main),
                     Container(
                       width: 360,
-                      margin: const EdgeInsetsDirectional.only(end: 12, bottom: 12),
+                      margin: const EdgeInsetsDirectional.only(end: AppSpace.sm, bottom: AppSpace.sm),
                       decoration: BoxDecoration(
                         color: c.cardBg,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(AppRadius.card),
                         border: Border.all(color: c.divider),
                       ),
                       clipBehavior: Clip.antiAlias,
@@ -1310,7 +1311,7 @@ Future<void> _revisionsSheet(BuildContext context, OrgScheduleProvider p) async 
     final src = {'generate': t('توليد', 'Generated'), 'restore': t('استعادة', 'Restored'), 'publish': t('نشر', 'Published'), 'manual': t('حفظ يدوي', 'Saved by hand')};
     return ListView(
       shrinkWrap: true,
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
       children: [
         SheetHeader(t('نسخ الجدول', 'Timetable versions')),
         if (draft && context.read<OrgSession>().can('schedule', 'update'))
@@ -1332,17 +1333,17 @@ Future<void> _revisionsSheet(BuildContext context, OrgScheduleProvider p) async 
           ),
         if (items.isEmpty)
           Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(t('لا نسخ محفوظة بعد', 'No saved versions yet'), style: orgText(ctx, color: c.textMedium)),
+            padding: const EdgeInsets.all(AppSpace.md),
+            child: Text(t('لا نسخ محفوظة بعد', 'No saved versions yet'), style: AppType.row(ctx).copyWith(color: c.textMedium)),
           ),
         for (final r in items)
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: CircleAvatar(child: Text('${r['number']}')),
-            title: Text('${src['${r['source']}'] ?? r['source']} · ${t('${r['slots']} حصة', '${r['slots']} slots')}', style: orgText(ctx, w: FontWeight.w700)),
+            title: Text('${src['${r['source']}'] ?? r['source']} · ${t('${r['slots']} حصة', '${r['slots']} slots')}', style: AppType.bodyStrong(ctx)),
             subtitle: Text(
               [if (r['label'] != null) '${r['label']}', stampOf(r['created_at']), if (r['result_status'] != null) resultStatusLabels()['${r['result_status']}'] ?? ''].join(' · '),
-              style: orgText(ctx, size: 12, color: c.textMedium),
+              style: AppType.meta(ctx).copyWith(color: c.textMedium),
             ),
             trailing: draft
                 ? TextButton(
@@ -1354,7 +1355,7 @@ Future<void> _revisionsSheet(BuildContext context, OrgScheduleProvider p) async 
                   )
                 : null,
           ),
-        if (!draft) Text(t('الاستعادة متاحة للمسودات فقط.', 'Restoring is for drafts only.'), style: orgText(ctx, size: 12, color: c.textLight)),
+        if (!draft) Text(t('الاستعادة متاحة للمسودات فقط.', 'Restoring is for drafts only.'), style: AppType.meta(ctx).copyWith(color: c.textLight)),
       ],
     );
   });
@@ -1364,14 +1365,14 @@ Future<void> _revisionsSheet(BuildContext context, OrgScheduleProvider p) async 
 Future<void> showPublishConflicts(BuildContext context, List<Map<String, dynamic>> conflicts, Map<int, String> courseNames) => showAdminSheet<void>(
   context,
   (ctx) => SingleChildScrollView(
-    padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+    padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SheetHeader(t('لم يُنشر الجدول', 'Not published')),
         Text(
           t('رفض الخادم النشر لوجود تعارضات إلزامية. عالجها ثم أعد المحاولة.', 'The server refused to publish because of hard clashes. Fix them and try again.'),
-          style: orgText(ctx, color: ctx.colors.textMedium),
+          style: AppType.row(ctx).copyWith(color: ctx.colors.textMedium),
         ),
         ConflictList(conflicts: conflicts, courseNames: courseNames),
       ],
@@ -1441,25 +1442,25 @@ class _Cell extends StatelessWidget {
       builder: (context, hovering, _) => GestureDetector(
         onTap: onTap == null ? null : () => onTap!(null),
         child: Container(
-          margin: const EdgeInsets.all(3),
-          padding: const EdgeInsets.all(4),
+          margin: const EdgeInsets.all(AppSpace.xxs),
+          padding: const EdgeInsets.all(AppSpace.xxs),
           decoration: BoxDecoration(
             color: hovering.isNotEmpty
                 ? hoverCol.withValues(alpha: 0.16)
                 : conflict
                 ? c.danger.withValues(alpha: 0.06)
                 : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.control),
             border: Border.all(color: hovering.isNotEmpty ? hoverCol : (conflict ? c.danger.withValues(alpha: 0.7) : Colors.transparent), width: conflict || hovering.isNotEmpty ? 1.5 : 1),
           ),
           // the row height comes from the fullest cell of the row; a larger text scale scrolls inside the cell
           child: hovering.isNotEmpty && preview == false && previewText != null
               ? Center(
                   child: Text(previewText!, maxLines: 3, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 10.5, fontWeight: FontWeight.w800, color: c.danger)),
+                      style: AppType.overline(context).copyWith(color: c.danger)),
                 )
               : slots.isEmpty
-              ? (onTap == null || hovering.isNotEmpty ? const SizedBox.expand() : Center(child: Icon(Icons.add_rounded, size: 18, color: c.textLight.withValues(alpha: 0.45))))
+              ? (onTap == null || hovering.isNotEmpty ? const SizedBox.expand() : Center(child: Icon(Icons.add_rounded, size: AppIconSize.md, color: c.textLight.withValues(alpha: 0.45))))
               : SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1496,17 +1497,17 @@ class _Cell extends StatelessWidget {
       color: Colors.transparent,
       child: Container(
         width: 144,
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.all(AppSpace.xs),
         decoration: BoxDecoration(
           color: c.primary.withValues(alpha: 0.92),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.control),
           boxShadow: [BoxShadow(color: c.primary.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
         ),
         child: Text(
           courseNames[asInt(x['course_id'])] ?? '#${x['course_id']}',
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 11.5, color: c.onHero),
+          style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.onHero),
         ),
       ),
     );
@@ -1526,11 +1527,11 @@ class _Cell extends StatelessWidget {
         child: GestureDetector(
           onTap: onOpen != null ? () => onOpen!(x) : (onTap == null ? null : () => onTap!(x)),
           child: Container(
-            margin: const EdgeInsets.only(bottom: 4),
-            padding: const EdgeInsetsDirectional.fromSTEB(7, 4, 5, 4),
+            margin: const EdgeInsets.only(bottom: AppSpace.xxs),
+            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs, AppSpace.xxs, AppSpace.xxs, AppSpace.xxs),
             decoration: BoxDecoration(
               color: col.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(9),
+              borderRadius: BorderRadius.circular(AppRadius.chip),
               border: mark != null ? Border.all(color: markCol, width: 1.5) : BorderDirectional(start: BorderSide(color: col, width: 3)),
             ),
             child: Column(
@@ -1544,19 +1545,19 @@ class _Cell extends StatelessWidget {
                         courseNames[asInt(x['course_id'])] ?? '#${x['course_id']}',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 11.5, height: 1.25, color: c.textDark),
+                        style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark, height: 1.25),
                       ),
                     ),
-                    if (mark != null) Icon(mark == 'error' ? Icons.error_rounded : Icons.warning_amber_rounded, size: 13, color: markCol),
-                    if (x['locked'] == true) Icon(Icons.push_pin_rounded, size: 11, color: c.textMedium),
+                    if (mark != null) Icon(mark == 'error' ? Icons.error_rounded : Icons.warning_amber_rounded, size: AppIconSize.xs, color: markCol),
+                    if (x['locked'] == true) Icon(Icons.push_pin_rounded, size: AppIconSize.xs, color: c.textMedium),
                   ],
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpace.xxs / 2),
                 Row(
                   children: [
                     Text(
                       x['group_no'] == null ? sessionKindLabel(x['kind']) : '${sessionKindLabel(x['kind'])} ${x['group_no']}',
-                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 9.5, fontWeight: FontWeight.w800, color: col),
+                      style: AppType.overline(context).copyWith(color: col),
                     ),
                     if (sub.isNotEmpty)
                       Expanded(
@@ -1564,7 +1565,7 @@ class _Cell extends StatelessWidget {
                           ' · $sub',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 10, color: c.textMedium),
+                          style: AppType.meta(context).copyWith(color: c.textMedium),
                         ),
                       ),
                   ],
@@ -1755,7 +1756,7 @@ Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String,
         }
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1779,7 +1780,7 @@ Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String,
                   },
                 ),
               if (slot == null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.sm),
                 ChoiceRow<String>(
                   label: t('النوع', 'Type'),
                   options: {'lecture': t('محاضرة', 'Lecture'), 'lab': t('معمل / سكشن', 'Lab / section')},
@@ -1790,7 +1791,7 @@ Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String,
                   },
                 ),
               ],
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               ChoiceRow<String>(
                 options: {for (final d in orgDays) d: labels[d]!},
                 value: day,
@@ -1799,7 +1800,7 @@ Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String,
                   recheck();
                 },
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               OrgPickField<int>(
                 label: t('الفترة', 'Period'),
                 icon: Icons.schedule_rounded,
@@ -1810,55 +1811,55 @@ Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String,
                   recheck();
                 },
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               pick(t('المجموعة (فارغ = مجموعة واحدة)', 'Group (empty = one group)'), group, [
                 for (var g = 1; g <= 12; g++) {'id': g, 'name': '$g'},
               ], (v) => group = v),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               pick(t('القاعة', 'Room'), room, [
                 for (final r in p.rooms) {'id': r['id'], 'name': '${r['name']} (${r['capacity']})'},
               ], (v) => room = v),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               pick(t('المدرس', 'Teacher'), teacher, [for (final u in p.staffOf('teacher')) u], (v) => teacher = v),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               pick(t('المعيد', 'Assistant'), assistant, p.staffOf('teacher_assistant'), (v) => assistant = v),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               pick(t('المساعد الإداري', 'Admin assistant'), adm, p.staffOf('admin_assistant'), (v) => adm = v),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               // instant validation in plain language: hard rules block (red), soft ones warn (amber)
               if (check != null)
                 for (final x in asMapList(check!['conflicts']).take(5))
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
+                    padding: const EdgeInsets.only(bottom: AppSpace.xxs),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(x['severity'] == 'error' ? Icons.block_rounded : Icons.warning_amber_rounded, size: 16, color: x['severity'] == 'error' ? c.danger : c.warning),
-                        const SizedBox(width: 6),
-                        Expanded(child: Text(conflictLine(x), style: orgText(ctx, size: 12.5))),
+                        Icon(x['severity'] == 'error' ? Icons.block_rounded : Icons.warning_amber_rounded, size: AppIconSize.sm, color: x['severity'] == 'error' ? c.danger : c.warning),
+                        const SizedBox(width: AppSpace.xs),
+                        Expanded(child: Text(conflictLine(x), style: AppType.label(ctx).copyWith(color: ctx.colors.textDark))),
                       ],
                     ),
                   ),
               if (check != null && asMapList(check!['conflicts']).isEmpty)
                 Row(
                   children: [
-                    Icon(Icons.check_circle_rounded, size: 16, color: c.success),
-                    const SizedBox(width: 6),
+                    Icon(Icons.check_circle_rounded, size: AppIconSize.sm, color: c.success),
+                    const SizedBox(width: AppSpace.xs),
                     Flexible(
-                      child: Text(t('لا تعارض', 'No conflict'), style: orgText(ctx, size: 12.5, color: c.success)),
+                      child: Text(t('لا تعارض', 'No conflict'), style: AppType.label(ctx).copyWith(color: c.success)),
                     ),
                   ],
                 ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               PrimaryButton(isLoading: busy, label: t('حفظ', 'Save'), onPressed: () => save()),
               if (slot != null) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpace.xxs),
                 Text(
                   t('تغيير المدرس أو المعيد يسألك عن النطاق (كل المقرر · هذه الحصة أسبوعياً · تاريخ واحد) ويعرض الجدول قبل وبعد.',
                       'Changing the teacher or assistant asks for the scope (whole course · this weekly session · one date) and shows the timetable before and after.'),
-                  style: orgText(ctx, size: 11.5, color: c.textLight),
+                  style: AppType.meta(ctx).copyWith(color: c.textLight),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpace.xxs),
                 TextButton.icon(
                   onPressed: busy
                       ? null
@@ -1907,37 +1908,37 @@ Future<void> _extrasSheet(BuildContext context, OrgScheduleProvider p, Map<int, 
         builder: (ctx, p, _) {
           final c = ctx.colors;
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SheetHeader(t('الفترات الخاصة', 'Special periods')),
                 Text(
                   t('محاضرة أو سكشن إضافي في تاريخ محدد — يُبلَّغ الطلاب والمدرس فوراً.', 'An extra lecture or section on a specific date — students and the teacher are told right away.'),
-                  style: orgText(ctx, size: 12.5, color: c.textMedium),
+                  style: AppType.label(ctx).copyWith(color: c.textMedium),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpace.sm),
                 for (final e in p.extras)
                   Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: AppSpace.xs),
+                    padding: const EdgeInsets.all(AppSpace.sm),
                     decoration: BoxDecoration(
                       color: c.cardBg,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(AppRadius.card),
                       border: Border.all(color: c.divider),
                     ),
                     child: Row(
                       children: [
                         IconBadge(e['kind'] == 'lab' ? Icons.science_rounded : Icons.event_available_rounded, e['kind'] == 'lab' ? c.purple : c.primary, size: 40),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: AppSpace.sm),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('${e['title'] ?? courseNames[asInt(e['course_id'])] ?? ''}', style: orgText(ctx, w: FontWeight.w800)),
+                              Text('${e['title'] ?? courseNames[asInt(e['course_id'])] ?? ''}', style: AppType.bodyStrong(ctx)),
                               Text(
                                 '${courseNames[asInt(e['course_id'])] ?? ''} · ${calendarDate(e['date'])} · ${AppTime.clockRange('${e['start_time']}', '${e['end_time']}')}',
-                                style: orgText(ctx, size: 12, color: c.textMedium),
+                                style: AppType.meta(ctx).copyWith(color: c.textMedium),
                               ),
                             ],
                           ),
@@ -1953,7 +1954,7 @@ Future<void> _extrasSheet(BuildContext context, OrgScheduleProvider p, Map<int, 
                       ],
                     ),
                   ),
-                const SizedBox(height: 6),
+                const SizedBox(height: AppSpace.xs),
                 PrimaryButton(isLoading: false, label: t('فترة خاصة جديدة', 'New special period'), icon: Icons.add_rounded, iconBefore: true, onPressed: () => _newExtra(ctx, p, courseNames, rooms)),
               ],
             ),
@@ -1979,7 +1980,7 @@ Future<void> _newExtra(BuildContext context, OrgScheduleProvider p, Map<int, Str
         final c = ctx.colors;
         String hm(TimeOfDay x) => '${x.hour.toString().padLeft(2, '0')}:${x.minute.toString().padLeft(2, '0')}';
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1999,7 +2000,7 @@ Future<void> _newExtra(BuildContext context, OrgScheduleProvider p, Map<int, Str
                       },
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpace.xs),
                   Expanded(
                     child: OutlinedButton(
                       child: Text(from == null ? t('من', 'From') : AppTime.clock(hm(from!)), maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -2009,7 +2010,7 @@ Future<void> _newExtra(BuildContext context, OrgScheduleProvider p, Map<int, Str
                       },
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpace.xs),
                   Expanded(
                     child: OutlinedButton(
                       child: Text(to == null ? t('إلى', 'To') : AppTime.clock(hm(to!)), maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -2021,7 +2022,7 @@ Future<void> _newExtra(BuildContext context, OrgScheduleProvider p, Map<int, Str
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
               OrgPickField<int>(
                 label: t('المكان (اختياري)', 'Place (optional)'),
                 icon: Icons.meeting_room_rounded,
@@ -2032,18 +2033,18 @@ Future<void> _newExtra(BuildContext context, OrgScheduleProvider p, Map<int, Str
               ),
               for (final x in clashes)
                 Container(
-                  margin: const EdgeInsets.only(bottom: 6),
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: c.danger.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(12)),
+                  margin: const EdgeInsets.only(bottom: AppSpace.xs),
+                  padding: const EdgeInsets.all(AppSpace.sm),
+                  decoration: BoxDecoration(color: c.danger.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(AppRadius.control)),
                   child: Row(
                     children: [
-                      Icon(Icons.warning_amber_rounded, color: c.danger, size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(t('${x['text_ar'] ?? ''}', '${x['text_en'] ?? ''}'), style: orgText(ctx, size: 12.5))),
+                      Icon(Icons.warning_amber_rounded, color: c.danger, size: AppIconSize.md),
+                      const SizedBox(width: AppSpace.xs),
+                      Expanded(child: Text(t('${x['text_ar'] ?? ''}', '${x['text_en'] ?? ''}'), style: AppType.label(ctx).copyWith(color: ctx.colors.textDark))),
                     ],
                   ),
                 ),
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpace.xs),
               PrimaryButton(
                 isLoading: false,
                 label: t('إضافة وإبلاغ الطلاب', 'Add & notify students'),
@@ -2088,7 +2089,7 @@ Future<List<Map<String, dynamic>>?> publishWithConsent(BuildContext context, Org
   final go = await showAppSheet<bool>(
     context,
     (ctx) => SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpace.md),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2099,12 +2100,12 @@ Future<List<Map<String, dynamic>>?> publishWithConsent(BuildContext context, Org
           ),
           if ((wait['pending'] as List? ?? const []).isNotEmpty) AppBanner(icon: Icons.hourglass_top_rounded, text: '${t('لم يردوا', 'No answer yet')}: ${list('pending')}'),
           if ((wait['declined'] as List? ?? const []).isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             AppBanner(icon: Icons.block_rounded, color: context.colors.danger, text: '${t('اعتذروا', 'Declined')}: ${list('declined')}'),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           AppField(controller: reason, label: t('سبب النشر دون موافقتهم (يُسجَّل)', 'Reason to publish without it (audited)'), maxLines: 2),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           AppPrimaryButton(label: t('النشر على أي حال', 'Publish anyway'), icon: Icons.publish_rounded, onPressed: () => Navigator.pop(ctx, reason.text.trim().isNotEmpty)),
         ],
       ),

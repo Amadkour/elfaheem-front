@@ -19,8 +19,8 @@ import 'package:flutter_education_app/core/app_time.dart';
 import '../admin/admin_common.dart';
 import 'org_providers.dart' show orgBase;
 import 'org_schedule_versions.dart' show calendarDate;
-import 'org_ui.dart' show orgText;
 import 'org_v3.dart' show orgCall, orgErrorText;
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 class OccurrenceChange {
   const OccurrenceChange({required this.id, required this.slotId, required this.date, this.day = '', this.mode, this.onlineUrl, this.cancelled = false, this.note, this.courseId, this.course, this.kind = 'lecture', this.startTime, this.endTime, this.teacherId, this.teacher, this.substitute = false, this.assistant, this.room, this.accept = 0, this.reject = 0, this.myResponse, this.canRespond = false, this.canEdit = false});
@@ -104,53 +104,53 @@ class OccurrenceCard extends StatelessWidget {
     final when = [calendarDate(x.date), if (x.startTime != null) AppTime.clockRange(x.startTime, x.endTime)].join(' · ');
     final spinner = SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: c.textMedium));
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: col.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(16), border: Border.all(color: col.withValues(alpha: 0.35))),
+      margin: const EdgeInsets.only(bottom: AppSpace.xs),
+      padding: const EdgeInsets.all(AppSpace.sm),
+      decoration: BoxDecoration(color: col.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: col.withValues(alpha: 0.35))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(icon, color: col, size: 22),
-          const SizedBox(width: 10),
+          Icon(icon, color: col, size: AppIconSize.lg),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${x.label} · ${x.course ?? ''}', style: orgText(context, w: FontWeight.w800)),
-              Text(when, style: orgText(context, size: 12, color: c.textMedium)),
+              Text('${x.label} · ${x.course ?? ''}', style: AppType.bodyStrong(context)),
+              Text(when, style: AppType.meta(context).copyWith(color: c.textMedium)),
               Text(
                 [
                   if (x.teacher != null) '${x.substitute ? t('البديل', 'substitute') : t('المدرس', 'teacher')}: ${x.teacher}',
                   if (x.room != null && !x.online) x.room!,
                   if (x.note != null && x.note!.isNotEmpty) x.note!,
                 ].join(' · '),
-                style: orgText(context, size: 12, color: c.textMedium),
+                style: AppType.meta(context).copyWith(color: c.textMedium),
               ),
             ]),
           ),
         ]),
-        const SizedBox(height: 8),
-        Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(color: c.inputBg.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(8)),
-            child: Text(t('قبِل ${x.accept} · رفض ${x.reject}', '${x.accept} accepted · ${x.reject} rejected'), style: orgText(context, size: 11.5, color: c.textMedium)),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
+            decoration: BoxDecoration(color: c.inputBg.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(AppRadius.chip)),
+            child: Text(t('قبِل ${x.accept} · رفض ${x.reject}', '${x.accept} accepted · ${x.reject} rejected'), style: AppType.meta(context).copyWith(color: c.textMedium)),
           ),
           if (x.online && x.onlineUrl != null && onOpenLink != null)
-            FilledButton.tonalIcon(onPressed: onOpenLink, icon: const Icon(Icons.link_rounded, size: 16), label: Text(t('رابط الحصة', 'Session link')), style: FilledButton.styleFrom(visualDensity: VisualDensity.compact)),
+            FilledButton.tonalIcon(onPressed: onOpenLink, icon: const Icon(Icons.link_rounded, size: AppIconSize.sm), label: Text(t('رابط الحصة', 'Session link')), style: FilledButton.styleFrom(visualDensity: VisualDensity.compact)),
           if (x.canRespond && onRespond != null) ...[
             FilledButton.tonalIcon(
               onPressed: busy ? null : () => onRespond!('accept'),
-              icon: busy ? spinner : Icon(x.myResponse == 'accept' ? Icons.check_circle_rounded : Icons.check_rounded, size: 16),
+              icon: busy ? spinner : Icon(x.myResponse == 'accept' ? Icons.check_circle_rounded : Icons.check_rounded, size: AppIconSize.sm),
               label: Text(x.myResponse == 'accept' ? t('قبلت', 'Accepted') : t('قبول', 'Accept')),
               style: FilledButton.styleFrom(visualDensity: VisualDensity.compact, backgroundColor: x.myResponse == 'accept' ? c.success.withValues(alpha: 0.18) : null),
             ),
             OutlinedButton.icon(
               onPressed: busy ? null : () => onRespond!('reject'),
-              icon: Icon(x.myResponse == 'reject' ? Icons.cancel_rounded : Icons.close_rounded, size: 16),
+              icon: Icon(x.myResponse == 'reject' ? Icons.cancel_rounded : Icons.close_rounded, size: AppIconSize.sm),
               label: Text(x.myResponse == 'reject' ? t('رفضت', 'Rejected') : t('رفض', 'Reject')),
               style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact, foregroundColor: x.myResponse == 'reject' ? c.danger : c.textMedium),
             ),
           ],
           if (x.canEdit && onUndo != null)
-            TextButton.icon(onPressed: busy ? null : onUndo, icon: const Icon(Icons.undo_rounded, size: 16), label: Text(t('إلغاء التغيير', 'Undo the change')), style: TextButton.styleFrom(visualDensity: VisualDensity.compact)),
+            TextButton.icon(onPressed: busy ? null : onUndo, icon: const Icon(Icons.undo_rounded, size: AppIconSize.sm), label: Text(t('إلغاء التغيير', 'Undo the change')), style: TextButton.styleFrom(visualDensity: VisualDensity.compact)),
         ]),
       ]),
     );
@@ -203,22 +203,22 @@ Future<bool?> askSessionMode(BuildContext context, {required String title, requi
   return showAdminSheet<bool>(context, (ctx) {
     final c = ctx.colors;
     Widget option(bool online, IconData icon, Color col, String t1, String t2) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: AppSpace.xs),
           child: ListTile(
             tileColor: c.cardBg,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: c.divider)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card), side: BorderSide(color: c.divider)),
             leading: Icon(icon, color: col),
-            title: Text(t1, style: orgText(ctx, w: FontWeight.w800)),
-            subtitle: Text(t2, style: orgText(ctx, size: 12, color: c.textMedium)),
+            title: Text(t1, style: AppType.bodyStrong(ctx)),
+            subtitle: Text(t2, style: AppType.meta(ctx).copyWith(color: c.textMedium)),
             onTap: () => Navigator.pop(ctx, online),
           ),
         );
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         SheetHeader(title),
-        Text(calendarDate(_iso(date)), style: orgText(ctx, size: 12.5, color: c.textMedium)),
-        const SizedBox(height: 10),
+        Text(calendarDate(_iso(date)), style: AppType.label(ctx).copyWith(color: c.textMedium)),
+        const SizedBox(height: AppSpace.sm),
         if (!onlineNow) option(true, Icons.videocam_rounded, c.primary, t('تحويل الحصة إلى أونلاين', 'Hold it online'), t('يُبلَّغ الطلاب فوراً ويمكنهم القبول أو الرفض', 'Students are told at once and may accept or reject')),
         if (onlineNow) option(false, Icons.meeting_room_rounded, c.success, t('إعادة الحصة حضورياً', 'Back to in person'), t('يُبلَّغ الطلاب فوراً', 'Students are told at once')),
       ]),

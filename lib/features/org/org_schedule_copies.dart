@@ -28,6 +28,7 @@ import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppDropdown, AppListSkeleton, AppRefresh;
 import 'org_page_header.dart' show OrgPageRefresh;
 import 'org_schedule_planning.dart' show orgStudioPage, studioSubtitle;
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 TimetableNames timetableNamesOf(OrgScheduleProvider p) => TimetableNames(
       courses: {for (final l in p.loads) asInt(l['course_id']): courseName(l)},
@@ -100,11 +101,11 @@ class _CopiesPageState extends State<_CopiesPage> {
   Future<void> _save() async {
     final label = TextEditingController(text: t('نسخة كاملة', 'Full copy'));
     final ok = await showAdminSheet<bool>(context, (ctx) => Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(t('حفظ نسخة كاملة', 'Save a full copy')),
             Text(t('تُحفظ الحصص الحالية كما هي (الإصدار $version). النسخ السابقة لا تتغير.', 'The current sessions are kept exactly as they are (version $version). Earlier copies do not change.'),
-                style: orgText(ctx, size: 12, color: ctx.colors.textMedium)),
+                style: AppType.meta(ctx).copyWith(color: ctx.colors.textMedium)),
             TextField(controller: label, maxLength: 80, decoration: InputDecoration(labelText: t('الاسم', 'Name'))),
             PrimaryButton(isLoading: false, label: t('حفظ', 'Save'), onPressed: () => Navigator.pop(ctx, true)),
           ]),
@@ -138,59 +139,59 @@ class _CopiesPageState extends State<_CopiesPage> {
         await p.open(sid);
         await _load();
       },
-      child: ListView(padding: const EdgeInsets.only(bottom: 40), children: [
+      child: ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [
         OrgSectionTitle(t('الجدول الحالي', 'Live timetable'),
             subtitle: '${sch['name'] ?? ''} · ${t('الإصدار', 'version')} ${version ?? '—'} · ${sch['status'] == 'active' ? t('منشور', 'published') : t('مسودة', 'draft')}'),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Wrap(spacing: 8, runSpacing: 6, children: [
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+          child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             ActionChip(
-                avatar: Icon(Icons.download_rounded, size: 18, color: c.success),
+                avatar: Icon(Icons.download_rounded, size: AppIconSize.md, color: c.success),
                 label: Text(t('تصدير Excel (الخادم)', 'Export Excel (server)')),
                 onPressed: () => downloadExcel(context, 'export/schedule', {'schedule_id': sid})),
             ActionChip(
-                avatar: Icon(Icons.groups_rounded, size: 18, color: c.primary),
+                avatar: Icon(Icons.groups_rounded, size: AppIconSize.md, color: c.primary),
                 label: Text(t('نسخ الأعضاء من الجدول الحالي', 'Member copies of the live timetable')),
                 onPressed: () => _openCopy(TimetableCopy(id: 0, label: t('الجدول الحالي', 'Live timetable'), createdAt: null, source: 'live', version: version, slots: p.slots), live: true)),
             if (widget.canEdit)
               ActionChip(
-                  avatar: saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.library_add_rounded, size: 18, color: c.primary),
+                  avatar: saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.library_add_rounded, size: AppIconSize.md, color: c.primary),
                   label: Text(t('حفظ نسخة كاملة', 'Save a full copy')),
                   onPressed: saving ? null : _save),
           ]),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
           child: Text(
               t('يرى كل مدرس ومعيد وطالب حصصه فقط من الجدول المنشور. إرسال نسخة من إصدار آخر إليهم يحتاج تحديثاً في الخادم.',
                   'Each teacher, assistant and student sees only their own sessions of the published timetable. Sending them a copy of another version needs a server update.'),
-              style: orgText(context, size: 11.5, color: c.textLight)),
+              style: AppType.meta(context).copyWith(color: c.textLight)),
         ),
         OrgSectionTitle(t('النسخ المحفوظة', 'Saved copies')),
         if (error != null)
           Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(children: [Expanded(child: Text(error!, style: orgText(context, color: c.danger))), TextButton(onPressed: _load, child: Text(t('إعادة المحاولة', 'Retry')))])),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+              child: Row(children: [Expanded(child: Text(error!, style: AppType.row(context).copyWith(color: c.danger))), TextButton(onPressed: _load, child: Text(t('إعادة المحاولة', 'Retry')))])),
         if (list == null && error == null) const AppListSkeleton(items: 3),
-        if (list != null && list.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Center(child: Text(t('لا توجد نسخ بعد.', 'No copies yet.'), style: orgText(context, color: c.textMedium)))),
+        if (list != null && list.isEmpty) Padding(padding: const EdgeInsets.all(AppSpace.lg), child: Center(child: Text(t('لا توجد نسخ بعد.', 'No copies yet.'), style: AppType.row(context).copyWith(color: c.textMedium)))),
         for (final cp in list ?? const <TimetableCopy>[])
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
             child: RowCard(
               onTap: () => _openCopy(cp),
               child: Row(children: [
                 Icon(Icons.content_copy_rounded, color: c.primary),
-                const SizedBox(width: 10),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(cp.label.isEmpty ? '${t('نسخة', 'Copy')} #${cp.id}' : cp.label, style: orgText(context, w: FontWeight.w800)),
+                    Text(cp.label.isEmpty ? '${t('نسخة', 'Copy')} #${cp.id}' : cp.label, style: AppType.bodyStrong(context)),
                     Text(
                         [
                           sourceLabel(cp.source),
                           if (cp.version != null) '${t('الإصدار', 'version')} ${cp.version}',
                           if (cp.createdAt != null) AppTime.dateTime(cp.createdAt!),
                         ].join(' · '),
-                        style: orgText(context, size: 12, color: c.textMedium)),
+                        style: AppType.meta(context).copyWith(color: c.textMedium)),
                   ]),
                 ),
                 _freshPill(context, cp.outdated(liveVersion: version, liveSlots: p.slots, detailLoaded: false)),
@@ -303,15 +304,15 @@ class _CopyDetailState extends State<_CopyDetail> {
       if (m != null) '${memberKindLabel(m.kind)}: ${memberLabel(m, n)}',
     ];
 
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
-      Wrap(spacing: 6, runSpacing: 4, children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl), children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
         OrgPill(sourceLabel(copy.source), color: c.textMedium),
         if (copy.version != null) OrgPill('${t('الإصدار', 'Version')} ${copy.version}', color: c.primary),
         OrgPill(t('${copy.slots.length} حصة', '${copy.slots.length} sessions'), color: c.accent2),
         _freshPill(context, outdated),
       ]),
       if (outdated == true) ...[
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         RowCard(
           accent: c.warning,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -324,13 +325,13 @@ class _CopyDetailState extends State<_CopyDetail> {
           ]),
         ),
       ],
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
       SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(children: [
           for (final k in ['full', ...memberKinds])
             Padding(
-              padding: const EdgeInsetsDirectional.only(end: 6),
+              padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
               child: ChoiceChip(
                   label: Text(k == 'full' ? t('الجدول كاملاً', 'Full timetable') : memberKindLabel(k)),
                   selected: kind == k,
@@ -342,9 +343,9 @@ class _CopyDetailState extends State<_CopyDetail> {
         ]),
       ),
       if (kind != 'full') ...[
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         if (members.isEmpty)
-          Text(t('لا يوجد ${memberKindLabel(kind)} في هذه النسخة.', 'No ${memberKindLabel(kind).toLowerCase()} in this copy.'), style: orgText(context, color: c.textMedium))
+          Text(t('لا يوجد ${memberKindLabel(kind)} في هذه النسخة.', 'No ${memberKindLabel(kind).toLowerCase()} in this copy.'), style: AppType.row(context).copyWith(color: c.textMedium))
         else
           AppDropdown<TimetableMember>(
             initialValue: m,
@@ -354,8 +355,8 @@ class _CopyDetailState extends State<_CopyDetail> {
             onChanged: (v) => setState(() => member = v),
           ),
       ],
-      const SizedBox(height: 8),
-      Wrap(spacing: 8, runSpacing: 6, children: [
+      const SizedBox(height: AppSpace.xs),
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         FilledButton.icon(
           onPressed: copy.slots.isEmpty
               ? null
@@ -392,9 +393,9 @@ class _CopyDetailState extends State<_CopyDetail> {
             label: Text(t('تصدير نسخ كل ${memberKindLabel(kind)} (${members.length})', 'Export every ${memberKindLabel(kind).toLowerCase()} copy (${members.length})')),
           ),
       ]),
-      const SizedBox(height: 8),
-      if (kind != 'full' && m == null && members.isNotEmpty) Text(t('اختر عضواً لعرض حصصه فقط.', 'Pick a member to see only their sessions.'), style: orgText(context, color: c.textMedium)),
-      if ((kind == 'full' || m != null) && shown.isEmpty) Text(t('لا حصص.', 'No sessions.'), style: orgText(context, color: c.textMedium)),
+      const SizedBox(height: AppSpace.xs),
+      if (kind != 'full' && m == null && members.isNotEmpty) Text(t('اختر عضواً لعرض حصصه فقط.', 'Pick a member to see only their sessions.'), style: AppType.row(context).copyWith(color: c.textMedium)),
+      if ((kind == 'full' || m != null) && shown.isEmpty) Text(t('لا حصص.', 'No sessions.'), style: AppType.row(context).copyWith(color: c.textMedium)),
       for (final s in shown) _slotLine(context, s, n),
     ]);
   }
@@ -421,19 +422,19 @@ class _CopyDetailState extends State<_CopyDetail> {
     final c = context.colors;
     final per = n.periods[asInt(s['period_id'])] ?? const {};
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: RowCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('${dayLabels()['${s['day']}'] ?? s['day']} · ${per['label'] ?? '#${s['period_id']}'} ${periodRange(asMap(per))}',
-              style: orgText(context, size: 12.5, w: FontWeight.w800, color: c.primary)),
-          Text('${n.course(s['course_id'])} · ${s['kind'] == 'lab' ? t('سكشن', 'Lab') : t('محاضرة', 'Lecture')} G${s['group_no'] ?? 1}', style: orgText(context, w: FontWeight.w700)),
+              style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.primary)),
+          Text('${n.course(s['course_id'])} · ${s['kind'] == 'lab' ? t('سكشن', 'Lab') : t('محاضرة', 'Lecture')} G${s['group_no'] ?? 1}', style: AppType.bodyStrong(context)),
           Text(
               [
                 if (s['room_id'] != null) n.room(s['room_id']),
                 if (s['teacher_id'] != null) n.person(s['teacher_id']),
                 if ((s['assistant_id'] ?? s['admin_assistant_id']) != null) n.person(s['assistant_id'] ?? s['admin_assistant_id']),
               ].join(' · '),
-              style: orgText(context, size: 12, color: c.textMedium)),
+              style: AppType.meta(context).copyWith(color: c.textMedium)),
         ]),
       ),
     );

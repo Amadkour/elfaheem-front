@@ -21,7 +21,7 @@ import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 String orgCourseName(Map c) =>
     '${(c['code'] ?? '').toString().isEmpty ? '' : '${c['code']} · '}${t('${c['name_ar'] ?? c['name_en']}', '${c['name_en'] ?? c['name_ar']}')}';
@@ -190,12 +190,12 @@ class _ProgramFormState extends State<_ProgramForm> {
       SheetHeader(p == null ? t('قسم علمي جديد', 'New academic department') : t('تعديل القسم العلمي', 'Edit academic department')),
       Flexible(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             _Section(icon: Icons.badge_rounded, title: t('الهوية', 'Identity'), children: [
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 SizedBox(width: 118, child: _ErrField(error: _errors['code'], child: Field(controller: _code, label: t('الكود *', 'Code *'), ltr: true))),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
                 Expanded(child: _ErrField(error: _errors['name'], child: Field(controller: _ar, label: t('الاسم بالعربية', 'Arabic name')))),
               ]),
               Field(controller: _en, label: t('الاسم بالإنجليزية', 'English name'), ltr: true),
@@ -223,12 +223,12 @@ class _ProgramFormState extends State<_ProgramForm> {
                 onChanged: () => setState(() {}),
                 onCreate: () => _createCourse(_entry),
               ),
-              const SizedBox(height: 10),
-              Text(t('شروط إضافية للقسم', 'More department rules'), style: orgText(context, size: 13, w: FontWeight.w800)),
+              const SizedBox(height: AppSpace.sm),
+              Text(t('شروط إضافية للقسم', 'More department rules'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
               Text(t('مثل عدد الساعات أو المتوسط — تُطلب للانضمام وللتسجيل في أي مقرر من مقررات القسم، حتى بعد الانتقال لمستوى أعلى.',
                       'Like hours or an average — required to join and to enroll in any of its courses, even after moving up a level.'),
-                  style: orgText(context, size: 11.5, color: c.textLight)),
-              const SizedBox(height: 6),
+                  style: AppType.meta(context).copyWith(color: c.textLight)),
+              const SizedBox(height: AppSpace.xs),
               PrereqRulesEditor(
                 rules: _rules,
                 courses: courses,
@@ -253,7 +253,7 @@ class _ProgramFormState extends State<_ProgramForm> {
                   },
                   onCreate: () => _createCourse(_req),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: AppSpace.md),
                 CourseSetField(
                   title: t('مقررات اختيارية', 'Elective courses'),
                   help: t('يختار الطالب منها العدد المطلوب أدناه', 'Students pick the number below from these'),
@@ -266,7 +266,7 @@ class _ProgramFormState extends State<_ProgramForm> {
                   },
                   onCreate: () => _createCourse(_elec),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpace.sm),
                 _MinElectives(
                   value: _minE,
                   available: _elec.length,
@@ -292,25 +292,25 @@ class _ProgramFormState extends State<_ProgramForm> {
                   ? const SizedBox(width: double.infinity)
                   : Container(
                       width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: c.danger.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
+                      margin: const EdgeInsets.only(bottom: AppSpace.sm),
+                      padding: const EdgeInsets.all(AppSpace.sm),
+                      decoration: BoxDecoration(color: c.danger.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(AppRadius.control)),
                       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Icon(Icons.error_outline_rounded, color: c.danger, size: 20),
-                        const SizedBox(width: 8),
+                        Icon(Icons.error_outline_rounded, color: c.danger, size: AppIconSize.md),
+                        const SizedBox(width: AppSpace.xs),
                         Expanded(
-                          child: Text(_banner ?? _errors.values.join('\n'), style: orgText(context, size: 12.5, color: c.danger)),
+                          child: Text(_banner ?? _errors.values.join('\n'), style: AppType.label(context).copyWith(color: c.danger)),
                         ),
                       ]),
                     ),
             ),
             if (courses != null)
               Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.only(bottom: AppSpace.sm),
                 child: Text(
                   t('${_req.length} إجباري · ${_elec.length} اختياري (يُطلب $_minE) · ${_entry.length} متطلب التحاق',
                       '${_req.length} required · ${_elec.length} electives ($_minE needed) · ${_entry.length} entry'),
-                  style: orgText(context, size: 12, color: c.textMedium),
+                  style: AppType.meta(context).copyWith(color: c.textMedium),
                 ),
               ),
             PrimaryButton(isLoading: _busy, label: p == null ? t('إنشاء القسم', 'Create department') : t('حفظ', 'Save'), onPressed: _busy ? null : _save),
@@ -334,23 +334,23 @@ class _Section extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+      margin: const EdgeInsets.only(bottom: AppSpace.sm),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xs),
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: error != null ? c.danger : c.divider),
         boxShadow: [BoxShadow(color: c.textDark.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 3))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(icon, size: 18, color: c.primary),
-          const SizedBox(width: 8),
-          Flexible(child: Text(title, style: orgText(context, w: FontWeight.w800))),
+          Icon(icon, size: AppIconSize.md, color: c.primary),
+          const SizedBox(width: AppSpace.xs),
+          Flexible(child: Text(title, style: AppType.bodyStrong(context))),
         ]),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         ...children,
-        if (error != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(error!, style: orgText(context, size: 12, color: c.danger))),
+        if (error != null) Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: Text(error!, style: AppType.meta(context).copyWith(color: c.danger))),
       ]),
     );
   }
@@ -366,8 +366,8 @@ class _ErrField extends StatelessWidget {
         child,
         if (error != null)
           Padding(
-            padding: const EdgeInsets.only(bottom: 8, top: 2),
-            child: Text(error!, style: orgText(context, size: 11.5, color: context.colors.danger)),
+            padding: const EdgeInsets.only(bottom: AppSpace.xs, top: AppSpace.xxs / 2),
+            child: Text(error!, style: AppType.meta(context).copyWith(color: context.colors.danger)),
           ),
       ]);
 }
@@ -383,18 +383,18 @@ class _MinElectives extends StatelessWidget {
     final c = context.colors;
     final bad = value > available;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
       decoration: BoxDecoration(
         color: (bad ? c.danger : c.primary).withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.control),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(t('عدد الاختياريات المطلوب اجتيازها', 'Electives a student must pass'), style: orgText(context, size: 13, w: FontWeight.w700)),
+              Text(t('عدد الاختياريات المطلوب اجتيازها', 'Electives a student must pass'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
               Text(t('من $available مقرر اختياري مختار', 'out of $available selected elective${available == 1 ? '' : 's'}'),
-                  style: orgText(context, size: 11.5, color: c.textMedium)),
+                  style: AppType.meta(context).copyWith(color: c.textMedium)),
             ]),
           ),
           IconButton(
@@ -404,7 +404,7 @@ class _MinElectives extends StatelessWidget {
           ),
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 150),
-            child: Text('$value', key: ValueKey(value), style: orgText(context, size: 18, w: FontWeight.w800, color: bad ? c.danger : c.primary)),
+            child: Text('$value', key: ValueKey(value), style: AppType.section(context).copyWith(color: bad ? c.danger : c.primary)),
           ),
           IconButton(
             tooltip: t('زيادة', 'More'),
@@ -414,8 +414,8 @@ class _MinElectives extends StatelessWidget {
         ]),
         if (error != null || bad)
           Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(error ?? orgCodeText('electives'), style: orgText(context, size: 11.5, color: c.danger)),
+            padding: const EdgeInsets.only(bottom: AppSpace.xxs),
+            child: Text(error ?? orgCodeText('electives'), style: AppType.meta(context).copyWith(color: c.danger)),
           ),
       ]),
     );
@@ -461,28 +461,28 @@ class CourseSetField extends StatelessWidget {
       Row(children: [
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('$title${selected.isEmpty ? '' : ' · ${selected.length}'}', style: orgText(context, size: 13, w: FontWeight.w800)),
-            if (help != null) Text(help!, style: orgText(context, size: 11.5, color: c.textLight)),
+            Text('$title${selected.isEmpty ? '' : ' · ${selected.length}'}', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
+            if (help != null) Text(help!, style: AppType.meta(context).copyWith(color: c.textLight)),
           ]),
         ),
         if (onCreate != null)
           IconButton.filledTonal(
             tooltip: t('مقرر جديد', 'New course'),
             onPressed: onCreate,
-            icon: const Icon(Icons.add_rounded, size: 20),
+            icon: const Icon(Icons.add_rounded, size: AppIconSize.md),
           ),
       ]),
-      const SizedBox(height: 6),
+      const SizedBox(height: AppSpace.xs),
       if (courses == null)
         const LinearProgressIndicator(minHeight: 2)
       else ...[
         AnimatedSize(
           duration: const Duration(milliseconds: 180),
           alignment: AlignmentDirectional.topStart,
-          child: Wrap(spacing: 6, runSpacing: 6, children: [
+          child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             for (final id in selected)
               InputChip(
-                label: Text(byId[id] == null ? '#$id' : orgCourseName(byId[id]!), style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
+                label: Text(byId[id] == null ? '#$id' : orgCourseName(byId[id]!), style: AppType.label(context).copyWith(color: context.colors.textDark)),
                 onDeleted: () {
                   selected.remove(id);
                   onChanged();
@@ -494,7 +494,7 @@ class CourseSetField extends StatelessWidget {
           alignment: AlignmentDirectional.centerStart,
           child: TextButton.icon(
             onPressed: courses!.isEmpty ? onCreate : () => _pick(context),
-            icon: Icon(courses!.isEmpty ? Icons.add_rounded : Icons.checklist_rounded, size: 18),
+            icon: Icon(courses!.isEmpty ? Icons.add_rounded : Icons.checklist_rounded, size: AppIconSize.md),
             label: Text(courses!.isEmpty
                 ? t('لا توجد مقررات بعد — أنشئ مقرراً', 'No courses yet — create one')
                 : selected.isEmpty
@@ -531,9 +531,9 @@ class _CoursePickerState extends State<_CoursePicker> {
             .where((x) => '${x['code'] ?? ''} ${x['name_ar'] ?? ''} ${x['name_en'] ?? ''}'.toLowerCase().contains(q))
             .toList();
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      SheetHeader(widget.title, trailing: Text('${widget.draft.length}', style: orgText(context, w: FontWeight.w800, color: c.primary))),
+      SheetHeader(widget.title, trailing: Text('${widget.draft.length}', style: AppType.bodyStrong(context).copyWith(color: c.primary))),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
         child: TextField(
           autofocus: widget.courses.length > 12,
           onChanged: (v) => setState(() => _q = v),
@@ -543,15 +543,15 @@ class _CoursePickerState extends State<_CoursePicker> {
             hintText: t('ابحث بالاسم أو الكود', 'Search by name or code'),
             filled: true,
             fillColor: c.inputBg,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide.none),
           ),
         ),
       ),
       Flexible(
         child: shown.isEmpty
             ? Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(t('لا نتائج', 'No matches'), style: orgText(context, color: c.textMedium)),
+                padding: const EdgeInsets.all(AppSpace.lg),
+                child: Text(t('لا نتائج', 'No matches'), style: AppType.row(context).copyWith(color: c.textMedium)),
               )
             : ListView.builder(
                 shrinkWrap: true,
@@ -562,14 +562,14 @@ class _CoursePickerState extends State<_CoursePicker> {
                     dense: true,
                     value: widget.draft.contains(id),
                     onChanged: why != null ? null : (on) => setState(() => on == true ? widget.draft.add(id) : widget.draft.remove(id)),
-                    title: Text(orgCourseName(x), style: orgText(context, size: 13, color: why != null ? c.textLight : null)),
-                    subtitle: why == null ? null : Text(why, style: orgText(context, size: 11, color: c.textLight)),
+                    title: Text(orgCourseName(x), style: AppType.label(context).copyWith(color: why != null ? c.textLight : null)),
+                    subtitle: why == null ? null : Text(why, style: AppType.meta(context).copyWith(color: c.textLight)),
                   );
                 },
               ),
       ),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.md),
         child: PrimaryButton(isLoading: false, label: t('تم (${widget.draft.length})', 'Done (${widget.draft.length})'), onPressed: () => Navigator.pop(context, true)),
       ),
     ]);

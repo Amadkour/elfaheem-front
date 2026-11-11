@@ -67,11 +67,11 @@ class _OrgsUnavailablePageState extends State<OrgsUnavailablePage> {
       child: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.lg),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 520),
               child: AppCard(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(AppSpace.lg),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
                   Container(
                     width: 84,
@@ -80,29 +80,29 @@ class _OrgsUnavailablePageState extends State<OrgsUnavailablePage> {
                       shape: BoxShape.circle,
                       color: c.primaryTint,
                     ),
-                    child: Icon(Icons.domain_disabled_rounded, size: 40, color: c.primary),
+                    child: Icon(Icons.domain_disabled_rounded, size: AppIconSize.hero, color: c.primary),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: AppSpace.md),
                   Text(t('المؤسسات غير متاحة حالياً', 'Organizations are currently unavailable'),
-                      textAlign: TextAlign.center, style: appText(19, w: FontWeight.w800, c: c.textDark)),
-                  const SizedBox(height: 10),
+                      textAlign: TextAlign.center, style: AppType.section(context).copyWith(color: c.textDark)),
+                  const SizedBox(height: AppSpace.sm),
                   Text(
                     t('أوقفت إدارة المنصة خدمة المؤسسات مؤقتاً. بياناتك محفوظة بالكامل، وستعود لوحة مؤسستك كما هي فور إعادة تفعيل الخدمة.',
                         'The platform team has paused organizations for now. All your data is safe, and your dashboard comes back exactly as it was once the service is switched on again.'),
                     textAlign: TextAlign.center,
-                    style: appText(13.5, c: c.textMedium, h: 1.6),
+                    style: AppType.row(context).copyWith(color: c.textMedium, height: 1.6),
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: AppSpace.lg),
                   AppPrimaryButton(
                       label: t('تحقّق مرة أخرى', 'Check again'),
                       icon: Icons.refresh_rounded,
                       busy: _busy,
                       onPressed: _busy ? null : _refresh),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.xs),
                   TextButton.icon(
                     onPressed: _logout,
-                    icon: Icon(DirIcons.logout, color: c.textMedium, size: 18),
-                    label: Text(t('تسجيل الخروج', 'Sign out'), style: appText(13.5, w: FontWeight.w700, c: c.textMedium)),
+                    icon: Icon(DirIcons.logout, color: c.textMedium, size: AppIconSize.md),
+                    label: Text(t('تسجيل الخروج', 'Sign out'), style: AppType.bodyStrong(context).copyWith(color: c.textMedium)),
                   ),
                 ]),
               ),

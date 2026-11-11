@@ -142,7 +142,7 @@ class _Calendar extends StatelessWidget {
             if (d != null) set(() => isStart ? start = d : end = d);
           }
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               SheetHeader(draft ? t('تعديل المسودة', 'Edit the draft') : term == null ? t('فصل دراسي جديد', 'New term') : t('تعديل الفصل', 'Edit term')),
               Field(controller: year, label: t('العام الدراسي (2026/2027)', 'Academic year (2026/2027)'), ltr: true),
@@ -150,11 +150,11 @@ class _Calendar extends StatelessWidget {
               Row(children: [
                 Expanded(child: OutlinedButton.icon(onPressed: () => pick(true), icon: const Icon(Icons.play_arrow_rounded),
                     label: Text(start == null ? t('البداية', 'Starts') : shortDate(start!.toIso8601String())))),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
                 Expanded(child: OutlinedButton.icon(onPressed: () => pick(false), icon: const Icon(Icons.flag_rounded),
                     label: Text(end == null ? t('النهاية', 'Ends') : shortDate(end!.toIso8601String())))),
               ]),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpace.md),
               PrimaryButton(isLoading: false, label: draft ? t('اعتماد بعد التعديل', 'Approve with changes') : t('حفظ', 'Save'), onPressed: () async {
                 if (start == null || end == null) return toast(t('حدد البداية والنهاية', 'Pick both dates'), error: true);
                 final b = <String, dynamic>{'year_label': year.text.trim(), 'kind': kind, 'start_date': start!.toIso8601String().substring(0, 10),
@@ -195,29 +195,29 @@ class _Calendar extends StatelessWidget {
       floatingActionButton: FloatingActionButton.extended(heroTag: 'term_new', onPressed: () => _edit(context),
           icon: const Icon(Icons.add_rounded), label: Text(t('فصل جديد', 'New term'))),
       body: years.isEmpty
-          ? ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 100), children: [
+          ? ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxxl + AppSpace.xl), children: [
               _suggestions(context),
               OrgEmpty(icon: Icons.calendar_month_rounded, title: t('ابدأ بالتقويم الأكاديمي', 'Start with the academic calendar'),
                   message: t('أضف الأعوام والفصول (الأول، الثاني، الصيفي) بتواريخها، ثم سجّل المقررات في كل فصل.', 'Add years and terms (1, 2, summer) with dates, then offer courses in each term.'),
                   actionLabel: t('فصل جديد', 'New term'), onAction: () => _edit(context)),
             ])
-          : ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 100), children: [
+          : ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxxl + AppSpace.xl), children: [
               _suggestions(context),
               for (final e in years.entries) ...[
-                OrgSectionTitle('${t('العام', 'Year')} ${e.key}', padding: const EdgeInsets.fromLTRB(4, 14, 4, 6)),
+                OrgSectionTitle('${t('العام', 'Year')} ${e.key}', padding: const EdgeInsets.fromLTRB(AppSpace.xxs, AppSpace.md, AppSpace.xxs, AppSpace.xs)),
                 for (final term in e.value)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.only(bottom: AppSpace.xs),
                     child: RowCard(
                       accent: term['status'] == 'current' ? c.success : null,
                       onTap: () => _edit(context, term),
                       child: Row(children: [
                         IconBadge(term['kind'] == 'summer' ? Icons.wb_sunny_rounded : Icons.event_note_rounded,
                             term['status'] == 'current' ? c.success : c.primary, size: 40),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpace.sm),
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(termKinds()['${term['kind']}'] ?? '', style: orgText(context, w: FontWeight.w800)),
-                          Text('${shortDate('${term['start_date']}')} → ${shortDate('${term['end_date']}')}', style: orgText(context, size: 12, color: c.textMedium)),
+                          Text(termKinds()['${term['kind']}'] ?? '', style: AppType.bodyStrong(context)),
+                          Text('${shortDate('${term['start_date']}')} → ${shortDate('${term['end_date']}')}', style: AppType.meta(context).copyWith(color: c.textMedium)),
                         ])),
                         OrgPill({'current': t('جارٍ', 'Current'), 'upcoming': t('قادم', 'Upcoming'), 'finished': t('انتهى', 'Finished')}['${term['status']}'] ?? '',
                             color: term['status'] == 'current' ? c.success : c.textMedium),
@@ -231,10 +231,10 @@ class _Calendar extends StatelessWidget {
 }
 
 Widget _courseChips(BuildContext ctx, List<Map<String, dynamic>> courses, Set<int> sel, void Function(void Function()) set, {Set<int> disabled = const {}}) =>
-    Wrap(spacing: 6, runSpacing: 6, children: [
+    Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
       for (final co in courses)
         FilterChip(
-          label: Text(_cname(co), style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
+          label: Text(_cname(co), style: AppType.label(ctx).copyWith(color: ctx.colors.textDark)),
           selected: sel.contains(asInt(co['id'])),
           onSelected: disabled.contains(asInt(co['id'])) ? null : (on) => set(() => on ? sel.add(asInt(co['id'])) : sel.remove(asInt(co['id']))),
         ),
@@ -263,24 +263,24 @@ class _Programs extends StatelessWidget {
           ? OrgEmpty(icon: Icons.account_tree_rounded, title: t('أضف الأقسام العلمية', 'Add academic departments'),
               message: t('لكل قسم كود ومدير ومتطلبات التحاق ومقررات إجبارية واختيارية.', 'Each has a code, a manager, entry prerequisites, required and elective courses.'),
               actionLabel: t('قسم جديد', 'New department'), onAction: () => _edit(context))
-          : ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 100), children: [
+          : ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxxl + AppSpace.xl), children: [
               for (final p in programs)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(bottom: AppSpace.xs),
                   child: RowCard(
                     onTap: () => _edit(context, p),
                     child: Row(children: [
                       IconBadge(Icons.account_tree_rounded, p['is_active'] == false ? c.textLight : c.primary, size: 42),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSpace.sm),
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('${p['code']} · ${t('${p['name_ar'] ?? p['name_en']}', '${p['name_en'] ?? p['name_ar']}')}', style: orgText(context, w: FontWeight.w800)),
+                          Text('${p['code']} · ${t('${p['name_ar'] ?? p['name_en']}', '${p['name_en'] ?? p['name_ar']}')}', style: AppType.bodyStrong(context)),
                           Text(
                               t('${p['students']} طالب · ${(p['required_course_ids'] as List).length} إجباري · ${(p['elective_course_ids'] as List).length} اختياري',
                                   '${p['students']} students · ${(p['required_course_ids'] as List).length} required · ${(p['elective_course_ids'] as List).length} electives'),
-                              style: orgText(context, size: 12, color: c.textMedium)),
+                              style: AppType.meta(context).copyWith(color: c.textMedium)),
                           Text(asMap(p['manager']).isEmpty ? t('بلا مدير', 'No manager') : '${t('المدير', 'Manager')}: ${asMap(p['manager'])['name']}',
-                              style: orgText(context, size: 12, color: c.textLight)),
+                              style: AppType.meta(context).copyWith(color: c.textLight)),
                           if (p['is_active'] == false) OrgPill(t('موقوف', 'Inactive'), color: c.textMedium),
                         ]),
                       ),
@@ -328,7 +328,7 @@ class _SettingsTabState extends State<_SettingsTab> {
     final ar = TextEditingController(text: '${l['label_ar'] ?? ''}');
     final en = TextEditingController(text: '${l['label_en'] ?? ''}');
     await showAdminSheet<void>(context, (ctx) => SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(i == null ? t('فرقة / مستوى جديد', 'New year / level') : t('تعديل المستوى', 'Edit level')),
             Field(controller: key, label: t('المفتاح (مثلاً 1 أو year4)', 'Key (e.g. 1 or year4)'), ltr: true, enabled: i == null),
@@ -352,7 +352,7 @@ class _SettingsTabState extends State<_SettingsTab> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl), children: [
       Section(
         title: t('هيكل المسار', 'Path structure'),
         icon: Icons.route_rounded,
@@ -368,8 +368,8 @@ class _SettingsTabState extends State<_SettingsTab> {
         icon: Icons.school_rounded,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(t('مطلوبة من كل الطلاب (ويُضاف إليها مقررات القسم إن وجد).', 'Required from every student (plus the department\'s courses, if any).'),
-              style: orgText(context, size: 12, color: c.textMedium)),
-          const SizedBox(height: 8),
+              style: AppType.meta(context).copyWith(color: c.textMedium)),
+          const SizedBox(height: AppSpace.xs),
           _courseChips(context, widget.courses, grad, setState),
         ]),
       ),
@@ -400,9 +400,9 @@ class _SettingsTabState extends State<_SettingsTab> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(t('تُستخدم في بيانات الطلاب الموثّقة وفي شروط الانضمام للأقسام. الكلية بلا مستويات ترث مستويات جامعتها.',
               'Used in students\' trusted records and in department joining rules. A faculty without levels inherits its university\'s.'),
-              style: orgText(context, size: 12, color: c.textMedium)),
+              style: AppType.meta(context).copyWith(color: c.textMedium)),
           if (levels.isEmpty)
-            Padding(padding: const EdgeInsets.all(8), child: Text(t('لا مستويات بعد', 'No levels yet'), style: orgText(context, color: c.textLight))),
+            Padding(padding: const EdgeInsets.all(AppSpace.xs), child: Text(t('لا مستويات بعد', 'No levels yet'), style: AppType.row(context).copyWith(color: c.textLight))),
           for (var i = 0; i < levels.length; i++)
             ListTile(
               dense: true,
@@ -431,7 +431,7 @@ class _SettingsTabState extends State<_SettingsTab> {
         ]),
       ),
       if (error != null)
-        Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(error!, style: orgText(context, size: 12.5, color: c.danger))),
+        Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: Text(error!, style: AppType.label(context).copyWith(color: c.danger))),
       PrimaryButton(isLoading: busy, label: t('حفظ', 'Save'), onPressed: () async {
         setState(() {
           busy = true;
@@ -474,7 +474,7 @@ class _Students extends StatelessWidget {
         final c = context.colors;
         final key = p.filters['pending'] == true ? 'action' : '${p.filters['stage'] ?? ''}';
         return Column(children: [
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           FilterChips<String>(
             options: {'': t('الكل', 'All'), 'action': t('بانتظار إجراء', 'Needs action'), ...stageLabels()},
             value: key,
@@ -496,19 +496,19 @@ class _Students extends StatelessWidget {
                 final req = asMap(row['request']);
                 final pct = asInt(row['percent']);
                 return Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
                   child: RowCard(
                     accent: row['ready_to_graduate'] == true || req['status'] == 'pending' ? c.warning : null,
                     child: Column(children: [
                       Row(children: [
                         AdminAvatar(name: '${u['name']}', url: u['image_url'] as String?),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpace.sm),
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           if (u['id'] != null)
                             EntityGuardedChip(EntityRef(EntityKind.student, asInt(u['id']), label: '${u['name']}'), maxWidth: 320)
                           else
-                            Text('${u['name']}', style: orgText(context, w: FontWeight.w800)),
-                          Wrap(spacing: 6, runSpacing: 4, children: [
+                            Text('${u['name']}', style: AppType.bodyStrong(context)),
+                          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                             OrgPill(stageLabels()['${row['stage']}'] ?? '', color: row['stage'] == 'graduated' ? c.success : c.primary),
                             if (row['program'] != null) OrgPill('${asMap(row['program'])['code']}', icon: Icons.account_tree_rounded),
                             if (req['status'] == 'pending')
@@ -517,13 +517,13 @@ class _Students extends StatelessWidget {
                         ])),
                         SizedBox(width: 44, height: 44, child: Stack(alignment: Alignment.center, children: [
                           CircularProgressIndicator(value: pct / 100, strokeWidth: 4, backgroundColor: c.divider),
-                          Text('$pct%', style: orgText(context, size: 10.5, w: FontWeight.w800)),
+                          Text('$pct%', style: AppType.overline(context).copyWith(color: context.colors.textDark)),
                         ])),
                       ]),
                       if (req['status'] == 'pending' || row['ready_to_graduate'] == true)
                         Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Wrap(spacing: 8, children: [
+                          padding: const EdgeInsets.only(top: AppSpace.xs),
+                          child: Wrap(spacing: AppSpace.xs, children: [
                             if (req['status'] == 'pending') ...[
                               FilledButton(onPressed: () async {
                                 if (await OrgApi.i.post('$base/students/${u['id']}/request/approve', {'days': 1}, t('تم القبول', 'Approved')) != null) p.refresh();
@@ -574,11 +574,11 @@ class _ArchiveRequests extends StatelessWidget {
           Expanded(child: PagedList<OrgPaged>(
           emptyText: t('لا طلبات لفتح الأرشيف', 'No archive requests'),
           itemBuilder: (context, row) => Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
             child: RowCard(
               child: Row(children: [
                 IconBadge(Icons.inventory_2_rounded, c.warning, size: 42),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   // the student and the course open their detail where the server allows it (D-290)
                   if (asMap(row['student'])['id'] != null)
@@ -586,16 +586,16 @@ class _ArchiveRequests extends StatelessWidget {
                         EntityRef(EntityKind.student, asInt(asMap(row['student'])['id']), label: '${asMap(row['student'])['name']}'),
                         maxWidth: 320)
                   else
-                    Text('${asMap(row['student'])['name']}', style: orgText(context, w: FontWeight.w800)),
+                    Text('${asMap(row['student'])['name']}', style: AppType.bodyStrong(context)),
                   Wrap(spacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
                     if (asMap(row['course'])['id'] != null)
                       EntityGuardedChip(EntityRef(EntityKind.course, asInt(asMap(row['course'])['id']), label: _cname(asMap(row['course']))))
                     else
-                      Text(_cname(asMap(row['course'])), style: orgText(context, size: 12, color: c.textMedium)),
+                      Text(_cname(asMap(row['course'])), style: AppType.meta(context).copyWith(color: c.textMedium)),
                     Text('${termKinds()[asMap(asMap(row['run'])['term'])['kind']] ?? ''} ${asMap(asMap(row['run'])['term'])['year_label'] ?? ''}',
-                        style: orgText(context, size: 12, color: c.textMedium)),
+                        style: AppType.meta(context).copyWith(color: c.textMedium)),
                   ]),
-                  if ('${row['reason'] ?? ''}'.isNotEmpty) Text('"${row['reason']}"', style: orgText(context, size: 12)),
+                  if ('${row['reason'] ?? ''}'.isNotEmpty) Text('"${row['reason']}"', style: AppType.meta(context).copyWith(color: context.colors.textDark)),
                 ])),
                 IconButton(tooltip: t('موافقة', 'Approve'), icon: Icon(Icons.check_circle_rounded, color: c.success), onPressed: () async {
                   final d = await askText(context, title: t('عدد أيام الفتح', 'Open for how many days?'), hint: '7');
@@ -641,7 +641,7 @@ class _OrgArchiveOpenSwitchState extends State<_OrgArchiveOpenSwitch> {
   Widget build(BuildContext context) {
     if (_open == null) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxs),
       child: RowCard(
         child: OrgSwitchRow(
           title: t('وصول مفتوح لأرشيف المقررات', 'Open access to course archives'),
@@ -703,7 +703,7 @@ class _CourseArchiveScreenState extends State<CourseArchiveScreen> {
     final terms = asMapList((await OrgApi.i.getMap('$_a/terms'))?['items']).where((x) => x['status'] != 'finished').toList();
     if (!mounted) return;
     if (terms.isEmpty) return toast(t('أضف فصلاً دراسياً من التقويم أولاً', 'Add a term in the calendar first'), error: true);
-    final id = await showAdminSheet<int>(context, (ctx) => ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
+    final id = await showAdminSheet<int>(context, (ctx) => ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg), children: [
           SheetHeader(t('تسجيل المقرر في فصل', 'Offer the course in a term')),
           for (final x in terms)
             ListTile(leading: const Icon(Icons.event_note_rounded), title: Text('${termKinds()[x['kind']]} ${x['year_label']}'),
@@ -720,18 +720,18 @@ class _CourseArchiveScreenState extends State<CourseArchiveScreen> {
           final c = ctx.colors;
           final live = d['status'] != 'archived';
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               SheetHeader('${termKinds()[asMap(d['term'])['kind']]} ${asMap(d['term'])['year_label']}'),
-              Wrap(spacing: 6, children: [
+              Wrap(spacing: AppSpace.xs, children: [
                 OrgPill(statusLabel('${d['status']}'), color: live ? c.success : c.textMedium),
                 if (!live) OrgPill(t('${d['passed']} / ${d['students']} ناجح', '${d['passed']} / ${d['students']} passed'), color: c.success),
               ]),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
               if (live && widget.canManage)
                 Text(t('عند الأرشفة: حدّد غير الناجحين — الباقون يُسجَّلون ناجحين ويُغلق المحتوى للجميع.',
                     'On archive: tick who did NOT pass — everyone else is recorded as passed, and the content closes for all.'),
-                    style: orgText(ctx, size: 12, color: c.textMedium)),
+                    style: AppType.meta(ctx).copyWith(color: c.textMedium)),
               for (final s in asMapList(d['students']))
                 live && widget.canManage
                     ? Material(type: MaterialType.transparency, child: CheckboxListTile(
@@ -745,7 +745,7 @@ class _CourseArchiveScreenState extends State<CourseArchiveScreen> {
                         trailing: s['result'] == null ? null : OrgPill(s['result'] == 'passed' ? t('ناجح', 'Passed') : t('لم ينجح', 'Not passed'),
                             color: s['result'] == 'passed' ? c.success : c.danger)),
               if (live && widget.canManage) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpace.sm),
                 PrimaryButton(isLoading: false, label: t('إنهاء الفصل ونقل المقرر للأرشيف', 'End the term & archive'), icon: Icons.inventory_2_rounded, iconBefore: true,
                     onPressed: () async {
                       if (!await confirm(ctx, message: t('سيُغلق المحتوى لطلاب هذا الفصل ولن يفتحوه إلا بموافقة. متابعة؟', 'The content closes for these students (re-opened only on approval). Continue?'))) return;
@@ -787,7 +787,7 @@ class _CourseArchiveScreenState extends State<CourseArchiveScreen> {
     final c = context.colors;
     return d == null
           ? (_failed ? ErrorRetry(message: t('تعذّر تحميل الأرشيف', 'Could not load the archive'), onRetry: _load) : const AppListSkeleton())
-          : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
+          : ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl), children: [
               if (d['current'] != null)
                 OrgActionCard(icon: Icons.play_circle_rounded, color: c.success,
                     title: '${t('النسخة الحالية', 'Current version')} · ${termKinds()[asMap(asMap(d['current'])['term'])['kind']]} ${asMap(asMap(d['current'])['term'])['year_label']}',
@@ -796,14 +796,14 @@ class _CourseArchiveScreenState extends State<CourseArchiveScreen> {
               else if (widget.canManage)
                 OrgActionCard(icon: Icons.add_circle_rounded, color: c.primary, title: t('تسجيل المقرر في فصل جديد', 'Offer in a new term'),
                     subtitle: t('افتح نسخة جديدة نظيفة للطلاب الجدد', 'Open a fresh version for new students'), onTap: _openRun),
-              const SizedBox(height: 8),
-              OrgSectionTitle(t('الأرشيف', 'Archive'), padding: const EdgeInsets.fromLTRB(4, 10, 4, 6)),
-              if (asMapList(d['years']).isEmpty) Text(t('لا نسخ سابقة بعد', 'No previous versions yet'), style: orgText(context, color: c.textMedium)),
+              const SizedBox(height: AppSpace.xs),
+              OrgSectionTitle(t('الأرشيف', 'Archive'), padding: const EdgeInsets.fromLTRB(AppSpace.xxs, AppSpace.sm, AppSpace.xxs, AppSpace.xs)),
+              if (asMapList(d['years']).isEmpty) Text(t('لا نسخ سابقة بعد', 'No previous versions yet'), style: AppType.row(context).copyWith(color: c.textMedium)),
               for (final y in asMapList(d['years']))
                 Card(
                   child: ExpansionTile(
                     leading: Icon(Icons.folder_rounded, color: c.accent2),
-                    title: Text('${t('العام', 'Year')} ${y['year_label']}', style: orgText(context, w: FontWeight.w800)),
+                    title: Text('${t('العام', 'Year')} ${y['year_label']}', style: AppType.bodyStrong(context)),
                     children: [
                       for (final r in asMapList(y['runs']))
                         ListTile(
@@ -863,27 +863,27 @@ class _MyAcademicPathPageState extends State<MyAcademicPathPage> {
     await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
           final c = ctx.colors;
           Widget card(Map<String, dynamic> p, int? sel, ValueChanged<int> on) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.only(bottom: AppSpace.xs),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(AppRadius.card),
                   onTap: p['full'] == true ? null : () => on(asInt(p['id'])),
                   child: Container(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(AppSpace.md),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(AppRadius.card),
                       color: sel == p['id'] ? c.primary.withValues(alpha: 0.08) : c.cardBg,
                       border: Border.all(color: sel == p['id'] ? c.primary : c.divider, width: sel == p['id'] ? 1.6 : 1),
                     ),
                     child: Row(children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
-                        child: Text('${p['code']}', style: orgText(ctx, w: FontWeight.w800, color: c.primary)),
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+                        decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.control)),
+                        child: Text('${p['code']}', style: AppType.bodyStrong(ctx).copyWith(color: c.primary)),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSpace.sm),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(t('${p['name_ar'] ?? p['name_en']}', '${p['name_en'] ?? p['name_ar']}'), style: orgText(ctx, w: FontWeight.w800)),
-                        if ('${p['description'] ?? ''}'.isNotEmpty) Text('${p['description']}', maxLines: 2, style: orgText(ctx, size: 12, color: c.textMedium)),
+                        Text(t('${p['name_ar'] ?? p['name_en']}', '${p['name_en'] ?? p['name_ar']}'), style: AppType.bodyStrong(ctx)),
+                        if ('${p['description'] ?? ''}'.isNotEmpty) Text('${p['description']}', maxLines: 2, style: AppType.meta(ctx).copyWith(color: c.textMedium)),
                         if (p['full'] == true) OrgPill(t('اكتمل العدد', 'Full'), color: c.danger),
                       ])),
                       if (sel == p['id']) Icon(Icons.check_circle_rounded, color: c.primary),
@@ -892,18 +892,18 @@ class _MyAcademicPathPageState extends State<MyAcademicPathPage> {
                 ),
               );
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               SheetHeader(t('اختر قسمك العلمي', 'Choose your department')),
               if ('${asMap(_p!['selection'])['message'] ?? ''}'.isNotEmpty)
-                Padding(padding: const EdgeInsets.only(bottom: 10), child: Text('${asMap(_p!['selection'])['message']}', style: orgText(ctx, color: c.textMedium))),
-              Text(t('الاختيار الأول', 'First choice'), style: orgText(ctx, w: FontWeight.w800)),
-              const SizedBox(height: 6),
+                Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: Text('${asMap(_p!['selection'])['message']}', style: AppType.row(ctx).copyWith(color: c.textMedium))),
+              Text(t('الاختيار الأول', 'First choice'), style: AppType.bodyStrong(ctx)),
+              const SizedBox(height: AppSpace.xs),
               for (final p in progs) card(p, first, (v) => set(() { first = v; if (second == v) second = null; })),
               if (progs.length > 1) ...[
-                const SizedBox(height: 8),
-                Text(t('الاختيار الثاني (اختياري)', 'Second choice (optional)'), style: orgText(ctx, w: FontWeight.w800)),
-                const SizedBox(height: 6),
+                const SizedBox(height: AppSpace.xs),
+                Text(t('الاختيار الثاني (اختياري)', 'Second choice (optional)'), style: AppType.bodyStrong(ctx)),
+                const SizedBox(height: AppSpace.xs),
                 for (final p in progs.where((x) => x['id'] != first)) card(p, second, (v) => set(() => second = second == v ? null : v)),
               ],
               PrimaryButton(isLoading: false, label: t('إرسال اختياري', 'Send my choice'), onPressed: first == null ? null : () async {
@@ -934,34 +934,34 @@ class _MyAcademicPathPageState extends State<MyAcademicPathPage> {
     final req = asMap(p['request']);
     return AppRefresh(
       onRefresh: _load,
-      child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
-        Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(24)), child: AppMeshSurface(radius: BorderRadius.circular(24), child: Padding(padding: const EdgeInsets.all(18), child: Column(children: [
+      child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl), children: [
+        Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppRadius.block)), child: AppMeshSurface(radius: BorderRadius.circular(AppRadius.block), child: Padding(padding: const EdgeInsets.all(AppSpace.md), child: Column(children: [
             Row(children: [
               for (var i = 0; i < steps.length; i++) ...[
                 Expanded(child: Column(children: [
                   CircleAvatar(radius: 20, backgroundColor: i <= at ? c.onHero : c.heroGlassBorder,
-                      child: Icon(steps[i].$3, color: i <= at ? c.primary : c.onHeroMuted, size: 20)),
-                  const SizedBox(height: 6),
+                      child: Icon(steps[i].$3, color: i <= at ? c.primary : c.onHeroMuted, size: AppIconSize.md)),
+                  const SizedBox(height: AppSpace.xs),
                   Text(steps[i].$2, style: TextStyle(fontFamily: AppFonts.family, color: i <= at ? c.onHero : c.onHeroMuted,
-                      fontWeight: i == at ? FontWeight.w800 : FontWeight.w500, fontSize: 12.5)),
+                      fontWeight: i == at ? FontWeight.w600 : FontWeight.w500, fontSize: 12.5)),
                 ])),
                 if (i < steps.length - 1) Expanded(child: Container(height: 2, color: i < at ? c.onHero : c.heroGlassBorder)),
               ],
             ]),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.md),
             if (p['program'] != null)
               Text('${asMap(p['program'])['code']} · ${t('${asMap(p['program'])['name_ar'] ?? asMap(p['program'])['name_en']}', '${asMap(p['program'])['name_en'] ?? asMap(p['program'])['name_ar']}')}',
-                  style: TextStyle(fontFamily: AppFonts.family, color: c.onHero, fontSize: 16, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 8),
-            ClipRRect(borderRadius: BorderRadius.circular(8),
+                  style: AppType.section(context).copyWith(color: c.onHero)),
+            const SizedBox(height: AppSpace.xs),
+            ClipRRect(borderRadius: BorderRadius.circular(AppRadius.chip),
                 child: LinearProgressIndicator(value: pct / 100, minHeight: 8, backgroundColor: c.heroGlassBorder, color: c.accent2)),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             Text(stage == 'graduated' ? t('مبروك التخرج 🎓', 'Congratulations, graduate 🎓') : t('أنجزت $pct% من متطلبات التخرج', '$pct% of graduation requirements done'),
                 style: TextStyle(fontFamily: AppFonts.family, color: c.onHero)),
           ])))),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         MyLevelCard(key: ValueKey('lvl_${widget.orgId}_$_loads'), orgId: widget.orgId),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         if (p['can_choose'] == true)
           OrgActionCard(icon: Icons.how_to_vote_rounded, color: c.warning, title: t('اختر قسمك العلمي', 'Choose your department'),
               subtitle: t('اجتزت متطلبات الالتحاق — حان وقت الاختيار', 'You passed the entry courses — time to choose'), onTap: _choose),
@@ -974,13 +974,13 @@ class _MyAcademicPathPageState extends State<MyAcademicPathPage> {
         if (p['ready_to_graduate'] == true)
           OrgActionCard(icon: Icons.verified_rounded, color: c.success, title: t('أكملت كل المتطلبات', 'All requirements done'),
               subtitle: t('بانتظار اعتماد التخرج من الإدارة', 'Waiting for the administration to confirm graduation')),
-        OrgSectionTitle(t('المقررات المطلوبة', 'Required courses'), padding: const EdgeInsets.fromLTRB(4, 14, 4, 6)),
+        OrgSectionTitle(t('المقررات المطلوبة', 'Required courses'), padding: const EdgeInsets.fromLTRB(AppSpace.xxs, AppSpace.md, AppSpace.xxs, AppSpace.xs)),
         for (final x in asMapList(p['required']))
           ListTile(dense: true, leading: Icon(x['passed'] == true ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
               color: x['passed'] == true ? c.success : c.textLight), title: Text(_cname(x))),
         if (asMapList(p['electives']).isNotEmpty) ...[
           OrgSectionTitle(t('اختيارية (${p['electives_done']} من ${p['min_electives']} مطلوبة)', 'Electives (${p['electives_done']} of ${p['min_electives']} needed)'),
-              padding: const EdgeInsets.fromLTRB(4, 14, 4, 6)),
+              padding: const EdgeInsets.fromLTRB(AppSpace.xxs, AppSpace.md, AppSpace.xxs, AppSpace.xs)),
           for (final x in asMapList(p['electives']))
             ListTile(dense: true, leading: Icon(x['passed'] == true ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
                 color: x['passed'] == true ? c.success : c.textLight), title: Text(_cname(x))),
@@ -1020,20 +1020,20 @@ Future<bool> orgCourseGate(BuildContext context, int courseId) async {
     final c = ctx.colors;
     final reason = TextEditingController();
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
         SheetHeader(t('المقرر في الأرشيف', 'This course is archived')),
         IconBadge(Icons.inventory_2_rounded, c.accent2, size: 52),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         Text(t('انتهى ${termKinds()[term['kind']] ?? ''} ${term['year_label'] ?? ''} وأُغلقت هذه النسخة.', '${termKinds()[term['kind']] ?? ''} ${term['year_label'] ?? ''} ended and this version is closed.'),
-            style: orgText(ctx, w: FontWeight.w700)),
+            style: AppType.bodyStrong(ctx)),
         if (a!['result'] != null)
-          Padding(padding: const EdgeInsets.only(top: 6),
+          Padding(padding: const EdgeInsets.only(top: AppSpace.xs),
               child: OrgPill(a['result'] == 'passed' ? t('نتيجتك: ناجح', 'Your result: passed') : t('نتيجتك: لم تنجح', 'Your result: not passed'),
                   color: a['result'] == 'passed' ? c.success : c.danger)),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         if (a['state'] == 'pending')
-          Text(t('طلبك لفتح آخر نسخة قيد المراجعة.', 'Your request to open the last version is being reviewed.'), style: orgText(ctx, color: c.warning))
+          Text(t('طلبك لفتح آخر نسخة قيد المراجعة.', 'Your request to open the last version is being reviewed.'), style: AppType.row(ctx).copyWith(color: c.warning))
         else if (a['took_it'] == true) ...[
           Field(controller: reason, label: t('لماذا تحتاج فتحها؟ (اختياري)', 'Why do you need it? (optional)'), maxLines: 2),
           PrimaryButton(isLoading: false, label: t('طلب فتح آخر نسخة', 'Request the last version'), onPressed: () async {
@@ -1041,9 +1041,9 @@ Future<bool> orgCourseGate(BuildContext context, int courseId) async {
             if (r != null && ctx.mounted) Navigator.pop(ctx);
           }),
         ] else
-          Text(t('ستُفتح نسخة جديدة عند تسجيل المقرر في فصل قادم.', 'A fresh version opens when the course is offered in an upcoming term.'), style: orgText(ctx, color: c.textMedium)),
+          Text(t('ستُفتح نسخة جديدة عند تسجيل المقرر في فصل قادم.', 'A fresh version opens when the course is offered in an upcoming term.'), style: AppType.row(ctx).copyWith(color: c.textMedium)),
         // course profile: read-only archive with this course's access mode (automatic · request · code)
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         TextButton.icon(
           icon: const Icon(Icons.dashboard_customize_rounded),
           label: Text(t('ملف المقرر والأرشيف (كود / وصول تلقائي)', 'Course profile & archive (code / automatic access)')),

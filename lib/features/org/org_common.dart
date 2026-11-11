@@ -14,6 +14,7 @@ import '../admin/admin_list.dart';
 import 'org_providers.dart';
 import 'org_ui.dart' show orgFileUrl;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 /// Warm, human gradient from the organization's own colour (falls back to the app primary).
 Color orgColor(BuildContext context, Map<String, dynamic>? org) {
@@ -100,10 +101,10 @@ class _ImportResultSheet extends StatelessWidget {
     final errors = asMapList(r['errors']);
     final creds = asMapList(r['credentials']);
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         SheetHeader(t('نتيجة الاستيراد', 'Import result')),
-        Wrap(spacing: 8, runSpacing: 8, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           InfoChip(Icons.add_circle_rounded, '${t('جديد', 'New')} ${r['created']}', c.success),
           InfoChip(Icons.link_rounded, '${t('مرتبط', 'Linked')} ${r['linked']}', c.primary),
           if (asInt(r['invited']) > 0) InfoChip(Icons.mark_email_unread_rounded, '${t('دعوات مرسلة', 'Invited')} ${r['invited']}', c.warning),
@@ -111,29 +112,29 @@ class _ImportResultSheet extends StatelessWidget {
           if (errors.isNotEmpty) InfoChip(Icons.error_rounded, '${t('أخطاء', 'Errors')} ${errors.length}', c.danger),
         ]),
         if (asInt(r['invited']) > 0) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           Text(t('الحسابات الموجودة أصلاً تلقّت دعوة — تنضم إلى المؤسسة بعد قبولها.', 'Accounts that already exist received an invitation — they join once they accept.'),
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.textMedium)),
+              style: AppType.label(context).copyWith(color: c.textMedium)),
         ],
         if (errors.isNotEmpty) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.md),
           Text(t('صفوف بها أخطاء', 'Rows with problems'), style: c.h2.copyWith(fontSize: 14)),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs),
           for (final e in errors.take(40))
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
+              padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs / 2),
               child: Text('${t('صف', 'Row')} ${e['row']}: ${e['error']}',
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.danger)),
+                  style: AppType.label(context).copyWith(color: c.danger)),
             ),
         ],
         if (creds.isNotEmpty) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.md),
           Text(t('بيانات الدخول للحسابات الجديدة (تظهر مرة واحدة)', 'Login details of new accounts (shown once)'),
               style: c.h2.copyWith(fontSize: 14)),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs),
           for (final u in creds.take(60))
             SelectableText('${u['email']}   ·   ${u['password']}',
-                textDirection: TextDirection.ltr, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.textDark)),
+                textDirection: TextDirection.ltr, style: AppType.label(context).copyWith(color: c.textDark)),
         ],
       ]),
     );
@@ -165,28 +166,28 @@ class OrgHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final base = orgColor(context, org);
     final logo = (org['logo_url'] ?? '').toString();
-    return Container(margin: const EdgeInsets.fromLTRB(16, 8, 16, 12), decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: base.withValues(alpha: 0.30), blurRadius: 18, offset: const Offset(0, 8))]), child: AppMeshSurface(color: base, radius: BorderRadius.circular(24), child: Padding(padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 12, 16), child: Row(children: [
+    return Container(margin: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.sm), decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppRadius.block), boxShadow: [BoxShadow(color: base.withValues(alpha: 0.30), blurRadius: 18, offset: const Offset(0, 8))]), child: AppMeshSurface(color: base, radius: BorderRadius.circular(AppRadius.block), child: Padding(padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, AppSpace.sm, AppSpace.md), child: Row(children: [
         Container(
           width: 54,
           height: 54,
-          decoration: BoxDecoration(color: context.colors.onHero.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(16)),
+          decoration: BoxDecoration(color: context.colors.onHero.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(AppRadius.card)),
           clipBehavior: Clip.antiAlias,
           child: logo.isNotEmpty
               ? Image.network(logo, fit: BoxFit.cover, errorBuilder: (_, _, _) => _fallbackIcon(context))
               : _fallbackIcon(context),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: AppSpace.md),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(OrgSession.nameOf(org),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontFamily: AppFonts.display, fontSize: 18, fontWeight: FontWeight.w800, color: context.colors.onHero)),
+                style: AppType.section(context).copyWith(color: context.colors.onHero)),
             if (subtitle != null)
               Padding(
-                padding: const EdgeInsets.only(top: 3),
+                padding: const EdgeInsets.only(top: AppSpace.xxs),
                 child: Text(subtitle!,
-                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: context.colors.onHero.withValues(alpha: 0.86))),
+                    style: AppType.label(context).copyWith(color: context.colors.onHero.withValues(alpha: 0.86))),
               ),
           ]),
         ),
@@ -194,14 +195,14 @@ class OrgHero extends StatelessWidget {
       ]))));
   }
 
-  Widget _fallbackIcon(BuildContext context) => Icon(orgTypeIcons[org['type']] ?? Icons.domain_rounded, color: context.colors.onHero, size: 28);
+  Widget _fallbackIcon(BuildContext context) => Icon(orgTypeIcons[org['type']] ?? Icons.domain_rounded, color: context.colors.onHero, size: AppIconSize.xl);
 }
 
 
 /// Excel · PDF · Word — one sheet for every organization export.
 Future<void> exportData(BuildContext context, String path, [Map<String, dynamic>? query]) async {
   final fmt = await showAdminSheet<String>(context, (ctx) => SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           SheetHeader(t('تصدير بصيغة', 'Export as')),
           for (final (f, label, icon) in [
@@ -211,7 +212,7 @@ Future<void> exportData(BuildContext context, String path, [Map<String, dynamic>
           ])
             ListTile(
               leading: Icon(icon),
-              title: Text(label, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
+              title: Text(label, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600)),
               onTap: () => Navigator.pop(ctx, f),
             ),
         ]),

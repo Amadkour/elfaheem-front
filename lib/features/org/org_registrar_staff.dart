@@ -119,12 +119,12 @@ class _DecisionsTabState extends State<_DecisionsTab> with _Loads {
   Future<void> _decide(Map<String, dynamic> d, String verdict, {Map<String, dynamic>? action}) async {
     final note = TextEditingController();
     final ok = await showAppSheet<bool>(context, (ctx) => SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpace.md),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppSectionTitle(verdict == 'reject' ? t('رفض', 'Reject') : t('تنفيذ', 'Apply'),
                 subtitle: verdict == 'reject' ? null : decisionActionText(action ?? asMap(d['recommendation']))),
             AppField(controller: note, label: t('ملاحظة (تُحفظ في السجل)', 'Note (kept in the audit log)'), maxLines: 2),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppPrimaryButton(label: t('تأكيد', 'Confirm'), onPressed: () => Navigator.pop(ctx, true)),
           ]),
         ));
@@ -145,10 +145,10 @@ class _DecisionsTabState extends State<_DecisionsTab> with _Loads {
       final counts = asMap(m['counts']);
       return AppRefresh(
         onRefresh: reload,
-        child: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
+        child: ListView(padding: const EdgeInsets.only(bottom: AppSpace.lg), children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Wrap(spacing: 8, runSpacing: 8, children: [
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+            child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final (k, label) in [('open', t('مفتوحة', 'Open')), ('accepted', t('مقبولة', 'Accepted')), ('edited', t('معدّلة', 'Edited')), ('rejected', t('مرفوضة', 'Rejected'))])
                 AppChoiceChip(label: '$label ${asInt(counts[k])}', selected: _status == k, onTap: () {
                   setState(() => _status = k);
@@ -156,26 +156,26 @@ class _DecisionsTabState extends State<_DecisionsTab> with _Loads {
                 }),
             ]),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           if (items.isEmpty)
             AppEmpty(icon: Icons.task_alt_rounded, title: t('لا توجد قرارات هنا', 'Nothing here'),
                 message: _status == 'open' ? t('كل ما ولّده النظام أو حسمه تلقائياً يظهر هنا للمراجعة', 'Everything the system generated or settled shows here for review') : null),
           for (final d in items)
             AppCard(
-              margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 // wraps on a phone (the risk text is long): a Row ran off a 320 px screen
-                Wrap(spacing: 6, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                  Text(decisionKindText('${d['kind']}'), style: appText(12, c: c.textMedium)),
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                  Text(decisionKindText('${d['kind']}'), style: AppType.meta(context).copyWith(color: c.textMedium)),
                   if (d['auto_applied'] == true) AppBadgePill(t('طُبّق تلقائياً', 'Applied automatically'), color: c.primary),
                   AppBadgePill(riskText('${d['risk']}'), color: d['risk'] == 'false_positive' ? c.danger : d['risk'] == 'false_negative' ? c.warning : c.success),
                 ]),
-                const SizedBox(height: 6),
-                Text('${d['title']}', style: appText(15, w: FontWeight.w700)),
+                const SizedBox(height: AppSpace.xs),
+                Text('${d['title']}', style: AppType.section(context)),
                 if ('${d['description'] ?? ''}'.isNotEmpty)
-                  Padding(padding: const EdgeInsets.only(top: 4), child: Text('${d['description']}', style: appText(13, c: c.textMedium))),
-                const SizedBox(height: 6),
-                Wrap(spacing: 6, runSpacing: 6, children: [
+                  Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text('${d['description']}', style: AppType.label(context).copyWith(color: c.textMedium))),
+                const SizedBox(height: AppSpace.xs),
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                   for (final u in (asMap(d['affected'])['students'] as List? ?? const []).take(8))
                     AppBadgePill('${asMap(users['$u'])['name'] ?? '#$u'}', icon: Icons.person_rounded),
                   for (final cid in (asMap(d['affected'])['courses'] as List? ?? const []))
@@ -183,19 +183,19 @@ class _DecisionsTabState extends State<_DecisionsTab> with _Loads {
                   for (final b in (asMap(d['affected'])['blocks'] as List? ?? const []))
                     AppBadgePill(registrarCodeText('$b'), color: c.warning),
                 ]),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.xs),
                 AppBanner(icon: Icons.recommend_rounded,
                     text: '${t('التوصية', 'Recommended')}: ${decisionActionText(asMap(d['recommendation']))}'),
                 if (d['status'] == 'open') ...[
-                  const SizedBox(height: 8),
-                  Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, children: [
+                  const SizedBox(height: AppSpace.xs),
+                  Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.end, children: [
                     AppPill(icon: Icons.check_rounded, label: t('قبول التوصية', 'Accept'), color: c.success, onTap: () => _decide(d, 'accept')),
                     for (final a in asMapList(d['alternatives']))
                       AppPill(icon: Icons.alt_route_rounded, label: decisionActionText(a), onTap: () => _decide(d, 'edit', action: a)),
                     AppPill(icon: Icons.close_rounded, label: t('رفض', 'Reject'), color: c.danger, onTap: () => _decide(d, 'reject')),
                   ]),
                 ] else if ('${d['note'] ?? ''}'.isNotEmpty)
-                  Padding(padding: const EdgeInsets.only(top: 6), child: Text('${d['note']}', style: appText(12, c: c.textLight))),
+                  Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: Text('${d['note']}', style: AppType.meta(context).copyWith(color: c.textLight))),
               ]),
             ),
         ]),
@@ -283,14 +283,14 @@ class _TermsTabState extends State<_TermsTab> with _Loads {
   Future<void> _capacity(Map<String, dynamic> s) async {
     final ctrl = TextEditingController(text: '${s['capacity']}');
     final ok = await showAppSheet<bool>(context, (ctx) => SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpace.md),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppSectionTitle(t('سعة الشعبة', 'Section capacity'), subtitle: '${_courseTitle(asMap(_courses['${s['course_id']}']))} · ${sectionLabel(s)}'),
             if (s['room_capacity'] != null)
               AppBanner(icon: Icons.meeting_room_rounded, text: t('سعة القاعة ${s['room_capacity']}', 'Room capacity ${s['room_capacity']}')),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             OrgNumberField(controller: ctrl, label: t('السعة', 'Capacity'), gap: false),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppPrimaryButton(label: t('حفظ', 'Save'), onPressed: () => Navigator.pop(ctx, true)),
           ]),
         ));
@@ -323,14 +323,14 @@ class _TermsTabState extends State<_TermsTab> with _Loads {
       }
       return AppRefresh(
         onRefresh: _loadTerm,
-        child: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
+        child: ListView(padding: const EdgeInsets.only(bottom: AppSpace.lg), children: [
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
             child: Row(children: [
               for (final x in terms)
                 Padding(
-                  padding: const EdgeInsetsDirectional.only(end: 8),
+                  padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
                   child: AppChoiceChip(label: termTitle(x), selected: asInt(x['id']) == _termId, onTap: () {
                     setState(() {
                       _termId = asInt(x['id']);
@@ -343,7 +343,7 @@ class _TermsTabState extends State<_TermsTab> with _Loads {
             ]),
           ),
           if (_report != null)
-            AppGrid(padding: const EdgeInsets.all(16), children: [
+            AppGrid(padding: const EdgeInsets.all(AppSpace.md), children: [
               AppStatTile(icon: Icons.how_to_reg_rounded, label: t('مسجلون', 'Registered'), value: asInt(asMap(rep['registrations'])['registered'])),
               AppStatTile(icon: Icons.hourglass_top_rounded, label: t('قوائم انتظار', 'Waitlisted'), value: asInt(asMap(rep['registrations'])['waitlisted']), color: c.warning),
               AppStatTile(icon: Icons.event_seat_rounded, label: t('إشغال المقاعد %', 'Seat use %'), value: seats['utilisation'] ?? '—'),
@@ -354,25 +354,25 @@ class _TermsTabState extends State<_TermsTab> with _Loads {
               subtitle: cal.isEmpty ? t('لم يُولَّد بعد — هذه معاينة', 'Not generated yet — preview') : windowText('${_cal?['window']}'),
               trailing: AppPill(icon: Icons.auto_awesome_rounded, label: cal.isEmpty ? t('توليد', 'Generate') : t('إعادة التوليد', 'Regenerate'), onTap: _generate)),
           AppCard(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
+            margin: const EdgeInsets.symmetric(horizontal: AppSpace.md),
             child: Column(children: [
               for (final k in registrarMilestones)
                 InkWell(
                   onTap: cal.isEmpty ? null : () => _editDate(k),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
                     child: Row(children: [
-                      Expanded(child: Text(milestoneLabel(k), style: appText(13))),
+                      Expanded(child: Text(milestoneLabel(k), style: AppType.label(context).copyWith(color: context.colors.textDark))),
                       Text('${cal[k] ?? preview[k] ?? '—'}',
-                          style: appText(13, w: FontWeight.w700, c: cal.isEmpty ? c.textLight : null)),
-                      if (cal.isNotEmpty) ...[const SizedBox(width: 6), Icon(Icons.edit_calendar_rounded, size: 16, color: c.textLight)],
+                          style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: cal.isEmpty ? c.textLight : null)),
+                      if (cal.isNotEmpty) ...[const SizedBox(width: AppSpace.xs), Icon(Icons.edit_calendar_rounded, size: AppIconSize.sm, color: c.textLight)],
                     ]),
                   ),
                 ),
             ]),
           ),
           AppSectionTitle(t('الشعب', 'Sections'), subtitle: t('تُنشأ من الجدول الدراسي المعتمد للفصل', "Built from the term's active timetable"),
-              trailing: Wrap(spacing: 8, children: [
+              trailing: Wrap(spacing: AppSpace.xs, children: [
                 AppPill(icon: Icons.sync_rounded, label: t('مزامنة', 'Sync'), onTap: _sync),
                 AppPill(icon: Icons.groups_rounded, label: t('تسجيل الدفعات', 'Enrol cohorts'), onTap: () async {
                   final r = await orgCall(() => session.api.post('$reg/terms/$_termId/cohort-enrol', body: {}));
@@ -388,10 +388,10 @@ class _TermsTabState extends State<_TermsTab> with _Loads {
                 message: t('اعتمد جدول الفصل ثم اضغط مزامنة', "Publish the term's timetable, then press Sync")),
           for (final e in byCourse.entries)
             AppCard(
-              margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 Row(children: [
-                  Expanded(child: Text(_courseTitle(asMap(_courses['${e.key}'])), style: appText(14, w: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  Expanded(child: Text(_courseTitle(asMap(_courses['${e.key}'])), style: AppType.bodyStrong(context), maxLines: 1, overflow: TextOverflow.ellipsis)),
                   AppPill(icon: Icons.grading_rounded, label: t('الدرجات', 'Grades'), onTap: () => Navigator.of(context)
                       .push(MaterialPageRoute(builder: (_) => staffGradesScreen(session.currentId!, _termId!, e.key)))),
                 ]),
@@ -399,17 +399,17 @@ class _TermsTabState extends State<_TermsTab> with _Loads {
                   InkWell(
                     onTap: () => _capacity(s),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
                       child: Row(children: [
                         Expanded(
                           child: Text('${sectionLabel(s)} · ${[for (final x in asMapList(s['meetings'])) meetingText(x)].join('، ')}',
                               style: appText(12, c: s['status'] == 'cancelled' ? c.danger : c.textMedium), maxLines: 2, overflow: TextOverflow.ellipsis),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpace.xs),
                         Text('${s['enrolled']}/${s['capacity']}', style: appText(13, w: FontWeight.w700,
                             c: asInt(s['enrolled']) >= asInt(s['capacity']) ? c.warning : null)),
                         if (asInt(s['waitlisted']) > 0) ...[
-                          const SizedBox(width: 6),
+                          const SizedBox(width: AppSpace.xs),
                           AppBadgePill('+${s['waitlisted']}', color: c.warning),
                         ],
                       ]),
@@ -419,7 +419,7 @@ class _TermsTabState extends State<_TermsTab> with _Loads {
             ),
           if (_termId != null)
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppSpace.md),
               child: AppPill(icon: Icons.fact_check_rounded, label: t('حساب الغياب والحرمان الآن', 'Run absence & denial now'), onTap: () async {
                 final r = await orgCall(() => session.api.post('$reg/terms/$_termId/attendance/run'));
                 if (r.ok) toast(t('تنبيهات ${r.map['warned']} · حرمان ${r.map['denied']}', 'Warnings ${r.map['warned']} · denials ${r.map['denied']}'));
@@ -457,17 +457,17 @@ class _CoursesTabState extends State<_CoursesTab> with _Loads {
     return frame((m) {
       final items = asMapList(m['items']);
       final missing = items.where((x) => x['credits'] == null).length;
-      return ListView(padding: const EdgeInsets.only(bottom: 24), children: [
+      return ListView(padding: const EdgeInsets.only(bottom: AppSpace.lg), children: [
         if (missing > 0)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
             child: AppBanner(icon: Icons.warning_amber_rounded, color: c.warning,
                 text: t('$missing مقرر بلا ساعات معتمدة — لا يمكن التسجيل فيها', '$missing course(s) have no credit hours — they cannot be registered')),
           ),
         if (items.isEmpty) AppEmpty(icon: Icons.menu_book_rounded, title: t('لا توجد مقررات', 'No courses')),
         for (final x in items)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
             child: AppActionCard(
               icon: Icons.menu_book_rounded,
               color: x['credits'] == null ? c.warning : c.primary,
@@ -535,7 +535,7 @@ class _CourseSheetState extends State<_CourseSheet> {
     final c = context.colors;
     final others = widget.all.where((x) => x['id'] != widget.course['id']).toList();
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, 16 + MediaQuery.of(context).viewInsets.bottom),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppSectionTitle(_courseTitle(widget.course)),
         AppDropdown<String>(
@@ -544,47 +544,47 @@ class _CourseSheetState extends State<_CourseSheet> {
           items: [for (final k in const ['theory', 'theory_lab', 'lab']) DropdownMenuItem(value: k, child: Text(courseKindText(k)))],
           onChanged: (v) => setState(() => _kind = v ?? _kind),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         OrgNumberField(controller: _credits, label: t('الساعات المعتمدة', 'Credit hours'), gap: false),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         Row(children: [
           if (_kind != 'lab') Expanded(child: OrgNumberField(controller: _lec, label: t('محاضرة/أسبوع', 'Lecture h/wk'), gap: false)),
-          if (_kind != 'lab' && _kind != 'theory') const SizedBox(width: 8),
+          if (_kind != 'lab' && _kind != 'theory') const SizedBox(width: AppSpace.xs),
           if (_kind != 'theory') Expanded(child: OrgNumberField(controller: _lab, label: t('معمل/أسبوع', 'Lab h/wk'), gap: false)),
         ]),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         Row(children: [
           Expanded(child: OrgNumberField(controller: _tut, label: t('تمارين/أسبوع', 'Tutorial h/wk'), gap: false)),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           Expanded(child: OrgNumberField(controller: _exp, label: t('العدد المتوقع', 'Expected students'), gap: false)),
         ]),
-        const SizedBox(height: 10),
-        Text(t('يُطرح في', 'Offered in'), style: appText(13, c: c.textMedium)),
-        const SizedBox(height: 6),
-        Wrap(spacing: 8, children: [
+        const SizedBox(height: AppSpace.sm),
+        Text(t('يُطرح في', 'Offered in'), style: AppType.label(context).copyWith(color: c.textMedium)),
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, children: [
           for (final k in const ['term1', 'term2', 'summer'])
             AppChoiceChip(label: termKindText(k), selected: _terms.contains(k),
                 onTap: () => setState(() => _terms.contains(k) ? _terms.remove(k) : _terms.add(k))),
         ]),
         if (_terms.length == 1)
           Padding(
-            padding: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.only(top: AppSpace.xs),
             child: Text(t('يُطرح مرة واحدة سنوياً — سيُنبَّه الطلاب المعرضون للتأخير', 'Offered once a year — students at risk of delay will be warned'),
-                style: appText(12, c: c.warning)),
+                style: AppType.meta(context).copyWith(color: c.warning)),
           ),
         AppSectionTitle(t('المتطلبات', 'Requisites'),
             trailing: AppPill(icon: Icons.add_rounded, label: t('إضافة', 'Add'), onTap: others.isEmpty ? null : () => setState(() =>
                 _reqs.add({'course_id': others.first['id'], 'mode': 'passed', 'min_grade': null})))),
         for (var i = 0; i < _reqs.length; i++)
           AppCard(
-            margin: const EdgeInsets.only(bottom: 8),
+            margin: const EdgeInsets.only(bottom: AppSpace.xs),
             child: Column(children: [
               AppDropdown<int>(
                 value: asInt(_reqs[i]['course_id']),
                 items: [for (final o in others) DropdownMenuItem(value: asInt(o['id']), child: Text(_courseTitle(o), overflow: TextOverflow.ellipsis))],
                 onChanged: (v) => setState(() => _reqs[i]['course_id'] = v),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               Row(children: [
                 Expanded(
                   child: AppDropdown<String>(
@@ -593,7 +593,7 @@ class _CourseSheetState extends State<_CourseSheet> {
                     onChanged: (v) => setState(() => _reqs[i]['mode'] = v),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
                 SizedBox(
                   width: 96,
                   child: AppDropdown<String?>(
@@ -610,7 +610,7 @@ class _CourseSheetState extends State<_CourseSheet> {
               ]),
             ]),
           ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         AppPrimaryButton(label: t('حفظ', 'Save'), icon: Icons.save_rounded, busy: _busy, onPressed: _save),
       ]),
     );
@@ -662,10 +662,10 @@ class _ProgramsTabState extends State<_ProgramsTab> with _Loads {
   @override
   Widget build(BuildContext context) => frame((m) {
         final items = asMapList(m['items']);
-        return ListView(padding: const EdgeInsets.only(bottom: 24), children: [
+        return ListView(padding: const EdgeInsets.only(bottom: AppSpace.lg), children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Wrap(spacing: 8, runSpacing: 8, children: [
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
+            child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               AppPill(icon: Icons.leaderboard_rounded, label: t('توزيع الطلبات بالجدارة', 'Allocate requests by merit'), onTap: _allocate),
               AppPill(icon: Icons.support_rounded, label: t('توزيع المرشدين تلقائياً', 'Assign advisors automatically'), onTap: () async {
                 final r = await orgCall(() => session.api.post('$reg/advisors/auto', body: {}));
@@ -678,7 +678,7 @@ class _ProgramsTabState extends State<_ProgramsTab> with _Loads {
                 message: t('أضفها من الهيكل الأكاديمي', 'Add them in the academic structure')),
           for (final p in items)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
               child: AppActionCard(
                 icon: Icons.account_tree_rounded,
                 title: '${p['code']} · ${t('${p['name_ar'] ?? ''}', '${p['name_en'] ?? p['name_ar'] ?? ''}')}',
@@ -752,7 +752,7 @@ class _ProgramSheetState extends State<_ProgramSheet> {
 
   Future<void> _makeup() async {
     if (widget.terms.isEmpty) return;
-    final term = await showAppSheet<int>(context, (ctx) => ListView(shrinkWrap: true, padding: const EdgeInsets.all(16), children: [
+    final term = await showAppSheet<int>(context, (ctx) => ListView(shrinkWrap: true, padding: const EdgeInsets.all(AppSpace.md), children: [
           AppSectionTitle(t('فصل الدور الثاني', 'Make-up term')),
           for (final x in widget.terms)
             ListTile(title: Text(termTitle(x)), onTap: () => Navigator.pop(ctx, asInt(x['id']))),
@@ -765,18 +765,18 @@ class _ProgramSheetState extends State<_ProgramSheet> {
   Future<void> _addGroup() async {
     final key = TextEditingController(), ar = TextEditingController(), en = TextEditingController(), min = TextEditingController();
     final ok = await showAppSheet<bool>(context, (ctx) => SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpace.md),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppSectionTitle(t('مجموعة متطلبات', 'Requirement group'),
                 subtitle: t('مثال: university · faculty · major · elective · free', 'e.g. university · faculty · major · elective · free')),
             AppField(controller: key, label: t('المفتاح', 'Key'), ltr: true),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             AppField(controller: ar, label: t('الاسم بالعربية', 'Arabic name')),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             AppField(controller: en, label: t('الاسم بالإنجليزية', 'English name')),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             OrgNumberField(controller: min, label: t('الحد الأدنى للساعات', 'Minimum credits'), gap: false),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppPrimaryButton(label: t('إضافة', 'Add'), onPressed: () => Navigator.pop(ctx, true)),
           ]),
         ));
@@ -791,7 +791,7 @@ class _ProgramSheetState extends State<_ProgramSheet> {
     final sum = _groups.fold<double>(0, (a, g) => a + asDouble(g['min_credits']));
     final total = double.tryParse(_total.text.trim());
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, 16 + MediaQuery.of(context).viewInsets.bottom),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppSectionTitle('${widget.program['code']}'),
         AppDropdown<String>(
@@ -805,53 +805,53 @@ class _ProgramSheetState extends State<_ProgramSheet> {
         ),
         if (_system == 'traditional')
           Padding(
-            padding: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.only(top: AppSpace.xs),
             child: AppBanner(icon: Icons.info_outline_rounded, color: c.warning,
                 text: t('في النظام التقليدي يكون التسجيل تلقائياً حسب الفرقة، ولا يسجل الطالب بنفسه.', 'In the traditional system registration is automatic by year; students do not self-register.')),
           ),
         if (_system == 'traditional') ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           OrgNumberField(controller: _carry, label: t('أقصى عدد مقررات متخلفة مع النقل (فارغ = اللائحة)', 'Max carry-over courses to still be promoted (empty = rules)'), gap: false),
-          const SizedBox(height: 8),
-          Wrap(spacing: 8, runSpacing: 8, children: [
+          const SizedBox(height: AppSpace.xs),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             AppPill(icon: Icons.trending_up_rounded, label: t('ترحيل الطلاب للفرقة التالية', 'Promote students'), onTap: _promote),
             AppPill(icon: Icons.replay_rounded, label: t('الدور الثاني', 'Make-up round'), onTap: _makeup),
           ]),
         ],
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         Row(children: [
           Expanded(child: AppField(controller: _total, label: t('ساعات التخرج', 'Graduation credits'), keyboard: TextInputType.number, ltr: true, onChanged: (_) => setState(() {}))),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           Expanded(child: OrgNumberField(controller: _gpa, label: t('أدنى معدل للتخرج', 'Minimum CGPA'), decimals: 2, gap: false)),
         ]),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         AppField(controller: _entry, label: t('يبدأ القسم من المستوى (مفتاح)', 'Department starts at level (key)'), ltr: true),
         AppSectionTitle(t('مجموعات المتطلبات', 'Requirement groups'),
             subtitle: total != null && sum > total ? t('مجموع الحدود الدنيا أكبر من ساعات التخرج', 'Group minimums exceed the graduation credits') : null,
             trailing: AppPill(icon: Icons.add_rounded, label: t('إضافة', 'Add'), onTap: _addGroup)),
         for (var i = 0; i < _groups.length; i++)
           AppCard(
-            margin: const EdgeInsets.only(bottom: 8),
+            margin: const EdgeInsets.only(bottom: AppSpace.xs),
             child: Row(children: [
-              Expanded(child: Text('${t('${_groups[i]['label_ar'] ?? ''}', '${_groups[i]['label_en'] ?? ''}')} (${_groups[i]['key']})', style: appText(13, w: FontWeight.w700))),
-              Text('≥ ${asDouble(_groups[i]['min_credits']).toStringAsFixed(0)}', style: appText(13)),
+              Expanded(child: Text('${t('${_groups[i]['label_ar'] ?? ''}', '${_groups[i]['label_en'] ?? ''}')} (${_groups[i]['key']})', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark))),
+              Text('≥ ${asDouble(_groups[i]['min_credits']).toStringAsFixed(0)}', style: AppType.label(context).copyWith(color: context.colors.textDark)),
               IconButton(tooltip: t('حذف', 'Delete'), icon: Icon(Icons.delete_outline_rounded, color: c.danger), onPressed: () => setState(() => _groups.removeAt(i))),
             ]),
           ),
         AppSectionTitle(t('الخطة الدراسية', 'Curriculum'), subtitle: t('اختر المقررات ومجموعتها ومستواها', 'Pick the courses, their group and level')),
         for (final course in widget.courses)
           AppCard(
-            margin: const EdgeInsets.only(bottom: 8),
+            margin: const EdgeInsets.only(bottom: AppSpace.xs),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Row(children: [
                 AppSwitch(value: _cur.containsKey(asInt(course['id'])), onChanged: (v) => setState(() => v
                     ? _cur[asInt(course['id'])] = {'course_id': course['id'], 'required': true, 'group_key': keys.firstOrNull}
                     : _cur.remove(asInt(course['id'])))),
-                const SizedBox(width: 8),
-                Expanded(child: Text(_courseTitle(course), style: appText(13), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                const SizedBox(width: AppSpace.xs),
+                Expanded(child: Text(_courseTitle(course), style: AppType.label(context).copyWith(color: context.colors.textDark), maxLines: 1, overflow: TextOverflow.ellipsis)),
               ]),
               if (_cur.containsKey(asInt(course['id']))) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.xs),
                 Row(children: [
                   Expanded(
                     child: AppDropdown<bool>(
@@ -864,7 +864,7 @@ class _ProgramSheetState extends State<_ProgramSheet> {
                     ),
                   ),
                   if (widget.levels.isNotEmpty) ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpace.xs),
                     Expanded(
                       child: AppDropdown<String?>(
                         value: widget.levels.contains(_cur[asInt(course['id'])]!['level_key']) ? '${_cur[asInt(course['id'])]!['level_key']}' : null,
@@ -875,7 +875,7 @@ class _ProgramSheetState extends State<_ProgramSheet> {
                     ),
                   ],
                   if (_system == 'traditional') ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpace.xs),
                     Expanded(
                       child: AppDropdown<String?>(
                         value: _cur[asInt(course['id'])]!['term_kind'] as String?,
@@ -885,7 +885,7 @@ class _ProgramSheetState extends State<_ProgramSheet> {
                       ),
                     ),
                   ],
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpace.xs),
                   if (keys.isNotEmpty && _system != 'traditional')
                     Expanded(
                       child: AppDropdown<String>(
@@ -898,7 +898,7 @@ class _ProgramSheetState extends State<_ProgramSheet> {
               ],
             ]),
           ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         AppPrimaryButton(label: t('حفظ', 'Save'), icon: Icons.save_rounded, busy: _busy, onPressed: _save),
       ]),
     );
@@ -924,7 +924,7 @@ class _StaffTabState extends State<_StaffTab> with _Loads {
     String? rank = m['academic_rank'] as String?;
     final cap = TextEditingController(text: m['max_weekly_hours'] == null ? '' : '${m['max_weekly_hours']}');
     final ok = await showAppSheet<bool>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpace.md),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppSectionTitle('${asMap(m['user'])['name'] ?? ''}'),
             AppDropdown<String?>(
@@ -939,12 +939,12 @@ class _StaffTabState extends State<_StaffTab> with _Loads {
             ),
             if (rank == 'demonstrator' || rank == 'assistant_lecturer')
               Padding(
-                padding: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.only(top: AppSpace.xs),
                 child: AppBanner(icon: Icons.science_rounded, text: t('هذه الدرجة تُسند لها السكاشن والمعامل فقط', 'This rank is given labs / sections only')),
               ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             OrgNumberField(controller: cap, label: t('الحد الأسبوعي (فترات) — فارغ = حسب الدرجة', 'Weekly cap (periods) — empty = by rank'), gap: false),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppPrimaryButton(label: t('حفظ', 'Save'), onPressed: () => Navigator.pop(ctx, true)),
           ]),
         )));
@@ -957,11 +957,11 @@ class _StaffTabState extends State<_StaffTab> with _Loads {
   @override
   Widget build(BuildContext context) => frame((m) {
         final items = asMapList(m['items']);
-        return ListView(padding: const EdgeInsets.only(bottom: 24), children: [
+        return ListView(padding: const EdgeInsets.only(bottom: AppSpace.lg), children: [
           if (items.isEmpty) AppEmpty(icon: Icons.badge_rounded, title: t('لا يوجد أعضاء هيئة تدريس', 'No teaching staff')),
           for (final x in items)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
               child: AppActionCard(
                 icon: x['role'] == 'teacher' ? Icons.co_present_rounded : Icons.science_rounded,
                 title: '${asMap(x['user'])['name'] ?? ''}',
@@ -1031,16 +1031,16 @@ class _RulesTabState extends State<_RulesTab> with _Loads {
     final pts = TextEditingController(text: '${g['points'] ?? ''}');
     var pass = i != null && '${_rules?['pass_letter']}' == '${g['letter']}';
     final res = await showAppSheet<String>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpace.md),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppSectionTitle(t('تقدير', 'Letter grade')),
             AppField(controller: letter, label: t('الحرف', 'Letter'), ltr: true),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             OrgNumberField(controller: min, label: t('من نسبة %', 'From percent'), gap: false),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             OrgNumberField(controller: pts, label: t('النقاط', 'Points'), decimals: 2, gap: false),
             AppSwitchTile(title: t('أدنى تقدير للنجاح', 'Lowest passing letter'), value: pass, onChanged: (v) => set(() => pass = v)),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppPrimaryButton(label: t('تم', 'Done'), onPressed: () => Navigator.pop(ctx, 'save')),
             if (i != null)
               TextButton(onPressed: () => Navigator.pop(ctx, 'delete'), child: Text(t('حذف', 'Delete'), style: TextStyle(color: context.colors.danger))),
@@ -1100,7 +1100,7 @@ class _RulesTabState extends State<_RulesTab> with _Loads {
       final retake = asMap(r['retake']);
       final reg = asMap(r['registration']);
       final wl = asMap(r['waitlist']);
-      return ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24), children: [
+      return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.lg), children: [
         if (m['inherited_from'] != null)
           AppBanner(icon: Icons.account_tree_rounded, text: t('اللائحة موروثة من المؤسسة الأم — الحفظ هنا ينشئ لائحة خاصة', 'Inherited from the parent organization — saving here creates this organization\'s own rules')),
         AppSectionTitle(t('سلم التقديرات', 'Grade scale'),
@@ -1112,13 +1112,13 @@ class _RulesTabState extends State<_RulesTab> with _Loads {
               InkWell(
                 onTap: () => _editGrade(i),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
                   child: Row(children: [
-                    SizedBox(width: 48, child: Text('${asMapList(r['grade_scale'])[i]['letter']}', style: appText(14, w: FontWeight.w700))),
-                    Expanded(child: Text('≥ ${asMapList(r['grade_scale'])[i]['min']}%', style: appText(13))),
-                    Text('${asMapList(r['grade_scale'])[i]['points']}', style: appText(13, w: FontWeight.w700, c: c.primary)),
+                    SizedBox(width: 48, child: Text('${asMapList(r['grade_scale'])[i]['letter']}', style: AppType.bodyStrong(context))),
+                    Expanded(child: Text('≥ ${asMapList(r['grade_scale'])[i]['min']}%', style: AppType.label(context).copyWith(color: context.colors.textDark))),
+                    Text('${asMapList(r['grade_scale'])[i]['points']}', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.primary)),
                     if ('${r['pass_letter']}' == '${asMapList(r['grade_scale'])[i]['letter']}') ...[
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpace.xs),
                       AppBadgePill(t('أدنى نجاح', 'Lowest pass'), color: c.success),
                     ],
                   ]),
@@ -1129,7 +1129,7 @@ class _RulesTabState extends State<_RulesTab> with _Loads {
         AppSectionTitle(t('الأرقام', 'Numbers')),
         for (final (path, label, dec) in _numFields)
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
             child: AppField(controller: _ctrl[path.join('.')] ?? TextEditingController(), label: label(),
                 keyboard: dec ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.number, ltr: true),
           ),
@@ -1143,7 +1143,7 @@ class _RulesTabState extends State<_RulesTab> with _Loads {
           ],
           onChanged: (v) => setState(() => (_rules!['retake'] as Map)['count'] = v),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         AppSwitchTile(
           title: t('السماح بالتسجيل والمتطلب قيد الدراسة', 'Allow registration while the prerequisite is in progress'),
           subtitle: t('يُقبل بشرط، ويُراجع تلقائياً بعد إعلان النتائج', 'Allowed with a condition, re-checked automatically when results are out'),
@@ -1155,7 +1155,7 @@ class _RulesTabState extends State<_RulesTab> with _Loads {
           value: wl['enabled'] != false,
           onChanged: (v) => setState(() => (_rules!['waitlist'] as Map)['enabled'] = v),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         AppPrimaryButton(label: t('حفظ اللائحة', 'Save rules'), icon: Icons.save_rounded, busy: _busy, onPressed: _save),
       ]);
     });
@@ -1198,12 +1198,12 @@ class _GraduationTabState extends State<_GraduationTab> with _Loads {
       final cands = asMapList(m['items']);
       return AppRefresh(
         onRefresh: reload,
-        child: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
+        child: ListView(padding: const EdgeInsets.only(bottom: AppSpace.lg), children: [
           AppSectionTitle(t('مستوفو متطلبات التخرج', 'Meet graduation requirements'), subtitle: t('حسب التدقيق الآلي للخطة', 'By the automatic degree audit')),
           if (cands.isEmpty) AppEmpty(icon: Icons.school_rounded, title: t('لا يوجد مرشحون الآن', 'No candidates now')),
           for (final x in cands)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
               child: AppActionCard(
                 icon: Icons.school_rounded,
                 color: c.success,
@@ -1222,7 +1222,7 @@ class _GraduationTabState extends State<_GraduationTab> with _Loads {
           if ((_risk ?? const []).isEmpty) AppEmpty(icon: Icons.health_and_safety_rounded, title: t('لا يوجد', 'None')),
           for (final x in _risk ?? const <Map<String, dynamic>>[])
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
               child: AppActionCard(
                 icon: Icons.warning_amber_rounded,
                 color: c.warning,

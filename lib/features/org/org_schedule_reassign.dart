@@ -15,7 +15,8 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../admin/admin_common.dart';
 import 'org_common.dart' show dayLabels;
-import 'org_ui.dart' show OrgActionCard, orgText;
+import 'org_ui.dart' show OrgActionCard;
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 const reassignScopes = ['course', 'weekly', 'once'];
 
@@ -90,17 +91,17 @@ Future<String?> askReassignScope(BuildContext context, {required String who, req
   return showAdminSheet<String>(context, (ctx) {
     final c = ctx.colors;
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         SheetHeader(t('تغيير $fieldLabel إلى $who', 'Change $fieldLabel to $who')),
         Text(
             t('على أي نطاق تريد هذا التغيير؟ يُعاد بناء ما يتأثر من الجدول وتُعرض النسختان قبل وبعد مرتّبتين قبل الحفظ.',
                 'How far should this change go? What it affects is rebuilt and both versions, before and after, are shown ranked before anything is saved.'),
-            style: orgText(ctx, size: 12.5, color: c.textMedium)),
-        const SizedBox(height: 10),
+            style: AppType.label(ctx).copyWith(color: c.textMedium)),
+        const SizedBox(height: AppSpace.sm),
         for (final (scope, icon, col) in [('course', Icons.menu_book_rounded, c.primary), ('weekly', Icons.event_repeat_rounded, c.success), ('once', Icons.event_rounded, c.warning)])
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
             child: OrgActionCard(icon: icon, color: col, title: reassignScopeTitle(scope), subtitle: reassignScopeHint(scope), onTap: () => Navigator.pop(ctx, scope)),
           ),
       ]),
@@ -151,42 +152,42 @@ class ReassignCompareSheet extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
       SheetHeader(t('قبل وبعد التغيير', 'Before and after')),
       Text('${reassignScopeTitle(p.scope)} · ${p.field == 'teacher_id' ? t('المدرس', 'teacher') : t('المعيد', 'assistant')}: $who',
-          style: orgText(context, size: 12.5, color: c.textMedium)),
+          style: AppType.label(context).copyWith(color: c.textMedium)),
       if (p.resolved)
         Padding(
-          padding: const EdgeInsets.only(top: 4),
+          padding: const EdgeInsets.only(top: AppSpace.xxs),
           child: Text(t('تعارض التغيير مع حصص أخرى، فأُعيد حل الحصص المتأثرة فقط — باقي الجدول كما هو.', 'The change clashed with other sessions, so only the affected ones were re-solved — the rest stays.'),
-              style: orgText(context, size: 12, color: c.textMedium)),
+              style: AppType.meta(context).copyWith(color: c.textMedium)),
         ),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
       if (wide)
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: cards[0]), const SizedBox(width: 10), Expanded(child: cards[1])])
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: cards[0]), const SizedBox(width: AppSpace.sm), Expanded(child: cards[1])])
       else ...[
         cards[0],
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         cards[1],
       ],
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(Icons.leaderboard_rounded, size: 16, color: c.textMedium),
-        const SizedBox(width: 6),
-        Expanded(child: Text(p.reason, style: orgText(context, size: 12, color: c.textMedium))),
+        Icon(Icons.leaderboard_rounded, size: AppIconSize.sm, color: c.textMedium),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(child: Text(p.reason, style: AppType.meta(context).copyWith(color: c.textMedium))),
       ]),
       if (p.after.changes.isNotEmpty) ...[
-        const SizedBox(height: 8),
-        Text(t('ما يتغيّر (${p.after.changes.length})', 'What changes (${p.after.changes.length})'), style: orgText(context, w: FontWeight.w800)),
+        const SizedBox(height: AppSpace.xs),
+        Text(t('ما يتغيّر (${p.after.changes.length})', 'What changes (${p.after.changes.length})'), style: AppType.bodyStrong(context)),
         for (final x in p.after.changes.take(8)) _changeLine(context, x),
-        if (p.after.changes.length > 8) Text(t('+${p.after.changes.length - 8} أخرى', '+${p.after.changes.length - 8} more'), style: orgText(context, size: 12, color: c.textLight)),
+        if (p.after.changes.length > 8) Text(t('+${p.after.changes.length - 8} أخرى', '+${p.after.changes.length - 8} more'), style: AppType.meta(context).copyWith(color: c.textLight)),
       ],
-      const SizedBox(height: 12),
-      Wrap(spacing: 8, runSpacing: 8, children: [
+      const SizedBox(height: AppSpace.sm),
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         FilledButton.icon(
           onPressed: onApply,
-          icon: Icon(p.afterWins ? Icons.check_rounded : Icons.warning_amber_rounded, size: 18),
+          icon: Icon(p.afterWins ? Icons.check_rounded : Icons.warning_amber_rounded, size: AppIconSize.md),
           label: Text(p.afterWins ? t('تطبيق النسخة بعد التغيير', 'Apply the after version') : t('تطبيق رغم أنها أسوأ', 'Apply although it ranks worse')),
           style: FilledButton.styleFrom(backgroundColor: p.afterWins ? null : c.warning),
         ),
-        OutlinedButton.icon(onPressed: onKeep, icon: const Icon(Icons.undo_rounded, size: 18), label: Text(t('إبقاء النسخة الحالية', 'Keep the current version'))),
+        OutlinedButton.icon(onPressed: onKeep, icon: const Icon(Icons.undo_rounded, size: AppIconSize.md), label: Text(t('إبقاء النسخة الحالية', 'Keep the current version'))),
       ]),
     ]);
   }
@@ -197,31 +198,31 @@ class ReassignCompareSheet extends StatelessWidget {
     final col = top ? c.success : c.textLight;
     final title = v.name == 'after' ? t('بعد التغيير', 'After') : t('قبل التغيير', 'Before');
     Widget stat(String label, int n, {bool bad = false}) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(color: (bad && n > 0 ? c.danger : c.textLight).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-          child: Text('$label $n', style: orgText(context, size: 11.5, w: FontWeight.w700, color: bad && n > 0 ? c.danger : c.textMedium)),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
+          decoration: BoxDecoration(color: (bad && n > 0 ? c.danger : c.textLight).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(AppRadius.chip)),
+          child: Text('$label $n', style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: bad && n > 0 ? c.danger : c.textMedium)),
         );
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: col.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(16), border: Border.all(color: col.withValues(alpha: top ? 0.6 : 0.3), width: top ? 1.5 : 1)),
+      padding: const EdgeInsets.all(AppSpace.sm),
+      decoration: BoxDecoration(color: col.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: col.withValues(alpha: top ? 0.6 : 0.3), width: top ? 1.5 : 1)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(color: top ? c.success : c.inputBg, borderRadius: BorderRadius.circular(8)),
-            child: Text(top ? t('#1 مقترح', '#1 recommended') : '#2', style: orgText(context, size: 11, w: FontWeight.w800, color: top ? c.onHero : c.textMedium)),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
+            decoration: BoxDecoration(color: top ? c.success : c.inputBg, borderRadius: BorderRadius.circular(AppRadius.chip)),
+            child: Text(top ? t('#1 مقترح', '#1 recommended') : '#2', style: AppType.overline(context).copyWith(color: top ? c.onHero : c.textMedium)),
           ),
-          const SizedBox(width: 8),
-          Expanded(child: Text(title, style: orgText(context, w: FontWeight.w800))),
-          Text('${m.score}', style: orgText(context, size: 18, w: FontWeight.w900, color: top ? c.success : c.textMedium)),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: Text(title, style: AppType.bodyStrong(context))),
+          Text('${m.score}', style: AppType.section(context).copyWith(color: top ? c.success : c.textMedium)),
         ]),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         ClipRRect(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(AppRadius.chip),
           child: LinearProgressIndicator(value: m.score / 100, minHeight: 6, color: top ? c.success : c.textLight, backgroundColor: c.textLight.withValues(alpha: 0.15)),
         ),
-        const SizedBox(height: 8),
-        Wrap(spacing: 6, runSpacing: 4, children: [
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
           stat(t('تعارض إلزامي', 'hard'), m.hard, bad: true),
           stat(t('بلا مكان', 'unplaced'), m.unplaced, bad: true),
           stat(t('تنبيه', 'warnings'), m.warnings),
@@ -229,14 +230,14 @@ class ReassignCompareSheet extends StatelessWidget {
           if (v.name == 'after') stat(t('نُقلت', 'moved'), m.moved),
         ]),
         if (v.conflicts.isNotEmpty) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs),
           for (final x in v.conflicts.take(4))
             Padding(
-              padding: const EdgeInsets.only(top: 2),
+              padding: const EdgeInsets.only(top: AppSpace.xxs / 2),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Icon(x['severity'] == 'error' ? Icons.block_rounded : Icons.warning_amber_rounded, size: 14, color: x['severity'] == 'error' ? c.danger : c.warning),
-                const SizedBox(width: 6),
-                Expanded(child: Text(t('${x['text_ar'] ?? x['type']}', '${x['text_en'] ?? x['type']}'), maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, size: 11.5, color: c.textMedium))),
+                Icon(x['severity'] == 'error' ? Icons.block_rounded : Icons.warning_amber_rounded, size: AppIconSize.xs, color: x['severity'] == 'error' ? c.danger : c.warning),
+                const SizedBox(width: AppSpace.xs),
+                Expanded(child: Text(t('${x['text_ar'] ?? x['type']}', '${x['text_en'] ?? x['type']}'), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium))),
               ]),
             ),
         ],
@@ -264,11 +265,11 @@ class ReassignCompareSheet extends StatelessWidget {
     };
     final icon = switch ('${x['change']}') { 'moved' => Icons.low_priority_rounded, 'placed' => Icons.add_location_alt_rounded, 'unplaced' => Icons.location_off_rounded, _ => Icons.person_rounded };
     return Padding(
-      padding: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.only(top: AppSpace.xxs),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(icon, size: 15, color: x['change'] == 'unplaced' ? c.danger : c.textMedium),
-        const SizedBox(width: 6),
-        Expanded(child: Text('$course$kind: $what', style: orgText(context, size: 12, color: c.textMedium))),
+        Icon(icon, size: AppIconSize.xs, color: x['change'] == 'unplaced' ? c.danger : c.textMedium),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(child: Text('$course$kind: $what', style: AppType.meta(context).copyWith(color: c.textMedium))),
       ]),
     );
   }
@@ -280,7 +281,7 @@ Future<bool?> showReassignCompare(BuildContext context, ReassignPlan plan,
   return showAdminSheet<bool>(
     context,
     (ctx) => SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
       child: ReassignCompareSheet(plan: plan, names: names, people: people, periods: periods, rooms: rooms, onApply: () => Navigator.pop(ctx, true), onKeep: () => Navigator.pop(ctx, false)),
     ),
   );

@@ -142,21 +142,21 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
                 t('أصبحت عضواً في «$name».', 'You\'re now a member of "$name".'),
               );
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             AppSheetHeader(''),
             Container(
               width: 72,
               height: 72,
               decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
-              child: Icon(icon, color: color, size: 36),
+              child: Icon(icon, color: color, size: AppIconSize.hero),
             ),
-            const SizedBox(height: 12),
-            Text(title, textAlign: TextAlign.center, style: orgText(ctx, size: 18, w: FontWeight.w800)),
-            const SizedBox(height: 6),
-            Text(body, textAlign: TextAlign.center, style: orgText(ctx, color: c.textMedium)),
+            const SizedBox(height: AppSpace.sm),
+            Text(title, textAlign: TextAlign.center, style: AppType.section(ctx)),
+            const SizedBox(height: AppSpace.xs),
+            Text(body, textAlign: TextAlign.center, style: AppType.row(ctx).copyWith(color: c.textMedium)),
             if (dept.isNotEmpty) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               AppBanner(
                 icon: dept['placed'] == true ? Icons.account_tree_rounded : Icons.info_outline_rounded,
                 color: dept['placed'] == true ? c.success : c.warning,
@@ -166,7 +166,7 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
                         'You weren\'t added to ${orgNameOf(asMap(dept['unit']))} yet: ${joinReasonText(asMap(dept['reason']))}'),
               ),
             ],
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.md),
             AppButton.primary(label: t('تم', 'Done'), onPressed: () => Navigator.pop(ctx)),
           ]),
         );
@@ -229,23 +229,23 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
         onRefresh: () async {
           await Future.wait([_loadStatus(), _search(_q.text)]);
         },
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
+        child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl), children: [
           AppHero(
             title: t('انضم إلى مؤسستك', 'Join your institution'),
             subtitle: t('أدخل كود الانضمام، أو ابحث عن جامعتك وأرسل طلباً.', 'Enter a join code, or find your university and send a request.'),
             icon: Icons.domain_add_rounded,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.md),
           AppCard(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Icon(Icons.qr_code_2_rounded, color: c.primary),
-                const SizedBox(width: 8),
-                Expanded(child: Text(t('لديك كود؟', 'Have a code?'), style: orgText(context, w: FontWeight.w800))),
+                const SizedBox(width: AppSpace.xs),
+                Expanded(child: Text(t('لديك كود؟', 'Have a code?'), style: AppType.bodyStrong(context))),
               ]),
               Text(t('يصلح لأي كود: كود المؤسسة أو كود قسم.', 'Works for any code: an organization\'s or a department\'s.'),
-                  style: orgText(context, size: 12, color: c.textMedium)),
-              const SizedBox(height: 10),
+                  style: AppType.meta(context).copyWith(color: c.textMedium)),
+              const SizedBox(height: AppSpace.sm),
               TextField(
                 controller: _code,
                 textCapitalization: TextCapitalization.characters,
@@ -261,28 +261,28 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
                   errorMaxLines: 3,
                   filled: true,
                   fillColor: c.inputBg,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide.none),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
               AppButton.primary(label: t('انضمام', 'Join'), icon: DirIcons.login, busy: _busy, onPressed: _busy ? null : _joinCode),
               if (widget.scannerAvailable ?? joinScannerAvailable) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.xs),
                 SizedBox(
                   width: double.infinity,
                   child: AppButton.secondary(expand: true, onPressed: _busy ? null : _scanCode, icon: Icons.qr_code_scanner_rounded, label: t('مسح رمز QR', 'Scan QR')),
                 ),
               ] else ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.xs),
                 // the camera scanner is a phone feature (mobile_scanner loads ZXing from a CDN on the web)
                 Row(key: const ValueKey('org.join.no_scan'), crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Icon(Icons.qr_code_scanner_rounded, size: 18, color: c.textLight),
-                  const SizedBox(width: 8),
+                  Icon(Icons.qr_code_scanner_rounded, size: AppIconSize.md, color: c.textLight),
+                  const SizedBox(width: AppSpace.xs),
                   Expanded(
                     child: Text(
                       t('مسح رمز QR متاح في تطبيق الهاتف. هنا اكتب الكود بالأعلى، أو افتح الرابط الذي وصلك.',
                           'Scanning a QR code works in the phone app. Here, type the code above or open the link you were sent.'),
-                      style: orgText(context, size: 12, color: c.textMedium),
+                      style: AppType.meta(context).copyWith(color: c.textMedium),
                     ),
                   ),
                 ]),
@@ -290,9 +290,9 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
             ]),
           ),
           if (orgReqs.isNotEmpty || unitReqs.isNotEmpty) ...[
-            const SizedBox(height: 18),
+            const SizedBox(height: AppSpace.md),
             AppSectionTitle(t('طلباتي', 'My requests'), subtitle: t('تابع حالة طلباتك هنا', 'Follow your requests here')),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             for (final r in orgReqs)
               _statusTile(
                 context,
@@ -314,9 +314,9 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
                 onCancel: r['status'] == 'pending' ? () => _cancelUnit(r) : null,
               ),
           ],
-          const SizedBox(height: 18),
+          const SizedBox(height: AppSpace.md),
           AppSectionTitle(t('ابحث عن مؤسستك', 'Find your institution')),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           TextField(
             controller: _q,
             onChanged: _search,
@@ -326,10 +326,10 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
               hintText: t('اسم الجامعة أو الكلية', 'University or faculty name'),
               filled: true,
               fillColor: c.inputBg,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide.none),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           if (_results == null)
             const SizedBox(height: 200, child: AppListSkeleton(items: 3))
           else if (_results!.isEmpty)
@@ -344,24 +344,23 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
   Widget _statusTile(BuildContext context, String title, String sub, String status, dynamic at, {String note = '', VoidCallback? onCancel, VoidCallback? onAgain}) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: AppCard(
-        padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 6, 10),
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.xs, AppSpace.sm),
         child: Row(children: [
           Icon(
             switch (status) { 'approved' => Icons.check_circle_rounded, 'rejected' => Icons.cancel_rounded, 'cancelled' => Icons.remove_circle_outline_rounded, _ => Icons.hourglass_top_rounded },
-            color: statusColor(context, status),
-          ),
-          const SizedBox(width: 10),
+            color: statusColor(context, status)),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800)),
-              Text('$sub · ${relTime(at)}', maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12, color: c.textMedium)),
-              if (note.isNotEmpty) Text('💬 $note', maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12)),
+              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+              Text('$sub · ${relTime(at)}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
+              if (note.isNotEmpty) Text('💬 $note', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: context.colors.textDark)),
             ]),
           ),
           AppBadgePill(requestStatusLabels()[status] ?? statusLabel(status), color: statusColor(context, status)),
-          if (onCancel != null) IconButton(tooltip: t('إلغاء الطلب', 'Cancel request'), onPressed: onCancel, icon: const Icon(Icons.close_rounded, size: 18)),
+          if (onCancel != null) IconButton(tooltip: t('إلغاء الطلب', 'Cancel request'), onPressed: onCancel, icon: const Icon(Icons.close_rounded, size: AppIconSize.md)),
           if (onAgain != null) TextButton(onPressed: _busy ? null : onAgain, child: Text(t('اطلب مجدداً', 'Request again'))),
         ]),
       ),
@@ -381,15 +380,15 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
                     color: c.textMedium, icon: Icons.qr_code_2_rounded)
                 : AppButton.tonal(size: AppButtonSize.sm, onPressed: _busy ? null : () => _request(o), label: mode == 'open' ? t('انضم', 'Join') : t('اطلب', 'Request'));
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: AppCard(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AppSpace.sm),
         child: Row(children: [
           AppAvatar(name: orgNameOf(o), url: o['logo_url'] as String?),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(orgNameOf(o), maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800)),
+              Text(orgNameOf(o), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
               Text(
                 mode == 'open'
                     ? t('قبول فوري', 'Instant join')
@@ -398,11 +397,11 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
                         : mode == 'code_req'
                             ? t('أدخل كود المؤسسة بالأعلى ليُرسل طلبك، ثم تقرر الإدارة', 'Enter the institution\'s code above to send a request, then it decides')
                             : t('اطلب الكود من المؤسسة', 'Ask the institution for a code'),
-                style: orgText(context, size: 12, color: c.textMedium),
+                style: AppType.meta(context).copyWith(color: c.textMedium),
               ),
             ]),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           trailing,
         ]),
       ),

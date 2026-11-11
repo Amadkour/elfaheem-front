@@ -16,8 +16,8 @@ import 'package:flutter_education_app/design/app_inputs.dart';
 
 import '../admin/admin_common.dart';
 import 'org_services_pages.dart' show fieldIcons;
-import 'org_ui.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 /// (value, label) of one option, whatever shape the server used.
 (String, String) orgOption(dynamic o) {
@@ -95,7 +95,7 @@ class OrgDynamicField extends StatelessWidget {
       onChanged();
     }
 
-    Widget title() => Text(label, style: orgText(context, w: FontWeight.w700));
+    Widget title() => Text(label, style: AppType.bodyStrong(context));
     Widget input;
     switch ('${f['type']}') {
       case 'textarea':
@@ -109,8 +109,8 @@ class OrgDynamicField extends StatelessWidget {
       case 'select':
         input = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           title(),
-          const SizedBox(height: 6),
-          Wrap(spacing: 8, runSpacing: 6, children: [
+          const SizedBox(height: AppSpace.xs),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             for (final (val, lbl) in opts)
               ChoiceChip(
                   label: Text(lbl, style: TextStyle(fontFamily: AppFonts.family)),
@@ -122,8 +122,8 @@ class OrgDynamicField extends StatelessWidget {
         final cur = {...((v[k] as List?) ?? const []).map((e) => '$e')};
         input = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           title(),
-          const SizedBox(height: 6),
-          Wrap(spacing: 8, runSpacing: 6, children: [
+          const SizedBox(height: AppSpace.xs),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             for (final (val, lbl) in opts)
               FilterChip(
                   label: Text(lbl, style: TextStyle(fontFamily: AppFonts.family)),
@@ -158,11 +158,11 @@ class OrgDynamicField extends StatelessWidget {
         final files = asMapList(v[k]);
         input = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           title(),
-          Wrap(spacing: 6, children: [
+          Wrap(spacing: AppSpace.xs, children: [
             for (final x in files) InputChip(label: Text('${x['name']}'), onDeleted: () => put(files.where((y) => y != x).toList())),
             if (onUpload != null)
               ActionChip(
-                avatar: const Icon(Icons.attach_file_rounded, size: 16),
+                avatar: const Icon(Icons.attach_file_rounded, size: AppIconSize.sm),
                 label: Text(t('إرفاق ملف', 'Attach a file')),
                 onPressed: () async {
                   final up = await onUpload!();
@@ -175,16 +175,16 @@ class OrgDynamicField extends StatelessWidget {
         input = Field(controller: answers.ctrl(k), label: label);
     }
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         input,
-        if (help.isNotEmpty) Text(help, style: orgText(context, size: 11.5, color: c.textLight)),
+        if (help.isNotEmpty) Text(help, style: AppType.meta(context).copyWith(color: c.textLight)),
         if (!required && help.isEmpty && f['type'] != 'checkbox')
-          Text(t('اختياري', 'Optional'), style: orgText(context, size: 11, color: c.textLight)),
+          Text(t('اختياري', 'Optional'), style: AppType.meta(context).copyWith(color: c.textLight)),
         if (error != null)
           Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Text(error!, style: orgText(context, size: 12, color: c.danger)),
+            padding: const EdgeInsets.only(top: AppSpace.xxs / 2),
+            child: Text(error!, style: AppType.meta(context).copyWith(color: c.danger)),
           ),
       ]),
     );

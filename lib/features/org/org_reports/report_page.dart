@@ -180,7 +180,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
     final title = t('تقرير الشكاوى والطلبات', 'Complaints & requests report');
     final body = Column(children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xs),
           // a narrow phone names only the current step (the others keep their number); nothing overflows
           child: LayoutBuilder(builder: (context, box) {
             final narrow = box.maxWidth < 480;
@@ -190,21 +190,21 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
               Flexible(
                 flex: i == _step ? 6 : 2,
                 child: InkWell(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(AppRadius.block),
                 onTap: () => setState(() => _step = i),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     CircleAvatar(
                       radius: 12,
                       backgroundColor: i <= _step ? c.primary : c.divider,
-                      child: Text('${i + 1}', style: orgText(context, size: 12, w: FontWeight.w800, color: i <= _step ? c.cardBg : c.textMedium)),
+                      child: Text('${i + 1}', style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: i <= _step ? c.cardBg : c.textMedium)),
                     ),
                     if (!narrow || i == _step) ...[
-                      const SizedBox(width: 6),
+                      const SizedBox(width: AppSpace.xs),
                       Flexible(
                         child: Text(steps[i], maxLines: 1, overflow: TextOverflow.ellipsis,
-                            style: orgText(context, size: 12.5, w: i == _step ? FontWeight.w800 : FontWeight.w500, color: i == _step ? c.textDark : c.textMedium)),
+                            style: orgText(context, size: 12.5, w: i == _step ? FontWeight.w600 : FontWeight.w500, color: i == _step ? c.textDark : c.textMedium)),
                       ),
                     ],
                   ]),
@@ -227,7 +227,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
         SafeArea(
           top: false,
           child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.sm),
             decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider))),
             child: Row(children: [
               if (_step > 0)
@@ -285,19 +285,19 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
     final ok = await showAdminSheet<bool>(
       context,
       (ctx) => StatefulBuilder(
-        builder: (ctx, set) => ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 8, 16, 16), children: [
+        builder: (ctx, set) => ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.md), children: [
           SheetHeader(t('إضافة عنصر يدوياً', 'Add an item manually')),
           Text(t('مثل طلب قُدّم ورقياً أو خارج التطبيق.', 'For example a request handed in on paper or outside the app.'),
-              style: orgText(ctx, size: 12, color: ctx.colors.textMedium)),
-          const SizedBox(height: 12),
+              style: AppType.meta(ctx).copyWith(color: ctx.colors.textMedium)),
+          const SizedBox(height: AppSpace.sm),
           ChoiceRow<String>(options: reportKindLabels(), value: kind, onChanged: (v) => set(() => kind = v)),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           Field(controller: subject, label: t('الموضوع', 'Subject')),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           Field(controller: from, label: t('مقدّم من (اختياري)', 'From (optional)')),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           Field(controller: body, label: t('التفاصيل (اختياري)', 'Details (optional)'), maxLines: 4),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           OutlinedButton.icon(
             icon: const Icon(Icons.event_rounded),
             label: Text(reportDay(date)),
@@ -306,7 +306,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
               if (d != null) set(() => date = d);
             },
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.md),
           PrimaryButton(
             isLoading: false,
             label: t('إضافة', 'Add'),
@@ -332,8 +332,8 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
     final removed = _items.removedItems;
     return AppRefresh(
       onRefresh: _load,
-      child: ListView(padding: const EdgeInsets.fromLTRB(16, 6, 16, 24), children: [
-        Wrap(spacing: 8, runSpacing: 8, children: [
+      child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.lg), children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final e in reportPeriodLabels().entries)
             AppChoiceChip(
               label: e.key == ReportPeriodKind.custom && _kind == ReportPeriodKind.custom ? _period.label : e.value,
@@ -342,7 +342,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
               onTap: () => _pickPeriod(e.key),
             ),
         ]),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         if (_loading)
           const AppListSkeleton(items: 4, withAvatar: false, padding: EdgeInsets.zero)
         else if (_error != null)
@@ -352,15 +352,15 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
             Expanded(
               child: Text(
                 '${_period.label} · ${t('${active.length} عنصر', '${active.length} items')}',
-                style: orgText(context, w: FontWeight.w800),
+                style: AppType.bodyStrong(context),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.xs),
             TextButton.icon(onPressed: _addManual, icon: const Icon(Icons.add_rounded), label: Text(t('إضافة يدوية', 'Add manually'))),
           ]),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs),
           if (active.isEmpty)
             AppEmpty(
               icon: Icons.inbox_rounded,
@@ -369,7 +369,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
             ),
           for (final it in active) ReportItemTile(item: it, onToggle: () => setState(() => _items.remove(it.key))),
           if (removed.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             TextButton.icon(
               onPressed: () => setState(() => _showRemoved = !_showRemoved),
               icon: Icon(_showRemoved ? Icons.expand_less_rounded : Icons.expand_more_rounded),
@@ -380,9 +380,9 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
                 Opacity(opacity: .6, child: ReportItemTile(item: it, removed: true, onToggle: () => setState(() => _items.restore(it.key)))),
           ],
         ],
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpace.xxs),
         Text(t('العناصر المستبعدة لا تظهر في التقرير ولا تُحذف من النظام.', 'Removed items are left out of the report only — nothing is deleted.'),
-            style: orgText(context, size: 11.5, color: c.textLight)),
+            style: AppType.meta(context).copyWith(color: c.textLight)),
       ]),
     );
   }
@@ -524,12 +524,12 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
           height: 40,
           child: ListView(scrollDirection: Axis.horizontal, children: [
             Padding(
-              padding: const EdgeInsetsDirectional.only(end: 8),
+              padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
               child: AppChoiceChip(label: t('تصميم جديد', 'New design'), icon: Icons.auto_awesome_rounded, selected: _saved == null && _mode == 'designer', onTap: () => _useTemplate(null)),
             ),
             for (final tpl in _templates)
               Padding(
-                padding: const EdgeInsetsDirectional.only(end: 8),
+                padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
                 child: GestureDetector(
                   onLongPress: () => _deleteTemplate(tpl),
                   child: AppChoiceChip(
@@ -542,8 +542,8 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
               ),
           ]),
         ),
-        const SizedBox(height: 8),
-        Wrap(spacing: 8, runSpacing: 8, children: [
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           OutlinedButton.icon(onPressed: _uploadTemplate, icon: const Icon(Icons.upload_file_rounded), label: Text(t('رفع قالب Word / Excel', 'Upload Word / Excel template'))),
           OutlinedButton.icon(onPressed: () => _saveTemplate(), icon: const Icon(Icons.save_rounded), label: Text(_saved == null ? t('حفظ كقالب', 'Save as template') : t('حفظ التعديلات', 'Save changes'))),
           if (_saved != null)
@@ -554,23 +554,23 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
                 icon: Icon(Icons.delete_outline_rounded, color: c.danger),
                 label: Text(t('حذف القالب', 'Delete template'), style: TextStyle(color: c.danger))),
         ]),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
       ]);
       if (wide) {
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.sm),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             top,
             Expanded(
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(child: SingleChildScrollView(child: canvas)),
-                if (_mode == 'designer') ...[const SizedBox(width: 16), SizedBox(width: 320, child: SingleChildScrollView(child: side))],
+                if (_mode == 'designer') ...[const SizedBox(width: AppSpace.md), SizedBox(width: 320, child: SingleChildScrollView(child: side))],
               ]),
             ),
           ]),
         );
       }
-      return ListView(padding: const EdgeInsets.fromLTRB(16, 6, 16, 24), children: [top, canvas, const SizedBox(height: 12), side]);
+      return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.lg), children: [top, canvas, const SizedBox(height: AppSpace.sm), side]);
     });
   }
 
@@ -581,20 +581,20 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(_mode == 'xlsx' ? Icons.grid_on_rounded : Icons.description_rounded, color: c.primary),
-          const SizedBox(width: 8),
-          Expanded(child: Text(_templateName ?? '', style: orgText(context, w: FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis)),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: Text(_templateName ?? '', style: AppType.bodyStrong(context), maxLines: 1, overflow: TextOverflow.ellipsis)),
           if (_templateBytes == null) const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
         ]),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         Text(
             t('اكتب الحقول بين قوسين مزدوجين في ملفك، مثل {{org}}. الصف الذي يحتوي {{item.subject}} يتكرر لكل عنصر. يحافظ الملف على شكله كما هو.',
                 'Type the fields in double braces in your file, like {{org}}. The row holding {{item.subject}} repeats once per item. The file keeps its own look.'),
-            style: orgText(context, size: 12, color: c.textMedium)),
-        const SizedBox(height: 10),
-        Wrap(spacing: 6, runSpacing: 6, children: [
+            style: AppType.meta(context).copyWith(color: c.textMedium)),
+        const SizedBox(height: AppSpace.sm),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final k in keys)
             ActionChip(
-              avatar: Icon(_found.contains(k) ? Icons.check_circle_rounded : Icons.content_copy_rounded, size: 16, color: _found.contains(k) ? c.success : c.textLight),
+              avatar: Icon(_found.contains(k) ? Icons.check_circle_rounded : Icons.content_copy_rounded, size: AppIconSize.sm, color: _found.contains(k) ? c.success : c.textLight),
               label: Text('{{$k}}', textDirection: TextDirection.ltr, style: const TextStyle(fontSize: 12)),
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: '{{$k}}'));
@@ -603,10 +603,10 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
             ),
         ]),
         if (_mode == 'xlsx') ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           AppBanner(icon: Icons.info_outline_rounded, text: t('قالب Excel يُخرج ملف Excel فقط.', 'An Excel template outputs Excel only.')),
         ] else ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           AppBanner(icon: Icons.info_outline_rounded, text: t('قالب Word يُخرج ملف Word فقط.', 'A Word template outputs Word only.')),
         ],
       ]),
@@ -629,7 +629,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
     final c = context.colors;
     final values = _previewValues;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Wrap(spacing: 8, runSpacing: 8, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final (kind, icon, label) in [
           ('text', Icons.text_fields_rounded, t('نص', 'Text')),
           ('logo', Icons.image_rounded, t('شعار', 'Logo')),
@@ -638,7 +638,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
         ])
           AppPill(icon: icon, label: '+ $label', onTap: () => setState(() => _selected = _layout.add(kind).id)),
       ]),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
       Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 620),
@@ -653,7 +653,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
                 child: Container(
                   decoration: BoxDecoration(
                     color: _paper,
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(AppRadius.chip),
                     boxShadow: [BoxShadow(color: c.textDark.withValues(alpha: .12), blurRadius: 18, offset: const Offset(0, 6))],
                   ),
                   child: Stack(clipBehavior: Clip.hardEdge, children: [
@@ -680,9 +680,9 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
           ),
         ),
       ),
-      const SizedBox(height: 6),
+      const SizedBox(height: AppSpace.xs),
       Text(t('اسحب أي عنصر لتحريكه، واسحب الزاوية لتغيير حجمه، واضغط عليه لتعديله.', 'Drag any block to move it, drag its corner to resize, tap it to edit.'),
-          textAlign: TextAlign.center, style: orgText(context, size: 11.5, color: c.textLight)),
+          textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textLight)),
     ]);
   }
 
@@ -705,7 +705,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
           Expanded(child: _netImage(_layout.signatureUrl, Icons.draw_rounded, t('التوقيع', 'Signature'), al)),
           if (fillPlaceholders(b.text, values).trim().isNotEmpty)
             Text(fillPlaceholders(b.text, values), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: ta,
-                style: TextStyle(fontFamily: family, fontSize: fs, color: _ink, fontWeight: b.bold ? FontWeight.w800 : FontWeight.w500)),
+                style: TextStyle(fontFamily: family, fontSize: fs, color: _ink, fontWeight: b.bold ? FontWeight.w600 : FontWeight.w500)),
         ]);
       default:
         content = Align(
@@ -714,7 +714,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
             fillPlaceholders(b.text, values),
             textAlign: ta,
             overflow: TextOverflow.fade,
-            style: TextStyle(fontFamily: family, fontSize: fs, color: _ink, height: _layout.lineSpacing, fontWeight: b.bold ? FontWeight.w800 : FontWeight.w500),
+            style: TextStyle(fontFamily: family, fontSize: fs, color: _ink, height: _layout.lineSpacing, fontWeight: b.bold ? FontWeight.w600 : FontWeight.w500),
           ),
         );
     }
@@ -766,14 +766,14 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
   }
 
   Widget _placeholder(IconData icon, String label) => DecoratedBox(
-        decoration: BoxDecoration(color: _ink.withValues(alpha: .04), borderRadius: BorderRadius.circular(4)),
+        decoration: BoxDecoration(color: _ink.withValues(alpha: .04), borderRadius: BorderRadius.circular(AppRadius.chip)),
         child: Center(
           child: FittedBox(
             child: Padding(
-              padding: const EdgeInsets.all(4),
+              padding: const EdgeInsets.all(AppSpace.xxs),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(icon, size: 14, color: _ink.withValues(alpha: .4)),
-                const SizedBox(width: 4),
+                Icon(icon, size: AppIconSize.xs, color: _ink.withValues(alpha: .4)),
+                const SizedBox(width: AppSpace.xxs),
                 Text(label, style: TextStyle(fontSize: 10, color: _ink.withValues(alpha: .5))),
               ]),
             ),
@@ -786,7 +786,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
     final rows = [for (var i = 0; i < _items.active.length && i < 6; i++) _items.active[i].row(i)];
     final cols = _layout.columns;
     TextStyle st({bool head = false}) =>
-        TextStyle(fontFamily: family, fontSize: fs, color: head ? c.cardBg : _ink, fontWeight: head ? FontWeight.w800 : FontWeight.w500);
+        TextStyle(fontFamily: family, fontSize: fs, color: head ? c.cardBg : _ink, fontWeight: head ? FontWeight.w600 : FontWeight.w500);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Container(
         color: c.primary,
@@ -813,7 +813,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
   Widget _inspector(BuildContext context) {
     final c = context.colors;
     final b = _block;
-    Widget label(String s) => Padding(padding: const EdgeInsets.only(top: 10, bottom: 4), child: Text(s, style: orgText(context, size: 12, w: FontWeight.w700, color: c.textMedium)));
+    Widget label(String s) => Padding(padding: const EdgeInsets.only(top: AppSpace.sm, bottom: AppSpace.xxs), child: Text(s, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (b != null)
         AppCard(
@@ -822,7 +822,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
               Expanded(
                 child: Text(
                     switch (b.kind) { 'table' => t('جدول العناصر', 'Items table'), 'logo' => t('الشعار', 'Logo'), 'signature' => t('التوقيع', 'Signature'), _ => t('نص', 'Text') },
-                    style: orgText(context, w: FontWeight.w800)),
+                    style: AppType.bodyStrong(context)),
               ),
               IconButton(
                 tooltip: t('حذف', 'Delete'),
@@ -842,12 +842,12 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
                 onChanged: (v) => setState(() => b.text = v),
                 decoration: InputDecoration(
                   labelText: b.kind == 'signature' ? t('السطر تحت التوقيع', 'Line under the signature') : t('النص', 'Text'),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
                   isDense: true,
                 ),
               ),
-              const SizedBox(height: 6),
-              Wrap(spacing: 4, runSpacing: 4, children: [
+              const SizedBox(height: AppSpace.xs),
+              Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
                 for (final e in reportPlaceholderLabels().entries)
                   ActionChip(
                     label: Text(e.value, style: const TextStyle(fontSize: 11)),
@@ -860,7 +860,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
               OutlinedButton.icon(onPressed: () => _pickImage('logo'), icon: const Icon(Icons.image_rounded), label: Text(t('تغيير الشعار', 'Change logo'))),
             if (b.kind == 'signature')
               Padding(
-                padding: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.only(top: AppSpace.xs),
                 child: OutlinedButton.icon(
                     onPressed: () => _pickImage('signature'),
                     icon: const Icon(Icons.draw_rounded),
@@ -882,7 +882,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
                     onSelectionChanged: (v) => setState(() => b.align = v.first),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
                 IconButton.filledTonal(
                   isSelected: b.bold,
                   tooltip: t('عريض', 'Bold'),
@@ -901,7 +901,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
             ],
             if (b.kind == 'table') ...[
               label(t('الأعمدة', 'Columns')),
-              Wrap(spacing: 6, runSpacing: 6, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final e in reportColumnLabels().entries)
                   FilterChip(
                     label: Text(e.value, style: const TextStyle(fontSize: 12)),
@@ -923,17 +923,17 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
         )
       else
         AppBanner(icon: Icons.touch_app_rounded, text: t('اختر عنصراً في الصفحة لتعديله.', 'Pick a block on the page to edit it.')),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(t('الصفحة', 'Page'), style: orgText(context, w: FontWeight.w800)),
+          Text(t('الصفحة', 'Page'), style: AppType.bodyStrong(context)),
           label(t('الخط', 'Font')),
           ChoiceRow<String>(options: {'tajawal': 'Tajawal', 'bahij': 'Bahij'}, value: _layout.font, onChanged: (v) => setState(() => _layout.font = v)),
           label(t('الهوامش: ${_layout.margin.round()} مم', 'Margins: ${_layout.margin.round()} mm')),
           Slider(value: _layout.margin, min: 6, max: 40, divisions: 34, onChanged: (v) => setState(() => _layout.margin = v)),
           label(t('تباعد الأسطر: ${_layout.lineSpacing.toStringAsFixed(1)}', 'Line spacing: ${_layout.lineSpacing.toStringAsFixed(1)}')),
           Slider(value: _layout.lineSpacing, min: 1, max: 2.5, divisions: 15, onChanged: (v) => setState(() => _layout.lineSpacing = v)),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpace.xxs),
           TextButton.icon(
             onPressed: () => setState(() {
               _layout = ReportLayout.standard()
@@ -1050,7 +1050,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
     final formats = _formats;
     final format = formats.contains(_format) ? _format : formats.first;
     final hasSignature = _mode != 'designer' || _layout.blocks.any((b) => b.kind == 'signature');
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 6, 16, 24), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.lg), children: [
       Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
@@ -1058,10 +1058,10 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
             AppCard(
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 AppField(controller: _title, label: t('عنوان التقرير', 'Report title'), onChanged: (_) => setState(() {})),
-                const SizedBox(height: 14),
-                Text(t('صيغة الملف', 'File format'), style: orgText(context, size: 12, w: FontWeight.w700, color: c.textMedium)),
-                const SizedBox(height: 6),
-                Wrap(spacing: 8, runSpacing: 8, children: [
+                const SizedBox(height: AppSpace.md),
+                Text(t('صيغة الملف', 'File format'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
+                const SizedBox(height: AppSpace.xs),
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                   for (final f in formats)
                     AppChoiceChip(
                       label: switch (f) { 'docx' => 'Word', 'xlsx' => 'Excel', _ => 'PDF' },
@@ -1071,13 +1071,13 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
                     ),
                 ]),
                 if (format == 'xlsx' && _mode == 'designer') ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.xs),
                   Text(t('ملف Excel للبيانات: نصوص التصميم أعلى الجدول، والصور في Word وPDF.', 'Excel is for the data: the design text sits above the table; pictures are in Word and PDF.'),
-                      style: orgText(context, size: 11.5, color: c.textLight)),
+                      style: AppType.meta(context).copyWith(color: c.textLight)),
                 ],
               ]),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppCard(
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 AppSwitchTile(
@@ -1089,14 +1089,14 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
                 if (_signed) ...[
                   AppField(controller: _signer, label: t('اسم الموقّع ووظيفته', 'Signer name and title'), onChanged: (_) => setState(() {})),
                   if (_mode == 'designer' && _layout.signatureUrl == null) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpace.xs),
                     OutlinedButton.icon(onPressed: () => _pickImage('signature'), icon: const Icon(Icons.draw_rounded), label: Text(t('رفع صورة التوقيع', 'Upload signature image'))),
                   ],
                 ],
                 const Divider(height: 24),
-                Text(t('التاريخ المطبوع', 'Printed date'), style: orgText(context, size: 12, w: FontWeight.w700, color: c.textMedium)),
-                const SizedBox(height: 6),
-                Wrap(spacing: 8, runSpacing: 8, children: [
+                Text(t('التاريخ المطبوع', 'Printed date'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
+                const SizedBox(height: AppSpace.xs),
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                   AppChoiceChip(label: t('تاريخ اليوم', 'Today'), selected: _todayDate, onTap: () => setState(() => _todayDate = true)),
                   AppChoiceChip(
                     label: _todayDate ? t('تاريخ آخر', 'Another date') : reportDay(_printDate),
@@ -1115,12 +1115,12 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
                 ]),
               ]),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.md),
             Text(t('${_items.active.length} عنصر · ${_period.label}', '${_items.active.length} items · ${_period.label}'),
-                textAlign: TextAlign.center, style: orgText(context, size: 12, color: c.textMedium)),
-            const SizedBox(height: 10),
+                textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textMedium)),
+            const SizedBox(height: AppSpace.sm),
             PrimaryButton(isLoading: _busy, label: t('تصدير الملف', 'Export file'), onPressed: _busy ? null : _export),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             OutlinedButton.icon(
               onPressed: _busy ? null : _share,
               icon: const Icon(Icons.send_rounded),
@@ -1147,33 +1147,33 @@ class ReportItemTile extends StatelessWidget {
     final c = context.colors;
     final color = it.kind == 'complaint' ? c.warning : c.primary;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: AppCard(
-        padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 6, 12),
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.xs, AppSpace.sm),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
             width: 4,
             height: 44,
-            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
+            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(AppRadius.chip)),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Wrap(spacing: 6, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
                 AppBadgePill(reportKindLabels()[it.kind] ?? it.kind, color: color),
                 if (it.manual) AppBadgePill(t('يدوي', 'Manual'), color: c.purple),
                 if (it.status.isNotEmpty && !it.manual) AppBadgePill(reportStatusLabels()[it.status] ?? it.status, color: c.textMedium),
               ]),
-              const SizedBox(height: 6),
-              Text(it.subject, style: orgText(context, w: FontWeight.w800), maxLines: 2, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: AppSpace.xs),
+              Text(it.subject, style: AppType.bodyStrong(context), maxLines: 2, overflow: TextOverflow.ellipsis),
               Text(
                 [if (it.ref.isNotEmpty) it.ref, if (it.date != null) AppTime.date(it.date!), if (it.from.isNotEmpty) it.from].join(' · '),
-                style: orgText(context, size: 12, color: c.textMedium),
+                style: AppType.meta(context).copyWith(color: c.textMedium),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               if (it.body.isNotEmpty)
-                Text(it.body, style: orgText(context, size: 12, color: c.textLight), maxLines: 2, overflow: TextOverflow.ellipsis),
+                Text(it.body, style: AppType.meta(context).copyWith(color: c.textLight), maxLines: 2, overflow: TextOverflow.ellipsis),
             ]),
           ),
           IconButton(
@@ -1250,7 +1250,7 @@ class _ShareSheetState extends State<_ShareSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.sm),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         SheetHeader(t('إرسال التقرير', 'Send the report')),
         ChoiceRow<String>(
@@ -1258,23 +1258,23 @@ class _ShareSheetState extends State<_ShareSheet> {
           value: _channel,
           onChanged: (v) => setState(() => _channel = v),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpace.xxs),
         Text(
             _channel == 'email'
                 ? t('يصل الملف مرفقاً إلى بريد كل مستلم.', 'The file arrives attached in each recipient\'s e-mail.')
                 : t('يصل إشعار ويظهر الملف في حساب المستلم (تقارير وصلتني).', 'A notification arrives and the file appears in the recipient\'s account (Received reports).'),
-            style: orgText(context, size: 11.5, color: c.textLight)),
-        const SizedBox(height: 10),
+            style: AppType.meta(context).copyWith(color: c.textLight)),
+        const SizedBox(height: AppSpace.sm),
         if (_people.isNotEmpty || _teams.isNotEmpty || _orgs.isNotEmpty)
-          Wrap(spacing: 6, runSpacing: 6, children: [
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             for (final e in _people.entries)
-              InputChip(avatar: const Icon(Icons.person_rounded, size: 16), label: Text(e.value), onDeleted: () => setState(() => _people.remove(e.key))),
+              InputChip(avatar: const Icon(Icons.person_rounded, size: AppIconSize.sm), label: Text(e.value), onDeleted: () => setState(() => _people.remove(e.key))),
             for (final e in _teams.entries)
-              InputChip(avatar: const Icon(Icons.groups_rounded, size: 16), label: Text(e.value), onDeleted: () => setState(() => _teams.remove(e.key))),
+              InputChip(avatar: const Icon(Icons.groups_rounded, size: AppIconSize.sm), label: Text(e.value), onDeleted: () => setState(() => _teams.remove(e.key))),
             for (final e in _orgs.entries)
-              InputChip(avatar: const Icon(Icons.apartment_rounded, size: 16), label: Text(e.value), onDeleted: () => setState(() => _orgs.remove(e.key))),
+              InputChip(avatar: const Icon(Icons.apartment_rounded, size: AppIconSize.sm), label: Text(e.value), onDeleted: () => setState(() => _orgs.remove(e.key))),
           ]),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         SegmentedButton<String>(
           showSelectedIcon: false,
           segments: [
@@ -1291,7 +1291,7 @@ class _ShareSheetState extends State<_ShareSheet> {
             if (_tab != 'teams') _search();
           },
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         if (_tab != 'teams')
           TextField(
             controller: _q,
@@ -1299,7 +1299,7 @@ class _ShareSheetState extends State<_ShareSheet> {
             decoration: InputDecoration(
               prefixIcon: const Icon(Icons.search_rounded),
               hintText: _tab == 'orgs' ? t('ابحث عن مؤسسة', 'Search organizations') : t('ابحث عن عضو بالاسم', 'Search members by name'),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
               isDense: true,
             ),
           ),
@@ -1351,9 +1351,9 @@ class _ShareSheetState extends State<_ShareSheet> {
           ),
         ),
         // no free e-mail field: the server only accepts members of the sharing organization (422 share_target_not_allowed)
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         AppField(controller: _message, label: t('رسالة (اختياري)', 'Message (optional)'), maxLines: 2),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         PrimaryButton(
           isLoading: false,
           label: t('إرسال ($_count)', 'Send ($_count)'),
@@ -1428,15 +1428,15 @@ class _OrgReceivedReportsPageState extends State<OrgReceivedReportsPage> {
       child: _error != null && items == null
           ? AppEmpty(icon: Icons.cloud_off_rounded, title: t('تعذّر التحميل', 'Could not load'), message: _error, actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load)
           : items == null
-              ? const AppListSkeleton(items: 5, padding: EdgeInsets.all(16))
+              ? const AppListSkeleton(items: 5, padding: EdgeInsets.all(AppSpace.md))
               : items.isEmpty
                   ? AppEmpty(icon: Icons.description_outlined, title: t('لا تقارير بعد', 'No reports yet'), message: t('التقارير المرسلة إليك تظهر هنا.', 'Reports sent to you appear here.'))
                   : AppRefresh(
                       onRefresh: _load,
-                      child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: [
+                      child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xl), children: [
                         for (final r in items)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.only(bottom: AppSpace.xs),
                             child: AppCard(
                               onTap: () => _open(r),
                               child: Row(children: [
@@ -1446,13 +1446,12 @@ class _OrgReceivedReportsPageState extends State<OrgReceivedReportsPage> {
                                       : '${r['file_name']}'.endsWith('.xlsx')
                                           ? Icons.grid_on_rounded
                                           : Icons.description_rounded,
-                                  color: r['read'] == true ? c.textLight : c.primary,
-                                ),
-                                const SizedBox(width: 12),
+                                  color: r['read'] == true ? c.textLight : c.primary),
+                                const SizedBox(width: AppSpace.sm),
                                 Expanded(
                                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                     Text('${r['title']}',
-                                        maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, w: r['read'] == true ? FontWeight.w600 : FontWeight.w800)),
+                                        maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, w: r['read'] == true ? FontWeight.w600 : FontWeight.w600)),
                                     Text(
                                       [
                                         if (r['org'] != null) orgNameOf(asMap(r['org'])),
@@ -1461,10 +1460,10 @@ class _OrgReceivedReportsPageState extends State<OrgReceivedReportsPage> {
                                       ].join(' · '),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: orgText(context, size: 12, color: c.textMedium),
+                                      style: AppType.meta(context).copyWith(color: c.textMedium),
                                     ),
                                     if ('${r['message'] ?? ''}'.isNotEmpty)
-                                      Text('${r['message']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12, color: c.textLight)),
+                                      Text('${r['message']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight)),
                                   ]),
                                 ),
                                 if (r['read'] != true) Container(width: 8, height: 8, decoration: BoxDecoration(color: c.primary, shape: BoxShape.circle)),

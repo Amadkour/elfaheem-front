@@ -16,9 +16,8 @@ import 'org_common.dart' show dayLabels;
 import 'org_providers.dart';
 import 'org_schedule_grid.dart' show sessionKindColor, sessionKindIcon, sessionKindLabel;
 import 'org_schedule_insights.dart' show WhyHere, WhyHereSection;
-import 'org_ui.dart';
 import 'org_v3.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 /// Height of a grid row whose fullest cell holds [maxSessions] sessions (text scale included).
 double boardRowHeight(int maxSessions, double textScale) => (maxSessions <= 1 ? 76.0 : 14.0 + 56.0 * maxSessions) * textScale.clamp(1.0, 2.0);
@@ -90,16 +89,16 @@ class _TimetableBoardState extends State<TimetableBoard> {
           SizedBox(
             width: widget.cellWidth,
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+              padding: const EdgeInsets.symmetric(vertical: AppSpace.xs, horizontal: AppSpace.xxs),
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
-                decoration: d == widget.today ? BoxDecoration(color: c.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)) : null,
+                padding: const EdgeInsets.symmetric(vertical: AppSpace.xs, horizontal: AppSpace.xs),
+                decoration: d == widget.today ? BoxDecoration(color: c.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)) : null,
                 child: Text(
                   widget.dayLabel(d),
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 13, color: d == widget.today ? c.primary : c.textDark),
+                  style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: d == widget.today ? c.primary : c.textDark),
                 ),
               ),
             ),
@@ -121,14 +120,14 @@ class _TimetableBoardState extends State<TimetableBoard> {
               SizedBox(
                 width: widget.firstWidth,
                 child: Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Icon(Icons.schedule_rounded, size: 18, color: c.textLight),
+                  padding: const EdgeInsets.only(top: AppSpace.sm),
+                  child: Icon(Icons.schedule_rounded, size: AppIconSize.md, color: c.textLight),
                 ),
               ),
               Expanded(
                 child: AppHScroll(
                   controller: _head,
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.only(bottom: AppSpace.sm),
                   child: SizedBox(width: width, child: header),
                 ),
               ),
@@ -137,7 +136,7 @@ class _TimetableBoardState extends State<TimetableBoard> {
         ),
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 40),
+            padding: const EdgeInsets.only(bottom: AppSpace.xxl),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -153,7 +152,7 @@ class _TimetableBoardState extends State<TimetableBoard> {
                       for (final p in widget.periods)
                         Container(
                           height: heights[asInt(p['id'])],
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
                           decoration: BoxDecoration(border: Border(bottom: line)),
                           child: Center(child: widget.periodLabel(p)),
                         ),
@@ -326,13 +325,13 @@ class _SessionDialogState extends State<_SessionDialog> {
 
     // one fact: small label over its value, two per row when there is room
     Widget fact(IconData icon, String label, String value, {Color? color}) => Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: c.inputBg.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(12)),
+      padding: const EdgeInsets.all(AppSpace.sm),
+      decoration: BoxDecoration(color: c.inputBg.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(AppRadius.control)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: color ?? c.textMedium),
-          const SizedBox(width: 8),
+          Icon(icon, size: AppIconSize.md, color: color ?? c.textMedium),
+          const SizedBox(width: AppSpace.xs),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -341,12 +340,12 @@ class _SessionDialogState extends State<_SessionDialog> {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: orgText(context, size: 11.5, color: c.textMedium),
+                  style: AppType.meta(context).copyWith(color: c.textMedium),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpace.xxs / 2),
                 Text(
                   value,
-                  style: orgText(context, size: 13, w: FontWeight.w700, color: color),
+                  style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: color),
                 ),
               ],
             ),
@@ -355,18 +354,18 @@ class _SessionDialogState extends State<_SessionDialog> {
       ),
     );
     Widget pill(String text, Color color, {IconData? icon}) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(20)),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(AppRadius.block)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null) ...[Icon(icon, size: 13, color: color), const SizedBox(width: 4)],
+          if (icon != null) ...[Icon(icon, size: AppIconSize.xs, color: color), const SizedBox(width: AppSpace.xxs)],
           Flexible(
             child: Text(
               text,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: orgText(context, size: 11.5, w: FontWeight.w800, color: color),
+              style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: color),
             ),
           ),
         ],
@@ -388,11 +387,11 @@ class _SessionDialogState extends State<_SessionDialog> {
     ];
 
     return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.lg),
       clipBehavior: Clip.antiAlias,
       backgroundColor: c.cardBg,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.block)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 560),
         child: Column(
@@ -401,7 +400,7 @@ class _SessionDialogState extends State<_SessionDialog> {
           children: [
             // header band in the session type's colour
             Container(
-              padding: const EdgeInsetsDirectional.fromSTEB(18, 16, 8, 14),
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, AppSpace.xs, AppSpace.md),
               decoration: BoxDecoration(
                 color: col.withValues(alpha: 0.10),
                 border: BorderDirectional(start: BorderSide(color: col, width: 5)),
@@ -410,20 +409,20 @@ class _SessionDialogState extends State<_SessionDialog> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: col.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(12)),
-                    child: Icon(sessionKindIcon(s['kind']), color: col, size: 22),
+                    padding: const EdgeInsets.all(AppSpace.xs),
+                    decoration: BoxDecoration(color: col.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(AppRadius.control)),
+                    child: Icon(sessionKindIcon(s['kind']), color: col, size: AppIconSize.lg),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(widget.courseNames[asInt(s['course_id'])] ?? '#${s['course_id']}', style: orgText(context, size: 17, w: FontWeight.w800)),
-                        const SizedBox(height: 6),
+                        Text(widget.courseNames[asInt(s['course_id'])] ?? '#${s['course_id']}', style: AppType.section(context)),
+                        const SizedBox(height: AppSpace.xs),
                         Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
+                          spacing: AppSpace.xs,
+                          runSpacing: AppSpace.xxs,
                           children: [
                             pill(sessionKindLabel(s['kind']), col),
                             pill(s['group_no'] == null ? t('مجموعة واحدة', 'Single group') : '${t('مجموعة', 'Group')} ${s['group_no']}', c.textMedium),
@@ -444,7 +443,7 @@ class _SessionDialogState extends State<_SessionDialog> {
             ),
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xs),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   mainAxisSize: MainAxisSize.min,
@@ -454,39 +453,39 @@ class _SessionDialogState extends State<_SessionDialog> {
                         final two = box.maxWidth >= 380;
                         final w = two ? (box.maxWidth - 8) / 2 : box.maxWidth;
                         return Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
+                          spacing: AppSpace.xs,
+                          runSpacing: AppSpace.xs,
                           children: [for (final f in facts) SizedBox(width: w, child: f)],
                         );
                       },
                     ),
                     if (mine.isNotEmpty) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpace.sm),
                       for (final x in mine)
                         Container(
-                          margin: const EdgeInsets.only(bottom: 6),
-                          padding: const EdgeInsets.all(10),
+                          margin: const EdgeInsets.only(bottom: AppSpace.xs),
+                          padding: const EdgeInsets.all(AppSpace.sm),
                           decoration: BoxDecoration(
                             color: (x['severity'] == 'error' ? c.danger : c.warning).withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(AppRadius.control),
                             border: Border.all(color: (x['severity'] == 'error' ? c.danger : c.warning).withValues(alpha: 0.4)),
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(x['severity'] == 'error' ? Icons.error_rounded : Icons.warning_amber_rounded, size: 18, color: x['severity'] == 'error' ? c.danger : c.warning),
-                              const SizedBox(width: 8),
+                              Icon(x['severity'] == 'error' ? Icons.error_rounded : Icons.warning_amber_rounded, size: AppIconSize.md, color: x['severity'] == 'error' ? c.danger : c.warning),
+                              const SizedBox(width: AppSpace.xs),
                               Expanded(
                                 child: Text(
                                   x['text_ar'] != null ? t('${x['text_ar']}', '${x['text_en'] ?? x['text_ar']}') : conflictTypeText('${x['type']}'),
-                                  style: orgText(context, size: 12.5, w: FontWeight.w700),
+                                  style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark),
                                 ),
                               ),
                             ],
                           ),
                         ),
                     ],
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpace.xs),
                     // why here: what the engine saw for this session (every other session fixed)
                     Theme(
                       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -495,13 +494,13 @@ class _SessionDialogState extends State<_SessionDialog> {
                         childrenPadding: EdgeInsets.zero,
                         initiallyExpanded: true,
                         leading: Icon(Icons.psychology_alt_rounded, color: c.textMedium),
-                        title: Text(t('لماذا هنا؟', 'Why here?'), style: orgText(context, w: FontWeight.w800)),
+                        title: Text(t('لماذا هنا؟', 'Why here?'), style: AppType.bodyStrong(context)),
                         children: [
                           if (whyLoading) const LinearProgressIndicator(),
                           if (!whyLoading && whyMissing)
                             Align(
                               alignment: AlignmentDirectional.centerStart,
-                              child: Text(t('التفسير يحتاج تحديث الخادم.', 'Explanations need a server update.'), style: orgText(context, size: 12.5, color: c.textMedium)),
+                              child: Text(t('التفسير يحتاج تحديث الخادم.', 'Explanations need a server update.'), style: AppType.label(context).copyWith(color: c.textMedium)),
                             ),
                           if (why != null)
                             WhyHereSection(
@@ -518,32 +517,32 @@ class _SessionDialogState extends State<_SessionDialog> {
                         childrenPadding: EdgeInsets.zero,
                         initiallyExpanded: students.isNotEmpty && students.length <= 8,
                         leading: Icon(Icons.groups_rounded, color: c.textMedium),
-                        title: Text(t('طلاب المجموعة', 'Students of the group') + (students.isEmpty ? '' : ' (${students.length})'), style: orgText(context, w: FontWeight.w800)),
+                        title: Text(t('طلاب المجموعة', 'Students of the group') + (students.isEmpty ? '' : ' (${students.length})'), style: AppType.bodyStrong(context)),
                         children: [
                           if (loading) const LinearProgressIndicator(),
                           if (!loading && note != null)
                             Align(
                               alignment: AlignmentDirectional.centerStart,
-                              child: Text(note!, style: orgText(context, size: 12.5, color: c.textMedium)),
+                              child: Text(note!, style: AppType.label(context).copyWith(color: c.textMedium)),
                             ),
                           if (!loading && group != null && students.isEmpty)
                             Align(
                               alignment: AlignmentDirectional.centerStart,
-                              child: Text(t('لا طلاب في هذه المجموعة بعد.', 'No students in this group yet.'), style: orgText(context, size: 12.5, color: c.textMedium)),
+                              child: Text(t('لا طلاب في هذه المجموعة بعد.', 'No students in this group yet.'), style: AppType.label(context).copyWith(color: c.textMedium)),
                             ),
                           for (final (i, st) in students.indexed)
                             Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 3),
+                              padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
                               child: Row(
                                 children: [
                                   SizedBox(
                                     width: 30,
-                                    child: Text('${i + 1}.', style: orgText(context, size: 12, color: c.textLight)),
+                                    child: Text('${i + 1}.', style: AppType.meta(context).copyWith(color: c.textLight)),
                                   ),
                                   Expanded(
-                                    child: Text('${asMap(st['student'])['name'] ?? ''}', overflow: TextOverflow.ellipsis, style: orgText(context, size: 13)),
+                                    child: Text('${asMap(st['student'])['name'] ?? ''}', overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: context.colors.textDark)),
                                   ),
-                                  if (st['student_code'] != null) Text('${st['student_code']}', style: orgText(context, size: 12, color: c.textMedium)),
+                                  if (st['student_code'] != null) Text('${st['student_code']}', style: AppType.meta(context).copyWith(color: c.textMedium)),
                                 ],
                               ),
                             ),
@@ -555,11 +554,11 @@ class _SessionDialogState extends State<_SessionDialog> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md),
               child: Wrap(
                 alignment: WrapAlignment.end,
-                spacing: 8,
-                runSpacing: 6,
+                spacing: AppSpace.xs,
+                runSpacing: AppSpace.xs,
                 children: [
                   TextButton(onPressed: () => Navigator.pop(context), child: Text(t('إغلاق', 'Close'))),
                   if (widget.onEdit != null)
@@ -568,7 +567,7 @@ class _SessionDialogState extends State<_SessionDialog> {
                         Navigator.pop(context);
                         widget.onEdit!();
                       },
-                      icon: const Icon(Icons.edit_rounded, size: 18),
+                      icon: const Icon(Icons.edit_rounded, size: AppIconSize.md),
                       label: Text(t('تعديل الحصة', 'Edit session')),
                     ),
                 ],

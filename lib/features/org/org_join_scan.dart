@@ -176,7 +176,7 @@ class _JoinScannerPageState extends State<JoinScannerPage> with WidgetsBindingOb
           // top bar
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
               child: Row(children: [
                 _RoundButton(icon: Icons.close_rounded, tooltip: t('إغلاق', 'Close'), onTap: () => Navigator.of(context).pop()),
                 Expanded(
@@ -277,7 +277,7 @@ class _ViewfinderPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final r = RRect.fromRectAndRadius(window, const Radius.circular(26));
+    final r = RRect.fromRectAndRadius(window, const Radius.circular(AppRadius.block));
     canvas.drawPath(
       Path.combine(PathOperation.difference, Path()..addRect(Offset.zero & size), Path()..addRRect(r)),
       Paint()..color = _camBlack.withValues(alpha: 0.58),
@@ -306,7 +306,7 @@ class _ViewfinderPainter extends CustomPainter {
     final y = w.top + 18 + (w.height - 36) * t;
     final line = Rect.fromLTWH(w.left + 22, y - 1.5, w.width - 44, 3);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(line, const Radius.circular(2)),
+      RRect.fromRectAndRadius(line, const Radius.circular(AppRadius.chip)),
       Paint()
         ..shader = LinearGradient(colors: [accent.withValues(alpha: 0), accent, accent.withValues(alpha: 0)]).createShader(line)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
@@ -345,7 +345,7 @@ class _ErrorView extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: AppType.headline(context).copyWith(color: _camInk),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               Text(
                 denied
                     ? t('اسمح للتطبيق باستخدام الكاميرا من الإعدادات لمسح رمز QR، أو أدخل الكود يدوياً.',
@@ -354,10 +354,10 @@ class _ErrorView extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: AppType.body(context).copyWith(color: _camInkMuted, height: 1.6),
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: AppSpace.lg),
               if (denied)
                 AppButton.primary(onPressed: () => openAppSettings(), icon: Icons.settings_rounded, label: t('فتح الإعدادات', 'Open Settings')),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
               TextButton.icon(
                 onPressed: onManual,
                 style: TextButton.styleFrom(foregroundColor: _camInk),

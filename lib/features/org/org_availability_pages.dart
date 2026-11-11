@@ -25,6 +25,7 @@ import 'org_page_header.dart' show OrgPageRefresh;
 import 'org_schedule_planning.dart' show orgStudioPage;
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 Map<String, String> _days() => {
       'saturday': t('السبت', 'Sat'), 'sunday': t('الأحد', 'Sun'), 'monday': t('الاثنين', 'Mon'), 'tuesday': t('الثلاثاء', 'Tue'),
@@ -92,22 +93,22 @@ class _OrgAvailabilityRequestsPageState extends State<OrgAvailabilityRequestsPag
     await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
           final c = ctx.colors;
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               SheetHeader(t('طلب المواعيد المتاحة', 'Ask for availability')),
               Field(controller: title, label: t('العنوان', 'Title')),
               Field(controller: msg, label: t('رسالة توضيحية (اختياري)', 'Message (optional)'), maxLines: 3),
-              Text(t('مطلوب من', 'Who must answer'), style: orgText(ctx, size: 12.5, color: c.textLight)),
-              Wrap(spacing: 8, children: [
+              Text(t('مطلوب من', 'Who must answer'), style: AppType.label(ctx).copyWith(color: c.textLight)),
+              Wrap(spacing: AppSpace.xs, children: [
                 for (final e in {'teacher': t('هيئة التدريس', 'Teaching staff'), 'teacher_assistant': t('الهيئة المعاونة', 'Assistants'),
                   'admin_assistant': t('الإداريون', 'Admin staff')}.entries)
                   FilterChip(label: Text(e.value), selected: roles.contains(e.key),
                       onSelected: (on) => set(() => on ? roles.add(e.key) : roles.remove(e.key))),
               ]),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
               Row(children: [
                 Expanded(child: OrgNumberField(controller: minC, label: t('أقل عدد فترات', 'Minimum periods'))),
-                const SizedBox(width: 10),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(child: OrgNumberField(controller: maxC, label: t('أقصى عدد (اختياري)', 'Maximum (optional)'))),
               ]),
               ListTile(
@@ -122,7 +123,7 @@ class _OrgAvailabilityRequestsPageState extends State<OrgAvailabilityRequestsPag
                   set(() => deadline = DateTime(d.year, d.month, d.day, tm?.hour ?? 23, tm?.minute ?? 59));
                 },
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpace.xs),
               PrimaryButton(
                 isLoading: busy,
                 label: item == null ? t('إرسال الطلب', 'Send the request') : t('حفظ', 'Save'),
@@ -147,7 +148,7 @@ class _OrgAvailabilityRequestsPageState extends State<OrgAvailabilityRequestsPag
     final r = await OrgApi.i.getMap('$_base/${item['id']}/status');
     if (r == null || !mounted) return;
     final rows = asMapList(r['items']);
-    await showAdminSheet<void>(context, (ctx) => ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
+    await showAdminSheet<void>(context, (ctx) => ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg), children: [
           SheetHeader('${item['title']}'),
           for (final x in rows)
             ListTile(
@@ -175,20 +176,20 @@ class _OrgAvailabilityRequestsPageState extends State<OrgAvailabilityRequestsPag
                 message: t('يظهر الطلب لهيئة التدريس كشاشة لا تُغلق حتى يرسلوا مواعيدهم قبل الموعد النهائي.',
                     'Staff see it as a screen that stays until they send their periods before the deadline.'),
                 actionLabel: t('طلب جديد', 'New request'), onAction: () => _edit())
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 100), children: [
+            : ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxxl + AppSpace.xl), children: [
                 for (final it in items!)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.only(bottom: AppSpace.xs),
                     child: RowCard(
                       onTap: () => _status(it),
                       child: Row(children: [
                         IconBadge(Icons.event_available_rounded, it['status'] == 'open' ? c.primary : c.textLight, size: 42),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpace.sm),
                         Expanded(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text('${it['title']}', style: orgText(context, w: FontWeight.w800)),
-                            const SizedBox(height: 4),
-                            Wrap(spacing: 6, runSpacing: 4, children: [
+                            Text('${it['title']}', style: AppType.bodyStrong(context)),
+                            const SizedBox(height: AppSpace.xxs),
+                            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                               OrgPill('${it['submitted']} / ${it['targeted']}', icon: Icons.how_to_reg_rounded, color: c.success),
                               OrgPill('${t('حتى', 'until')} ${_stamp(it['deadline'])}', icon: Icons.timer_rounded, color: c.warning),
                               OrgPill('${it['min_cells']}–${it['max_cells'] ?? '∞'}', icon: Icons.grid_view_rounded),
@@ -289,21 +290,21 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
           child: r == null
               ? (_failed ? ErrorRetry(message: t('تعذّر تحميل الطلب، تحقق من الاتصال', 'Could not load the request — check your connection'), onRetry: _load) : const AppListSkeleton())
               : Column(children: [
-                  Container(width: double.infinity, margin: const EdgeInsets.all(16), decoration: BoxDecoration(borderRadius: BorderRadius.circular(24)), child: AppMeshSurface(radius: BorderRadius.circular(24), child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(orgNameOf(asMap(r['organization'])), style: TextStyle(fontFamily: AppFonts.family, color: c.onHeroMuted, fontSize: 12.5)),
-                      const SizedBox(height: 4),
-                      Text('${r['title']}', style: TextStyle(fontFamily: AppFonts.family, color: c.onHero, fontSize: 19, fontWeight: FontWeight.w800)),
+                  Container(width: double.infinity, margin: const EdgeInsets.all(AppSpace.md), decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppRadius.block)), child: AppMeshSurface(radius: BorderRadius.circular(AppRadius.block), child: Padding(padding: const EdgeInsets.all(AppSpace.md), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(orgNameOf(asMap(r['organization'])), style: AppType.label(context).copyWith(color: c.onHeroMuted)),
+                      const SizedBox(height: AppSpace.xxs),
+                      Text('${r['title']}', style: AppType.section(context).copyWith(color: c.onHero)),
                       if ('${r['message'] ?? ''}'.isNotEmpty)
-                        Padding(padding: const EdgeInsets.only(top: 6), child: Text('${r['message']}', style: TextStyle(fontFamily: AppFonts.family, color: c.onHero))),
-                      const SizedBox(height: 10),
-                      Wrap(spacing: 8, runSpacing: 6, children: [
+                        Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: Text('${r['message']}', style: TextStyle(fontFamily: AppFonts.family, color: c.onHero))),
+                      const SizedBox(height: AppSpace.sm),
+                      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                         _chip(Icons.timer_rounded, '${t('قبل', 'Before')} ${_stamp(r['deadline'])}'),
                         _chip(Icons.grid_view_rounded, maxC == null ? t('$minC فترات على الأقل', 'At least $minC periods') : t('من $minC إلى $maxC فترات', '$minC – $maxC periods')),
                       ]),
                     ])))),
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
                       child: AppHScroll(
                         child: DataTable(
                           columnSpacing: 10,
@@ -311,17 +312,17 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
                           dataRowMinHeight: 44,
                           dataRowMaxHeight: 50,
                           columns: [
-                            DataColumn(label: Text(t('الفترة', 'Period'), style: orgText(context, w: FontWeight.w800))),
-                            for (final d in (r['days'] as List)) DataColumn(label: Text(_days()['$d'] ?? '$d', style: orgText(context, w: FontWeight.w800))),
+                            DataColumn(label: Text(t('الفترة', 'Period'), style: AppType.bodyStrong(context))),
+                            for (final d in (r['days'] as List)) DataColumn(label: Text(_days()['$d'] ?? '$d', style: AppType.bodyStrong(context))),
                           ],
                           rows: [
                             for (final p in asMapList(r['periods']))
                               DataRow(cells: [
-                                DataCell(Text('${p['label']}\n${AppTime.clockRange('${p['start_time']}', '${p['end_time']}')}', style: orgText(context, size: 11.5))),
+                                DataCell(Text('${p['label']}\n${AppTime.clockRange('${p['start_time']}', '${p['end_time']}')}', style: AppType.meta(context).copyWith(color: context.colors.textDark))),
                                 for (final d in (r['days'] as List))
                                   DataCell(Center(
                                     child: InkWell(
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(AppRadius.chip),
                                       onTap: () => setState(() {
                                         final k = _k('$d', asInt(p['id']));
                                         _picked.contains(k) ? _picked.remove(k) : _picked.add(k);
@@ -332,10 +333,10 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
                                         height: 34,
                                         decoration: BoxDecoration(
                                           color: _picked.contains(_k('$d', asInt(p['id']))) ? c.success : c.inputBg,
-                                          borderRadius: BorderRadius.circular(10),
+                                          borderRadius: BorderRadius.circular(AppRadius.chip),
                                           border: Border.all(color: c.divider),
                                         ),
-                                        child: _picked.contains(_k('$d', asInt(p['id']))) ? Icon(Icons.check_rounded, color: c.onHero, size: 18) : null,
+                                        child: _picked.contains(_k('$d', asInt(p['id']))) ? Icon(Icons.check_rounded, color: c.onHero, size: AppIconSize.md) : null,
                                       ),
                                     ),
                                   )),
@@ -346,11 +347,11 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.md),
                     child: Column(children: [
                       Text(t('اخترت ${_picked.length} فترة', '${_picked.length} periods selected'),
-                          style: orgText(context, w: FontWeight.w700, color: ok ? c.success : c.warning)),
-                      const SizedBox(height: 8),
+                          style: AppType.bodyStrong(context).copyWith(color: ok ? c.success : c.warning)),
+                      const SizedBox(height: AppSpace.xs),
                       PrimaryButton(isLoading: _busy, label: t('إرسال مواعيدي', 'Send my periods'), onPressed: ok ? _submit : null),
                     ]),
                   ),
@@ -361,12 +362,12 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
   }
 
   Widget _chip(IconData i, String text) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(color: context.colors.onHero.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(20)),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
+        decoration: BoxDecoration(color: context.colors.onHero.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(AppRadius.block)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(i, size: 14, color: context.colors.onHero),
-          const SizedBox(width: 4),
-          Flexible(child: Text(text, style: TextStyle(fontFamily: AppFonts.family, color: context.colors.onHero, fontSize: 12))),
+          Icon(i, size: AppIconSize.xs, color: context.colors.onHero),
+          const SizedBox(width: AppSpace.xxs),
+          Flexible(child: Text(text, style: AppType.meta(context).copyWith(color: context.colors.onHero))),
         ]),
       );
 }

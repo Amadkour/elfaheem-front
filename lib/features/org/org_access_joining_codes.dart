@@ -55,27 +55,27 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
         final link = joinLinkFor(code);
         final share = t('انضم إلى ${_orgName()} على التطبيق: $link\nأو باستخدام الكود: $code', 'Join ${_orgName()} in the app: $link\nOr with the code: $code');
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.xl),
           child: Column(children: [
             AppSheetHeader(t('كود الانضمام جاهز', 'Your join code is ready')),
             Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: c.divider)),
+              padding: const EdgeInsets.all(AppSpace.sm),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.divider)),
               child: QrImageView(data: joinLinkFor(code), size: 180, backgroundColor: Colors.white),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             FittedBox(
               child: SelectableText(code,
                   textDirection: TextDirection.ltr,
                   style: AppType.display(context).copyWith(fontFamily: AppFonts.display, letterSpacing: 5, color: c.primary)),
             ),
-            const SizedBox(height: 6),
-            Wrap(spacing: 6, runSpacing: 6, alignment: WrapAlignment.center, children: [
+            const SizedBox(height: AppSpace.xs),
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.center, children: [
               AppBadgePill(_roleLabels()[row['default_role']] ?? t('طالب', 'Student'), icon: Icons.person_rounded),
               if (row['default_program_id'] != null) AppBadgePill(_programLabel(row['default_program_id']), icon: Icons.account_tree_rounded),
             ]),
-            const SizedBox(height: 12),
-            Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: [
+            const SizedBox(height: AppSpace.sm),
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.center, children: [
               AppButton.secondary(
                 onPressed: () async {
                   await Clipboard.setData(ClipboardData(text: code));
@@ -90,7 +90,7 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
                 label: t('مشاركة', 'Share'),
               ),
             ]),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppBanner(
               icon: Icons.visibility_off_rounded,
               color: c.warning,
@@ -120,41 +120,41 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24), // the sheet already lifts above the keyboard
+            padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg), // the sheet already lifts above the keyboard
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               AppSheetHeader(row == null ? t('كود انضمام جديد', 'New join code') : t('تعديل الكود', 'Edit code')),
               Field(controller: label, label: t('وصف داخلي (مثلاً: طلاب الفرقة الأولى 2026)', 'Internal label (e.g. Year 1 students 2026)')),
-              Text(t('ينضم صاحب الكود بصفته', 'People who use it join as'), style: orgText(ctx, size: 12.5, w: FontWeight.w800, color: c.textMedium)),
-              const SizedBox(height: 6),
-              Wrap(spacing: 6, runSpacing: 6, children: [
+              Text(t('ينضم صاحب الكود بصفته', 'People who use it join as'), style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
+              const SizedBox(height: AppSpace.xs),
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final e in _roleLabels().entries) AppChoiceChip(label: e.value, selected: role == e.key, onTap: () => set(() => role = e.key)),
               ]),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               if (_programs.isNotEmpty) ...[
-                Text(t('القسم العلمي (اختياري)', 'Academic department (optional)'), style: orgText(ctx, size: 12.5, w: FontWeight.w800, color: c.textMedium)),
+                Text(t('القسم العلمي (اختياري)', 'Academic department (optional)'), style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
                 Text(t('للطلاب: يُضافون للقسم إن استوفوا شروطه، وإلا ينضمون للمؤسسة فقط ونخبرهم بالسبب.',
                         'Students are placed in it when they meet its rules; otherwise they join the organization only and see why.'),
-                    style: orgText(ctx, size: 11.5, color: c.textLight)),
-                const SizedBox(height: 6),
-                Wrap(spacing: 6, runSpacing: 6, children: [
+                    style: AppType.meta(ctx).copyWith(color: c.textLight)),
+                const SizedBox(height: AppSpace.xs),
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                   AppChoiceChip(label: t('بلا قسم', 'None'), selected: program == null, onTap: () => set(() => program = null)),
                   for (final p in _programs.where((x) => x['is_active'] != false))
                     AppChoiceChip(label: '${p['code']}', selected: program == asInt(p['id']), onTap: () => set(() => program = asInt(p['id']))),
                 ]),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.sm),
               ],
-              Text(t('مدة الصلاحية (اختياري)', 'Validity (optional)'), style: orgText(ctx, size: 12.5, w: FontWeight.w800, color: c.textMedium)),
-              const SizedBox(height: 6),
+              Text(t('مدة الصلاحية (اختياري)', 'Validity (optional)'), style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
+              const SizedBox(height: AppSpace.xs),
               Row(children: [
                 Expanded(
                     child: AppButton.secondary(expand: true, onPressed: () => pick(true), icon: Icons.play_arrow_rounded, label: from == null ? t('من الآن', 'From now') : shortDate(from!.toIso8601String()))),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
                 Expanded(
                     child: AppButton.secondary(expand: true, onPressed: () => pick(false), icon: Icons.flag_rounded, label: until == null ? t('بلا انتهاء', 'No end') : shortDate(until!.toIso8601String()))),
               ]),
               if (from != null || until != null)
                 TextButton(onPressed: () => set(() => from = until = null), child: Text(t('بلا حدود زمنية', 'No time limits'))),
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpace.xs),
               if (row == null)
                 AppSwitchTile(
                     title: t('استخدام واحد فقط', 'One use only'),
@@ -163,7 +163,7 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
                     onChanged: (v) => set(() => oneTime = v)),
               if (!oneTime)
                 OrgNumberField(controller: maxC, label: t('أقصى عدد استخدامات (فارغ = بلا حد)', 'Maximum uses (empty = unlimited)')),
-              if (err != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: AppBanner(icon: Icons.error_outline_rounded, text: err!, color: c.danger)),
+              if (err != null) Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: AppBanner(icon: Icons.error_outline_rounded, text: err!, color: c.danger)),
               AppButton.primary(
                 busy: busy,
                 icon: row == null ? Icons.qr_code_2_rounded : Icons.check_rounded,
@@ -275,10 +275,10 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
       ),
       body: AppRefresh(
         onRefresh: _load,
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 100), children: [
+        child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxxl + AppSpace.xl), children: [
           if (closed)
             Padding(
-              padding: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.only(bottom: AppSpace.sm),
               child: AppBanner(icon: Icons.pause_circle_rounded, color: c.warning,
                   text: t('الانضمام موقوف من «طريقة الانضمام» — لن تعمل أي أكواد حتى تعيد فتحه.', 'Joining is paused in "How people join" — no code works until you reopen it.')),
             ),
@@ -287,20 +287,20 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
             text: t('كل كود يحدد الدور والقسم ومدة الصلاحية وعدد الاستخدامات. يُخزَّن مشفّراً ويظهر كاملاً مرة واحدة.',
                 'Each code sets the role, department, validity and number of uses. It is stored hashed and shown in full once.'),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           if (legacy != null)
             Padding(
-              padding: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.only(bottom: AppSpace.sm),
               child: AppCard(
                 child: Row(children: [
                   Icon(Icons.key_rounded, color: c.textMedium),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(t('الكود العام للمؤسسة', 'General organization code'), style: orgText(context, w: FontWeight.w800)),
-                      SelectableText('$legacy', textDirection: TextDirection.ltr, style: orgText(context, size: 15, w: FontWeight.w800, color: c.primary)),
+                      Text(t('الكود العام للمؤسسة', 'General organization code'), style: AppType.bodyStrong(context)),
+                      SelectableText('$legacy', textDirection: TextDirection.ltr, style: AppType.section(context).copyWith(color: c.primary)),
                       Text(t('ينضم به الطلاب والمدرسون بلا حدود — للتحكم الكامل استخدم الأكواد أدناه.', 'Students and teachers join with it without limits — use the codes below for full control.'),
-                          style: orgText(context, size: 11.5, color: c.textLight)),
+                          style: AppType.meta(context).copyWith(color: c.textLight)),
                     ]),
                   ),
                   IconButton(tooltip: t('تدوير', 'Rotate'), onPressed: _rotateLegacy, icon: const Icon(Icons.autorenew_rounded)),
@@ -328,23 +328,23 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
     final revoked = r['status'] == 'revoked';
     final until = orgParseUtc(r['valid_until']);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: AppCard(
-        padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 4, 12),
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.xxs, AppSpace.sm),
         child: Row(children: [
           Container(
             width: 42,
             height: 42,
-            decoration: BoxDecoration(color: (live ? c.success : c.textLight).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: (live ? c.success : c.textLight).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.control)),
             child: Icon(Icons.qr_code_2_rounded, color: live ? c.success : c.textLight),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${r['hint'] ?? ''}${'${r['label'] ?? ''}'.isEmpty ? '' : ' · ${r['label']}'}',
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800)),
-              const SizedBox(height: 4),
-              Wrap(spacing: 6, runSpacing: 4, children: [
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+              const SizedBox(height: AppSpace.xxs),
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                 AppBadgePill(codeStateLabels()[state] ?? state, color: live ? c.success : (revoked ? c.danger : c.warning)),
                 AppBadgePill(_roleLabels()[r['default_role']] ?? t('طالب', 'Student'), icon: Icons.person_rounded),
                 if (r['default_program_id'] != null) AppBadgePill(_programLabel(r['default_program_id']).split(' · ').first, icon: Icons.account_tree_rounded),

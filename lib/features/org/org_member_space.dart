@@ -700,7 +700,7 @@ class _OrgMyComplaintThreadState extends State<OrgMyComplaintThread> {
                           Text('${d['body']}', style: AppType.body(context)),
                           if (d['due_at'] != null && (st == 'open' || st == 'in_progress'))
                             Padding(
-                              padding: const EdgeInsets.only(top: 8),
+                              padding: const EdgeInsets.only(top: AppSpace.xs),
                               child: OrgPill('${t('نلتزم بالرد قبل', 'We reply by')} ${shortDateTime('${d['due_at']}')}', icon: Icons.timer_rounded),
                             ),
                         ]),
@@ -708,7 +708,7 @@ class _OrgMyComplaintThreadState extends State<OrgMyComplaintThread> {
                       for (final m in asMapList(d['messages'])) ComplaintBubble(m: m, staffView: false),
                       if (st == 'resolved' && d['rating'] == null)
                         Padding(
-                          padding: const EdgeInsets.only(top: 8),
+                          padding: const EdgeInsets.only(top: AppSpace.xs),
                           child: MemberRow(
                             icon: Icons.star_rounded,
                             tone: c.warning,

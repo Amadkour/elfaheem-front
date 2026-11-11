@@ -53,28 +53,28 @@ class ShareCard extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(_iconFor(type), color: c.primary),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(shareTitleOf(share), maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: orgText(context, size: 15, w: FontWeight.w800, color: c.textDark)),
+                  style: AppType.section(context).copyWith(color: c.textDark)),
               Text(grantorName ?? shareResourceLabel(type), maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: orgText(context, size: 12, color: c.textMedium)),
+                  style: AppType.meta(context).copyWith(color: c.textMedium)),
             ]),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           Flexible(child: OrgPill(shareStateText(state), color: tone)),
         ]),
-        const SizedBox(height: 10),
-        Wrap(spacing: 6, runSpacing: 6, children: [
+        const SizedBox(height: AppSpace.sm),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final m in methods) AppTag(shareMethodLabel(m), c.primary, icon: _methodIcon(m)),
           if (type == 'graduates')
             AppTag(asMap(share['scope'])['year'] == true ? t('مع سنة التخرج', 'with graduation year') : t('نعم / لا فقط', 'yes / no only'),
                 c.purple, icon: Icons.verified_rounded),
         ]),
         if (grantorName == null || expires != null) ...[
-          const SizedBox(height: 8),
-          Wrap(spacing: 14, runSpacing: 4, children: [
+          const SizedBox(height: AppSpace.xs),
+          Wrap(spacing: AppSpace.md, runSpacing: AppSpace.xxs, children: [
             if (grantorName == null)
               _mini(context, Icons.handshake_rounded, t('$grants مؤسسة لديها وصول', '$grants organizations have access')),
             if (grantorName == null && pending > 0) _mini(context, Icons.hourglass_top_rounded, t('$pending طلب بانتظارك', '$pending pending'), c.warning),
@@ -86,9 +86,9 @@ class ShareCard extends StatelessWidget {
   }
 
   Widget _mini(BuildContext context, IconData icon, String text, [Color? color]) => Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 14, color: color ?? context.colors.textMedium),
-        const SizedBox(width: 4),
-        Flexible(child: Text(text, maxLines: 2, style: orgText(context, size: 12, color: color ?? context.colors.textMedium))),
+        Icon(icon, size: AppIconSize.xs, color: color ?? context.colors.textMedium),
+        const SizedBox(width: AppSpace.xxs),
+        Flexible(child: Text(text, maxLines: 2, style: AppType.meta(context).copyWith(color: color ?? context.colors.textMedium))),
       ]);
 }
 
@@ -133,21 +133,21 @@ class GrantCard extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(grantee.isNotEmpty ? Icons.account_balance_rounded : _iconFor('${share['resource_type'] ?? ''}'), color: c.primary),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, size: 15, w: FontWeight.w800, color: c.textDark)),
+              Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.textDark)),
               Text('$sub · ${grantViaText('${grant['via'] ?? ''}')}', maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: orgText(context, size: 12, color: c.textMedium)),
+                  style: AppType.meta(context).copyWith(color: c.textMedium)),
             ]),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           Flexible(child: OrgPill(grantStateText(state), color: tone)),
         ]),
-        if (note.isNotEmpty) ...[const SizedBox(height: 8), Text(note, style: orgText(context, size: 12.5, color: c.textMedium))],
+        if (note.isNotEmpty) ...[const SizedBox(height: AppSpace.xs), Text(note, style: AppType.label(context).copyWith(color: c.textMedium))],
         if (actions.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, children: actions),
+          const SizedBox(height: AppSpace.sm),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.end, children: actions),
         ],
       ]),
     );
@@ -168,27 +168,27 @@ class VerifyResultsList extends StatelessWidget {
     final yearIncluded = result['year_included'] == true;
     final rows = asMapList(result['results']);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Wrap(spacing: 8, runSpacing: 8, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         AppTag(t('$yes خريج', '$yes graduates'), c.success, icon: Icons.check_circle_rounded),
         AppTag(t('$no غير خريج', '$no not graduates'), c.textMedium, icon: Icons.cancel_rounded),
         if (bad > 0) AppTag(t('$bad بدون معرّف', '$bad without identifier'), c.warning, icon: Icons.help_rounded),
       ]),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
       for (final r in rows)
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
           child: Row(children: [
             Icon(r['graduate'] == true ? Icons.check_circle_rounded : (r['graduate'] == false ? Icons.cancel_rounded : Icons.help_rounded),
-                size: 18, color: r['graduate'] == true ? c.success : (r['graduate'] == false ? c.textLight : c.warning)),
-            const SizedBox(width: 8),
+                size: AppIconSize.md, color: r['graduate'] == true ? c.success : (r['graduate'] == false ? c.textLight : c.warning)),
+            const SizedBox(width: AppSpace.xs),
             Expanded(
               child: Text(labels['${r['ref'] ?? ''}'] ?? '${r['ref'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: orgText(context, size: 13, color: c.textDark)),
+                  style: AppType.label(context).copyWith(color: c.textDark)),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.xs),
             Flexible(
               child: Text(verificationLine(r, yearIncluded: yearIncluded), maxLines: 2, textAlign: TextAlign.end,
-                  style: orgText(context, size: 12.5, w: FontWeight.w700, color: c.textMedium)),
+                  style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
             ),
           ]),
         ),
@@ -220,14 +220,14 @@ class ShareFormBody extends StatelessWidget {
     final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (!editing) ...[
-        Text(t('ماذا تشارك؟', 'What do you share?'), style: orgText(context, size: 13, w: FontWeight.w800, color: c.textDark)),
-        const SizedBox(height: 6),
-        Wrap(spacing: 8, runSpacing: 8, children: [
+        Text(t('ماذا تشارك؟', 'What do you share?'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final tp in shareResourceTypes)
             ChoiceChip(
               key: ValueKey('share.type.$tp'),
               label: Text(shareResourceLabel(tp)),
-              avatar: Icon(_iconFor(tp), size: 16),
+              avatar: Icon(_iconFor(tp), size: AppIconSize.sm),
               selected: draft.resourceType == tp,
               onSelected: (_) {
                 draft.resourceType = tp;
@@ -237,7 +237,7 @@ class ShareFormBody extends StatelessWidget {
             ),
         ]),
         if (draft.needsResource) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           AppDropdown<int>(
             key: const ValueKey('share.resource'),
             value: draft.resourceId,
@@ -252,10 +252,10 @@ class ShareFormBody extends StatelessWidget {
             },
           ),
         ],
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.md),
       ],
       Text(t('كيف تحصل المؤسسات الأخرى على الوصول؟ (يمكن الجمع)', 'How do other organizations get access? (combinable)'),
-          style: orgText(context, size: 13, w: FontWeight.w800, color: c.textDark)),
+          style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
       for (final m in shareMethods)
         AppSwitchTile(
           key: ValueKey('share.method.$m'),
@@ -282,20 +282,20 @@ class ShareFormBody extends StatelessWidget {
             onChanged();
           },
         ),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
       if (titleController != null) AppField(controller: titleController!, label: t('عنوان (اختياري)', 'Title (optional)')),
       if (descriptionController != null) ...[
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         AppField(controller: descriptionController!, label: t('وصف يظهر للمؤسسات الأخرى (اختياري)', 'Description shown to other organizations (optional)'), maxLines: 2),
       ],
       if (maxController != null) ...[
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         OrgNumberField(controller: maxController!, label: t('الحد الأقصى للمؤسسات (اختياري)', 'Max organizations (optional)'), gap: false),
       ],
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       Row(children: [
         Expanded(child: _DateButton(key: const ValueKey('share.starts'), label: t('يبدأ', 'Starts'), value: draft.startsAt, onPick: (d) { draft.startsAt = d; onChanged(); })),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpace.xs),
         Expanded(child: _DateButton(key: const ValueKey('share.expires'), label: t('ينتهي', 'Ends'), value: draft.expiresAt, onPick: (d) { draft.expiresAt = d; onChanged(); })),
       ]),
     ]);
@@ -317,7 +317,7 @@ class _DateButton extends StatelessWidget {
         final d = await showDatePicker(context: context, initialDate: value ?? now, firstDate: DateTime(now.year - 1), lastDate: DateTime(now.year + 10));
         onPick(d);
       },
-      icon: Icon(Icons.event_rounded, size: 18, color: c.primary),
+      icon: Icon(Icons.event_rounded, size: AppIconSize.md, color: c.primary),
       label: Text(value == null ? label : '$label: ${AppTime.date(value!.toUtc())}', maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
@@ -418,7 +418,7 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
   Widget build(BuildContext context) {
     final c = context.colors;
     if (_missing) {
-      return ListView(padding: const EdgeInsets.all(16), children: [
+      return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
         AppBanner(icon: Icons.cloud_off_rounded, text: t('المشاركة بين المؤسسات تحتاج تحديث الخادم', 'Sharing needs a server update'), color: c.warning),
       ]);
     }
@@ -433,7 +433,7 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
     final enabled = ov['enabled'] == true && ov['platform_enabled'] == true;
     return Column(children: [
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
         child: AppHero(
           icon: Icons.handshake_rounded,
           title: t('المشاركة مع المؤسسات الأخرى', 'Sharing with other organizations'),
@@ -449,7 +449,7 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
       ),
       if (!enabled)
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
           child: AppBanner(icon: Icons.block_rounded, color: c.danger, text: t('لا يمكن إنشاء مشاركات أو استخدام الأكواد أو التحقق حتى تُفعَّل.', 'Shares, codes and verification are refused until it is switched on.')),
         ),
       TabBar(
@@ -477,14 +477,14 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
   }
 
   // ── Offers ──
-  Widget _offers(List<Map<String, dynamic>> shares, bool enabled) => ListView(padding: const EdgeInsets.all(16), children: [
+  Widget _offers(List<Map<String, dynamic>> shares, bool enabled) => ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
         if (_canCreate && enabled)
           AppPrimaryButton(key: const ValueKey('sharing.new'), icon: Icons.add_rounded, label: t('مشاركة جديدة', 'New share'), onPressed: () => _shareForm()),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         if (shares.isEmpty)
           AppEmpty(icon: Icons.share_rounded, title: t('لا توجد مشاركات بعد', 'Nothing shared yet'),
               message: t('شارك قسماً أو برنامجاً أو مقرراً، أو اسمح لمؤسسات أخرى بالتحقق من خريجيك.', 'Share a department, a program or a course, or let other organizations verify your graduates.')),
-        for (final s in shares) Padding(padding: const EdgeInsets.only(bottom: 10), child: ShareCard(share: s, onTap: () => _shareSheet(s))),
+        for (final s in shares) Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: ShareCard(share: s, onTap: () => _shareSheet(s))),
       ]);
 
   Future<void> _shareForm({Map<String, dynamic>? existing}) async {
@@ -504,7 +504,7 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
           }
           if (existing == null) loadResources();
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               AppSheetHeader(existing == null ? t('مشاركة جديدة', 'New share') : t('تعديل المشاركة', 'Edit share')),
               ShareFormBody(
@@ -519,7 +519,7 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
                   setS(() {});
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpace.md),
               AppPrimaryButton(
                 key: const ValueKey('share.save'),
                 label: existing == null ? t('إنشاء', 'Create') : t('حفظ', 'Save'),
@@ -557,10 +557,10 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
       builder: (ctx) => AlertDialog(
         title: Text(t('كود الدعوة', 'Invite code')),
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SelectableText(code, key: const ValueKey('share.code'), style: orgText(ctx, size: 22, w: FontWeight.w900, color: ctx.colors.primary), textDirection: TextDirection.ltr),
-          const SizedBox(height: 8),
+          SelectableText(code, key: const ValueKey('share.code'), style: AppType.section(ctx).copyWith(color: ctx.colors.primary), textDirection: TextDirection.ltr),
+          const SizedBox(height: AppSpace.xs),
           Text(t('يظهر مرة واحدة فقط — انسخه الآن وأرسله للمؤسسة. يمكنك تجديده لاحقاً.', 'Shown once — copy it now and hand it to the organization. You can regenerate it later.'),
-              style: orgText(ctx, size: 12.5, color: ctx.colors.textMedium)),
+              style: AppType.label(ctx).copyWith(color: ctx.colors.textMedium)),
         ]),
         actions: [
           TextButton.icon(
@@ -568,7 +568,7 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
               Clipboard.setData(ClipboardData(text: code));
               appToast(t('تم النسخ', 'Copied'));
             },
-            icon: const Icon(Icons.copy_rounded, size: 18),
+            icon: const Icon(Icons.copy_rounded, size: AppIconSize.md),
             label: Text(t('نسخ', 'Copy')),
           ),
           TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t('تم', 'Done'))),
@@ -586,14 +586,14 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
     await showAppSheet<void>(context, (ctx) {
       final c = ctx.colors;
       return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           AppSheetHeader(shareTitleOf(share)),
           ShareCard(share: share),
-          if ('${share['description'] ?? ''}'.isNotEmpty) ...[const SizedBox(height: 8), Text('${share['description']}', style: orgText(ctx, color: c.textMedium))],
-          const SizedBox(height: 12),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            if (_canEdit && active) OutlinedButton.icon(onPressed: () { Navigator.pop(ctx); _shareForm(existing: share); }, icon: const Icon(Icons.edit_rounded, size: 18), label: Text(t('تعديل', 'Edit'))),
+          if ('${share['description'] ?? ''}'.isNotEmpty) ...[const SizedBox(height: AppSpace.xs), Text('${share['description']}', style: AppType.row(ctx).copyWith(color: c.textMedium))],
+          const SizedBox(height: AppSpace.sm),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+            if (_canEdit && active) OutlinedButton.icon(onPressed: () { Navigator.pop(ctx); _shareForm(existing: share); }, icon: const Icon(Icons.edit_rounded, size: AppIconSize.md), label: Text(t('تعديل', 'Edit'))),
             if (_canEdit && active && (share['methods'] as List? ?? const []).contains('invite'))
               OutlinedButton.icon(
                 onPressed: () async {
@@ -601,7 +601,7 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
                   final r = await orgCall(() => ApiClient().post('$_base/shares/$sid/code/regenerate'));
                   if (r.ok && ctx.mounted) _showCode(ctx, '${r.map['code']}');
                 },
-                icon: const Icon(Icons.autorenew_rounded, size: 18),
+                icon: const Icon(Icons.autorenew_rounded, size: AppIconSize.md),
                 label: Text(t('تجديد الكود', 'Regenerate code')),
               ),
             if (_s.can('sharing', 'delete') && active)
@@ -615,16 +615,16 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
                     _loadAll();
                   }
                 },
-                icon: const Icon(Icons.block_rounded, size: 18),
+                icon: const Icon(Icons.block_rounded, size: AppIconSize.md),
                 label: Text(t('إلغاء المشاركة', 'Revoke')),
               ),
           ]),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           AppSectionTitle(t('المؤسسات', 'Organizations'), subtitle: t('${grants.length} سجل', '${grants.length} records')),
-          if (grants.isEmpty) Text(t('لا توجد مؤسسات بعد', 'No organizations yet'), style: orgText(ctx, color: c.textMedium)),
+          if (grants.isEmpty) Text(t('لا توجد مؤسسات بعد', 'No organizations yet'), style: AppType.row(ctx).copyWith(color: c.textMedium)),
           for (final g in grants)
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
               child: GrantCard(grant: g, actions: [
                 if (_canEdit && ('${g['status']}' == 'active' || '${g['status']}' == 'pending'))
                   TextButton.icon(
@@ -635,14 +635,14 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
                         _loadAll();
                       }
                     },
-                    icon: const Icon(Icons.person_off_rounded, size: 18),
+                    icon: const Icon(Icons.person_off_rounded, size: AppIconSize.md),
                     label: Text(t('إنهاء الوصول', 'End access')),
                   ),
               ]),
             ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           AppSectionTitle(t('سجل الاستخدام', 'Use log'), subtitle: t('آخر ${uses.length} عملية', 'last ${uses.length}')),
-          if (uses.isEmpty) Text(t('لم يُستخدم بعد', 'Not used yet'), style: orgText(ctx, color: c.textMedium)),
+          if (uses.isEmpty) Text(t('لم يُستخدم بعد', 'Not used yet'), style: AppType.row(ctx).copyWith(color: c.textMedium)),
           for (final u in uses.take(50))
             AppInfoRow(
               u['kind'] == 'content' ? Icons.visibility_rounded : Icons.fact_check_rounded,
@@ -659,24 +659,24 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
   Widget _requestsTab() {
     final rows = _requests;
     if (rows == null) return const AppListSkeleton(items: 3, withAvatar: false);
-    return AppRefresh(onRefresh: _loadRequests, child: ListView(padding: const EdgeInsets.all(16), children: [
+    return AppRefresh(onRefresh: _loadRequests, child: ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
       if (rows.isEmpty) AppEmpty(icon: Icons.inbox_rounded, title: t('لا توجد طلبات', 'No requests'), message: t('عندما تطلب مؤسسة الوصول إلى إحدى مشاركاتكم يظهر طلبها هنا.', 'When an organization asks for one of your shares, it shows up here.')),
       for (final g in rows)
         Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
           child: GrantCard(grant: g, actions: [
             if (_canApprove) ...[
               TextButton.icon(
                 key: ValueKey('grant.reject.${g['id']}'),
                 style: TextButton.styleFrom(foregroundColor: context.colors.danger),
                 onPressed: () => _decide(g, false),
-                icon: const Icon(Icons.close_rounded, size: 18),
+                icon: const Icon(Icons.close_rounded, size: AppIconSize.md),
                 label: Text(t('رفض', 'Reject')),
               ),
               FilledButton.icon(
                 key: ValueKey('grant.approve.${g['id']}'),
                 onPressed: () => _decide(g, true),
-                icon: const Icon(Icons.check_rounded, size: 18),
+                icon: const Icon(Icons.check_rounded, size: AppIconSize.md),
                 label: Text(t('موافقة', 'Approve')),
               ),
             ],
@@ -718,12 +718,12 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
     final c = context.colors;
     final inc = _incoming;
     final disc = _discover;
-    return ListView(padding: const EdgeInsets.all(16), children: [
+    return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
       if (_canEdit && enabled) ...[
         AppSectionTitle(t('لديك كود دعوة؟', 'Got an invite code?')),
         Row(children: [
           Expanded(child: AppField(controller: _codeCtl, label: t('كود الدعوة', 'Invite code'), ltr: true)),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           FilledButton(
             key: const ValueKey('sharing.redeem'),
             onPressed: () async {
@@ -736,22 +736,22 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
             child: Text(t('استخدام', 'Redeem')),
           ),
         ]),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
       ],
       AppSectionTitle(t('ما تملكه مؤسستك', 'What your organization holds')),
       if (inc == null) const AppListSkeleton(items: 2, withAvatar: false),
-      if (inc != null && inc.isEmpty) Text(t('لا يوجد وصول بعد — اطلب من العروض أدناه أو استخدم كوداً.', 'No access yet — ask from the offers below or redeem a code.'), style: orgText(context, color: c.textMedium)),
+      if (inc != null && inc.isEmpty) Text(t('لا يوجد وصول بعد — اطلب من العروض أدناه أو استخدم كوداً.', 'No access yet — ask from the offers below or redeem a code.'), style: AppType.row(context).copyWith(color: c.textMedium)),
       for (final g in inc ?? const <Map<String, dynamic>>[])
         Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
           child: GrantCard(
             grant: g,
             onTap: '${g['state']}' == 'active' && '${asMap(g['share'])['resource_type']}' != 'graduates' ? () => _openContent(asInt(g['share_id'])) : null,
             actions: [
               if ('${g['state']}' == 'active' && '${asMap(g['share'])['resource_type']}' != 'graduates')
-                TextButton.icon(onPressed: () => _openContent(asInt(g['share_id'])), icon: const Icon(Icons.open_in_new_rounded, size: 18), label: Text(t('عرض', 'Open'))),
+                TextButton.icon(onPressed: () => _openContent(asInt(g['share_id'])), icon: const Icon(Icons.open_in_new_rounded, size: AppIconSize.md), label: Text(t('عرض', 'Open'))),
               if ('${g['state']}' == 'active' && '${asMap(g['share'])['resource_type']}' == 'graduates')
-                TextButton.icon(onPressed: () => _tabs.animateTo(3), icon: const Icon(Icons.fact_check_rounded, size: 18), label: Text(t('تحقّق', 'Verify'))),
+                TextButton.icon(onPressed: () => _tabs.animateTo(3), icon: const Icon(Icons.fact_check_rounded, size: AppIconSize.md), label: Text(t('تحقّق', 'Verify'))),
               if (_canEdit && ('${g['status']}' == 'active' || '${g['status']}' == 'pending'))
                 TextButton.icon(
                   onPressed: () async {
@@ -759,13 +759,13 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
                     final r = await orgCall(() => ApiClient().post('$_base/grants/${g['id']}/revoke', body: {}), ok: t('تم', 'Done'));
                     if (r.ok) _loadAll();
                   },
-                  icon: const Icon(DirIcons.logout, size: 18),
+                  icon: const Icon(DirIcons.logout, size: AppIconSize.md),
                   label: Text(t('تخلٍّ', 'Give up')),
                 ),
             ],
           ),
         ),
-      const SizedBox(height: 16),
+      const SizedBox(height: AppSpace.md),
       AppSectionTitle(t('عروض المؤسسات الأخرى', 'Offers from other organizations')),
       TextField(
         key: const ValueKey('sharing.search'),
@@ -775,19 +775,19 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
           _loadDiscover();
         },
       ),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
       if (disc == null) const AppListSkeleton(items: 3, withAvatar: false),
-      if (disc != null && disc.isEmpty) Text(t('لا توجد عروض الآن', 'No offers right now'), style: orgText(context, color: c.textMedium)),
+      if (disc != null && disc.isEmpty) Text(t('لا توجد عروض الآن', 'No offers right now'), style: AppType.row(context).copyWith(color: c.textMedium)),
       for (final s in disc ?? const <Map<String, dynamic>>[])
         Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             ShareCard(share: s, grantorName: orgNameOfBrief(asMap(s['grantor'])), onTap: s['readable'] == true && '${s['resource_type']}' != 'graduates' ? () => _openContent(asInt(s['id'])) : null),
             Padding(
-              padding: const EdgeInsetsDirectional.only(start: 8, top: 4),
-              child: Wrap(spacing: 8, children: [
+              padding: const EdgeInsetsDirectional.only(start: AppSpace.xs, top: AppSpace.xxs),
+              child: Wrap(spacing: AppSpace.xs, children: [
                 if (s['readable'] == true && '${s['resource_type']}' != 'graduates')
-                  TextButton.icon(onPressed: () => _openContent(asInt(s['id'])), icon: const Icon(Icons.open_in_new_rounded, size: 18), label: Text(t('عرض', 'Open'))),
+                  TextButton.icon(onPressed: () => _openContent(asInt(s['id'])), icon: const Icon(Icons.open_in_new_rounded, size: AppIconSize.md), label: Text(t('عرض', 'Open'))),
                 if (_canEdit && enabled && s['my_grant'] == null && ((s['methods'] as List? ?? const []).contains('auto') || (s['methods'] as List? ?? const []).contains('request')))
                   FilledButton.tonalIcon(
                     key: ValueKey('discover.request.${s['id']}'),
@@ -795,7 +795,7 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
                       final r = await orgCall(() => ApiClient().post('$_base/request', body: {'share_id': s['id']}), ok: t('تم الإرسال', 'Sent'));
                       if (r.ok) _loadAll();
                     },
-                    icon: const Icon(Icons.how_to_reg_rounded, size: 18),
+                    icon: const Icon(Icons.how_to_reg_rounded, size: AppIconSize.md),
                     label: Text((s['methods'] as List? ?? const []).contains('auto') ? t('الحصول على الوصول', 'Get access') : t('طلب الوصول', 'Request access')),
                   ),
                 if (s['my_grant'] != null) OrgPill(grantStateText('${asMap(s['my_grant'])['state'] ?? ''}'), color: c.textMedium),
@@ -815,15 +815,15 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
       final c = ctx.colors;
       final courses = asMapList(body['courses']);
       return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           AppSheetHeader(t('${body['name_ar'] ?? body['title'] ?? ''}', '${body['name_en'] ?? body['title'] ?? ''}')),
           AppInfoRow(Icons.account_balance_rounded, orgNameOfBrief(asMap(d['grantor']))),
           if ('${body['code'] ?? ''}'.isNotEmpty) AppInfoRow(Icons.tag_rounded, '${body['code']}', ltr: true),
           if ('${body['teacher'] ?? ''}'.isNotEmpty) AppInfoRow(Icons.person_rounded, '${body['teacher']}'),
-          if ('${body['description'] ?? ''}'.isNotEmpty) ...[const SizedBox(height: 8), Text('${body['description']}', style: orgText(ctx, color: c.textMedium))],
+          if ('${body['description'] ?? ''}'.isNotEmpty) ...[const SizedBox(height: AppSpace.xs), Text('${body['description']}', style: AppType.row(ctx).copyWith(color: c.textMedium))],
           if (courses.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppSectionTitle(t('المقررات', 'Courses'), subtitle: '${courses.length}'),
             for (final k in courses) AppInfoRow(Icons.menu_book_rounded, '${k['title'] ?? ''}'),
           ],
@@ -846,10 +846,10 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
     final grads = (_incoming ?? const <Map<String, dynamic>>[])
         .where((g) => '${g['state']}' == 'active' && '${asMap(g['share'])['resource_type']}' == 'graduates')
         .toList();
-    return ListView(padding: const EdgeInsets.all(16), children: [
+    return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
       Text(t('اسأل مؤسسة أخرى: هل فلان خريج لديكم؟ الجواب نعم أو لا فقط (وسنة التخرج إن سمحت المؤسسة).', 'Ask another organization: is X a graduate of yours? The answer is yes or no only (and the year when that organization allows it).'),
-          style: orgText(context, color: c.textMedium)),
-      const SizedBox(height: 12),
+          style: AppType.row(context).copyWith(color: c.textMedium)),
+      const SizedBox(height: AppSpace.sm),
       if (grads.isEmpty)
         AppBanner(icon: Icons.info_rounded, color: c.warning, text: t('لا يوجد وصول للتحقق بعد — اطلبه من تبويب الشركاء.', 'No verification access yet — ask for one in Partners.')),
       if (grads.isNotEmpty) ...[
@@ -860,7 +860,7 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
           items: [for (final g in grads) DropdownMenuItem(value: asInt(g['share_id']), child: Text(orgNameOfBrief(asMap(asMap(g['share'])['grantor'])), overflow: TextOverflow.ellipsis))],
           onChanged: (v) => setState(() => _verifyShare = v),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         TextField(
           key: const ValueKey('verify.ids'),
           controller: _idsCtl,
@@ -874,16 +874,16 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
         AppSwitchTile(dense: true, icon: Icons.calendar_month_rounded, title: t('اطلب سنة التخرج إن كانت متاحة', 'Ask for the graduation year when allowed'), value: _withYear, onChanged: (v) => setState(() => _withYear = v)),
         Row(children: [
           Expanded(child: AppPrimaryButton(key: const ValueKey('verify.run'), icon: Icons.fact_check_rounded, label: t('تحقّق', 'Verify'), busy: _verifying, onPressed: () => _runVerify(grads))),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           OutlinedButton.icon(
             key: const ValueKey('verify.file'),
             onPressed: () => _bulkVerify(grads),
-            icon: const Icon(Icons.upload_file_rounded, size: 18),
+            icon: const Icon(Icons.upload_file_rounded, size: AppIconSize.md),
             label: Text(t('ملف', 'File')),
           ),
         ]),
         if (_verifyResult != null) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           AppCard(child: VerifyResultsList(result: _verifyResult!, labels: _verifyLabels)),
         ],
       ],
@@ -936,26 +936,26 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
   Widget _keysTab() {
     final c = context.colors;
     final keys = _keys;
-    return ListView(padding: const EdgeInsets.all(16), children: [
+    return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
       Text(t('مفتاح API يمثّل مؤسستك على POST /api/v1/verify/graduates (ترويسة X-Api-Key) ويستخدم صلاحياتها وحدودها.', 'An API key stands for your organization on POST /api/v1/verify/graduates (header X-Api-Key) and uses its grants and limits.'),
-          style: orgText(context, color: c.textMedium)),
-      const SizedBox(height: 12),
+          style: AppType.row(context).copyWith(color: c.textMedium)),
+      const SizedBox(height: AppSpace.sm),
       AppPrimaryButton(key: const ValueKey('keys.new'), icon: Icons.vpn_key_rounded, label: t('مفتاح جديد', 'New key'), onPressed: _newKey),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       if (keys == null) const AppListSkeleton(items: 2, withAvatar: false),
       if (keys != null && keys.isEmpty) AppEmpty(icon: Icons.vpn_key_off_rounded, title: t('لا توجد مفاتيح', 'No keys')),
       for (final k in keys ?? const <Map<String, dynamic>>[])
         Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
           child: AppCard(
             child: Row(children: [
               Icon(k['active'] == true ? Icons.vpn_key_rounded : Icons.vpn_key_off_rounded, color: k['active'] == true ? c.primary : c.textLight),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('${k['name']}', style: orgText(context, size: 14.5, w: FontWeight.w800, color: c.textDark)),
+                  Text('${k['name']}', style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
                   Text('nbk_${k['prefix']}_…${k['last_used_at'] != null ? ' · ${t('آخر استخدام', 'last used')} ${AppTime.dateTime(orgParseUtc(k['last_used_at'])!.toUtc())}' : ''}',
-                      style: orgText(context, size: 12, color: c.textMedium), textDirection: TextDirection.ltr),
+                      style: AppType.meta(context).copyWith(color: c.textMedium), textDirection: TextDirection.ltr),
                 ]),
               ),
               if (k['active'] == true)

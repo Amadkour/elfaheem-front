@@ -15,9 +15,9 @@ import '../admin/admin_common.dart';
 import 'org_common.dart' show dayLabels;
 import 'org_providers.dart';
 import 'org_schedule_insights.dart' show ActionOption, RankedActions;
-import 'org_ui.dart' show orgText;
 import 'org_v3.dart';
 import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 class RemedyItem {
   const RemedyItem({required this.key, required this.conflict, required this.actions});
@@ -110,30 +110,30 @@ class RemediesPanel extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (report.items.isEmpty)
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
           child: Row(children: [
-            Icon(Icons.check_circle_rounded, size: 18, color: c.success),
-            const SizedBox(width: 8),
-            Expanded(child: Text(t('لا تعارضات', 'No conflicts'), style: orgText(context, size: 12.5, color: c.success))),
+            Icon(Icons.check_circle_rounded, size: AppIconSize.md, color: c.success),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(child: Text(t('لا تعارضات', 'No conflicts'), style: AppType.label(context).copyWith(color: c.success))),
           ]),
         ),
       for (final x in items)
         Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
           child: Container(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+            padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.xs, AppSpace.sm, AppSpace.xs),
             decoration: BoxDecoration(
               color: c.cardBg,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppRadius.control),
               border: Border.all(color: (x.hard ? c.danger : c.warning).withValues(alpha: 0.35)),
             ),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Icon(x.hard ? Icons.error_rounded : Icons.warning_amber_rounded, size: 18, color: x.hard ? c.danger : c.warning),
-                const SizedBox(width: 8),
+                Icon(x.hard ? Icons.error_rounded : Icons.warning_amber_rounded, size: AppIconSize.md, color: x.hard ? c.danger : c.warning),
+                const SizedBox(width: AppSpace.xs),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(x.text, style: orgText(context, w: FontWeight.w700)),
+                    Text(x.text, style: AppType.bodyStrong(context)),
                     Text(
                       [
                         if (x.day != null) labels[x.day!] ?? x.day!,
@@ -141,7 +141,7 @@ class RemediesPanel extends StatelessWidget {
                         x.courseIds.map((i) => courseNames[i] ?? '#$i').join(' / '),
                         x.hard ? t('قيد إلزامي', 'hard rule') : (x.severity == 'soft' ? t('تفضيل', 'preference') : t('تنبيه', 'warning')),
                       ].where((s) => s.isNotEmpty).join(' · '),
-                      style: orgText(context, size: 12, color: c.textMedium),
+                      style: AppType.meta(context).copyWith(color: c.textMedium),
                     ),
                   ]),
                 ),
@@ -151,7 +151,7 @@ class RemediesPanel extends StatelessWidget {
           ),
         ),
       if (report.items.length > limit)
-        Text(t('+${report.items.length - limit} تعارضاً آخر', '+${report.items.length - limit} more conflicts'), style: orgText(context, size: 12, color: c.textLight)),
+        Text(t('+${report.items.length - limit} تعارضاً آخر', '+${report.items.length - limit} more conflicts'), style: AppType.meta(context).copyWith(color: c.textLight)),
     ]);
   }
 }

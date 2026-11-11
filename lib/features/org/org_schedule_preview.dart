@@ -20,9 +20,9 @@ import 'org_common.dart' show dayLabels;
 import 'org_providers.dart';
 import 'org_schedule_insights.dart' show ActionOption;
 import 'org_schedule_reassign.dart' show ReassignMetrics, ReassignVersion;
-import 'org_ui.dart' show orgText;
 import 'org_v3.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 /// One fix as two versions. [regenerate] = a data change (nothing moves until the timetable is re-solved).
 class ChangePlan {
@@ -152,49 +152,49 @@ class MiniTimetable extends StatelessWidget {
       final name = names[asInt(s['course_id'])] ?? '#${s['course_id']}';
       final short = name.length > 9 ? '${name.substring(0, 8)}…' : name;
       return Container(
-        margin: const EdgeInsets.only(bottom: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+        margin: const EdgeInsets.only(bottom: AppSpace.xxs / 2),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs, vertical: 1),
         decoration: BoxDecoration(
           color: hot ? tone.withValues(alpha: 0.22) : c.textLight.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(5),
+          borderRadius: BorderRadius.circular(AppRadius.chip),
           border: Border.all(color: hot ? tone : Colors.transparent, width: hot ? 1.4 : 0),
         ),
         child: Text(short, maxLines: 1, overflow: TextOverflow.clip, softWrap: false,
-            style: TextStyle(fontFamily: AppFonts.family, fontSize: 9.5, fontWeight: hot ? FontWeight.w800 : FontWeight.w600, color: hot ? tone : c.textMedium)),
+            style: TextStyle(fontFamily: AppFonts.family, fontSize: 9.5, fontWeight: hot ? FontWeight.w600 : FontWeight.w600, color: hot ? tone : c.textMedium)),
       );
     }
 
     Widget head(String s, {double w = cellW}) => SizedBox(
           width: w,
           height: 22,
-          child: Center(child: Text(s, maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 10, w: FontWeight.w800, color: c.textMedium))),
+          child: Center(child: Text(s, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.overline(context).copyWith(color: c.textMedium))),
         );
     return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
       if (title != null)
         Padding(
-          padding: const EdgeInsets.only(bottom: 4),
+          padding: const EdgeInsets.only(bottom: AppSpace.xxs),
           child: Row(children: [
-            Container(width: 10, height: 10, decoration: BoxDecoration(color: tone, borderRadius: BorderRadius.circular(3))),
-            const SizedBox(width: 6),
-            Expanded(child: Text(title!, maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12, w: FontWeight.w800))),
+            Container(width: 10, height: 10, decoration: BoxDecoration(color: tone, borderRadius: BorderRadius.circular(AppRadius.chip))),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(child: Text(title!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark))),
           ]),
         ),
       ClipRRect(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadius.chip),
         child: Container(
-          decoration: BoxDecoration(border: Border.all(color: c.textLight.withValues(alpha: 0.25)), borderRadius: BorderRadius.circular(10)),
+          decoration: BoxDecoration(border: Border.all(color: c.textLight.withValues(alpha: 0.25)), borderRadius: BorderRadius.circular(AppRadius.chip)),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Row(children: [head('', w: headW), for (final d in days) head(labels[d] ?? d)]),
               for (final p in periods)
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  SizedBox(width: headW, height: rowH, child: Center(child: Text('${p['label'] ?? p['id']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 10, w: FontWeight.w800, color: c.textMedium)))),
+                  SizedBox(width: headW, height: rowH, child: Center(child: Text('${p['label'] ?? p['id']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.overline(context).copyWith(color: c.textMedium)))),
                   for (final d in days)
                     Container(
                       width: cellW,
                       height: rowH,
-                      padding: const EdgeInsets.all(3),
+                      padding: const EdgeInsets.all(AppSpace.xxs),
                       decoration: BoxDecoration(border: Border.all(color: c.textLight.withValues(alpha: 0.15), width: 0.5)),
                       child: Builder(builder: (_) {
                         final xs = byCell['$d|${p['id']}'] ?? const [];
@@ -206,7 +206,7 @@ class MiniTimetable extends StatelessWidget {
                           physics: const NeverScrollableScrollPhysics(),
                           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                             for (final s in shown) chip(s),
-                            if (xs.length > 2) Text('+${xs.length - 2}', style: orgText(context, size: 9, color: c.textLight)),
+                            if (xs.length > 2) Text('+${xs.length - 2}', style: AppType.meta(context).copyWith(color: c.textLight)),
                           ]),
                         );
                       }),
@@ -242,58 +242,57 @@ class ChangePreviewSheet extends StatelessWidget {
     final afterGrid = _snapshot(context, t('بعد', 'After'), after, hl.after, c.success, p.after, p.rankOf('after') == 1);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
       SheetHeader(t('قبل وبعد التطبيق', 'Before and after')),
-      if (p.title.isNotEmpty) Text(p.title, style: orgText(context, size: 13, w: FontWeight.w700)),
+      if (p.title.isNotEmpty) Text(p.title, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark)),
       Text(
           p.regenerate
               ? t('هذا تغيير في البيانات لا في الشبكة: بعد تطبيقه يُعاد حل الجدول ليستفيد منه.', 'This changes the data, not the grid: after applying, the timetable is re-solved to use it.')
               : t('ما يتحرك مظلَّل: بالأحمر حيث كان، وبالأخضر حيث يستقر. لا يُحفظ شيء قبل «تطبيق».', 'What moves is highlighted: red where it was, green where it lands. Nothing is saved before Apply.'),
-          style: orgText(context, size: 12, color: c.textMedium)),
+          style: AppType.meta(context).copyWith(color: c.textMedium)),
       if (p.resolved)
         Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(t('أُعيد حل الحصص المتعارضة فقط — باقي الجدول كما هو.', 'Only the clashing sessions were re-solved — the rest stays.'), style: orgText(context, size: 12, color: c.textMedium)),
+          padding: const EdgeInsets.only(top: AppSpace.xxs),
+          child: Text(t('أُعيد حل الحصص المتعارضة فقط — باقي الجدول كما هو.', 'Only the clashing sessions were re-solved — the rest stays.'), style: AppType.meta(context).copyWith(color: c.textMedium)),
         ),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
       if (wide)
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: beforeGrid), const SizedBox(width: 12), Expanded(child: afterGrid)])
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: beforeGrid), const SizedBox(width: AppSpace.sm), Expanded(child: afterGrid)])
       else ...[
         beforeGrid,
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         afterGrid,
       ],
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(Icons.leaderboard_rounded, size: 16, color: c.textMedium),
-        const SizedBox(width: 6),
-        Expanded(child: Text(p.reason, style: orgText(context, size: 12, color: c.textMedium))),
+        Icon(Icons.leaderboard_rounded, size: AppIconSize.sm, color: c.textMedium),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(child: Text(p.reason, style: AppType.meta(context).copyWith(color: c.textMedium))),
       ]),
       if (p.changes.isNotEmpty) ...[
-        const SizedBox(height: 8),
-        Text(t('ما يتغيّر (${p.changes.length})', 'What changes (${p.changes.length})'), style: orgText(context, w: FontWeight.w800)),
+        const SizedBox(height: AppSpace.xs),
+        Text(t('ما يتغيّر (${p.changes.length})', 'What changes (${p.changes.length})'), style: AppType.bodyStrong(context)),
         for (final x in p.changes.take(8))
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: AppSpace.xxs),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Icon(
                 switch ('${x['change']}') { 'moved' => Icons.low_priority_rounded, 'placed' => Icons.add_location_alt_rounded, 'unplaced' => Icons.location_off_rounded, _ => Icons.edit_rounded },
-                size: 15,
-                color: x['change'] == 'unplaced' ? c.danger : c.textMedium,
-              ),
-              const SizedBox(width: 6),
-              Expanded(child: Text(changeLineText(x, names: names, people: people, periods: periodLabels, rooms: rooms), style: orgText(context, size: 12, color: c.textMedium))),
+                size: AppIconSize.xs,
+                color: x['change'] == 'unplaced' ? c.danger : c.textMedium),
+              const SizedBox(width: AppSpace.xs),
+              Expanded(child: Text(changeLineText(x, names: names, people: people, periods: periodLabels, rooms: rooms), style: AppType.meta(context).copyWith(color: c.textMedium))),
             ]),
           ),
-        if (p.changes.length > 8) Text(t('+${p.changes.length - 8} أخرى', '+${p.changes.length - 8} more'), style: orgText(context, size: 12, color: c.textLight)),
+        if (p.changes.length > 8) Text(t('+${p.changes.length - 8} أخرى', '+${p.changes.length - 8} more'), style: AppType.meta(context).copyWith(color: c.textLight)),
       ],
-      const SizedBox(height: 12),
-      Wrap(spacing: 8, runSpacing: 8, children: [
+      const SizedBox(height: AppSpace.sm),
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         FilledButton.icon(
           onPressed: onApply,
-          icon: Icon(p.afterWins ? Icons.check_rounded : Icons.warning_amber_rounded, size: 18),
+          icon: Icon(p.afterWins ? Icons.check_rounded : Icons.warning_amber_rounded, size: AppIconSize.md),
           label: Text(applyLabel ?? (p.afterWins ? t('تطبيق', 'Apply') : t('تطبيق رغم أنها أسوأ', 'Apply although it ranks worse'))),
           style: FilledButton.styleFrom(backgroundColor: p.afterWins ? null : c.warning),
         ),
-        OutlinedButton.icon(onPressed: onKeep, icon: const Icon(Icons.undo_rounded, size: 18), label: Text(t('إبقاء الوضع الحالي', 'Keep as it is'))),
+        OutlinedButton.icon(onPressed: onKeep, icon: const Icon(Icons.undo_rounded, size: AppIconSize.md), label: Text(t('إبقاء الوضع الحالي', 'Keep as it is'))),
       ]),
     ]);
   }
@@ -302,32 +301,32 @@ class ChangePreviewSheet extends StatelessWidget {
     final c = context.colors;
     final m = v.metrics;
     Widget stat(String label, int n, {bool bad = false}) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-          decoration: BoxDecoration(color: (bad && n > 0 ? c.danger : c.textLight).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-          child: Text('$label $n', style: orgText(context, size: 11, w: FontWeight.w700, color: bad && n > 0 ? c.danger : c.textMedium)),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
+          decoration: BoxDecoration(color: (bad && n > 0 ? c.danger : c.textLight).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(AppRadius.chip)),
+          child: Text('$label $n', style: AppType.overline(context).copyWith(color: bad && n > 0 ? c.danger : c.textMedium)),
         );
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(
         color: (top ? c.success : c.textLight).withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         border: Border.all(color: (top ? c.success : c.textLight).withValues(alpha: top ? 0.6 : 0.3), width: top ? 1.5 : 1),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            decoration: BoxDecoration(color: top ? c.success : c.inputBg, borderRadius: BorderRadius.circular(8)),
-            child: Text(top ? t('#1 مقترح', '#1 recommended') : '#2', style: orgText(context, size: 10.5, w: FontWeight.w800, color: top ? c.onHero : c.textMedium)),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
+            decoration: BoxDecoration(color: top ? c.success : c.inputBg, borderRadius: BorderRadius.circular(AppRadius.chip)),
+            child: Text(top ? t('#1 مقترح', '#1 recommended') : '#2', style: AppType.overline(context).copyWith(color: top ? c.onHero : c.textMedium)),
           ),
-          const SizedBox(width: 8),
-          Expanded(child: Text(title, style: orgText(context, w: FontWeight.w800))),
-          Text('${m.score}', style: orgText(context, size: 17, w: FontWeight.w900, color: top ? c.success : c.textMedium)),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: Text(title, style: AppType.bodyStrong(context))),
+          Text('${m.score}', style: AppType.section(context).copyWith(color: top ? c.success : c.textMedium)),
         ]),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         MiniTimetable(days: days, periods: periods, slots: xs, highlight: hl, tone: tone, names: names),
-        const SizedBox(height: 6),
-        Wrap(spacing: 6, runSpacing: 4, children: [
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
           stat(t('تعارض إلزامي', 'hard'), m.hard, bad: true),
           stat(t('بلا مكان', 'unplaced'), m.unplaced, bad: true),
           if (m.warnings > 0) stat(t('تنبيه', 'warnings'), m.warnings),
@@ -337,11 +336,11 @@ class ChangePreviewSheet extends StatelessWidget {
         if (v.conflicts.isNotEmpty)
           for (final x in v.conflicts.take(3))
             Padding(
-              padding: const EdgeInsets.only(top: 3),
+              padding: const EdgeInsets.only(top: AppSpace.xxs),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Icon(x['severity'] == 'error' ? Icons.block_rounded : Icons.warning_amber_rounded, size: 13, color: x['severity'] == 'error' ? c.danger : c.warning),
-                const SizedBox(width: 5),
-                Expanded(child: Text(t('${x['text_ar'] ?? x['type']}', '${x['text_en'] ?? x['type']}'), maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, size: 11, color: c.textMedium))),
+                Icon(x['severity'] == 'error' ? Icons.block_rounded : Icons.warning_amber_rounded, size: AppIconSize.xs, color: x['severity'] == 'error' ? c.danger : c.warning),
+                const SizedBox(width: AppSpace.xxs),
+                Expanded(child: Text(t('${x['text_ar'] ?? x['type']}', '${x['text_en'] ?? x['type']}'), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium))),
               ]),
             ),
       ]),
@@ -355,7 +354,7 @@ Future<bool?> showChangePreview(BuildContext context, ChangePlan plan,
   return showAdminSheet<bool>(
     context,
     (ctx) => SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
       child: ChangePreviewSheet(plan: plan, slots: slots, periods: periods, days: days, names: names, people: people, rooms: rooms, applyLabel: applyLabel, onApply: () => Navigator.pop(ctx, true), onKeep: () => Navigator.pop(ctx, false)),
     ),
   );

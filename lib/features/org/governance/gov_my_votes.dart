@@ -18,7 +18,6 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
 import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
-import '../org_ui.dart' show orgText;
 import '../org_v3.dart' show orgCall, orgParseUtc;
 import 'gov_api.dart';
 import 'gov_council_ui.dart';
@@ -137,24 +136,24 @@ class MyVoteGroupCard extends StatelessWidget {
     final ended = closes != null && (now ?? DateTime.now()).isAfter(closes);
     final pending = g.entries.where((e) => (votes[e.agenda.id] ?? e.agenda.myVote) == null).length;
     return AppCard(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpace.md),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.control),
           onTap: onOpenSession,
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Container(
               width: 42,
               height: 42,
-              decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(13)),
+              decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.control)),
               child: Icon(sessionKindIcon(h.sessionKind), color: c.warning),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(h.council?.name ?? t('المجلس', 'Council'), style: orgText(context, size: 14.5, w: FontWeight.w800)),
-                Text(h.sessionLabel + (h.scheduledAt == null ? '' : ' · ${govDay(h.scheduledAt)}'), style: orgText(context, size: 12, color: c.textMedium)),
-                const SizedBox(height: 6),
+                Text(h.council?.name ?? t('المجلس', 'Council'), style: AppType.bodyStrong(context)),
+                Text(h.sessionLabel + (h.scheduledAt == null ? '' : ' · ${govDay(h.scheduledAt)}'), style: AppType.meta(context).copyWith(color: c.textMedium)),
+                const SizedBox(height: AppSpace.xs),
                 GovPillRow([
                   if (closes != null)
                     AppBadgePill(
@@ -174,11 +173,11 @@ class MyVoteGroupCard extends StatelessWidget {
           ]),
         ),
         for (final e in g.entries) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           Divider(color: c.divider, height: 1),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           InkWell(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppRadius.chip),
             onTap: onOpenItem == null ? null : () => onOpenItem!(e.agenda.item),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               GovPillRow([
@@ -186,12 +185,12 @@ class MyVoteGroupCard extends StatelessWidget {
                 if (e.agenda.item.ref.isNotEmpty) AppBadgePill(e.agenda.item.ref, color: c.textMedium),
                 AppBadgePill(itemTypeLabel(e.agenda.item.type), color: c.primary),
               ]),
-              const SizedBox(height: 4),
-              Text(e.agenda.item.title, style: orgText(context, size: 13.5, w: FontWeight.w800)),
-              if (e.agenda.item.sourceName.isNotEmpty) Text(t('من: ${e.agenda.item.sourceName}', 'From: ${e.agenda.item.sourceName}'), style: orgText(context, size: 12, color: c.textMedium)),
+              const SizedBox(height: AppSpace.xxs),
+              Text(e.agenda.item.title, style: AppType.bodyStrong(context)),
+              if (e.agenda.item.sourceName.isNotEmpty) Text(t('من: ${e.agenda.item.sourceName}', 'From: ${e.agenda.item.sourceName}'), style: AppType.meta(context).copyWith(color: c.textMedium)),
             ]),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           MyVoteRow(
             value: votes[e.agenda.id] ?? e.agenda.myVote,
             enabled: !ended && onVote != null,
@@ -318,7 +317,7 @@ class _GovMyVotesPageState extends State<GovMyVotesPage> {
       final pending = rows.where((e) => (_votes[e.agenda.id] ?? e.agenda.myVote) == null).length;
       body = AppRefresh(
         onRefresh: _load,
-        child: ListView(padding: const EdgeInsets.only(bottom: 32), children: [
+        child: ListView(padding: const EdgeInsets.only(bottom: AppSpace.xl), children: [
           AppHero(
             title: t('تصويتاتي', 'My votes'),
             subtitle: t('بنود جداول الأعمال التي تنتظر صوتك في كل المجالس', 'Agenda items waiting for your vote across every council'),
@@ -336,7 +335,7 @@ class _GovMyVotesPageState extends State<GovMyVotesPage> {
             ),
           for (final g in groups)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
               child: MyVoteGroupCard(
                 group: g,
                 votes: _votes,

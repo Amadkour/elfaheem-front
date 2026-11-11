@@ -60,28 +60,28 @@ class GovFormAssignForm extends StatelessWidget {
     final c = context.colors;
     final any = people.isNotEmpty || deptIds.isNotEmpty || roles.isNotEmpty;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(t('أشخاص', 'People'), style: appText(12, c: c.textLight)),
-      const SizedBox(height: 6),
-      Wrap(spacing: 6, runSpacing: 6, children: [
+      Text(t('أشخاص', 'People'), style: AppType.meta(context).copyWith(color: c.textLight)),
+      const SizedBox(height: AppSpace.xs),
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final p in people)
           InputChip(
             avatar: AdminAvatar(name: p.name, url: p.avatar, size: 22),
-            label: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: c.textDark)),
+            label: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
             onDeleted: () => onRemovePerson(p),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
           ),
         ActionChip(
-          avatar: Icon(Icons.person_add_alt_1_rounded, size: 16, color: c.primary),
-          label: Text(t('إضافة شخص', 'Add person'), style: appText(12, w: FontWeight.w700, c: c.primary)),
+          avatar: Icon(Icons.person_add_alt_1_rounded, size: AppIconSize.sm, color: c.primary),
+          label: Text(t('إضافة شخص', 'Add person'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.primary)),
           onPressed: onAddPerson,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
         ),
       ]),
       if (entities.isNotEmpty) ...[
-        const SizedBox(height: 14),
-        Text(t('جهات (كل أعضائها)', 'Entities (every member)'), style: appText(12, c: c.textLight)),
-        const SizedBox(height: 6),
-        Wrap(spacing: 6, runSpacing: 6, children: [
+        const SizedBox(height: AppSpace.md),
+        Text(t('جهات (كل أعضائها)', 'Entities (every member)'), style: AppType.meta(context).copyWith(color: c.textLight)),
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final e in entities)
             AppChoiceChip(
               label: e.name,
@@ -91,9 +91,9 @@ class GovFormAssignForm extends StatelessWidget {
             ),
         ]),
       ],
-      const SizedBox(height: 14),
+      const SizedBox(height: AppSpace.md),
       GovChipSelect(label: t('فئات', 'Roles'), icon: Icons.groups_rounded, options: memberRoleLabels(), selected: roles, onChanged: onRoles),
-      const SizedBox(height: 14),
+      const SizedBox(height: AppSpace.md),
       GovDateField(
         label: t('آخر موعد للإجابة (اختياري)', 'Answer by (optional)'),
         value: dueAt,
@@ -105,7 +105,7 @@ class GovFormAssignForm extends StatelessWidget {
         },
         onClear: () => onDue(null),
       ),
-      const SizedBox(height: 6),
+      const SizedBox(height: AppSpace.xs),
       AppSwitchTile(
         icon: Icons.priority_high_rounded,
         title: t('الإجابة إلزامية', 'Must answer'),
@@ -113,8 +113,8 @@ class GovFormAssignForm extends StatelessWidget {
         value: must,
         onChanged: onMust,
       ),
-      if (error != null) ...[const SizedBox(height: 10), AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: error!)],
-      const SizedBox(height: 12),
+      if (error != null) ...[const SizedBox(height: AppSpace.sm), AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: error!)],
+      const SizedBox(height: AppSpace.sm),
       AppPrimaryButton(label: t('إسناد النموذج', 'Assign the form'), icon: Icons.send_rounded, busy: busy, onPressed: any ? onSubmit : null),
     ]);
   }
@@ -136,7 +136,7 @@ Future<int?> showGovFormAssignSheet(BuildContext context, GovApi api, int formId
   String? error;
   return showAppSheet<int>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
+          padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 16 + MediaQuery.of(ctx).viewInsets.bottom),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             SheetHeader(t('مَن يجب أن يجيب؟', 'Who must answer?')),
             GovFormAssignForm(
@@ -204,30 +204,30 @@ class GovAssignmentsBody extends StatelessWidget {
             dense: true,
             onTap: onTap,
             leading: AdminAvatar(name: a.user.name, url: a.user.avatar, size: 34),
-            title: Text(a.user.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
+            title: Text(a.user.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
             subtitle: Text(
               [
                 if (a.status == 'pending' && a.dueAt != null) '${t('قبل', 'by')} ${govWhen(a.dueAt)}',
                 if (a.overdue) t('متأخر', 'Overdue'),
                 if (a.remindCount > 0) t('ذُكّر ${a.remindCount}', 'Reminded ${a.remindCount}×'),
               ].join(' · '),
-              style: appText(11.5, c: a.overdue ? c.danger : c.textMedium),
+              style: AppType.meta(context).copyWith(color: a.overdue ? c.danger : c.textMedium),
             ),
             trailing: trailing,
           ),
         );
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xxl), children: [
       AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Expanded(child: Text(t('${submitted.length} من $total أجابوا', '${submitted.length} of $total answered'), style: appText(14, w: FontWeight.w800, c: c.textDark))),
-            Text('${pct.toStringAsFixed(0)}%', style: appText(13, w: FontWeight.w800, c: appScoreColor(context, pct))),
+            Expanded(child: Text(t('${submitted.length} من $total أجابوا', '${submitted.length} of $total answered'), style: AppType.bodyStrong(context).copyWith(color: c.textDark))),
+            Text('${pct.toStringAsFixed(0)}%', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: appScoreColor(context, pct))),
           ]),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs),
           AppProgressBar(value: pct, max: 100),
-          if (dueAt != null) ...[const SizedBox(height: 6), Text('${t('الموعد', 'Due')}: ${govWhen(dueAt)}', style: appText(12, c: c.textMedium))],
+          if (dueAt != null) ...[const SizedBox(height: AppSpace.xs), Text('${t('الموعد', 'Due')}: ${govWhen(dueAt)}', style: AppType.meta(context).copyWith(color: c.textMedium))],
           if (onRemindAll != null && pending.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             Align(
               alignment: AlignmentDirectional.centerEnd,
               child: AppPill(icon: Icons.notifications_active_rounded, label: t('تذكير الجميع (${pending.length})', 'Remind all (${pending.length})'), onTap: busy ? null : onRemindAll),
@@ -238,30 +238,30 @@ class GovAssignmentsBody extends StatelessWidget {
       if (pending.isNotEmpty) ...[
         AppSectionTitle(t('لم يجيبوا بعد', 'Pending'), subtitle: '${pending.length}'),
         AppCard(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
           child: Column(children: [
             for (final a in pending)
               row(a, c.warning,
                   trailing: onWaive == null
                       ? null
-                      : IconButton(tooltip: t('إعفاء', 'Waive'), onPressed: busy ? null : () => onWaive!(a), icon: Icon(Icons.person_off_outlined, color: c.textLight, size: 20))),
+                      : IconButton(tooltip: t('إعفاء', 'Waive'), onPressed: busy ? null : () => onWaive!(a), icon: Icon(Icons.person_off_outlined, color: c.textLight, size: AppIconSize.md))),
           ]),
         ),
       ],
       if (submitted.isNotEmpty) ...[
         AppSectionTitle(t('أجابوا', 'Submitted'), subtitle: '${submitted.length}'),
         AppCard(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
           child: Column(children: [
-            for (final a in submitted) row(a, c.success, trailing: Icon(Icons.check_circle_rounded, color: c.success, size: 20), onTap: onOpenResponse == null ? null : () => onOpenResponse!(a)),
+            for (final a in submitted) row(a, c.success, trailing: Icon(Icons.check_circle_rounded, color: c.success, size: AppIconSize.md), onTap: onOpenResponse == null ? null : () => onOpenResponse!(a)),
           ]),
         ),
       ],
       if (waived.isNotEmpty) ...[
         AppSectionTitle(t('مُعفَون', 'Waived'), subtitle: '${waived.length}'),
         AppCard(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Column(children: [for (final a in waived) row(a, c.textLight, trailing: Icon(Icons.remove_circle_outline_rounded, color: c.textLight, size: 20))]),
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
+          child: Column(children: [for (final a in waived) row(a, c.textLight, trailing: Icon(Icons.remove_circle_outline_rounded, color: c.textLight, size: AppIconSize.md))]),
         ),
       ],
       if (total == 0) AppEmpty(icon: Icons.assignment_ind_rounded, title: t('لم يُسند النموذج لأحد بعد', 'Not assigned to anyone yet')),

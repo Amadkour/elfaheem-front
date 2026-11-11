@@ -42,7 +42,7 @@ import 'org_departments_page.dart' show DeptLogo, OrgDepartmentHub, showDepartme
 import 'org_join_pages.dart' show OrgUnitJoinHub;
 import 'org_providers.dart';
 import 'org_services_pages.dart' show OrgComplaintsPage, OrgFormsPage, OrgMaterialsPage;
-import 'org_ui.dart' show deptIcon, memberRoleLabels, orgNameOf, orgText;
+import 'org_ui.dart' show deptIcon, memberRoleLabels, orgNameOf;
 import 'org_v3.dart' show orgCall, orgParseUtc;
 import 'governance/gov_dashboard.dart' show GovDashboardCard;
 import 'governance/gov_delegations_page.dart' show GovDelegationsPage;
@@ -208,7 +208,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
             ];
             Widget main;
             if (tabs.isEmpty) {
-              main = ListView(padding: const EdgeInsets.only(bottom: 40), children: [...header, ..._overview(wide: false)]);
+              main = ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [...header, ..._overview(wide: false)]);
             } else {
               main = DefaultTabController(
                 length: tabs.length,
@@ -377,7 +377,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
     final s = context.read<OrgSession>();
     final subs = _d?.subUnits ?? const <Map<String, dynamic>>[];
     final u = _unit;
-    final pad = wide ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 16);
+    final pad = wide ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: AppSpace.md);
     final card = [u['location'], u['office_hours'], u['email'], u['phone']].any((x) => '${x ?? ''}'.trim().isNotEmpty);
     return [
       // governance (D-057): pending · waiting for a decision · overdue · decided, for this entity (with the server's
@@ -385,7 +385,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
       if (_isDept && s.currentId != null && _govOn && !_byTabs) ...[
         _Title(t('المعاملات', 'Items')),
         Padding(padding: pad, child: GovDashboardCard(deptId: widget.unitId, orgId: s.currentId, compact: true)),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
       ],
       if (_isDept && s.currentId != null) ...[
         // ONE heading: the feed's own ("Department news" · unread count · See all)
@@ -403,7 +403,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
           child: Column(children: [
             for (final x in subs)
               Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.only(bottom: AppSpace.xs),
                 child: AppActionCard(
                   icon: deptIcon(x['icon']),
                   color: hexColor(x['color'], c.primary),
@@ -430,7 +430,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
                     AppInfoRow(Icons.phone_rounded, '${u['phone'] ?? ''}', ltr: true),
                   ])
                 : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Icon(Icons.info_outline_rounded, size: 18, color: c.textMedium),
+                    Icon(Icons.info_outline_rounded, size: AppIconSize.md, color: c.textMedium),
                     const SizedBox(width: AppSpace.xs),
                     Expanded(
                       child: Text(
@@ -447,7 +447,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
           child: AppCard(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               if ('${u['description'] ?? ''}'.trim().isNotEmpty)
-                Text('${u['description']}', style: orgText(context, color: c.textMedium)),
+                Text('${u['description']}', style: AppType.row(context).copyWith(color: c.textMedium)),
               AppInfoRow(Icons.tag_rounded, '${u['code'] ?? ''}', ltr: true),
               if (u['capacity'] != null)
                 AppInfoRow(Icons.event_seat_rounded, t('السعة: ${u['capacity']} طالب', 'Capacity: ${u['capacity']} students')),
@@ -457,7 +457,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
           ),
         ),
       ],
-      const SizedBox(height: 24),
+      const SizedBox(height: AppSpace.lg),
     ];
   }
 }
@@ -517,7 +517,7 @@ class _UnitHero extends StatelessWidget {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: AppRadius.chipAll),
-                  child: Icon(Icons.school_rounded, color: appInk(context, col), size: 26),
+                  child: Icon(Icons.school_rounded, color: appInk(context, col), size: AppIconSize.lg),
                 ),
           const SizedBox(width: AppSpace.sm),
           Expanded(
@@ -529,7 +529,7 @@ class _UnitHero extends StatelessWidget {
                   OrgPersonAvatar(name: '${mgr['name'] ?? ''}', url: mgr['image_url'] as String?, size: 24),
                   const SizedBox(width: AppSpace.xs),
                 ] else ...[
-                  Icon(Icons.person_off_rounded, color: c.textLight, size: 18),
+                  Icon(Icons.person_off_rounded, color: c.textLight, size: AppIconSize.md),
                   const SizedBox(width: AppSpace.xxs),
                 ],
                 Expanded(
@@ -563,7 +563,7 @@ class _UnitHero extends StatelessWidget {
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(f.$2, maxLines: 1, style: AppType.figure(context).copyWith(fontSize: 18)),
                       Row(children: [
-                        Icon(f.$1, size: 13, color: c.textLight),
+                        Icon(f.$1, size: AppIconSize.xs, color: c.textLight),
                         const SizedBox(width: AppSpace.xxs),
                         Expanded(child: Text(f.$3, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context))),
                       ]),
@@ -584,10 +584,10 @@ class _QuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (actions.isEmpty) return const SizedBox(height: 4);
+    if (actions.isEmpty) return const SizedBox(height: AppSpace.xxs);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-      child: Wrap(spacing: 8, runSpacing: 8, children: [
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xs),
+      child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final a in actions) AppPill(icon: a.$1, label: a.$2, color: a.$3, onTap: a.$4),
       ]),
     );
@@ -604,14 +604,14 @@ class _TabLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 18),
-      const SizedBox(width: 6),
+      Icon(icon, size: AppIconSize.md),
+      const SizedBox(width: AppSpace.xs),
       Text(label),
       if (badge > 0) ...[
-        const SizedBox(width: 6),
+        const SizedBox(width: AppSpace.xs),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-          decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(10)),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 1),
+          decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(AppRadius.chip)),
           child: Text(badge > 99 ? '99+' : '$badge',
               style: TextStyle(color: c.onHero, fontSize: 10.5, fontWeight: FontWeight.w600)),
         ),
@@ -647,7 +647,7 @@ class _TabList extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AppRefresh(
         onRefresh: onRefresh,
-        child: ListView(padding: const EdgeInsets.only(top: 6, bottom: 48), children: children),
+        child: ListView(padding: const EdgeInsets.only(top: AppSpace.xs, bottom: AppSpace.xxl), children: children),
       );
 }
 
@@ -712,7 +712,7 @@ class _RequestsTabState extends State<_RequestsTab> {
           trailing: TextButton(onPressed: widget.onSeeAll, child: Text(t('الكل والإعداد', 'All & settings')))));
       if (!decide && joins.isNotEmpty) {
         children.add(Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
           child: AppBanner(icon: Icons.info_outline_rounded,
               text: t('يقرّر في هذه الطلبات مدير القسم أو المعاونون المحددون في سياسة الانضمام.',
                   'The department manager or the assistants named in the join policy decide these requests.')),
@@ -824,7 +824,7 @@ class _RequestsTabState extends State<_RequestsTab> {
     final nothing = joins.isEmpty && forms.isEmpty && choices.isEmpty;
     if (nothing) {
       children.add(Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
         child: AppBanner(
           icon: Icons.spa_rounded,
           color: c.success,
@@ -860,30 +860,30 @@ class _RequestCard extends StatelessWidget {
     final c = context.colors;
     final actions = onApprove != null || onReject != null;
     return AppCard(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           OrgPersonAvatar(name: avatarName, url: avatarUrl),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 14, w: FontWeight.w600)),
+              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
               if (subtitle.isNotEmpty)
-                Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 11.5, color: c.textLight)),
+                Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight)),
             ]),
           ),
         ]),
         if (tags.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Wrap(spacing: 6, runSpacing: 6, children: [for (final tg in tags) AppBadgePill(tg.$1, color: tg.$2)]),
+          const SizedBox(height: AppSpace.xs),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [for (final tg in tags) AppBadgePill(tg.$1, color: tg.$2)]),
         ],
         for (final l in lines)
           Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(l, maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12, color: c.textMedium)),
+            padding: const EdgeInsets.only(top: AppSpace.xs),
+            child: Text(l, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
           ),
         if (actions) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           if (busy)
             const Align(alignment: AlignmentDirectional.centerEnd, child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4)))
           else
@@ -896,8 +896,8 @@ class _RequestCard extends StatelessWidget {
                       minimumSize: const Size(AppTouch.min, AppTouch.min),
                       padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
                       shape: RoundedRectangleBorder(borderRadius: AppRadius.chipAll)),
-                  icon: const Icon(Icons.close_rounded, size: 18),
-                  label: Text(t('رفض', 'Decline'), style: appText(13.5, w: FontWeight.w500, c: c.textMedium)),
+                  icon: const Icon(Icons.close_rounded, size: AppIconSize.md),
+                  label: Text(t('رفض', 'Decline'), style: AppType.row(context).copyWith(color: c.textMedium)),
                 ),
               if (onApprove != null)
                 TextButton.icon(
@@ -908,8 +908,8 @@ class _RequestCard extends StatelessWidget {
                       minimumSize: const Size(AppTouch.min, AppTouch.min),
                       padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
                       shape: RoundedRectangleBorder(borderRadius: AppRadius.chipAll)),
-                  icon: const Icon(Icons.check_rounded, size: 18),
-                  label: Text(t('قبول', 'Approve'), style: appText(13.5, w: FontWeight.w600, c: appInk(context, c.primary))),
+                  icon: const Icon(Icons.check_rounded, size: AppIconSize.md),
+                  label: Text(t('قبول', 'Approve'), style: AppType.bodyStrong(context).copyWith(color: appInk(context, c.primary))),
                 ),
             ]),
         ],
@@ -982,7 +982,7 @@ class _UsersTab extends StatelessWidget {
         ),
       if (total > rows.length)
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 0),
           child: AppBanner(icon: Icons.list_alt_rounded,
               text: t('القائمة الكاملة وأدوات الإزالة في "إعداد الانضمام".', 'The full list and removal tools are in "Joining rules".')),
         ),
@@ -1016,7 +1016,7 @@ class _TeamTab extends StatelessWidget {
               : t('المدرسون والمعيدون المنتسبون للقسم', 'Teachers and assistants affiliated with it'),
           trailing: onManage == null
               ? null
-              : TextButton.icon(onPressed: onManage, icon: const Icon(Icons.manage_accounts_rounded, size: 18), label: Text(t('إدارة الفريق', 'Manage team')))),
+              : TextButton.icon(onPressed: onManage, icon: const Icon(Icons.manage_accounts_rounded, size: AppIconSize.md), label: Text(t('إدارة الفريق', 'Manage team')))),
       if (rows.isEmpty)
         AppEmpty(
           icon: Icons.badge_outlined,
@@ -1041,8 +1041,8 @@ class _TeamTab extends StatelessWidget {
           ),
       if (total > rows.length)
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-          child: Text(t('و${total - rows.length} آخرون', 'and ${total - rows.length} more'), style: orgText(context, color: c.textMedium)),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
+          child: Text(t('و${total - rows.length} آخرون', 'and ${total - rows.length} more'), style: AppType.row(context).copyWith(color: c.textMedium)),
         ),
     ]);
   }
@@ -1058,19 +1058,19 @@ class _PersonRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return AppCard(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
       child: Row(children: [
         OrgPersonAvatar(name: '${user['name'] ?? '—'}', url: user['image_url'] as String?),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${user['name'] ?? '—'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w500)),
+            Text('${user['name'] ?? '—'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
             Text(caption.isEmpty ? '${user['email'] ?? ''}' : caption, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: orgText(context, size: 11.5, color: c.textLight)),
+                style: AppType.meta(context).copyWith(color: c.textLight)),
           ]),
         ),
-        if (trailing != null) ...[const SizedBox(width: 8), trailing!],
+        if (trailing != null) ...[const SizedBox(width: AppSpace.xs), trailing!],
       ]),
     );
   }
@@ -1085,7 +1085,7 @@ class _Title extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
         child: AppSectionTitle(title, subtitle: subtitle, trailing: trailing),
       );
 }

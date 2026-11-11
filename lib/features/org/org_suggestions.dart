@@ -116,18 +116,18 @@ class _OrgTermSuggestionsState extends State<OrgTermSuggestions> {
     final all = [for (final c in (draft['course_ids'] as List? ?? const [])) asInt(c)];
     final sel = {...all};
     final ok = await showAppSheet<bool>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpace.md),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppSectionTitle(t('المقررات المطروحة', 'Courses to offer'), subtitle: t('اختر ما يُطرح في هذا الفصل', 'Pick what this term offers')),
-            Wrap(spacing: 6, runSpacing: 6, children: [
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final id in all)
                 FilterChip(
-                  label: Text(_course(id), style: appText(12.5)),
+                  label: Text(_course(id), style: AppType.label(ctx).copyWith(color: ctx.colors.textDark)),
                   selected: sel.contains(id),
                   onSelected: (on) => set(() => on ? sel.add(id) : sel.remove(id)),
                 ),
             ]),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppPrimaryButton(label: t('اعتماد بعد التعديل', 'Approve with changes'), onPressed: () {
               if (sel.isEmpty) return toast(t('اختر مقرراً واحداً على الأقل', 'Pick at least one course'), error: true);
               Navigator.pop(ctx, true);
@@ -145,17 +145,17 @@ class _OrgTermSuggestionsState extends State<OrgTermSuggestions> {
           TextEditingController(text: '${p['end_time']}')],
     ];
     final ok = await showAppSheet<bool>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpace.md),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppSectionTitle(t('فترات اليوم الدراسي', 'Periods of the day'), subtitle: t('الوقت بصيغة 24 ساعة HH:MM', 'Times as 24h HH:MM')),
             for (var i = 0; i < rows.length; i++)
               Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.only(bottom: AppSpace.xs),
                 child: Row(children: [
                   Expanded(child: AppField(controller: rows[i][0], label: t('الاسم', 'Name'))),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpace.xs),
                   Expanded(child: AppField(controller: rows[i][1], label: t('من', 'From'), ltr: true)),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpace.xs),
                   Expanded(child: AppField(controller: rows[i][2], label: t('إلى', 'To'), ltr: true)),
                   IconButton(
                     tooltip: t('حذف', 'Remove'),
@@ -169,7 +169,7 @@ class _OrgTermSuggestionsState extends State<OrgTermSuggestions> {
               child: AppPill(icon: Icons.add_rounded, label: t('فترة', 'Period'),
                   onTap: () => set(() => rows.add([TextEditingController(text: '${rows.length + 1}'), TextEditingController(), TextEditingController()]))),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             AppPrimaryButton(label: t('اعتماد بعد التعديل', 'Approve with changes'), onPressed: () => Navigator.pop(ctx, true)),
           ]),
         )));
@@ -187,16 +187,16 @@ class _OrgTermSuggestionsState extends State<OrgTermSuggestions> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Wrap(spacing: 8, runSpacing: 8, children: [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         AppPill(icon: Icons.auto_fix_high_rounded, label: _busy ? t('جارٍ…', 'Working…') : t('توليد تلقائي', 'Auto-generate'),
             color: c.primary, onTap: _busy ? null : _generate),
         AppPill(icon: Icons.edit_calendar_rounded, label: t('إنشاء يدوي', 'Create manually'), onTap: widget.onCreateManually),
       ]),
       if (_items.isNotEmpty) ...[
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         AppBanner(icon: Icons.lightbulb_rounded,
             text: t('مسودات اشتقها النظام — لا يُنشأ شيء قبل موافقتك', 'Drafts the system derived — nothing is created before you approve')),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         for (final d in _items) _card(context, d),
       ],
     ]);
@@ -226,21 +226,21 @@ class _OrgTermSuggestionsState extends State<OrgTermSuggestions> {
           [asMapList(p['periods']).map((x) => '${x['label']} ${AppTime.clockRange('${x['start_time']}', '${x['end_time']}')}').join(' · ')]),
     };
     return AppCard(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: AppSpace.xs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Icon(icon, color: c.primary, size: 20),
-          const SizedBox(width: 8),
-          Expanded(child: Text(title, style: appText(14, w: FontWeight.w700), maxLines: 2, overflow: TextOverflow.ellipsis)),
-          const SizedBox(width: 6),
+          Icon(icon, color: c.primary, size: AppIconSize.md),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: Text(title, style: AppType.bodyStrong(context), maxLines: 2, overflow: TextOverflow.ellipsis)),
+          const SizedBox(width: AppSpace.xs),
           AppBadgePill(t('مسودة', 'Draft'), color: c.warning),
         ]),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpace.xxs),
         for (final l in lines)
-          if (l.isNotEmpty) Text(l, style: appText(12, c: c.textMedium), maxLines: 4, overflow: TextOverflow.ellipsis),
-        Text('${t('ناقص', 'Missing')} · $why', style: appText(12, c: c.textLight)),
-        const SizedBox(height: 8),
-        Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, children: [
+          if (l.isNotEmpty) Text(l, style: AppType.meta(context).copyWith(color: c.textMedium), maxLines: 4, overflow: TextOverflow.ellipsis),
+        Text('${t('ناقص', 'Missing')} · $why', style: AppType.meta(context).copyWith(color: c.textLight)),
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.end, children: [
           AppPill(icon: Icons.check_rounded, label: t('اعتماد', 'Approve'), color: c.success, onTap: () => _decide(d, 'accept')),
           AppPill(icon: Icons.edit_rounded, label: t('تعديل', 'Edit'), onTap: () => _edit(d)),
           AppPill(icon: Icons.close_rounded, label: t('رفض', 'Reject'), color: c.danger, onTap: () => _decide(d, 'reject')),

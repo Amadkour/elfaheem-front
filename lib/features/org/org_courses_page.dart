@@ -20,6 +20,8 @@ import 'org_ui.dart';
 import 'org_v3.dart';
 import 'org_page_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_blocks.dart' show AppBlockColors, AppBlockTone;
+import 'package:flutter_education_app/design/app_badges.dart' show AppStatusBadge, AppTone;
 import 'org_academic_pages.dart' show CourseArchiveScreen;
 import 'org_page_header.dart' show OrgPushedPage;
 import 'org_schedule_pages.dart' show OrgSchedulePage;
@@ -154,28 +156,36 @@ class _CourseTile extends StatelessWidget {
     final c = context.colors;
     final s = context.watch<OrgSession>();
     final p = context.read<OrgCoursesProvider>();
-    final name = t('${row['name_ar'] ?? row['name_en'] ?? ''}', '${row['name_en'] ?? row['name_ar'] ?? ''}');
+    final name = orgNameOf(row);
     final teacher = (row['teacher'] as Map?)?['name'];
+    final code = '${row['code'] ?? ''}';
+    final fees = asDouble(row['fees']);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: orgListInset, vertical: AppSpace.xxs),
       child: RowCard(
         onTap: () => EntityNavigator.open(
             context, EntityRef(EntityKind.course, asInt(row['id']), label: '${row['name_ar'] ?? ''}', labelEn: '${row['name_en'] ?? ''}')),
-        child: Row(children: [
-          IconBadge(Icons.menu_book_rounded, c.primary),
-          const SizedBox(width: 12),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // the course's mark: a block tone that stays with the course everywhere (AppBlockTone.forKey)
+          _CourseMark(seed: code.isNotEmpty ? code : '${row['id']}'),
+          const SizedBox(width: AppSpace.md),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
-              Text(teacher == null ? t('بلا مدرس بعد', 'No teacher yet') : '$teacher', style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: teacher == null ? c.warning : c.textMedium)),
-              const SizedBox(height: 6),
-              Wrap(spacing: 6, runSpacing: 4, children: [
-                InfoChip(Icons.groups_rounded, t('${row['students']} طالب', '${row['students']} students'), c.textMedium),
-                InfoChip(Icons.payments_rounded, asDouble(row['fees']) == 0 ? t('مجاني', 'Free') : money(asDouble(row['fees'])), c.success),
-                if (row['members_only'] == true) InfoChip(Icons.lock_rounded, t('للأعضاء فقط', 'Members only'), context.colors.purple),
-                if (row['is_published'] != true) StatusChip(t('غير منشور', 'Draft'), c.warning),
-                if ('${row['code'] ?? ''}'.isNotEmpty) InfoChip(Icons.tag_rounded, '${row['code']}', c.textMedium),
-                InfoChip(Icons.account_tree_rounded, row['scope'] == 'department' ? t('مقرر قسم', 'Department course') : t('مقرر عام', 'General course'), c.textMedium),
+              Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+              const SizedBox(height: AppSpace.xxs / 2),
+              Text(teacher == null ? t('بلا مدرس بعد', 'No teacher yet') : '$teacher',
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: AppType.meta(context).copyWith(color: teacher == null ? c.warning : c.textMedium)),
+              const SizedBox(height: AppSpace.sm),
+              // the facts as quiet ink, the states as badges: no row of identical grey pills
+              Wrap(spacing: AppSpace.md, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                _Fact(Icons.groups_rounded, t('${row['students']} طالب', '${row['students']} students')),
+                _Fact(Icons.payments_rounded, fees == 0 ? t('مجاني', 'Free') : money(fees)),
+                if (code.isNotEmpty) _Fact(Icons.tag_rounded, code),
+                _Fact(Icons.account_tree_rounded, row['scope'] == 'department' ? t('مقرر قسم', 'Department course') : t('مقرر عام', 'General course')),
+                if (row['members_only'] == true)
+                  AppStatusBadge(label: t('للأعضاء فقط', 'Members only'), tone: AppTone.info, icon: Icons.lock_rounded, dense: true),
+                if (row['is_published'] != true) AppStatusBadge(label: t('غير منشور', 'Draft'), tone: AppTone.warning, dense: true),
               ]),
             ]),
           ),
@@ -223,6 +233,45 @@ class _CourseTile extends StatelessWidget {
   }
 }
 
+/// A course's mark: its block tone (stable per course) with the book in the block's ink.
+class _CourseMark extends StatelessWidget {
+  const _CourseMark({required this.seed});
+  final String seed;
+
+  @override
+  Widget build(BuildContext context) {
+    final k = AppBlockColors.of(context, AppBlockTone.forKey(seed));
+    return ExcludeSemantics(
+      child: Container(
+        width: AppTouch.min,
+        height: AppTouch.min,
+        decoration: BoxDecoration(
+          color: k.surface,
+          borderRadius: BorderRadius.circular(AppRadius.control),
+          border: k.border == null ? null : Border.all(color: k.border!, width: AppBorder.hairline),
+        ),
+        child: Icon(Icons.menu_book_rounded, size: AppIconSize.lg, color: k.ink),
+      ),
+    );
+  }
+}
+
+/// One quiet fact of a course card: a small icon and its text in the meta role.
+class _Fact extends StatelessWidget {
+  const _Fact(this.icon, this.text);
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, size: AppIconSize.xs, color: c.textLight),
+      const SizedBox(width: AppSpace.xxs),
+      Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context))),
+    ]);
+  }
+}
 
 /// Whether saving [chosen] over the course's [original] teacher takes the teacher away (an edit that ends with none).
 bool orgCourseUnassigns({required bool isEdit, required int? original, required int? chosen}) =>
@@ -271,12 +320,12 @@ Future<Map<String, dynamic>?> showOrgCourseForm(BuildContext context, {Map<Strin
         final c = ctx.colors;
         final canPublish = teacherId != null;
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(edit == null ? t('مقرر جديد', 'New course') : t('تعديل المقرر', 'Edit course')),
             Row(children: [
               SizedBox(width: 130, child: Field(controller: code, label: t('كود المقرر', 'Course code'), ltr: true)),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               Expanded(child: Field(controller: ar, label: t('الاسم بالعربية', 'Arabic name'))),
             ]),
             Field(controller: en, label: t('الاسم بالإنجليزية', 'English name'), ltr: true),
@@ -291,7 +340,7 @@ Future<Map<String, dynamic>?> showOrgCourseForm(BuildContext context, {Map<Strin
               options: {for (final p in programs) asInt(p['id']): '${p['code']} · ${orgNameOf(p)}'},
               onChanged: (v) => set(() => program = v),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             OrgPickField<int>(
               label: t('الفصل الدراسي (اختياري)', 'Academic term (optional)'),
               icon: Icons.event_note_rounded,
@@ -300,7 +349,7 @@ Future<Map<String, dynamic>?> showOrgCourseForm(BuildContext context, {Map<Strin
               options: {for (final x in terms) asInt(x['id']): t('${x['label_ar'] ?? x['year_label']}', '${x['label_en'] ?? x['year_label']}')},
               onChanged: (v) => set(() => term = v),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             OrgPickField<int>(
               label: t('المدرس', 'Teacher'),
               icon: Icons.person_rounded,
@@ -318,19 +367,19 @@ Future<Map<String, dynamic>?> showOrgCourseForm(BuildContext context, {Map<Strin
               }),
             ),
             Padding(
-              padding: const EdgeInsets.only(top: 4, bottom: 8),
+              padding: const EdgeInsets.only(top: AppSpace.xxs, bottom: AppSpace.xs),
               child: Text(
                   teacherId == null
                       ? t('بدون مدرس يبقى المقرر غير منشور حتى تعيينه. الخادم يتحقق من أهلية المدرس للقسم.',
                           'Without a teacher the course stays unpublished until one is assigned. The server checks the teacher is eligible for the department.')
                       : t('الخادم يتحقق من أهلية المدرس لنطاق المقرر.', 'The server checks the teacher is eligible for the course scope.'),
-                  style: orgText(ctx, size: 11.5, color: c.textLight)),
+                  style: AppType.meta(ctx).copyWith(color: c.textLight)),
             ),
             if (options.isNotEmpty) ...[
               Text(t('المتطلبات السابقة (مقررات يجب اجتيازها أولاً)', 'Prerequisites (courses to complete first)'),
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.textLight)),
-              const SizedBox(height: 6),
-              Wrap(spacing: 6, runSpacing: 6, children: [
+                  style: AppType.label(ctx).copyWith(color: c.textLight)),
+              const SizedBox(height: AppSpace.xs),
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final o in options)
                   FilterChip(
                     label: Text(t('${o['name_ar'] ?? o['name_en']}', '${o['name_en'] ?? o['name_ar']}'), style: TextStyle(fontFamily: AppFonts.family)),
@@ -338,11 +387,11 @@ Future<Map<String, dynamic>?> showOrgCourseForm(BuildContext context, {Map<Strin
                     onSelected: (on) => set(() => on ? prereqs.add(asInt(o['id'])) : prereqs.remove(asInt(o['id']))),
                   ),
               ]),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
             ],
             Row(children: [
               Expanded(child: OrgNumberField(controller: fees, label: t('السعر السنوي', 'Yearly fee'), decimals: 2)),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpace.sm),
               Expanded(child: OrgNumberField(controller: hours, label: t('عدد الساعات', 'Total hours'))),
             ]),
             OrgSwitchRow(
@@ -357,10 +406,10 @@ Future<Map<String, dynamic>?> showOrgCourseForm(BuildContext context, {Map<Strin
                 onChanged: (v) => set(() => membersOnly = v)),
             if (err != null)
               Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: c.danger.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
-                child: Text(err!, style: orgText(ctx, size: 12.5, color: c.danger)),
+                margin: const EdgeInsets.only(bottom: AppSpace.sm),
+                padding: const EdgeInsets.all(AppSpace.sm),
+                decoration: BoxDecoration(color: c.danger.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(AppRadius.control)),
+                child: Text(err!, style: AppType.label(ctx).copyWith(color: c.danger)),
               ),
             PrimaryButton(
               isLoading: busy,
@@ -427,14 +476,14 @@ Future<void> _enrollSheet(BuildContext context, OrgCoursesProvider p, Map<String
         final c = ctx.colors;
         final shown = students.where((u) => '${u['name']} ${u['email']}'.toLowerCase().contains(q.text.trim().toLowerCase())).toList();
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             SheetHeader(t('تسجيل طلاب في الكورس', 'Enroll students')),
             TextField(controller: q, onChanged: (_) => set(() {}), decoration: InputDecoration(prefixIcon: const Icon(Icons.search_rounded), hintText: t('بحث', 'Search'))),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             Flexible(
               child: shown.isEmpty
-                  ? Padding(padding: const EdgeInsets.all(24), child: Text(t('لا يوجد طلاب', 'No students')))
+                  ? Padding(padding: const EdgeInsets.all(AppSpace.lg), child: Text(t('لا يوجد طلاب', 'No students')))
                   : ListView(shrinkWrap: true, children: [
                       for (final u in shown)
                         CheckboxListTile(
@@ -446,7 +495,7 @@ Future<void> _enrollSheet(BuildContext context, OrgCoursesProvider p, Map<String
                         ),
                     ]),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             PrimaryButton(
               isLoading: busy,
               label: t('تسجيل (${picked.length})', 'Enroll (${picked.length})'),
