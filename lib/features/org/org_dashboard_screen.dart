@@ -397,13 +397,13 @@ class OrgStaffOnlyPage extends StatelessWidget {
           constraints: BoxConstraints(minHeight: box.maxHeight - 2 * AppSpace.gutter(box.maxWidth)),
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
+              constraints: BoxConstraints(maxWidth: AppWidth.form.max * 0.7),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(color: c.primaryTint, shape: BoxShape.circle),
-                  child: Icon(Icons.badge_outlined, size: 34, color: c.primary),
+                  width: AppTouch.min + AppSpace.lg,
+                  height: AppTouch.min + AppSpace.lg,
+                  decoration: BoxDecoration(color: c.blockSky, shape: BoxShape.circle),
+                  child: Icon(Icons.badge_outlined, size: AppIconSize.xl, color: c.blockInk),
                 ),
                 AppSpace.gapLg,
                 Semantics(
@@ -419,7 +419,7 @@ class OrgStaffOnlyPage extends StatelessWidget {
                   t('أنت طالب في هذه المؤسسة. مقرراتك وجدولك وأخبارها في صفحتك الرئيسية.',
                       'You study in this organization. Your courses, timetable and its news are on your home.'),
                   textAlign: TextAlign.center,
-                  style: AppType.meta(context).copyWith(fontSize: 14, height: 1.5),
+                  style: AppType.body(context).copyWith(color: c.textMedium, height: 1.5),
                 ),
                 AppSpace.gapLg,
                 AppPrimaryButton(

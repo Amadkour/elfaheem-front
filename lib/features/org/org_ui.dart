@@ -10,7 +10,6 @@
 //   files              orgPickAndUpload
 library;
 
-import 'package:flutter_education_app/design/app_mesh.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -24,9 +23,10 @@ import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'dart:typed_data';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart' show AppButton, AppListSkeleton;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Colours, icons, labels
@@ -151,12 +151,16 @@ class OrgSectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: padding ?? const EdgeInsetsDirectional.fromSTEB(16, 18, 10, 8),
+      padding: padding ?? const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.lg, AppSpace.sm, AppSpace.xs),
       child: Row(children: [
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: orgText(context, size: 16, w: FontWeight.w800)),
-            if (subtitle != null) Text(subtitle!, style: orgText(context, size: 12, color: c.textMedium)),
+            Text(title, style: AppType.section(context)),
+            if (subtitle != null)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpace.xxs / 2),
+                child: Text(subtitle!, style: AppType.meta(context).copyWith(color: c.textMedium)),
+              ),
           ]),
         ),
         ?action,
@@ -178,43 +182,45 @@ class OrgStatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final col = color ?? c.primary;
+    // paper + a warm hairline (tone first, no shadow at rest); the icon carries the colour
     return AppPressScale(
       enabled: onTap != null,
       child: Material(
-      color: c.cardBg,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: col.withValues(alpha: 0.22)),
+        color: c.cardBg,
+        shape: RoundedRectangleBorder(
+            borderRadius: AppRadius.cardAll, side: BorderSide(color: c.divider, width: AppBorder.hairline)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpace.sm),
+            child: Row(children: [
+              IconBadge(icon, col, size: AppIconSize.hero),
+              AppSpace.gapSm,
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerStart,
+                    child: AppCountUp('${value ?? 0}',
+                        memoryKey: 'orgstat:$label', style: AppType.figureLarge(context).copyWith(color: c.textDark, height: 1.15)),
+                  ),
+                  // two lines: one cut "Live even…" / "مهام فش…" on every 3-up strip (docs/polish/visual-review.md)
+                  Text(label, maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: AppType.meta(context).copyWith(color: c.textMedium, height: 1.2)),
+                ]),
+              ),
+            ]),
           ),
-          child: Row(children: [
-            IconBadge(icon, col, size: 40),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                AppCountUp('${value ?? 0}', memoryKey: 'orgstat:$label',
-                    style: TextStyle(fontFamily: AppFonts.display, fontSize: 21, fontWeight: FontWeight.w800, color: c.textDark)),
-                // two lines: one cut "Live even…" / "مهام فش…" on every 3-up strip (docs/polish/visual-review.md)
-                Text(label, maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: orgText(context, size: 11.5, color: c.textMedium).copyWith(height: 1.2)),
-              ]),
-            ),
-          ]),
         ),
       ),
-    ),
     );
   }
 }
 
 /// Responsive grid: 2 columns on phones, more on wide screens.
 class OrgGrid extends StatelessWidget {
-  const OrgGrid({super.key, required this.children, this.minTile = 170, this.spacing = 12, this.padding});
+  const OrgGrid({super.key, required this.children, this.minTile = 170, this.spacing = AppSpace.sm, this.padding});
   final List<Widget> children;
   final double minTile, spacing;
   final EdgeInsetsGeometry? padding;
@@ -222,7 +228,7 @@ class OrgGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: padding ?? const EdgeInsets.symmetric(horizontal: 16),
+      padding: padding ?? const EdgeInsets.symmetric(horizontal: AppSpace.md),
       child: LayoutBuilder(builder: (context, box) {
         final cols = (box.maxWidth / minTile).floor().clamp(1, 6);
         final w = (box.maxWidth - spacing * (cols - 1)) / cols;
@@ -258,39 +264,53 @@ class OrgActionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final col = color ?? c.primary;
-    return Material(
-      color: c.cardBg,
-      borderRadius: BorderRadius.circular(22),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(22),
-        onTap: onTap,
-        child: Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(22), border: Border.all(color: c.divider)), child: AppMeshSurface(color: col, style: AppMeshStyle.wash, radius: BorderRadius.circular(22), child: Padding(padding: const EdgeInsets.all(14), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Stack(clipBehavior: Clip.none, children: [
-              IconBadge(icon, col, size: 44),
-              if (badge > 0)
-                PositionedDirectional(
-                  top: -6,
-                  end: -6,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                    decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(10)),
-                    child: Text(badge > 99 ? '99+' : '$badge',
-                        style: TextStyle(color: c.onHero, fontSize: 10.5, fontWeight: FontWeight.w800)),
+    // paper + a warm hairline, the colour only in the icon tile (no gradient wash behind text, D-614)
+    return AppPressScale(
+      enabled: onTap != null,
+      child: Material(
+        color: c.cardBg,
+        shape: RoundedRectangleBorder(
+            borderRadius: AppRadius.cardAll, side: BorderSide(color: c.divider, width: AppBorder.hairline)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpace.md),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Stack(clipBehavior: Clip.none, children: [
+                IconBadge(icon, col, size: AppIconSize.hero),
+                if (badge > 0)
+                  PositionedDirectional(
+                    top: -AppSpace.xxs,
+                    end: -AppSpace.xxs,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs + 2, vertical: 1),
+                      decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                      child: Text(badge > 99 ? '99+' : '$badge',
+                          style: AppType.overline(context).copyWith(color: c.onHero, fontWeight: FontWeight.w700)),
+                    ),
                   ),
-                ),
-            ]),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 14.5, w: FontWeight.w800)),
-                if (subtitle != null)
-                  Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: orgText(context, size: 12, color: c.textMedium)),
               ]),
-            ),
-            if (trailing != null) ConstrainedBox(constraints: const BoxConstraints(maxWidth: 150), child: trailing) // a long pill ellipsizes
-            else Icon(Icons.chevron_right_rounded, color: c.textLight),
-          ])))),
+              AppSpace.gapSm,
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
+                  if (subtitle != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSpace.xxs / 2),
+                      child: Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis,
+                          style: AppType.meta(context).copyWith(color: c.textMedium)),
+                    ),
+                ]),
+              ),
+              if (trailing != null)
+                // a long pill ellipsizes
+                ConstrainedBox(constraints: const BoxConstraints(maxWidth: AppTouch.min * 3), child: trailing)
+              else
+                Icon(Icons.chevron_right_rounded, color: c.textLight, size: AppIconSize.lg),
+            ]),
+          ),
+        ),
       ),
     );
   }
@@ -306,12 +326,16 @@ class OrgPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final col = color ?? context.colors.primary;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-      decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2 + 1),
+      decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.pill)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         // the tint keeps the raw tone; the label is the readable ink of it (warning text on its own tint was 2:1)
-        if (icon != null) ...[Icon(icon, size: 13, color: appInk(context, col)), const SizedBox(width: 4)],
-        Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, fontWeight: FontWeight.w700, color: appInk(context, col)))),
+        if (icon != null) ...[Icon(icon, size: AppIconSize.xs, color: appInk(context, col)), const SizedBox(width: AppSpace.xxs)],
+        Flexible(
+            child: Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: appInk(context, col)))),
       ]),
     );
   }
@@ -328,13 +352,13 @@ class OrgInfoRow extends StatelessWidget {
     if ((text ?? '').trim().isEmpty) return const SizedBox.shrink();
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs - 1),
       child: Row(children: [
-        Icon(icon, size: 16, color: c.textLight),
-        const SizedBox(width: 8),
+        Icon(icon, size: AppIconSize.sm, color: c.textLight),
+        AppSpace.gapXs,
         Expanded(
           child: Text(text!, textDirection: ltr ? TextDirection.ltr : null,
-              textAlign: ltr ? TextAlign.start : null, style: orgText(context, size: 12.5, color: c.textMedium)),
+              textAlign: ltr ? TextAlign.start : null, style: AppType.label(context).copyWith(fontWeight: FontWeight.w400, color: c.textMedium)),
         ),
       ]),
     );
@@ -355,33 +379,27 @@ class OrgEmpty extends StatelessWidget {
     final c = context.colors;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(28),
+        padding: const EdgeInsets.all(AppSpace.lg),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          // the art settles in once (D-582)
+          // the art settles in once (D-582): a peach disc, the icon in the block's ink
           AppPopIn(
             from: 0.86,
             child: Container(
-              width: 92,
-              height: 92,
-              decoration: BoxDecoration(shape: BoxShape.circle, color: c.primary.withValues(alpha: 0.10)),
-              child: Icon(icon, size: 42, color: c.primary),
+              width: AppTouch.min * 2,
+              height: AppTouch.min * 2,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: c.blockPeach),
+              child: Icon(icon, size: AppIconSize.hero, color: c.blockInk),
             ),
           ),
-          const SizedBox(height: 14),
-          Text(title, textAlign: TextAlign.center, style: orgText(context, size: 15.5, w: FontWeight.w800)),
+          AppSpace.gapMd,
+          Text(title, textAlign: TextAlign.center, style: AppType.section(context)),
           if (message != null) ...[
-            const SizedBox(height: 6),
-            Text(message!, textAlign: TextAlign.center, style: orgText(context, size: 12.5, color: c.textMedium)),
+            const SizedBox(height: AppSpace.xs - 2),
+            Text(message!, textAlign: TextAlign.center, style: AppType.body(context).copyWith(color: c.textMedium)),
           ],
           if (actionLabel != null && onAction != null) ...[
-            const SizedBox(height: 14),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                  backgroundColor: c.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-              onPressed: onAction,
-              icon: const Icon(Icons.add_rounded),
-              label: Text(actionLabel!, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
-            ),
+            AppSpace.gapMd,
+            AppButton.primary(label: actionLabel!, icon: Icons.add_rounded, onPressed: onAction),
           ],
         ]),
       ),
@@ -515,7 +533,7 @@ class OrgPermissionMatrix extends StatelessWidget {
                 padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 8, 10),
                 decoration: BoxDecoration(
                   color: cur.isEmpty ? c.inputBg : col.withValues(alpha: 0.07),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: AppRadius.cardAll,
                   border: Border.all(color: cur.isEmpty ? c.divider : col.withValues(alpha: 0.35)),
                 ),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -668,7 +686,7 @@ class OrgPickField<T> extends StatelessWidget {
                 onTap: () => Navigator.pop(ctx, _Picked<T>(v)),
                 title: Text(text, style: orgText(ctx, w: v == value ? FontWeight.w800 : FontWeight.w500)),
                 trailing: v == value ? Icon(Icons.check_circle_rounded, color: c.primary) : null,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
                 tileColor: v == value ? c.primary.withValues(alpha: 0.07) : null,
               ));
           return Padding(
@@ -705,7 +723,7 @@ class OrgPickField<T> extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         onTap: () => _open(context),
         child: InputDecorator(
           isEmpty: text.isEmpty,
@@ -717,8 +735,8 @@ class OrgPickField<T> extends StatelessWidget {
             filled: true,
             fillColor: c.inputBg,
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.divider)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.divider)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.divider)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.control), borderSide: BorderSide(color: c.divider)),
           ),
           child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w600)),
         ),

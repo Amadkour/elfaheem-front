@@ -68,13 +68,14 @@ class OrgSectionHeading extends StatelessWidget {
   Widget build(BuildContext context) {
     final sub = subtitle;
     return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xs),
+      // the editorial rhythm: more room above a heading than below it
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.lg, AppSpace.md, AppSpace.xs),
       child: Row(children: [
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Semantics(header: true, child: Text(title, style: AppType.section(context))),
             if (sub != null && sub.isNotEmpty) ...[
-              const SizedBox(height: 2),
+              const SizedBox(height: AppSpace.xxs / 2),
               Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
             ],
           ]),
@@ -237,17 +238,17 @@ class OrgPrimaryButton extends StatelessWidget {
         backgroundColor: c.primary,
         foregroundColor: c.onHero,
         minimumSize: const Size(0, AppTouch.min),
-        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.chipAll),
-        textStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, fontSize: 14),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
+        textStyle: AppType.bodyStrong(context),
       ),
-      icon: Icon(action.icon, size: 20),
+      icon: Icon(action.icon, size: AppIconSize.md),
       label: Text(action.label, maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
 }
 
-/// THE floating primary action of an org page (the brand gradient, white ink): OrgPageBody draws it on phones; a page
+/// THE floating primary action of an org page (solid emerald, white ink, D-614): OrgPageBody draws it on phones; a page
 /// with its own layout (the timetable list) uses it directly instead of a FloatingActionButton in the raw primary colour,
 /// which a light brand colour left unreadable.
 class OrgFab extends StatelessWidget {
@@ -257,10 +258,11 @@ class OrgFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    // the brand gradient (D-136) behind a transparent FAB: its ripple, hover and focus overlays draw on top
-    final r = BorderRadius.circular(18);
+    // the solid primary (the primary button is solid, D-614) behind a transparent FAB: its ripple, hover and focus
+    // overlays draw on top; it floats, so it keeps the one soft warm shadow
+    final r = BorderRadius.circular(AppRadius.card);
     return DecoratedBox(
-      decoration: BoxDecoration(borderRadius: r, gradient: c.primaryGradient, boxShadow: c.primaryButtonShadow),
+      decoration: BoxDecoration(borderRadius: r, color: c.primary, boxShadow: c.primaryButtonShadow),
       child: FloatingActionButton.extended(
         key: ValueKey('org.page.${action.id}'),
         heroTag: 'org.page.${action.id}',
@@ -272,8 +274,8 @@ class OrgFab extends StatelessWidget {
         highlightElevation: 0,
         shape: RoundedRectangleBorder(borderRadius: r),
         onPressed: action.onTap,
-        icon: Icon(action.icon),
-        label: Text(action.label, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600)),
+        icon: Icon(action.icon, size: AppIconSize.md),
+        label: Text(action.label, style: AppType.bodyStrong(context).copyWith(color: c.onHero)),
       ),
     );
   }
@@ -294,8 +296,8 @@ class _ToolSurface extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: active ? c.primaryTint : c.cardBg,
-          borderRadius: AppRadius.chipAll,
-          border: Border.all(color: active ? orgInk(context).withValues(alpha: 0.45) : c.divider),
+          borderRadius: BorderRadius.circular(AppRadius.control),
+          border: Border.all(color: active ? orgInk(context).withValues(alpha: 0.45) : c.divider, width: AppBorder.hairline),
         ),
         child: Padding(
           padding: square ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: AppSpace.sm),
@@ -547,7 +549,7 @@ class _PartTab extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: AppTouch.min),
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
           decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: selected ? orgInk(context) : Colors.transparent, width: 2)),
+            border: Border(bottom: BorderSide(color: selected ? orgInk(context) : Colors.transparent, width: AppBorder.focus)),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(icon, size: 18, color: ink),
