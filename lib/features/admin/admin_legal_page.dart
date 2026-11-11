@@ -204,7 +204,7 @@ class LegalDocCard extends StatelessWidget {
           const SizedBox(width: AppSpace.md),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, style: appText(17, w: FontWeight.w700, c: c.textDark, h: 1.3)),
+              Text(title, style: AppType.section(context).copyWith(color: c.textDark, height: 1.3)),
               const SizedBox(height: AppSpace.xs),
               Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 AppTag(customized ? _t('معدّل', 'Customized') : _t('النص الافتراضي', 'Shipped text'),
@@ -445,7 +445,7 @@ class _AdminLegalEditorPageState extends State<AdminLegalEditorPage> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               AppSectionTitle(_t('باختصار', 'At a glance')),
               Text(_t('نقاط قصيرة تظهر في أعلى الصفحة (حتى 8).', 'Short points shown at the top of the page (up to 8).'),
-                  style: appText(13, c: c.textMedium, h: 1.5)),
+                  style: AppType.label(context).copyWith(color: c.textMedium, height: 1.5)),
               const SizedBox(height: AppSpace.sm),
               for (var i = 0; i < _highlights.length; i++) ...[
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -489,7 +489,7 @@ class _AdminLegalEditorPageState extends State<AdminLegalEditorPage> {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   Row(children: [
                     Expanded(
-                      child: Text('${_t('القسم', 'Section')} ${i + 1}', style: appText(15, w: FontWeight.w700, c: c.textDark)),
+                      child: Text('${_t('القسم', 'Section')} ${i + 1}', style: AppType.section(context).copyWith(color: c.textDark)),
                     ),
                     IconButton(
                       tooltip: _t('للأعلى', 'Move up'),

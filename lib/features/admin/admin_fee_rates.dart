@@ -385,7 +385,7 @@ class _FeeEditSheetState extends State<_FeeEditSheet> {
       SheetHeader(widget.title),
       Flexible(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
           child: Column(children: [
             AppNumberField(controller: _percent, label: 'admin_fee_percent'.tr, min: 0, max: 100, decimals: 2),
             if (widget.hasFixed) ...[

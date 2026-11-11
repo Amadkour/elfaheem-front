@@ -1,10 +1,10 @@
 // lib/features/admin/admin_premium_widgets.dart
 //
 // Shared "premium" building blocks for the admin pages:
-//   • AdminPalette      – gradient pairs (light → dark) used for feature icons
-//   • ServiceIcon       – gradient rounded-square icon with a soft glow
-//   • PremiumHero       – gradient banner at the top of a page
-//   • HeroPill          – small translucent chip shown inside the hero
+//   • AdminPalette      – colour pairs (light → base) read from the live theme; the base tints feature marks
+//   • ServiceIcon       – an icon on a faint opaque tint of its colour (text-safe ink)
+//   • PremiumHero       – the page's one tinted block (sky) with an editorial headline
+//   • HeroPill          – small fact chip in the block's faint tint
 //   • PremiumCard       – titled card (icon + title + hint) that holds children
 //   • PremiumSelectTile – selectable row (multi-select or radio style)
 //   • PremiumSwitchRow  – label + switch row
@@ -13,7 +13,8 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
-import 'package:flutter_education_app/design/app_gradients.dart';
+import 'package:flutter_education_app/design/app_blocks.dart';
+import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
@@ -105,7 +106,12 @@ TextStyle adminText(
   height: height,
 );
 
+/// The tint a palette pair carries: its base colour (the last stop).
+Color _base(List<Color> colors) => colors.isEmpty ? AppTheme.primary : colors.last.withValues(alpha: 1);
+
 // ── icon ─────────────────────────────────────────────────────────────────────
+/// A feature mark: the icon in its colour's text-safe ink on a faint opaque tint of the same colour (D-612: the
+/// icon's tint carries the colour, never a gradient wash). [colors] is a palette pair; its base tone is used.
 class ServiceIcon extends StatelessWidget {
   const ServiceIcon({
     super.key,
@@ -120,19 +126,24 @@ class ServiceIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    final base = _base(colors);
+    final tint = Color.alphaBlend(base.withValues(alpha: 0.14), c.cardBg);
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        gradient: AppGradients.blend(context, color: colors.last),
-        borderRadius: BorderRadius.circular(size * 0.36),
+        color: tint,
+        borderRadius: BorderRadius.circular(size >= AppTouch.min ? AppRadius.control : AppRadius.chip),
       ),
-      child: Icon(icon, color: context.colors.onHero, size: size * 0.52),
+      child: Icon(icon, color: c.blockAccentInk(base, tint), size: size * 0.5),
     );
   }
 }
 
 // ── hero banner ──────────────────────────────────────────────────────────────
+/// The page's one tinted block (sky, the admin's tone): an editorial headline in the block's ink, one line of
+/// direction and optional [HeroPill]s. [colors] tints only the mark beside the title.
 class PremiumHero extends StatelessWidget {
   const PremiumHero({
     super.key,
@@ -152,66 +163,60 @@ class PremiumHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: AppMeshSurface(
-        color: colors.last,
-        radius: BorderRadius.circular(AppRadius.card),
-        child: Padding(
-              padding: const EdgeInsets.all(22),
-              child: Column(
+      padding: const EdgeInsets.only(bottom: AppSpace.lg),
+      child: AppBlock(
+        tone: AppBlockTone.sky,
+        hero: true,
+        child: Builder(builder: (context) {
+          final b = AppBlock.colorsOf(context);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 54,
-                        height: 54,
-                        decoration: BoxDecoration(
-                          color: context.colors.onHero.withValues(alpha: 0.20),
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: Icon(icon, color: context.colors.onHero, size: 29),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              style: TextStyle(
-                                fontFamily: AppFonts.family,
-                                fontSize: 19,
-                                fontWeight: FontWeight.w800,
-                                color: context.colors.onHero,
-                              ),
-                            ),
-                            if (subtitle != null) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                subtitle!,
-                                style: TextStyle(
-                                  fontFamily: AppFonts.family,
-                                  fontSize: 12.5,
-                                  height: 1.4,
-                                  color: context.colors.onHero.withValues(alpha: 0.88),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
+                  Container(
+                    width: AppTouch.min,
+                    height: AppTouch.min,
+                    decoration: BoxDecoration(color: b.faint, borderRadius: AppRadius.controlAll),
+                    child: Icon(icon, color: b.accentInk(_base(colors)), size: AppIconSize.lg),
                   ),
-                  if (footer != null) ...[const SizedBox(height: 14), footer!],
+                  const SizedBox(width: AppSpace.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Semantics(
+                          header: true,
+                          child: Text(
+                            title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppType.headline(context).copyWith(color: b.ink),
+                          ),
+                        ),
+                        if (subtitle != null) ...[
+                          const SizedBox(height: AppSpace.xxs),
+                          Text(
+                            subtitle!,
+                            style: AppType.body(context).copyWith(color: b.muted, height: 1.5),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
               ),
-            ),
+              if (footer != null) ...[const SizedBox(height: AppSpace.md), footer!],
+            ],
+          );
+        }),
       ),
     );
   }
 }
 
+/// A small fact chip inside a [PremiumHero]: the block's faint tint with its ink (never white glass on a light block).
 class HeroPill extends StatelessWidget {
   const HeroPill(this.label, {super.key, this.icon});
 
@@ -220,30 +225,26 @@ class HeroPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final b = AppBlock.colorsOf(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs + 1),
       decoration: BoxDecoration(
-        color: context.colors.onHero.withValues(alpha: 0.20),
-        borderRadius: BorderRadius.circular(20),
+        color: b.faint,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 14, color: context.colors.onHero),
-            const SizedBox(width: 5),
+            Icon(icon, size: AppIconSize.xs, color: b.muted),
+            const SizedBox(width: AppSpace.xxs),
           ],
           Flexible(
             child: Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: context.colors.onHero,
-              ),
+              style: AppType.label(context).copyWith(color: b.ink, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -253,6 +254,7 @@ class HeroPill extends StatelessWidget {
 }
 
 // ── card ─────────────────────────────────────────────────────────────────────
+/// Paper on a warm hairline (no resting shadow, D-612) with an editorial section title beside its mark.
 class PremiumCard extends StatelessWidget {
   const PremiumCard({
     super.key,
@@ -273,52 +275,38 @@ class PremiumCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: AppSpace.md),
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(c.radiusLarge),
-        border: Border.all(color: c.divider),
-        boxShadow: c.cardShadow,
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       // Transparent Material so InkWell splashes inside are painted above the
       // decorated container instead of being hidden behind it.
       child: Material(
         type: MaterialType.transparency,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xs),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  ServiceIcon(icon: icon, colors: colors, size: 40),
-                  const SizedBox(width: 12),
+                  ServiceIcon(icon: icon, colors: colors, size: AppIconSize.hero),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
-                    child: Text(
-                      title,
-                      style: adminText(
-                        context,
-                        size: 16,
-                        weight: FontWeight.w800,
-                      ),
+                    child: Semantics(
+                      header: true,
+                      child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
                     ),
                   ),
                 ],
               ),
               if (hint != null) ...[
-                const SizedBox(height: 10),
-                Text(
-                  hint!,
-                  style: adminText(
-                    context,
-                    size: 12.5,
-                    weight: FontWeight.w500,
-                    color: c.textMedium,
-                    height: 1.5,
-                  ),
-                ),
+                const SizedBox(height: AppSpace.xs),
+                Text(hint!, style: AppType.meta(context).copyWith(color: c.textMedium, height: 1.5)),
               ],
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpace.md),
               ...children,
             ],
           ),
@@ -329,6 +317,7 @@ class PremiumCard extends StatelessWidget {
 }
 
 // ── selectable tile ──────────────────────────────────────────────────────────
+/// A selectable row on the input well; the chosen one takes a faint tint of [color] and a 1.5 px ring of it.
 class PremiumSelectTile extends StatelessWidget {
   const PremiumSelectTile({
     super.key,
@@ -356,65 +345,57 @@ class PremiumSelectTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final motion = AppMotion.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: motion.fast,
+        curve: AppMotion.curve,
         decoration: BoxDecoration(
-          color: selected ? color.withValues(alpha: 0.08) : c.inputBg,
-          borderRadius: BorderRadius.circular(16),
+          color: selected ? Color.alphaBlend(color.withValues(alpha: 0.08), c.cardBg) : c.inputBg,
+          borderRadius: AppRadius.controlAll,
           border: Border.all(
             color: selected ? color : c.divider,
-            width: selected ? 1.6 : 1,
+            width: selected ? AppBorder.strong : AppBorder.hairline,
           ),
         ),
         child: Material(
           type: MaterialType.transparency,
           child: InkWell(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: AppRadius.controlAll,
             onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  if (leading != null) ...[leading!, const SizedBox(width: 12)],
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: adminText(
-                            context,
-                            size: 14.5,
-                            weight: FontWeight.w700,
-                          ),
-                        ),
-                        if (subtitle != null) ...[
-                          const SizedBox(height: 3),
-                          Text(
-                            subtitle!,
-                            style: adminText(
-                              context,
-                              size: 12,
-                              weight: FontWeight.w500,
-                              color: subtitleColor ?? c.textMedium,
-                              height: 1.4,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouch.min),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpace.sm),
+                child: Row(
+                  children: [
+                    if (leading != null) ...[leading!, const SizedBox(width: AppSpace.sm)],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
+                          if (subtitle != null) ...[
+                            const SizedBox(height: AppSpace.xxs / 2),
+                            Text(
+                              subtitle!,
+                              style: AppType.meta(context).copyWith(color: subtitleColor ?? c.textMedium, height: 1.4),
                             ),
-                          ),
+                          ],
+                          if (footer != null) ...[
+                            const SizedBox(height: AppSpace.xs),
+                            footer!,
+                          ],
                         ],
-                        if (footer != null) ...[
-                          const SizedBox(height: 6),
-                          footer!,
-                        ],
-                      ],
+                      ),
                     ),
-                  ),
-                  if (trailing != null) ...[
-                    const SizedBox(width: 8),
-                    trailing!,
+                    if (trailing != null) ...[
+                      const SizedBox(width: AppSpace.xs),
+                      trailing!,
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
@@ -445,48 +426,34 @@ class PremiumSwitchRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      margin: const EdgeInsets.only(bottom: AppSpace.xs),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+      constraints: const BoxConstraints(minHeight: AppTouch.primary),
       decoration: BoxDecoration(
         color: c.inputBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: c.divider),
+        borderRadius: AppRadius.controlAll,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Row(
         children: [
           if (icon != null) ...[
-            Icon(icon, color: c.primary, size: 22),
-            const SizedBox(width: 10),
+            Icon(icon, color: c.textMedium, size: AppIconSize.md),
+            const SizedBox(width: AppSpace.sm),
           ],
           Expanded(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: adminText(
-                    context,
-                    size: 14.5,
-                    weight: FontWeight.w700,
-                  ),
-                ),
+                Text(title, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
                 if (subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle!,
-                    style: adminText(
-                      context,
-                      size: 12,
-                      weight: FontWeight.w500,
-                      color: c.textMedium,
-                      height: 1.4,
-                    ),
-                  ),
+                  const SizedBox(height: AppSpace.xxs / 2),
+                  Text(subtitle!, style: AppType.meta(context).copyWith(color: c.textMedium, height: 1.4)),
                 ],
               ],
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.sm),
           AppSwitch(value: value, onChanged: onChanged, semanticLabel: title),
         ],
       ),
@@ -495,6 +462,8 @@ class PremiumSwitchRow extends StatelessWidget {
 }
 
 // ── save bar ─────────────────────────────────────────────────────────────────
+/// The sticky bottom action: paper over a warm hairline holding ONE solid primary button (56 px, the kit's busy
+/// spinner keeps its width).
 class PremiumSaveBar extends StatelessWidget {
   const PremiumSaveBar({
     super.key,
@@ -515,56 +484,22 @@ class PremiumSaveBar extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: c.cardBg,
-        border: Border(top: BorderSide(color: c.divider)),
+        border: Border(top: BorderSide(color: c.divider, width: AppBorder.hairline)),
       ),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 640),
-              child: SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: FilledButton(
-                  onPressed: loading ? null : onPressed,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: c.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: loading
-                      ? SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.4,
-                            color: c.onHero,
-                          ),
-                        )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(icon, size: 20, color: c.onHero),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                label,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontFamily: AppFonts.family,
-                                  fontSize: 15.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: c.onHero,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                ),
+              constraints: BoxConstraints(maxWidth: AppWidth.form.max),
+              child: AppButton.primary(
+                label: label,
+                icon: icon,
+                busy: loading,
+                expand: true,
+                size: AppButtonSize.lg,
+                onPressed: onPressed,
               ),
             ),
           ),

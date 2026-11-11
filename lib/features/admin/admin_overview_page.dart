@@ -202,8 +202,8 @@ class _ViewState extends State<_View> with WidgetsBindingObserver {
       (_) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppSheetHeader(title),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-          child: Text(text, style: appText(14, c: c.textMedium, h: 1.5)),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, 0, AppSpace.lg, AppSpace.lg),
+          child: Text(text, style: AppType.body(context).copyWith(color: c.textMedium, height: 1.5)),
         ),
       ]),
     );
@@ -218,21 +218,21 @@ class _ViewState extends State<_View> with WidgetsBindingObserver {
       (_) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppSheetHeader('admin_alert_jobs_failed_24h'.tr),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, 0, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             if (rows.isEmpty)
-              Text('$total', style: appText(22, w: FontWeight.w800, c: c.danger))
+              Text('$total', style: AppType.figureLarge(context).copyWith(color: appInk(context, c.danger)))
             else
               for (final e in rows)
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
                   child: Row(children: [
-                    Expanded(child: Text(adminJobKindKey(e.key).tr, style: appText(14, c: c.textDark))),
-                    Text('${e.value}', style: appText(15, w: FontWeight.w800, c: c.danger)),
+                    Expanded(child: Text(adminJobKindKey(e.key).tr, style: AppType.row(context).copyWith(color: c.textDark))),
+                    Text('${e.value}', style: AppType.figure(context).copyWith(color: appInk(context, c.danger))),
                   ]),
                 ),
-            const SizedBox(height: 12),
-            Text('admin_alert_jobs_hint'.tr, style: appText(12.5, c: c.textLight, h: 1.4)),
+            AppSpace.gapSm,
+            Text('admin_alert_jobs_hint'.tr, style: AppType.meta(context).copyWith(height: 1.4)),
           ]),
         ),
       ]),

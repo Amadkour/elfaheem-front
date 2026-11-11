@@ -606,9 +606,9 @@ class FeePolicyTabState extends State<FeePolicyTab> {
     if (_policy == null) {
       return AppEmpty(icon: Icons.error_outline_rounded, title: _error ?? t('تعذر التحميل', 'Could not load'), actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load);
     }
-    return ListView(padding: const EdgeInsets.all(16), children: [
+    return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
       AppCard(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(AppSpace.md),
         child: FeePolicyForm(
             key: ValueKey('${_policy!.feeBearer}${_policy!.studentShare}${_policy!.vatOn}'),
             policy: _policy!, readOnly: !widget.superAdmin, busy: _busy, onSave: _save, onReset: _policy!.isDefault ? null : _reset, onDirty: widget.onDirty),
@@ -670,17 +670,17 @@ class _FeePolicyFormState extends State<FeePolicyForm> {
     final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Row(children: [
-        Expanded(child: Text(t('من يتحمل رسوم البوابة؟', 'Who bears the gateway fee?'), style: appText(15, w: FontWeight.w800, c: c.textDark))),
+        Expanded(child: Text(t('من يتحمل رسوم البوابة؟', 'Who bears the gateway fee?'), style: AppType.section(context).copyWith(color: c.textDark))),
         if (widget.policy.isDefault) AppBadgePill(t('افتراضي', 'Default'), color: c.textMedium),
       ]),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
       AppDropdown<String>(
         value: _d.bearer,
         decoration: InputDecoration(labelText: t('متحمل الرسوم', 'Fee bearer')),
         items: [for (final b in feeBearers) DropdownMenuItem(value: b, child: Text(feeBearerText(b), maxLines: 1, overflow: TextOverflow.ellipsis))],
         onChanged: widget.readOnly ? null : (v) { setState(() => _d.bearer = v ?? 'both'); _tellDirty(); },
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       if (_d.bearer == 'split')
         AppNumberField(controller: _share, label: t('حصة الطالب من الرسوم %', 'Student share of the fee %'), min: 0, max: 100),
       AppDropdown<String>(
@@ -689,9 +689,9 @@ class _FeePolicyFormState extends State<FeePolicyForm> {
         items: [for (final b in vatBases) DropdownMenuItem(value: b, child: Text(vatBaseText(b), maxLines: 1, overflow: TextOverflow.ellipsis))],
         onChanged: widget.readOnly ? null : (v) { setState(() => _d.vatOn = v ?? 'fee'); _tellDirty(); },
       ),
-      if (_err != null) Padding(padding: const EdgeInsets.only(top: 10), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: draftErrorText(_err!))),
+      if (_err != null) Padding(padding: const EdgeInsets.only(top: AppSpace.sm), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: draftErrorText(_err!))),
       if (!widget.readOnly) ...[
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.md),
         AppPrimaryButton(label: t('حفظ', 'Save'), icon: Icons.check_rounded, busy: widget.busy, onPressed: widget.busy ? null : _submit),
         if (widget.onReset != null)
           TextButton.icon(onPressed: widget.busy ? null : widget.onReset, icon: const Icon(Icons.restart_alt_rounded), label: Text(t('استعادة الافتراضي', 'Reset to default'))),
@@ -751,11 +751,11 @@ class _OrgFeesTabState extends State<_OrgFeesTab> {
     final c = context.colors;
     return Column(children: [
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
         child: Row(children: [
           Expanded(child: AppField(controller: _search, label: t('بحث عن مؤسسة', 'Find an organization'), onChanged: (_) {})),
-          const SizedBox(width: 8),
-          Padding(padding: const EdgeInsets.only(bottom: 12), child: IconButton.filled(tooltip: t('بحث', 'Search'), onPressed: _load, icon: const Icon(Icons.search_rounded))),
+          const SizedBox(width: AppSpace.xs),
+          Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: IconButton.filled(tooltip: t('بحث', 'Search'), onPressed: _load, icon: const Icon(Icons.search_rounded))),
         ]),
       ),
       Expanded(
@@ -764,9 +764,9 @@ class _OrgFeesTabState extends State<_OrgFeesTab> {
             : _orgs.isEmpty
                 ? AppEmpty(icon: Icons.apartment_rounded, title: _error ?? t('لا توجد مؤسسات', 'No organizations'))
                 : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md),
                     itemCount: _orgs.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    separatorBuilder: (_, _) => const SizedBox(height: AppSpace.xs),
                     itemBuilder: (_, i) {
                       final o = _orgs[i];
                       return AppCard(
@@ -852,10 +852,10 @@ class _OrgFeeSheetState extends State<OrgFeeSheet> {
       Flexible(
         child: _s == null
             ? Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(AppSpace.lg),
                 child: _error == null ? const SizedBox(height: 120, child: AppListSkeleton(items: 2)) : AppBanner(icon: Icons.error_outline_rounded, color: context.colors.danger, text: _error!))
             : SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
                 child: OrgFeeForm(settings: _s!, readOnly: !widget.superAdmin, busy: _busy, onSave: _save, onReset: _s!.customised ? _reset : null),
               ),
       ),
@@ -910,11 +910,11 @@ class _OrgFeeFormState extends State<OrgFeeForm> {
 
   Widget _field(TextEditingController c, String label, String effective) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         AppNumberField(controller: c, label: label, hint: t('فارغ = يرث', 'Empty = inherit'), min: 0, decimals: 2),
-        if (effective.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 10, top: 0), child: Text(effective, style: appText(11.5, c: context.colors.textLight))),
+        if (effective.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm, top: 0), child: Text(effective, style: AppType.overline(context).copyWith(color: context.colors.textLight))),
       ]);
 
   Widget _choice(String label, String value, List<String> options, String Function(String) text, void Function(String) set) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.only(bottom: AppSpace.sm),
         child: AppDropdown<String>(
           value: value,
           decoration: InputDecoration(labelText: label),
@@ -937,7 +937,7 @@ class _OrgFeeFormState extends State<OrgFeeForm> {
       _field(_vp, t('ضريبة الطلاب %', 'Student VAT %'), _eff('vat_percent', suffix: '%')),
       _choice(t('أساس الضريبة', 'VAT base'), _d.vatOn, vatBases, vatBaseText, (v) => _d.vatOn = v),
       _field(_tv, t('ضريبة المعلّم %', 'Teacher VAT %'), _eff('teacher_vat_percent', suffix: '%')),
-      if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: draftErrorText(_err!))),
+      if (_err != null) Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: draftErrorText(_err!))),
       if (!widget.readOnly) ...[
         AppPrimaryButton(label: t('حفظ', 'Save'), icon: Icons.check_rounded, busy: widget.busy, onPressed: widget.busy ? null : _submit),
         if (widget.onReset != null)
@@ -1076,7 +1076,7 @@ class _RefundSheetState extends State<RefundSheet> {
     final c = context.colors;
     final o = _out;
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppSheetHeader('${t('استرداد الدفعة', 'Refund payment')} #${widget.paymentId}'),
         if (o != null) ...[
@@ -1085,20 +1085,20 @@ class _RefundSheetState extends State<RefundSheet> {
               color: o.pending ? c.warning : (o.status == 'failed' ? c.danger : c.success),
               text: '${refundStatusText(o.status)} — ${money(o.amount, o.currency)}'
                   '${o.pending && o.outcomeUnknown ? '\n${t('لم تؤكد البوابة النتيجة بعد، وستُسوّى تلقائياً. يمكنك التسوية الآن.', 'The gateway has not confirmed yet; it is reconciled automatically. You can reconcile now.')}' : ''}'),
-          if (_err != null) Padding(padding: const EdgeInsets.only(top: 8), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _err!)),
-          const SizedBox(height: 12),
+          if (_err != null) Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _err!)),
+          const SizedBox(height: AppSpace.sm),
           if (o.pending)
             AppPrimaryButton(label: t('تسوية مع البوابة', 'Reconcile with the gateway'), icon: Icons.sync_rounded, busy: _busy, onPressed: _busy ? null : _reconcile),
           TextButton(onPressed: () => Navigator.pop(context, true), child: Text(t('تم', 'Done'))),
         ] else ...[
           if (_external != null)
             Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.only(bottom: AppSpace.sm),
                 child: AppBanner(icon: Icons.info_outline_rounded, color: c.warning, text: _external!.text(widget.currency))),
           if (_refunded > 0.0001)
-            Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('${t('مسترد سابقاً', 'Already refunded')}: ${money(_refunded, widget.currency)}', style: appText(13, c: c.textMedium))),
+            Padding(padding: const EdgeInsets.only(bottom: AppSpace.xxs), child: Text('${t('مسترد سابقاً', 'Already refunded')}: ${money(_refunded, widget.currency)}', style: AppType.label(context).copyWith(color: c.textMedium))),
           if (_remaining != null)
-            Padding(padding: const EdgeInsets.only(bottom: 10), child: Text('${t('المتبقي القابل للاسترداد', 'Left to refund')}: ${money(_remaining!, widget.currency)}', style: appText(13, c: c.textMedium))),
+            Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: Text('${t('المتبقي القابل للاسترداد', 'Left to refund')}: ${money(_remaining!, widget.currency)}', style: AppType.label(context).copyWith(color: c.textMedium))),
           AppNumberField(controller: _amount, label: t('المبلغ (فارغ = كل المتبقي)', 'Amount (empty = everything left)'), min: 0, decimals: 2),
           AppField(controller: _reason, label: t('السبب', 'Reason'), maxLines: 2),
           if (widget.superAdmin) ...[
@@ -1117,8 +1117,8 @@ class _RefundSheetState extends State<RefundSheet> {
                   value: _d.force,
                   onChanged: (v) => setState(() => _d.force = v)),
           ],
-          if (_err != null) Padding(padding: const EdgeInsets.only(top: 8), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _err!)),
-          const SizedBox(height: 12),
+          if (_err != null) Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _err!)),
+          const SizedBox(height: AppSpace.sm),
           AppPrimaryButton(
               label: t('استرداد', 'Refund'),
               icon: Icons.undo_rounded,
@@ -1189,7 +1189,7 @@ class _RefundResolveSheetState extends State<RefundResolveSheet> {
       'failed': t('تسجيل أنه فشل', 'Mark as failed'),
     };
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppSheetHeader(t('معالجة استرداد معلّق', 'Resolve a pending refund')),
         AppField(controller: _id, label: t('رقم الاسترداد', 'Refund number'), keyboard: TextInputType.number),
@@ -1199,11 +1199,11 @@ class _RefundResolveSheetState extends State<RefundResolveSheet> {
           items: [for (final e in actions.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
           onChanged: (v) => setState(() => _action = v ?? 'reconcile'),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         AppField(controller: _reason, label: t('السبب', 'Reason') + (_action == 'reconcile' ? '' : ' *'), maxLines: 2),
         if (_out != null) AppBanner(icon: Icons.check_circle_outline_rounded, color: c.success, text: '#${_out!.id}: ${refundStatusText(_out!.status)} — ${money(_out!.amount, _out!.currency)}'),
         if (_err != null) AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _err!),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         AppPrimaryButton(label: t('تنفيذ', 'Apply'), icon: Icons.done_all_rounded, busy: _busy, onPressed: _busy ? null : _submit),
       ]),
     );
@@ -1301,7 +1301,7 @@ class _LedgerTabState extends State<_LedgerTab> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return ListView(padding: const EdgeInsets.all(16), children: [
+    return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
       Wrap(spacing: 8, runSpacing: 8, children: [
         for (final g in ['teacher', 'org', 'month'])
           AppChoiceChip(label: ledgerGroupText(g), selected: _q.groupBy == g, onTap: () {
@@ -1309,7 +1309,7 @@ class _LedgerTabState extends State<_LedgerTab> {
             _run();
           }),
       ]),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
       Wrap(spacing: 8, runSpacing: 8, children: [
         OutlinedButton.icon(onPressed: () => _pick(true), icon: const Icon(Icons.event_rounded, size: 18), label: Text('${t('من', 'From')}: ${_q.from == null ? '—' : AppTime.date(_q.from!.toUtc())}')),
         OutlinedButton.icon(onPressed: () => _pick(false), icon: const Icon(Icons.event_rounded, size: 18), label: Text('${t('إلى', 'To')}: ${_q.to == null ? '—' : AppTime.date(_q.to!.toUtc())}')),
@@ -1319,7 +1319,7 @@ class _LedgerTabState extends State<_LedgerTab> {
             _run();
           }, child: Text(t('مسح التواريخ', 'Clear dates'))),
       ]),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
       Row(children: [
         Expanded(
             child: AppField(
@@ -1331,10 +1331,10 @@ class _LedgerTabState extends State<_LedgerTab> {
                   _curTimer?.cancel();
                   _run();
                 })),
-        const SizedBox(width: 8),
-        Padding(padding: const EdgeInsets.only(bottom: 12), child: IconButton.filled(tooltip: t('تطبيق', 'Apply'), onPressed: _run, icon: const Icon(Icons.check_rounded))),
-        const SizedBox(width: 4),
-        Padding(padding: const EdgeInsets.only(bottom: 12), child: IconButton.outlined(tooltip: 'CSV', onPressed: _saving ? null : _csv, icon: const Icon(Icons.download_rounded))),
+        const SizedBox(width: AppSpace.xs),
+        Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: IconButton.filled(tooltip: t('تطبيق', 'Apply'), onPressed: _run, icon: const Icon(Icons.check_rounded))),
+        const SizedBox(width: AppSpace.xxs),
+        Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: IconButton.outlined(tooltip: 'CSV', onPressed: _saving ? null : _csv, icon: const Icon(Icons.download_rounded))),
       ]),
       if (_error != null) AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!),
       if (_loading) const SizedBox(height: 240, child: AppListSkeleton(items: 3, withAvatar: false)),
@@ -1362,21 +1362,21 @@ class LedgerReportView extends StatelessWidget {
               : t('${report.unbalanced} عملية غير متوازنة — راجع المحاسبة', '${report.unbalanced} unbalanced transactions — review the books')),
       for (final e in report.totals.entries)
         AppCard(
-          margin: const EdgeInsets.only(top: 10),
-          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.only(top: AppSpace.sm),
+          padding: const EdgeInsets.all(AppSpace.sm),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${t('الإجمالي', 'Total')} · ${e.key}', style: appText(14, w: FontWeight.w800, c: c.textDark)),
-            const SizedBox(height: 8),
+            Text('${t('الإجمالي', 'Total')} · ${e.key}', style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
+            const SizedBox(height: AppSpace.xs),
             Wrap(spacing: 14, runSpacing: 6, children: [
               for (final m in ledgerMetrics)
                 Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(ledgerMetricText(m), style: appText(11, c: c.textLight)),
-                  Text(fmt(e.value[m] ?? 0), style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
+                  Text(ledgerMetricText(m), style: AppType.overline(context).copyWith(color: c.textLight)),
+                  Text(fmt(e.value[m] ?? 0), style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
                 ]),
             ]),
           ]),
         ),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
       LayoutBuilder(builder: (context, box) {
         if (box.maxWidth >= Breakpoints.mobile) return _table(context, fmt);
         // phone: one card per row (the label, its currency, then label / value lines), never a sideways-scrolling table
@@ -1412,7 +1412,7 @@ class LedgerReportView extends StatelessWidget {
   Widget _table(BuildContext context, String Function(double) fmt) {
     return Column(children: [
       AppCard(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.all(AppSpace.xs),
         child: AppHScroll(
           child: DataTable(
             columnSpacing: 18,

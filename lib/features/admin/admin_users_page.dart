@@ -892,7 +892,7 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
         SheetHeader(u.name),
         Flexible(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.lg),
             shrinkWrap: true,
             children: sections,
           ),
@@ -1015,7 +1015,7 @@ class _UserFormState extends State<_UserForm> {
         ),
         Flexible(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
             child: Form(
               key: _form,
               child: Column(
@@ -1038,7 +1038,7 @@ class _UserFormState extends State<_UserForm> {
                     ),
                   if (!editing && role == 'teacher')
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.only(bottom: AppSpace.sm),
                       child: AppNumberField(controller: _years, label: 'admin_experience_years'.tr, min: 0),
                     ),
                   AppPasswordField(controller: _password, label: editing

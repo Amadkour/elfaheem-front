@@ -5,6 +5,7 @@ library;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart';
@@ -65,13 +66,13 @@ class _PdfDialog extends StatelessWidget {
    Color _ink = context.colors.primary;
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.lg),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 440),
         child: Container(
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(AppRadius.sheet),
             boxShadow: [
               BoxShadow(
                 color: context.colors.heroShade.withValues(alpha: 0.20),
@@ -81,35 +82,26 @@ class _PdfDialog extends StatelessWidget {
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 22, 24, 24),
+            padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.lg),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
                   children: [
                     const _BrandMark(icon: Icons.receipt_long_rounded),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpace.sm),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             t('إيصال التحويل', 'Transfer receipt'),
-                            style: TextStyle(
-                              fontFamily: AppFonts.family,
-                              fontSize: 19,
-                              fontWeight: FontWeight.w800,
-                              color: _ink,
-                            ),
+                            style: AppType.section(context).copyWith(color: _ink),
                           ),
-                          const SizedBox(height: 3),
+                          const SizedBox(height: AppSpace.xxs),
                           Text(
                             t('مستند PDF', 'PDF document'),
-                            style: TextStyle(
-                              fontFamily: AppFonts.family,
-                              fontSize: 12,
-                              color: context.colors.textMedium,
-                            ),
+                            style: AppType.meta(context).copyWith(color: context.colors.textMedium),
                           ),
                         ],
                       ),
@@ -121,16 +113,16 @@ class _PdfDialog extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.lg),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(
-                    vertical: 26,
-                    horizontal: 20,
+                    vertical: AppSpace.lg,
+                    horizontal: AppSpace.lg,
                   ),
                   decoration: BoxDecoration(
                     color: context.colors.dangerTint,
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(AppRadius.block),
                     border: Border.all(color: context.colors.danger.withValues(alpha: 0.25)),
                   ),
                   child: Column(
@@ -140,7 +132,7 @@ class _PdfDialog extends StatelessWidget {
                         height: 76,
                         decoration: BoxDecoration(
                           color: context.colors.cardBg,
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(AppRadius.block),
                           boxShadow: [
                             BoxShadow(
                               color: context.colors.danger.withValues(alpha: 0.10),
@@ -155,38 +147,28 @@ class _PdfDialog extends StatelessWidget {
                           size: 38,
                         ),
                       ),
-                      const SizedBox(height: 15),
+                      const SizedBox(height: AppSpace.md),
                       Text(
                         t(
                           'الإيصال جاهز للعرض',
                           'Your receipt is ready to view',
                         ),
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: AppFonts.family,
-                          color: _ink,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                        ),
+                        style: AppType.section(context).copyWith(color: _ink),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: AppSpace.xs),
                       Text(
                         t(
                           'سيتم فتح المستند في نافذة أو تطبيق خارجي.',
                           'The document will open in a browser or external PDF viewer.',
                         ),
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: AppFonts.family,
-                          color: context.colors.textMedium,
-                          height: 1.5,
-                          fontSize: 13,
-                        ),
+                        style: AppType.label(context).copyWith(color: context.colors.textMedium, height: 1.5),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 22),
+                const SizedBox(height: AppSpace.lg),
                 Row(
                   children: [
                     Expanded(
@@ -197,7 +179,7 @@ class _PdfDialog extends StatelessWidget {
                           side: BorderSide(color: context.colors.divider),
                           minimumSize: const Size.fromHeight(48),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
+                            borderRadius: BorderRadius.circular(AppRadius.card),
                           ),
                         ),
                         child: Text(
@@ -209,7 +191,7 @@ class _PdfDialog extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: AppSpace.sm),
                     Expanded(
                       flex: 2,
                       child: FilledButton.icon(
@@ -230,7 +212,7 @@ class _PdfDialog extends StatelessWidget {
                           foregroundColor: context.colors.onHero,
                           minimumSize: const Size.fromHeight(48),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
+                            borderRadius: BorderRadius.circular(AppRadius.card),
                           ),
                         ),
                       ),
@@ -256,7 +238,7 @@ class _ImageDialog extends StatelessWidget {
     final size = MediaQuery.sizeOf(context);
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(14),
+      insetPadding: const EdgeInsets.all(AppSpace.md),
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxWidth: 900,
@@ -266,7 +248,7 @@ class _ImageDialog extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(AppRadius.block),
             boxShadow: [
               BoxShadow(
                 color: context.colors.heroShade.withValues(alpha: 0.24),
@@ -278,7 +260,7 @@ class _ImageDialog extends StatelessWidget {
           child: Column(
             children: [
               Container(
-                padding: const EdgeInsetsDirectional.fromSTEB(18, 14, 14, 14),
+                padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.md),
                 decoration: BoxDecoration(
                   color: context.colors.onHero,
                   border: Border(bottom: BorderSide(color: context.colors.divider)),
@@ -289,19 +271,14 @@ class _ImageDialog extends StatelessWidget {
                       icon: Icons.receipt_rounded,
                       compact: true,
                     ),
-                    const SizedBox(width: 11),
+                    const SizedBox(width: AppSpace.sm),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             t('إيصال التحويل', 'Transfer receipt'),
-                            style: TextStyle(
-                              fontFamily: AppFonts.family,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                              color: context.colors.primary,
-                            ),
+                            style: AppType.section(context).copyWith(color: context.colors.primary),
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -309,11 +286,7 @@ class _ImageDialog extends StatelessWidget {
                               'اضغط أو كبّر الصورة للتحقق من التفاصيل',
                               'Zoom in to inspect receipt details',
                             ),
-                            style: TextStyle(
-                              fontFamily: AppFonts.family,
-                              color: context.colors.textMedium,
-                              fontSize: 12,
-                            ),
+                            style: AppType.meta(context).copyWith(color: context.colors.textMedium),
                           ),
                         ],
                       ),
@@ -323,7 +296,7 @@ class _ImageDialog extends StatelessWidget {
                       tooltip: t('فتح في المتصفح', 'Open in browser'),
                       onTap: () => _launch(url),
                     ),
-                    const SizedBox(width: 7),
+                    const SizedBox(width: AppSpace.xs),
                     _IconAction(
                       icon: Icons.close_rounded,
                       tooltip: t('إغلاق', 'Close'),
@@ -339,7 +312,7 @@ class _ImageDialog extends StatelessWidget {
                   child: InteractiveViewer(
                     minScale: 0.8,
                     maxScale: 5,
-                    boundaryMargin: const EdgeInsets.all(36),
+                    boundaryMargin: const EdgeInsets.all(AppSpace.xl),
                     child: Center(
                       child: Image.network(
                         url,
@@ -353,13 +326,13 @@ class _ImageDialog extends StatelessWidget {
                         // Web CanvasKit needs CORS headers on the storage host to draw network images.
                         // If unavailable, offer a browser fallback rather than a blank viewer.
                         errorBuilder: (_, __, ___) => Padding(
-                          padding: const EdgeInsets.all(24),
+                          padding: const EdgeInsets.all(AppSpace.lg),
                           child: Container(
                             constraints: const BoxConstraints(maxWidth: 380),
-                            padding: const EdgeInsets.all(26),
+                            padding: const EdgeInsets.all(AppSpace.lg),
                             decoration: BoxDecoration(
                               color: context.colors.onHero,
-                              borderRadius: BorderRadius.circular(22),
+                              borderRadius: BorderRadius.circular(AppRadius.block),
                               border: Border.all(color: context.colors.divider),
                             ),
                             child: Column(
@@ -368,35 +341,25 @@ class _ImageDialog extends StatelessWidget {
                                 const _BrandMark(
                                   icon: Icons.broken_image_outlined,
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: AppSpace.md),
                                 Text(
                                   t(
                                     'تعذر عرض الصورة هنا',
                                     'This image could not be displayed here',
                                   ),
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontFamily: AppFonts.family,
-                                    color: context.colors.primary,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 16,
-                                  ),
+                                  style: AppType.section(context).copyWith(color: context.colors.primary),
                                 ),
-                                const SizedBox(height: 7),
+                                const SizedBox(height: AppSpace.xs),
                                 Text(
                                   t(
                                     'يمكنك فتح الإيصال مباشرةً في المتصفح.',
                                     'You can open the receipt directly in your browser.',
                                   ),
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontFamily: AppFonts.family,
-                                    color: context.colors.textMedium,
-                                    height: 1.5,
-                                    fontSize: 13,
-                                  ),
+                                  style: AppType.label(context).copyWith(color: context.colors.textMedium, height: 1.5),
                                 ),
-                                const SizedBox(height: 18),
+                                const SizedBox(height: AppSpace.md),
                                 FilledButton.icon(
                                   onPressed: () => _launch(url),
                                   icon: const Icon(
@@ -414,11 +377,11 @@ class _ImageDialog extends StatelessWidget {
                                     backgroundColor: context.colors.primary,
                                     foregroundColor: context.colors.onHero,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
+                                      borderRadius: BorderRadius.circular(AppRadius.control),
                                     ),
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 18,
-                                      vertical: 13,
+                                      horizontal: AppSpace.md,
+                                      vertical: AppSpace.sm,
                                     ),
                                   ),
                                 ),
@@ -432,7 +395,7 @@ class _ImageDialog extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.fromLTRB(18, 11, 18, 11),
+                padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
                 decoration: BoxDecoration(
                   color: context.colors.onHero,
                   border: Border(top: BorderSide(color: context.colors.divider)),
@@ -440,18 +403,14 @@ class _ImageDialog extends StatelessWidget {
                 child: Row(
                   children: [
                     Icon(Icons.zoom_in_rounded, size: 17, color: context.colors.textMedium),
-                    const SizedBox(width: 7),
+                    const SizedBox(width: AppSpace.xs),
                     Expanded(
                       child: Text(
                         t(
                           'استخدم إصبعين أو عجلة الفأرة للتكبير',
                           'Pinch or use the mouse wheel to zoom',
                         ),
-                        style: TextStyle(
-                          fontFamily: AppFonts.family,
-                          color: context.colors.textMedium,
-                          fontSize: 12,
-                        ),
+                        style: AppType.meta(context).copyWith(color: context.colors.textMedium),
                       ),
                     ),
                     TextButton(
@@ -517,10 +476,10 @@ class _IconAction extends StatelessWidget {
     message: tooltip,
     child: Material(
       color: context.colors.background,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppRadius.control),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         child: SizedBox(
           width: 40,
           height: 40,

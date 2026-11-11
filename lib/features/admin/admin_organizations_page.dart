@@ -29,7 +29,6 @@ import 'admin_table_export.dart' show adminOrganizationsExport;
 import 'package:flutter_education_app/utils/widget/phone_field.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/design/app_username.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 const _base = '/api/v1/admin/orgs';
 
@@ -642,12 +641,12 @@ Future<void> _createOrgAdmin(BuildContext context) async {
   bool busy = false, verify = true;
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(t('حساب مدير مؤسسة', 'Organization-admin account')),
             Text(t('يستطيع صاحب الحساب إنشاء جامعته أو كليته وإرسالها للمراجعة.', 'The account owner can create their university or faculty and send it for review.'),
                 style: orgText(ctx, size: 12.5, color: ctx.colors.textMedium)),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             Field(controller: name, label: t('الاسم', 'Name')),
             AppEmailField(controller: email, label: t('البريد', 'E-mail')),
             PhoneInputField(controller: phone, label: t('الهاتف (اختياري)', 'Phone (optional)')),   // same field as registration
@@ -657,7 +656,7 @@ Future<void> _createOrgAdmin(BuildContext context) async {
               value: verify,
               onChanged: (v) => set(() => verify = v),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             PrimaryButton(
               isLoading: busy,
               label: t('إنشاء الحساب', 'Create account'),
@@ -718,7 +717,7 @@ class AdminOrgAdminsPage extends StatelessWidget {
           ]),
           child: Column(children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxs),
               child: SearchBox(hint: t('الاسم أو البريد أو الهاتف', 'Name, e-mail or phone'), onChanged: p.setSearch),
             ),
             Expanded(
@@ -729,20 +728,20 @@ class AdminOrgAdminsPage extends StatelessWidget {
                   final active = row['is_active'] != false;
                   final orgs = asMapList(row['organizations']);
                   return Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 5, 16, 5),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
                     child: RowCard(
                       accent: active ? null : c.danger,
                       onTap: () => _manageOrgAdmin(context, row),
                       child: Row(children: [
                         AdminAvatar(name: '${row['name']}', url: row['image_url'] as String?),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpace.sm),
                         Expanded(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Text('${row['name']}', style: orgText(context, w: FontWeight.w800)),
                             AppUsernameLine(usernameFrom(row)),
                             Text('${row['email']}', textDirection: TextDirection.ltr,
                                 style: orgText(context, size: 12, color: c.textMedium)),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: AppSpace.xxs),
                             Wrap(spacing: 6, runSpacing: 4, children: [
                               OrgPill(verified ? t('بريد مؤكَّد', 'E-mail verified') : t('بريد غير مؤكَّد', 'E-mail not verified'),
                                   color: verified ? c.success : c.warning,
@@ -783,7 +782,7 @@ Future<void> _manageOrgAdmin(BuildContext context, Map<String, dynamic> row) asy
               ),
             );
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader('${row['name']}'),
             Field(controller: name, label: t('الاسم', 'Name')),
@@ -795,7 +794,7 @@ Future<void> _manageOrgAdmin(BuildContext context, Map<String, dynamic> row) asy
               value: active,
               onChanged: (v) => set(() => active = v),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             PrimaryButton(
               isLoading: busy,
               label: t('حفظ', 'Save'),
@@ -817,7 +816,7 @@ Future<void> _manageOrgAdmin(BuildContext context, Map<String, dynamic> row) asy
                 }
               },
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             Row(children: [
               Expanded(
                 child: OutlinedButton.icon(
@@ -832,7 +831,7 @@ Future<void> _manageOrgAdmin(BuildContext context, Map<String, dynamic> row) asy
                         content: Column(mainAxisSize: MainAxisSize.min, children: [
                           AppPasswordField(controller: pwd, label: t('اكتبها أو اتركها فارغة لتوليد واحدة قوية', 'Type it, or leave empty to generate a strong one'),
                               required: false, showStrength: true, minLength: 8),
-                          Text(t('سيُسجَّل خروجه من كل الأجهزة.', 'They will be signed out on every device.'), style: TextStyle(fontFamily: AppFonts.family, fontSize: 12)),
+                          Text(t('سيُسجَّل خروجه من كل الأجهزة.', 'They will be signed out on every device.'), style: AppType.meta(context)),
                         ]),
                         actions: [
                           TextButton(onPressed: () => Navigator.pop(dc, false), child: Text(t('إلغاء', 'Cancel'))),
@@ -848,7 +847,7 @@ Future<void> _manageOrgAdmin(BuildContext context, Map<String, dynamic> row) asy
                   label: Text(t('كلمة مرور جديدة', 'New password')),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               if (row['email_verified'] != true)
                 Expanded(
                   child: OutlinedButton.icon(
@@ -886,20 +885,20 @@ Future<void> _billingSheet(BuildContext context, int orgId, String orgName) asyn
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         Widget mode(String key, IconData icon, String title, String sub) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
               child: InkWell(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(AppRadius.card),
                 onTap: () => set(() => students = key),
                 child: Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(AppSpace.sm),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(AppRadius.card),
                     color: students == key ? c.primary.withValues(alpha: 0.08) : c.cardBg,
                     border: Border.all(color: students == key ? c.primary : c.divider, width: students == key ? 1.6 : 1),
                   ),
                   child: Row(children: [
                     Icon(icon, color: students == key ? c.primary : c.textMedium),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpace.sm),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(title, style: orgText(ctx, w: FontWeight.w800)),
                       Text(sub, style: orgText(ctx, size: 12, color: c.textMedium)),
@@ -910,25 +909,25 @@ Future<void> _billingSheet(BuildContext context, int orgId, String orgName) asyn
               ),
             );
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader('${t('رسوم العضوية', 'Membership fees')} · $orgName'),
             OrgSwitchRow(title: t('مجاني لهيئة التدريس والموظفين', 'Free for teaching & admin staff'),
                 subtitle: t('عند الإيقاف يلزمهم اشتراك', 'When off they need a subscription'), value: staffFree, onChanged: (v) => set(() => staffFree = v)),
             OrgSwitchRow(title: t('مجاني لمديري المؤسسة', 'Free for organization admins'), value: adminsFree, onChanged: (v) => set(() => adminsFree = v)),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             Text(t('الطلاب', 'Students'), style: orgText(ctx, w: FontWeight.w800)),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             mode('free', Icons.volunteer_activism_rounded, t('مجاني', 'Free'), t('بدون اشتراك، ومقررات المؤسسة بدون رسوم', 'No subscription; the organization\'s courses at no cost')),
             mode('per_course', Icons.menu_book_rounded, t('بالمقرر', 'Per course'), t('بدون اشتراك حساب — يدفع الطالب لكل مقرر', 'No account subscription — each course is paid')),
             mode('per_account', Icons.account_circle_rounded, t('بالحساب (اشتراك)', 'Per account (subscription)'), t('اشتراك بخطط وأسعار هذه المؤسسة', 'A subscription with this organization\'s plans & prices')),
             if (students == 'per_account') ...[
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpace.xs),
               Text(t('الخطط المتاحة وأسعارها لهذه المؤسسة', 'Plans offered & their prices for this organization'),
                   style: orgText(ctx, size: 12.5, w: FontWeight.w700, color: c.textMedium)),
               for (final p in platform)
                 Padding(
-                  padding: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.only(top: AppSpace.xs),
                   child: Row(children: [
                     Checkbox(value: chosen.containsKey('${p['code']}'),
                         onChanged: (v) => set(() => v == true ? chosen['${p['code']}'] = p['price'] : chosen.remove('${p['code']}'))),
@@ -949,7 +948,7 @@ Future<void> _billingSheet(BuildContext context, int orgId, String orgName) asyn
                   ]),
                 ),
             ],
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.md),
             PrimaryButton(isLoading: busy, label: t('حفظ', 'Save'), onPressed: () async {
               set(() => busy = true);
               final r = await OrgApi.i.put(url, {

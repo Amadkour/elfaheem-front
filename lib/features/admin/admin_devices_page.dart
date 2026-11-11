@@ -272,7 +272,7 @@ class _NumberRowState extends State<_NumberRow> {
                 decoration: InputDecoration(
                   isDense: true,
                   errorText: invalid ? '' : null,
-                  errorStyle: const TextStyle(height: 0, fontSize: 0),
+                  errorStyle: AppType.overline(context).copyWith(height: 0),
                 ),
                 onChanged: _typed,
               ),

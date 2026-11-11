@@ -137,10 +137,10 @@ class _FeedbackSettingsFormState extends State<FeedbackSettingsForm> {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (!widget.platform && s.platformEnabled == false)
         Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.only(bottom: AppSpace.sm),
             child: AppBanner(icon: Icons.info_outline_rounded, text: t('جمع الملاحظات متوقف على مستوى المنصة، فلن يعمل هنا حتى لو فعّلته.', 'Feedback collection is off on the platform, so it will not run here even if you enable it.'))),
       if (!widget.platform && s.inherits)
-        Padding(padding: const EdgeInsets.only(bottom: 10), child: AppBanner(icon: DirIcons.subArrowRight, text: t('تستخدم المؤسسة الإعداد الافتراضي للمنصة.', 'This organization uses the platform default.'))),
+        Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppBanner(icon: DirIcons.subArrowRight, text: t('تستخدم المؤسسة الإعداد الافتراضي للمنصة.', 'This organization uses the platform default.'))),
       AppSwitchTile(
           title: t('جمع ملاحظات الأسئلة', 'Collect question feedback'),
           subtitle: t('تُخزَّن ملاحظات الامتحانات بلا هوية لتحسين الأسئلة', 'Exam feedback is stored without identity to improve questions'),
@@ -152,15 +152,15 @@ class _FeedbackSettingsFormState extends State<FeedbackSettingsForm> {
             subtitle: t('المؤسسات التي لم تضبط إعدادها ترث هذا', 'Organizations that did not set their own inherit this'),
             value: _d.orgDefault,
             onChanged: widget.readOnly ? null : (v) => setState(() => _d.orgDefault = v)),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       AppNumberField(controller: _days, label: t('مدة الاحتفاظ (أيام)', 'Retention (days)'), min: 0),
       if (!widget.platform && s.effectiveDays != null)
         Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text('${t('الفعلي الآن', 'Effective now')}: ${s.effective == true ? t('مفعّل', 'on') : t('متوقف', 'off')} · ${s.effectiveDays} ${t('يوم', 'days')}', style: appText(12, c: c.textLight))),
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
+            child: Text('${t('الفعلي الآن', 'Effective now')}: ${s.effective == true ? t('مفعّل', 'on') : t('متوقف', 'off')} · ${s.effectiveDays} ${t('يوم', 'days')}', style: AppType.meta(context).copyWith(color: c.textLight))),
       if (widget.platform && s.records != null)
-        Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('${t('السجلات المخزنة', 'Stored records')}: ${s.records}', style: appText(12, c: c.textLight))),
-      if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: draftErrorText(_err!))),
+        Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: Text('${t('السجلات المخزنة', 'Stored records')}: ${s.records}', style: AppType.meta(context).copyWith(color: c.textLight))),
+      if (_err != null) Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: draftErrorText(_err!))),
       if (!widget.readOnly) AppPrimaryButton(label: t('حفظ', 'Save'), icon: Icons.check_rounded, busy: widget.busy, onPressed: widget.busy ? null : _submit),
     ]);
   }
@@ -198,7 +198,7 @@ class _FeedbackExportBarState extends State<FeedbackExportBar> {
             label: Text('${t('منذ', 'Since')}: ${_since == null ? t('البداية', 'the beginning') : AppTime.date(_since!.toUtc())}')),
         if (_since != null) IconButton(tooltip: t('مسح', 'Clear'), onPressed: () => setState(() => _since = null), icon: const Icon(Icons.close_rounded, size: 18)),
       ]),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       AppPrimaryButton(
           label: t('تنزيل التصدير', 'Download export'),
           icon: Icons.download_rounded,
@@ -294,7 +294,7 @@ class _AdminFeedbackSettingsPageState extends State<AdminFeedbackSettingsPage> {
           ? const AppListSkeleton(items: 3, withAvatar: false)
           : _s == null
               ? AppEmpty(icon: Icons.error_outline_rounded, title: _error ?? '', actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load)
-              : ListView(padding: const EdgeInsets.all(16), children: [
+              : ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
                   AppCard(child: FeedbackSettingsForm(settings: _s!, platform: true, busy: _busy, onSave: _save)),
                   AppSectionTitle(t('تصدير', 'Export'), subtitle: t('كل المؤسسات، أو مؤسسة واحدة', 'Every organization, or just one')),
                   AppCard(

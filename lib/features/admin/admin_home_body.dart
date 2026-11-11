@@ -26,6 +26,7 @@ import 'package:intl/intl.dart' show NumberFormat;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 import 'package:flutter_education_app/design/app_responsive.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 
@@ -157,24 +158,24 @@ class AdminHomeBody extends StatelessWidget {
               health: assistant!, onOpen: AppConfig.disableList.contains('rag.admin') ? null : actions.openAssistant),
         const _Recents(),
       ];
+      // every section brings its own editorial rhythm (32 above the heading, 12 under it); only the assistant card,
+      // a plain card, needs the gap a heading would have given it
       Widget stack(List<Widget> l) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            for (var i = 0; i < l.length; i++) ...[if (i > 0) AppSpace.gapLg, l[i]],
+            for (var i = 0; i < l.length; i++) ...[if (i > 0 && l[i] is AdminAssistantCard) AppSpace.gapXl, l[i]],
           ]);
+      // ONE orchestrated entrance: the hero block, then the figures; the sections below are simply there
       final sections = <Widget>[
-        _Greeting(name: name),
-        AppSpace.gapMd,
-        search ?? const AdminSearchLauncher(),
-        AppSpace.gapMd,
+        AppReveal(index: 0, group: 'admin_home', child: _Greeting(name: name, search: search ?? const AdminSearchLauncher())),
+        AppSpace.gapLg,
         if (notice != null) ...[
           AppBanner(icon: Icons.cloud_off_rounded, text: notice!, color: context.colors.warning),
           AppSpace.gapMd,
         ],
-        _Kpis(data: data, actions: actions),
-        AppSpace.gapLg,
+        AppReveal(index: 1, group: 'admin_home', child: _Kpis(data: data, actions: actions)),
         if (twoColumns)
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(flex: 3, child: stack([needs, ...charts])),
-            AppSpace.gapMd,
+            AppSpace.gapLg,
             Expanded(flex: 2, child: stack(side)),
           ])
         else
@@ -199,28 +200,42 @@ class AdminHomeBody extends StatelessWidget {
 // 1. Greeting
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// "Good morning, Ahmed" (display size) over today's date, in the platform / organization timezone.
+/// The home's one tinted block (sky, the admin's tone, D-622): "Good morning, Ahmed" in the editorial display face
+/// over today's date (platform / organization timezone), with the global search inside the block.
 class _Greeting extends StatelessWidget {
-  const _Greeting({required this.name});
+  const _Greeting({required this.name, required this.search});
   final String name;
+  final Widget search;
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
+    return AppBlock(
+      tone: AppBlockTone.sky,
+      hero: true,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _title(),
+        AppSpace.gapMd,
+        search,
+      ]),
+    );
+  }
+
+  Widget _title() {
     return ValueListenableBuilder<int>(
       valueListenable: AppTime.version,
       builder: (context, _, _) {
         final greet = homeGreetingKey(homeNow().hour).tr;
         final who = name.trim();
         final title = who.isEmpty ? greet : '$greet${AppConfig.lang == 'ar' ? '،' : ','} $who';
+        final b = AppBlock.colorsOf(context);
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Semantics(
             header: true,
-            child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.display(context)),
+            child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.display(context).copyWith(color: b.ink)),
           ),
           const SizedBox(height: AppSpace.xxs),
           Text(AppTime.date(DateTime.now().toUtc(), pattern: 'EEEE d MMMM y'),
-              maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.body(context).copyWith(color: c.textMedium)),
+              maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.body(context).copyWith(color: b.muted)),
         ]);
       },
     );
@@ -550,7 +565,7 @@ class _Donuts extends StatelessWidget {
     ];
     if (cards.isEmpty) return const SizedBox.shrink();
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      for (var i = 0; i < cards.length; i++) ...[if (i > 0) AppSpace.gapLg, cards[i]],
+      ...cards, // each section brings its own 32 above the heading
     ]);
   }
 }
@@ -564,13 +579,20 @@ class _Health extends StatelessWidget {
   final AdminHomeData data;
   final AdminHomeActions actions;
 
+  static const double _twoUpMin = AppSpace.xxxl * 4 + AppSpace.xxl - 4; // 300
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final failed = data.jobsFailed24h;
     return AppSection(
       title: 'admin_home_health'.tr,
-      child: AppGrid(minTile: 160, padding: EdgeInsets.zero, children: [ // 160: two per row in the side column — three cut every label
+      // always two per row (one under 300 px): three in the side column broke "24 h" and "30 days" onto a line of
+      // their own, one per row on a phone wasted the screen
+      child: LayoutBuilder(builder: (context, box) => AppGrid(
+          minTile: box.maxWidth >= _twoUpMin ? box.maxWidth / 2 - 1 : box.maxWidth,
+          padding: EdgeInsets.zero,
+          children: [
         if (data.hasRealtime)
           AppStatTile(
             icon: Icons.bolt_rounded,
@@ -600,7 +622,7 @@ class _Health extends StatelessWidget {
             color: data.complaints30 > 0 ? c.warning : c.success,
           ),
         ],
-      ]),
+      ])),
     );
   }
 }
@@ -620,25 +642,26 @@ class AdminAssistantCard extends StatelessWidget {
     return AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Icon(Icons.auto_awesome_rounded, size: 20, color: appInk(context, c.primary)),
-          const SizedBox(width: 8),
+          Icon(Icons.auto_awesome_rounded, size: AppIconSize.md, color: appInk(context, c.primary)),
+          AppSpace.gapXs,
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('admin_home_ai_title'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w800, c: c.textDark)),
-              Text('admin_home_ai_sub'.tr.replaceAll('{n}', '${h.days}'), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textLight)),
+              Text('admin_home_ai_title'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+              Text('admin_home_ai_sub'.tr.replaceAll('{n}', '${h.days}'), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
             ]),
           ),
         ]),
-        const SizedBox(height: 12),
-        AppGrid(minTile: 110, spacing: 8, padding: EdgeInsets.zero, children: [
+        AppSpace.gapSm,
+        // wide enough that "Questions" and "Media answer" never break mid-word
+        AppGrid(minTile: AppSpace.xxxl * 2 + AppSpace.lg - 2, spacing: AppSpace.xs, padding: EdgeInsets.zero, children: [
           AppStatTile(icon: Icons.forum_rounded, label: 'admin_home_ai_questions'.tr, value: appCompactNumber(h.questions), color: c.primary),
           AppStatTile(icon: Icons.search_off_rounded, label: 'admin_home_ai_no_answer'.tr, value: h.noAnswerText, color: bad ? c.warning : c.success),
           // an LTR isolate keeps "11.4 s" in order inside Arabic
           AppStatTile(icon: Icons.timer_outlined, label: 'admin_home_ai_p50'.tr, value: '\u2066${h.p50Text}\u2069', color: c.primary),
         ]),
         if (h.questions > 0) ...[
-          const SizedBox(height: 10),
-          AppSparkline(h.spark, height: 32, label: 'admin_home_ai_questions'.tr),
+          AppSpace.gapSm,
+          AppSparkline(h.spark, height: AppSpace.xl, label: 'admin_home_ai_questions'.tr),
         ],
         if (onOpen != null)
           Align(
@@ -646,7 +669,7 @@ class AdminAssistantCard extends StatelessWidget {
             child: TextButton.icon(
                 onPressed: onOpen,
                 style: TextButton.styleFrom(foregroundColor: appInk(context, c.primary)),
-                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                icon: const Icon(Icons.open_in_new_rounded, size: AppIconSize.md),
                 label: Text('admin_home_ai_open'.tr)),
           ),
       ]),
@@ -678,8 +701,8 @@ class _CurrencyShare extends StatelessWidget {
     return FittedBox(
       fit: BoxFit.scaleDown,
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text('${(main.value / total * 100).round()}%', textDirection: TextDirection.ltr, style: appText(20, w: FontWeight.w900, c: c.textDark, h: 1.1)),
-        Text(main.key, style: appText(11, w: FontWeight.w700, c: c.textMedium)),
+        Text('${(main.value / total * 100).round()}%', textDirection: TextDirection.ltr, style: AppType.figure(context).copyWith(color: c.textDark, height: 1.1)),
+        Text(main.key, style: AppType.overline(context).copyWith(color: c.textMedium)),
       ]),
     );
   }

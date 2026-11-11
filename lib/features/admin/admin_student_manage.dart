@@ -392,7 +392,7 @@ Future<void> _grantDialog(BuildContext context, AdminUsersProvider p, int userId
             ),
             if (plan == 'custom')
               Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: AppSpace.sm),
                 child: AppNumberField(controller: daysCtrl, label: 'admin_days_2'.tr, min: 1),
               ),
           ]),

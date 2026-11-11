@@ -229,13 +229,13 @@ class AdminTopupsView extends StatelessWidget {
     final list = items;
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xl),
       children: [
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final f in _topupFilters)
             AppChoiceChip(label: _filterLabel(f), selected: filter == f, onTap: () => onFilter?.call(f)),
         ]),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         if (list == null && error == null)
           const AppListSkeleton(items: 4)
         else if (error != null)
@@ -264,7 +264,7 @@ class AdminTopupsView extends StatelessWidget {
                       key: ValueKey('admin_topup.card.${x.id}'),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: appText(12, c: c.textLight))
+                      style: AppType.meta(context).copyWith(color: c.textLight))
                   : Wrap(spacing: 8, runSpacing: 8, children: [
                 if (x.hasReceipt)
                   AppPill(
@@ -319,7 +319,7 @@ class _NoteSheetState extends State<_NoteSheet> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
           AppSheetHeader(widget.title),
           AppField(controller: _note, label: t('ملاحظة (اختياري)', 'Note (optional)'), maxLines: 3),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           AppPrimaryButton(
               label: widget.action,
               icon: widget.danger ? Icons.close_rounded : Icons.check_rounded,
@@ -342,13 +342,13 @@ Future<void> showPointsReceipt(BuildContext context, Uint8List bytes, String tit
   await showDialog<void>(
     context: context,
     builder: (ctx) => Dialog(
-      insetPadding: const EdgeInsets.all(16),
+      insetPadding: const EdgeInsets.all(AppSpace.md),
       clipBehavior: Clip.antiAlias,
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 4, 0),
+          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.xs, AppSpace.xxs, 0),
           child: Row(children: [
-            Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w700, c: ctx.colors.textDark))),
+            Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: ctx.colors.textDark))),
             IconButton(tooltip: t('إغلاق', 'Close'), onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close_rounded)),
           ]),
         ),
@@ -358,7 +358,7 @@ Future<void> showPointsReceipt(BuildContext context, Uint8List bytes, String tit
             child: Image.memory(bytes,
                 fit: BoxFit.contain,
                 errorBuilder: (_, _, _) => Padding(
-                      padding: const EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(AppSpace.lg),
                       child: Text(t('تعذّر عرض الإيصال', 'Could not show the receipt')),
                     )),
           ),
@@ -499,7 +499,7 @@ class AdminPointsUsersView extends StatelessWidget {
     final list = rows;
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xl),
       children: [
         TextField(
           controller: search,
@@ -509,7 +509,7 @@ class AdminPointsUsersView extends StatelessWidget {
               prefixIcon: const Icon(Icons.search_rounded),
               hintText: t('ابحث بالاسم أو البريد أو الهاتف', 'Search by name, e-mail or phone')),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         if (list == null && error == null)
           const AppListSkeleton(items: 5)
         else if (error != null && list == null)
@@ -525,28 +525,28 @@ class AdminPointsUsersView extends StatelessWidget {
         else ...[
           for (final r in list)
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
               child: AppCard(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(AppSpace.sm),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   Row(children: [
                     AppAvatar(name: r.user.name, size: 36),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: AppSpace.sm),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(r.user.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark)),
+                        Text(r.user.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
                         AppUsernameLine(r.user.username),
                         if (r.user.contact.isNotEmpty)
-                          Text(r.user.contact, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textLight)),
+                          Text(r.user.contact, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight)),
                       ]),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpace.xs),
                     Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                      Text('${r.balance}', style: appText(17, w: FontWeight.w800, c: c.primary)),
-                      Text(t('نقطة', 'points'), style: appText(11, c: c.textLight)),
+                      Text('${r.balance}', style: AppType.section(context).copyWith(color: c.primary)),
+                      Text(t('نقطة', 'points'), style: AppType.overline(context).copyWith(color: c.textLight)),
                     ]),
                   ]),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.xs),
                   Wrap(spacing: 8, runSpacing: 8, children: [
                     AppPill(
                         icon: Icons.add_circle_outline_rounded,
@@ -563,7 +563,7 @@ class AdminPointsUsersView extends StatelessWidget {
           if (error != null) AppBanner(icon: Icons.error_outline_rounded, text: error!, color: c.danger),
           if (onMore != null)
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: AppSpace.xxs),
               child: loadingMore
                   ? const AppListSkeleton(items: 1)
                   : TextButton(onPressed: onMore, child: Text(t('المزيد (${list.length} من $total)', 'More (${list.length} of $total)'))),
@@ -638,21 +638,21 @@ class _PointsGrantFormState extends State<PointsGrantForm> {
       padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + MediaQuery.viewInsetsOf(context).bottom),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         AppSheetHeader(widget.user.name),
-        Text('${t('الرصيد الحالي', 'Current balance')}: ${_pts(widget.balance)}', style: appText(13, c: c.textMedium)),
-        const SizedBox(height: 12),
+        Text('${t('الرصيد الحالي', 'Current balance')}: ${_pts(widget.balance)}', style: AppType.label(context).copyWith(color: c.textMedium)),
+        const SizedBox(height: AppSpace.sm),
         Wrap(spacing: 8, runSpacing: 8, children: [
           AppChoiceChip(label: t('منح', 'Grant'), icon: Icons.add_rounded, selected: !_deduct, onTap: () => setState(() => _deduct = false)),
           AppChoiceChip(label: t('خصم', 'Deduct'), icon: Icons.remove_rounded, selected: _deduct, onTap: () => setState(() => _deduct = true)),
         ]),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         AppNumberField(controller: _points, label: t('عدد النقاط', 'Points'), min: 1, step: 10),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         AppField(controller: _note, label: t('ملاحظة', 'Note'), maxLines: 2),
         if (_error != null) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         _deduct
             ? AppButton.danger(
                 label: t('خصم النقاط', 'Deduct points'), icon: Icons.check_rounded, busy: _saving, onPressed: _saving ? null : _save)
@@ -697,7 +697,7 @@ class _HistorySheetState extends State<_HistorySheet> {
   Widget build(BuildContext context) => SizedBox(
         height: MediaQuery.sizeOf(context).height * 0.75,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.sm),
           child: Column(children: [
             AppSheetHeader('${t('سجل', 'History')} · ${widget.row.user.name}'),
             Expanded(child: PointsHistoryView(items: _items, error: _error, onRetry: _load)),
@@ -774,7 +774,7 @@ class _SettingsTabState extends State<_SettingsTab> with AutomaticKeepAliveClien
     super.build(context);
     final s = _s;
     if (s == null) {
-      return ListView(padding: const EdgeInsets.all(16), children: [
+      return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
         if (_error == null)
           const AppListSkeleton(items: 6, withAvatar: false)
         else
@@ -869,7 +869,7 @@ class _PointsSettingsFormState extends State<PointsSettingsForm> {
   }
 
   Widget _num(TextEditingController c, String label, {String? helper, bool decimal = false}) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.only(bottom: AppSpace.sm),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
           AppNumberField(
             controller: c,
@@ -892,7 +892,7 @@ class _PointsSettingsFormState extends State<PointsSettingsForm> {
     final c = context.colors;
     final v = _value;
     final side = math.max(16.0, (MediaQuery.sizeOf(context).width - AppWidth.reading.max) / 2);
-    return ListView(padding: EdgeInsets.fromLTRB(side, 12, side, 32), children: [
+    return ListView(padding: EdgeInsets.fromLTRB(side, AppSpace.sm, side, AppSpace.xl), children: [
       AppSectionTitle(t('باقة الاجتماعات المباشرة للطلاب', 'Student live-meeting plan')),
       _num(_free, t('الدقائق المجانية لكل اجتماع', 'Free minutes per meeting'),
           helper: t('وقت البث المجاني لاجتماع ينشئه طالب بلا باقة', 'Live time a student without the plan gets per meeting')),
@@ -904,7 +904,7 @@ class _PointsSettingsFormState extends State<PointsSettingsForm> {
       AppSectionTitle(t('النقاط', 'Points')),
       _num(_point, t('سعر النقطة', 'Price of one point'), decimal: true),
       Padding(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.only(bottom: AppSpace.sm),
         child: AppField(controller: _currency, label: t('العملة', 'Currency'), hint: 'SAR', ltr: true),
       ),
       _num(_min, t('أقل عدد نقاط للشحن', 'Minimum top-up (points)')),
@@ -917,7 +917,7 @@ class _PointsSettingsFormState extends State<PointsSettingsForm> {
         value: _cardEnabled,
         onChanged: _saving ? null : (v) => setState(() { _cardEnabled = v; _error = null; }),
       ),
-      const SizedBox(height: 4),
+      const SizedBox(height: AppSpace.xxs),
       if (v.error == null)
         AppBanner(
           icon: Icons.calculate_rounded,
@@ -926,10 +926,10 @@ class _PointsSettingsFormState extends State<PointsSettingsForm> {
               'The plan = ${v.pricePoints} points ≈ ${moneyText(v.planMoney, v.currency)} for ${v.planDays} days'),
         ),
       if (_error != null) ...[
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger),
       ],
-      const SizedBox(height: 16),
+      const SizedBox(height: AppSpace.md),
       AppPrimaryButton(label: t('حفظ', 'Save'), icon: Icons.save_rounded, busy: _saving, onPressed: _saving ? null : _save),
     ]);
   }

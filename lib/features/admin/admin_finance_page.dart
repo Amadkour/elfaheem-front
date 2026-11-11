@@ -37,7 +37,6 @@ import 'admin_fees_page.dart';
 import 'admin_money_p8.dart';
 import 'admin_payouts_page.dart';
 import 'admin_table_export.dart' show adminPaymentsExport, exportFetched;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Entry
@@ -693,18 +692,18 @@ class _SwipeHint extends StatelessWidget {
         ? 'اسحب لليسار للموافقة · لليمين للرفض'
         : 'Swipe right to approve · left to reject';
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
         decoration: BoxDecoration(
           color: c.primary.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadius.control),
           border: Border.all(color: c.primary.withValues(alpha: 0.18)),
         ),
         child: Row(
           children: [
             Icon(Icons.swipe_rounded, size: 18, color: c.primary),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.xs),
             Expanded(child: Text(text, style: c.caption)),
           ],
         ),
@@ -1010,18 +1009,14 @@ class _FilterSheetState extends State<_FilterSheet> {
             _d.range!.start == today.subtract(Duration(days: days == 0 ? 0 : days - 1));
 
     Widget label(String s) => Padding(
-      padding: const EdgeInsets.only(top: 14, bottom: 6),
+      padding: const EdgeInsets.only(top: AppSpace.md, bottom: AppSpace.xs),
       child: Text(s,
-          style: TextStyle(
-              fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 13.5, color: c.textDark)),
+          style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
     );
 
     Widget chip(String text, bool selected, VoidCallback onTap, {Color? color}) => FilterChip(
       label: Text(text,
-          style: TextStyle(
-              fontFamily: AppFonts.family,
-              fontSize: 12.5,
-              color: selected ? c.onHero : c.textDark)),
+          style: AppType.meta(context).copyWith(color: selected ? c.onHero : c.textDark)),
       selected: selected,
       showCheckmark: false,
       selectedColor: color ?? c.primary,
@@ -1034,7 +1029,7 @@ class _FilterSheetState extends State<_FilterSheet> {
         SheetHeader(t('تصفية', 'Filters')),
         Flexible(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            padding: const EdgeInsets.fromLTRB(AppSpace.lg, 0, AppSpace.lg, AppSpace.sm),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1092,14 +1087,14 @@ class _FilterSheetState extends State<_FilterSheet> {
                       _d.range == null || [0, 7, 30, 90].any(isQuick)
                           ? t('مخصص…', 'Custom…')
                           : '${shortDate(_d.range!.start.toIso8601String())} → ${shortDate(_d.range!.end.toIso8601String())}',
-                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5),
+                      style: AppType.meta(context),
                     ),
                     onPressed: _custom,
                   ),
                   if (_d.range != null)
                     ActionChip(
                       label: Text(t('إزالة', 'Remove'),
-                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.danger)),
+                          style: AppType.meta(context).copyWith(color: c.danger)),
                       onPressed: () => setState(() => _d.range = null),
                     ),
                 ]),
@@ -1113,7 +1108,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                         keyboard: const TextInputType.numberWithOptions(decimal: true),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: AppSpace.sm),
                     Expanded(
                       child: Field(
                         controller: _max,
@@ -1133,7 +1128,7 @@ class _FilterSheetState extends State<_FilterSheet> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.md),
           child: Row(
             children: [
               Expanded(
@@ -1147,7 +1142,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                   }),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpace.sm),
               Expanded(
                 flex: 2,
                 child: AppButton.primary(
@@ -1319,7 +1314,7 @@ class _PaymentCardState extends State<_PaymentCard> {
           Row(
             children: [
               _Avatar(name: asStr(student['name']), url: asStrOrNull(student['image_url'])),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1327,7 +1322,7 @@ class _PaymentCardState extends State<_PaymentCard> {
                     Text(asStr(student['name'], '—'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: c.h3.copyWith(fontSize: 14.5)),
+                        style: AppType.bodyStrong(context)),
                     const SizedBox(height: 2),
                     Text(courseName,
                         maxLines: 1, overflow: TextOverflow.ellipsis, style: c.caption),
@@ -1339,20 +1334,15 @@ class _PaymentCardState extends State<_PaymentCard> {
                 children: [
                   Text(
                     money(asDouble(p['amount']), currency),
-                    style: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontSize: 16.5,
-                      fontWeight: FontWeight.w800,
-                      color: c.textDark,
-                    ),
+                    style: AppType.section(context).copyWith(color: c.textDark),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpace.xxs),
                   AppStatusBadge(label: _statusLabel(status), tone: _statusTone(status), dense: true),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
 
           // ── method · type · plan · date ──────────────────────────────────
           Wrap(
@@ -1378,13 +1368,13 @@ class _PaymentCardState extends State<_PaymentCard> {
 
           // ── the receipt the student uploaded ─────────────────────────────
           if (proof != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             _ProofBlock(proof: proof, title: '${t('إيصال', 'Receipt')} #${p['id']}'),
           ],
 
           // ── approve / reject buttons (pending tab) ────────────────────────
           if (widget.ctl != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             Row(
               children: [
                 Expanded(
@@ -1396,7 +1386,7 @@ class _PaymentCardState extends State<_PaymentCard> {
                     onPressed: widget.ctl!.busy ? null : widget.ctl!.reject,
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: AppButton.primary(
                     label: t('موافقة', 'Approve'),
@@ -1411,7 +1401,7 @@ class _PaymentCardState extends State<_PaymentCard> {
 
           // ── refund (Phase 8): full or partial; manual / force are offered to the super admin only ──
           if (widget.ctl == null && status == 'completed' && canRefund && asInt(p['id']) > 0) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             Align(
               alignment: AlignmentDirectional.centerStart,
               child: AppButton.secondary(
@@ -1439,15 +1429,11 @@ class _PaymentCardState extends State<_PaymentCard> {
             behavior: HitTestBehavior.opaque,
             onTap: () => setState(() => _open = !_open),
             child: Padding(
-              padding: const EdgeInsets.only(top: 10),
+              padding: const EdgeInsets.only(top: AppSpace.sm),
               child: Row(
                 children: [
                   Flexible(child: Text(_open ? t('إخفاء التفاصيل', 'Hide details') : t('عرض التفاصيل', 'Show details'),
-                      style: TextStyle(
-                          fontFamily: AppFonts.family,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: c.primary))),
+                      style: AppType.meta(context).copyWith(color: c.primary, fontWeight: FontWeight.w600))),
                   Icon(_open ? Icons.expand_less_rounded : Icons.expand_more_rounded,
                       size: 18, color: c.primary),
                 ],
@@ -1459,7 +1445,7 @@ class _PaymentCardState extends State<_PaymentCard> {
             crossFadeState: _open ? CrossFadeState.showSecond : CrossFadeState.showFirst,
             firstChild: const SizedBox(width: double.infinity),
             secondChild: Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: AppSpace.xs),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1516,10 +1502,10 @@ class _ProofBlock extends StatelessWidget {
     final reviewer = asMap(proof['reviewed_by']);
 
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(
         color: c.inputBg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1528,7 +1514,7 @@ class _ProofBlock extends StatelessWidget {
           GestureDetector(
             onTap: url.isEmpty ? null : () => _showImage(context, url, title),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppRadius.control),
               child: SizedBox(
                 width: 86,
                 height: 86,
@@ -1554,10 +1540,10 @@ class _ProofBlock extends StatelessWidget {
                       bottom: 4,
                       end: 4,
                       child: Container(
-                        padding: const EdgeInsets.all(3),
+                        padding: const EdgeInsets.all(AppSpace.xxs),
                         decoration: BoxDecoration(
                           color: c.heroShade.withValues(alpha: 0.54),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(AppRadius.chip),
                         ),
                         child: Icon(Icons.zoom_in_rounded, size: 14, color: c.onHero),
                       ),
@@ -1567,7 +1553,7 @@ class _ProofBlock extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1575,7 +1561,7 @@ class _ProofBlock extends StatelessWidget {
                 _Kv(t('المُرسِل', 'Sender'), asStr(proof['sender_name']), compact: true),
                 _Kv(t('هاتف المُرسِل', 'Sender phone'), asStr(proof['sender_phone']), copy: true, compact: true),
                 _Kv(t('مرجع التحويل', 'Reference'), asStr(proof['transfer_reference']), copy: true, compact: true),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpace.xxs),
                 Wrap(
                   spacing: 6,
                   runSpacing: 4,
@@ -1585,15 +1571,15 @@ class _ProofBlock extends StatelessWidget {
                     if (reviewer.isNotEmpty && asStr(reviewer['name']).isNotEmpty)
                       Text(
                         '${t('بواسطة', 'by')} ${reviewer['name']} · ${shortDateTime(asStrOrNull(proof['reviewed_at']))}',
-                        style: c.caption.copyWith(fontSize: 11),
+                        style: AppType.meta(context),
                       ),
                   ],
                 ),
                 if (asStr(proof['rejection_reason']).isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.only(top: AppSpace.xxs),
                     child: Text(asStr(proof['rejection_reason']),
-                        style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: _red)),
+                        style: AppType.meta(context).copyWith(color: _red)),
                   ),
               ],
             ),
@@ -1661,7 +1647,7 @@ class _PayoutCardState extends State<_PayoutCard> {
     ];
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: AppSpace.md),
       child: RequestCardShell(
         accent: color,
         busy: _busy,
@@ -1672,7 +1658,7 @@ class _PayoutCardState extends State<_PayoutCard> {
             Row(
               children: [
                 _Avatar(name: asStr(teacher['name']), url: asStrOrNull(teacher['image_url'])),
-                const SizedBox(width: 10),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1680,7 +1666,7 @@ class _PayoutCardState extends State<_PayoutCard> {
                       Text(asStr(teacher['name'], '—'),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: c.h3.copyWith(fontSize: 14.5)),
+                          style: AppType.bodyStrong(context)),
                       const SizedBox(height: 2),
                       Text('${t('طلب سحب', 'Withdrawal')} #${w['id']}', style: c.caption),
                     ],
@@ -1691,20 +1677,15 @@ class _PayoutCardState extends State<_PayoutCard> {
                   children: [
                     Text(
                       money(asDouble(w['amount']), currency),
-                      style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontSize: 16.5,
-                        fontWeight: FontWeight.w800,
-                        color: c.textDark,
-                      ),
+                      style: AppType.section(context).copyWith(color: c.textDark),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpace.xxs),
                     AppStatusBadge(label: _statusLabel(status), tone: _statusTone(status), dense: true),
                   ],
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             Wrap(
               spacing: 6,
               runSpacing: 6,
@@ -1722,11 +1703,11 @@ class _PayoutCardState extends State<_PayoutCard> {
               ],
             ),
             if (destRows.isNotEmpty) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.sm),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(14)),
+                padding: const EdgeInsets.all(AppSpace.sm),
+                decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.control)),
                 child: Column(
                   children: [
                     for (final r in destRows.take(5))
@@ -1735,7 +1716,7 @@ class _PayoutCardState extends State<_PayoutCard> {
                 ),
               ),
             ],
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             if (asStr(w['bank_reference']).isNotEmpty)
               _Kv(t('مرجع التحويل', 'Reference'), asStr(w['bank_reference']), copy: true),
             if (asStrOrNull(w['processed_at']) != null)
@@ -1748,7 +1729,7 @@ class _PayoutCardState extends State<_PayoutCard> {
             if (asStr(w['payout_error']).isNotEmpty)
               _Kv(t('خطأ التحويل', 'Transfer error'), asStr(w['payout_error']), danger: true),
             if (w['has_receipt'] == true) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               Align(
                 alignment: AlignmentDirectional.centerStart,
                 child: FilledButton.tonalIcon(
@@ -1804,17 +1785,12 @@ class _Kv extends StatelessWidget {
             SizedBox(
               width: compact ? 92 : 110,
               child: Text(label,
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: c.textLight)),
+                  style: AppType.overline(context).copyWith(color: c.textLight)),
             ),
             Expanded(
               child: Text(
                 value,
-                style: TextStyle(
-                  fontFamily: AppFonts.family,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: danger ? _red : c.textDark,
-                ),
+                style: AppType.meta(context).copyWith(color: danger ? _red : c.textDark, fontWeight: FontWeight.w600),
               ),
             ),
             if (copy) Icon(Icons.copy_rounded, size: 13, color: c.textLight),

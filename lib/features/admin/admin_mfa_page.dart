@@ -27,7 +27,7 @@ String mfaEntryLabel() => t('التحقق بخطوتين', 'Two-step verificatio
 Widget _iconBox(BuildContext context, IconData icon, Color color) => Container(
       width: 46,
       height: 46,
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.control)),
       child: Icon(icon, color: color),
     );
 
@@ -64,22 +64,22 @@ class MfaStatusView extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final s = status;
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), physics: const AlwaysScrollableScrollPhysics(), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.lg), physics: const AlwaysScrollableScrollPhysics(), children: [
       AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             _iconBox(context, Icons.shield_rounded, s.enabled ? c.success : c.primary),
-            const SizedBox(width: 12),
-            Expanded(child: Text(mfaEntryLabel(), style: appText(16, w: FontWeight.w800, c: c.textDark))),
+            const SizedBox(width: AppSpace.sm),
+            Expanded(child: Text(mfaEntryLabel(), style: AppType.section(context).copyWith(color: c.textDark))),
           ]),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           Text(
               t('بعد كلمة المرور يُطلب رمز من 6 أرقام يظهر في تطبيق المصادقة على هاتفك، فلا يكفي معرفة كلمة المرور وحدها للدخول إلى حسابك.',
                   'After your password you type a 6-digit code from the authenticator app on your phone, so a password alone is not enough to get into your account.'),
-              style: appText(12.5, c: c.textMedium, h: 1.5)),
+              style: AppType.meta(context).copyWith(color: c.textMedium, height: 1.5)),
         ]),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       if (loading)
         const SizedBox(height: 140, child: AppListSkeleton(items: 2))
       else ...[
@@ -90,7 +90,7 @@ class MfaStatusView extends StatelessWidget {
               alignment: AlignmentDirectional.centerEnd,
               child: TextButton(onPressed: onRetry, child: Text(t('إعادة المحاولة', 'Retry'))),
             ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
         ],
         if (known && s.required && !s.enabled && onSignInAgain == null) ...[
           AppBanner(
@@ -98,17 +98,17 @@ class MfaStatusView extends StatelessWidget {
               color: c.warning,
               text: t('حسابك يجب أن يستخدم التحقق بخطوتين. فعّله للمتابعة.',
                   'Your account must use two-step verification. Turn it on to continue.')),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
         ],
         if (known) AppCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-              Text(t('الحالة', 'Status'), style: appText(13, w: FontWeight.w700, c: c.textDark)),
+              Text(t('الحالة', 'Status'), style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
               AppBadgePill(s.enabled ? t('مفعّل', 'On') : t('غير مفعّل', 'Off'),
                   color: s.enabled ? c.success : c.textMedium),
               if (s.required) AppBadgePill(t('مطلوب', 'Required'), color: c.warning),
             ]),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             if (s.enabled && s.confirmedAt != null)
               AppInfoRow(Icons.event_available_rounded, '${t('فُعّل في', 'Turned on')}: ${AppTime.dateTime(s.confirmedAt!)}'),
             if (s.enabled)
@@ -116,9 +116,9 @@ class MfaStatusView extends StatelessWidget {
                   '${t('رموز الاسترداد المتبقية', 'Recovery codes left')}: ${s.recoveryCodesLeft} / 10'),
             if (s.enabled && s.recoveryCodesLeft <= 2)
               Padding(
-                padding: const EdgeInsets.only(top: 6),
+                padding: const EdgeInsets.only(top: AppSpace.xs),
                 child: Text(t('بقي القليل من رموز الاسترداد، أنشئ رموزاً جديدة.', 'Few recovery codes left: make new ones.'),
-                    style: appText(12, w: FontWeight.w700, c: c.warning)),
+                    style: AppType.meta(context).copyWith(color: c.warning, fontWeight: FontWeight.w600)),
               ),
             if (!s.enabled && !s.allowed)
               AppInfoRow(Icons.info_outline_rounded,
@@ -127,7 +127,7 @@ class MfaStatusView extends StatelessWidget {
               AppInfoRow(DirIcons.login,
                   t('التحقق بخطوتين مفعّل لهذا الحساب. سجّل الدخول مرة أخرى بالرمز من تطبيق المصادقة.',
                       'Two-step verification is on for this account. Sign in again with the code from your authenticator app.')),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpace.md),
             if (onSignInAgain == null && !s.enabled && s.allowed)
               AppPrimaryButton(
                   label: t('تفعيل التحقق بخطوتين', 'Turn on two-step verification'),
@@ -140,17 +140,17 @@ class MfaStatusView extends StatelessWidget {
                   icon: Icons.refresh_rounded,
                   busy: busy,
                   onPressed: busy ? null : onRegenerate),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               Align(
                 alignment: AlignmentDirectional.center,
                 child: TextButton(
                   onPressed: busy ? null : onDisable,
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.remove_moderator_rounded, color: c.danger, size: 18),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: AppSpace.xs),
                     Flexible(
                       child: Text(t('إيقاف التحقق بخطوتين', 'Turn off two-step verification'),
-                          textAlign: TextAlign.center, style: appText(13, w: FontWeight.w700, c: c.danger)),
+                          textAlign: TextAlign.center, style: AppType.label(context).copyWith(color: c.danger, fontWeight: FontWeight.w600)),
                     ),
                   ]),
                 ),
@@ -159,7 +159,7 @@ class MfaStatusView extends StatelessWidget {
           ]),
         ),
         if (onSignInAgain != null) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           AppPrimaryButton(
               key: const ValueKey('mfa.sign_in_again'),
               label: t('تسجيل الدخول مرة أخرى', 'Sign in again'),
@@ -196,9 +196,9 @@ class MfaSetupView extends StatelessWidget {
       CircleAvatar(
           radius: 13,
           backgroundColor: c.primary,
-          child: Text('$n', style: appText(12, w: FontWeight.w800, c: Theme.of(context).colorScheme.onPrimary))),
-      const SizedBox(width: 10),
-      Expanded(child: Text(title, style: appText(14, w: FontWeight.w800, c: c.textDark))),
+          child: Text('$n', style: AppType.meta(context).copyWith(color: Theme.of(context).colorScheme.onPrimary, fontWeight: FontWeight.w600))),
+      const SizedBox(width: AppSpace.sm),
+      Expanded(child: Text(title, style: AppType.bodyStrong(context).copyWith(color: c.textDark))),
     ]);
   }
 
@@ -207,22 +207,22 @@ class MfaSetupView extends StatelessWidget {
     final c = context.colors;
     return LayoutBuilder(builder: (context, box) {
       final qr = (box.maxWidth - 96).clamp(140.0, 220.0);
-      return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
+      return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.lg), children: [
         AppCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             _step(context, 1, t('امسح الرمز بتطبيق المصادقة', 'Scan the code with an authenticator app')),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             Text(
                 t('مثل Google Authenticator أو Microsoft Authenticator أو 1Password.',
                     'For example Google Authenticator, Microsoft Authenticator or 1Password.'),
-                style: appText(12.5, c: c.textMedium, h: 1.5)),
-            const SizedBox(height: 12),
+                style: AppType.meta(context).copyWith(color: c.textMedium, height: 1.5)),
+            const SizedBox(height: AppSpace.sm),
             // The QR code stays dark-on-white in both themes on purpose: authenticator scanners need that contrast.
             if (info.otpauthUri.isNotEmpty)
               Center(
                 child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                  padding: const EdgeInsets.all(AppSpace.sm),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.card)),
                   child: QrImageView(
                     key: const ValueKey('mfa.qr'),
                     data: info.otpauthUri,
@@ -234,18 +234,18 @@ class MfaSetupView extends StatelessWidget {
               ),
           ]),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         AppCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             _step(context, 2, t('أو اكتب المفتاح يدوياً', 'Or type the key by hand')),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             Directionality(
               textDirection: TextDirection.ltr,
               child: Row(children: [
                 Expanded(
                   child: SelectableText(groupSecret(info.secret),
                       key: const ValueKey('mfa.secret'),
-                      style: appText(15, w: FontWeight.w800, c: c.textDark).copyWith(letterSpacing: 1.2)),
+                      style: AppType.section(context).copyWith(color: c.textDark).copyWith(letterSpacing: 1.2)),
                 ),
                 IconButton(
                     tooltip: t('نسخ المفتاح', 'Copy the key'),
@@ -259,11 +259,11 @@ class MfaSetupView extends StatelessWidget {
             AppInfoRow(Icons.timer_outlined, t('نوع المفتاح: حسب الوقت · 6 أرقام · كل 30 ثانية', 'Time-based · 6 digits · every 30 seconds')),
           ]),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         AppCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             _step(context, 3, t('اكتب الرمز الذي يظهر في التطبيق', 'Type the code the app shows')),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             Directionality(
               textDirection: TextDirection.ltr,
               child: TextField(
@@ -277,16 +277,16 @@ class MfaSetupView extends StatelessWidget {
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9٠-٩۰-۹ ]')),
                   LengthLimitingTextInputFormatter(7),
                 ],
-                style: appText(22, w: FontWeight.w800, c: c.textDark).copyWith(letterSpacing: 6),
+                style: AppType.pageTitle(context).copyWith(color: c.textDark).copyWith(letterSpacing: 6),
                 decoration: const InputDecoration(hintText: '000000', counterText: ''),
                 onSubmitted: (_) => onConfirm?.call(),
               ),
             ),
             if (error != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: error!),
             ],
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpace.md),
             AppPrimaryButton(
                 label: t('تأكيد وتفعيل', 'Confirm and turn on'),
                 icon: Icons.verified_user_rounded,
@@ -315,41 +315,41 @@ class MfaRecoveryCodesView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.lg), children: [
       AppBanner(
           icon: Icons.warning_amber_rounded,
           color: c.warning,
           text: t('احفظ هذه الرموز في مكان آمن الآن، فلن تظهر مرة أخرى. كل رمز يدخلك مرة واحدة إذا فقدت هاتفك.',
               'Save these codes somewhere safe now: they are not shown again. Each one signs you in once if you lose your phone.')),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             _iconBox(context, Icons.key_rounded, c.primary),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
-                child: Text(t('رموز الاسترداد', 'Recovery codes'), style: appText(16, w: FontWeight.w800, c: c.textDark))),
+                child: Text(t('رموز الاسترداد', 'Recovery codes'), style: AppType.section(context).copyWith(color: c.textDark))),
           ]),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           Directionality(
             textDirection: TextDirection.ltr,
             child: Wrap(spacing: 8, runSpacing: 8, children: [
               for (final code in codes)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
                   decoration: BoxDecoration(
                     color: c.primary.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(AppRadius.chip),
                     border: Border.all(color: c.divider),
                   ),
                   child: SelectableText(code,
-                      style: appText(13.5, w: FontWeight.w700, c: c.textDark).copyWith(letterSpacing: 0.8)),
+                      style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600).copyWith(letterSpacing: 0.8)),
                 ),
             ]),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.md),
           AppPrimaryButton(label: t('نسخ الرموز', 'Copy the codes'), icon: Icons.copy_rounded, onPressed: onCopy),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           Align(
             alignment: AlignmentDirectional.center,
             child: TextButton(onPressed: onDone, child: Text(doneLabel ?? t('حفظتها، تم', 'I saved them, done'))),
@@ -456,11 +456,11 @@ class _AdminMfaPageState extends State<AdminMfaPage> {
     final pw = TextEditingController(), cd = TextEditingController();
     return showAppSheet<String>(context, (ctx) {
       return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.lg),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           AppSheetHeader(title),
           if (password) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             TextField(
               key: const ValueKey('mfa.password'),
               controller: pw,
@@ -470,7 +470,7 @@ class _AdminMfaPageState extends State<AdminMfaPage> {
             ),
           ],
           if (code) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             Directionality(
               textDirection: TextDirection.ltr,
               child: TextField(
@@ -484,7 +484,7 @@ class _AdminMfaPageState extends State<AdminMfaPage> {
               ),
             ),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           AppPrimaryButton(
             label: t('متابعة', 'Continue'),
             icon: Icons.arrow_forward_rounded,
