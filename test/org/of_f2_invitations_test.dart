@@ -307,8 +307,8 @@ void main() {
       expect(find.text('Teacher'), findsWidgets);
 
       await _tap(tester, find.byKey(const ValueKey('org.invite.cancel.1')));
-      expect(find.byType(AlertDialog), findsWidgets);
-      await _tap(tester, find.descendant(of: find.byType(AlertDialog), matching: find.byType(FilledButton)).first);
+      expect(find.byKey(const ValueKey('app.confirm.ok')), findsOneWidget, reason: 'the confirm dialog');
+      await _tap(tester, find.byKey(const ValueKey('app.confirm.ok')).first);
       expect(cancelled, 1);
       expect(find.text('a@x.org'), findsNothing);
       expect(find.text('b@x.org'), findsOneWidget);
@@ -472,7 +472,7 @@ void main() {
       expect(find.text('Pending Uni'), findsOneWidget);
 
       await _tap(tester, find.byTooltip('Cancel request'));
-      await _tap(tester, find.descendant(of: find.byType(AlertDialog), matching: find.byType(FilledButton)).first);
+      await _tap(tester, find.byKey(const ValueKey('app.confirm.ok')).first);
       expect(posted, ['cancel9']);
 
       await _tap(tester, find.text('Request again'));
@@ -524,7 +524,7 @@ void main() {
       expect(find.text('Leave organization'), findsOneWidget);
       await _tap(tester, find.byKey(const ValueKey('org.leave.4')));
       expect(find.textContaining('lose access'), findsOneWidget);
-      await _tap(tester, find.descendant(of: find.byType(AlertDialog), matching: find.byType(FilledButton)).first);
+      await _tap(tester, find.byKey(const ValueKey('app.confirm.ok')).first);
       expect(left, 1);
       await _end(tester);
     });

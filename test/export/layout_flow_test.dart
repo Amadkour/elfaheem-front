@@ -500,7 +500,8 @@ void main() {
     final flow = flowOf(tester);
     expect([for (final f in flow.allFields) f.key], contains('calc.result'));
     expect(flow.fieldOf('calc.result')!.label('en'), 'Result');
-    await _tap(tester, find.byKey(const ValueKey('layout-kind-list')));
+    // the taller editorial cards: the kind cards sit above the fold once the computed entry was scrolled to
+    await _tap(tester, find.byKey(const ValueKey('layout-kind-list'), skipOffstage: false));
     await _tap(tester, find.byKey(const ValueKey('layout-next')));
     expect(find.byKey(const ValueKey('layout-field-calc.result')), findsOneWidget, reason: 'list fields offer the computed column');
     await close(tester);

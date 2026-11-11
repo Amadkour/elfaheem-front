@@ -184,7 +184,7 @@ void main() {
     }
 
     Future<void> next(WidgetTester tester) async {
-      await tester.tap(find.descendant(of: find.byKey(const ValueKey('setup.primary')), matching: find.byType(FilledButton)));
+      await tester.tap(find.byKey(const ValueKey('setup.primary')));
       await frames(tester);
     }
 

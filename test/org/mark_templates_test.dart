@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_inputs.dart' show AppField;
 import 'package:flutter_education_app/features/shared/exam_engine/marks/mark_templates_api.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/marks/templates/mark_editor_model.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/marks/templates/mark_template_editor.dart';
@@ -282,7 +283,7 @@ void main() {
       expect(find.text('Boxes (5)'), findsOneWidget);
       expect(find.textContaining('A box has no type'), findsWidgets);
       expect(find.textContaining('1 errors'), findsOneWidget);
-      await tester.enterText(find.widgetWithText(TextField, 'Template name'), 'Final mark sheet');
+      await tester.enterText(find.descendant(of: find.widgetWithText(AppField, 'Template name'), matching: find.byType(TextField)), 'Final mark sheet');
       await tester.tap(find.text('Save template'));
       await frames(tester);
       expect(posted, isNull);

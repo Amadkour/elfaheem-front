@@ -118,7 +118,8 @@ class _AppSwitchState extends State<AppSwitch> {
         opacity: enabled ? 1 : 0.45,
         child: ConstrainedBox(
           constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
-          child: Center(child: track),
+          // shrink-wrapped: a plain Center fills a loose parent (a ListTile's trailing slot would take the whole row)
+          child: Center(widthFactor: 1, heightFactor: 1, child: track),
         ),
       ),
     );

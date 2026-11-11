@@ -53,7 +53,7 @@ Future<void> _tap(WidgetTester tester, Finder f) async {
 Future<void> _tapKey(WidgetTester tester, String key) => _tap(tester, find.byKey(ValueKey(key)));
 
 Future<void> _confirmDialog(WidgetTester tester) =>
-    _tap(tester, find.descendant(of: find.byType(AlertDialog), matching: find.byType(FilledButton)));
+    _tap(tester, find.byKey(const ValueKey('app.confirm.ok')));
 
 Future<void> _pump(WidgetTester tester, Widget page, {Size size = const Size(1400, 900)}) async {
   tester.view.physicalSize = size;

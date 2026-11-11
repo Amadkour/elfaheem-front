@@ -17,7 +17,6 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_contrast.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/features/admin/admin_premium_widgets.dart' show ServiceIcon;
 import 'package:flutter_education_app/features/shared/exam_engine/exam_quick.dart' show ResultRow;
 import 'package:flutter_education_app/features/shared/exam_engine/exam_results_screen.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_review.dart';
@@ -337,7 +336,7 @@ void main() {
       expect(contrastRatio(ink, theme.cardBg), greaterThanOrEqualTo(kWcagAaText));
     });
 
-    testWidgets('the confirm dialog: a 54 px badge in the theme\'s primary, not a full-width bar', (tester) async {
+    testWidgets('the confirm dialog: a square badge in the theme\'s primary, not a full-width bar', (tester) async {
       late BuildContext ctx;
       await _phone(tester, Builder(builder: (context) {
         ctx = context;
@@ -345,9 +344,11 @@ void main() {
       }));
       await tester.tap(find.text('ask'));
       await _frames(tester, 6);
-      final badge = find.byType(ServiceIcon);
-      expect(tester.getSize(badge), const Size(54, 54));
-      expect(tester.widget<ServiceIcon>(badge).colors, [ctx.colors.primaryLight, ctx.colors.primary]);
+      // the editorial confirm (D-612): a tinted square mark, the icon in the theme's primary
+      final mark = find.byIcon(Icons.help_outline_rounded);
+      final badge = find.ancestor(of: mark, matching: find.byType(DecoratedBox)).first;
+      expect(tester.getSize(badge), const Size(AppTouch.min, AppTouch.min));
+      expect(tester.widget<Icon>(mark).color, ctx.colors.isDark ? ctx.colors.primaryLight : ctx.colors.primary);
     });
 
     test('count axes step in whole numbers; other charts keep their quarters', () {

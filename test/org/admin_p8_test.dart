@@ -206,7 +206,7 @@ void main() {
       Future<void> refund() async {
         await t.tap(find.text('Refund').last);
         await t.pumpAndSettle();
-        await t.tap(find.descendant(of: find.byType(AlertDialog), matching: find.byType(FilledButton)));   // the confirm dialog
+        await t.tap(find.byKey(const ValueKey('app.confirm.ok')));   // the confirm dialog
         await t.pumpAndSettle();
       }
 
@@ -233,7 +233,7 @@ void main() {
           act: (t) async {
         await t.tap(find.byType(AppPrimaryButton));
         await t.pumpAndSettle();
-        await t.tap(find.descendant(of: find.byType(AlertDialog), matching: find.byType(FilledButton)));
+        await t.tap(find.byKey(const ValueKey('app.confirm.ok')));
         await t.pumpAndSettle();
         expect(find.byIcon(Icons.info_outline_rounded), findsOneWidget);
       });

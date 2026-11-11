@@ -130,7 +130,7 @@ Future<FakeApi> _open(WidgetTester tester, _Backend b, {String? initialDelivery}
 }
 
 Future<void> _tapPrimary(WidgetTester tester) async {
-  await tester.tap(find.descendant(of: find.byKey(const ValueKey('setup.primary')), matching: find.byType(FilledButton)));
+  await tester.tap(find.byKey(const ValueKey('setup.primary')));
   await _frames(tester);
 }
 

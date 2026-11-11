@@ -129,7 +129,7 @@ void main() {
 
     await tester.enterText(find.byKey(const ValueKey('void.reason')), 'The key was wrong');
     await _tap(tester, find.byKey(const ValueKey('void.submit')));
-    await _tap(tester, find.descendant(of: find.byType(AlertDialog), matching: find.byType(FilledButton)));
+    await _tap(tester, find.byKey(const ValueKey('app.confirm.ok')));
     expect(sent, {'reason': 'The key was wrong', 'mode': 'full_marks'});
     expect(refreshed, 1, reason: 'the analytics are recomputed after the recalculation');
     expect(find.byKey(const ValueKey('item.restore.9')), findsOneWidget);
@@ -158,7 +158,7 @@ void main() {
     expect(find.byKey(const ValueKey('void.mode.remove')), findsNothing, reason: 'restoring asks only for a reason');
     await tester.enterText(find.byKey(const ValueKey('void.reason')), 'Cancelled by mistake');
     await _tap(tester, find.byKey(const ValueKey('void.submit')));
-    await _tap(tester, find.descendant(of: find.byType(AlertDialog), matching: find.byType(FilledButton)));
+    await _tap(tester, find.byKey(const ValueKey('app.confirm.ok')));
     expect(sent, {'reason': 'Cancelled by mistake'});
     await _end(tester);
   });

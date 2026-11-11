@@ -130,7 +130,7 @@ void main() {
 
       await _pump(tester, const ExamResultsScreen(examId: 7, examTitle: 'Midterm', courseId: 3));
       await _tap(tester, find.text('Publish results to students'));
-      await _tap(tester, find.descendant(of: find.byType(AlertDialog), matching: find.byType(FilledButton)));
+      await _tap(tester, find.byKey(const ValueKey('app.confirm.ok')));
       expect(find.byType(PublishBlockedSheet), findsOneWidget);
       expect(find.text('3 open answer(s)'), findsOneWidget);
       expect(find.text('1 open paper item(s)'), findsOneWidget);
@@ -162,7 +162,7 @@ void main() {
       await _tap(tester, find.text('Unpublish'));
       expect(find.textContaining('Students and parents stop seeing'), findsOneWidget);
       expect(unpublished, 0);
-      await _tap(tester, find.descendant(of: find.byType(AlertDialog), matching: find.byType(FilledButton)));
+      await _tap(tester, find.byKey(const ValueKey('app.confirm.ok')));
       expect(unpublished, 1);
       expect(find.byKey(const ValueKey('exam.publishedBanner')), findsNothing);
       await _end(tester);

@@ -305,12 +305,12 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
       expect(find.text('Write the question'), findsOneWidget);
       expect(api.calls, isEmpty);
-      await tester.enterText(find.widgetWithText(TextField, 'Question'), 'When does the lecture start?');
-      await tester.enterText(find.widgetWithText(TextField, 'Add a variant'), 'متى تبدأ المحاضرة؟');
+      await tester.enterText(find.descendant(of: find.widgetWithText(AppField, 'Question'), matching: find.byType(TextField)), 'When does the lecture start?');
+      await tester.enterText(find.descendant(of: find.widgetWithText(AppField, 'Add a variant'), matching: find.byType(TextField)), 'متى تبدأ المحاضرة؟');
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pump(const Duration(milliseconds: 200));
       expect(find.byType(InputChip), findsOneWidget);
-      await tester.enterText(find.widgetWithText(TextField, 'Approved answer'), 'At 9 am.');
+      await tester.enterText(find.descendant(of: find.widgetWithText(AppField, 'Approved answer'), matching: find.byType(TextField)), 'At 9 am.');
       await tester.ensureVisible(find.byType(AppPrimaryButton).last);
       await tester.pump(const Duration(milliseconds: 200));
       await tester.tap(find.text('Add').last);

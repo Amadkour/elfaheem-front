@@ -107,7 +107,7 @@ void _notices(WidgetTester tester) {
 }
 
 /// The confirm dialog's Cancel (its label is a translation key the test does not load).
-final _dialogCancel = find.descendant(of: find.byType(AlertDialog), matching: find.byType(OutlinedButton));
+final _dialogCancel = find.byKey(const ValueKey('app.confirm.cancel'));
 
 final _connected = ValueNotifier<bool>(true);
 final _stream = LiveStreamHandle(connected: _connected, bind: () {}, release: () {});
