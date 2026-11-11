@@ -24,6 +24,8 @@ import 'package:flutter_education_app/features/shared/points/points_wallet_page.
 import 'package:flutter_education_app/features/student/certificates/my_certificate_model.dart';
 import 'package:flutter_education_app/features/student/certificates/my_certificates_provider.dart';
 import 'package:flutter_education_app/features/student/certificates/my_certificates_screen.dart';
+import 'package:flutter_education_app/features/student/reward/rewards_provider.dart';
+import 'package:flutter_education_app/features/student/reward/rewards_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
@@ -193,6 +195,13 @@ void main() {
         'card_paid',
         (context) => _sheet(context,
             CardTopupStatusView(phase: CardTopupPhase.approved, points: 1000, amountText: '500 EGP', onClose: () {})));
+  });
+
+  testWidgets('achievements', (tester) async {
+    await _render(tester, 'achievements',
+        (_) => ChangeNotifierProvider<RewardsProvider>.value(value: RewardsProvider(), child: const RewardsScreen()));
+    await _render(tester, 'achievements_detail',
+        (_) => ChangeNotifierProvider<RewardsProvider>.value(value: RewardsProvider()..openDetail(), child: const RewardsScreen()));
   });
 
   testWidgets('certificates', (tester) async {
