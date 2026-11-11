@@ -176,6 +176,13 @@ class _HomeScreenState extends State<HomeScreen> {
             listenable: Listenable.merge([MeHomeService.instance, AppModeController.instance]),
             builder: (context, _) => HomeHeader(
               helpPageId: 'home.student',
+              // the premium forest hero (D-631): the ring is the courses' average progress, the ONE call to action
+              // opens the day's timetable (the line under the greeting is the day)
+              greetingHero: true,
+              ring: guest || AppModeController.instance.isOrg ? null : studentAverageProgress(MeHomeService.instance.home),
+              cta: guest || AppModeController.instance.isOrg
+                  ? null
+                  : AppGreetingHeroButton(label: 'home_full_timetable'.tr, icon: Icons.calendar_month_rounded, onTap: () => _tab('my_schedule')),
               name: guest ? 'guest_name'.tr : (user?.name ?? 'sir'.tr),
               // the day in one line ("2 sessions today · 1 live now · 3 to do") instead of another card — in
               // Organization mode from what that organization's home draws (M6)
@@ -324,6 +331,13 @@ String? studentDaySummary(MeHome? home, int liveRooms, [DateTime? nowUtc, int or
   );
 }
 
+/// The hero ring of the student home (D-631): the average progress of my courses, 0..1; null with none.
+double? studentAverageProgress(MeHome? home) {
+  final cp = home?.coursesProgress ?? const <MeCourseProgress>[];
+  if (cp.isEmpty) return null;
+  return (cp.fold<double>(0, (s, x) => s + x.progress) / cp.length / 100).clamp(0.0, 1.0);
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  Body
 // ═════════════════════════════════════════════════════════════════════════════
@@ -427,8 +441,12 @@ class _Sections extends StatelessWidget {
   final DateTime now;
   final StudentHomeBody body;
 
+  // the premium layout (D-631) picks its pieces by width: the stat row on a desktop, the shortcut grid and the
+  // horizontal course tiles on a phone (the same data either way)
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) => _build(context, homeIsWide(box.maxWidth)));
+
+  Widget _build(BuildContext context, bool wide) {
     final c = context.colors;
     final data = body.data;
     final wallNow = AppTime.toZone(now);
@@ -527,8 +545,8 @@ class _Sections extends StatelessWidget {
       count: home.coursesProgress.length,
       empty: home.coursesProgress.isEmpty,
       emptySummary: 'home_s_no_courses'.tr,
-      actionLabel: home.coursesProgress.isEmpty ? 'home_s_browse'.tr : null,
-      onAction: home.coursesProgress.isEmpty ? () => body.onTab('my_courses') : null,
+      actionLabel: home.coursesProgress.isEmpty ? 'home_s_browse'.tr : (wide ? null : 'show_all'.tr),
+      onAction: home.coursesProgress.isEmpty || !wide ? () => body.onTab('my_courses') : null,
       child: home.coursesProgress.isEmpty
           ? Padding(
               padding: const EdgeInsets.symmetric(horizontal: kStudentHomeInset),
@@ -540,13 +558,21 @@ class _Sections extends StatelessWidget {
                 onAction: () => body.onTab('my_courses'),
               ),
             )
-          : StudentCourseSummary(
-              courses: home.coursesProgress,
-              events: events,
-              featuredId: featured?.courseId,
-              onOpen: body.onOpenCourse,
-              onShowAll: () => body.onTab('my_courses'),
-            ),
+          : wide
+              ? StudentCourseSummary(
+                  courses: home.coursesProgress,
+                  events: events,
+                  featuredId: featured?.courseId,
+                  onOpen: body.onOpenCourse,
+                  onShowAll: () => body.onTab('my_courses'),
+                )
+              // a phone: the same courses as cover tiles in one horizontal row; "Show all" sits on the title
+              : StudentCourseTiles(
+                  courses: home.coursesProgress,
+                  events: events,
+                  featuredId: featured?.courseId,
+                  onOpen: body.onOpenCourse,
+                ),
     ));
 
     // ── the ONE journey card (D-120), under the courses and with them on every layout; no clear field → nothing
@@ -583,8 +609,17 @@ class _Sections extends StatelessWidget {
 
       // phone: needs you · today · courses · inbox. The desktop dashboard: what happens (today, my courses) beside
       // what waits (needs you as a list, the inbox); with nothing waiting the courses card takes the side column
+      // the desktop's stat row (D-631: four figures from the same payload, coloured by meaning) over the dashboard;
+      // a phone gets the shortcut grid under the hero instead
+      if (wide) ...[
+        Padding(padding: const EdgeInsets.symmetric(horizontal: kStudentHomeInset), child: _StudentStats(home: home, onTab: body.onTab)),
+        const SizedBox(height: AppSpace.lg),
+      ],
       HomeDashboard(
-        narrow: [?cont, ?needs, today, ?coursesBlock, ?inbox],
+        narrow: [
+          Padding(padding: EdgeInsets.fromLTRB(kStudentHomeInset, live.isEmpty ? AppSpace.sm : 0, kStudentHomeInset, 0), child: _StudentShortcuts(onTab: body.onTab, onOpenInbox: body.onOpenInbox)),
+          ?cont, ?needs, today, ?coursesBlock, ?inbox,
+        ],
         main: [?cont, today, if (needs != null || inbox != null) ?coursesBlock],
         side: needs == null && inbox == null ? [?coursesBlock] : [?needs, ?inbox],
       ),
@@ -592,7 +627,7 @@ class _Sections extends StatelessWidget {
     ]);
   }
 
-  static const _bannerPad = EdgeInsets.fromLTRB(kStudentHomeInset, 0, kStudentHomeInset, AppSpace.lg);
+  static const _bannerPad = EdgeInsets.fromLTRB(kStudentHomeInset, AppSpace.sm, kStudentHomeInset, AppSpace.lg);
 
   void _open(CalEvent? e) {
     if (e == null) {
@@ -601,6 +636,68 @@ class _Sections extends StatelessWidget {
       body.onOpenEvent?.call(e);
     }
   }
+}
+
+/// The desktop stat row (D-631): my courses · today · average progress · courses finished — every figure from the
+/// /me/home payload already on screen, coloured by meaning (emerald courses, sky schedule, peach learning, gold the
+/// one achievement). The counts that wait for me (to do, unread) stay in "Needs you" / the inbox: each count once.
+class _StudentStats extends StatelessWidget {
+  const _StudentStats({required this.home, required this.onTab});
+  final MeHome home;
+  final ValueChanged<String> onTab;
+
+  @override
+  Widget build(BuildContext context) {
+    final cp = home.coursesProgress;
+    final avg = ((studentAverageProgress(home) ?? 0) * 100).round();
+    final done = cp.where((x) => x.progress >= 100).length;
+    return AppKpiGrid(children: [
+      AppStatCard(
+        icon: Icons.auto_stories_rounded,
+        value: '${cp.length}',
+        label: 'my_courses'.tr,
+        tone: AppBlockTone.emerald,
+        onTap: () => onTab('my_courses'),
+      ),
+      AppStatCard(
+        icon: Icons.event_note_rounded,
+        value: '${home.today.where((e) => !e.declined).length}',
+        label: 'home_s_today_items'.tr,
+        tone: AppBlockTone.sky,
+        onTap: () => onTab('my_schedule'),
+      ),
+      AppStatCard(
+        icon: Icons.trending_up_rounded,
+        value: '$avg%',
+        label: 'home_s_avg_progress'.tr,
+        tone: AppBlockTone.peach,
+        onTap: () => onTab('analysis'),
+      ),
+      AppStatCard(
+        icon: Icons.emoji_events_rounded,
+        value: '$done',
+        label: 'home_s_done_courses'.tr,
+        tone: AppBlockTone.gold,
+        onTap: () => onTab('my_courses'),
+      ),
+    ]);
+  }
+}
+
+/// The phone's shortcut grid under the hero (D-631, the reference's 2×2 tiles): the dashboard's own tabs and the
+/// inbox, each a large soft glyph in its tone. No counts here: "Needs you" and the inbox entry carry them.
+class _StudentShortcuts extends StatelessWidget {
+  const _StudentShortcuts({required this.onTab, this.onOpenInbox});
+  final ValueChanged<String> onTab;
+  final VoidCallback? onOpenInbox;
+
+  @override
+  Widget build(BuildContext context) => AppShortcutGrid(maxColumns: 2, children: [
+        AppShortcutTile(icon: Icons.auto_stories_rounded, label: 'my_courses'.tr, tone: AppBlockTone.emerald, onTap: () => onTab('my_courses')),
+        AppShortcutTile(icon: Icons.calendar_month_rounded, label: 'my_schedule'.tr, tone: AppBlockTone.sky, onTap: () => onTab('my_schedule')),
+        AppShortcutTile(icon: Icons.insights_rounded, label: 'analysis'.tr, tone: AppBlockTone.peach, onTap: () => onTab('analysis')),
+        AppShortcutTile(icon: Icons.inbox_rounded, label: 'inbox_title'.tr, tone: AppBlockTone.sky, onTap: onOpenInbox),
+      ]);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

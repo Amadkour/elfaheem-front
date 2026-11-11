@@ -13,6 +13,7 @@
 // There is no "next up" hero card any more: it repeated the first row of "Today". What only it said (ends in
 // 50 min · the room) is the second line of that row now (HomeAgenda: homeAgendaNote, the item's place).
 //   StudentCourseSummary(courses:)      "My courses" in one card: the 3 that matter now (homeCourseFocus)
+//   StudentCourseTiles(courses:)        the same courses on a phone: cover tiles in one horizontal row (D-631)
 //
 // Plain values only (layout-tested in test/ui/student_home_layout_test.dart).
 library;
@@ -27,6 +28,7 @@ import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/org/org_member_pages.dart' show OrgTimetableScreen;
 import 'package:flutter_education_app/features/org/org_my_exams.dart' show openMyExams;
 import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart' show CalEvent;
+import 'package:flutter_education_app/features/shared/course/course_list_card.dart' show CourseCardShape, CourseListCard, CourseProgressFooter;
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 
 /// Where an event of the home goes when tapped. [inOrg]: a timetable slot opens the member's own timetable
@@ -329,6 +331,50 @@ class StudentCourseSummary extends StatelessWidget {
       ],
       moreLabel: courses.length > shown ? 'home_courses_all'.tr.replaceAll('{n}', '${courses.length}') : null,
       onMore: onShowAll,
+    );
+  }
+}
+
+/// "My courses" on a phone (D-631): the same courses as [StudentCourseSummary] (all of them, the focus order, the
+/// featured one left out) as cover tiles in one horizontal row, each with its next lecture and its progress.
+class StudentCourseTiles extends StatelessWidget {
+  const StudentCourseTiles({super.key, required this.courses, this.events = const [], this.onOpen, this.featuredId});
+
+  final List<MeCourseProgress> courses;
+  final List<CalEvent> events;
+  final ValueChanged<int>? onOpen;
+  final int? featuredId;
+
+  /// One tile's width: a second tile always peeks in at the end.
+  static const double tileWidth = 220;
+
+  @override
+  Widget build(BuildContext context) {
+    final list = homeCourseFocus(courses, events: events).where((x) => x.courseId != featuredId).toList();
+    final next = homeCourseNextEvents(events);
+    final last = homeCourseLastEvents(events);
+    return SizedBox(
+      height: CourseListCard.tileHeight(context, tileWidth),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md + AppSpace.xxs),
+        itemCount: list.length,
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpace.sm),
+        itemBuilder: (context, i) {
+          final x = list[i];
+          return SizedBox(
+            width: tileWidth,
+            child: CourseListCard(
+              shape: CourseCardShape.tile,
+              title: x.name(AppConfig.lang),
+              imageUrl: x.imageUrl ?? '',
+              meta: [homeNextLectureLine(x, event: next[x.courseId], last: last[x.courseId])],
+              footer: CourseProgressFooter(progress: x.progress.round()),
+              onTap: onOpen == null ? null : () => onOpen!(x.courseId),
+            ),
+          );
+        },
+      ),
     );
   }
 }

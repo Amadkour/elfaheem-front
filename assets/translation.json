@@ -16337,6 +16337,18 @@
     "en": "Browse courses",
     "ar": "تصفح الكورسات"
   },
+  "home_s_avg_progress": {
+    "en": "Average progress",
+    "ar": "متوسط التقدّم"
+  },
+  "home_s_done_courses": {
+    "en": "Courses finished",
+    "ar": "كورسات أنهيتها"
+  },
+  "home_s_today_items": {
+    "en": "On today",
+    "ar": "على جدول اليوم"
+  },
   "home_admin_sub": {
     "en": "Here is the platform today",
     "ar": "هذه حال المنصة اليوم"
