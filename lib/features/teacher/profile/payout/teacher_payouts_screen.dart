@@ -12,11 +12,13 @@ import 'package:provider/provider.dart';
 
 import '../../../../design/app_switch.dart';
 import '../../../../utils/widget/base_page.dart';
-import '../../../../utils/widget/primary_button.dart';
 import 'teacher_payout_provider.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppGradientSurface, AppListSkeleton, AppNumberField;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_kit.dart'
+    show AppBlock, AppBlockTone, AppBorder, AppButton, AppButtonSize, AppButtonVariant, AppCard, AppErrorState, AppIconSize,
+        AppListSkeleton, AppNumberField, AppRadius, AppSection, AppSettingsTile, AppSpace, AppStatusBadge, AppTone, AppType,
+        AppWidth, AppWidthBox, appInkOn, appTintOn;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppOdometer, AppReveal, AppTilt;
 
 class TeacherPayoutsScreen extends StatelessWidget {
   const TeacherPayoutsScreen({super.key});
@@ -28,17 +30,16 @@ class TeacherPayoutsScreen extends StatelessWidget {
   );
 }
 
-Color _statusColor(BuildContext context, String s) {
-  final c = context.colors;
+AppTone _statusTone(String s) {
   switch (s) {
     case 'paid':
-      return c.success;
+      return AppTone.success;
     case 'approved':
-      return c.primary;
+      return AppTone.info;
     case 'rejected':
-      return c.danger;
+      return AppTone.danger;
     default:
-      return c.warning;
+      return AppTone.warning;
   }
 }
 
@@ -62,118 +63,97 @@ class _View extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<TeacherPayoutProvider>();
-    final c = context.colors;
 
     Widget body;
     if (!p.loaded) {
       body = const AppListSkeleton(withAvatar: false);
     } else if (p.error != null && p.summary.isEmpty) {
-      body = ErrorRetry(message: p.error!, onRetry: p.load);
+      body = AppErrorState(message: p.error!, onRetry: p.load);
     } else {
       final canRequest =
           p.allowed &&
           p.accounts.isNotEmpty &&
           !p.hasOpenRequest &&
           p.available >= p.minAmount;
+      final side = AppSpace.gutter(MediaQuery.sizeOf(context).width);
+      final note = <String>[
+        if (p.allowed && p.available < p.minAmount) '${'admin_minimum_withdrawal'.tr}: ${money(p.minAmount)}',
+        if (p.hasOpenRequest) 'admin_you_have_a_withdrawal_in_progress'.tr,
+      ];
+      // ONE entrance (system.md §6): the balance block leads, the request button and the two sections follow once
+      Widget enter(int i, Widget w) => AppReveal(index: i, group: 'teacher_payouts', child: w);
       body = AppRefresh(
         onRefresh: p.load,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 40),
+          padding: EdgeInsets.fromLTRB(side, AppSpace.sm, side, AppSpace.xxl),
           children: [
-            if (!p.allowed)
-              Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: c.warning.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.lock_clock_rounded, color: c.warning),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'admin_withdrawals_are_not_enabled_for_your'.tr,
-                        style: TextStyle(
-                          fontFamily: AppFonts.family,
-                          color: c.textDark,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            _BalanceCard(key: const ValueKey('teacher_payouts.balance'), p: p),
-            const SizedBox(height: 12),
-            PrimaryButton(
-              key: const ValueKey('teacher_payouts.request'),
-              label: 'admin_request_withdrawal'.tr,
-              icon: Icons.account_balance_wallet_rounded,
-              onPressed: canRequest ? () => _requestSheet(context, p) : null,
-              isLoading: false,
-            ),
-            if (p.allowed && p.available < p.minAmount)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  '${'admin_minimum_withdrawal'.tr}: ${money(p.minAmount)}',
-                  style: TextStyle(
-                    fontFamily: AppFonts.family,
-                    fontSize: 12,
-                    color: c.textLight,
+            AppWidthBox(
+              width: AppWidth.reading,
+              gutters: false,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                if (!p.allowed)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                    child: _Notice(icon: Icons.lock_clock_rounded, text: 'admin_withdrawals_are_not_enabled_for_your'.tr),
+                  ),
+                enter(0, _BalanceCard(key: const ValueKey('teacher_payouts.balance'), p: p)),
+                const SizedBox(height: AppSpace.md),
+                enter(
+                  1,
+                  AppButton.primary(
+                    key: const ValueKey('teacher_payouts.request'),
+                    expand: true,
+                    size: AppButtonSize.lg,
+                    label: 'admin_request_withdrawal'.tr,
+                    icon: Icons.account_balance_wallet_rounded,
+                    onPressed: canRequest ? () => _requestSheet(context, p) : null,
                   ),
                 ),
-              ),
-            if (p.hasOpenRequest)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  'admin_you_have_a_withdrawal_in_progress'.tr,
-                  style: TextStyle(
-                    fontFamily: AppFonts.family,
-                    fontSize: 12,
-                    color: c.textLight,
+                for (final line in note)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpace.xs),
+                    child: Text(line, style: AppType.meta(context)),
+                  ),
+                enter(
+                  2,
+                  AppSection(
+                    title: 'admin_payout_accounts'.tr,
+                    trailing: AppButton.ghost(
+                      size: AppButtonSize.sm,
+                      label: 'add'.tr,
+                      icon: Icons.add_rounded,
+                      onPressed: p.allowed ? () => _accountSheet(context, p) : null,
+                    ),
+                    child: AppCard(
+                      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
+                      child: p.accounts.isEmpty
+                          ? Padding(
+                              padding: AppSpace.card,
+                              child: Text(
+                                p.allowed ? 'admin_add_an_account_to_withdraw_bank'.tr : 'admin_no_accounts'.tr,
+                                style: AppType.body(context),
+                              ),
+                            )
+                          : _Rows(children: [for (final a in p.accounts) _AccountTile(a)]),
+                    ),
                   ),
                 ),
-              ),
-            const SizedBox(height: 14),
-            Section(
-              title: 'admin_payout_accounts'.tr,
-              trailing: TextButton.icon(
-                onPressed: p.allowed ? () => _accountSheet(context, p) : null,
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: Text('add'.tr),
-              ),
-              child: p.accounts.isEmpty
-                  ? Text(
-                      p.allowed
-                          ? 'admin_add_an_account_to_withdraw_bank'.tr
-                          : 'admin_no_accounts'.tr,
-                      style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        color: c.textLight,
-                      ),
-                    )
-                  : Column(
-                      children: [for (final a in p.accounts) _AccountTile(a)],
+                enter(
+                  3,
+                  AppSection(
+                    title: 'admin_withdrawals'.tr,
+                    child: AppCard(
+                      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
+                      child: p.withdrawals.isEmpty
+                          ? Padding(
+                              padding: AppSpace.card,
+                              child: Text('admin_no_withdrawals_yet'.tr, style: AppType.body(context)),
+                            )
+                          : _Rows(children: [for (final w in p.withdrawals) _WithdrawalTile(w)]),
                     ),
-            ),
-            Section(
-              title: 'admin_withdrawals'.tr,
-              child: p.withdrawals.isEmpty
-                  ? Text(
-                      'admin_no_withdrawals_yet'.tr,
-                      style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        color: c.textLight,
-                      ),
-                    )
-                  : Column(
-                      children: [
-                        for (final w in p.withdrawals) _WithdrawalTile(w),
-                      ],
-                    ),
+                  ),
+                ),
+              ]),
             ),
           ],
         ),
@@ -191,73 +171,121 @@ class _View extends StatelessWidget {
   }
 }
 
+/// Rows of a paper card parted by warm hairlines that start where the text starts.
+class _Rows extends StatelessWidget {
+  const _Rows({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      for (var i = 0; i < children.length; i++) ...[
+        if (i > 0)
+          Divider(
+            height: AppBorder.hairline,
+            thickness: AppBorder.hairline,
+            color: c.divider,
+            indent: AppSpace.md,
+            endIndent: AppSpace.md,
+          ),
+        children[i],
+      ],
+    ]);
+  }
+}
+
+/// A calm notice on the canvas: the warning tint, its glyph in a legible warning ink, the text in ink.
+class _Notice extends StatelessWidget {
+  const _Notice({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tint = appTintOn(context, c.warning);
+    return Container(
+      padding: AppSpace.card,
+      decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(AppRadius.control)),
+      child: Row(children: [
+        Icon(icon, size: AppIconSize.md, color: appInkOn(context, c.warning, tint)),
+        const SizedBox(width: AppSpace.sm),
+        Expanded(child: Text(text, style: AppType.body(context).copyWith(color: c.textDark))),
+      ]),
+    );
+  }
+}
+
+/// The page's ONE block (the KPI highlight language, D-612): what can be withdrawn now as the rolling key figure,
+/// the three running totals under a quiet rule, counting up once. It leans under the pointer (the key KPI).
 class _BalanceCard extends StatelessWidget {
   const _BalanceCard({super.key, required this.p});
 
   final TeacherPayoutProvider p;
 
+  /// How much of the block's ink the rules between the totals carry.
+  static const double _ruleInk = 0.16;
+
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    Widget cell(String label, double v) => Expanded(
-      child: Column(
-        children: [
-          Text(
-            money(v),
-            style: TextStyle(
-              fontFamily: AppFonts.family,
-              fontWeight: FontWeight.w800,
-              color: c.onHero,
-              fontSize: 15,
-            ),
+  Widget build(BuildContext context) => RepaintBoundary(
+        child: AppTilt(
+          radius: AppRadius.block,
+          maxTilt: 2.5,
+          glare: true,
+          child: AppBlock(
+            tone: AppBlockTone.peach,
+            hero: true,
+            child: Builder(builder: (context) {
+              final b = AppBlock.colorsOf(context);
+              final rule = Color.lerp(b.surface, b.ink, _ruleInk)!;
+              Widget cell(String label, double v, String key) => Expanded(
+                    child: Column(children: [
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: AppCountUp(money(v), memoryKey: 'payouts.$key', style: AppType.figure(context).copyWith(color: b.ink)),
+                      ),
+                      const SizedBox(height: AppSpace.xxs),
+                      Text(label,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppType.meta(context).copyWith(color: b.muted)),
+                    ]),
+                  );
+              return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Text('admin_available_to_withdraw'.tr, style: AppType.label(context).copyWith(color: b.muted)),
+                const SizedBox(height: AppSpace.xs),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: AppOdometer(
+                      money(p.available),
+                      memoryKey: 'payouts.available',
+                      style: AppType.figureLarge(context).copyWith(color: b.ink),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpace.lg),
+                Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: rule),
+                const SizedBox(height: AppSpace.md),
+                IntrinsicHeight(
+                  child: Row(children: [
+                    cell('admin_total_net'.tr, p.totalNet, 'net'),
+                    VerticalDivider(width: AppSpace.lg, thickness: AppBorder.hairline, color: rule),
+                    cell('withdrawn_label'.tr, p.withdrawn, 'withdrawn'),
+                    VerticalDivider(width: AppSpace.lg, thickness: AppBorder.hairline, color: rule),
+                    cell('admin_in_progress_2'.tr, p.inFlight, 'in_flight'),
+                  ]),
+                ),
+              ]);
+            }),
           ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: AppFonts.family,
-              color: c.onHeroMuted,
-              fontSize: 11,
-            ),
-          ),
-        ],
-      ),
-    );
-    return AppGradientSurface(
-      padding: const EdgeInsets.all(18),
-      radius: 20,
-      child: Column(
-        children: [
-          Text(
-            'admin_available_to_withdraw'.tr,
-            style: TextStyle(
-              fontFamily: AppFonts.family,
-              color: c.onHeroMuted,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            money(p.available),
-            style: TextStyle(
-              fontFamily: AppFonts.family,
-              fontWeight: FontWeight.w900,
-              color: c.onHero,
-              fontSize: 30,
-            ),
-          ),
-          Divider(color: c.heroGlassBorder, height: 24),
-          Row(
-            children: [
-              cell('admin_total_net'.tr, p.totalNet),
-              cell('withdrawn_label'.tr, p.withdrawn),
-              cell('admin_in_progress_2'.tr, p.inFlight),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      );
 }
 
 IconData _methodIcon(String m) {
@@ -281,62 +309,62 @@ class _AccountTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final p = context.read<TeacherPayoutProvider>();
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: CircleAvatar(
-        backgroundColor: c.primary.withValues(alpha: 0.12),
-        child: Icon(_methodIcon(a.method), color: c.primary),
-      ),
-      title: Row(
-        children: [
-          Flexible(
-            child: Text(
-              a.label ?? payoutMethodLabel(a.method),
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontWeight: FontWeight.w800,
-                color: c.textDark,
-              ),
-            ),
-          ),
-          if (a.isDefault) ...[
-            const SizedBox(width: 6),
-            Icon(Icons.star_rounded, size: 16, color: c.warning),
-          ],
-        ],
-      ),
-      subtitle: Text(
-        '${payoutMethodLabel(a.method)}${a.currency != null ? ' • ${a.currency}' : ''}\n${a.summary}',
-        style: TextStyle(
-          fontFamily: AppFonts.family,
-          fontSize: 12,
-          color: c.textLight,
+    final well = appTintOn(context, c.primary, surface: c.cardBg);
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.xxs, AppSpace.sm),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(
+          width: AppSettingsTile.well,
+          height: AppSettingsTile.well,
+          decoration: BoxDecoration(color: well, borderRadius: AppRadius.chipAll),
+          child: Icon(_methodIcon(a.method), size: AppIconSize.md, color: appInkOn(context, c.primary, well)),
         ),
-      ),
-      isThreeLine: true,
-      trailing: PopupMenuButton<String>(
-        onSelected: (v) async {
-          if (v == 'default') await p.makeDefault(a.id);
-          if (v == 'edit') await _accountSheet(context, p, existing: a);
-          if (v == 'delete') {
-            final ok = await confirm(
-              context,
-              message: 'admin_remove_this_account'.tr,
-              danger: true,
-            );
-            if (ok) await p.deleteAccount(a.id);
-          }
-        },
-        itemBuilder: (_) => [
-          if (!a.isDefault)
-            PopupMenuItem(
-              value: 'default',
-              child: Text('admin_make_default_2'.tr),
+        const SizedBox(width: AppSpace.sm),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Flexible(
+                child: Text(a.label ?? payoutMethodLabel(a.method),
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+              ),
+              if (a.isDefault) ...[
+                const SizedBox(width: AppSpace.xxs),
+                Icon(Icons.star_rounded, size: AppIconSize.sm, color: c.primary),
+              ],
+            ]),
+            const SizedBox(height: AppSpace.xxs / 2),
+            Text(
+              '${payoutMethodLabel(a.method)}${a.currency != null ? ' • ${a.currency}' : ''}\n${a.summary}',
+              style: AppType.meta(context),
             ),
-          PopupMenuItem(value: 'edit', child: Text('btn_edit'.tr)),
-          PopupMenuItem(value: 'delete', child: Text('course_reel_remove'.tr)),
-        ],
-      ),
+          ]),
+        ),
+        PopupMenuButton<String>(
+          tooltip: 'btn_edit'.tr,
+          icon: Icon(Icons.more_vert_rounded, color: c.textMedium),
+          onSelected: (v) async {
+            if (v == 'default') await p.makeDefault(a.id);
+            if (v == 'edit') await _accountSheet(context, p, existing: a);
+            if (v == 'delete') {
+              final ok = await confirm(
+                context,
+                message: 'admin_remove_this_account'.tr,
+                danger: true,
+              );
+              if (ok) await p.deleteAccount(a.id);
+            }
+          },
+          itemBuilder: (_) => [
+            if (!a.isDefault)
+              PopupMenuItem(
+                value: 'default',
+                child: Text('admin_make_default_2'.tr),
+              ),
+            PopupMenuItem(value: 'edit', child: Text('btn_edit'.tr)),
+            PopupMenuItem(value: 'delete', child: Text('course_reel_remove'.tr)),
+          ],
+        ),
+      ]),
     );
   }
 }
@@ -350,87 +378,44 @@ class _WithdrawalTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final p = context.read<TeacherPayoutProvider>();
+    final line = AppType.meta(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text(
-                money(w.amount),
-                style: TextStyle(
-                  fontFamily: AppFonts.family,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 16,
-                  color: c.textDark,
+              Text(money(w.amount), style: AppType.figure(context)),
+              const SizedBox(width: AppSpace.xs),
+              Expanded(
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: AppStatusBadge(label: statusLabel(w.status), tone: _statusTone(w.status)),
                 ),
               ),
-              const SizedBox(width: 8),
-              StatusChip(
-                statusLabel(w.status),
-                _statusColor(context, w.status),
-              ),
-              const Spacer(),
-              Text(
-                shortDate(w.requestedAt),
-                style: TextStyle(
-                  fontFamily: AppFonts.family,
-                  fontSize: 11.5,
-                  color: c.textLight,
-                ),
-              ),
+              const SizedBox(width: AppSpace.xs),
+              Text(shortDate(w.requestedAt), style: line),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpace.xxs),
           Text(
             '${payoutMethodLabel(w.method)} • ${payoutDestinationSummary(w.destination)}',
-            style: TextStyle(
-              fontFamily: AppFonts.family,
-              fontSize: 12,
-              color: c.textMedium,
-            ),
+            style: line,
           ),
           if (w.status == 'approved' && w.automatic && w.state == 'processing')
-            Text(
-              'admin_transfer_in_progress_at_the_payment'.tr,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 12,
-                color: c.primary,
-              ),
-            ),
+            Text('admin_transfer_in_progress_at_the_payment'.tr, style: line.copyWith(color: c.textDark)),
           if (w.status == 'approved' && !w.automatic)
-            Text(
-              'admin_waiting_for_the_admin_to_transfer_it'.tr,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 12,
-                color: c.textLight,
-              ),
-            ),
+            Text('admin_waiting_for_the_admin_to_transfer_it'.tr, style: line),
           if (w.bankReference != null)
-            Text(
-              '${'admin_reference_2'.tr}: ${w.bankReference}',
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 12,
-                color: c.success,
-              ),
-            ),
+            Text('${'admin_reference_2'.tr}: ${w.bankReference}', style: line.copyWith(color: c.textDark)),
           if (w.receiptUrl != null)
             Align(
               alignment: AlignmentDirectional.centerStart,
-              child: TextButton.icon(
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(0, 32),
-                ),
-                icon: const Icon(Icons.receipt_long_rounded, size: 18),
-                label: Text(
-                  'admin_view_receipt'.tr,
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5),
-                ),
+              child: AppButton.ghost(
+                size: AppButtonSize.sm,
+                icon: Icons.receipt_long_rounded,
+                label: 'admin_view_receipt'.tr,
                 onPressed: () async {
                   final p = context.read<TeacherPayoutProvider>();
                   final link = await p.receiptLink(w.id);
@@ -440,18 +425,16 @@ class _WithdrawalTile extends StatelessWidget {
               ),
             ),
           if (w.rejectedReason != null)
-            Text(
-              '${'admin_reason'.tr}: ${w.rejectedReason}',
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 12,
-                color: c.danger,
-              ),
-            ),
+            Text('${'admin_reason'.tr}: ${w.rejectedReason}',
+                style: line.copyWith(color: c.blockAccentInk(c.danger, c.cardBg))),
           if (w.status == 'pending')
             Align(
               alignment: AlignmentDirectional.centerEnd,
-              child: TextButton(
+              child: AppButton(
+                variant: AppButtonVariant.danger,
+                dangerOutline: true,
+                size: AppButtonSize.sm,
+                label: 'admin_cancel_request'.tr,
                 onPressed: () async {
                   final ok = await confirm(
                     context,
@@ -460,13 +443,8 @@ class _WithdrawalTile extends StatelessWidget {
                   );
                   if (ok) await p.cancelWithdrawal(w.id);
                 },
-                child: Text(
-                  'admin_cancel_request'.tr,
-                  style: TextStyle(color: c.danger),
-                ),
               ),
             ),
-          const Divider(height: 16),
         ],
       ),
     );
@@ -503,18 +481,15 @@ Future<void> _requestSheet(BuildContext context, TeacherPayoutProvider p) {
               SheetHeader('admin_request_withdrawal'.tr),
               Flexible(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         '${'admin_available'.tr}: ${money(p.available)}  •  ${'admin_minimum'.tr}: ${money(p.minAmount)}',
-                        style: TextStyle(
-                          fontFamily: AppFonts.family,
-                          fontSize: 12.5,
-                        ),
+                        style: AppType.label(ctx),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: AppSpace.sm),
                       AppNumberField(
                         controller: amount,
                         label: 'admin_amount'.tr,
@@ -522,7 +497,7 @@ Future<void> _requestSheet(BuildContext context, TeacherPayoutProvider p) {
                         step: 50,
                         decimals: 2,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpace.sm),
                       ChoiceRow<int?>(
                         label: 'admin_to_account'.tr,
                         options: {
@@ -533,11 +508,11 @@ Future<void> _requestSheet(BuildContext context, TeacherPayoutProvider p) {
                         onChanged: (v) => setS(() => accountId = v),
                       ),
                       Container(
-                        padding: const EdgeInsets.all(10),
-                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(AppSpace.sm),
+                        margin: const EdgeInsets.only(bottom: AppSpace.sm),
                         decoration: BoxDecoration(
-                          color: ctx.colors.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          color: appTintOn(ctx, ctx.colors.primary),
+                          borderRadius: BorderRadius.circular(AppRadius.control),
                         ),
                         child: Text(
                           acct.automatic
@@ -545,10 +520,7 @@ Future<void> _requestSheet(BuildContext context, TeacherPayoutProvider p) {
                                     .tr
                               : 'admin_after_approval_the_admin_transfers_the'
                                     .tr,
-                          style: TextStyle(
-                            fontFamily: AppFonts.family,
-                            fontSize: 12.5,
-                          ),
+                          style: AppType.label(ctx).copyWith(color: ctx.colors.textDark),
                         ),
                       ),
                       Field(
@@ -556,9 +528,10 @@ Future<void> _requestSheet(BuildContext context, TeacherPayoutProvider p) {
                         label: 'admin_note_optional'.tr,
                         maxLines: 2,
                       ),
-                      PrimaryButton(
+                      AppButton.primary(
+                        expand: true,
                         label: 'admin_send_request'.tr,
-                        isLoading: busy,
+                        busy: busy,
                         onPressed: () async {
                           final v = double.tryParse(amount.text.trim());
                           if (v == null || v <= 0) {
@@ -763,7 +736,7 @@ Future<void> _accountSheet(
               ),
               Flexible(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -776,7 +749,7 @@ Future<void> _accountSheet(
                         ),
                       if (info != null)
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.only(bottom: AppSpace.sm),
                           child: Text(
                             info.automatic
                                 ? trp(
@@ -784,11 +757,7 @@ Future<void> _accountSheet(
                                     {'currency': info.currency},
                                   )
                                 : 'admin_manual_transfer_by_the_admin_after'.tr,
-                            style: TextStyle(
-                              fontFamily: AppFonts.family,
-                              fontSize: 12.5,
-                              color: ctx.colors.textLight,
-                            ),
+                            style: AppType.meta(ctx),
                           ),
                         ),
                       Field(
@@ -798,14 +767,15 @@ Future<void> _accountSheet(
                       ...fields(),
                       if (existing == null)
                         AppSwitchTile(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
                           title: 'admin_make_default'.tr,
                           value: makeDefault,
                           onChanged: (v) => setS(() => makeDefault = v),
                         ),
-                      PrimaryButton(
+                      AppButton.primary(
+                        expand: true,
                         label: 'save'.tr,
-                        isLoading: busy,
+                        busy: busy,
                         onPressed: () async {
                           for (final k in required()) {
                             if ((ctrls[k]?.text.trim() ?? '').isEmpty) {

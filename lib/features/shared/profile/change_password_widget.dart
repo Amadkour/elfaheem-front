@@ -17,7 +17,6 @@ import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/password_text_field.dart';
-import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/base_page.dart';
@@ -25,9 +24,8 @@ import '../../auth/auth_provider.dart';
 import '../../auth/auth_widgets.dart';
 import '../../auth/login_screen.dart';
 import '../../student/courses/details/components/app_responsive.dart';
-import 'package:flutter_education_app/design/app_notice.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
-import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase;
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen(
@@ -181,7 +179,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
     return BasePage(
       appBar: ScreenAppBar(helpPageId: 'account.change_password', title: 'change_password'.tr),
-      child: SafeArea(child: isWide ? _webLayout(p, c) : _mobileLayout(p, c)),
+      // the sign-in sidebar belongs to the password-reset flow (signed out); from the Account page the form
+      // stands alone in its centred column
+      child: SafeArea(child: isWide && !widget.fromProfile ? _webLayout(p, c) : _mobileLayout(p, c)),
     );
   }
 
@@ -192,7 +192,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   Widget _webLayout(ProfileProvider p, ThemeConfigProvider c) {
     Widget w = Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxl, vertical: AppSpace.xl),
         child: Center(child: _buildForm(p, c)),
       ),
     );
@@ -204,7 +204,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           child: Center(
             child: SingleChildScrollView(
               padding:
-              const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
+              const EdgeInsets.symmetric(horizontal: AppSpace.xxl, vertical: AppSpace.xl),
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: AppWidth.form.max),
                 child: w,
@@ -221,24 +221,30 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   // ══════════════════════════════════════════════════════════════════════════
 
   Widget _buildForm(ProfileProvider p, ThemeConfigProvider c) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      // ── Security icon badge ──────────────────────────────────────────
-      Container(
-        width: 80,
-        height: 80,
-        decoration: BoxDecoration(
-          gradient: c.primaryGradient,
-          shape: BoxShape.circle,
-          boxShadow: c.primaryShadow,
+      // ── The title: an editorial headline beside a quiet lock well (no gradient badge) ──
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(
+          width: AppTouch.min,
+          height: AppTouch.min,
+          decoration: BoxDecoration(
+            color: appTintOn(context, c.primary),
+            borderRadius: BorderRadius.circular(AppRadius.control),
+          ),
+          child: Icon(Icons.lock_rounded,
+              size: AppIconSize.lg, color: appInkOn(context, c.primary, appTintOn(context, c.primary))),
         ),
-        child: Icon(Icons.lock_rounded,
-            color: context.colors.onHero, size: 38),
-      ),
-      const SizedBox(height: 14),
-      Text('change_password_subtitle'.tr, style: c.h3),
-      const SizedBox(height: 4),
-      Text('change_password_hint'.tr, style: c.caption),
-      const SizedBox(height: 28),
+        const SizedBox(width: AppSpace.md),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Semantics(header: true, child: Text('change_password_subtitle'.tr, style: AppType.headline(context))),
+            const SizedBox(height: AppSpace.xxs),
+            Text('change_password_hint'.tr, style: AppType.body(context)),
+          ]),
+        ),
+      ]),
+      const SizedBox(height: AppSpace.lg),
 
       _PasswordCard(
         p: p,
@@ -270,10 +276,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   );
 
   Widget _mobileLayout(ProfileProvider p, ThemeConfigProvider c) {
+    final side = AppSpace.gutter(MediaQuery.sizeOf(context).width);
     return SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-        child: _buildForm(p, c));
+        padding: EdgeInsets.fromLTRB(side, AppSpace.lg, side, AppSpace.xl),
+        child: Center(
+          child: ConstrainedBox(constraints: BoxConstraints(maxWidth: AppWidth.form.max), child: _buildForm(p, c)),
+        ));
   }
 }
 
@@ -336,32 +345,26 @@ class _PasswordCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: c.brLarge,
-        boxShadow: c.cardShadow,
-      ),
-      padding: const EdgeInsets.all(24),
+    final allMet = reqMinLength && reqUppercase && reqDigit && (reqDifferent || !fromProfile) && reqMatch;
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpace.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ── Section: Current password ─────────────────────────────────────
           if (fromProfile) ...[
-            _SectionLabel(label: 'current_password_section'.tr, c: c),
-            const SizedBox(height: 12),
+            AppFieldLabel('current_password_section'.tr),
             MyPasswordTextField(
               controller: oldCtrl,
               label: 'current_password'.tr,
               obscurePassword: obscureOld,
               onPressed: onToggleOld,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpace.lg),
           ],
 
           // ── Section: New password ─────────────────────────────────────────
-          _SectionLabel(label: 'new_password_section'.tr, c: c),
-          const SizedBox(height: 12),
+          AppFieldLabel('new_password_section'.tr),
           MyPasswordTextField(
             controller: newCtrl,
             label: 'new_password'.tr,
@@ -371,7 +374,7 @@ class _PasswordCard extends StatelessWidget {
 
           // ── Strength bar ──────────────────────────────────────────────────
           if (newCtrl.text.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             StrengthBar(
               strength: strength,
               strengthColor: strengthColor,
@@ -380,7 +383,7 @@ class _PasswordCard extends StatelessWidget {
             ),
           ],
 
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.sm),
           MyPasswordTextField(
             controller: confCtrl,
             label: 'confirm_new_password'.tr,
@@ -388,43 +391,39 @@ class _PasswordCard extends StatelessWidget {
             onPressed: onToggleConf,
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpace.lg),
 
-          // ── Requirements checklist ────────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: c.inputBg,
-              borderRadius: c.brMedium,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('requirements_label'.tr,
-                    style: c.label.copyWith(fontSize: 12)),
-                const SizedBox(height: 10),
-                PasswordReq(met: reqMinLength, label: 'req_min_length'.tr,  c: c),
-                PasswordReq(met: reqUppercase, label: 'req_uppercase'.tr,   c: c),
-                PasswordReq(met: reqDigit,     label: 'req_digit'.tr,       c: c),
-                if (fromProfile)
-                  PasswordReq(met: reqDifferent, label: 'req_different'.tr, c: c),
-                PasswordReq(met: reqMatch,     label: 'req_match'.tr,       c: c),
-              ],
-            ),
+          // ── Requirements checklist: a sky block that turns emerald once every rule is met (the feedback) ──
+          AppBlock(
+            tone: allMet ? AppBlockTone.emerald : AppBlockTone.sky,
+            padding: const EdgeInsets.all(AppSpace.md),
+            child: Builder(builder: (context) {
+              final b = AppBlock.colorsOf(context);
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('requirements_label'.tr, style: AppType.label(context).copyWith(color: b.ink)),
+                  const SizedBox(height: AppSpace.xs),
+                  PasswordReq(met: reqMinLength, label: 'req_min_length'.tr,  c: c),
+                  PasswordReq(met: reqUppercase, label: 'req_uppercase'.tr,   c: c),
+                  PasswordReq(met: reqDigit,     label: 'req_digit'.tr,       c: c),
+                  if (fromProfile)
+                    PasswordReq(met: reqDifferent, label: 'req_different'.tr, c: c),
+                  PasswordReq(met: reqMatch,     label: 'req_match'.tr,       c: c),
+                ],
+              );
+            }),
           ),
 
-          const SizedBox(height: 28),
+          const SizedBox(height: AppSpace.lg),
 
-          // ── Submit ────────────────────────────────────────────────────────
-          AnimatedOpacity(
-            opacity: canSubmit ? 1.0 : 0.45,
-            duration: const Duration(milliseconds: 200),
-            child: PrimaryButton(
-              label: 'change_password'.tr,
-              isLoading: p.isLoading || busy,
-              onPressed:
-              canSubmit ? (fromProfile ? onSubmit : onSubmitForget) : null,
-            ),
+          // ── Submit (the kit's disabled look until the rules are met) ─────────
+          AppButton.primary(
+            expand: true,
+            size: AppButtonSize.lg,
+            label: 'change_password'.tr,
+            busy: p.isLoading || busy,
+            onPressed: canSubmit ? (fromProfile ? onSubmit : onSubmitForget) : null,
           ),
         ],
       ),
@@ -450,40 +449,40 @@ class StrengthBar extends StatelessWidget {
     required this.c,
   });
 
+  /// The bar's thickness.
+  static const double _bar = AppSpace.xxs + AppSpace.xxs / 2;
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: strength / 4,
-                minHeight: 6,
-                backgroundColor: c.divider,
-                color: strengthColor,
-              ),
+    final motion = AppMotion.of(context);
+    return Row(children: [
+      Expanded(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          // the bar glides from where it is to the new strength (interruptible: driven from the current value)
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(end: strength / 4),
+            duration: motion.base,
+            curve: AppEase.out,
+            builder: (_, v, _) => LinearProgressIndicator(
+              value: v,
+              minHeight: _bar,
+              backgroundColor: c.divider,
+              color: strengthColor,
             ),
           ),
-          const SizedBox(width: 10),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: Text(
-              strengthLabel,
-              key: ValueKey(strengthLabel),
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: strengthColor,
-              ),
-            ),
-          ),
-        ]),
-      ],
-    );
+        ),
+      ),
+      const SizedBox(width: AppSpace.sm),
+      AnimatedSwitcher(
+        duration: motion.fast,
+        child: Text(
+          strengthLabel,
+          key: ValueKey(strengthLabel),
+          style: AppType.label(context).copyWith(color: c.blockAccentInk(strengthColor, c.cardBg)),
+        ),
+      ),
+    ]);
   }
 }
 
@@ -499,61 +498,39 @@ class PasswordReq extends StatelessWidget {
   const PasswordReq(
       {super.key, required this.met, required this.label, required this.c});
 
+  /// A check settles in from this scale (never from nothing).
+  static const double _popFrom = 0.8;
+
   @override
   Widget build(BuildContext context) {
+    final b = AppBlock.colorsOf(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: AppSpace.xxs),
       child: Row(children: [
         AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
+          duration: AppMotion.of(context).fast,
+          transitionBuilder: (child, a) =>
+              FadeTransition(opacity: a, child: ScaleTransition(scale: Tween(begin: _popFrom, end: 1.0).animate(a), child: child)),
           child: Icon(
             met
                 ? Icons.check_circle_rounded
                 : Icons.radio_button_unchecked_rounded,
             key: ValueKey(met),
-            size: 16,
-            color: met ? c.success : c.textLight,
+            size: AppIconSize.sm,
+            color: met ? b.accentInk(c.success) : b.muted,
           ),
         ),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: TextStyle(
-            fontFamily: AppFonts.family,
-            fontSize: 12,
-            color: met ? c.textDark : c.textLight,
-            fontWeight: met ? FontWeight.w600 : FontWeight.w400,
+        const SizedBox(width: AppSpace.xs),
+        Expanded(
+          child: Text(
+            label,
+            style: AppType.meta(context).copyWith(
+              color: met ? b.ink : b.muted,
+              fontWeight: met ? FontWeight.w600 : FontWeight.w400,
+            ),
           ),
         ),
       ]),
     );
-  }
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// _SectionLabel
-// ═════════════════════════════════════════════════════════════════════════════
-
-class _SectionLabel extends StatelessWidget {
-  final String label;
-  final ThemeConfigProvider c;
-
-  const _SectionLabel({required this.label, required this.c});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(children: [
-      Container(
-        width: 3,
-        height: 16,
-        decoration: BoxDecoration(
-          gradient: c.primaryGradient,
-          borderRadius: BorderRadius.circular(2),
-        ),
-      ),
-      const SizedBox(width: 8),
-      Text(label,
-          style: c.label.copyWith(fontSize: 13, color: c.textDark)),
-    ]);
   }
 }

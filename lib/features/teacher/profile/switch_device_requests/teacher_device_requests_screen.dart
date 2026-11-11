@@ -18,7 +18,7 @@ import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, appInkOn, appTintOn;
 import 'package:flutter_education_app/design/app_notice.dart';
 
 class TeacherDeviceRequestsScreen extends StatefulWidget {
@@ -58,7 +58,7 @@ class _View extends StatelessWidget {
     return BasePage(
       key: const ValueKey('device_requests'),
       useWebCard: true,
-      maxWith: 1100,
+      width: AppWidth.content,
       appBar: ScreenAppBar(title: 'device_switch_requests'.tr),
       child: !p.hasLoaded && !failedFirstLoad
           ? const AppListSkeleton()
@@ -79,7 +79,7 @@ class _View extends StatelessWidget {
         )
             : ListView.builder(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.lg),
           // +1: the hint banner is the first row.
           itemCount: p.items.length + 1,
           itemBuilder: (_, i) {
@@ -137,7 +137,8 @@ class _Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final warn = context.colors.warning;
+    final warn = c.warning;
+    final warnTint = appTintOn(context, warn, surface: c.cardBg);
 
     return SwipeRequestCard(
       itemId: item.id,
@@ -155,7 +156,7 @@ class _Card extends StatelessWidget {
             Row(
               children: [
                 RequestAvatar(name: item.studentName),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,10 +165,7 @@ class _Card extends StatelessWidget {
                         item.studentName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: c.label.copyWith(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                        ),
+                        style: AppType.bodyStrong(context),
                       ),
                       // the student and the course open their detail where the server allows it (D-290)
                       if (item.studentId != null || item.courseId != null)
@@ -178,12 +176,12 @@ class _Card extends StatelessWidget {
                             EntityGuardedChip(EntityRef(EntityKind.course, item.courseId!, label: item.courseName ?? '')),
                         ])
                       else if (item.courseName != null) ...[
-                        const SizedBox(height: 2),
+                        const SizedBox(height: AppSpace.xxs / 2),
                         Text(
                           item.courseName!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: c.caption,
+                          style: AppType.meta(context),
                         ),
                       ],
                     ],
@@ -191,16 +189,15 @@ class _Card extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpace.md),
 
-            // ── Request details ──
+            // ── Request details: an inset well (the input tone), no tinted wash ──
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppSpace.sm),
               decoration: BoxDecoration(
-                color: c.primary.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: c.primary.withValues(alpha: 0.12)),
+                color: c.inputBg,
+                borderRadius: BorderRadius.circular(AppRadius.control),
               ),
               child: Column(
                 children: [
@@ -210,7 +207,7 @@ class _Card extends StatelessWidget {
                     value: item.newDeviceName ?? 'unknown_value'.tr,
                   ),
                   if (item.studentPhone?.isNotEmpty ?? false) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AppSpace.xs),
                     RequestInfoRow(
                       icon: Icons.phone_outlined,
                       label: 'student_phone_label'.tr,
@@ -221,33 +218,32 @@ class _Card extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.xs),
 
-            // ── Monthly-limit note ──
+            // ── Monthly-limit note: the warning tint, its glyph in a legible warning ink ──
             Container(
               key: const ValueKey('device_requests.limit_note'),
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
               decoration: BoxDecoration(
-                color: warn.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: warn.withValues(alpha: 0.25)),
+                color: warnTint,
+                borderRadius: BorderRadius.circular(AppRadius.control),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.info_outline_rounded, size: 18, color: warn),
-                  const SizedBox(width: 8),
+                  Icon(Icons.info_rounded, size: AppIconSize.sm, color: appInkOn(context, warn, warnTint)),
+                  const SizedBox(width: AppSpace.xs),
                   Expanded(
                     child: Text(
                       'device_monthly_limit_note'.tr,
-                      style: c.caption,
+                      style: AppType.meta(context).copyWith(color: c.textDark),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpace.md),
 
             RequestActionButtons(key: const ValueKey('device_requests.actions'), ctl: ctl, approveLabel: 'request_approve'.tr),
           ],

@@ -14,7 +14,6 @@ import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/app_config.dart' as Helpers;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/editable_image.dart';
-import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:flutter_education_app/utils/widget/text_field.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../auth/auth_provider.dart';
@@ -28,7 +27,9 @@ import '../../auth/username_field.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppSkeletonBox;
+import 'package:flutter_education_app/design/app_kit.dart'
+    show AppBlock, AppBlockTone, AppButton, AppButtonSize, AppCard, AppSettingsTile, AppSkeletonBox, AppStatusBadge, AppTabItem,
+        AppTabs, AppTone, AppType, appInkOn, appTintOn;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_back_button.dart';
 import 'package:flutter_education_app/design/app_gradients.dart';
@@ -294,7 +295,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
           if (box.maxWidth < 860) return _mobileLayout(p, c, showBack: !isWide);
           return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SizedBox(
-              width: 320,
+              width: _heroWidth,
               child: Padding(
                 padding: const EdgeInsetsDirectional.only(start: AppSpace.md, top: AppSpace.md),
                 child: _hero(p, c, showBack: false, card: true),
@@ -311,6 +312,9 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
       ),
     );
   }
+
+  /// The hero column's width beside the form on a wide page.
+  static const double _heroWidth = 320;
 
   Widget _hero(ProfileProvider p, ThemeConfigProvider c, {required bool showBack, bool card = false}) => _MobileHero(
         p: p,
@@ -343,7 +347,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
   List<Widget> _formArea(ProfileProvider p, ThemeConfigProvider c) => [
           if (widget.isTeacher)
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, 0),
               child: _PremiumTabSwitcher(
                 selected: _tab,
                 onChanged: (i) => setState(() => _tab = i),
@@ -358,13 +362,13 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
             const _DocumentsTabView()
           else if (!_ready)
             const Padding(
-              padding: EdgeInsets.fromLTRB(20, 16, 20, 32),
+              padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xl),
               child: _FormSkeleton(),
             )
           else
           // ── Form ───────────────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xl),
             child: _FormCard(
               p: p,
               c: c,
@@ -381,7 +385,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
               usernameField: ParentComponent(
                 featureKey: kUsernameFeatureKey,
                 child: Padding(
-                  padding: const EdgeInsets.only(top: 14),
+                  padding: const EdgeInsets.only(top: AppSpace.md),
                   child: UsernameField(
                     controller: _usernameCtrl,
                     currentUsername: _p.username,
@@ -423,63 +427,12 @@ class _PremiumTabSwitcher extends StatelessWidget {
   final List<({IconData icon, String label})> tabs;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: c.inputBg,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: List.generate(tabs.length, (i) {
-          final isActive = i == selected;
-          final tab = tabs[i];
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => onChanged(i),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                margin: const EdgeInsets.symmetric(horizontal: 2),
-                padding: const EdgeInsets.symmetric(vertical: 11),
-                decoration: BoxDecoration(
-                  gradient: isActive ? c.primaryGradient : null,
-                  color: isActive ? null : Colors.transparent,
-                  borderRadius: BorderRadius.circular(13),
-                  boxShadow: isActive ? c.primaryShadow : null,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      tab.icon,
-                      size: 17,
-                      color: isActive ? context.colors.onHero : c.textLight,
-                    ),
-                    const SizedBox(width: 7),
-                    Flexible(
-                      child: Text(
-                        tab.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: AppFonts.display,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: isActive ? context.colors.onHero : c.textLight,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppTabs(
+        expand: true,
+        index: selected,
+        onChanged: onChanged,
+        items: [for (final t in tabs) AppTabItem(t.label, icon: t.icon)],
+      );
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -492,55 +445,40 @@ class _DocumentsTabView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final well = appTintOn(context, c.primary, surface: c.cardBg);
     // Inside the page's scroll view, under the hero and the tab switch (M18).
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xxl),
       child: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: AppWidth.form.max),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: c.cardBg,
-              borderRadius: c.brLarge,
-              boxShadow: c.cardShadow,
-            ),
+          child: AppCard(
+            padding: const EdgeInsets.all(AppSpace.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        gradient: c.primaryGradient,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.description_outlined,
-                        color: context.colors.onHero,
-                        size: 20,
-                      ),
+                      width: AppSettingsTile.well,
+                      height: AppSettingsTile.well,
+                      decoration: BoxDecoration(color: well, borderRadius: AppRadius.chipAll),
+                      child: Icon(Icons.description_rounded, size: AppIconSize.md, color: appInkOn(context, c.primary, well)),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpace.sm),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('required_documents_section'.tr, style: c.h3),
-                          const SizedBox(height: 2),
-                          Text(
-                            'documents_manage_subtitle'.tr,
-                            style: c.caption,
-                          ),
+                          Text('required_documents_section'.tr, style: AppType.section(context)),
+                          const SizedBox(height: AppSpace.xxs / 2),
+                          Text('documents_manage_subtitle'.tr, style: AppType.meta(context)),
                         ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.lg),
                 const _TeacherDocumentsManager(),
               ],
             ),
@@ -576,58 +514,62 @@ class _MobileHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppMeshSurface(
-      radius: card
-          ? BorderRadius.circular(AppRadius.sheet)
-          : const BorderRadius.vertical(bottom: Radius.circular(AppRadius.sheet)),
-      child: Padding(
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 36),
-      child: SizedBox(
-      width: double.infinity,
-      child: Column(
-        children: [
-          if (showBack)
-            const Align(
-              alignment: AlignmentDirectional.topStart,
-              child: AppBackButton(onHero: true),
-            ),
+    // the page's one tinted block (D-613): on a phone it sits under the status bar with the page gutter, beside the
+    // form on a wide page
+    final hero = AppBlock(
+      tone: AppBlockTone.peach,
+      hero: true,
+      child: Builder(builder: (context) {
+        final b = AppBlock.colorsOf(context);
+        return SizedBox(
+          width: double.infinity,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (showBack)
+                const Align(
+                  alignment: AlignmentDirectional.topStart,
+                  child: AppBackButton(),
+                ),
+              Center(
+                child: EditableImage(
+                  onChange: onImageChange,
+                  imageFile: p.imageFile,
+                  imageByte: p.imageByte,
+                  imageUrl: p.imageUrl,
+                  size: context.height / 8,
+                  isCircle: true,
+                  name: p.name, // no photo: the initial, as everywhere else (N10)
+                ),
+              ),
+              const SizedBox(height: AppSpace.md),
 
-          Center(
-            child: EditableImage(
-              onChange: onImageChange,
-              imageFile: p.imageFile,
-              imageByte: p.imageByte,
-              imageUrl: p.imageUrl,
-              size: context.height / 8,
-              isCircle: true,
-              name: p.name, // no photo: the initial, as everywhere else (N10)
-            ),
+              // ── Name ────────────────────────────────────────────────────────
+              Text(
+                p.name.isNotEmpty ? p.name : '—',
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.headline(context).copyWith(color: b.ink),
+              ),
+              const SizedBox(height: AppSpace.xxs),
+              Text(
+                p.email,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textDirection: TextDirection.ltr,
+                style: AppType.label(context).copyWith(color: b.muted),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
-
-          // ── Name ────────────────────────────────────────────────────────
-          Text(
-            p.name.isNotEmpty ? p.name : '—',
-            style: TextStyle(
-              fontFamily: AppFonts.family,
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: context.colors.onHero,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            p.email,
-            style: TextStyle(
-              fontFamily: AppFonts.family,
-              fontSize: 13,
-              color: context.colors.onHeroMuted,
-            ),
-          ),
-        ],
-      ),
-      ),
-      ),
+        );
+      }),
+    );
+    if (card) return hero;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
+      child: SafeArea(bottom: false, child: hero),
     );
   }
 }
@@ -681,13 +623,8 @@ class _FormCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: c.brLarge,
-        boxShadow: c.cardShadow,
-      ),
-      padding: const EdgeInsets.all(24),
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpace.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -704,15 +641,15 @@ class _FormCard extends StatelessWidget {
                 name: p.name, // no photo: the initial, as everywhere else (N10)
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: AppSpace.xl),
           ],
 
           // ── Section: Personal info ───────────────────────────────────────
           _SectionHeader(label: 'personal_info_section'.tr, c: c),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
 
           _Labeled(label: 'name_label'.tr, child: MyTextField(controller: nameCtrl, label: 'name_label'.tr)),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.md),
           _Labeled(
             label: 'email_label'.tr,
             child: MyTextField(
@@ -722,7 +659,7 @@ class _FormCard extends StatelessWidget {
             ),
           ),
           ?usernameField,
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.md),
           _Labeled(
             label: 'phone_label'.tr,
             child: MyTextField(
@@ -731,27 +668,27 @@ class _FormCard extends StatelessWidget {
               keyboard: TextInputType.phone,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.md),
           _Labeled(label: 'dob_label'.tr, child: MyTextField(controller: dobCtrl, label: 'dob_label'.tr)),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpace.xl),
 
           // ── Section: Bio ─────────────────────────────────────────────────
           _SectionHeader(label: 'bio_section'.tr, c: c),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           _Labeled(label: 'bio_label'.tr, child: MyTextField(controller: bioCtrl, label: 'bio_label'.tr, maxLine: 4)),
 
           // ── Section: Teaching Details (teachers only, everything from
           //    registration except email + documents) ─────────────────────
           if (isTeacher) ...[
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpace.xl),
             _SectionHeader(label: 'teaching_details_section'.tr, c: c),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.md),
             Consumer<MyAuthProvider>(
               builder: (context, auth, _) {
                 if (auth.isLoadingTeacherExtras) {
                   return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
+                    padding: EdgeInsets.symmetric(vertical: AppSpace.md),
                     child: Center(child: AppLoadingIndicator()),
                   );
                 }
@@ -759,9 +696,9 @@ class _FormCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     AppNumberField(controller: experienceCtrl, label: 'experience'.tr, min: 0),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: AppSpace.md),
                     SectionLabel(label: 'specialization'.tr),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpace.xs),
                     StyledDropdown(
                       icon: Icons.science_outlined,
                       label: 'specialization'.tr,
@@ -770,9 +707,9 @@ class _FormCard extends StatelessWidget {
                       options: auth.specializations,
                       onChange: (i) => auth.onChangeSpecialization(i, specCtrl),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: AppSpace.md),
                     SectionLabel(label: 'payment_method'.tr),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpace.xs),
                     StyledDropdown(
                       icon: Icons.credit_card_outlined,
                       label: 'payment_method'.tr,
@@ -781,9 +718,9 @@ class _FormCard extends StatelessWidget {
                       options: auth.paymentTypes,
                       onChange: (i) => auth.onChangePaymentMethod(i, payCtrl),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: AppSpace.md),
                     SectionLabel(label: 'teaching_style'.tr),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpace.xs),
                     StyledDropdown(
                       icon: Icons.cast_for_education_outlined,
                       label: 'teaching_style'.tr,
@@ -798,20 +735,22 @@ class _FormCard extends StatelessWidget {
             ),
           ],
 
-          const SizedBox(height: 32),
+          const SizedBox(height: AppSpace.xl),
 
           // ── Save button ──────────────────────────────────────────────────
-          // PrimaryButton draws its own disabled look (no extra fade on top, L10)
-          PrimaryButton(
+          // the kit's button draws its own disabled look (no extra fade on top, L10)
+          AppButton.primary(
+            expand: true,
+            size: AppButtonSize.lg,
             label: 'save_changes'.tr,
-            isLoading: isSaving,
+            busy: isSaving,
             onPressed: isChanged ? onSave : null,
           ),
 
           // ── "No changes" hint ────────────────────────────────────────────
           if (!isChanged) ...[
-            const SizedBox(height: 10),
-            Center(child: Text('no_changes_yet'.tr, style: c.caption)),
+            const SizedBox(height: AppSpace.xs),
+            Center(child: Text('no_changes_yet'.tr, style: AppType.meta(context))),
           ],
         ],
       ),
@@ -933,11 +872,11 @@ class _ManagedRequirementRow extends StatelessWidget {
     final uploading = docs.isUploadingFor('req_${requirement.typeId}');
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: AppSpace.xs),
+      padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(
         color: c.inputBg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
       ),
       child: Row(
         children: [
@@ -960,10 +899,7 @@ class _ManagedRequirementRow extends StatelessWidget {
                     Flexible(
                       child: Text(
                         requirement.title,
-                        style: c.body.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13.5,
-                        ),
+                        style: AppType.bodyStrong(context),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1111,11 +1047,11 @@ class _ManagedCustomDocRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: AppSpace.xs),
+      padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(
         color: c.inputBg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
       ),
       child: Row(
         children: [
@@ -1173,11 +1109,11 @@ class _ManagedCustomEntryRow extends StatelessWidget {
     final hasTitle = entry.title.trim().isNotEmpty;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: AppSpace.xs),
+      padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(
         color: c.inputBg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
       ),
       child: Row(
         children: [
@@ -1185,7 +1121,7 @@ class _ManagedCustomEntryRow extends StatelessWidget {
             child: TextFormField(
               initialValue: entry.title,
               onChanged: (v) => docs.setCustomEntryTitle(index, v),
-              style: c.body.copyWith(fontSize: 13.5),
+              style: AppType.body(context),
               decoration: InputDecoration(
                 isDense: true,
                 border: InputBorder.none,
@@ -1279,51 +1215,30 @@ class _StatusChip extends StatelessWidget {
     final c = context.colors;
 
     late final String label;
-    late final Color color;
+    late final AppTone tone;
     if (doc == null) {
       label = 'status_not_uploaded'.tr;
-      color = c.textLight;
+      tone = AppTone.neutral;
     } else if (doc!.isApproved) {
       label = 'status_approved'.tr;
-      color = c.success;
+      tone = AppTone.success;
     } else if (doc!.isRejected) {
       label = 'status_rejected'.tr;
-      color = c.danger;
+      tone = AppTone.danger;
     } else {
       label = 'status_pending_review'.tr;
-      color = const Color(
-        0xFFF59E0B,
-      ); // amber — no confirmed "warning" token elsewhere in this codebase
+      tone = AppTone.warning;
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontFamily: AppFonts.display,
-              fontSize: 10.5,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
-          ),
-        ),
+        AppStatusBadge(label: label, tone: tone, dense: true),
         if (doc?.isRejected == true && doc?.rejectionReason != null) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpace.xxs),
           Text(
             doc!.rejectionReason!,
-            style: TextStyle(
-              fontFamily: AppFonts.family,
-              fontSize: 11,
-              color: c.danger,
-            ),
+            style: AppType.meta(context).copyWith(color: c.blockAccentInk(c.danger, c.inputBg)),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -1348,7 +1263,7 @@ class _Labeled extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Padding(
-          padding: const EdgeInsetsDirectional.only(start: 4, bottom: 6),
+          padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs, bottom: AppSpace.xs),
           child: SectionLabel(label: label),
         ),
         child,
@@ -1361,20 +1276,21 @@ class _Labeled extends StatelessWidget {
 class _FormSkeleton extends StatelessWidget {
   const _FormSkeleton();
 
+  /// The label bones' widths (a little uneven, like real labels) and a field's height.
+  static const List<double> _labels = [AppSpace.xxl * 2, AppSpace.xxxl + AppSpace.lg, AppSpace.xxl * 2 + AppSpace.md, AppSpace.xxxl];
+
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      decoration: BoxDecoration(color: c.cardBg, borderRadius: c.brLarge, boxShadow: c.cardShadow),
-      padding: const EdgeInsets.all(24),
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpace.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (var i = 0; i < 4; i++) ...[
-            AppSkeletonBox(width: 80.0 + (i * 23) % 50, height: 12),
-            const SizedBox(height: 8),
-            const AppSkeletonBox(width: double.infinity, height: 48, radius: 10),
-            const SizedBox(height: 18),
+          for (final w in _labels) ...[
+            AppSkeletonBox(width: w, height: AppSpace.sm),
+            const SizedBox(height: AppSpace.xs),
+            const AppSkeletonBox(width: double.infinity, height: AppTouch.min, radius: AppRadius.control),
+            const SizedBox(height: AppSpace.md),
           ],
         ],
       ),
@@ -1382,6 +1298,7 @@ class _FormSkeleton extends StatelessWidget {
   }
 }
 
+/// A form section's heading: the editorial section face in ink (no gradient bar).
 class _SectionHeader extends StatelessWidget {
   final String label;
   final ThemeConfigProvider c;
@@ -1389,20 +1306,6 @@ class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.label, required this.c});
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 3,
-          height: 16,
-          decoration: BoxDecoration(
-            gradient: c.primaryGradient,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(label, style: c.label.copyWith(fontSize: 14, color: c.textDark)),
-      ],
-    );
-  }
+  Widget build(BuildContext context) =>
+      Semantics(header: true, child: Text(label, style: AppType.section(context)));
 }
