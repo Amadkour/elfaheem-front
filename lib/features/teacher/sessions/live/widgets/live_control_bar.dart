@@ -23,11 +23,12 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show showAppSheet, AppSheetHeader;
+import 'package:flutter_education_app/design/app_kit.dart' show appInk, showAppSheet, AppSheetHeader;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppPressScale;
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'live_palette.dart';
 import 'package:flutter_education_app/features/shared/live/live_share_widgets.dart' show LiveAttentionBadge;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Breakpoint between the mobile pill and the wide bar.
 const double kLiveControlsMobileBreakpoint = 600;
@@ -181,20 +182,22 @@ class LiveControlBar extends StatelessWidget {
     );
   }
 
+  // The bar floats over the stage, so it is the one thing here with a shadow: a single soft shade, no coloured glow.
   BoxDecoration _shell(double radius) => BoxDecoration(
         color: LivePalette.surfaceHi.withValues(alpha: 0.94),
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: _glassBdr),
-        boxShadow: [
-          BoxShadow(color: LivePalette.shade(0.45), blurRadius: 24, offset: const Offset(0, 6)),
-          BoxShadow(color: LivePalette.accent.withValues(alpha: 0.06), blurRadius: 20),
-        ],
+        border: Border.all(color: _glassBdr, width: AppBorder.hairline),
+        boxShadow: [BoxShadow(color: LivePalette.shade(0.4), blurRadius: AppSpace.lg, offset: const Offset(0, AppSpace.xs - 2))],
       );
+
+  /// The phone pill's outer gutter and the pill's own side padding.
+  static const double _gutter = AppSpace.sm;
+  static const double _pillSide = AppSpace.xs;
 
   // ── Mobile ────────────────────────────────────────────────────────────────
   Widget _mobile(BuildContext context, double width) {
     final primary = _primaryWithLobby;
-    final inner = width - 24 - 16;
+    final inner = width - 2 * _gutter - 2 * _pillSide;
     final columns = (inner / 56).floor().clamp(3, 7);
     final needMore = secondary.isNotEmpty || primary.length + 1 > columns;
     final maxPrimary = needMore ? (columns - 2).clamp(1, primary.length) : primary.length;
@@ -208,10 +211,10 @@ class LiveControlBar extends StatelessWidget {
     final size = fit < base ? fit.clamp(34.0, base) : base;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      padding: const EdgeInsets.symmetric(horizontal: _gutter, vertical: AppSpace.xs),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(8, 12, 8, 10),
-        decoration: _shell(30),
+        padding: const EdgeInsets.fromLTRB(_pillSide, AppSpace.sm, _pillSide, AppSpace.xs),
+        decoration: _shell(AppRadius.hero),
         child: Row(children: [
           for (final a in shown) Expanded(child: _MobileButton(action: a, size: size)),
           if (overflow.isNotEmpty)
@@ -247,17 +250,17 @@ class LiveControlBar extends StatelessWidget {
       if (lobby != null) [lobby],
     ].where((g) => g.isNotEmpty).toList();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.md),
       child: Center(
         child: FittedBox(
           fit: BoxFit.scaleDown,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: _shell(22),
+            padding: const EdgeInsets.all(AppSpace.xs),
+            decoration: _shell(AppRadius.block),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               for (var i = 0; i < segs.length; i++) ...[
                 if (i > 0) _divider(),
-                for (final a in segs[i]) Padding(padding: const EdgeInsets.symmetric(horizontal: 3), child: _WideButton(a)),
+                for (final a in segs[i]) Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs / 2), child: _WideButton(a)),
               ],
               _divider(),
               _WideEndButton(end),
@@ -269,9 +272,9 @@ class LiveControlBar extends StatelessWidget {
   }
 
   static Widget _divider() => Container(
-        width: 1,
-        height: 26,
-        margin: const EdgeInsets.symmetric(horizontal: 8),
+        width: AppBorder.hairline,
+        height: AppSpace.lg,
+        margin: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
         color: _glassBdr,
       );
 }
@@ -303,18 +306,11 @@ class _Look {
                 ? LivePalette.danger.withValues(alpha: 0.55)
                 : a.active && a.enabled
                     ? (a.color ?? LivePalette.accent).withValues(alpha: 0.55)
-                    : LiveControlBar._glassBdr,
-        glow = danger
-            ? LivePalette.danger.withValues(alpha: 0.35)
-            : a.active && a.enabled
-                ? (a.color ?? LivePalette.accent).withValues(alpha: 0.28)
-                : a.off
-                    ? LivePalette.danger.withValues(alpha: 0.22)
-                    : Colors.transparent;
+                    : LiveControlBar._glassBdr;
+  // State reads from the fill and the edge alone (tone first): no coloured glow under a button.
   final Color fg;
   final Color fill;
   final Color border;
-  final Color glow;
 }
 
 Widget _spinner(Color c, double size) => Center(
@@ -351,33 +347,36 @@ class _MobileButton extends StatelessWidget {
         key: a.key,
         behavior: HitTestBehavior.opaque,
         onTap: tap,
+        // press depth on the round button only: the label under it stays still
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Stack(clipBehavior: Clip.none, children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: size,
-              height: size,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: look.fill,
-                border: Border.all(color: look.border, width: danger ? 0 : 1),
-                boxShadow: look.glow.a == 0 ? const [] : [BoxShadow(color: look.glow, blurRadius: 16)],
+          AppPressScale(
+            enabled: tap != null,
+            scale: 0.94,
+            child: Stack(clipBehavior: Clip.none, children: [
+              AnimatedContainer(
+                duration: AppMotion.of(context).base,
+                curve: AppMotion.curve,
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: look.fill,
+                  border: Border.all(color: look.border, width: danger ? 0 : AppBorder.hairline),
+                ),
+                child: a.loading ? _spinner(look.fg, size * 0.4) : Icon(a.icon, color: look.fg, size: size * 0.46),
               ),
-              child: a.loading ? _spinner(look.fg, size * 0.4) : Icon(a.icon, color: look.fg, size: size * 0.46),
-            ),
-            if (a.badge > 0) PositionedDirectional(top: -4, end: -6, child: _CountBadge(a.badge)),
-          ]),
-          const SizedBox(height: 5),
+              if (a.badge > 0) PositionedDirectional(top: -AppSpace.xxs, end: -AppSpace.xxs - 2, child: _CountBadge(a.badge)),
+            ]),
+          ),
+          const SizedBox(height: AppSpace.xxs + 2),
           Text(
             a.compactLabel ?? a.label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: AppFonts.family,
-              fontSize: 10.5,
+            style: AppType.overline(context).copyWith(
+              letterSpacing: 0,
               height: 1.2,
-              fontWeight: FontWeight.w700,
               color: danger ? LivePalette.danger : look.fg,
             ),
           ),
@@ -395,6 +394,11 @@ class _WideButton extends StatefulWidget {
   State<_WideButton> createState() => _WideButtonState();
 }
 
+/// The wide bar's button side (a full 48 px target, [AppTouch.min]) and how
+/// long a hover waits before its tooltip.
+const double _side = AppTouch.min;
+const Duration _tipWait = Duration(milliseconds: 500);
+
 class _WideButtonState extends State<_WideButton> {
   bool _hover = false;
   bool _hoverChevron = false;
@@ -409,36 +413,32 @@ class _WideButtonState extends State<_WideButton> {
     final picked = await showMenu<VoidCallback>(
       context: anchor,
       color: LivePalette.surfaceHi,
-      elevation: 20,
+      elevation: AppSpace.md,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.cardAll,
         side: const BorderSide(color: LiveControlBar._glassBdr),
       ),
-      position: RelativeRect.fromLTRB(topLeft.dx, topLeft.dy - 8 - 48.0 * (menu.length + 1), overlay.size.width - topLeft.dx - box.size.width, overlay.size.height - topLeft.dy + 8),
+      position: RelativeRect.fromLTRB(topLeft.dx, topLeft.dy - AppSpace.xs - AppTouch.min * (menu.length + 1), overlay.size.width - topLeft.dx - box.size.width, overlay.size.height - topLeft.dy + AppSpace.xs),
       items: [
         if (a.menuTitle != null)
           PopupMenuItem<VoidCallback>(
             enabled: false,
-            height: 36,
-            child: Text(a.menuTitle!,
-                style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, fontWeight: FontWeight.w700, color: LiveControlBar._textLow)),
+            height: AppSpace.xl + AppSpace.xxs,
+            child: Text(a.menuTitle!, style: AppType.meta(anchor).copyWith(fontWeight: FontWeight.w600, color: LiveControlBar._textLow)),
           ),
         for (final d in menu)
           PopupMenuItem<VoidCallback>(
             value: d.onTap,
             child: Row(children: [
               Icon(d.selected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
-                  size: 18, color: d.selected ? LivePalette.accent : LiveControlBar._textLow),
-              const SizedBox(width: 12),
+                  size: AppIconSize.sm, color: d.selected ? LivePalette.accent : LiveControlBar._textLow),
+              const SizedBox(width: AppSpace.sm),
               Flexible(
                 child: Text(d.label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontSize: 13,
-                        fontWeight: d.selected ? FontWeight.w700 : FontWeight.w500,
-                        color: LiveControlBar._textHigh)),
+                    style: AppType.row(anchor).copyWith(
+                        fontWeight: d.selected ? FontWeight.w600 : FontWeight.w400, color: LiveControlBar._textHigh)),
               ),
             ]),
           ),
@@ -455,6 +455,9 @@ class _WideButtonState extends State<_WideButton> {
     final VoidCallback? tap = a.loading ? null : a.onTap ?? (hasMenu ? () => _openMenu(context) : null);
     final tip = a.shortcut == null ? a.label : '${a.label}  ·  ${a.shortcut}';
     final hoverFill = Color.alphaBlend(LivePalette.ink(0.08), look.fill);
+    final motion = AppMotion.of(context);
+    const outer = Radius.circular(AppRadius.control);
+    const inner = Radius.circular(AppSpace.xxs);
 
     return Semantics(
       button: true,
@@ -463,9 +466,9 @@ class _WideButtonState extends State<_WideButton> {
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Tooltip(
           message: tip,
-          waitDuration: const Duration(milliseconds: 500),
-          decoration: BoxDecoration(color: LivePalette.tooltipBg, borderRadius: BorderRadius.circular(10)),
-          textStyle: TextStyle(fontFamily: AppFonts.family, color: LivePalette.textHigh, fontSize: 12, fontWeight: FontWeight.w600),
+          waitDuration: _tipWait,
+          decoration: BoxDecoration(color: LivePalette.tooltipBg, borderRadius: AppRadius.chipAll),
+          textStyle: AppType.meta(context).copyWith(color: LivePalette.textHigh, fontWeight: FontWeight.w600),
           child: MouseRegion(
             cursor: tap == null ? SystemMouseCursors.basic : SystemMouseCursors.click,
             onEnter: (_) => setState(() => _hover = true),
@@ -473,33 +476,34 @@ class _WideButtonState extends State<_WideButton> {
             child: GestureDetector(
               key: a.key,
               onTap: tap,
-              child: Stack(clipBehavior: Clip.none, children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: _hover && tap != null ? hoverFill : look.fill,
-                    borderRadius: BorderRadius.horizontal(
-                      left: const Radius.circular(14),
-                      right: Radius.circular(hasMenu ? 4 : 14),
+              child: AppPressScale(
+                enabled: tap != null,
+                scale: 0.94,
+                child: Stack(clipBehavior: Clip.none, children: [
+                  AnimatedContainer(
+                    duration: motion.fast,
+                    curve: AppMotion.curve,
+                    width: _side,
+                    height: _side,
+                    decoration: BoxDecoration(
+                      color: _hover && tap != null ? hoverFill : look.fill,
+                      borderRadius: BorderRadius.horizontal(left: outer, right: hasMenu ? inner : outer),
+                      border: Border.all(color: look.border, width: AppBorder.hairline),
                     ),
-                    border: Border.all(color: look.border),
-                    boxShadow: look.glow.a == 0 ? const [] : [BoxShadow(color: look.glow, blurRadius: 14)],
+                    child: a.loading ? _spinner(look.fg, AppIconSize.sm) : Icon(a.icon, color: look.fg, size: AppIconSize.md),
                   ),
-                  child: a.loading ? _spinner(look.fg, 18) : Icon(a.icon, color: look.fg, size: 22),
-                ),
-                if (a.badge > 0) PositionedDirectional(top: -6, end: -6, child: _CountBadge(a.badge)),
-              ]),
+                  if (a.badge > 0) PositionedDirectional(top: -AppSpace.xxs - 2, end: -AppSpace.xxs - 2, child: _CountBadge(a.badge)),
+                ]),
+              ),
             ),
           ),
         ),
         if (hasMenu)
           Padding(
-            padding: const EdgeInsetsDirectional.only(start: 2),
+            padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs / 2),
             child: Tooltip(
               message: a.menuTitle ?? a.label,
-              waitDuration: const Duration(milliseconds: 500),
+              waitDuration: _tipWait,
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 onEnter: (_) => setState(() => _hoverChevron = true),
@@ -508,15 +512,16 @@ class _WideButtonState extends State<_WideButton> {
                   key: a.key == null ? null : ValueKey('${(a.key as ValueKey?)?.value ?? a.key}.devices'),
                   onTap: () => _openMenu(context),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 160),
-                    width: 22,
-                    height: 44,
+                    duration: motion.fast,
+                    curve: AppMotion.curve,
+                    width: _side / 2,
+                    height: _side,
                     decoration: BoxDecoration(
-                      color: _hoverChevron ? Color.alphaBlend(LivePalette.ink(0.08), look.fill) : look.fill,
-                      borderRadius: const BorderRadius.horizontal(left: Radius.circular(4), right: Radius.circular(14)),
-                      border: Border.all(color: look.border),
+                      color: _hoverChevron ? hoverFill : look.fill,
+                      borderRadius: const BorderRadius.horizontal(left: inner, right: outer),
+                      border: Border.all(color: look.border, width: AppBorder.hairline),
                     ),
-                    child: Icon(Icons.expand_more_rounded, size: 16, color: look.fg),
+                    child: Icon(Icons.expand_more_rounded, size: AppIconSize.xs, color: look.fg),
                   ),
                 ),
               ),
@@ -544,7 +549,7 @@ class _WideEndButtonState extends State<_WideEndButton> {
     final red = LivePalette.danger;
     return Tooltip(
       message: tip,
-      waitDuration: const Duration(milliseconds: 500),
+      waitDuration: _tipWait,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         onEnter: (_) => setState(() => _hover = true),
@@ -556,22 +561,23 @@ class _WideEndButtonState extends State<_WideEndButton> {
           child: GestureDetector(
             key: a.key,
             onTap: a.onTap,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              height: 44,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: _hover ? Color.alphaBlend(LivePalette.ink(0.12), red) : red,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [BoxShadow(color: red.withValues(alpha: _hover ? 0.5 : 0.35), blurRadius: 16)],
+            child: AppPressScale(
+              enabled: a.onTap != null,
+              child: AnimatedContainer(
+                duration: AppMotion.of(context).fast,
+                curve: AppMotion.curve,
+                height: _side,
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+                decoration: BoxDecoration(
+                  color: _hover ? Color.alphaBlend(LivePalette.shade(0.12), red) : red,
+                  borderRadius: AppRadius.controlAll,
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.call_end_rounded, color: LivePalette.textHigh, size: AppIconSize.md),
+                  const SizedBox(width: AppSpace.xs),
+                  Text(a.label, maxLines: 1, style: AppType.label(context).copyWith(color: LivePalette.textHigh, fontWeight: FontWeight.w600)),
+                ]),
               ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.call_end_rounded, color: LivePalette.textHigh, size: 22),
-                const SizedBox(width: 8),
-                Text(a.label,
-                    maxLines: 1,
-                    style: TextStyle(fontFamily: AppFonts.family, color: LivePalette.textHigh, fontSize: 13, fontWeight: FontWeight.w800)),
-              ]),
             ),
           ),
         ),
@@ -587,21 +593,20 @@ class _MoreSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Column(mainAxisSize: MainAxisSize.min, children: [
       AppSheetHeader('lr_more_controls'.tr),
       Flexible(
         child: ListView(
           shrinkWrap: true,
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+          padding: const EdgeInsets.fromLTRB(AppSpace.sm, 0, AppSpace.sm, AppSpace.md),
           children: [
             for (final a in actions) ...[
               if (a.onTap != null || a.loading || a.menu == null) _SheetRow(a),
               if (a.menu != null && a.menu!.isNotEmpty) ...[
+                // a device group: an editorial section title, more air above than below
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-                  child: Text(a.menuTitle ?? a.label,
-                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, fontWeight: FontWeight.w700, color: c.textMedium)),
+                  padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.md, AppSpace.sm, AppSpace.xxs),
+                  child: Text(a.menuTitle ?? a.label, style: AppType.section(context), maxLines: 1, overflow: TextOverflow.ellipsis),
                 ),
                 for (final d in a.menu!)
                   _SheetRow(
@@ -632,15 +637,19 @@ class _SheetRow extends StatelessWidget {
     final c = context.colors;
     final a = action;
     final enabled = a.onTap != null && !a.loading;
-    final tint = a.off ? c.danger : a.active ? (a.color ?? c.primary) : c.textMedium;
+    // text-safe ink for the state colour (an icon on the paper sheet), its faint tint behind the icon
+    final tone = a.off ? c.danger : a.active ? (a.color ?? c.primary) : c.textMedium;
+    final tint = a.off || a.active ? appInk(context, tone) : c.textMedium;
+    final tile = dense ? AppSpace.xl : AppSpace.xl + AppSpace.xs;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: AppSpace.xxs / 2),
+      // paper rows: only the switched-on action carries a tone (the primary's tint), the rest stay quiet
       child: Material(
-        color: a.active && !dense ? tint.withValues(alpha: 0.08) : c.inputBg,
-        borderRadius: BorderRadius.circular(14),
+        color: a.active && !dense ? c.primaryTint : Colors.transparent,
+        borderRadius: AppRadius.controlAll,
         child: InkWell(
           key: a.key == null ? null : ValueKey('${(a.key as ValueKey?)?.value ?? a.key}.sheet'),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: AppRadius.controlAll,
           onTap: enabled
               ? () {
                   Navigator.of(context).pop();
@@ -649,49 +658,51 @@ class _SheetRow extends StatelessWidget {
               : null,
           child: Opacity(
             opacity: enabled || a.loading ? 1 : 0.45,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: dense ? 8 : 10),
-              child: Row(children: [
-                Container(
-                  width: dense ? 32 : 40,
-                  height: dense ? 32 : 40,
-                  decoration: BoxDecoration(
-                    color: dense ? Colors.transparent : tint.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: a.loading
-                      ? _spinner(tint, 16)
-                      : Icon(a.icon, color: enabled ? tint : c.textLight, size: dense ? 18 : 22),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(a.label,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          fontFamily: AppFonts.family,
-                          fontSize: dense ? 13 : 14,
-                          fontWeight: a.active ? FontWeight.w800 : FontWeight.w600,
-                          color: c.textDark)),
-                ),
-                if (a.badge > 0) ...[
-                  const SizedBox(width: 8),
-                  _CountBadge(a.badge),
-                ],
-                if (a.shortcut != null && !dense) ...[
-                  const SizedBox(width: 8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouch.min),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: dense ? AppSpace.xxs : AppSpace.xs),
+                child: Row(children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(border: Border.all(color: c.divider), borderRadius: BorderRadius.circular(6)),
-                    child: Text(a.shortcut!,
-                        style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, fontWeight: FontWeight.w700, color: c.textMedium)),
+                    width: tile,
+                    height: tile,
+                    decoration: BoxDecoration(
+                      color: dense ? null : tone.withValues(alpha: 0.12),
+                      borderRadius: AppRadius.controlAll,
+                    ),
+                    child: a.loading
+                        ? _spinner(tint, AppIconSize.xs)
+                        : Icon(a.icon, color: enabled ? tint : c.textLight, size: dense ? AppIconSize.sm : AppIconSize.md),
                   ),
-                ],
-                if (a.active && !dense) ...[
-                  const SizedBox(width: 8),
-                  Icon(Icons.check_circle_rounded, size: 18, color: tint),
-                ],
-              ]),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Text(a.label,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: a.active ? AppType.bodyStrong(context) : AppType.row(context)),
+                  ),
+                  if (a.badge > 0) ...[
+                    const SizedBox(width: AppSpace.xs),
+                    _CountBadge(a.badge),
+                  ],
+                  if (a.shortcut != null && !dense) ...[
+                    const SizedBox(width: AppSpace.xs),
+                    // a keycap: the hairline and the meta role, so it reads as a hint and not a button
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: c.divider, width: AppBorder.hairline),
+                        borderRadius: BorderRadius.circular(AppSpace.xs - 2),
+                      ),
+                      child: Text(a.shortcut!, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600)),
+                    ),
+                  ],
+                  if (a.active && !dense) ...[
+                    const SizedBox(width: AppSpace.xs),
+                    Icon(Icons.check_circle_rounded, size: AppIconSize.sm, color: tint),
+                  ],
+                ]),
+              ),
             ),
           ),
         ),
