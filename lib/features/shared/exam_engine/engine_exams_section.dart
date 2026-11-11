@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart' show AppFonts;
 
 import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 
@@ -55,41 +56,62 @@ class EngineExamCard extends StatelessWidget {
     } else {
       action = status == 'closed' || block == 'exam_ended' ? t('انتهى', 'Closed') : t('غير متاح', 'Unavailable');
     }
+    final live = canStart || open;
+    final mark = open ? Icons.play_arrow_rounded : (paper ? Icons.edit_note_rounded : Icons.fact_check_rounded);
+    final markTint = live ? appTintOn(context, c.primary) : c.inputBg;
+    final metaStyle = AppType.meta(context);
+    final pct = last != null && last['visible'] == true && last['percentage'] != null ? last['percentage'] : null;
     return AppCard(
       onTap: onOpen,
-      child: Row(children: [
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(
-          width: 42, height: 42, alignment: Alignment.center,
-          decoration: BoxDecoration(color: c.primary.withValues(alpha: .1), borderRadius: BorderRadius.circular(12)),
-          child: Icon(open ? Icons.play_circle_outline_rounded : (paper ? Icons.edit_note_rounded : Icons.fact_check_outlined), color: c.primary),
+          width: AppTouch.min, height: AppTouch.min, alignment: Alignment.center,
+          decoration: BoxDecoration(color: markTint, borderRadius: AppRadius.controlAll),
+          child: Icon(mark, size: AppIconSize.lg, color: live ? appInkOn(context, c.primary, markTint) : c.textMedium),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${exam['title'] ?? ''}', style: appText(14.5, w: FontWeight.w700, c: c.textDark), maxLines: 2, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 4),
-            Wrap(spacing: 10, runSpacing: 4, children: [
-              if (duration != null) Text(t('$duration دقيقة', '$duration min'), style: appText(12, c: c.textMedium)),
-              if (!paper) Text(t('المحاولات $used/$allowed', 'Attempts $used/$allowed'), style: appText(12, c: c.textMedium)),
+            Text('${exam['title'] ?? ''}', style: AppType.section(context).copyWith(fontFamilyFallback: AppFonts.fallback), maxLines: 2, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: AppSpace.xxs),
+            Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              if (duration != null) _MetaItem(icon: Icons.timer_outlined, text: t('$duration دقيقة', '$duration min'), style: metaStyle),
+              if (!paper) _MetaItem(icon: Icons.replay_rounded, text: t('المحاولات $used/$allowed', 'Attempts $used/$allowed'), style: metaStyle),
               if (exam['starts_at'] != null && opensAt == null)
-                Text(AppTime.dateTime(DateTime.parse('${exam['starts_at']}Z')), style: appText(12, c: c.textMedium)),
-              if (last != null && last['visible'] == true && last['percentage'] != null)
-                Text('${last['percentage']}%', style: appText(12, w: FontWeight.w700, c: last['passed'] == true ? c.success : c.warning)),
+                _MetaItem(icon: Icons.event_rounded, text: AppTime.dateTime(DateTime.parse('${exam['starts_at']}Z')), style: metaStyle),
+              if (pct != null)
+                Text('$pct%', style: metaStyle.copyWith(fontWeight: FontWeight.w600,
+                    color: last!['passed'] == true ? appInkOn(context, c.success, c.cardBg) : appInkOn(context, c.warning, c.cardBg))),
             ]),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.sm),
             // the action sits under the texts, not beside them: at 320 px with large text a trailing pill left the
             // title column 26 px wide (layout harness)
-            Wrap(spacing: 6, runSpacing: 6, children: [
-              AppBadgePill(action, color: canStart || open ? c.primary : (opensAt != null ? c.textMedium : c.textLight),
-                  icon: opensAt != null ? Icons.schedule_rounded : null),
-              if (paper && last != null) AppBadgePill(t('اختبار ورقي', 'Paper exam'), color: c.textLight, icon: Icons.edit_note_rounded),
-              if (offlineSaved) AppBadgePill(t('محفوظ للحل دون اتصال', 'Saved for offline'), color: c.success, icon: Icons.offline_pin_rounded),
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+              AppStatusBadge(label: action, tone: live ? AppTone.brand : AppTone.neutral,
+                  icon: opensAt != null ? Icons.schedule_rounded : (live ? (open ? Icons.play_arrow_rounded : Icons.arrow_forward_rounded) : null)),
+              if (paper && last != null) AppStatusBadge(label: t('اختبار ورقي', 'Paper exam'), icon: Icons.edit_note_rounded),
+              if (offlineSaved) AppStatusBadge(label: t('محفوظ للحل دون اتصال', 'Saved for offline'), tone: AppTone.success, icon: Icons.offline_pin_rounded),
             ]),
           ]),
         ),
       ]),
     );
   }
+}
+
+/// A meta line of the exam card: a small glyph and its text.
+class _MetaItem extends StatelessWidget {
+  const _MetaItem({required this.icon, required this.text, required this.style});
+  final IconData icon;
+  final String text;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: AppIconSize.xs, color: context.colors.textLight),
+        const SizedBox(width: AppSpace.xxs),
+        Flexible(child: Text(text, style: style, maxLines: 1, overflow: TextOverflow.ellipsis)),
+      ]);
 }
 
 /// Whether the list offers a start (or a new attempt) of [exam] now: the server's `can_start`, never on paper, never

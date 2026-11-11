@@ -2,6 +2,7 @@
 // answers are still open" sheet, the published banner, cancel / restore a question, the per-option bars of the item
 // analysis, one answer of the student's result and one row of the grade log. The screens own the API calls.
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
@@ -255,6 +256,73 @@ class _Bar extends StatelessWidget {
 
 // ── the student's result: one answer ────────────────────────────────────────────────────────────────────────────
 
+/// How one marked answer reads: right, wrong, part of the marks, still being marked, or cancelled.
+enum ExamVerdict { correct, wrong, partial, pending, cancelled }
+
+/// The verdict of a [score] out of [max] (a cancelled question and an unmarked one first). Drawing only: the marks
+/// themselves are the engine's.
+ExamVerdict examVerdictOf({double? score, double? max, bool voided = false}) {
+  if (voided) return ExamVerdict.cancelled;
+  if (score == null) return ExamVerdict.pending;
+  if (score <= 0) return ExamVerdict.wrong;
+  if (max == null || score >= max) return ExamVerdict.correct;
+  return ExamVerdict.partial;
+}
+
+/// The colour a verdict is drawn in (emerald = right, danger = wrong; never the only signal — see [ExamVerdictMark]).
+Color examVerdictColor(BuildContext context, ExamVerdict v) {
+  final c = context.colors;
+  return switch (v) {
+    ExamVerdict.correct => c.success,
+    ExamVerdict.wrong => c.danger,
+    ExamVerdict.partial => c.warning,
+    ExamVerdict.pending || ExamVerdict.cancelled => c.textMedium,
+  };
+}
+
+IconData examVerdictIcon(ExamVerdict v) => switch (v) {
+      ExamVerdict.correct => Icons.check_rounded,
+      ExamVerdict.wrong => Icons.close_rounded,
+      ExamVerdict.partial => Icons.contrast_rounded,
+      ExamVerdict.pending => Icons.hourglass_top_rounded,
+      ExamVerdict.cancelled => Icons.block_rounded,
+    };
+
+String examVerdictLabel(ExamVerdict v) => switch (v) {
+      ExamVerdict.correct => 'exam_verdict_correct'.tr,
+      ExamVerdict.wrong => 'exam_verdict_wrong'.tr,
+      ExamVerdict.partial => 'exam_verdict_partial'.tr,
+      ExamVerdict.pending => 'exam_verdict_pending'.tr,
+      ExamVerdict.cancelled => 'exam_verdict_cancelled'.tr,
+    };
+
+/// A verdict as a mark: its glyph on a disc of its own tint, read out by name.
+class ExamVerdictMark extends StatelessWidget {
+  const ExamVerdictMark({super.key, required this.verdict});
+  final ExamVerdict verdict;
+
+  static const double size = AppSpace.xl;
+
+  @override
+  Widget build(BuildContext context) {
+    final col = examVerdictColor(context, verdict);
+    final tint = appTintOn(context, col);
+    return Semantics(
+      label: examVerdictLabel(verdict),
+      excludeSemantics: true,
+      child: Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(color: tint, shape: BoxShape.circle),
+        child: Icon(examVerdictIcon(verdict), size: AppIconSize.md, color: appInkOn(context, col, tint)),
+      ),
+    );
+  }
+}
+
+/// One answer of the student's result: the verdict mark, the question, the marks, then the student's answer (with a
+/// cross when it was wrong) and the key when the exam shows it (with a check).
 class ResultAnswerCard extends StatelessWidget {
   const ResultAnswerCard({super.key, required this.answer, this.footer});
   final ResultAnswer answer;
@@ -264,32 +332,82 @@ class ResultAnswerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final a = answer;
+    final verdict = examVerdictOf(score: a.score, max: a.max, voided: a.isVoided);
+    final wrong = verdict == ExamVerdict.wrong;
     return AppCard(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: AppSpace.sm),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          ExamVerdictMark(verdict: verdict),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
-            child: Text(a.prompt.isEmpty ? t('سؤال #${a.questionId}', 'Question #${a.questionId}') : a.prompt,
-                maxLines: 4, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
+            child: Padding(
+              padding: const EdgeInsets.only(top: AppSpace.xxs),
+              child: Text(a.prompt.isEmpty ? t('سؤال #${a.questionId}', 'Question #${a.questionId}') : a.prompt,
+                  maxLines: 4, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+            ),
           ),
-          const SizedBox(width: 8),
-          if (a.score != null)
-            Text(omrLtr(a.max == null ? answerValueText(a.score) : '${gradeLogValueText(a.score)} / ${gradeLogValueText(a.max)}'),
-                style: appText(13, w: FontWeight.w800, c: a.isVoided ? c.textLight : c.primary)),
+          if (a.score != null) ...[
+            const SizedBox(width: AppSpace.sm),
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpace.xxs),
+              child: Text(omrLtr(a.max == null ? answerValueText(a.score) : '${gradeLogValueText(a.score)} / ${gradeLogValueText(a.max)}'),
+                  style: AppType.label(context).copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: a.isVoided ? c.textLight : appInkOn(context, examVerdictColor(context, verdict), c.cardBg),
+                      fontFeatures: const [FontFeature.tabularFigures()])),
+            ),
+          ],
         ]),
         if (a.isVoided) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs),
           Align(alignment: AlignmentDirectional.centerStart, child: AppBadgePill(voidedChipText(a.voided!), color: c.warning, icon: Icons.block_rounded)),
         ],
-        const SizedBox(height: 8),
-        Text(t('إجابتك', 'Your answer'), style: appText(11.5, c: c.textLight)),
-        Text(answerValueText(a.yourAnswer), maxLines: 6, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textDark)),
+        const SizedBox(height: AppSpace.sm),
+        _AnswerLine(
+          label: t('إجابتك', 'Your answer'),
+          value: answerValueText(a.yourAnswer),
+          icon: wrong ? Icons.close_rounded : null,
+          color: wrong ? c.danger : null,
+        ),
         if (a.hasCorrect) ...[
-          const SizedBox(height: 8),
-          Text(t('الإجابة الصحيحة', 'Correct answer'), style: appText(11.5, c: c.textLight)),
-          Text(answerValueText(a.correctAnswer), maxLines: 6, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w600, c: c.success)),
+          const SizedBox(height: AppSpace.xs),
+          _AnswerLine(label: t('الإجابة الصحيحة', 'Correct answer'), value: answerValueText(a.correctAnswer), icon: Icons.check_rounded, color: c.success),
         ],
-        if (footer != null) footer!,
+        ?footer,
+      ]),
+    );
+  }
+}
+
+/// A labelled answer in a calm well; [icon] and [color] mark it right or wrong (the text says which too: the label).
+class _AnswerLine extends StatelessWidget {
+  const _AnswerLine({required this.label, required this.value, this.icon, this.color});
+  final String label;
+  final String value;
+  final IconData? icon;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tone = color;
+    final ink = tone == null ? c.textDark : appInkOn(context, tone, c.inputBg);
+    return Container(
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xs, AppSpace.sm, AppSpace.xs),
+      decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.controlAll),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        if (icon != null) ...[
+          Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Icon(icon, size: AppIconSize.sm, color: ink)),
+          const SizedBox(width: AppSpace.xs),
+        ],
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label, style: AppType.meta(context)),
+            Text(value, maxLines: 6, overflow: TextOverflow.ellipsis,
+                style: AppType.row(context).copyWith(color: ink, fontWeight: tone == null ? FontWeight.w500 : FontWeight.w600)),
+          ]),
+        ),
       ]),
     );
   }
