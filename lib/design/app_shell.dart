@@ -692,6 +692,10 @@ class _BrandSideCard extends StatelessWidget {
             border: c.isDark ? Border.all(color: c.heroDivider, width: AppBorder.hairline) : null,
           ),
           child: Stack(fit: StackFit.passthrough, children: [
+            // D-650 r2: the cream light rising from the bottom-end corner, under the faint lattice
+            Positioned.fill(
+              child: IgnorePointer(child: DecoratedBox(decoration: BoxDecoration(gradient: AppBrandLayer.sidebarWash(context)))),
+            ),
             Positioned.fill(child: AppPattern(color: l.sidePattern, style: AppPatternStyle.lattice)),
             Material(
               type: MaterialType.transparency,
@@ -760,7 +764,7 @@ class _SidebarUser extends StatelessWidget {
         ),
         child: Material(
           type: MaterialType.transparency,
-          child: UserChipButton(user: user, showLabel: true, surface: Color.alphaBlend(l.sideGlass, l.sidebar.last)),
+          child: UserChipButton(user: user, showLabel: true, surface: Color.alphaBlend(l.sideGlass, l.sideSpots.last)),
         ),
       ),
     );
@@ -870,9 +874,9 @@ class UserChipButton extends StatelessWidget {
     Widget avatar = Container(
       width: inner,
       height: inner,
-      decoration: BoxDecoration(
+      // on paper the initial sits on the brand fill, its cream end past the letter (D-650 r2)
+      decoration: ringed ? AppBrandLayer.buttonFill(context, content: AppIconSize.md, shape: BoxShape.circle) : BoxDecoration(
         color: onBar ? c.heroGlass : (ringed ? null : c.primary),
-        gradient: ringed ? AppBrandLayer.button(context) : null,
         shape: BoxShape.circle,
         border: onBar ? Border.all(color: c.heroGlassBorder, width: AppBorder.hairline) : null,
       ),
@@ -1022,7 +1026,7 @@ class _SidebarTile extends StatelessWidget {
                           // D-650: the open tab's glyph wears the green → gold family, lightened for the glass
                           if (selected)
                             AppGradientIcon(item.selectedIcon, size: AppIconSize.md, on: [
-                              for (final s in l.sidebar) Color.alphaBlend(l.sideActiveFill, s),
+                              for (final s in l.sideSpots) Color.alphaBlend(l.sideActiveFill, s),
                             ])
                           else
                             Icon(item.icon, color: ink, size: AppIconSize.md),
@@ -1533,15 +1537,17 @@ class _TabIconPill extends StatelessWidget {
             curve: AppMotion.curve,
             width: width,
             height: _ShellMetrics.pillH,
-            decoration: BoxDecoration(
+            // the phone's open tab: the brand fill, its cream end past the centred glyph (D-650 r2)
+            decoration: !onBrand && active
+                ? AppBrandLayer.buttonFill(context, content: AppIconSize.lg, borderRadius: BorderRadius.circular(AppRadius.pill))
+                : BoxDecoration(
               color: onBrand ? (active ? l.sideActiveFill : l.sideActiveFill.withValues(alpha: 0)) : null,
-              gradient: !onBrand && active ? AppBrandLayer.button(context) : null,
               borderRadius: BorderRadius.circular(AppRadius.pill),
             ),
             child: Center(
               child: onBrand && active
                   ? AppGradientIcon(item.selectedIcon, size: AppIconSize.lg, on: [
-                      for (final s in l.sidebar) Color.alphaBlend(l.sideActiveFill, s),
+                      for (final s in l.sideSpots) Color.alphaBlend(l.sideActiveFill, s),
                     ])
                   : Icon(active ? item.selectedIcon : item.icon, size: AppIconSize.lg, color: ink),
             ),

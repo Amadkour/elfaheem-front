@@ -577,12 +577,13 @@ class DlChoiceChip extends StatelessWidget {
                 curve: AppMotion.curve,
                 padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
                 // the selected chip wears the brand gradient (D-649)
-                decoration: BoxDecoration(
-                  color: selected ? null : c.inputBg,
-                  gradient: selected ? AppBrandLayer.button(context) : null,
-                  borderRadius: r,
-                  border: Border.all(color: selected ? AppBrandLayer.of(context).button.last : c.divider, width: AppBorder.hairline),
-                ),
+                // the selected chip wears the brand fill, its cream end in the end padding (D-650 r2)
+                decoration: selected
+                    ? AppBrandLayer.buttonFill(context,
+                        pad: AppSpace.sm,
+                        borderRadius: r,
+                        border: Border.all(color: AppBrandLayer.of(context).button.first, width: AppBorder.hairline))
+                    : BoxDecoration(color: c.inputBg, borderRadius: r, border: Border.all(color: c.divider, width: AppBorder.hairline)),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   if (icon != null) ...[
                     Icon(icon, size: AppIconSize.sm, color: selected ? c.onHero : c.textMedium),

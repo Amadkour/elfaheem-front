@@ -2,10 +2,17 @@
 // Arabic + English, textScaler 1.3; AppShell picks by width; a tab's count = badge + the attention feed, drawn at
 // the leaf (the feed's tick repaints the badge without rebuilding the shell); tabs are built on their first visit
 // and kept afterwards (LazyTabStack, D-077), and an unbuilt tab still shows its count.
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart' show AttentionTabs;
+import 'package:flutter_education_app/design/app_contrast.dart';
+import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/design/app_shell.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -160,6 +167,74 @@ void main() {
     expect(bell, containsSemantics(isButton: true, hasTapAction: true), reason: 'the bell is a labelled button with its count');
     expect(find.bySemanticsLabel(RegExp('my_calendar')), findsOneWidget);
     handle.dispose();
+  });
+
+  // D-650 r2: the sidebar is primary → primary_dark under a cream wash from its bottom-end corner. Every tab label,
+  // the wordmark and the group label is checked at the place it is drawn, with the colour it is drawn in, over the
+  // card's colour there (BrandLayer.sideAt — the same diagonal and radial the card paints), plain, hovered and on the
+  // open tab's glass; both modes, Arabic and English, on the production palette.
+  testWidgets('sidebar inks keep 4.5:1 where the items sit (the cream wash included)', (tester) async {
+    final prod = jsonDecode(File('test/visual/fixtures/theme_production.json').readAsStringSync()) as Map<String, dynamic>;
+    final prevLang = AppConfig.lang;
+    addTearDown(() {
+      AppConfig.lang = prevLang;
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1440, 900);
+    var low = 21.0;
+    for (final dark in const [false, true]) {
+      for (final lang in const ['ar', 'en']) {
+        AppConfig.lang = lang;
+        final t = ThemeConfigProvider(api: ApiClient())..debugUseColors(prod);
+        final rtl = lang == 'ar';
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpWidget(ThemeConfigScope(
+          provider: t,
+          child: MaterialApp(
+            theme: ThemeData(brightness: dark ? Brightness.dark : Brightness.light),
+            home: Directionality(
+              textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
+              child: host(WideShell(currentIndex: 0, onTap: (_) {}, dashboardItems: items(), unreadCount: 4)),
+            ),
+          ),
+        ));
+        await tester.pump();
+        final l = BrandLayer.of(t);
+        final card = find.byWidgetPredicate((w) =>
+            w is DecoratedBox && w.decoration is BoxDecoration && (w.decoration as BoxDecoration).gradient is LinearGradient &&
+            ((w.decoration as BoxDecoration).gradient! as LinearGradient).colors.first == l.sidebar.first);
+        expect(card, findsOneWidget);
+        final box = tester.getRect(card);
+        final texts = find.descendant(of: card, matching: find.byType(Text));
+        var checked = 0;
+        for (final e in texts.evaluate()) {
+          final w = e.widget as Text;
+          final ink = w.style?.color;
+          if (ink == null || ink.a < 1) continue;
+          if (RegExp(r'^[0-9+]+$').hasMatch(w.data ?? '')) continue; // the red count pills
+          final r = tester.getRect(find.byWidget(w));
+          for (final p in [r.topLeft, r.topRight, r.center, r.bottomLeft, r.bottomRight]) {
+            final local = Offset(rtl ? box.right - p.dx : p.dx - box.left, p.dy - box.top);
+            final under = l.sideAt(box.size, local);
+            final selected = ink == l.sideActiveInk;
+            final surfaces = selected
+                ? [Color.alphaBlend(l.sideActiveFill, under)]
+                : [under, Color.alphaBlend(l.sideHover, under)];
+            for (final s in surfaces) {
+              final ratio = contrastRatio(ink, s);
+              if (ratio < low) low = ratio;
+              expect(ratio, greaterThanOrEqualTo(4.5), reason: '"${w.data}" at $local (${dark ? 'dark' : 'light'} $lang)');
+            }
+          }
+          checked++;
+        }
+        expect(checked, greaterThanOrEqualTo(5), reason: 'the tab labels and the wordmark were checked');
+      }
+    }
+    // ignore: avoid_print
+    print('lowest sidebar contrast at the items: ${low.toStringAsFixed(2)}');
   });
 
   testWidgets('editorial shell: 48 px tabs on the bar, the rail and the sidebar; a reward count renders', (tester) async {

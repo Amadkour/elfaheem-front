@@ -68,14 +68,16 @@ class _ToneChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final b = AppBlockColors.of(context, tone == AppBlockTone.paper ? AppBlockTone.emerald : tone);
+    // D-650: the tone's colour on paper, a primary-tinted grey in dark mode (never the browned warm tone)
+    final disc = AppBrandLayer.toneDisc(context, b.surface);
     return ExcludeSemantics(
       child: Container(
         width: size,
         height: size,
-        decoration: BoxDecoration(color: b.surface, borderRadius: BorderRadius.circular(AppRadius.control)),
+        decoration: BoxDecoration(color: disc, borderRadius: BorderRadius.circular(AppRadius.control)),
         alignment: Alignment.center,
-        // D-650: the glyph wears the green → gold family on its tinted chip
-        child: AppGradientIcon(icon, size: size * 0.5, on: [Color.alphaBlend(b.surface, context.colors.cardBg)]),
+        // D-650: the glyph wears the green → cream family on its tinted chip
+        child: AppGradientIcon(icon, size: size * 0.5, on: [Color.alphaBlend(disc, context.colors.cardBg)]),
       ),
     );
   }
@@ -718,10 +720,11 @@ class AppShortcutTile extends StatelessWidget {
             child: Container(
               width: _disc,
               height: _disc,
-              decoration: BoxDecoration(color: b.surface, shape: BoxShape.circle),
+              decoration: BoxDecoration(color: AppBrandLayer.toneDisc(context, b.surface), shape: BoxShape.circle),
               alignment: Alignment.center,
-              // D-650: the glyph wears the green → gold family on its tinted disc
-              child: AppGradientIcon(icon, size: AppIconSize.xl, on: [Color.alphaBlend(b.surface, c.cardBg)]),
+              // D-650: the glyph wears the green → cream family on its tinted disc (a primary-tinted grey in dark mode)
+              child: AppGradientIcon(icon,
+                  size: AppIconSize.xl, on: [Color.alphaBlend(AppBrandLayer.toneDisc(context, b.surface), c.cardBg)]),
             ),
           ),
           Padding(

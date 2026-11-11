@@ -39,7 +39,9 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_charts.dart' show appCompactNumber;
 import 'package:flutter_education_app/design/app_badges.dart' show AppStatusBadge, AppTone;
 import 'package:flutter_education_app/design/app_blocks.dart';
+import 'package:flutter_education_app/design/app_contrast.dart' show ensureContrast;
 import 'package:flutter_education_app/design/app_depth.dart' show AppParallaxImage;
+import 'package:flutter_education_app/design/app_gradients.dart' show AppBrandLayer;
 import 'package:flutter_education_app/design/app_inputs.dart' show appFieldDecoration, appFieldTextStyle;
 import 'package:flutter_education_app/design/app_kit.dart' show AppShimmer, AppSkeletonBox;
 import 'package:flutter_education_app/design/app_states.dart' show AppEmpty, AppErrorState;
@@ -130,13 +132,16 @@ class CourseCoverArt extends StatelessWidget {
     final tone = AppBlockTone.forKey(toneKey ?? 'course-$seed', among: AppBlockTone.coverTones);
     final b = AppBlockColors.of(context, tone);
     final initial = label == null ? '' : courseInitialOf(label!);
-    final spine = Color.lerp(b.surface, b.ink, context.colors.isDark ? 0.10 : 0.08)!;
+    // D-650: the tone's colour on paper; in dark mode a primary-tinted grey like the cards (never a browned tone)
+    final plate = AppBrandLayer.toneDisc(context, b.surface);
+    final letter = ensureContrast(b.muted, [plate], min: 3);
+    final spine = Color.lerp(plate, b.ink, context.colors.isDark ? 0.10 : 0.08)!;
     return ExcludeSemantics(
       child: SizedBox(
         width: width ?? double.infinity,
         height: height,
         child: ColoredBox(
-          color: b.surface,
+          color: plate,
           child: LayoutBuilder(builder: (context, box) {
             final short = box.hasBoundedHeight ? math.min(box.maxWidth, box.maxHeight) : box.maxWidth;
             return Stack(children: [
@@ -149,13 +154,13 @@ class CourseCoverArt extends StatelessWidget {
               ),
               Positioned.fill(
                 child: initial.isEmpty || !box.hasBoundedHeight
-                    ? Center(child: Icon(Icons.auto_stories_rounded, size: iconSize, color: b.muted))
+                    ? Center(child: Icon(Icons.auto_stories_rounded, size: iconSize, color: letter))
                     : Align(
                         alignment: box.maxHeight < _small ? const Alignment(0, -0.7) : Alignment.center,
                         child: SizedBox(
                           height: box.maxHeight * (box.maxHeight < _small ? _letterSmall : _letter),
                           // the whole line box is scaled, so an Arabic letter's tail is never cut
-                          child: FittedBox(child: Text(initial, style: AppType.display(context).copyWith(color: b.muted))),
+                          child: FittedBox(child: Text(initial, style: AppType.display(context).copyWith(color: letter))),
                         ),
                       ),
               ),

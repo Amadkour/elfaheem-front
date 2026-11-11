@@ -25,7 +25,7 @@ import '../config/theme/theme_config_provider.dart';
 import 'app_badges.dart';
 import 'app_charts.dart' show appInk;
 import 'app_contrast.dart' show ensureContrast;
-import 'app_gradients.dart' show AppBrandLayer, AppGradientIcon;
+import 'app_gradients.dart' show AppBrandLayer, AppBrandLabel, AppBrandSpan, AppGradientIcon;
 import 'app_motion_kit.dart';
 import 'app_tokens.dart';
 
@@ -220,6 +220,8 @@ class AppButton extends StatefulWidget {
 }
 
 class _AppButtonState extends State<AppButton> {
+  /// Where the label sits, so the brand fill keeps its cream end past it (D-650 r2).
+  final _span = AppBrandSpan();
   bool _pressed = false;
   bool _hover = false;
   bool _focus = false;
@@ -261,14 +263,15 @@ class _AppButtonState extends State<AppButton> {
 
     Color? fill;
     Gradient? gradient;
+    var brandFill = false;
     List<BoxShadow>? shadow;
     BoxBorder? border;
     final inkHairline = Color.lerp(c.divider, c.textDark, 0.35)!;
     final hover = _hover && _enabled;
     switch (v) {
       case AppButtonVariant.primary:
-        // D-649: primary → primary_dark on a soft primary-tinted shadow; hover and press deepen it
-        gradient = AppBrandLayer.button(context, hover: hover, pressed: down);
+        // D-650 r2: primary → cream past the label (AppBrandFill) on a soft primary-tinted shadow; hover and press deepen it
+        brandFill = true;
         shadow = AppBrandLayer.buttonShadow(context, pressed: down);
       case AppButtonVariant.accent:
         gradient = AppBrandLayer.gold(context, hover: hover, pressed: down);
@@ -292,6 +295,7 @@ class _AppButtonState extends State<AppButton> {
       // a flat neutral well: the brand colour is never washed out (an unreadable half-transparent fill)
       fill = c.inputBg;
       gradient = null;
+      brandFill = false;
       shadow = null;
       border = Border.all(color: c.divider, width: AppBorder.hairline);
     }
@@ -311,21 +315,27 @@ class _AppButtonState extends State<AppButton> {
       child: CircularProgressIndicator(strokeWidth: 2.2, color: ink),
     );
 
-    final content = Row(
-      mainAxisSize: widget.expand ? MainAxisSize.max : MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        if (widget.icon != null) ...[
-          Icon(widget.icon, size: AppIconSize.md, color: ink),
-          const SizedBox(width: AppSpace.xs),
+    // the label row hugs its glyphs (AppBrandLabel measures it); a full-width button centres it in the width
+    Widget content = AppBrandLabel(
+      span: _span,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (widget.icon != null) ...[
+            Icon(widget.icon, size: AppIconSize.md, color: ink),
+            const SizedBox(width: AppSpace.xs),
+          ],
+          Flexible(child: Text(widget.label, maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: style)),
+          if (widget.trailingIcon != null) ...[
+            const SizedBox(width: AppSpace.xs),
+            Icon(widget.trailingIcon, size: AppIconSize.md, color: ink),
+          ],
         ],
-        Flexible(child: Text(widget.label, maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: style)),
-        if (widget.trailingIcon != null) ...[
-          const SizedBox(width: AppSpace.xs),
-          Icon(widget.trailingIcon, size: AppIconSize.md, color: ink),
-        ],
-      ],
+      ),
     );
+    if (widget.expand) {
+      content = Row(mainAxisAlignment: MainAxisAlignment.center, children: [Flexible(child: content)]);
+    }
 
     // busy: the label keeps its place (invisible) under the spinner, so the width never jumps
     final body = Stack(alignment: Alignment.center, children: [
@@ -337,15 +347,24 @@ class _AppButtonState extends State<AppButton> {
       duration: motion.fast,
       curve: AppEase.out,
       height: h,
-      decoration: BoxDecoration(
-        color: gradient == null ? fill : null,
-        gradient: gradient,
-        borderRadius: radius,
-        border: border,
-        boxShadow: _focus && _enabled && appKeyboardFocus()
-            ? appFocusRing(context, ring: v == AppButtonVariant.danger ? appInk(context, c.danger) : null)
-            : shadow,
-      ),
+      decoration: brandFill
+          ? AppBrandLayer.buttonFill(
+              context,
+              hover: hover,
+              pressed: down,
+              span: _span,
+              borderRadius: radius,
+              boxShadow: _focus && _enabled && appKeyboardFocus() ? appFocusRing(context) : shadow,
+            )
+          : BoxDecoration(
+              color: gradient == null ? fill : null,
+              gradient: gradient,
+              borderRadius: radius,
+              border: border,
+              boxShadow: _focus && _enabled && appKeyboardFocus()
+                  ? appFocusRing(context, ring: v == AppButtonVariant.danger ? appInk(context, c.danger) : null)
+                  : shadow,
+            ),
       padding: EdgeInsetsDirectional.symmetric(horizontal: sm ? AppSpace.md : AppSpace.lg),
       child: body,
     );
@@ -434,7 +453,7 @@ class _AppIconButtonState extends State<AppIconButton> {
                 : c.textMedium;
     // D-649: filled wears the brand gradient, tonal (a primary action's icon chip) a subtle tint gradient at rest
     final Gradient? gradient = filled && enabled
-        ? AppBrandLayer.button(context, hover: lit && !_pressed, pressed: _pressed)
+        ? null
         : tonal && !lit
             ? AppBrandLayer.iconTint(context)
             : null;
@@ -450,12 +469,22 @@ class _AppIconButtonState extends State<AppIconButton> {
       width: AppTouch.min - AppSpace.xs,
       height: AppTouch.min - AppSpace.xs,
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: gradient == null ? fill : null,
-        gradient: gradient,
-        borderRadius: AppRadius.chipAll,
-        boxShadow: _focus && enabled && appKeyboardFocus() ? appFocusRing(context) : null,
-      ),
+      // D-650 r2: filled wears the brand fill, its cream end past the centred glyph
+      decoration: filled && enabled
+          ? AppBrandLayer.buttonFill(
+              context,
+              hover: lit && !_pressed,
+              pressed: _pressed,
+              content: AppIconSize.lg,
+              borderRadius: AppRadius.chipAll,
+              boxShadow: _focus && appKeyboardFocus() ? appFocusRing(context) : null,
+            )
+          : BoxDecoration(
+              color: gradient == null ? fill : null,
+              gradient: gradient,
+              borderRadius: AppRadius.chipAll,
+              boxShadow: _focus && enabled && appKeyboardFocus() ? appFocusRing(context) : null,
+            ),
       child: widget.busy
           ? SizedBox(
               width: AppIconSize.md,

@@ -88,6 +88,10 @@ final _blocked = <(String, String, bool Function(String label), String)>[
   if (Platform.isLinux)
     for (final c in const ['login', 'register', 'verify', 'login_biometric'])
       (c, 'text contrast', (l) => l == 'NextBrain', 'Linux: the test font edge on the hero gradient, not the colours'),
+  // Not a colour fault: a four-letter caption in an 872 px wide node on the page canvas, which wears the doodle
+  // field (D-650 r2, the primary at 4 %). In that rect the doodles' pixels out-count the test font's boxes, so the
+  // check pairs the canvas with a doodle (1.06:1) and never sees the text; the caption's own colour is unchanged.
+  ('org department', 'text contrast', (l) => l == 'و9 آخرون', 'the doodle canvas out-counts a short caption in a wide node'),
 ];
 
 /// The app's real theme (light or dark) and locale (main.dart: `appLocale`, core/app_locale.dart) around [child],

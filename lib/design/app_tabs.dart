@@ -169,6 +169,8 @@ class _TabStripState extends State<_TabStrip> {
 
     return LayoutBuilder(builder: (context, box) {
       final widths = [for (final it in items) _natural(context, it, style)];
+      // the open tab's label span (its natural width less the side padding): the pill's cream stays past it
+      final label = widths[index] - 2 * (underline ? AppSpace.sm : AppSpace.md);
       final total = widths.fold<double>(0, (a, b) => a + b);
       final avail = box.hasBoundedWidth ? box.maxWidth - pad * 2 - (underline ? 0 : 2 * AppBorder.hairline) : total;
       if (widget.expand && total < avail) {
@@ -250,12 +252,10 @@ class _TabStripState extends State<_TabStrip> {
             height: underline ? _rule : null,
             child: ExcludeSemantics(
               child: DecoratedBox(
-                // the selected pill wears the brand gradient (D-649); the underline stays an ink rule
-                decoration: BoxDecoration(
-                  color: underline ? c.textDark : null,
-                  gradient: underline ? null : AppBrandLayer.button(context),
-                  borderRadius: BorderRadius.circular(underline ? _rule / 2 : AppRadius.pill),
-                ),
+                // the selected pill wears the brand fill, cream past the label (D-650 r2); the underline stays an ink rule
+                decoration: underline
+                    ? BoxDecoration(color: c.textDark, borderRadius: BorderRadius.circular(_rule / 2))
+                    : AppBrandLayer.buttonFill(context, content: label, borderRadius: BorderRadius.circular(AppRadius.pill)),
               ),
             ),
           ),

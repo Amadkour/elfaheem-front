@@ -30,7 +30,7 @@ import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_blocks.dart';
 import 'package:flutter_education_app/design/app_buttons.dart' show appFocusRing, appKeyboardFocus;
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
-import 'package:flutter_education_app/design/app_gradients.dart' show AppBrandLayer;
+import 'package:flutter_education_app/design/app_gradients.dart' show AppBrandLabel, AppBrandLayer, AppBrandSpan;
 import 'package:flutter_education_app/design/app_inputs.dart'
     show validateEmail, kEmailRegex, appFieldDecoration, appFieldTextStyle, appFieldFocusInk;
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppEase, AppPressScale;
@@ -866,6 +866,9 @@ class AuthButton extends StatefulWidget {
 
 class _AuthButtonState extends State<AuthButton> {
   final _states = WidgetStatesController();
+
+  /// Where the label sits, so the brand fill keeps its cream end past it (D-650 r2).
+  final _span = AppBrandSpan();
   bool _focused = false;
 
   @override
@@ -922,14 +925,17 @@ class _AuthButtonState extends State<AuthButton> {
               height: AppIconSize.md,
               child: CircularProgressIndicator(strokeWidth: 2.2, color: c.onHero),
             )
-          : Row(
+          : AppBrandLabel(
               key: const ValueKey('label'),
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null && widget.iconBefore) ...[icon, const SizedBox(width: AppSpace.xs)],
-                Flexible(child: label),
-                if (icon != null && !widget.iconBefore) ...[const SizedBox(width: AppSpace.xs), icon],
-              ],
+              span: _span,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (icon != null && widget.iconBefore) ...[icon, const SizedBox(width: AppSpace.xs)],
+                  Flexible(child: label),
+                  if (icon != null && !widget.iconBefore) ...[const SizedBox(width: AppSpace.xs), icon],
+                ],
+              ),
             ),
     );
 
@@ -978,11 +984,11 @@ class _AuthButtonState extends State<AuthButton> {
                 // the brand gradient (D-649) or the solid fill above, not the theme's painter for raw FilledButtons
                 backgroundBuilder: (context, states, child) => brand
                     ? DecoratedBox(
-                        decoration: BoxDecoration(
-                          borderRadius: radius,
-                          gradient: AppBrandLayer.button(context,
-                              hover: states.contains(WidgetState.hovered), pressed: states.contains(WidgetState.pressed)),
-                        ),
+                        decoration: AppBrandLayer.buttonFill(context,
+                            hover: states.contains(WidgetState.hovered),
+                            pressed: states.contains(WidgetState.pressed),
+                            span: _span,
+                            borderRadius: radius),
                         child: child ?? const SizedBox.shrink(),
                       )
                     : child ?? const SizedBox.shrink(),

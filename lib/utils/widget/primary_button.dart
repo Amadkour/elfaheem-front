@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/theme/theme_config_provider.dart';
 import '../../design/app_buttons.dart' show appFocusRing, appKeyboardFocus;
-import '../../design/app_gradients.dart' show AppBrandLayer;
+import '../../design/app_gradients.dart' show AppBrandLabel, AppBrandLayer, AppBrandSpan;
 import '../../design/app_motion_kit.dart' show AppEase, AppPressScale;
 import '../../design/app_tokens.dart';
 import 'app_loading_indicator.dart';
@@ -41,6 +41,8 @@ class PrimaryButton extends StatefulWidget {
 }
 
 class _PrimaryButtonState extends State<PrimaryButton> {
+  /// Where the label sits, so the brand fill keeps its cream end past it (D-650 r2).
+  final _span = AppBrandSpan();
   bool _pressed = false;
   bool _hover = false;
   bool _focused = false;
@@ -66,7 +68,7 @@ class _PrimaryButtonState extends State<PrimaryButton> {
     final r = AppRadius.controlAll;
     final motion = AppMotion.of(context);
     final style = AppType.row(context).copyWith(fontSize: 15, fontWeight: FontWeight.w600, color: ink, height: 1.2);
-    final content = Row(
+    final content = AppBrandLabel(span: _span, child: Row(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -80,7 +82,7 @@ class _PrimaryButtonState extends State<PrimaryButton> {
           Icon(widget.icon, color: ink, size: AppIconSize.md),
         ],
       ],
-    );
+    ));
     // `width: double.infinity` throws when the parent gives UNBOUNDED width (a button placed directly in a Row):
     // fill the width only when it is bounded; otherwise size to the content.
     return LayoutBuilder(
@@ -110,18 +112,24 @@ class _PrimaryButtonState extends State<PrimaryButton> {
                 child: AnimatedContainer(
                   duration: motion.fast,
                   curve: AppEase.out,
-                  decoration: BoxDecoration(
-                    color: brand ? null : fill,
-                    // D-649: the brand button is the gradient primary → primary_dark on a soft tinted shadow
-                    gradient: brand ? AppBrandLayer.button(context, hover: _hover && active, pressed: _pressed && active) : null,
-                    borderRadius: r,
-                    border: off ? Border.all(color: c.divider, width: AppBorder.hairline) : null,
-                    boxShadow: _focused && active && appKeyboardFocus()
-                        ? appFocusRing(context)
-                        : brand
-                            ? AppBrandLayer.buttonShadow(context, pressed: _pressed && active)
-                            : null,
-                  ),
+                  // D-650 r2: the brand button is primary → cream past the label on a soft tinted shadow
+                  decoration: brand
+                      ? AppBrandLayer.buttonFill(
+                          context,
+                          hover: _hover && active,
+                          pressed: _pressed && active,
+                          span: _span,
+                          borderRadius: r,
+                          boxShadow: _focused && active && appKeyboardFocus()
+                              ? appFocusRing(context)
+                              : AppBrandLayer.buttonShadow(context, pressed: _pressed && active),
+                        )
+                      : BoxDecoration(
+                          color: fill,
+                          borderRadius: r,
+                          border: off ? Border.all(color: c.divider, width: AppBorder.hairline) : null,
+                          boxShadow: _focused && active && appKeyboardFocus() ? appFocusRing(context) : null,
+                        ),
                   padding: const EdgeInsetsDirectional.symmetric(horizontal: AppSpace.lg),
                   // the label keeps its place under the ring, so the width never jumps
                   child: Stack(alignment: Alignment.center, children: [
