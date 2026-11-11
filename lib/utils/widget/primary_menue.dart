@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 class MyPrimaryMenu extends StatelessWidget {
   const MyPrimaryMenu(
@@ -27,17 +27,15 @@ class MyPrimaryMenu extends StatelessWidget {
     return Material(
       shadowColor: const Color.fromRGBO(0, 0, 0, 0.25),
       color: context.colors.inputBg,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppRadius.control),
+      clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
 
         controller: controller,
         shape: Border.all(style: BorderStyle.none),
         title: Text(
           initValue == null ? label : initValue!['text'].toString().tr,
-          style:  TextStyle(
-            fontFamily: AppFonts.family,
-            fontWeight: FontWeight.w100,
-            fontSize: 17,
+          style: AppType.row(context).copyWith(
             color: context.colors.textDark,
           ),
         ),
@@ -54,17 +52,14 @@ class MyPrimaryMenu extends StatelessWidget {
                         leading: haveLogo
                             ? (Image.network(
                                 options[i]['logo'],
-                                width: 25,
-                                height: 25,
+                                width: AppIconSize.lg,
+                                height: AppIconSize.lg,
                                 errorBuilder: (q, w, e) => Icon(Icons.category),
                               ))
                             : null,
                         title: Text(
                           options[i]['text'].toString().tr,
-                          style:  TextStyle(
-                            fontFamily: AppFonts.family,
-                            fontWeight: FontWeight.w100,
-                            fontSize: 17,
+                          style: AppType.row(context).copyWith(
                             color: context.colors.textMedium,
                           ),
                         ),
@@ -75,7 +70,7 @@ class MyPrimaryMenu extends StatelessWidget {
                       ),
                     ),
                     i < options.length - 1
-                        ? const Divider(height: 0)
+                        ? Divider(height: 0, thickness: AppBorder.hairline, color: context.colors.divider)
                         : SizedBox.shrink()
                   ],
                 )),

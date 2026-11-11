@@ -16,18 +16,16 @@ import 'package:flutter_education_app/features/student/courses/details/course_de
 import 'package:flutter_education_app/features/student/models.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
-import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_labels.dart' show disposeAfterRoute;
-import '../admin/admin_list.dart';
 import '../admin/admin_page.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import '../org/org_providers.dart';
 import '../org/org_ui.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Home slider
@@ -43,9 +41,14 @@ Map<String, String> adPages() => {
     };
 
 /// Home "featured" slider — sits after the greeting / search / next class, before the organization block:
-/// personal content first, ads second. Auto-plays, pauses while the finger is on it, 👍 / 👎 per ad.
+/// personal content first, ads second. Auto-plays, pauses while the finger is on it, a like / dislike per ad.
+///
+/// Editorial (D-613): a picture ad is the picture under a reading scrim, a text ad is a tinted block (peach / sky,
+/// stable per ad) with its title in the editorial headline. The page marks sit under the banner on the canvas, so
+/// they read on every ad. The slider arrives once (it loads after the home), and the picture drifts a few pixels
+/// against the swipe (parallax).
 class HomeAdsSlider extends StatefulWidget {
-  const HomeAdsSlider({super.key, this.padding = const EdgeInsets.fromLTRB(16, 4, 16, 14)});
+  const HomeAdsSlider({super.key, this.padding = const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.sm)});
   final EdgeInsetsGeometry padding;
 
   @override
@@ -58,6 +61,9 @@ class _HomeAdsSliderState extends State<HomeAdsSlider> {
   Timer? _timer;
   int _page = 0;
   bool _hold = false;
+
+  /// How long one page turn of the auto-play takes.
+  static const _turn = Duration(milliseconds: 500);
 
   @override
   void initState() {
@@ -83,8 +89,14 @@ class _HomeAdsSliderState extends State<HomeAdsSlider> {
       _timer?.cancel();
       if (_ads.length > 1) {
         _timer = Timer.periodic(const Duration(seconds: 6), (_) {
-          if (_hold || !_pc.hasClients) return;
-          _pc.animateToPage((_page + 1) % _ads.length, duration: const Duration(milliseconds: 500), curve: Curves.easeOutCubic);
+          if (_hold || !_pc.hasClients || !mounted) return;
+          final next = (_page + 1) % _ads.length;
+          // Reduce motion: the page changes in place instead of sliding.
+          if (appMotionOff(context)) {
+            _pc.jumpToPage(next);
+          } else {
+            _pc.animateToPage(next, duration: _turn, curve: AppEase.out);
+          }
         });
       }
     } catch (_) {}
@@ -132,42 +144,33 @@ class _HomeAdsSliderState extends State<HomeAdsSlider> {
     if (_ads.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: widget.padding,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1000),
+      child: AppWidthBox(
+        width: AppWidth.content,
+        gutters: false,
+        child: AppReveal(
+          index: 0,
+          group: 'home-ads',
           child: LayoutBuilder(builder: (context, box) {
             final ratio = box.maxWidth > 700 ? 16 / 5.6 : 16 / 8.5;      // calmer, wider banner on tablets / web
-            return Listener(
-              onPointerDown: (_) => _hold = true,
-              onPointerUp: (_) => _hold = false,
-              child: AspectRatio(
-                aspectRatio: ratio,
-                child: Stack(children: [
-                  PageView.builder(
+            return Column(mainAxisSize: MainAxisSize.min, children: [
+              Listener(
+                onPointerDown: (_) => _hold = true,
+                onPointerUp: (_) => _hold = false,
+                child: AspectRatio(
+                  aspectRatio: ratio,
+                  child: PageView.builder(
                     controller: _pc,
                     itemCount: _ads.length,
                     onPageChanged: (i) => setState(() => _page = i),
                     itemBuilder: (_, i) => AdCard(ad: _ads[i], onTap: () => _open(_ads[i]), onReact: (v) => _react(i, v)),
                   ),
-                  if (_ads.length > 1)
-                    PositionedDirectional(
-                      bottom: 12,
-                      end: 16,
-                      child: Row(children: [
-                        for (var i = 0; i < _ads.length; i++)
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 250),
-                            margin: const EdgeInsets.symmetric(horizontal: 2.5),
-                            width: i == _page ? 16 : 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                                color: context.colors.onHero.withValues(alpha: i == _page ? 0.95 : 0.5), borderRadius: BorderRadius.circular(4)),
-                          ),
-                      ]),
-                    ),
-                ]),
+                ),
               ),
-            );
+              if (_ads.length > 1) ...[
+                AppSpace.gapXs,
+                _AdPageMarks(count: _ads.length, page: _page),
+              ],
+            ]);
           }),
         ),
       ),
@@ -175,12 +178,50 @@ class _HomeAdsSliderState extends State<HomeAdsSlider> {
   }
 }
 
-/// One ad: full-bleed media, soft gradient, title / text, CTA hint, 👍 / 👎 glass pills, discreet "Ad" tag.
+/// The page marks under the slider: the open ad a short emerald bar, the others quiet dots on the canvas.
+class _AdPageMarks extends StatelessWidget {
+  const _AdPageMarks({required this.count, required this.page});
+  final int count, page;
+
+  /// The mark's thickness, a dot's width and the open bar's width.
+  static const double _dot = 6, _bar = 18;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final motion = AppMotion.of(context);
+    return ExcludeSemantics(
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        for (var i = 0; i < count; i++)
+          AnimatedContainer(
+            duration: motion.base,
+            curve: AppEase.out,
+            margin: const EdgeInsets.symmetric(horizontal: AppSpace.xxs / 2),
+            width: i == page ? _bar : _dot,
+            height: _dot,
+            decoration: BoxDecoration(
+              color: i == page ? c.primary : c.textLight.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+            ),
+          ),
+      ]),
+    );
+  }
+}
+
+/// One ad. A picture ad: the picture full bleed under a reading scrim, the title and text in on-hero ink. A text,
+/// link or video ad without a picture: a tinted block (peach / sky, the same for the same ad everywhere) with the
+/// title in the editorial headline. Like / dislike and the discreet "Ad" tag sit on top as small plates; [compact]
+/// (a list thumbnail) keeps only the picture or the block and the kind's mark.
 class AdCard extends StatelessWidget {
-  const AdCard({super.key, required this.ad, this.onTap, this.onReact});
+  const AdCard({super.key, required this.ad, this.onTap, this.onReact, this.compact = false});
   final Map<String, dynamic> ad;
   final VoidCallback? onTap;
   final ValueChanged<int>? onReact;
+  final bool compact;
+
+  /// Wider than this the ad is a banner on a tablet or the web: a display title and the large kind mark.
+  static const double _wideAd = 700;
 
   @override
   Widget build(BuildContext context) {
@@ -190,86 +231,152 @@ class AdCard extends StatelessWidget {
     final showImage = media.isNotEmpty && ad['media_type'] == 'image';
     final hasTarget = '${ad['target_type'] ?? 'none'}' != 'none' || isVideo;
     final mine = asInt(ad['my_reaction']);
-    Widget glass(Widget child) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-          decoration: BoxDecoration(color: c.heroShade.withValues(alpha: 0.28), borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: c.onHero.withValues(alpha: 0.18))),
-          child: child,
-        );
-    Widget react(IconData on, IconData off, int v, int n) => InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: onReact == null ? null : () => onReact!(v),
-          child: glass(Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(mine == v ? on : off, size: 15, color: c.onHero),
-            if (n > 0) ...[const SizedBox(width: 4), Text('$n', style: TextStyle(color: c.onHero, fontSize: 11.5))],
-          ])),
-        );
-    return Material(
-      borderRadius: BorderRadius.circular(24),
-      clipBehavior: Clip.antiAlias,
-      color: c.primary,
-      elevation: 0,
-      child: InkWell(
-        onTap: onTap,
-        child: Stack(fit: StackFit.expand, children: [
-          if (showImage)
-            Image.network(orgFileUrl(media), fit: BoxFit.cover, errorBuilder: (_, _, _) => const SizedBox.shrink())
-          else
-            AppMeshSurface(color: c.primary, child: const SizedBox.expand()),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                  colors: [c.heroShade.withValues(alpha: 0.2), c.heroShade.withValues(alpha: 0), c.heroShade.withValues(alpha: 0.75)],
-                  stops: const [0, 0.35, 1]),
-            ),
+    final block = AppBlockColors.of(context, AppBlockTone.forKey('ad-${ad['id'] ?? ad['title']}'));
+    // The inks of this card: on-hero over a picture, the block's inks on a tint.
+    final ink = showImage ? c.onHero : block.ink;
+    final muted = showImage ? c.onHeroMuted : block.muted;
+    final radius = BorderRadius.circular(compact ? AppRadius.chip : AppRadius.block);
+
+    // A small plate on the card: dark glass over a picture, paper over a tint.
+    Widget plate(Widget child) => DecoratedBox(
+          decoration: BoxDecoration(
+            color: showImage ? c.heroShade.withValues(alpha: 0.32) : c.cardBg.withValues(alpha: 0.72),
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            border: Border.all(color: showImage ? c.onHero.withValues(alpha: 0.2) : c.divider, width: AppBorder.hairline),
           ),
-          if (isVideo)
-            Center(
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: c.onHero.withValues(alpha: 0.25), shape: BoxShape.circle,
-                    border: Border.all(color: c.onHero.withValues(alpha: 0.6))),
-                child: Icon(Icons.play_arrow_rounded, color: c.onHero, size: 34),
+          child: Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs + AppSpace.xxs / 2, vertical: AppSpace.xxs), child: child),
+        );
+    // Like / dislike: the plate is small, its target is the full 48 px.
+    Widget react(IconData on, IconData off, int v, int n, String label) => Semantics(
+          button: true,
+          selected: mine == v,
+          label: label,
+          child: InkWell(
+            customBorder: const StadiumBorder(),
+            onTap: onReact == null ? null : () => onReact!(v),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+              child: Center(
+                widthFactor: 1,
+                child: plate(Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(mine == v ? on : off, size: AppIconSize.sm, color: ink),
+                  if (n > 0) ...[
+                    const SizedBox(width: AppSpace.xxs),
+                    Text('$n', style: AppType.meta(context).copyWith(color: ink, fontFeatures: const [FontFeature.tabularFigures()])),
+                  ],
+                ])),
               ),
             ),
+          ),
+        );
+
+    final Widget surface = showImage
+        ? AppParallaxImage(
+            axis: Axis.horizontal,
+            image: Image.network(orgFileUrl(media), fit: BoxFit.cover, errorBuilder: (_, _, _) => ColoredBox(color: block.surface)),
+          )
+        : ColoredBox(color: block.surface);
+
+    final kindIcon = isVideo
+        ? Icons.play_arrow_rounded
+        : ad['media_type'] == 'link'
+            ? Icons.link_rounded
+            : Icons.campaign_rounded;
+
+    List<Widget> layers(bool wide) => <Widget>[
+      surface,
+      // The reading scrim: only under the text at the bottom of a picture, never a wash over the whole ad.
+      if (showImage && !compact)
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [c.heroShade.withValues(alpha: 0.18), c.heroShade.withValues(alpha: 0), c.heroShade.withValues(alpha: 0.78)],
+              stops: const [0, 0.32, 1],
+            ),
+          ),
+        ),
+      if (compact && !showImage)
+        Center(child: Icon(kindIcon, size: AppIconSize.lg, color: block.muted))
+      else if (isVideo && (compact || showImage))
+        Center(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: showImage ? c.heroShade.withValues(alpha: 0.35) : c.cardBg,
+              shape: BoxShape.circle,
+              border: Border.all(color: showImage ? c.onHero.withValues(alpha: 0.6) : c.divider, width: AppBorder.strong),
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(compact ? AppSpace.xxs : AppSpace.sm),
+              child: Icon(Icons.play_arrow_rounded, color: ink, size: compact ? AppIconSize.md : AppIconSize.xl),
+            ),
+          ),
+        ),
+      // A wide text ad: its kind's mark drawn large and quiet at the end, so the block reads as a poster, not an
+      // empty box (phones keep the room for the title).
+      if (wide && !compact && !showImage)
+        PositionedDirectional(
+          end: AppSpace.xxl,
+          top: 0,
+          bottom: 0,
+          child: Center(child: Icon(kindIcon, size: AppIconSize.hero * 3, color: block.muted.withValues(alpha: 0.16))),
+        ),
+      if (!compact) ...[
+        if (onReact != null)
           PositionedDirectional(
-            top: 12,
-            start: 12,
-            child: Row(children: [
-              if (onReact != null) ...[
-                react(Icons.thumb_up_alt_rounded, Icons.thumb_up_alt_outlined, 1, asInt(ad['likes'])),
-                const SizedBox(width: 6),
-                react(Icons.thumb_down_alt_rounded, Icons.thumb_down_alt_outlined, -1, asInt(ad['dislikes'])),
-              ],
+            top: AppSpace.xxs,
+            start: AppSpace.xxs,
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              react(Icons.thumb_up_alt_rounded, Icons.thumb_up_alt_outlined, 1, asInt(ad['likes']), t('أعجبني', 'Like')),
+              react(Icons.thumb_down_alt_rounded, Icons.thumb_down_alt_outlined, -1, asInt(ad['dislikes']), t('لم يعجبني', 'Dislike')),
             ]),
           ),
-          PositionedDirectional(
-            top: 12,
-            end: 12,
-            child: glass(Text(t('إعلان', 'Ad'), style: TextStyle(fontFamily: AppFonts.family, fontSize: 10.5, color: c.onHero))),
-          ),
-          PositionedDirectional(
-            start: 18,
-            end: 70,
-            bottom: 16,
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text('${ad['title']}', maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 18, fontWeight: FontWeight.w800, color: c.onHero)),
-              if ('${ad['body'] ?? ''}'.isNotEmpty)
-                Text('${ad['body']}', maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.onHero.withValues(alpha: 0.9))),
-              if (hasTarget) ...[
-                const SizedBox(height: 6),
-                Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text(isVideo && '${ad['target_type']}' == 'none' ? t('شاهد الآن', 'Watch now') : t('اكتشف', 'Discover'),
-                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, fontWeight: FontWeight.w800, color: c.onHero)),
-                  const SizedBox(width: 4),
-                  Icon(Icons.arrow_forward_rounded, size: 15, color: c.onHero),
-                ]),
-              ],
-            ]),
-          ),
-        ]),
+        PositionedDirectional(
+          top: AppSpace.sm,
+          end: AppSpace.sm,
+          child: plate(Text(t('إعلان', 'Ad'), style: AppType.meta(context).copyWith(color: muted))),
+        ),
+        PositionedDirectional(
+          start: AppSpace.lg,
+          end: AppSpace.lg,
+          bottom: AppSpace.md,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text('${ad['title']}',
+                maxLines: showImage ? 1 : 2,
+                overflow: TextOverflow.ellipsis,
+                style: (showImage ? AppType.section(context) : wide ? AppType.display(context) : AppType.headline(context)).copyWith(color: ink, height: 1.1)),
+            if ('${ad['body'] ?? ''}'.isNotEmpty) ...[
+              const SizedBox(height: AppSpace.xxs),
+              Text('${ad['body']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.body(context).copyWith(color: muted)),
+            ],
+            if (hasTarget) ...[
+              AppSpace.gapXs,
+              Row(mainAxisSize: MainAxisSize.min, children: [
+                Flexible(
+                  child: Text(isVideo && '${ad['target_type']}' == 'none' ? t('شاهد الآن', 'Watch now') : t('اكتشف', 'Discover'),
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: AppType.label(context).copyWith(color: showImage ? ink : block.accentInk(c.primary), fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(width: AppSpace.xxs),
+                Icon(isVideo ? Icons.play_circle_rounded : Icons.arrow_forward_rounded, size: AppIconSize.sm, color: showImage ? ink : block.accentInk(c.primary)),
+              ]),
+            ],
+          ]),
+        ),
+      ],
+    ];
+
+    return Material(
+      color: block.surface,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: radius,
+        side: showImage || block.border == null ? BorderSide.none : BorderSide(color: block.border!, width: AppBorder.hairline),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        child: LayoutBuilder(builder: (context, box) => Stack(fit: StackFit.expand, children: layers(box.maxWidth > _wideAd))),
       ),
     );
   }
@@ -314,7 +421,7 @@ Future<bool> showAdEditor(BuildContext context, {required String base, Map<Strin
         }
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(edit == null ? t('إعلان جديد', 'New ad') : t('تعديل الإعلان', 'Edit ad')),
             ChoiceRow<String>(label: t('النوع', 'Type'),
@@ -323,19 +430,21 @@ Future<bool> showAdEditor(BuildContext context, {required String base, Map<Strin
             Field(controller: title, label: t('العنوان', 'Title')),
             Field(controller: body, label: t('وصف قصير', 'Short text'), maxLines: 2),
             if (mediaType == 'image')
-              OutlinedButton.icon(
+              AppButton.secondary(
                 onPressed: () async {
                   final r = await orgPickAndUpload('/api/v1/ads/media', extensions: const ['png', 'jpg', 'jpeg', 'webp'],
                       context: ctx, cropShape: CropShape.wide, allowTransparent: false); // the server stores a JPEG
                   if (r != null) set(() => media.text = '${r['url']}');
                 },
-                icon: Icon(media.text.isEmpty ? Icons.add_photo_alternate_rounded : Icons.check_circle_rounded),
-                label: Text(media.text.isEmpty ? t('رفع صورة الإعلان', 'Upload the ad image') : t('تغيير الصورة', 'Change image')),
+                icon: media.text.isEmpty ? Icons.add_photo_alternate_rounded : Icons.check_circle_rounded,
+                label: media.text.isEmpty ? t('رفع صورة الإعلان', 'Upload the ad image') : t('تغيير الصورة', 'Change image'),
               ),
             if (mediaType == 'video') ...[
               // a link (YouTube / Vimeo / file URL) OR a video from this device (mp4 / webm / mov, up to 60 MB)
               Field(controller: media, label: t('رابط الفيديو', 'Video link'), ltr: true),
-              OutlinedButton.icon(
+              AppSpace.gapXs,
+              AppButton.secondary(
+                busy: uploading,
                 onPressed: () async {
                   set(() => uploading = true);
                   final r = await orgPickAndUpload('/api/v1/ads/media', extensions: const ['mp4', 'webm', 'mov']);
@@ -344,13 +453,11 @@ Future<bool> showAdEditor(BuildContext context, {required String base, Map<Strin
                     if (r != null) media.text = '${r['url']}';
                   });
                 },
-                icon: uploading
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.video_library_rounded),
-                label: Text(t('أو اختر فيديو من جهازك', 'or choose a video from your device')),
+                icon: Icons.video_library_rounded,
+                label: t('أو اختر فيديو من جهازك', 'or choose a video from your device'),
               ),
             ],
-            const SizedBox(height: 8),
+            AppSpace.gapXs,
             ChoiceRow<String>(label: t('عند الضغط', 'On tap'),
                 options: {'none': t('لا شيء', 'Nothing'), 'url': t('رابط خارجي', 'External link'), 'course': t('كورس', 'Course'), 'page': t('صفحة في التطبيق', 'App page')},
                 value: targetType, onChanged: (v) => set(() {
@@ -375,30 +482,41 @@ Future<bool> showAdEditor(BuildContext context, {required String base, Map<Strin
                 onChanged: (v) => set(() => target.text = v ?? ''),
               ),
             if (!teacher) ...[
-              Text(t('يظهر لـ', 'Shown to'), style: orgText(ctx, size: 12.5, color: c.textLight)),
-              Wrap(spacing: 8, children: [
+              AppFieldLabel(t('يظهر لـ', 'Shown to')),
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 for (final e in {'student': t('الطلاب', 'Students'), 'teacher': t('المعلمين', 'Teachers'), 'parent': t('أولياء الأمور', 'Parents')}.entries)
-                  FilterChip(label: Text(e.value), selected: roles.contains(e.key),
-                      onSelected: (on) => set(() => on ? roles.add(e.key) : roles.remove(e.key))),
+                  AppChoiceChip(label: e.value, selected: roles.contains(e.key),
+                      onTap: () => set(() => roles.contains(e.key) ? roles.remove(e.key) : roles.add(e.key))),
               ]),
             ] else
-              Text(t('يظهر لطلاب كورساتك فقط', 'Shown to the students of your courses only'), style: orgText(ctx, size: 12.5, color: c.textMedium)),
-            const SizedBox(height: 8),
+              Text(t('يظهر لطلاب كورساتك فقط', 'Shown to the students of your courses only'), style: AppType.meta(ctx).copyWith(color: c.textMedium)),
+            AppSpace.gapSm,
             Row(children: [
-              Expanded(child: OutlinedButton(onPressed: () => pickDate(true), child: Text(start == null ? t('يبدأ', 'Starts') : shortDate(start!.toIso8601String())))),
-              const SizedBox(width: 8),
-              Expanded(child: OutlinedButton(onPressed: () => pickDate(false), child: Text(end == null ? t('ينتهي', 'Ends') : shortDate(end!.toIso8601String())))),
+              Expanded(
+                  child: AppButton.secondary(
+                      icon: Icons.event_rounded,
+                      onPressed: () => pickDate(true),
+                      label: start == null ? t('يبدأ', 'Starts') : shortDate(start!.toIso8601String()))),
+              AppSpace.gapXs,
+              Expanded(
+                  child: AppButton.secondary(
+                      icon: Icons.event_busy_rounded,
+                      onPressed: () => pickDate(false),
+                      label: end == null ? t('ينتهي', 'Ends') : shortDate(end!.toIso8601String()))),
             ]),
             if (teacher && quote != null)
               Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: OrgPill(t('التكلفة: ${quote!['cost']} (${quote!['days']} يوم)', 'Cost: ${quote!['cost']} (${quote!['days']} days)'),
-                    icon: Icons.payments_rounded, color: c.warning),
+                padding: const EdgeInsets.only(top: AppSpace.sm),
+                child: AppStatusBadge(
+                    label: t('التكلفة: ${quote!['cost']} (${quote!['days']} يوم)', 'Cost: ${quote!['cost']} (${quote!['days']} days)'),
+                    icon: Icons.payments_rounded,
+                    tone: AppTone.warning),
               ),
-            if (!teacher) OrgSwitchRow(title: t('مفعّل', 'Active'), value: active, onChanged: (v) => set(() => active = v)),
-            const SizedBox(height: 10),
-            PrimaryButton(
-              isLoading: busy,
+            if (!teacher) AppSwitchTile(title: t('مفعّل', 'Active'), value: active, onChanged: (v) => set(() => active = v)),
+            AppSpace.gapMd,
+            AppButton.primary(
+              expand: true,
+              busy: busy,
               label: teacher && edit == null ? t('إرسال للمراجعة', 'Send for review') : t('حفظ', 'Save'),
               onPressed: () async {
                 set(() => busy = true);
@@ -424,27 +542,49 @@ Future<bool> showAdEditor(BuildContext context, {required String base, Map<Strin
   return saved;
 }
 
+/// One performance figure of an ad: a quiet vector mark and the number (tabular, so a column of rows lines up).
+Widget _adStat(BuildContext context, IconData icon, String text) => Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, size: AppIconSize.sm, color: context.colors.textLight),
+      const SizedBox(width: AppSpace.xxs),
+      Flexible(
+        child: Text(text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppType.meta(context).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+      ),
+    ]);
+
+/// A teacher's ad in their list: a paper card with the ad's own thumbnail (its picture or its tinted block), the
+/// title, the review status and the figures.
 Widget _adRow(BuildContext context, Map<String, dynamic> a, {required VoidCallback onTap, List<Widget> actions = const []}) {
-  final c = context.colors;
   final st = '${a['status']}';
+  final cost = a['cost'];
   return Padding(
-    padding: const EdgeInsets.fromLTRB(16, 5, 16, 5),
-    child: RowCard(
-      accent: st == 'pending' ? c.warning : (a['is_active'] == false ? c.textLight : null),
+    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xxs + AppSpace.xxs / 2),
+    child: AppCard(
       onTap: onTap,
+      padding: const EdgeInsets.all(AppSpace.sm),
       child: Row(children: [
-        SizedBox(width: 92, child: AspectRatio(aspectRatio: 16 / 9, child: AdCard(ad: a))),
-        const SizedBox(width: 12),
+        SizedBox(width: _thumbWidth, child: AspectRatio(aspectRatio: 16 / 9, child: AdCard(ad: a, compact: true))),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${a['title']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800)),
-            const SizedBox(height: 4),
-            Wrap(spacing: 6, runSpacing: 4, children: [
-              StatusChip(statusLabel(st == 'approved' ? 'active' : st), statusColor(context, st == 'approved' ? 'active' : st)),
-              OrgPill('👁 ${a['impressions']} · 👆 ${a['clicks']} · ${a['ctr']}%', color: c.textMedium),
-              OrgPill('👍 ${a['likes'] ?? 0} · 👎 ${a['dislikes'] ?? 0}', color: c.textMedium),
-              if ((a['cost'] ?? 0) > 0) OrgPill('${a['cost']} ${a['paid'] == true ? '✓' : ''}', icon: Icons.payments_rounded, color: c.warning),
-              if (a['owner'] != null && a['owner_kind'] == 'teacher') OrgPill('${asMap(a['owner'])['name']}', icon: Icons.person_rounded),
+            Text('${a['title']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+            AppSpace.gapXs,
+            Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              AppStatusBadge(label: _adStatusLabel(st), tone: _adTone(st), dense: true),
+              if (a['is_active'] == false && st != 'rejected') AppStatusBadge(label: t('متوقف', 'Off'), tone: AppTone.neutral, dense: true),
+              _adStat(context, Icons.visibility_rounded, '${a['impressions'] ?? 0}'),
+              _adStat(context, Icons.ads_click_rounded, '${a['clicks'] ?? 0} · ${a['ctr'] ?? 0}%'),
+              _adStat(context, Icons.thumb_up_alt_outlined, '${a['likes'] ?? 0}'),
+              _adStat(context, Icons.thumb_down_alt_outlined, '${a['dislikes'] ?? 0}'),
+              if (cost is num && cost > 0)
+                AppStatusBadge(
+                    label: '$cost',
+                    icon: a['paid'] == true ? Icons.check_circle_rounded : Icons.payments_rounded,
+                    tone: a['paid'] == true ? AppTone.success : AppTone.warning,
+                    dense: true),
+              if (a['owner'] != null && a['owner_kind'] == 'teacher') _adStat(context, Icons.person_rounded, '${asMap(a['owner'])['name']}'),
             ]),
           ]),
         ),
@@ -453,6 +593,9 @@ Widget _adRow(BuildContext context, Map<String, dynamic> a, {required VoidCallba
     ),
   );
 }
+
+/// The thumbnail's width in a teacher's ad row (a 16:9 picture beside the title).
+const double _thumbWidth = AppTouch.min * 2;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Super admin
@@ -561,12 +704,6 @@ class _AdminAdsViewState extends State<_AdminAdsView> {
     if (await showAdEditor(context, base: _base, edit: a)) p.refresh();
   }
 
-  Widget _stat(BuildContext context, IconData icon, String text) => Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: AppIconSize.sm, color: context.colors.textLight),
-        AppSpace.gapXs,
-        Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context))),
-      ]);
-
   @override
   Widget build(BuildContext context) {
     final p = context.watch<OrgPaged>();
@@ -639,10 +776,10 @@ class _AdminAdsViewState extends State<_AdminAdsView> {
               label: t('الأداء', 'Performance'),
               flex: 2,
               cell: (context, a) => Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs, children: [
-                _stat(context, Icons.visibility_rounded, '${a['impressions'] ?? 0}'),
-                _stat(context, Icons.ads_click_rounded, '${a['clicks'] ?? 0} · ${a['ctr'] ?? 0}%'),
-                _stat(context, Icons.thumb_up_alt_outlined, '${a['likes'] ?? 0}'),
-                _stat(context, Icons.thumb_down_alt_outlined, '${a['dislikes'] ?? 0}'),
+                _adStat(context, Icons.visibility_rounded, '${a['impressions'] ?? 0}'),
+                _adStat(context, Icons.ads_click_rounded, '${a['clicks'] ?? 0} · ${a['ctr'] ?? 0}%'),
+                _adStat(context, Icons.thumb_up_alt_outlined, '${a['likes'] ?? 0}'),
+                _adStat(context, Icons.thumb_down_alt_outlined, '${a['dislikes'] ?? 0}'),
               ]),
             ),
             AppTableColumn<Map<String, dynamic>>(
@@ -757,54 +894,75 @@ class _TeacherAdsPageState extends State<TeacherAdsPage> {
     }
   }
 
+  Future<void> _create() async {
+    if (await showAdEditor(context, base: '/api/v1/teacher/ads', teacher: true)) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final items = _items ?? const <Map<String, dynamic>>[];
     return BasePage(
       useWebCard: true,
       width: AppWidth.content,
       appBar: ScreenAppBar(title: t('إعلاناتي', 'My ads')),
       child: _blocked != null
-          ? OrgEmpty(icon: Icons.campaign_rounded, title: t('الإعلانات غير متاحة حالياً', 'Ads are not available right now'), message: _blocked)
-          : OrgAsync(
-              loading: _items == null,
-              failed: false,
-              onRetry: _load,
-              child: Scaffold(
-                backgroundColor: Colors.transparent,
-                floatingActionButton: FloatingActionButton.extended(
-                  heroTag: 'tads',
-                  onPressed: () async {
-                    if (await showAdEditor(context, base: '/api/v1/teacher/ads', teacher: true)) _load();
-                  },
-                  icon: const Icon(Icons.add_rounded),
-                  label: Text(t('إعلان جديد', 'New ad')),
+          ? AppEmpty(icon: Icons.campaign_rounded, title: t('الإعلانات غير متاحة حالياً', 'Ads are not available right now'), message: _blocked)
+          : _items == null
+              ? const AppListSkeleton(items: 3, withAvatar: false)
+              : Scaffold(
+                  backgroundColor: Colors.transparent,
+                  floatingActionButton: items.isEmpty
+                      ? null
+                      : FloatingActionButton.extended(
+                          heroTag: 'tads',
+                          onPressed: _create,
+                          icon: const Icon(Icons.add_rounded),
+                          label: Text(t('إعلان جديد', 'New ad')),
+                        ),
+                  body: ListView(padding: const EdgeInsets.only(top: AppSpace.sm, bottom: AppSpace.xxxl + AppSpace.xl), children: [
+                    // The terms of advertising: the page's one tinted block.
+                    if (_settings != null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
+                        child: AppBlock(
+                          tone: AppBlockTone.sky,
+                          padding: AppSpace.card,
+                          child: Row(children: [
+                            Icon(Icons.payments_rounded, size: AppIconSize.lg, color: AppBlockColors.of(context, AppBlockTone.sky).accentInk(c.primary)),
+                            const SizedBox(width: AppSpace.sm),
+                            Expanded(
+                              child: Text(
+                                  t('السعر ${_settings!['price_per_day']} لليوم${_settings!['requires_approval'] == true ? ' · يراجع فريق المنصة كل إعلان' : ''}',
+                                      'Price ${_settings!['price_per_day']} per day${_settings!['requires_approval'] == true ? ' · every ad is reviewed' : ''}'),
+                                  style: AppType.bodyStrong(context)),
+                            ),
+                          ]),
+                        ),
+                      ),
+                    if (items.isEmpty)
+                      AppEmpty(
+                          icon: Icons.campaign_rounded,
+                          title: t('أعلن عن كورساتك لطلابك', 'Promote your courses to your students'),
+                          actionLabel: t('إعلان جديد', 'New ad'),
+                          onAction: _create),
+                    for (var i = 0; i < items.length; i++)
+                      AppReveal(
+                        index: i,
+                        group: 'teacher-ads',
+                        child: _adRow(context, items[i],
+                            onTap: () async {
+                              if (await showAdEditor(context, base: '/api/v1/teacher/ads', edit: items[i], teacher: true)) _load();
+                            },
+                            actions: [
+                              IconButton(tooltip: t('حذف', 'Delete'), icon: Icon(Icons.delete_outline_rounded, color: c.danger), onPressed: () async {
+                                if (await confirm(context, message: t('حذف الإعلان؟', 'Delete this ad?'), danger: true) &&
+                                    await OrgApi.i.del('/api/v1/teacher/ads/${items[i]['id']}', t('تم الحذف', 'Deleted')) != null) _load();
+                              }),
+                            ]),
+                      ),
+                  ]),
                 ),
-                body: ListView(padding: const EdgeInsets.only(top: 10, bottom: 100), children: [
-                  if (_settings != null)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                      child: Text(
-                          t('السعر ${_settings!['price_per_day']} لليوم${_settings!['requires_approval'] == true ? ' · يراجع فريق المنصة كل إعلان' : ''}',
-                              'Price ${_settings!['price_per_day']} per day${_settings!['requires_approval'] == true ? ' · every ad is reviewed' : ''}'),
-                          style: orgText(context, size: 12.5, color: c.textMedium)),
-                    ),
-                  if ((_items ?? const []).isEmpty)
-                    OrgEmpty(icon: Icons.campaign_rounded, title: t('أعلن عن كورساتك لطلابك', 'Promote your courses to your students')),
-                  for (final a in _items ?? const <Map<String, dynamic>>[])
-                    _adRow(context, a,
-                        onTap: () async {
-                          if (await showAdEditor(context, base: '/api/v1/teacher/ads', edit: a, teacher: true)) _load();
-                        },
-                        actions: [
-                          IconButton(tooltip: t('حذف', 'Delete'), icon: Icon(Icons.delete_outline_rounded, color: c.danger), onPressed: () async {
-                            if (await confirm(context, message: t('حذف الإعلان؟', 'Delete this ad?'), danger: true) &&
-                                await OrgApi.i.del('/api/v1/teacher/ads/${a['id']}', t('تم الحذف', 'Deleted')) != null) _load();
-                          }),
-                        ]),
-                ]),
-              ),
-            ),
     );
   }
 }

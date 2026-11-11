@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_inputs.dart';
 class MyDatePicker extends StatelessWidget {
   const MyDatePicker(
       {super.key,
@@ -17,40 +18,20 @@ class MyDatePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      shadowColor:  Color.fromRGBO(0, 0, 0, 0.25),
-      color: context.colors.inputBg,
-      borderRadius: BorderRadius.circular(10),
-      elevation: 4,
-      clipBehavior: Clip.antiAliasWithSaveLayer,
-      child: TextFormField(
-        textDirection: TextDirection.rtl,
-        controller: controller,
-        style:  TextStyle(
-            fontFamily: AppFonts.family,
-            fontWeight: FontWeight.w500,
-            fontSize: 15,
-            color: context.colors.textDark),
-        decoration: InputDecoration(
-            hintTextDirection: TextDirection.rtl,
-            floatingLabelBehavior: FloatingLabelBehavior.never,
-            fillColor: context.colors.inputBg,
-            hint: Text(
-              label,
-              style:  TextStyle(
-                  fontFamily: AppFonts.family,
-                  fontWeight: FontWeight.w600,
-                  color: context.colors.textMedium),
-              textDirection: TextDirection.rtl,
-            ),
-            border: const OutlineInputBorder(borderSide: BorderSide.none),
-            suffixIcon: const Icon(CupertinoIcons.calendar)),
-        textInputAction: TextInputAction.next,
-        readOnly: true,
-        onTap: () {
-          _selectDate(context);
-        },
+    // The kit's well (warm fill, radius 14, hairline, focus ring) with the calendar mark at the end.
+    return TextFormField(
+      textDirection: TextDirection.rtl,
+      controller: controller,
+      style: appFieldTextStyle(context),
+      decoration: appFieldDecoration(context, hint: label, suffix: const Icon(CupertinoIcons.calendar)).copyWith(
+        hintTextDirection: TextDirection.rtl,
+        floatingLabelBehavior: FloatingLabelBehavior.never,
       ),
+      textInputAction: TextInputAction.next,
+      readOnly: true,
+      onTap: () {
+        _selectDate(context);
+      },
     );
   }
 

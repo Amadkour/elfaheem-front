@@ -14,7 +14,6 @@ import 'package:flutter/services.dart';
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../features/auth/auth_widgets.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class PhoneCountry {
   final String nameEn;
@@ -165,25 +164,25 @@ class _PhoneInputFieldState extends State<PhoneInputField> {
       button: true,
       label: _country.name,
       child: InkWell(
-        borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
+        borderRadius: const BorderRadius.horizontal(left: Radius.circular(AppRadius.control)),
         onTap: _pickCountry,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 48),
+          constraints: const BoxConstraints(minHeight: AppTouch.min),
           child: Padding(
-            padding: const EdgeInsetsDirectional.only(start: 12, end: 4),
+            padding: const EdgeInsetsDirectional.only(start: AppSpace.sm, end: AppSpace.xxs),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(_country.flag, style: const TextStyle(fontSize: 20)),
-                const SizedBox(width: 6),
+                Text(_country.flag, style: const TextStyle(fontSize: AppIconSize.md)),
+                const SizedBox(width: AppSpace.xs),
                 Text(
                   _country.dial,
-                  style: authText(15, w: FontWeight.w700, c: c.textDark),
+                  style: appFieldTextStyle(context).copyWith(fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()]),
                 ),
-                const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
-                const SizedBox(width: 6),
-                Container(width: 1, height: 24, color: c.divider.withValues(alpha: c.isDark ? 0.9 : 0.75)),
-                const SizedBox(width: 4),
+                const Icon(Icons.keyboard_arrow_down_rounded, size: AppIconSize.md),
+                const SizedBox(width: AppSpace.xs),
+                Container(width: AppBorder.hairline, height: AppIconSize.lg, color: c.divider.withValues(alpha: c.isDark ? 0.9 : 0.75)),
+                const SizedBox(width: AppSpace.xxs),
               ],
             ),
           ),
@@ -195,7 +194,7 @@ class _PhoneInputFieldState extends State<PhoneInputField> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionLabel(label: widget.label),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         // Phone numbers always read left-to-right: [ code ▾ | number ]
         Directionality(
           textDirection: TextDirection.ltr,
@@ -214,7 +213,7 @@ class _PhoneInputFieldState extends State<PhoneInputField> {
             cursorColor: c.primary,
             decoration: authInputDecoration(context, hint: _country.hint).copyWith(
               prefixIcon: code,
-              prefixIconConstraints: const BoxConstraints(minHeight: 48),
+              prefixIconConstraints: const BoxConstraints(minHeight: AppTouch.min),
             ),
           ),
         ),
@@ -265,35 +264,32 @@ class _CountryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: Material(
         color: selected
             ? c.primary.withAlpha(c.isDark ? 34 : 20)
             : c.inputBg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadius.control),
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppRadius.control),
               border: Border.all(
                 color: selected ? c.primary : c.divider,
-                width: selected ? 1.8 : 1.2,
+                width: selected ? AppBorder.strong : AppBorder.hairline,
               ),
             ),
             child: Row(
               children: [
-                Text(country.flag, style: const TextStyle(fontSize: 26)),
-                const SizedBox(width: 12),
+                Text(country.flag, style: const TextStyle(fontSize: AppIconSize.lg)),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Text(
                     country.name,
-                    style: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
+                    style: AppType.row(context).copyWith(
                       color: c.textDark,
                     ),
                   ),
@@ -302,17 +298,14 @@ class _CountryTile extends StatelessWidget {
                   textDirection: TextDirection.ltr,
                   child: Text(
                     country.dial,
-                    style: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
+                    style: AppType.row(context).copyWith(fontFeatures: const [FontFeature.tabularFigures()],
                       color: selected ? c.primary : c.secondText,
                     ),
                   ),
                 ),
                 if (selected) ...[
-                  const SizedBox(width: 8),
-                  Icon(Icons.check_circle_rounded, size: 20, color: c.primary),
+                  const SizedBox(width: AppSpace.xs),
+                  Icon(Icons.check_circle_rounded, size: AppIconSize.md, color: c.primary),
                 ],
               ],
             ),

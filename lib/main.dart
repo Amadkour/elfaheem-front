@@ -23,6 +23,9 @@ import 'package:flutter_education_app/utils/remote_config_service.dart';
 import 'package:flutter_education_app/utils/top_route_observer.dart';
 import 'package:flutter_education_app/design/app_hscroll.dart' show AppScrollBehavior;
 import 'package:flutter_education_app/design/boot_splash.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_buttons.dart' show AppButton;
+import 'package:flutter_education_app/design/app_badges.dart' show appInkOn;
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/core/offline/offline_strings.dart';
@@ -372,51 +375,77 @@ class _BootAppState extends State<_BootApp> {
   }
 }
 
-class _FatalApp extends StatelessWidget {
+/// Shown only when storage failed (nothing else can run). It may have no translations and no server theme, so it
+/// draws the built-in palette through the Material theme alone (no provider lookups that could fail again): the
+/// canvas, a danger mark on its tint, the editorial headline and one Retry.
+class _FatalApp extends StatefulWidget {
   const _FatalApp({required this.error});
 
   final String error;
 
   @override
+  State<_FatalApp> createState() => _FatalAppState();
+}
+
+class _FatalAppState extends State<_FatalApp> {
+  ThemeData? _light, _dark;
+
+  @override
+  void initState() {
+    super.initState();
+    try {
+      final palette = ThemeConfigProvider(api: ApiClient());
+      _light = palette.materialTheme(dark: false);
+      _dark = palette.materialTheme(dark: true);
+    } catch (e) {
+      debugPrint('[boot] fatal screen without the theme: $e');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: Colors.white,
-        body: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
+      theme: _light,
+      darkTheme: _dark,
+      home: Builder(builder: (context) {
+        final theme = Theme.of(context);
+        final cs = theme.colorScheme;
+        return Scaffold(
+          body: SafeArea(
+            child: Center(
               child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.error_outline,
-                        size: 48, color: Colors.redAccent),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Startup error',
-                      style:
-                      TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      error,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () => _bootstrap(),
-                      child: const Text('Retry'),
-                    ),
-                  ],
+                padding: AppSpace.block,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: AppWidth.form.max),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      DecoratedBox(
+                        decoration: BoxDecoration(color: cs.errorContainer, shape: BoxShape.circle),
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpace.md),
+                          child: Icon(Icons.error_outline_rounded, size: AppIconSize.xl, color: cs.onErrorContainer),
+                        ),
+                      ),
+                      AppSpace.gapMd,
+                      Text('Startup error', textAlign: TextAlign.center, style: theme.textTheme.headlineSmall),
+                      AppSpace.gapSm,
+                      Text(widget.error, textAlign: TextAlign.center, style: theme.textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+                      AppSpace.gapLg,
+                      FilledButton.icon(
+                        onPressed: () => _bootstrap(),
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Retry'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 }
@@ -1023,125 +1052,95 @@ class _OfflineThemeBanner extends StatelessWidget {
     return Column(
       children: [
         show
-            ? Directionality(
-          textDirection: Helpers.pageDirection,
-          child: Material(
-            color: c.danger,
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 6,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.wifi_off_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'no_network_banner'.tr,
-                            style: TextStyle(
-                              fontFamily: AppFonts.family,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    // Bottom of the header: one tap to the Downloads page (offline only).
-                    if (shortcut)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4, bottom: 2),
-                        child: Row(
+            // A calm danger-tint strip (not a red slab above every screen): the mark and the line in danger ink,
+            // the Downloads shortcut a paper pill, Retry a quiet text button.
+            ? Builder(builder: (context) {
+                final ink = appInkOn(context, c.danger, c.dangerTint);
+                return Directionality(
+                  textDirection: Helpers.pageDirection,
+                  child: Material(
+                    color: c.dangerTint,
+                    shape: Border(bottom: BorderSide(color: c.danger.withValues(alpha: 0.2), width: AppBorder.hairline)),
+                    child: SafeArea(
+                      bottom: false,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-
-                            Align(
-                              alignment: AlignmentDirectional.centerEnd,
-                              child: Material(
-                                color: Colors.white.withValues(alpha: 0.18),
-                                shape: StadiumBorder(
-                                  side: BorderSide(
-                                    color: Colors.white.withValues(alpha: 0.55),
+                            Row(
+                              children: [
+                                Icon(Icons.wifi_off_rounded, color: ink, size: AppIconSize.md),
+                                const SizedBox(width: AppSpace.sm),
+                                Expanded(
+                                  child: Text(
+                                    'no_network_banner'.tr,
+                                    style: AppType.label(context).copyWith(color: ink, fontWeight: FontWeight.w600),
                                   ),
                                 ),
-                                child: InkWell(
-                                  customBorder: const StadiumBorder(),
-                                  onTap: topRouteObserver.openDownloads,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 5,
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.download_for_offline_rounded,
-                                          size: 16,
-                                          color: Colors.white,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          offlineT('dl_open_downloads'),
-                                          style: TextStyle(
-                                            fontFamily: AppFonts.family,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.white,
+                              ],
+                            ),
+                            // Bottom of the header: one tap to the Downloads page (offline only).
+                            if (shortcut)
+                              Padding(
+                                padding: const EdgeInsets.only(top: AppSpace.xxs),
+                                child: Row(
+                                  children: [
+                                    Flexible(
+                                      child: Material(
+                                        color: c.cardBg,
+                                        shape: StadiumBorder(side: BorderSide(color: c.divider, width: AppBorder.hairline)),
+                                        child: InkWell(
+                                          customBorder: const StadiumBorder(),
+                                          onTap: topRouteObserver.openDownloads,
+                                          child: ConstrainedBox(
+                                            constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
+                                            child: Padding(
+                                              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(Icons.download_for_offline_rounded, size: AppIconSize.sm, color: c.primary),
+                                                  const SizedBox(width: AppSpace.xs),
+                                                  Flexible(
+                                                    child: Text(
+                                                      offlineT('dl_open_downloads'),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                      style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
                                           ),
                                         ),
-                                      ],
+                                      ),
                                     ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Spacer(),
-                            if (tc.isRetrying)
-                              const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            else
-                              TextButton.icon(
-                                onPressed: () =>
-                                    context.read<ThemeConfigProvider>().reload(),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: Colors.white,
-                                  visualDensity: VisualDensity.compact,
-                                ),
-                                icon: const Icon(Icons.refresh_rounded, size: 18),
-                                label: Text(
-                                  'retry'.tr,
-                                  style: TextStyle(
-                                    fontFamily: AppFonts.family,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                    const Spacer(),
+                                    if (tc.isRetrying)
+                                      SizedBox(
+                                        width: AppIconSize.md,
+                                        height: AppIconSize.md,
+                                        child: CircularProgressIndicator(strokeWidth: AppBorder.focus, color: ink),
+                                      )
+                                    else
+                                      TextButton.icon(
+                                        onPressed: () => context.read<ThemeConfigProvider>().reload(),
+                                        style: TextButton.styleFrom(foregroundColor: ink),
+                                        icon: const Icon(Icons.refresh_rounded, size: AppIconSize.md),
+                                        label: Text('retry'.tr, style: AppType.label(context).copyWith(color: ink, fontWeight: FontWeight.w600)),
+                                      ),
+                                  ],
                                 ),
                               ),
                           ],
                         ),
                       ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        )
+                    ),
+                  ),
+                );
+              })
             : const SizedBox.shrink(),
         Expanded(
           // The banner already covers the status bar, so the screens below
@@ -1284,43 +1283,42 @@ class _NotFoundScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: c.background,
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppNetworkImage(
-              url: 'assets/images/logo.png',
-              height: 100,
-              width: 100,
-            ),
-            Text(
-              'not_found'.tr,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 16,
-                color: c.textMedium,
+        child: SingleChildScrollView(
+          padding: AppSpace.block,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppNetworkImage(
+                url: 'assets/images/logo.png',
+                height: _logo,
+                width: _logo,
               ),
-            ),
-            if (kDebugMode && routeName != null)
+              AppSpace.gapMd,
               Text(
-                routeName!,
-                style: TextStyle(fontSize: 12, color: c.textLight),
+                'not_found'.tr,
+                textAlign: TextAlign.center,
+                style: AppType.section(context),
               ),
-            const SizedBox(height: 20),
-            TextButton(
-              onPressed: () => Navigator.of(
-                context,
-              ).pushReplacementNamed(context.read<MyAuthProvider>().homeRoute),
-              child: Text(
-                'home'.tr,
-                style: TextStyle(
-                  fontFamily: AppFonts.family,
-                  color: context.colors.primary,
+              if (kDebugMode && routeName != null)
+                Text(
+                  routeName!,
+                  style: AppType.meta(context),
                 ),
+              AppSpace.gapLg,
+              AppButton.primary(
+                label: 'home'.tr,
+                icon: Icons.home_rounded,
+                onPressed: () => Navigator.of(
+                  context,
+                ).pushReplacementNamed(context.read<MyAuthProvider>().homeRoute),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+
+  /// The mark's side on the 404 page.
+  static const double _logo = AppTouch.min * 2;
 }
