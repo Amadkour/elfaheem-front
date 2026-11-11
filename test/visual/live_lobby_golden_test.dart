@@ -8,6 +8,8 @@
 //   share      the meeting's share link sheet: the link block with its facts and actions
 //   waiting    the joiner's "Waiting for the host…" page
 //   rejected   the same page after the host said no
+//   record     the meeting's Record sheet: Google Drive chosen, OneDrive to connect, quality, what it holds
+//   drives     Settings › Connected drives, with a recording's status card under it
 //   links      the meeting links page (D-307): a live meeting I host, a session later today, a weekly meeting tomorrow
 @Tags(['visual'])
 library;
@@ -25,6 +27,8 @@ import 'package:flutter_education_app/features/shared/live/live_lobby_sheets.dar
 import 'package:flutter_education_app/features/shared/live/live_room.dart';
 import 'package:flutter_education_app/features/shared/live/meeting_links.dart';
 import 'package:flutter_education_app/features/shared/live/meeting_links_page.dart';
+import 'package:flutter_education_app/features/shared/live/meeting_recording.dart';
+import 'package:flutter_education_app/features/shared/live/meeting_recording_sheets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'home_screens_golden_test.dart' show pubspecFonts;
@@ -160,11 +164,34 @@ class _FakeLinks extends MeetingLinksApi {
   }
 }
 
+const _drive = CloudAccount(provider: CloudProvider.googleDrive, configured: true, connected: true, email: 'sara@gmail.com');
+const _oneDrive = CloudAccount(provider: CloudProvider.onedrive, configured: true);
+
+Widget _record() => const RecordSetupLayout(accounts: [_drive, _oneDrive], quality: RecordingQuality.p720, selected: CloudProvider.googleDrive);
+
+/// Connected drives with the latest recording's card under it (the meeting detail's card, for the look).
+Widget _drives() => Column(children: [
+      const Expanded(child: CloudDrivesLayout(accounts: [_drive, _oneDrive])),
+      Padding(
+        padding: const EdgeInsets.all(16),
+        child: RecordingStatusCard(
+          recording: MeetingRecording(
+            id: 5,
+            status: 'uploading',
+            destination: CloudProvider.googleDrive,
+            durationSeconds: 3120,
+            size: 412000000,
+            createdAt: DateTime.now().toUtc(),
+          ),
+        ),
+      ),
+    ]);
+
 /// The sheet scenes open through the real showAppSheet (side panel on wide windows, bottom sheet on phones).
 Widget _host(String name, {required bool dark}) {
   final theme = ThemeConfigProvider(api: ApiClient());
   final rtl = AppConfig.lang == 'ar';
-  final sheet = name == 'lobby' || name == 'share';
+  final sheet = name == 'lobby' || name == 'share' || name == 'record';
   return ThemeConfigScope(
     provider: theme,
     child: MaterialApp(
@@ -179,7 +206,11 @@ Widget _host(String name, {required bool dark}) {
       home: Builder(builder: (context) {
         if (sheet) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            showAppSheet<void>(context, (_) => name == 'lobby' ? _lobby() : _share());
+            showAppSheet<void>(context, (_) => switch (name) {
+                  'lobby' => _lobby(),
+                  'record' => _record(),
+                  _ => _share(),
+                });
           });
         }
         return Scaffold(
@@ -188,7 +219,9 @@ Widget _host(String name, {required bool dark}) {
               ? const SizedBox.expand()
               : name == 'links'
                   ? const MeetingLinksPage(api: _FakeLinks())
-                  : WaitingForHostScreen(
+                  : name == 'drives'
+                      ? _drives()
+                      : WaitingForHostScreen(
                   state: name == 'waiting' ? WaitingState.waiting : WaitingState.rejected,
                   title: tr('مراجعة مشروع التخرج', 'Graduation project review'),
                   hostName: tr('د. منى عبد العزيز', 'Dr. Mona Abdelaziz'),
@@ -245,4 +278,6 @@ void main() {
   testWidgets('waiting', (tester) => _render(tester, 'waiting'));
   testWidgets('rejected', (tester) => _render(tester, 'rejected'));
   testWidgets('links', (tester) => _render(tester, 'links'));
+  testWidgets('record', (tester) => _render(tester, 'record'));
+  testWidgets('drives', (tester) => _render(tester, 'drives'));
 }

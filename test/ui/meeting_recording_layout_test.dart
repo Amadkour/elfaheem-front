@@ -5,7 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppPrimaryButton;
+import 'package:flutter_education_app/design/app_kit.dart' show AppButton;
 import 'package:flutter_education_app/design/app_notice.dart' show appNoticeTopOverlay;
 import 'package:flutter_education_app/features/shared/live/meeting_recording.dart';
 import 'package:flutter_education_app/features/shared/live/meeting_recording_sheets.dart';
@@ -191,7 +191,7 @@ void main() {
       final api = _Api([_oneOff, _oneOff]);
       await t.pumpWidget(layoutHost(RecordSetupSheet(kind: 'meeting', id: 7, api: api, initialAccounts: api.accounts), scale: 1));
       await t.pumpAndSettle();
-      final button = t.widget<AppPrimaryButton>(find.byKey(const ValueKey('record_setup.start')));
+      final button = t.widget<AppButton>(find.byKey(const ValueKey('record_setup.start')));
       expect(button.onPressed, isNull);
 
       api.accounts = [_google, _oneOff];
