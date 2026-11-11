@@ -5,11 +5,14 @@
 //   • pending  → waiting for the teacher (can withdraw the request)
 //   • available / rejected → "Request certificate" (teacher must approve)
 //   • finished courses get their certificate automatically (+ notification)
+//
+// Editorial theme: "Certificates earned" is the page's one block — gold, because a certificate is an achievement
+// (system.md §2) — with the count rolling (AppOdometer); each certificate is a paper card (preview, title, a status
+// pill, the course chip, progress filling while it is not issued) with kit buttons.
 
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppShimmer;
-import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -18,8 +21,6 @@ import '../../../config/theme/theme_config_provider.dart';
 import 'my_certificate_model.dart';
 import 'my_certificates_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
-import 'package:flutter_education_app/design/app_notice.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
 import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_logic.dart' show kCertVerifyFeature;
@@ -35,7 +36,7 @@ class MyCertificatesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider(
         create: (_) => MyCertificatesProvider()..load(),
-        child: _View(embedded: embedded),
+        child: MyCertificatesView(embedded: embedded),
       );
 }
 
@@ -45,8 +46,9 @@ void _toast(BuildContext context, String msg, {bool error = false}) {
   showAppNotice(msg, error: error);   // was always `error: true`: "saved" showed as an error
 }
 
-class _View extends StatelessWidget {
-  const _View({this.embedded = false});
+/// The page body over a [MyCertificatesProvider] in scope (the screen creates one; tests hand it filled values).
+class MyCertificatesView extends StatelessWidget {
+  const MyCertificatesView({super.key, this.embedded = false});
 
   final bool embedded;
 
@@ -58,21 +60,23 @@ class _View extends StatelessWidget {
     if (p.loading && p.items.isEmpty) {
       body = const AppListSkeleton();
     } else if (p.loadFailed && p.items.isEmpty) {
-      body = _Message(
-        icon: Icons.cloud_off_rounded,
-        text: 'certificates_load_failed'.tr,
-        action: OutlinedButton(onPressed: p.load, child: Text('retry'.tr)),
-      );
+      body = Center(child: AppErrorState(message: 'certificates_load_failed'.tr, onRetry: p.load));
     } else if (p.items.isEmpty) {
-      body = _Message(icon: Icons.workspace_premium_outlined, text: 'my_certificates_empty'.tr);
+      body = Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpace.lg),
+          child: AppEmpty(icon: Icons.workspace_premium_outlined, title: 'my_certificates_empty'.tr, tone: AppBlockTone.gold),
+        ),
+      );
     } else {
       body = AppRefresh(
         onRefresh: p.load,
         child: ListView.separated(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xl),
           itemCount: p.items.length + 1,
-          separatorBuilder: (_, _) => const SizedBox(height: 12),
+          // the block leads with more room under it than between the cards (the editorial rhythm)
+          separatorBuilder: (_, i) => SizedBox(height: i == 0 ? AppSpace.lg : AppSpace.md),
           itemBuilder: (_, i) {
             if (i == 0) return _Summary(issued: p.issuedCount, total: p.items.length);
             return _CertificateCard(cert: p.items[i - 1]);
@@ -94,7 +98,7 @@ class _View extends StatelessWidget {
             featureKey: kCertVerifyFeature,
             child: IconButton(
               tooltip: 'cv_entry_title'.tr,
-              icon: const Icon(Icons.verified_user_outlined),
+              icon: const Icon(Icons.verified_user_outlined, size: AppIconSize.lg),
               onPressed: () => openCertVerify(context),
             ),
           ),
@@ -105,27 +109,7 @@ class _View extends StatelessWidget {
   }
 }
 
-class _Message extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  final Widget? action;
-
-  const _Message({required this.icon, required this.text, this.action});
-
-  @override
-  Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 52, color: context.colors.textLight),
-            const SizedBox(height: 12),
-            Text(text, textAlign: TextAlign.center, style: context.colors.body),
-            if (action != null) ...[const SizedBox(height: 12), action!],
-          ]),
-        ),
-      );
-}
-
+/// "Certificates earned": the page's one block, gold (an achievement), the count rolling to its value.
 class _Summary extends StatelessWidget {
   final int issued;
   final int total;
@@ -133,23 +117,38 @@ class _Summary extends StatelessWidget {
   const _Summary({required this.issued, required this.total});
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: context.colors.primaryGradient,
-          borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-        ),
-        child: Row(children: [
-          Icon(Icons.workspace_premium_rounded, color: context.colors.onHero, size: 32),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              '${'certificates_earned'.tr}: $issued / $total',
-              style: TextStyle(
-                  fontFamily: AppFonts.family, color: context.colors.onHero, fontSize: 15, fontWeight: FontWeight.w800),
-            ),
-          ),
-        ]),
+  Widget build(BuildContext context) => AppBlock(
+        tone: AppBlockTone.gold,
+        child: Builder(builder: (context) {
+          final c = context.colors;
+          final ink = AppBlock.colorsOf(context);
+          return Semantics(
+            label: '${'certificates_earned'.tr}: $issued / $total',
+            excludeSemantics: true,
+            child: Row(children: [
+              Container(
+                width: AppTouch.primary,
+                height: AppTouch.primary,
+                decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.control)),
+                child: Icon(Icons.workspace_premium_rounded, color: ink.accentInk(c.accent2), size: AppIconSize.xl),
+              ),
+              AppSpace.gapMd,
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('certificates_earned'.tr, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: ink.muted)),
+                  const SizedBox(height: AppSpace.xxs),
+                  Wrap(crossAxisAlignment: WrapCrossAlignment.end, spacing: AppSpace.xs, children: [
+                    AppOdometer('$issued', memoryKey: 'my_certificates.issued', style: AppType.figureLarge(context).copyWith(color: ink.ink)),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpace.xxs),
+                      child: Text('/ $total', style: AppType.section(context).copyWith(color: ink.muted)),
+                    ),
+                  ]),
+                ]),
+              ),
+            ]),
+          );
+        }),
       );
 }
 
@@ -165,16 +164,20 @@ class _CertificateCard extends StatelessWidget {
     final p = context.watch<MyCertificatesProvider>();
     final busy = p.busyCertIds.contains(cert.certificateId);
 
+    // paper on a warm hairline, no resting shadow (D-612); the preview opens full screen
     return Container(
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(c.radiusMedium),
-        boxShadow: c.cardShadow,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (cert.isIssued)
-          GestureDetector(
+          Semantics(
+            button: true,
+            label: cert.title,
+            child: InkWell(
             onTap: () => _openFull(context, cert, ar),
             child: AspectRatio(
               aspectRatio: 1.41,
@@ -184,48 +187,42 @@ class _CertificateCard extends StatelessWidget {
                 loadingBuilder: (_, child, prog) =>
                     prog == null ? child : AppShimmer(child: ColoredBox(color: c.divider.withValues(alpha: 0.7), child: const SizedBox.expand())),
                 errorBuilder: (_, _, _) => Center(
-                    child: Icon(Icons.broken_image_outlined, color: c.textLight, size: 40)),
+                    child: Icon(Icons.broken_image_outlined, color: c.textLight, size: AppIconSize.hero)),
               ),
             ),
           ),
+          ),
         Padding(
-          padding: const EdgeInsets.all(14),
+          padding: AppSpace.card,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(
-                child: Text(cert.title,
-                    style: c.h3.copyWith(fontSize: 15), maxLines: 2, overflow: TextOverflow.ellipsis),
+                child: Text(cert.title, style: AppType.section(context), maxLines: 2, overflow: TextOverflow.ellipsis),
               ),
-              _StateChip(state: cert.state),
+              AppSpace.gapXs,
+              Flexible(child: _StateChip(state: cert.state)),
             ]),
-            const SizedBox(height: 4),
+            AppSpace.gapXs,
             Align(
               alignment: AlignmentDirectional.centerStart,
               child: EntityChip(EntityRef(EntityKind.course, cert.courseId, label: cert.courseNameAr, labelEn: cert.courseNameEn)),
             ),
-            if (cert.teacherName != null)
-              Text(cert.teacherName!, style: c.caption.copyWith(color: c.textLight, fontSize: 11)),
+            if (cert.teacherName != null) ...[
+              const SizedBox(height: AppSpace.xxs),
+              Text(cert.teacherName!, style: AppType.meta(context)),
+            ],
             if (!cert.isIssued) ...[
-              const SizedBox(height: 10),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: LinearProgressIndicator(
-                  value: (cert.progress / 100).clamp(0.0, 1.0),
-                  minHeight: 6,
-                  backgroundColor: c.primary.withValues(alpha: 0.12),
-                  color: c.primary,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text('${cert.progress.toStringAsFixed(0)}% ${'complete_label'.tr}',
-                  style: c.caption.copyWith(fontSize: 11)),
+              AppSpace.gapSm,
+              _ProgressLine(value: (cert.progress / 100).clamp(0.0, 1.0)),
+              const SizedBox(height: AppSpace.xxs),
+              Text('${cert.progress.toStringAsFixed(0)}% ${'complete_label'.tr}', style: AppType.meta(context)),
             ],
             if (cert.state == MyCertState.rejected && (cert.rejectionReason ?? '').isNotEmpty) ...[
-              const SizedBox(height: 8),
+              AppSpace.gapXs,
               Text('${'certificate_rejected_reason'.tr}: ${cert.rejectionReason}',
-                  style: c.caption.copyWith(color: c.danger)),
+                  style: AppType.meta(context).copyWith(color: appInk(context, c.danger))),
             ],
-            const SizedBox(height: 12),
+            AppSpace.gapMd,
             _Actions(cert: cert, busy: busy),
           ]),
         ),
@@ -238,7 +235,7 @@ class _CertificateCard extends StatelessWidget {
       context: context,
       builder: (_) => Dialog(
         backgroundColor: context.colors.heroShade,
-        insetPadding: const EdgeInsets.all(12),
+        insetPadding: const EdgeInsets.all(AppSpace.sm),
         child: Stack(children: [
           InteractiveViewer(
             child: Image.network(
@@ -251,8 +248,8 @@ class _CertificateCard extends StatelessWidget {
             ),
           ),
           PositionedDirectional(
-            top: 4,
-            end: 4,
+            top: AppSpace.xxs,
+            end: AppSpace.xxs,
             child: IconButton(
               tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
               icon: Icon(Icons.close_rounded, color: context.colors.onHero),
@@ -265,6 +262,38 @@ class _CertificateCard extends StatelessWidget {
   }
 }
 
+/// The progress of a certificate that is not issued yet: a thin bar that fills once.
+class _ProgressLine extends StatelessWidget {
+  const _ProgressLine({required this.value});
+
+  final double value;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final radius = BorderRadius.circular(AppRadius.pill);
+    return ExcludeSemantics(
+      child: SizedBox(
+        height: AppSpace.xs - AppSpace.xxs / 2,
+        child: DecoratedBox(
+          decoration: BoxDecoration(color: c.primaryTint, borderRadius: radius),
+          child: AppFill(
+            value: value,
+            builder: (context, v) => Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: FractionallySizedBox(
+                widthFactor: v,
+                heightFactor: 1,
+                child: DecoratedBox(decoration: BoxDecoration(color: c.primary, borderRadius: radius)),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _StateChip extends StatelessWidget {
   final MyCertState state;
 
@@ -272,24 +301,14 @@ class _StateChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final (label, color) = switch (state) {
-      MyCertState.issued => ('cert_state_issued'.tr, c.success),
-      MyCertState.pending => ('cert_state_pending'.tr, c.warning),
-      MyCertState.readySoon => ('cert_state_ready_soon'.tr, c.primary),
-      MyCertState.rejected => ('cert_state_rejected'.tr, c.danger),
-      MyCertState.available => ('cert_state_available'.tr, c.textMedium),
+    final (label, tone) = switch (state) {
+      MyCertState.issued => ('cert_state_issued'.tr, AppTone.success),
+      MyCertState.pending => ('cert_state_pending'.tr, AppTone.warning),
+      MyCertState.readySoon => ('cert_state_ready_soon'.tr, AppTone.brand),
+      MyCertState.rejected => ('cert_state_rejected'.tr, AppTone.danger),
+      MyCertState.available => ('cert_state_available'.tr, AppTone.neutral),
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(label,
-          style: TextStyle(
-              fontFamily: AppFonts.family, fontSize: 11, fontWeight: FontWeight.w700, color: color)),
-    );
+    return AppStatusBadge(label: label, tone: tone);
   }
 }
 
@@ -302,10 +321,9 @@ class _Actions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.read<MyCertificatesProvider>();
-    final c = context.colors;
 
     if (busy) {
-      return const Center(child: SizedBox(width: 22, height: 22, child: AppLoadingIndicator()));
+      return const Center(child: SizedBox(width: AppIconSize.lg, height: AppIconSize.lg, child: AppLoadingIndicator()));
     }
 
     switch (cert.state) {
@@ -313,38 +331,32 @@ class _Actions extends StatelessWidget {
         return _DownloadButton(cert: cert);
 
       case MyCertState.pending:
-        return OutlinedButton.icon(
-          onPressed: () async {
-            final ok = await p.cancelRequest(cert.certificateId);
-            if (context.mounted) {
-              _toast(context, ok ? 'certificate_request_cancelled'.tr : 'certificate_action_failed'.tr,
-                  error: !ok);
-            }
-          },
-          icon: const Icon(Icons.close_rounded, size: 16),
-          label: Text('cancel_certificate_request'.tr),
-          style: OutlinedButton.styleFrom(foregroundColor: c.danger),
+        return Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: AppButton.danger(
+            label: 'cancel_certificate_request'.tr,
+            icon: Icons.close_rounded,
+            dangerOutline: true,
+            onPressed: () async {
+              final ok = await p.cancelRequest(cert.certificateId);
+              if (context.mounted) {
+                _toast(context, ok ? 'certificate_request_cancelled'.tr : 'certificate_action_failed'.tr, error: !ok);
+              }
+            },
+          ),
         );
 
       case MyCertState.readySoon:
-        return Text('certificate_being_prepared'.tr, style: c.caption);
+        return Text('certificate_being_prepared'.tr, style: AppType.meta(context));
 
       case MyCertState.rejected:
       case MyCertState.available:
-        return Row(children: [
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () => _askAndRequest(context, p),
-              icon: const Icon(Icons.send_rounded, size: 16),
-              label: Text('request_certificate'.tr),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: c.primary,
-                foregroundColor: c.onHero,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-            ),
-          ),
-        ]);
+        return AppButton.primary(
+          label: 'request_certificate'.tr,
+          icon: Icons.send_rounded,
+          expand: true,
+          onPressed: () => _askAndRequest(context, p),
+        );
     }
   }
 
@@ -356,21 +368,19 @@ class _Actions extends StatelessWidget {
         scrollable: true,
         title: Text('request_certificate'.tr),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('request_certificate_hint'.tr),
-          const SizedBox(height: 12),
+          Text('request_certificate_hint'.tr, style: AppType.body(ctx)),
+          AppSpace.gapSm,
           TextField(
             controller: controller,
             maxLines: 3,
             maxLength: 500,
-            decoration: InputDecoration(
-              hintText: 'certificate_request_note_hint'.tr,
-              border: const OutlineInputBorder(),
-            ),
+            style: appFieldTextStyle(ctx),
+            decoration: appFieldDecoration(ctx, hint: 'certificate_request_note_hint'.tr),
           ),
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('cancel'.tr)),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: Text('send_btn'.tr)),
+          AppButton.ghost(label: 'cancel'.tr, onPressed: () => Navigator.pop(ctx, false)),
+          AppButton.primary(label: 'send_btn'.tr, icon: Icons.send_rounded, onPressed: () => Navigator.pop(ctx, true)),
         ],
       ),
     );
@@ -408,33 +418,25 @@ class _DownloadButton extends StatelessWidget {
       }
     }
 
-    if (downloading) {
-      return const Center(child: SizedBox(width: 22, height: 22, child: AppLoadingIndicator()));
-    }
+    // the button keeps its width while the file is fetched (its spinner sits over the label)
+    final download = AppButton.primary(
+      label: 'download_certificate'.tr,
+      icon: Icons.download_rounded,
+      busy: downloading,
+      expand: true,
+      onPressed: downloading ? null : () => go(cert.hasArabic ? _isArabic(context) : false),
+    );
 
     // Only one language exists (older certificates) → single button.
-    if (!cert.hasArabic) {
-      return ElevatedButton.icon(
-        onPressed: () => go(false),
-        icon: const Icon(Icons.download_rounded, size: 18),
-        label: Text('download_certificate'.tr),
-        style: ElevatedButton.styleFrom(backgroundColor: c.primary, foregroundColor: c.onHero),
-      );
-    }
+    if (!cert.hasArabic) return download;
 
     return Row(children: [
-      Expanded(
-        child: ElevatedButton.icon(
-          onPressed: () => go(_isArabic(context)),
-          icon: const Icon(Icons.download_rounded, size: 18),
-          label: Text('download_certificate'.tr),
-          style: ElevatedButton.styleFrom(backgroundColor: c.primary, foregroundColor: c.onHero),
-        ),
-      ),
-      const SizedBox(width: 8),
+      Expanded(child: download),
+      AppSpace.gapXs,
       PopupMenuButton<bool>(
         tooltip: 'certificate_other_language'.tr,
-        icon: Icon(Icons.translate_rounded, color: c.primary),
+        enabled: !downloading,
+        icon: Icon(Icons.translate_rounded, color: appInk(context, c.primary), size: AppIconSize.lg),
         onSelected: go,
         itemBuilder: (_) => [
           PopupMenuItem(value: true, child: Text('العربية')),

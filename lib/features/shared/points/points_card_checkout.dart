@@ -16,6 +16,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
 
 import '../../admin/admin_common.dart' show t;
 import '../../student/enrollment/checkout_pages.dart' show MobileCheckoutPage;
@@ -122,7 +123,7 @@ class _CardTopupSheetState extends State<CardTopupSheet> {
   Widget build(BuildContext context) {
     final x = _topup;
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         AppSheetHeader(t('الدفع بالبطاقة', 'Card payment')),
         CardTopupStatusView(
@@ -207,45 +208,58 @@ class CardTopupStatusView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpace.xxs),
+        // the outcome's mark settles in once when the phase changes (the answer to the person's payment)
         Center(
-          child: Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: color.withValues(alpha: 0.12)),
-            child: Icon(icon, color: color, size: 32),
+          child: AppPopIn(
+            key: ValueKey('card_topup.mark.${phase.name}'),
+            from: 0.9,
+            child: Container(
+              width: AppTouch.primary + AppSpace.xs,
+              height: AppTouch.primary + AppSpace.xs,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: color.withValues(alpha: 0.12)),
+              child: Icon(icon, color: appInk(context, color), size: AppIconSize.xl),
+            ),
           ),
         ),
-        const SizedBox(height: 12),
-        Text(title, textAlign: TextAlign.center, style: appText(17, w: FontWeight.w800, c: c.textDark)),
+        AppSpace.gapMd,
+        Semantics(
+          header: true,
+          liveRegion: true,
+          child: Text(title, textAlign: TextAlign.center, style: AppType.headline(context)),
+        ),
         if (what.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(what, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: c.textMedium)),
+          const SizedBox(height: AppSpace.xxs),
+          Text(what, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textMedium)),
         ],
-        const SizedBox(height: 8),
-        Text(body, textAlign: TextAlign.center, maxLines: 6, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textMedium, h: 1.5)),
+        AppSpace.gapXs,
+        Text(body, textAlign: TextAlign.center, maxLines: 6, overflow: TextOverflow.ellipsis, style: AppType.body(context)),
         if (phase == CardTopupPhase.checking) ...[
-          const SizedBox(height: 16),
-          ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(minHeight: 4, color: c.primary)),
+          AppSpace.gapMd,
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            child: LinearProgressIndicator(minHeight: AppSpace.xxs, color: c.primary, backgroundColor: c.primaryTint),
+          ),
         ],
         if (phase == CardTopupPhase.waiting && error != null) ...[
-          const SizedBox(height: 10),
+          AppSpace.gapSm,
           AppBanner(icon: Icons.error_outline_rounded, text: error!, color: c.danger),
         ],
-        const SizedBox(height: 18),
-        if (canRecheck)
-          AppPrimaryButton(
+        AppSpace.gapLg,
+        if (canRecheck) ...[
+          AppButton.primary(
             key: const ValueKey('card_topup.check_again'),
             label: t('تحقق مرة أخرى', 'Check again'),
             icon: Icons.refresh_rounded,
+            expand: true,
             onPressed: onCheckAgain,
           ),
+          AppSpace.gapXs,
+        ],
         if (phase != CardTopupPhase.checking)
-          TextButton(
-            key: const ValueKey('card_topup.close'),
-            onPressed: onClose,
-            child: Text(phase == CardTopupPhase.approved ? t('تم', 'Done') : t('إغلاق', 'Close')),
-          ),
+          phase == CardTopupPhase.approved
+              ? AppButton.primary(key: const ValueKey('card_topup.close'), label: t('تم', 'Done'), expand: true, onPressed: onClose)
+              : AppButton.ghost(key: const ValueKey('card_topup.close'), label: t('إغلاق', 'Close'), expand: true, onPressed: onClose),
       ],
     );
   }
