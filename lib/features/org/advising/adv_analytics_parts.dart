@@ -28,6 +28,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppTilt;
 
 import '../../admin/admin_common.dart' show t;
 import 'adv_analytics_models.dart';
@@ -130,8 +131,8 @@ class AdvAnCard extends StatelessWidget {
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           ExcludeSemantics(
             child: Container(
-              width: 36,
-              height: 36,
+              width: AppTouch.min - AppSpace.sm,
+              height: AppTouch.min - AppSpace.sm,
               decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: AppRadius.chipAll),
               child: Icon(icon, size: AppIconSize.md, color: appInk(context, col)),
             ),
@@ -141,7 +142,7 @@ class AdvAnCard extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Semantics(header: true, child: Text(title, style: AppType.section(context))),
               if (sub != null && sub.isNotEmpty) ...[
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpace.xxs),
                 Text(sub, style: AppType.meta(context)),
               ],
             ]),
@@ -251,7 +252,7 @@ class _BreakdownTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: AppSpace.xs, horizontal: AppSpace.xxs),
             child: Row(children: [
               if (r.color != null) ...[
-                Container(width: 10, height: 10, decoration: BoxDecoration(color: r.color, borderRadius: BorderRadius.circular(3))),
+                Container(width: AppSpace.sm, height: AppSpace.sm, decoration: BoxDecoration(color: r.color, borderRadius: BorderRadius.circular(AppSpace.xxs))),
                 const SizedBox(width: AppSpace.sm),
               ],
               Expanded(
@@ -334,7 +335,7 @@ class AdvFilterSummary extends StatelessWidget {
           child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             for (final (icon, text) in chips)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs + 2),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs - AppSpace.xxs / 2),
                 decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.chipAll, border: Border.all(color: c.divider)),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(icon, size: AppIconSize.xs, color: c.textMedium),
@@ -400,9 +401,12 @@ class AdvKpiRow extends StatelessWidget {
         _ => Icons.report_outlined,
       };
 
+  /// The dashboard's key figure: it alone takes a hue of its own and leans under the pointer.
+  static const String keyKpi = 'at_risk';
+
   @override
   Widget build(BuildContext context) {
-    final palette = appChartPalette(context);
+    final c = context.colors;
     return LayoutBuilder(builder: (context, box) {
       final cols = box.maxWidth >= 840 ? 4 : 2;
       final w = (box.maxWidth - AppSpace.sm * (cols - 1)) / cols;
@@ -414,17 +418,18 @@ class AdvKpiRow extends StatelessWidget {
               final key = advKpiKeys[i];
               final k = overview.kpi(key);
               final shown = advKpiValue(key, k.value);
-              return AppTrendTile(
+              final tile = AppTrendTile(
                 label: advKpiLabel(key),
                 value: shown.isEmpty ? '—' : shown,
                 delta: k.delta,
                 upIsGood: advKpiUpIsGood(key),
                 icon: _icon(key),
-                color: palette[i % 5],
+                color: key == keyKpi ? c.danger : c.primary,
                 spark: _spark(key),
                 deltaHint: shown.isEmpty ? advNoDataText() : t('مقارنة بالمدة السابقة', 'vs the previous range'),
                 onTap: onTap == null ? null : () => onTap!(key),
               );
+              return key == keyKpi ? AppTilt.subtle(radius: AppRadius.card, child: tile) : tile;
             }),
           ),
       ]);

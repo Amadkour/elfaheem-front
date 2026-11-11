@@ -17,6 +17,7 @@ import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 import 'package:flutter_education_app/design/master_detail/entity_chip.dart' show EntityGuardedChip;
 import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
 import 'package:flutter_education_app/utils/live_events.dart';
@@ -91,12 +92,15 @@ class AdvStudentHeader extends StatelessWidget {
     final c = context.colors;
     final p = profile;
     final standing = _standing(p.standing);
+    // the 360's ONE hero: a sky block (information about the student) whose key figure is the risk score
+    const tone = AppBlockTone.sky;
+    final bc = AppBlockColors.of(context, tone);
     final identity = Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       AppAvatar(name: p.shown, size: AppTouch.primary),
       const SizedBox(width: AppSpace.sm),
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Semantics(header: true, child: Text(p.shown, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context))),
+          Semantics(header: true, child: Text(p.shown, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.headline(context).copyWith(color: bc.ink))),
           if (p.subtitle.isNotEmpty) ...[
             const SizedBox(height: AppSpace.xxs),
             Text(p.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
@@ -106,9 +110,14 @@ class AdvStudentHeader extends StatelessWidget {
           if (standing.isNotEmpty || p.joinedAt != null) ...[
             const SizedBox(height: AppSpace.xs),
             Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
+              // opaque status pills: a translucent tint would lose its contrast on the block
               if (standing.isNotEmpty)
-                AppBadgePill(standing, color: p.standing == 'probation' ? c.danger : (p.standing == 'honours' ? c.success : c.primary), icon: Icons.workspace_premium_outlined),
-              if (p.joinedAt != null) AppBadgePill(t('انضم ${advDate(p.joinedAt)}', 'Joined ${advDate(p.joinedAt)}'), color: c.textMedium, icon: Icons.event_available_rounded),
+                AppStatusBadge(
+                    label: standing,
+                    tone: p.standing == 'probation' ? AppTone.danger : (p.standing == 'honours' ? AppTone.success : AppTone.brand),
+                    icon: Icons.workspace_premium_outlined),
+              if (p.joinedAt != null)
+                AppStatusBadge(label: t('انضم ${advDate(p.joinedAt)}', 'Joined ${advDate(p.joinedAt)}'), icon: Icons.event_available_rounded),
             ]),
           ],
         ]),
@@ -118,7 +127,7 @@ class AdvStudentHeader extends StatelessWidget {
     final others = [for (final a in p.advisors) if (a.type != 'primary') a];
     final advisors = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Row(children: [
-        ExcludeSemantics(child: Icon(primary == null ? Icons.person_search_rounded : Icons.co_present_rounded, size: AppIconSize.md, color: primary == null ? appInk(context, c.warning) : c.primary)),
+        ExcludeSemantics(child: Icon(primary == null ? Icons.person_search_rounded : Icons.co_present_rounded, size: AppIconSize.md, color: bc.accentInk(primary == null ? c.warning : c.primary))),
         const SizedBox(width: AppSpace.xs),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -144,7 +153,7 @@ class AdvStudentHeader extends StatelessWidget {
         Align(
           alignment: AlignmentDirectional.centerStart,
           child: TextButton.icon(
-            style: TextButton.styleFrom(minimumSize: const Size(0, AppTouch.min)),
+            style: TextButton.styleFrom(minimumSize: const Size(0, AppTouch.min), foregroundColor: bc.accentInk(c.primary)),
             onPressed: onChangeAdvisor,
             icon: const Icon(Icons.swap_horiz_rounded, size: AppIconSize.md),
             label: Text(primary == null ? t('إسناد مرشد', 'Assign an advisor') : t('تغيير المرشد', 'Change advisor')),
@@ -153,9 +162,9 @@ class AdvStudentHeader extends StatelessWidget {
     ]);
     final s = p.stats;
     final risk = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(t('درجة الخطر', 'Risk score'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600)),
+      Text(t('درجة الخطر', 'Risk score'), style: AppType.meta(context).copyWith(color: bc.muted, fontWeight: FontWeight.w600)),
       const SizedBox(height: AppSpace.xxs),
-      AdvRiskMeter(score: s.riskScore, large: true),
+      AdvRiskMeter(score: s.riskScore, large: true, onBlock: true, memoryKey: 'adv.risk.${p.memberId}'),
       if (s.riskReasons.isNotEmpty) ...[
         const SizedBox(height: AppSpace.xs),
         for (final r in s.riskReasons)
@@ -164,10 +173,10 @@ class AdvStudentHeader extends StatelessWidget {
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Padding(
                 padding: const EdgeInsets.only(top: AppSpace.xxs + 2),
-                child: ExcludeSemantics(child: Icon(Icons.circle, size: AppSpace.xs - 2, color: advRiskColor(context, s.riskScore))),
+                child: ExcludeSemantics(child: Icon(Icons.circle, size: AppSpace.xs - 2, color: bc.accentInk(advRiskColor(context, s.riskScore)))),
               ),
               const SizedBox(width: AppSpace.xs),
-              Expanded(child: Text(advRiskReasonText(r, flags: s.openFlags), style: AppType.body(context).copyWith(color: c.textDark))),
+              Expanded(child: Text(advRiskReasonText(r, flags: s.openFlags), style: AppType.body(context).copyWith(color: bc.ink))),
             ]),
           ),
       ] else ...[
@@ -175,16 +184,18 @@ class AdvStudentHeader extends StatelessWidget {
         Text(t('لا عوامل خطر الآن.', 'No risk factors right now.'), style: AppType.meta(context)),
       ],
     ]);
-    return AppCard(
-      padding: AppSpace.card,
+    final rule = bc.border ?? bc.ink.withValues(alpha: 0.12);
+    return AppBlock(
+      tone: tone,
+      hero: true,
       child: LayoutBuilder(builder: (context, box) {
         final wide = box.maxWidth >= 720 * MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.3);
         if (!wide) {
           return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             identity,
-            Divider(height: AppSpace.lg, color: c.divider),
+            Divider(height: AppSpace.xl, color: rule),
             risk,
-            Divider(height: AppSpace.lg, color: c.divider),
+            Divider(height: AppSpace.xl, color: rule),
             advisors,
           ]);
         }
@@ -197,7 +208,7 @@ class AdvStudentHeader extends StatelessWidget {
             flex: 5,
             child: Container(
               padding: const EdgeInsetsDirectional.only(start: AppSpace.md),
-              decoration: BoxDecoration(border: BorderDirectional(start: BorderSide(color: c.divider))),
+              decoration: BoxDecoration(border: BorderDirectional(start: BorderSide(color: rule))),
               child: risk,
             ),
           ),
@@ -608,14 +619,15 @@ class AdvStudentView extends StatelessWidget {
       return AdvLoadState(state: load == AdvLoad.ready ? AdvLoad.loading : load, errorText: errorText, onRetry: onRetry);
     }
     return LayoutBuilder(builder: (context, box) {
-      final header = AdvStudentHeader(profile: p, onChangeAdvisor: onChangeAdvisor);
+      // ONE orchestrated entrance: the hero block, then the body under it
+      final header = AppReveal(index: 0, group: 'adv.360', child: AdvStudentHeader(profile: p, onChangeAdvisor: onChangeAdvisor));
       final pad = EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xl);
       if (box.maxWidth >= wideFrom) {
         final pane = _panes.contains(section) ? section : 'flags';
         return ListView(padding: pad, children: [
           header,
           const SizedBox(height: AppSpace.md),
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          AppReveal(index: 1, group: 'adv.360', child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(
               flex: 5,
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -636,7 +648,7 @@ class AdvStudentView extends StatelessWidget {
                 _pane(pane),
               ]),
             ),
-          ]),
+          ])),
         ]);
       }
       final sections = _sections;
@@ -653,11 +665,15 @@ class AdvStudentView extends StatelessWidget {
         const SizedBox(height: AppSpace.sm),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: pad.left),
-          child: switch (current) {
-            'academic' => AdvAcademicSection(profile: p),
-            'flags' || 'warning' || 'notes' || 'meetings' || 'support' || 'timeline' => _pane(current),
-            _ => AdvOverviewSection(profile: p, now: now),
-          },
+          child: AppReveal(
+            index: 1,
+            group: 'adv.360',
+            child: switch (current) {
+              'academic' => AdvAcademicSection(profile: p),
+              'flags' || 'warning' || 'notes' || 'meetings' || 'support' || 'timeline' => _pane(current),
+              _ => AdvOverviewSection(profile: p, now: now),
+            },
+          ),
         ),
       ]);
     });

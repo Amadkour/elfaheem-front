@@ -21,6 +21,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 import 'package:flutter_education_app/utils/live_events.dart';
 
 import '../../admin/admin_common.dart' show t;
@@ -446,21 +447,29 @@ class _Facets extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final total = page.facets.containsKey('total') ? page.facet('total') : page.total;
     final open = page.facet('open'), urgent = page.facet('urgent'), quiet = page.facet('no_contact_30d');
+    // the caseload at a glance: the workspace's one tinted block (sky = information), the count in the editorial
+    // section face, the facets as opaque pills (a translucent tint would lose its contrast on the block)
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpace.sm),
-      child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
-        Text(
-          countText(page.total, ar1: 'طالب واحد', ar2: 'طالبان', arFew: '${page.total} طلاب', arMany: '${page.total} طالباً', en1: '1 student', en: '${page.total} students') +
-              (total != page.total ? t(' من $total', ' of $total') : ''),
-          style: AppType.meta(context),
-        ),
-        if (urgent > 0) AppBadgePill(t('عاجل · $urgent', 'Urgent · $urgent'), color: c.danger, icon: Icons.priority_high_rounded),
-        if (open > 0) AppBadgePill(t('لهم تنبيهات · $open', 'With open flags · $open'), color: c.warning, icon: Icons.flag_rounded),
-        if (quiet > 0) AppBadgePill(t('بلا تواصل منذ 30 يوماً · $quiet', 'No contact in 30 days · $quiet'), color: c.textMedium, icon: Icons.forum_outlined),
-      ]),
+      padding: const EdgeInsets.only(bottom: AppSpace.md),
+      child: AppBlock(
+        tone: AppBlockTone.sky,
+        padding: const EdgeInsets.all(AppSpace.md),
+        child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          Padding(
+            padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
+            child: Text(
+              countText(page.total, ar1: 'طالب واحد', ar2: 'طالبان', arFew: '${page.total} طلاب', arMany: '${page.total} طالباً', en1: '1 student', en: '${page.total} students') +
+                  (total != page.total ? t(' من $total', ' of $total') : ''),
+              style: AppType.section(context).copyWith(color: AppBlock.colorsOf(context).ink),
+            ),
+          ),
+          if (urgent > 0) AppStatusBadge(label: t('عاجل · $urgent', 'Urgent · $urgent'), tone: AppTone.danger, icon: Icons.priority_high_rounded),
+          if (open > 0) AppStatusBadge(label: t('لهم تنبيهات · $open', 'With open flags · $open'), tone: AppTone.warning, icon: Icons.flag_rounded),
+          if (quiet > 0) AppStatusBadge(label: t('بلا تواصل منذ 30 يوماً · $quiet', 'No contact in 30 days · $quiet'), icon: Icons.forum_outlined),
+        ]),
+      ),
     );
   }
 }
@@ -543,10 +552,11 @@ class AdvWorkspaceView extends StatelessWidget {
                   : t('يظهر طلابك هنا حين يسندهم إليك مدير الإرشاد.', 'Your students show here when the advising director assigns them to you.'),
             );
     } else {
-      body = AdvPageFrame(maxWidth: 1440, children: [
-        _Facets(page: p),
-        for (final s in p.items)
-          AdvCaseCard(
+      // ONE orchestrated entrance: the caseload block, then the first cards (AppReveal moves only the first 8)
+      body = AdvPageFrame(maxWidth: AppWidth.wide.max, children: [
+        AppReveal(index: 0, group: 'adv.workspace', child: _Facets(page: p)),
+        for (final (i, s) in p.items.indexed)
+          AppReveal(index: i + 1, group: 'adv.workspace', child: AdvCaseCard(
             item: s,
             categoryNames: categoryNames,
             showAdvisor: manage,
@@ -554,7 +564,7 @@ class AdvWorkspaceView extends StatelessWidget {
             selected: sel?.has(s.memberId),
             onTap: sel != null ? (onToggle == null ? null : () => onToggle!(s)) : (onOpen == null ? null : () => onOpen!(s)),
             onLongPress: sel == null && onSelectStart != null ? () => onSelectStart!(s) : null,
-          ),
+          )),
         if (p.pages > 1 && onPage != null) ...[
           const SizedBox(height: AppSpace.sm),
           AppPagination(page: p.page, pageCount: p.pages, total: p.total, pageSize: p.size, onPage: onPage!),
@@ -607,7 +617,7 @@ class AdvWorkspacePage extends StatelessWidget {
   Widget build(BuildContext context) => OrgPushedPage(
         title: manage ? t('مساحة الإرشاد', 'Advising workspace') : t('طلابي', 'My students'),
         helpPageId: 'org.advising',
-        maxWidth: 1440,
+        maxWidth: AppWidth.wide.max,
         child: _AdvWorkspaceBody(orgId: orgId, manage: manage, sort: sort, outreach: outreach),
       );
 }

@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp;
 
 import '../../admin/admin_common.dart' show t;
 import 'adv_models.dart';
@@ -52,17 +53,25 @@ Color advFlagStatusColor(BuildContext context, String status) {
 
 /// "Risk 72 · High risk" over a thin bar, then the top reason. [large]: the 360's header.
 class AdvRiskMeter extends StatelessWidget {
-  const AdvRiskMeter({super.key, required this.score, this.reason, this.large = false});
+  const AdvRiskMeter({super.key, required this.score, this.reason, this.large = false, this.onBlock = false, this.memoryKey});
   final int score;
 
   /// The sentence of the top reason (null: none shown).
   final String? reason;
+
+  /// The 360's key figure: the score drawn large, counting up once.
   final bool large;
+
+  /// Drawn on a tinted AppBlock: the band's ink is darkened against the block, not the canvas.
+  final bool onBlock;
+
+  /// Remembers the shown score (a revisit glides from it instead of counting from zero).
+  final String? memoryKey;
 
   @override
   Widget build(BuildContext context) {
     final col = advRiskColor(context, score);
-    final ink = appInk(context, col);
+    final ink = onBlock ? AppBlock.colorsOf(context).accentInk(col) : appInk(context, col);
     final band = advRiskBandLabel(advRiskBand(score));
     final why = reason;
     return Semantics(
@@ -70,16 +79,19 @@ class AdvRiskMeter extends StatelessWidget {
       excludeSemantics: true,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-          Text('$score', style: (large ? AppType.figure(context) : AppType.row(context)).copyWith(color: ink, fontWeight: FontWeight.w700, fontFeatures: const [FontFeature.tabularFigures()])),
+          if (large)
+            AppCountUp('$score', memoryKey: memoryKey, style: AppType.figureLarge(context).copyWith(color: ink, fontFeatures: const [FontFeature.tabularFigures()]))
+          else
+            Text('$score', style: AppType.row(context).copyWith(color: ink, fontWeight: FontWeight.w700, fontFeatures: const [FontFeature.tabularFigures()])),
           const SizedBox(width: AppSpace.xxs),
-          Text('/ 100', textDirection: TextDirection.ltr, style: AppType.meta(context)),
+          Text('/ 100', textDirection: TextDirection.ltr, style: AppType.meta(context).copyWith(color: onBlock ? AppBlock.colorsOf(context).muted : null)),
           const SizedBox(width: AppSpace.xs),
           Expanded(
             child: Text(band, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: ink, fontWeight: FontWeight.w600)),
           ),
         ]),
         const SizedBox(height: AppSpace.xxs),
-        AppProgressBar(value: score.toDouble(), max: 100, color: col, height: large ? 6 : 4),
+        AppProgressBar(value: score.toDouble(), max: 100, color: col, height: large ? AppSpace.xs : AppSpace.xxs),
         if (why != null && why.isNotEmpty) ...[
           const SizedBox(height: AppSpace.xxs),
           Text(why, maxLines: large ? 3 : 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
@@ -272,11 +284,11 @@ class AdvMiniStat extends StatelessWidget {
       excludeSemantics: true,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
-        decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll),
+        decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.controlAll),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text(shown,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+          // the figure counts up once (a revisit with the same value stays still)
+          AppCountUp(shown,
+              memoryKey: 'adv.mini.$label',
               textDirection: TextDirection.ltr,
               style: AppType.figure(context).copyWith(color: tone == null ? c.textDark : appInk(context, tone!), fontFeatures: const [FontFeature.tabularFigures()])),
           Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
