@@ -15,6 +15,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppFill;
 import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -205,10 +206,10 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
       ]),
       child: Column(children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xxs),
           child: Align(
             alignment: AlignmentDirectional.centerStart,
-            child: Wrap(spacing: 8, runSpacing: 8, children: [
+            child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               AppChoiceChip(label: '${t('الكل', 'All')} (${lib?.items.length ?? 0})', selected: _filter.isEmpty, onTap: () => setState(() => _filter = '')),
               for (final s in ['ready', 'processing', 'queued', 'failed'])
                 if ((counts[s] ?? 0) > 0)
@@ -223,13 +224,13 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
             ]),
           ),
         ),
-        if (lib?.quota != null) Padding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 4), child: RagQuotaBar(quota: lib!.quota!)),
+        if (lib?.quota != null) Padding(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs), child: RagQuotaBar(quota: lib!.quota!)),
         Expanded(
           child: _loading
               ? const AppListSkeleton()
               : _error != null
                   ? AppEmpty(icon: Icons.error_outline_rounded, title: _error!, actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load)
-                  : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
+                  : ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xxxl + AppSpace.lg), children: [
                       // the platform admins' dashboard of the app assistant (the app library)
                       if (widget.app && lib?.manager == true && _active != null) ...[
                         RagLibraryOverview(
@@ -238,14 +239,14 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
                             onSync: _syncApp,
                             onGuide: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminFeatureGuidePage())),
                             onTry: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RagChatScreen(app: true)))),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: AppSpace.md),
                       ],
                       if (shown.isEmpty)
                         AppEmpty(icon: Icons.folder_open_rounded, title: t('لا مستندات', 'No documents'), message: t('ارفع لائحة أو دليلاً ليجيب المساعد منه.', 'Upload a regulation or guide for the assistant to answer from.'))
                       else
                         for (final d in shown)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.only(bottom: AppSpace.sm),
                             child: RagDocumentCard(
                               doc: d,
                               working: _working.contains(d.id),
@@ -263,8 +264,10 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
           ? FloatingActionButton.extended(
               backgroundColor: c.primary,
               onPressed: _upload,
-              icon: Icon(Icons.upload_file_rounded, color: c.onHero),
-              label: Text(t('رفع مستند', 'Upload'), style: TextStyle(color: c.onHero)))
+              foregroundColor: c.onHero,
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(AppRadius.card))),
+              icon: const Icon(Icons.upload_file_rounded),
+              label: Text(t('رفع مستند', 'Upload'), style: AppType.label(context).copyWith(color: c.onHero)))
           : null,
     );
   }
@@ -293,7 +296,7 @@ class RagLibraryOverview extends StatelessWidget {
           color: appInk(context, c.primary),
           text: t('يجيب مساعد التطبيق كل المستخدمين من هذه المستندات، ومن الشروط و«عن التطبيق» و«دليل ميزات التطبيق» (تُقرأ تلقائياً). عدّل الدليل لتحدد ما يشرحه المساعد عن كل ميزة ولمن.',
               'The app assistant answers every user from these documents and from the terms, About and "App features guide" pages (read automatically). Edit the guide to decide what it explains about each feature, and for whom.')),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       AppGrid(padding: EdgeInsets.zero, minTile: 150, children: [
         AppStatTile(icon: Icons.task_alt_rounded, label: ragStatusText('ready'), value: counts['ready'] ?? 0, color: c.success),
         AppStatTile(icon: Icons.hourglass_top_rounded, label: ragStatusText('processing'), value: busy, color: c.warning),
@@ -301,8 +304,8 @@ class RagLibraryOverview extends StatelessWidget {
         AppStatTile(icon: Icons.data_usage_rounded, label: t('الحجم', 'Size'), value: ragSizeText(size)),
         AppStatTile(icon: Icons.segment_rounded, label: t('مقاطع مفهرسة', 'Indexed passages'), value: chunks),
       ]),
-      const SizedBox(height: 12),
-      Wrap(spacing: 8, runSpacing: 8, children: [
+      const SizedBox(height: AppSpace.sm),
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         if (onUpload != null) AppPill(icon: Icons.upload_file_rounded, label: t('رفع مستندات', 'Upload documents'), onTap: onUpload!),
         if (onSync != null) AppPill(icon: Icons.sync_rounded, label: t('تحديث من صفحات التطبيق', 'Update from the app\'s pages'), onTap: onSync!),
         if (onGuide != null) AppPill(icon: Icons.menu_book_rounded, label: t('دليل ميزات التطبيق', 'App features guide'), onTap: onGuide!),
@@ -327,28 +330,31 @@ class RagQuotaBar extends StatelessWidget {
       child: ExcludeSemantics(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
           Row(children: [
-            Icon(Icons.inventory_2_outlined, size: 18, color: col),
-            const SizedBox(width: 8),
+            Icon(Icons.inventory_2_outlined, size: AppIconSize.md, color: appInk(context, col)),
+            const SizedBox(width: AppSpace.xs),
             Expanded(
-              child: Wrap(spacing: 10, runSpacing: 2, children: [
-                Text(quota.docsText, style: appText(12.5, w: FontWeight.w700, c: c.textDark)),
-                Text(quota.bytesText, style: appText(12.5, c: c.textMedium)),
+              child: Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs / 2, children: [
+                Text(quota.docsText, style: AppType.label(context).copyWith(color: c.textDark)),
+                Text(quota.bytesText, style: AppType.meta(context).copyWith(color: c.textMedium)),
               ]),
             ),
           ]),
           if (fill != null)
             Padding(
-              padding: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.only(top: AppSpace.xs),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(value: fill, minHeight: 5, color: col, backgroundColor: col.withValues(alpha: 0.15)),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                child: AppFill(
+                  value: fill,
+                  builder: (context, v) => LinearProgressIndicator(value: v, minHeight: AppSpace.xs - AppSpace.xxs / 2, color: col, backgroundColor: c.inputBg),
+                ),
               ),
             ),
           if (quota.full)
             Padding(
-              padding: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.only(top: AppSpace.xs),
               child: Text(t('المكتبة ممتلئة — أرشف مستندات لتحرير مساحة', 'The library is full — archive documents to make room'),
-                  style: appText(11.5, w: FontWeight.w600, c: c.danger)),
+                  style: AppType.label(context).copyWith(color: c.danger)),
             ),
         ]),
       ),
@@ -369,17 +375,24 @@ class RagDocumentCard extends StatelessWidget {
     final c = context.colors;
     final col = ragStatusColor(context, doc.status);
     return AppCard(
-      padding: const EdgeInsets.all(14),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(Icons.description_outlined, color: appInk(context, c.primary)),
-          const SizedBox(width: 10),
-          Expanded(child: Text(doc.displayTitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w800, c: c.textDark))),
-          const SizedBox(width: 8),
+          ExcludeSemantics(
+            child: SizedBox.square(
+              dimension: AppIconSize.hero,
+              child: DecoratedBox(
+                decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.chip)),
+                child: Icon(Icons.description_outlined, size: AppIconSize.md, color: appInk(context, c.primary)),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(child: Text(doc.displayTitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.textDark))),
+          const SizedBox(width: AppSpace.xs),
           AppBadgePill(ragStatusText(doc.status), color: col),
         ]),
-        const SizedBox(height: 8),
-        Wrap(spacing: 6, runSpacing: 6, children: [
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           AppBadgePill(ragScopeText(doc.scope), color: c.textMedium),
           AppBadgePill('v${doc.version}', color: c.textMedium),
           if (doc.pages != null) AppBadgePill('${doc.pages} ${t('صفحة', 'pages')}', color: c.textMedium),
@@ -388,27 +401,27 @@ class RagDocumentCard extends StatelessWidget {
           if (doc.ocrPages > 0) AppBadgePill('OCR ${doc.ocrPages}', color: c.textMedium),
         ]),
         if (doc.createdAt != null)
-          Padding(padding: const EdgeInsets.only(top: 6), child: Text(shortDateTime(doc.createdAt), style: appText(11.5, c: c.textLight))),
+          Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: Text(shortDateTime(doc.createdAt), style: AppType.meta(context).copyWith(color: c.textLight))),
         if (doc.status == 'failed' && ragDocErrorText(doc.error).isNotEmpty)
-          Padding(padding: const EdgeInsets.only(top: 8), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: ragDocErrorText(doc.error))),
+          Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: ragDocErrorText(doc.error))),
         RagWarningChips(warnings: doc.warnings),
         RagExcludedText(excluded: doc.excluded),
         if (doc.showProgress)
           RagProgressRow(done: doc.progressDone, total: doc.progressTotal)
         else if (doc.busy)
-          const Padding(padding: EdgeInsets.only(top: 10), child: LinearProgressIndicator(minHeight: 3)),
-        const SizedBox(height: 6),
-        Wrap(spacing: 4, runSpacing: 0, children: [
-          TextButton.icon(onPressed: working ? null : onDownload, icon: const Icon(Icons.download_rounded, size: 18), label: Text(t('تنزيل', 'Download'))),
+          const Padding(padding: EdgeInsets.only(top: AppSpace.sm), child: LinearProgressIndicator(minHeight: 3)),
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xxs, runSpacing: 0, children: [
+          TextButton.icon(onPressed: working ? null : onDownload, icon: const Icon(Icons.download_rounded, size: AppIconSize.md), label: Text(t('تنزيل', 'Download'))),
           if (manager && onNewVersion != null)
-            TextButton.icon(onPressed: working ? null : onNewVersion, icon: const Icon(Icons.library_add_rounded, size: 18), label: Text(t('نسخة جديدة', 'New version'))),
+            TextButton.icon(onPressed: working ? null : onNewVersion, icon: const Icon(Icons.library_add_rounded, size: AppIconSize.md), label: Text(t('نسخة جديدة', 'New version'))),
           if (manager && onReindex != null)
-            TextButton.icon(onPressed: working ? null : onReindex, icon: const Icon(Icons.refresh_rounded, size: 18), label: Text(t('إعادة فهرسة', 'Reindex'))),
+            TextButton.icon(onPressed: working ? null : onReindex, icon: const Icon(Icons.refresh_rounded, size: AppIconSize.md), label: Text(t('إعادة فهرسة', 'Reindex'))),
           if (manager && onArchive != null)
             TextButton.icon(
                 onPressed: working ? null : onArchive,
                 style: TextButton.styleFrom(foregroundColor: c.danger),
-                icon: const Icon(Icons.archive_outlined, size: 18),
+                icon: const Icon(Icons.archive_outlined, size: AppIconSize.md),
                 label: Text(t('أرشفة', 'Archive'))),
         ]),
       ]),
@@ -463,7 +476,7 @@ class _RagUploadSheetState extends State<RagUploadSheet> {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppSheetHeader(widget.replaces == null ? t('رفع مستند', 'Upload a document') : t('نسخة جديدة من المستند', 'New version of the document')),
         RagUploadForm(
@@ -568,7 +581,7 @@ class _RagUploadFormState extends State<RagUploadForm> {
           courseField: AppField(controller: _course, label: t('رقم المقرر', 'Course id'), keyboard: TextInputType.number)),
       if (!locked && replaceable.isNotEmpty)
         Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
           child: AppDropdown<int>(
             value: _d.replaces ?? 0,
             decoration: InputDecoration(labelText: t('يستبدل مستنداً (اختياري)', 'Replaces a document (optional)')),
@@ -581,13 +594,13 @@ class _RagUploadFormState extends State<RagUploadForm> {
         ),
       OutlinedButton.icon(
           onPressed: widget.busy ? null : _choose,
-          icon: const Icon(Icons.attach_file_rounded, size: 18),
+          icon: const Icon(Icons.attach_file_rounded, size: AppIconSize.md),
           label: Text(_d.fileName ?? t('اختر ملفاً (PDF, DOCX, TXT, MD, HTML, صور)', 'Pick a file (PDF, DOCX, TXT, MD, HTML, images)'), maxLines: 2, overflow: TextOverflow.ellipsis)),
       RagUploadHint(ocrScanned: widget.ocrScanned, maxMb: widget.maxMb),
-      if (_d.fileBytes != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(ragSizeText(_d.fileBytes!.length), style: appText(11.5, c: c.textLight))),
+      if (_d.fileBytes != null) Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text(ragSizeText(_d.fileBytes!.length), style: AppType.meta(context).copyWith(color: c.textLight))),
       if (_err != null || widget.error != null)
-        Padding(padding: const EdgeInsets.only(top: 10), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _err ?? widget.error!)),
-      const SizedBox(height: 14),
+        Padding(padding: const EdgeInsets.only(top: AppSpace.sm), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _err ?? widget.error!)),
+      const SizedBox(height: AppSpace.md),
       AppPrimaryButton(label: t('رفع', 'Upload'), icon: Icons.upload_rounded, busy: widget.busy, onPressed: widget.busy ? null : _submit),
     ]);
   }
@@ -646,9 +659,9 @@ class _RagSettingsSheetState extends State<RagSettingsSheet> {
       Flexible(
         child: _s == null
             ? Padding(
-                padding: const EdgeInsets.all(20),
-                child: _error == null ? const SizedBox(height: 100, child: AppListSkeleton(items: 2)) : AppBanner(icon: Icons.error_outline_rounded, color: context.colors.danger, text: _error!))
-            : SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), child: RagSettingsForm(settings: _s!, busy: _busy, onSave: _save)),
+                padding: const EdgeInsets.all(AppSpace.lg),
+                child: _error == null ? const SizedBox(height: AppSpace.xxxl + AppSpace.xl, child: AppListSkeleton(items: 2)) : AppBanner(icon: Icons.error_outline_rounded, color: context.colors.danger, text: _error!))
+            : SingleChildScrollView(padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md), child: RagSettingsForm(settings: _s!, busy: _busy, onSave: _save)),
       ),
     ]);
   }
@@ -675,7 +688,7 @@ class _RagSettingsFormState extends State<RagSettingsForm> {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (!s.llmAvailable)
         Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.only(bottom: AppSpace.sm),
             child: AppBanner(icon: Icons.info_outline_rounded, text: t('نموذج الصياغة غير مفعّل على الخادم؛ الإجابات مقتطفة من المستندات مباشرة.', 'No language model is set up on the server; answers are extracted straight from the documents.'))),
       AppDropdown<String>(
         value: _gen,
@@ -694,14 +707,14 @@ class _RagSettingsFormState extends State<RagSettingsForm> {
         onChanged: (v) => setState(() => _gen = v ?? 'default'),
       ),
       Padding(
-        padding: const EdgeInsets.only(top: 4, bottom: 4),
+        padding: const EdgeInsets.only(top: AppSpace.xxs, bottom: AppSpace.xxs),
         child: Text(
             s.effectiveGenerator == 'llm'
                 ? t('الآن: يكتب النموذج الإجابات من مستنداتكم ويراجعها مع المصادر.', 'Now: the model writes the answers from your documents and checks them against the sources.')
                 : t('الآن: الإجابات مقتطفة من المستندات مباشرة.', 'Now: answers are quoted straight from the documents.'),
-            style: appText(12, c: c.textMedium)),
+            style: AppType.meta(context).copyWith(color: c.textMedium)),
       ),
-      const SizedBox(height: 4),
+      const SizedBox(height: AppSpace.xxs),
       if (s.llmAvailable)
         AppSwitchTile(
             title: t('السماح بمزوّد خارجي', 'Allow an external provider'),
@@ -710,10 +723,10 @@ class _RagSettingsFormState extends State<RagSettingsForm> {
                 : t('النموذج داخلي؛ لا تغادر المستندات الخادم.', 'The model is internal; documents do not leave the server.'),
             value: _gen == 'llm' && _ext,
             onChanged: _gen == 'llm' ? (v) => setState(() => _ext = v) : null),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.sm),
       AppPrimaryButton(label: t('حفظ', 'Save'), icon: Icons.check_rounded, busy: widget.busy, onPressed: widget.busy ? null : () => widget.onSave(_gen, _ext)),
-      const SizedBox(height: 4),
-      Text(t('التغيير يسري على الأسئلة الجديدة فقط.', 'A change applies to new questions only.'), style: appText(11.5, c: c.textLight)),
+      const SizedBox(height: AppSpace.xxs),
+      Text(t('التغيير يسري على الأسئلة الجديدة فقط.', 'A change applies to new questions only.'), style: AppType.meta(context).copyWith(color: c.textLight)),
     ]);
   }
 }
@@ -752,9 +765,9 @@ class _RagFeedbackSheetState extends State<RagFeedbackSheet> {
       Flexible(
         child: _f == null
             ? Padding(
-                padding: const EdgeInsets.all(20),
-                child: _error == null ? const SizedBox(height: 100, child: AppListSkeleton(items: 2)) : AppBanner(icon: Icons.error_outline_rounded, color: context.colors.danger, text: _error!))
-            : SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), child: RagFeedbackView(feedback: _f!)),
+                padding: const EdgeInsets.all(AppSpace.lg),
+                child: _error == null ? const SizedBox(height: AppSpace.xxxl + AppSpace.xl, child: AppListSkeleton(items: 2)) : AppBanner(icon: Icons.error_outline_rounded, color: context.colors.danger, text: _error!))
+            : SingleChildScrollView(padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md), child: RagFeedbackView(feedback: _f!)),
       ),
     ]);
   }
@@ -770,27 +783,34 @@ class RagFeedbackView extends StatelessWidget {
     final f = feedback;
     final share = f.helpfulShare;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Wrap(spacing: 10, runSpacing: 10, children: [
+      Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [
         _Stat(t('أُجيب', 'Answered'), '${f.answered}'),
         _Stat(t('قُيّم', 'Rated'), '${f.rated}'),
         _Stat(t('مفيد', 'Helpful'), share == null ? '—' : '${(share * 100).round()}%'),
         _Stat(t('لم يوجد في المستندات', 'Not found'), '${f.notFound}'),
       ]),
-      const SizedBox(height: 8),
-      Text(t('الأسئلة التي لم تُفِد (بلا أسماء) — أضف مستنداً أو صحّح الموجود.', 'Questions that did not help (no names) — add a document or fix an existing one.'), style: appText(12, c: c.textMedium)),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
+      Text(t('الأسئلة التي لم تُفِد (بلا أسماء) — أضف مستنداً أو صحّح الموجود.', 'Questions that did not help (no names) — add a document or fix an existing one.'), style: AppType.meta(context).copyWith(color: c.textMedium)),
+      const SizedBox(height: AppSpace.xs),
       if (f.unhelpful.isEmpty)
-        AppEmpty(icon: Icons.thumb_up_alt_outlined, title: t('لا إجابات غير مفيدة', 'No unhelpful answers'))
+        // a calm line rather than the full empty plate: the stats above already carry the sheet
+        AppCard(
+          child: Row(children: [
+            Icon(Icons.thumb_up_alt_outlined, size: AppIconSize.md, color: appInk(context, c.success)),
+            const SizedBox(width: AppSpace.sm),
+            Expanded(child: Text(t('لا إجابات غير مفيدة', 'No unhelpful answers'), style: AppType.bodyStrong(context).copyWith(color: c.textDark))),
+          ]),
+        )
       else
         for (final u in f.unhelpful)
           AppCard(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: AppSpace.xs),
+            padding: const EdgeInsets.all(AppSpace.sm),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(u.question, style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
-              if (u.comment.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text('«${u.comment}»', style: appText(12.5, c: c.textMedium))),
-              const SizedBox(height: 6),
-              Wrap(spacing: 6, runSpacing: 6, children: [
+              Text(u.question, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
+              if (u.comment.isNotEmpty) Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text('«${u.comment}»', style: AppType.meta(context).copyWith(color: c.textMedium))),
+              const SizedBox(height: AppSpace.xs),
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 if (u.found == false) AppBadgePill(t('لم يجد جواباً', 'No answer found'), color: c.warning),
                 for (final s in u.sources) AppBadgePill(s, color: c.textMedium),
                 if (u.at != null) AppBadgePill(shortDateTime(u.at), color: c.textLight),
@@ -811,10 +831,10 @@ class _Stat extends StatelessWidget {
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 120, maxWidth: 220),
       child: AppCard(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AppSpace.sm),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(value, style: appText(20, w: FontWeight.w800, c: c.textDark)),
-          Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textLight)),
+          Text(value, style: AppType.figure(context).copyWith(color: c.textDark)),
+          Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight)),
         ]),
       ),
     );
@@ -955,7 +975,7 @@ class _RagBatchUploadSheetState extends State<RagBatchUploadSheet> {
   Widget build(BuildContext context) {
     final scopes = _options;
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppSheetHeader(t('رفع مستندات', 'Upload documents')),
         RagBatchUploadForm(
@@ -1057,27 +1077,27 @@ class RagBatchUploadForm extends StatelessWidget {
           busy: busy),
       for (var i = 0; i < files.length; i++)
         Padding(
-          padding: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.only(bottom: AppSpace.xs),
           child: Row(children: [
             Icon(i < done ? Icons.check_circle_rounded : Icons.insert_drive_file_outlined, size: 20, color: appInk(context, i < done ? c.success : c.primary)),
-            const SizedBox(width: 8),
-            Expanded(child: Text(files[i].$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, c: c.textDark))),
-            const SizedBox(width: 6),
-            Text(ragSizeText(files[i].$2), style: appText(11.5, c: c.textLight)),
-            if (!busy) IconButton(tooltip: t('إزالة', 'Remove'), onPressed: () => onRemove(i), icon: Icon(Icons.close_rounded, size: 18, color: c.textLight)),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(child: Text(files[i].$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.body(context).copyWith(color: c.textDark))),
+            const SizedBox(width: AppSpace.xs),
+            Text(ragSizeText(files[i].$2), style: AppType.meta(context).copyWith(color: c.textLight)),
+            if (!busy) IconButton(tooltip: t('إزالة', 'Remove'), onPressed: () => onRemove(i), icon: Icon(Icons.close_rounded, size: AppIconSize.md, color: c.textLight)),
           ]),
         ),
       OutlinedButton.icon(
           onPressed: busy ? null : onPick,
-          icon: const Icon(Icons.attach_file_rounded, size: 18),
+          icon: const Icon(Icons.attach_file_rounded, size: AppIconSize.md),
           label: Text(files.isEmpty ? t('اختر ملفاً أو أكثر', 'Choose one or more files') : t('أضف ملفات', 'Add files'))),
       RagUploadHint(ocrScanned: ocrScanned, maxMb: maxMb),
       if (files.isNotEmpty && plan.ask) ...[
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.md),
         RagConflictQuestion(plan: plan, mode: mode, onMode: busy ? null : onMode),
       ],
-      if (error != null) Padding(padding: const EdgeInsets.only(top: 10), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: error!)),
-      const SizedBox(height: 14),
+      if (error != null) Padding(padding: const EdgeInsets.only(top: AppSpace.sm), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: error!)),
+      const SizedBox(height: AppSpace.md),
       AppPrimaryButton(
           label: busy && files.isNotEmpty ? t('جارٍ الرفع ${done + 1} من ${files.length}', 'Uploading ${done + 1} of ${files.length}') : t('رفع', 'Upload'),
           icon: Icons.upload_rounded,
@@ -1098,26 +1118,26 @@ class RagConflictQuestion extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return AppCard(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+      padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.sm, AppSpace.xs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text(t('توجد ${plan.existing} مستندات هنا مسبقاً. ماذا نفعل بها؟', 'There are already ${plan.existing} documents here. What should we do with them?'),
-            style: appText(13.5, w: FontWeight.w800, c: c.textDark)),
-        const SizedBox(height: 6),
+            style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
+        const SizedBox(height: AppSpace.xs),
         for (final m in RagConflictMode.values)
           InkWell(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppRadius.chip),
             onTap: onMode == null ? null : () => onMode!(m),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
+              padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Icon(mode == m ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded, size: 20,
                     color: mode == m ? appInk(context, c.primary) : c.textLight),
-                const SizedBox(width: 10),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(m == ragConflictDefault ? '${plan.title(m)} ${t('(موصى به)', '(recommended)')}' : plan.title(m),
-                        style: appText(13.5, w: FontWeight.w700, c: m == RagConflictMode.replace ? c.danger : c.textDark)),
-                    Text(plan.detail(m), style: appText(12, c: c.textMedium)),
+                        style: AppType.bodyStrong(context).copyWith(color: m == RagConflictMode.replace ? c.danger : c.textDark)),
+                    Text(plan.detail(m), style: AppType.meta(context).copyWith(color: c.textMedium)),
                   ]),
                 ),
               ]),

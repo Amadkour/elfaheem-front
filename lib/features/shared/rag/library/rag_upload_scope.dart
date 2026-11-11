@@ -109,20 +109,20 @@ class RagScopePicker extends StatelessWidget {
     final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (options.length > 1) ...[
-        Text(t('من يرى هذه المستندات؟', 'Who sees these documents?'), style: appText(13, w: FontWeight.w700, c: c.textDark)),
-        const SizedBox(height: 6),
-        Wrap(spacing: 8, runSpacing: 8, children: [
+        Text(t('من يرى هذه المستندات؟', 'Who sees these documents?'), style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final s in options) AppChoiceChip(label: ragScopePickText(s), selected: scope == s, onTap: busy ? () {} : () => onScope(s)),
         ]),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
       ],
       if (scope == 'org' && onRoles != null) ...[
-        Text(t('اقتصر على أدوار (اختياري — الكل إن لم تختر)', 'Only these roles (optional — everyone if none)'), style: appText(12.5, w: FontWeight.w700, c: c.textMedium)),
-        const SizedBox(height: 6),
-        Wrap(spacing: 8, runSpacing: 8, children: [
+        Text(t('اقتصر على أدوار (اختياري — الكل إن لم تختر)', 'Only these roles (optional — everyone if none)'), style: AppType.label(context).copyWith(color: c.textMedium)),
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final r in ragOrgRoles) AppChoiceChip(label: ragOrgRoleText(r), selected: roles.contains(r), onTap: busy ? () {} : () => onRoles!(r)),
         ]),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
       ],
       if (scope == 'course' && !fixedCourse) ...[
         if (courses.isNotEmpty && onCourse != null)
@@ -137,7 +137,7 @@ class RagScopePicker extends StatelessWidget {
           )
         else if (courseField != null)
           courseField!,
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
       ],
     ]);
   }

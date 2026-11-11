@@ -87,6 +87,12 @@ void main() {
       }),
       RagDocument.fromJson({...base, 'status': 'failed', 'error': 'no_readable_text: nothing'}),
     ];
-    await expectNoLayoutErrors(t, () => SingleChildScrollView(child: Column(children: [for (final d in docs) RagDocumentCard(doc: d, manager: true, onDownload: () {})])));
+    await expectNoLayoutErrors(
+        t,
+        () => SingleChildScrollView(
+                child: Column(children: [
+              const RagQuotaBar(quota: RagQuota(docs: 198, bytes: 480 * 1024 * 1024, maxDocs: 200, maxBytes: 500 * 1024 * 1024)),
+              for (final d in docs) RagDocumentCard(doc: d, manager: true, onDownload: () {}, onReindex: () {}, onArchive: () {}, onNewVersion: () {}),
+            ])));
   });
 }

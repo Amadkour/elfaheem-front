@@ -19,8 +19,8 @@ import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/app_mode.dart';
-import '../../../design/app_kit.dart' show appText, showAppSheet, AppSheetContent;
-import '../../../design/app_tokens.dart';
+import '../../../design/app_kit.dart';
+import '../../../design/app_motion_kit.dart' show AppEase;
 import '../../../design/chrome_button.dart';
 import '../../../utils/widget/parent_component.dart';
 import '../../auth/auth_provider.dart';
@@ -192,26 +192,70 @@ Future<void> _present(BuildContext context, Widget Function(BuildContext ctx) bo
     context: context,
     barrierDismissible: true,
     barrierLabel: ar ? 'إغلاق' : 'Close',
-    barrierColor: Colors.black38,
-    transitionDuration: AppMotion.of(context).base,
+    barrierColor: appScrimColor(context),
+    transitionDuration: AppMotion.of(context).slow,
     pageBuilder: (ctx, _, _) => Directionality(
       textDirection: ar ? TextDirection.rtl : TextDirection.ltr,
+      child: _HelpPanel(child: body(ctx)),
+    ),
+    // the panel slides in from the end edge on the kit's ease-out and leaves the same way
+    transitionBuilder: (ctx, a, _, child) {
+      final curved = CurvedAnimation(parent: a, curve: AppEase.out, reverseCurve: AppEase.outReversed);
+      return SlideTransition(
+        position: Tween<Offset>(begin: Offset(ar ? -_HelpPanel.slide : _HelpPanel.slide, 0), end: Offset.zero).animate(curved),
+        child: FadeTransition(opacity: curved, child: child),
+      );
+    },
+  );
+}
+
+/// The wide-screen help: a floating paper panel at the end edge (radius sheet, a warm hairline, the modal shadow) at
+/// a sheet's reading measure, the body scrolling inside.
+class _HelpPanel extends StatelessWidget {
+  const _HelpPanel({required this.child});
+
+  /// The panel's width: a phone sheet's reading measure beside the page.
+  static double get _width => AppWidth.form.max - AppSpace.xxxl * 2 - AppSpace.md;
+
+  /// How far (a fraction of its width) the panel travels in.
+  static const double slide = 0.4;
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return SafeArea(
       child: Align(
         alignment: AlignmentDirectional.centerEnd,
-        child: SizedBox(
-          width: 440,
-          height: double.infinity,
-          child: Material(
-            color: ctx.colors.cardBg,
-            child: SafeArea(
-              child: SingleChildScrollView(child: body(ctx)),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpace.md),
+          child: SizedBox(
+            width: _width,
+            height: double.infinity,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: c.cardBg,
+                borderRadius: BorderRadius.circular(AppRadius.sheet),
+                border: Border.all(color: c.divider, width: AppBorder.hairline),
+                boxShadow: AppElevation.of(context, 4),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.sheet),
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(top: AppSpace.xs),
+                    child: child,
+                  ),
+                ),
+              ),
             ),
           ),
         ),
       ),
-    ),
-    transitionBuilder: (ctx, a, _, child) => FadeTransition(opacity: a, child: child),
-  );
+    );
+  }
 }
 
 /// The sheet of one page: shows the cached entry at once, else a skeleton while [HelpService.ensure] fetches the
@@ -267,15 +311,15 @@ class _HelpPageBodyState extends State<HelpPageBody> {
       return AppSheetContent(title: title, children: [
         Semantics(
           label: ar ? 'جارٍ التحميل' : 'Loading',
-          child: Column(children: [
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             for (final w in const [1.0, 0.9, 0.6]) ...[
-              FractionallySizedBox(
-                widthFactor: w,
-                child: Container(
-                    height: 16, decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.chip))),
-              ),
+              FractionallySizedBox(widthFactor: w, child: const AppSkeletonBox(height: AppSpace.md)),
               AppSpace.gapSm,
             ],
+            AppSpace.gapMd,
+            const FractionallySizedBox(widthFactor: 0.45, child: AppSkeletonBox(height: AppSpace.md + AppSpace.xxs)),
+            AppSpace.gapSm,
+            const AppSkeletonBox(height: AppSpace.xxl + AppSpace.md, radius: AppRadius.card),
           ]),
         ),
       ]);
@@ -283,13 +327,12 @@ class _HelpPageBodyState extends State<HelpPageBody> {
     return AppSheetContent(title: title, children: [
       Text(
         ar ? 'المساعدة غير متاحة الآن. تأكد من الاتصال بالإنترنت ثم حاول مرة أخرى.' : 'Help is not available right now. Check your connection and try again.',
-        style: appText(15, c: c.textMedium, h: 1.6),
+        style: AppType.body(context).copyWith(color: c.textMedium, height: 1.6),
       ),
       AppSpace.gapMd,
-      OutlinedButton(
-        style: OutlinedButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
-        onPressed: () => _load(true),
-        child: Text(ar ? 'إعادة المحاولة' : 'Retry'),
+      Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: AppButton.secondary(label: ar ? 'إعادة المحاولة' : 'Retry', icon: Icons.refresh_rounded, onPressed: () => _load(true)),
       ),
     ]);
   }
@@ -321,46 +364,30 @@ class HelpEntryView extends StatelessWidget {
     return AppSheetContent(
       title: title.isEmpty ? (_ar ? 'معلومات عن هذه الصفحة' : 'About this page') : title,
       children: [
-        if (summary.isNotEmpty) Text(summary, style: appText(15, c: c.textMedium, h: 1.6)),
+        // the lede: what the page is for, in the ink (the sections under it read in the muted body)
+        if (summary.isNotEmpty) Text(summary, style: AppType.body(context).copyWith(color: c.textDark, height: 1.6)),
         for (final s in entry.sections) ...[
-          AppSpace.gapMd,
+          const SizedBox(height: AppSpace.lg),
           Semantics(
             header: true,
-            child: Text(s.title.of(lang), style: appText(16, w: FontWeight.w700, c: c.textDark, h: 1.4)),
+            child: Text(s.title.of(lang), style: AppType.section(context).copyWith(color: c.textDark)),
           ),
           if (!s.body.isEmpty) ...[
-            const SizedBox(height: AppSpace.xxs),
-            Text(s.body.of(lang), style: appText(14, c: c.textMedium, h: 1.6)),
-          ],
-          for (final i in s.items) ...[
             const SizedBox(height: AppSpace.xs),
-            Container(
-              padding: const EdgeInsets.all(AppSpace.sm),
-              decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.chip)),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(i.label.of(lang), style: appText(14, w: FontWeight.w700, c: c.textDark, h: 1.4)),
-                const SizedBox(height: 2),
-                Text(i.text.of(lang), style: appText(13, c: c.textMedium, h: 1.5)),
-              ]),
-            ),
+            Text(s.body.of(lang), style: AppType.body(context).copyWith(color: c.textMedium, height: 1.6)),
+          ],
+          if (s.items.isNotEmpty) ...[
+            const SizedBox(height: AppSpace.sm),
+            HelpItemList(items: [for (final i in s.items) (label: i.label.of(lang), text: i.text.of(lang))]),
           ],
         ],
-        AppSpace.gapLg,
-        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-          FilledButton.icon(
-            style: FilledButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
-            onPressed: ask,
-            icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-            label: Text(askLabel),
-          ),
-          if (entry.hasTour)
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
-              onPressed: tour,
-              icon: const Icon(Icons.tour_outlined, size: 18),
-              label: Text(tourLabel),
-            ),
-        ]),
+        const SizedBox(height: AppSpace.xl),
+        AppButtonRow(
+          primary: AppButton.primary(label: askLabel, icon: Icons.auto_awesome_rounded, onPressed: ask),
+          secondary: [
+            if (entry.hasTour) AppButton.secondary(label: tourLabel, icon: Icons.tour_outlined, onPressed: tour),
+          ],
+        ),
       ],
     );
   }
@@ -392,4 +419,35 @@ bool helpAvailableForMenu(BuildContext context, String pageId) {
   if (u == null || AppConfig.disableList.contains(helpInfoFeatureKey)) return false;
   unawaited(_loadHelpLocal(context, u));
   return HelpService.instance.has(pageId);
+}
+
+/// A help section's named items (a button, a field, a tab) on ONE paper card, parted by warm hairlines: the name in
+/// the strong ink, what it does under it in the muted body. Plain values (the layout harness pumps it).
+class HelpItemList extends StatelessWidget {
+  const HelpItemList({super.key, required this.items});
+
+  final List<({String label, String text})> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return AppCard(
+      padding: EdgeInsets.zero,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        for (var n = 0; n < items.length; n++) ...[
+          if (n > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(items[n].label, style: AppType.bodyStrong(context).copyWith(color: c.textDark, height: 1.4)),
+              if (items[n].text.isNotEmpty) ...[
+                const SizedBox(height: AppSpace.xxs),
+                Text(items[n].text, style: AppType.body(context).copyWith(color: c.textMedium, height: 1.5)),
+              ],
+            ]),
+          ),
+        ],
+      ]),
+    );
+  }
 }

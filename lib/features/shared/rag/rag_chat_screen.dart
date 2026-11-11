@@ -21,7 +21,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
+import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/design/app_responsive.dart' show Breakpoints;
 import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
@@ -31,13 +31,13 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import '../../admin/admin_common.dart' show t;
 import 'chat/rag_action_open.dart';
 import 'chat/rag_answer_extras.dart';
+import 'chat/rag_chat_parts.dart';
 import 'chat/rag_payload.dart';
 import 'rag_chat.dart';
 import 'rag_chat_sessions.dart';
 import 'rag_library.dart';
 import 'rag_learning.dart';
 import 'rag_library_screen.dart';
-import 'package:flutter_education_app/design/app_icons.dart';
 
 export 'rag_chat_sessions.dart';
 
@@ -761,7 +761,7 @@ class RagChatViewState extends State<RagChatView> {
 
   // the messages and the question box share one centred column of at most kRagChatMaxWidth (desktop)
   Widget _chat(BuildContext context) => LayoutBuilder(
-      builder: (context, box) => _chatColumn(context, ragGutter(box.maxWidth, min: widget.compact ? 12.0 : 16.0)));
+      builder: (context, box) => _chatColumn(context, ragGutter(box.maxWidth, min: widget.compact ? AppSpace.sm : AppSpace.md)));
 
   Widget _chatColumn(BuildContext context, double side) {
     final c = context.colors;
@@ -772,21 +772,22 @@ class RagChatViewState extends State<RagChatView> {
     // chat gets deleted"; the Chats list (RagSessionsPanel) keeps it at its foot
     return Column(children: [
       Expanded(
-        child: ListView(controller: _scroll, padding: EdgeInsets.fromLTRB(side, 8, side, 16), children: [
-          AppBanner(icon: Icons.menu_book_rounded, color: appInk(context, c.primary), text: _scopeText()),
-          const SizedBox(height: 10),
+        child: ListView(controller: _scroll, padding: EdgeInsets.fromLTRB(side, AppSpace.sm, side, AppSpace.md), children: [
+          RagScopeNote(text: _scopeText()),
+          const SizedBox(height: AppSpace.md),
           if (_loading) const AppListSkeleton(items: 2, padding: EdgeInsets.zero),
           if (hidden > 0)
             Align(
               alignment: AlignmentDirectional.centerStart,
-              child: TextButton.icon(
+              child: AppButton.ghost(
                 key: const ValueKey('rag.earlier'),
                 onPressed: () {
                   setState(() => _hiddenBefore = 0);
                   _toEnd();
                 },
-                icon: const Icon(Icons.history_rounded, size: 18),
-                label: Text(t('الأسئلة السابقة ($hidden)', 'Earlier questions ($hidden)')),
+                icon: Icons.history_rounded,
+                size: AppButtonSize.sm,
+                label: t('الأسئلة السابقة ($hidden)', 'Earlier questions ($hidden)'),
               ),
             ),
           if (!_loading && visible.isEmpty && _error == null)
@@ -798,14 +799,16 @@ class RagChatViewState extends State<RagChatView> {
                 onNewChat: _sessions == true && _current != null ? newChat : null,
                 onChats: _sessions == true && _convs.isNotEmpty ? showSessions : null),
           if (_hasMore)
-            Align(
-              alignment: Alignment.center,
-              child: TextButton.icon(
-                  onPressed: _loadingMore ? null : _loadEarlier,
-                  icon: _loadingMore
-                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.expand_less_rounded, size: 18),
-                  label: Text('rag_load_earlier'.tr)),
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.sm),
+              child: Center(
+                child: AppButton.ghost(
+                    onPressed: _loadingMore ? null : _loadEarlier,
+                    busy: _loadingMore,
+                    icon: Icons.expand_less_rounded,
+                    size: AppButtonSize.sm,
+                    label: 'rag_load_earlier'.tr),
+              ),
             ),
           for (final a in visible)
             RagAnswerCard(
@@ -818,28 +821,17 @@ class RagChatViewState extends State<RagChatView> {
                 onCitationOpen: (ci) => _learn.signal(a.id, 'chat_citation_open', {'n': ci.n, if (ci.documentId > 0) 'document_id': ci.documentId, 'kind': ci.kind}),
                 onDeepLink: (ci) => _learn.signal(a.id, 'chat_deeplink', {'link': ci.deepLink ?? ''}),
                 onSupport: a.smallTalk || a.found != false || AppConfig.disableList.contains('profile.help_center') ? null : () => _support(a)),
-          if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger)),
+          if (_error != null)
+            Padding(
+                padding: const EdgeInsets.only(top: AppSpace.xs),
+                child: AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger)),
         ]),
       ),
-      SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(side, 4, side, 10),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Expanded(
-                child: EnterSubmits(
-                    onSubmit: () => send(_input.text),
-                    child: AppField(controller: _input, label: t('اسألني أي شيء…', 'Ask me anything…'), maxLines: 3))),
-            const SizedBox(width: 8),
-            IconButton.filled(
-              tooltip: t('إرسال', 'Send'),
-              onPressed: _sending ? null : () => send(_input.text),
-              icon: _sending
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.send_rounded),
-            ),
-          ]),
-        ),
+      RagComposer(
+        controller: _input,
+        sending: _sending,
+        side: side,
+        onSend: () => send(_input.text),
       ),
     ]);
   }
@@ -861,7 +853,9 @@ class RagChatViewState extends State<RagChatView> {
 }
 
 /// The empty chat: what the assistant can do, as questions to tap; with chat sessions, New chat (when an empty
-/// conversation is open) and Chats (when there are earlier ones).
+/// conversation is open) and Chats (when there are earlier ones). The screen's one tinted block (sky: the assistant
+/// explains) carries the mark and the editorial greeting; the questions sit under it on one paper card. It enters
+/// once per route: the block rises, the questions follow a beat later.
 class RagStarterPrompts extends StatelessWidget {
   const RagStarterPrompts({super.key, required this.context_, required this.onPick, this.prompts, this.compact = false, this.onNewChat, this.onChats});
   final RagContext context_;
@@ -874,32 +868,43 @@ class RagStarterPrompts extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
+    final list = (prompts == null || prompts!.isEmpty) ? ragStarterPrompts(context_) : prompts!;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (onNewChat != null || onChats != null)
-        Wrap(alignment: WrapAlignment.center, spacing: 8, runSpacing: 8, children: [
-          if (onNewChat != null) OutlinedButton.icon(onPressed: onNewChat, icon: const Icon(Icons.add_comment_outlined, size: 18), label: Text('rag_new_chat'.tr)),
-          if (onChats != null) TextButton.icon(onPressed: onChats, icon: const Icon(Icons.history_rounded, size: 18), label: Text('rag_chats'.tr)),
-        ]),
-      Padding(
-        padding: EdgeInsets.symmetric(vertical: compact ? 12 : 24),
-        child: Column(children: [
-          Container(
-            width: 56, height: 56, alignment: Alignment.center,
-            decoration: BoxDecoration(color: c.primary.withValues(alpha: .1), shape: BoxShape.circle),
-            child: Icon(Icons.auto_awesome_rounded, color: appInk(context, c.primary), size: 28),
-          ),
-          const SizedBox(height: 10),
-          Text(t('كيف أساعدك اليوم؟', 'How can I help you today?'), textAlign: TextAlign.center, style: appText(16, w: FontWeight.w800, c: c.textDark)),
-          const SizedBox(height: 4),
-          Text(t('اسأل بالعربية أو الإنجليزية — أجيب بلغتك', 'Ask in Arabic or English — I answer in your language'),
-              textAlign: TextAlign.center, style: appText(12.5, c: c.textMedium)),
-        ]),
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.xs),
+          child: Wrap(alignment: WrapAlignment.end, spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+            if (onChats != null) AppButton.ghost(label: 'rag_chats'.tr, icon: Icons.history_rounded, size: AppButtonSize.sm, onPressed: onChats),
+            if (onNewChat != null)
+              AppButton.secondary(label: 'rag_new_chat'.tr, icon: Icons.add_comment_outlined, size: AppButtonSize.sm, onPressed: onNewChat),
+          ]),
+        ),
+      AppReveal(
+        group: 'rag.start',
+        index: 0,
+        child: AppBlock(
+          tone: AppBlockTone.sky,
+          hero: !compact,
+          padding: compact ? const EdgeInsets.all(AppSpace.md + AppSpace.xxs) : null,
+          child: Builder(builder: (context) {
+            final b = AppBlock.colorsOf(context);
+            return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              RagAssistantMark(size: compact ? AppIconSize.xl + AppSpace.xs : AppTouch.min, onBlock: true),
+              SizedBox(height: compact ? AppSpace.sm : AppSpace.md),
+              Semantics(
+                header: true,
+                child: Text(t('كيف أساعدك اليوم؟', 'How can I help you today?'),
+                    style: (compact ? AppType.pageTitle(context) : AppType.headline(context)).copyWith(color: b.ink)),
+              ),
+              const SizedBox(height: AppSpace.xxs),
+              Text(t('اسأل بالعربية أو الإنجليزية — أجيب بلغتك', 'Ask in Arabic or English — I answer in your language'),
+                  style: AppType.body(context).copyWith(color: b.muted)),
+            ]);
+          }),
+        ),
       ),
-      Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: [
-        for (final p in (prompts == null || prompts!.isEmpty) ? ragStarterPrompts(context_) : prompts!)
-          AppChoiceChip(label: p, selected: false, onTap: () => onPick(p), icon: Icons.chat_bubble_outline_rounded),
-      ]),
+      SizedBox(height: compact ? AppSpace.sm : AppSpace.md),
+      AppReveal(group: 'rag.start', index: 1, rise: AppSpace.xs, child: RagPromptList(prompts: list, onPick: onPick)),
     ]);
   }
 }
@@ -937,17 +942,17 @@ class _RagPartialAnswerState extends State<RagPartialAnswer> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final base = Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5, color: c.textMedium);
+    final base = AppType.body(context).copyWith(height: 1.6);
     return Semantics(
       liveRegion: true,
       label: t('مسودة الإجابة', 'Draft answer'),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(Icons.edit_note_rounded, size: 16, color: c.textLight),
-          const SizedBox(width: 4),
-          Expanded(child: Text(t('مسودة — تُراجع مع المصادر', 'Draft — being checked against the sources'), style: appText(11.5, c: c.textLight))),
+          Icon(Icons.edit_note_rounded, size: AppIconSize.sm, color: c.textLight),
+          const SizedBox(width: AppSpace.xxs),
+          Expanded(child: Text(t('مسودة — تُراجع مع المصادر', 'Draft — being checked against the sources'), style: AppType.meta(context))),
         ]),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpace.xxs),
         Text.rich(
           TextSpan(children: [
             TextSpan(text: widget.text),
@@ -956,9 +961,9 @@ class _RagPartialAnswerState extends State<RagPartialAnswer> with SingleTickerPr
               child: FadeTransition(
                 opacity: _blink,
                 child: Container(
-                    width: 2,
-                    height: 16,
-                    margin: const EdgeInsetsDirectional.only(start: 2),
+                    width: AppBorder.focus,
+                    height: AppIconSize.sm,
+                    margin: const EdgeInsetsDirectional.only(start: AppBorder.focus),
                     color: appInk(context, c.primary)),
               ),
             ),
@@ -970,7 +975,8 @@ class _RagPartialAnswerState extends State<RagPartialAnswer> with SingleTickerPr
   }
 }
 
-/// The steps of an answer being prepared: done · current · to come.
+/// The steps of an answer being prepared, as a rail of four segments under the current step's sentence: done
+/// segments are filled, the current one half-filled (they glide as the stage moves on), the rest a warm hairline.
 class RagStageTrail extends StatelessWidget {
   const RagStageTrail({super.key, required this.stage});
   final String? stage;
@@ -982,33 +988,63 @@ class RagStageTrail extends StatelessWidget {
     final labels = [t('فهم', 'Understand'), t('بحث', 'Search'), t('كتابة', 'Write'), t('مراجعة', 'Verify')];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: c.primary)),
-        const SizedBox(width: 8),
-        Expanded(child: Text(ragStageText(stage), style: appText(13, c: c.textMedium))),
+        SizedBox.square(dimension: AppIconSize.sm, child: CircularProgressIndicator(strokeWidth: AppBorder.focus, color: c.primary)),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(child: Text(ragStageText(stage), style: AppType.body(context).copyWith(color: c.textDark))),
       ]),
-      const SizedBox(height: 8),
-      Wrap(spacing: 6, runSpacing: 4, children: [
-        for (var i = 0; i < ragStages.length; i++)
-          _StageDot(label: labels[i], state: at < 0 ? (i == 0 ? 1 : 0) : (i < at ? 2 : (i == at ? 1 : 0))),
+      const SizedBox(height: AppSpace.sm),
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        for (var i = 0; i < ragStages.length; i++) ...[
+          if (i > 0) const SizedBox(width: AppSpace.xxs),
+          Expanded(child: _StageStep(label: labels[i], state: at < 0 ? (i == 0 ? 1 : 0) : (i < at ? 2 : (i == at ? 1 : 0)))),
+        ],
       ]),
     ]);
   }
 }
 
-class _StageDot extends StatelessWidget {
-  const _StageDot({required this.label, required this.state});
+class _StageStep extends StatelessWidget {
+  const _StageStep({required this.label, required this.state});
   final String label;
   final int state; // 0 to come · 1 now · 2 done
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final col = state == 0 ? c.textLight : appInk(context, state == 1 ? c.primary : c.success);
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(state == 2 ? Icons.check_circle_rounded : (state == 1 ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded), size: 14, color: col),
-      const SizedBox(width: 3),
-      Text(label, style: appText(11.5, w: state == 1 ? FontWeight.w700 : FontWeight.w500, c: col)),
-    ]);
+    final ink = state == 0 ? c.textLight : (state == 1 ? c.textDark : c.textMedium);
+    return Semantics(
+      label: label,
+      selected: state == 1,
+      excludeSemantics: true,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          child: SizedBox(
+            height: AppSpace.xxs,
+            child: ColoredBox(
+              color: c.divider,
+              child: AppFill(
+                value: state == 2 ? 1 : (state == 1 ? 0.5 : 0),
+                builder: (context, v) => FractionallySizedBox(
+                  alignment: AlignmentDirectional.centerStart,
+                  widthFactor: v.clamp(0.0, 1.0),
+                  child: ColoredBox(color: c.primary),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpace.xxs),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(label,
+                maxLines: 1, style: AppType.meta(context).copyWith(color: ink, fontWeight: state == 1 ? FontWeight.w600 : FontWeight.w400)),
+          ),
+        ),
+      ]),
+    );
   }
 }
 
@@ -1022,30 +1058,28 @@ class RagStalledNote extends StatelessWidget {
     final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(Icons.hourglass_disabled_rounded, size: 18, color: c.textMedium),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            'rag_answer_stalled'.tr,
-            style: appText(13.5, c: c.textMedium, h: 1.45),
-          ),
-        ),
+        Icon(Icons.hourglass_disabled_rounded, size: AppIconSize.md, color: c.textMedium),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(child: Text('rag_answer_stalled'.tr, style: AppType.body(context).copyWith(height: 1.5))),
       ]),
-      if (onRetry != null)
-        Align(
-          alignment: AlignmentDirectional.centerEnd,
-          child: TextButton.icon(
-            key: const ValueKey('rag.retry'),
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: Text('rag_retry'.tr),
-          ),
+      if (onRetry != null) ...[
+        const SizedBox(height: AppSpace.xs),
+        AppButton.tonal(
+          key: const ValueKey('rag.retry'),
+          label: 'rag_retry'.tr,
+          icon: Icons.refresh_rounded,
+          size: AppButtonSize.sm,
+          onPressed: onRetry,
         ),
+      ],
     ]);
   }
 }
 
-/// A question and its answer: the answer's blocks with their `[n]` markers, the follow-ups, then the sources it quotes.
+/// A question and its answer. The question is the asker's note — a paper bubble at the reading end; the answer is
+/// set on the page itself like an article (from 480 px with the assistant's mark at its start): the first short
+/// paragraph as an editorial lede, the blocks with their `[n]` markers, the passages / tool cards, the sources as
+/// paper chips, the page buttons, the follow-ups as rows, then a quiet footer (checked mark, Copy, Helpful?).
 class RagAnswerCard extends StatelessWidget {
   const RagAnswerCard(
       {super.key,
@@ -1084,205 +1118,222 @@ class RagAnswerCard extends StatelessWidget {
   /// "Contact support" under the answer (null = not offered: only answers that found nothing offer it).
   final VoidCallback? onSupport;
 
+  /// From this width the answer has the assistant's mark at its start.
+  static const double markFrom = 480;
+
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final theme = Theme.of(context).textTheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Align(
-          alignment: AlignmentDirectional.centerEnd,
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 560),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(14)),
-            child: Text(answer.question, style: theme.bodyMedium),
-          ),
-        ),
-        const SizedBox(height: 6),
-        AppCard(
-          padding: const EdgeInsets.all(12),
-          child: !answer.done && stalled
-              ? RagStalledNote(onRetry: onRetry)
-              : !answer.done
-              ? (answer.provisional
-                  ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                      RagStageTrail(stage: answer.stage),
-                      const SizedBox(height: 10),
-                      RagPartialAnswer(text: answer.partial!.trim()),
-                    ])
-                  : RagStageTrail(stage: answer.stage))
-              : answer.state == 'failed'
-                  ? AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: t('تعذرت الإجابة — أعد السؤال', 'Could not answer — ask again'))
-                  : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      if (answer.found == false && !answer.smallTalk)
-                        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Icon(Icons.search_off_rounded, size: 18, color: c.warning),
-                          const SizedBox(width: 6),
-                          Expanded(child: RagAnswerBody(text: answer.answer)),
-                        ])
-                      else
-                        RagAnswerBody(text: answer.answer),
-                      // retrieval: the closest passages as cards; tool: the result as a compact card
-                      if (answer.mode == RagMode.retrieval && answer.chunks.isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        RagChunkList(chunks: answer.chunks),
-                      ],
-                      if (answer.mode == RagMode.tool && answer.tool != null && !answer.tool!.refused) ...[
-                        const SizedBox(height: 10),
-                        RagToolCards(tool: answer.tool!),
-                      ],
-                      if (answer.citations.isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        Text(t('المصادر', 'Sources'), style: theme.labelMedium?.copyWith(color: c.textMedium)),
-                        const SizedBox(height: 4),
-                        for (final ci in answer.citations)
-                          _Source(
-                              citation: ci,
-                              onNavigate: onNavigate,
-                              onOpen: onCitationOpen == null ? null : () => onCitationOpen!(ci),
-                              onDeepLink: onDeepLink == null ? null : () => onDeepLink!(ci)),
-                      ],
-                      if (ragVisibleActions(answer.actions).isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        RagActionRow(
-                            actions: answer.actions,
-                            onOpen: (a) => onAction != null ? onAction!(a) : openRagAction(a, beforeOpen: onNavigate)),
-                      ],
-                      if (onSupport != null)
-                        Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: TextButton.icon(
-                              onPressed: onSupport,
-                              icon: const Icon(Icons.support_agent_rounded, size: 18),
-                              label: Text(t('تواصل مع الدعم', 'Contact support'))),
-                        ),
-                      if (answer.followUps.isNotEmpty && onFollowUp != null) ...[
-                        const SizedBox(height: 10),
-                        Wrap(spacing: 6, runSpacing: 6, children: [
-                          for (final f in answer.followUps)
-                            AppChoiceChip(label: f, selected: false, onTap: () => onFollowUp!(f), icon: DirIcons.arrowOutward),
-                        ]),
-                      ],
-                      // a Wrap, not a Row: on a 320 px phone with large text the badge, Copy and the rating share two lines
-                      Wrap(alignment: WrapAlignment.end, crossAxisAlignment: WrapCrossAlignment.center, spacing: 4, runSpacing: 2, children: [
-                        if (answer.byModel && !answer.smallTalk)
-                          Tooltip(
-                            message: t('إجابة مكتوبة من المصادر وتمت مراجعتها', 'Written from the sources and checked against them'),
-                            child: Row(mainAxisSize: MainAxisSize.min, children: [
-                              Icon(Icons.verified_rounded, size: 14, color: c.success),
-                              const SizedBox(width: 3),
-                              Text(t('من المصادر', 'From the sources'), style: appText(11, c: c.textLight)),
-                            ]),
-                          ),
-                        IconButton(
-                            tooltip: t('نسخ', 'Copy'),
-                            onPressed: () {
-                              Clipboard.setData(ClipboardData(text: answerRuns(answer.answer).where((r) => r.cite == null).map((r) => r.text).join()));
-                              appToast(t('تم النسخ', 'Copied'));
-                            },
-                            icon: Icon(Icons.copy_rounded, size: 16, color: c.textLight)),
-                        if (onRate != null) ...[
-                          Text(t('هل أفادتك؟', 'Helpful?'), style: theme.bodySmall?.copyWith(color: c.textLight)),
-                          IconButton(
-                              tooltip: t('مفيدة', 'Helpful'), onPressed: () => onRate!(true),
-                              icon: Icon(answer.helpful == true ? Icons.thumb_up_alt_rounded : Icons.thumb_up_alt_outlined, size: 18,
-                                  color: answer.helpful == true ? c.success : c.textLight)),
-                          IconButton(
-                              tooltip: t('غير مفيدة', 'Not helpful'), onPressed: () => onRate!(false),
-                              icon: Icon(answer.helpful == false ? Icons.thumb_down_alt_rounded : Icons.thumb_down_alt_outlined, size: 18,
-                                  color: answer.helpful == false ? c.danger : c.textLight)),
-                        ],
-                      ]),
-                    ]),
-        ),
-      ]),
+      padding: const EdgeInsets.only(bottom: AppSpace.lg),
+      child: LayoutBuilder(builder: (context, box) {
+        final marked = box.maxWidth >= markFrom;
+        final body = RagAnswerArrival(done: answer.done, child: _content(context));
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _QuestionNote(text: answer.question, maxWidth: box.maxWidth),
+          const SizedBox(height: AppSpace.sm),
+          if (marked)
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const RagAssistantMark(),
+              const SizedBox(width: AppSpace.sm),
+              Expanded(child: body),
+            ])
+          else
+            body,
+        ]);
+      }),
     );
   }
-}
 
-/// The answer text: paragraphs, bullets and numbered steps, **bold** terms, `[n]` markers in the accent colour.
-class RagAnswerBody extends StatelessWidget {
-  const RagAnswerBody({super.key, required this.text});
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _content(BuildContext context) {
     final c = context.colors;
-    final ink = appInk(context, c.primary); // the accent as text: readable on the dark card too
-    final base = Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5);
-    final blocks = answerBlocks(text);
-    if (blocks.isEmpty) return Text(text, style: base);
-    TextSpan spans(List<AnswerRun> runs) => TextSpan(children: [
-          for (final r in runs)
-            r.cite != null
-                ? TextSpan(text: r.text, style: TextStyle(color: ink, fontWeight: FontWeight.w700, fontSize: 12))
-                : TextSpan(text: r.text, style: r.bold ? const TextStyle(fontWeight: FontWeight.w800) : null),
-        ]);
+    if (!answer.done && stalled) return RagStalledNote(onRetry: onRetry);
+    if (!answer.done) {
+      if (!answer.provisional) return RagStageTrail(stage: answer.stage);
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        RagStageTrail(stage: answer.stage),
+        const SizedBox(height: AppSpace.md),
+        RagPartialAnswer(text: answer.partial!.trim()),
+      ]);
+    }
+    if (answer.state == 'failed') {
+      return AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: t('تعذرت الإجابة — أعد السؤال', 'Could not answer — ask again'));
+    }
+    final nothing = answer.found == false && !answer.smallTalk;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      for (var i = 0; i < blocks.length; i++)
-        Padding(
-          padding: EdgeInsets.only(top: i == 0 ? 0 : (blocks[i].kind == AnswerBlockKind.paragraph ? 8 : 3)),
-          child: blocks[i].kind == AnswerBlockKind.paragraph
-              ? Text.rich(spans(blocks[i].runs), style: base)
-              : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  SizedBox(
-                      width: 22,
-                      child: Text(blocks[i].kind == AnswerBlockKind.bullet ? '•' : '${blocks[i].number}.',
-                          style: base?.copyWith(color: ink, fontWeight: FontWeight.w800))),
-                  Expanded(child: Text.rich(spans(blocks[i].runs), style: base)),
-                ]),
-        ),
+      if (nothing)
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(
+            padding: const EdgeInsetsDirectional.only(top: AppSpace.xxs / 2, end: AppSpace.xs),
+            child: Icon(Icons.search_off_rounded, size: AppIconSize.md, color: appInk(context, c.warning)),
+          ),
+          Expanded(child: RagAnswerBody(text: answer.answer)),
+        ])
+      else
+        RagAnswerBody(text: answer.answer, lede: true),
+      // retrieval: the closest passages as cards; tool: the result as a compact card
+      if (answer.mode == RagMode.retrieval && answer.chunks.isNotEmpty) ...[
+        const SizedBox(height: AppSpace.md),
+        RagChunkList(chunks: answer.chunks),
+      ],
+      if (answer.mode == RagMode.tool && answer.tool != null && !answer.tool!.refused) ...[
+        const SizedBox(height: AppSpace.md),
+        RagToolCards(tool: answer.tool!),
+      ],
+      if (answer.citations.isNotEmpty) ...[
+        const SizedBox(height: AppSpace.md),
+        RagSources(citations: answer.citations, onNavigate: onNavigate, onOpen: onCitationOpen, onDeepLink: onDeepLink),
+      ],
+      if (ragVisibleActions(answer.actions).isNotEmpty) ...[
+        const SizedBox(height: AppSpace.sm),
+        RagActionRow(actions: answer.actions, onOpen: (a) => onAction != null ? onAction!(a) : openRagAction(a, beforeOpen: onNavigate)),
+      ],
+      if (onSupport != null) ...[
+        const SizedBox(height: AppSpace.sm),
+        AppButton.secondary(
+            label: t('تواصل مع الدعم', 'Contact support'), icon: Icons.support_agent_rounded, size: AppButtonSize.sm, onPressed: onSupport),
+      ],
+      if (answer.followUps.isNotEmpty && onFollowUp != null) ...[
+        const SizedBox(height: AppSpace.sm),
+        RagPromptList(prompts: answer.followUps, onPick: onFollowUp!, card: false),
+      ],
+      const SizedBox(height: AppSpace.xxs),
+      _AnswerFooter(answer: answer, onRate: onRate),
     ]);
   }
 }
 
-class _Source extends StatelessWidget {
-  const _Source({required this.citation, this.onNavigate, this.onOpen, this.onDeepLink});
-  final RagCitation citation;
-  final VoidCallback? onNavigate;
-  final VoidCallback? onOpen, onDeepLink;
+/// The asker's question: a paper note at the reading end, its top end corner tighter (it points at its author).
+class _QuestionNote extends StatelessWidget {
+  const _QuestionNote({required this.text, required this.maxWidth});
+  final String text;
+  final double maxWidth;
+
+  /// The widest a question note gets (about 70 characters a line).
+  static const double widest = 560;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final theme = Theme.of(context).textTheme;
-    final module = citation.isQa ? ragDeepLinkModule(citation.deepLink) : null;
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        tilePadding: EdgeInsets.zero,
-        childrenPadding: const EdgeInsetsDirectional.only(start: 34, bottom: 8),
-        dense: true,
-        onExpansionChanged: (open) {
-          if (open) onOpen?.call();
-        },
-        leading: Semantics(
-          label: t('المصدر ${citation.n}', 'Source ${citation.n}'),
-          excludeSemantics: true,
-          child: CircleAvatar(radius: 12, backgroundColor: c.primary.withValues(alpha: 0.12),
-              child: citation.isQa
-                  ? Icon(Icons.question_answer_outlined, size: 13, color: appInk(context, c.primary))
-                  : Text('${citation.n}', style: TextStyle(fontSize: 11, color: appInk(context, c.primary), fontWeight: FontWeight.w700))),
+    const big = Radius.circular(AppRadius.card);
+    const tight = Radius.circular(AppRadius.chip / 2);
+    return Align(
+      alignment: AlignmentDirectional.centerEnd,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth.isFinite ? (maxWidth * 0.86).clamp(0.0, widest) : widest),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: c.cardBg,
+            border: Border.all(color: c.divider, width: AppBorder.hairline),
+            borderRadius: const BorderRadiusDirectional.only(topStart: big, topEnd: tight, bottomStart: big, bottomEnd: big)
+                .resolve(Directionality.of(context)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm - AppSpace.xxs / 2),
+            child: Text(text, style: AppType.row(context).copyWith(height: 1.45)),
+          ),
         ),
-        title: Text(citation.label, maxLines: 2, overflow: TextOverflow.ellipsis, style: theme.bodySmall),
-        children: [
-          Align(alignment: AlignmentDirectional.centerStart, child: Text('«${citation.quote}»', style: theme.bodySmall?.copyWith(color: c.textMedium))),
-          if (module != null)
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: TextButton.icon(
-                  onPressed: () {
-                    onDeepLink?.call();
-                    onNavigate?.call();
-                    AppNavigator.openModule(module);
-                  },
-                  icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                  label: Text('rag_open_link'.tr)),
-            ),
-        ],
       ),
     );
+  }
+}
+
+/// Under an answer: "From the sources" (written by the model and checked), Copy, then Helpful? with the thumbs. A
+/// Wrap, not a Row: on a 320 px phone with large text they share two lines.
+class _AnswerFooter extends StatelessWidget {
+  const _AnswerFooter({required this.answer, this.onRate});
+  final RagAnswer answer;
+  final void Function(bool helpful)? onRate;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final quiet = AppType.meta(context).copyWith(color: c.textLight);
+    return Wrap(alignment: WrapAlignment.end, crossAxisAlignment: WrapCrossAlignment.center, spacing: AppSpace.xxs, runSpacing: 0, children: [
+      if (answer.byModel && !answer.smallTalk)
+        Tooltip(
+          message: t('إجابة مكتوبة من المصادر وتمت مراجعتها', 'Written from the sources and checked against them'),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.verified_rounded, size: AppIconSize.xs, color: appInk(context, c.success)),
+              const SizedBox(width: AppSpace.xxs),
+              Flexible(child: Text(t('من المصادر', 'From the sources'), style: quiet)),
+            ]),
+          ),
+        ),
+      IconButton(
+          tooltip: t('نسخ', 'Copy'),
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: answerRuns(answer.answer).where((r) => r.cite == null).map((r) => r.text).join()));
+            appToast(t('تم النسخ', 'Copied'));
+          },
+          icon: Icon(Icons.copy_rounded, size: AppIconSize.sm, color: c.textLight)),
+      if (onRate != null) ...[
+        Text(t('هل أفادتك؟', 'Helpful?'), style: quiet),
+        IconButton(
+            tooltip: t('مفيدة', 'Helpful'),
+            onPressed: () => onRate!(true),
+            icon: Icon(answer.helpful == true ? Icons.thumb_up_alt_rounded : Icons.thumb_up_alt_outlined,
+                size: AppIconSize.md, color: answer.helpful == true ? appInk(context, c.success) : c.textLight)),
+        IconButton(
+            tooltip: t('غير مفيدة', 'Not helpful'),
+            onPressed: () => onRate!(false),
+            icon: Icon(answer.helpful == false ? Icons.thumb_down_alt_rounded : Icons.thumb_down_alt_outlined,
+                size: AppIconSize.md, color: answer.helpful == false ? appInk(context, c.danger) : c.textLight)),
+      ],
+    ]);
+  }
+}
+
+/// The answer text: paragraphs, bullets and numbered steps, **bold** terms, `[n]` markers in the accent ink. [lede]:
+/// a short first paragraph (an answer's opening sentence) is set in the editorial face, the rest in the reading
+/// sans at a 1.6 line.
+class RagAnswerBody extends StatelessWidget {
+  const RagAnswerBody({super.key, required this.text, this.lede = false});
+  final String text;
+  final bool lede;
+
+  /// The longest first paragraph drawn as a lede (about two lines of the editorial face in the pop-up).
+  static const int ledeMaxChars = 160;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ink = appInk(context, c.primary); // the accent as text: readable on the dark canvas too
+    final base = AppType.body(context).copyWith(color: c.textDark, height: 1.6);
+    final cite = AppType.meta(context).copyWith(color: ink, fontWeight: FontWeight.w600);
+    final blocks = answerBlocks(text);
+    if (blocks.isEmpty) return Text(text, style: base);
+    final first = blocks.first;
+    final useLede = lede &&
+        first.kind == AnswerBlockKind.paragraph &&
+        first.runs.where((r) => r.cite == null).fold<int>(0, (n, r) => n + r.text.length) <= ledeMaxChars;
+    final ledeStyle = AppType.section(context).copyWith(fontWeight: FontWeight.w500);
+    TextSpan spans(List<AnswerRun> runs) => TextSpan(children: [
+          for (final r in runs)
+            r.cite != null
+                ? TextSpan(text: r.text, style: cite)
+                : TextSpan(text: r.text, style: r.bold ? const TextStyle(fontWeight: FontWeight.w600) : null),
+        ]);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      for (var i = 0; i < blocks.length; i++)
+        Padding(
+          padding: EdgeInsets.only(
+              top: i == 0
+                  ? 0
+                  : (i == 1 && useLede)
+                      ? AppSpace.sm
+                      : (blocks[i].kind == AnswerBlockKind.paragraph ? AppSpace.sm : AppSpace.xxs)),
+          child: blocks[i].kind == AnswerBlockKind.paragraph
+              ? Text.rich(spans(blocks[i].runs), style: i == 0 && useLede ? ledeStyle : base)
+              : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  SizedBox(
+                      width: AppSpace.lg,
+                      child: Text(blocks[i].kind == AnswerBlockKind.bullet ? '•' : '${blocks[i].number}.',
+                          style: base.copyWith(color: ink, fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()]))),
+                  Expanded(child: Text.rich(spans(blocks[i].runs), style: base)),
+                ]),
+        ),
+    ]);
   }
 }

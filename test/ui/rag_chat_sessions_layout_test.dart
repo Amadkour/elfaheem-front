@@ -12,6 +12,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_chat_screen.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_learning.dart' show RagDownVote;
+import 'package:flutter_education_app/features/shared/rag/chat/rag_chat_parts.dart' show RagSourceChip;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';
@@ -135,7 +136,7 @@ void main() {
         tester,
         () => SingleChildScrollView(child: Column(children: [RagAnswerCard(answer: done, onRate: (_) {}, onNavigate: () {}), RagAnswerCard(answer: pending)])),
         act: (tester) async {
-          await tester.tap(find.byType(ExpansionTile).first);
+          await tester.tap(find.byType(RagSourceChip).first);
           await tester.pump(const Duration(milliseconds: 300));
           expect(find.byIcon(Icons.open_in_new_rounded), findsOneWidget);
         });

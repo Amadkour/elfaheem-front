@@ -112,11 +112,11 @@ class RagUploadHint extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.only(top: AppSpace.xs),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Icon(Icons.info_outline_rounded, size: 15, color: c.textLight),
-        const SizedBox(width: 6),
-        Expanded(child: Text(ragUploadHint(ocrScanned: ocrScanned, maxMb: maxMb), style: appText(11.5, c: c.textLight))),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(child: Text(ragUploadHint(ocrScanned: ocrScanned, maxMb: maxMb), style: AppType.meta(context).copyWith(color: c.textLight))),
       ]),
     );
   }
@@ -132,10 +132,10 @@ class RagProgressRow extends StatelessWidget {
     final c = context.colors;
     final text = ragProgressText(done, total);
     return Padding(
-      padding: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.only(top: AppSpace.sm),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        if (text.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text(text, style: appText(12, w: FontWeight.w700, c: c.textMedium))),
-        ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(minHeight: 4, value: ragProgressValue(done, total))),
+        if (text.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: AppSpace.xxs), child: Text(text, style: AppType.label(context).copyWith(color: c.textMedium))),
+        ClipRRect(borderRadius: BorderRadius.circular(AppRadius.pill), child: LinearProgressIndicator(minHeight: AppSpace.xxs, value: ragProgressValue(done, total))),
       ]),
     );
   }
@@ -151,18 +151,18 @@ class RagWarningChips extends StatelessWidget {
     if (warnings.isEmpty) return const SizedBox.shrink();
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.only(top: AppSpace.xs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         for (final w in warnings)
           Padding(
-            padding: const EdgeInsets.only(bottom: 4),
+            padding: const EdgeInsets.only(bottom: AppSpace.xxs),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+              decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Icon(Icons.warning_amber_rounded, size: 16, color: appInk(context, c.warning)),
-                const SizedBox(width: 6),
-                Expanded(child: Text(w.line, style: appText(12, c: c.textDark))),
+                const SizedBox(width: AppSpace.xs),
+                Expanded(child: Text(w.line, style: AppType.meta(context).copyWith(color: c.textDark))),
               ]),
             ),
           ),
@@ -180,6 +180,6 @@ class RagExcludedText extends StatelessWidget {
   Widget build(BuildContext context) {
     final line = ragExcludedLine(excluded);
     if (line.isEmpty) return const SizedBox.shrink();
-    return Padding(padding: const EdgeInsets.only(top: 6), child: Text(line, style: appText(11.5, c: context.colors.textLight)));
+    return Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: Text(line, style: AppType.meta(context).copyWith(color: context.colors.textLight)));
   }
 }

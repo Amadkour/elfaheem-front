@@ -48,23 +48,28 @@ class RagSessionsPanel extends StatelessWidget {
     final retention = retentionText(retentionDays, AppConfig.lang);
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Padding(
-        padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 6, 4),
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.xxs, AppSpace.xxs),
         child: Row(children: [
-          Expanded(child: Text('rag_chats'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w800, c: c.textDark))),
-          IconButton(tooltip: 'rag_new_chat'.tr, onPressed: onNew, icon: Icon(Icons.add_comment_outlined, color: appInk(context, c.primary))),
-          if (onClose != null) IconButton(tooltip: MaterialLocalizations.of(context).closeButtonLabel, onPressed: onClose, icon: const Icon(Icons.close_rounded)),
+          Expanded(
+            child: Semantics(
+              header: true,
+              child: Text('rag_chats'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+            ),
+          ),
+          AppIconButton(tooltip: 'rag_new_chat'.tr, onPressed: onNew, icon: Icons.add_comment_outlined, variant: AppIconButtonVariant.tonal),
+          if (onClose != null) AppIconButton(tooltip: MaterialLocalizations.of(context).closeButtonLabel, onPressed: onClose, icon: Icons.close_rounded),
         ]),
       ),
       Flexible(
         child: loading
-            ? const AppListSkeleton(items: 3, withAvatar: false, padding: EdgeInsets.fromLTRB(12, 4, 12, 8))
+            ? const AppListSkeleton(items: 3, withAvatar: false, padding: EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.xxs, AppSpace.sm, AppSpace.xs))
             : items.isEmpty
                 ? Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.md),
                     child: AppEmpty(icon: Icons.forum_outlined, title: 'rag_chats_empty'.tr, actionLabel: 'rag_new_chat'.tr, onAction: onNew))
                 : ListView.builder(
                     shrinkWrap: true,
-                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.xs, 0, AppSpace.xs, AppSpace.xs),
                     itemCount: items.length,
                     itemBuilder: (_, i) => RagSessionRow(
                         item: items[i],
@@ -76,11 +81,11 @@ class RagSessionsPanel extends StatelessWidget {
       ),
       if (retention.isNotEmpty)
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.sm),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(Icons.auto_delete_outlined, size: 15, color: c.textLight),
-            const SizedBox(width: 6),
-            Expanded(child: Text(retention, style: appText(11.5, c: c.textLight))),
+            Icon(Icons.auto_delete_outlined, size: AppIconSize.sm, color: c.textLight),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(child: Text(retention, style: AppType.meta(context).copyWith(color: c.textLight))),
           ]),
         ),
     ]);
@@ -105,25 +110,26 @@ class RagSessionRow extends StatelessWidget {
       if (item.turns > 0) trp('rag_turns', {'n': item.turns}),
     ].join(' · ');
     final menu = onRename != null || onDelete != null;
+    // the open conversation wears the selection tone (the emerald tint), the others sit on the panel
     return Material(
-      color: current ? c.primary.withValues(alpha: .08) : Colors.transparent,
-      borderRadius: BorderRadius.circular(12),
+      color: current ? Color.alphaBlend(c.primaryTint, c.cardBg) : Colors.transparent,
+      borderRadius: AppRadius.controlAll,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.controlAll,
         onTap: onTap,
         onLongPress: menu ? () => _menuAt(context, null) : null,
         child: Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 4, 8),
+          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xs, AppSpace.xxs, AppSpace.xs),
           child: Row(children: [
-            Icon(current ? Icons.chat_bubble_rounded : Icons.chat_bubble_outline_rounded, size: 18, color: current ? appInk(context, c.primary) : c.textLight),
-            const SizedBox(width: 10),
+            Icon(current ? Icons.chat_bubble_rounded : Icons.chat_bubble_outline_rounded, size: AppIconSize.md, color: current ? appInk(context, c.primary) : c.textLight),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                 Text(item.displayTitle, maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: appText(13.5, w: current ? FontWeight.w800 : FontWeight.w600, c: c.textDark)),
+                    style: AppType.row(context).copyWith(fontWeight: current ? FontWeight.w600 : FontWeight.w500)),
                 if (meta.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(meta, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textLight)),
+                  const SizedBox(height: AppSpace.xxs / 2),
+                  Text(meta, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight)),
                 ],
               ]),
             ),
@@ -132,32 +138,32 @@ class RagSessionRow extends StatelessWidget {
                   tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
                   padding: EdgeInsets.zero,
                   onSelected: _pick,
-                  itemBuilder: (_) => _entries(c),
-                  icon: Icon(Icons.more_vert_rounded, size: 18, color: c.textLight))
+                  itemBuilder: (_) => _entries(context, c),
+                  icon: Icon(Icons.more_vert_rounded, size: AppIconSize.md, color: c.textLight))
             else
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
           ]),
         ),
       ),
     );
   }
 
-  List<PopupMenuEntry<String>> _entries(ThemeConfigProvider c) => [
+  List<PopupMenuEntry<String>> _entries(BuildContext context, ThemeConfigProvider c) => [
         if (onRename != null)
           PopupMenuItem(
               value: 'rename',
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.edit_outlined, size: 18),
-                const SizedBox(width: 8),
+                const Icon(Icons.edit_outlined, size: AppIconSize.md),
+                const SizedBox(width: AppSpace.xs),
                 Flexible(child: Text('rag_chat_rename'.tr, overflow: TextOverflow.ellipsis)),
               ])),
         if (onDelete != null)
           PopupMenuItem(
               value: 'delete',
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.delete_outline_rounded, size: 18, color: c.danger),
-                const SizedBox(width: 8),
-                Flexible(child: Text('rag_chat_delete'.tr, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.danger))),
+                Icon(Icons.delete_outline_rounded, size: AppIconSize.md, color: appInk(context, c.danger)),
+                const SizedBox(width: AppSpace.xs),
+                Flexible(child: Text('rag_chat_delete'.tr, overflow: TextOverflow.ellipsis, style: TextStyle(color: appInk(context, c.danger)))),
               ])),
       ];
 
@@ -175,7 +181,7 @@ class RagSessionRow extends StatelessWidget {
     final pick = await showMenu<String>(
         context: context,
         position: RelativeRect.fromLTRB(at.dx, at.dy, overlay.size.width - at.dx, overlay.size.height - at.dy),
-        items: _entries(context.colors));
+        items: _entries(context, context.colors));
     _pick(pick);
   }
 }
@@ -216,8 +222,8 @@ class _RagRenameDialogState extends State<RagRenameDialog> {
         title: Text('rag_chat_rename'.tr),
         content: SingleChildScrollView(child: AppField(controller: _ctrl, label: 'rag_chat_title'.tr, onSubmitted: (_) => _save())),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l.cancelButtonLabel)),
-          FilledButton(onPressed: _save, child: Text(l.saveButtonLabel)),
+          AppButton.ghost(label: l.cancelButtonLabel, onPressed: () => Navigator.of(context).pop()),
+          AppButton.primary(label: l.saveButtonLabel, onPressed: _save),
         ],
       ),
     );
@@ -251,29 +257,33 @@ class _RagRatingCommentSheetState extends State<RagRatingCommentSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, AppSpace.xxs, AppSpace.md + AppSpace.xxs, AppSpace.md),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(children: [
-          Icon(Icons.thumb_down_alt_outlined, color: c.danger, size: 20),
-          const SizedBox(width: 8),
-          Expanded(child: Text('rag_feedback_title'.tr, style: appText(16, w: FontWeight.w800, c: c.textDark))),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(
+            padding: const EdgeInsetsDirectional.only(top: AppSpace.xxs, end: AppSpace.xs),
+            child: Icon(Icons.thumb_down_alt_outlined, color: appInk(context, c.danger), size: AppIconSize.md),
+          ),
+          Expanded(
+            child: Semantics(header: true, child: Text('rag_feedback_title'.tr, style: AppType.section(context))),
+          ),
         ]),
         if (widget.reasons) ...[
-          const SizedBox(height: 12),
-          Text(t('ما المشكلة؟', 'What was wrong?'), style: appText(13, w: FontWeight.w700, c: c.textMedium)),
-          const SizedBox(height: 8),
-          Wrap(spacing: 8, runSpacing: 8, children: [
+          const SizedBox(height: AppSpace.md),
+          Text(t('ما المشكلة؟', 'What was wrong?'), style: AppType.label(context)),
+          const SizedBox(height: AppSpace.xs),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             for (final r in chatReasons)
               AppChoiceChip(label: chatReasonLabel(r), selected: _reason == r, onTap: () => setState(() => _reason = _reason == r ? null : r)),
           ]),
         ],
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.md),
         EnterSubmits(onSubmit: _send, child: AppField(controller: _ctrl, label: 'rag_feedback_hint'.tr, maxLines: 4)),
-        const SizedBox(height: 12),
-        Wrap(alignment: WrapAlignment.end, spacing: 8, runSpacing: 8, children: [
-          TextButton(onPressed: () => Navigator.of(context).pop(RagDownVote(reason: _reason)), child: Text('rag_feedback_skip'.tr)),
-          AppPrimaryButton(label: 'rag_feedback_send'.tr, icon: Icons.send_rounded, onPressed: _send),
-        ]),
+        const SizedBox(height: AppSpace.xxs),
+        AppButtonRow(
+          primary: AppButton.primary(label: 'rag_feedback_send'.tr, icon: Icons.send_rounded, onPressed: _send),
+          secondary: [AppButton.ghost(label: 'rag_feedback_skip'.tr, onPressed: () => Navigator.of(context).pop(RagDownVote(reason: _reason)))],
+        ),
       ]),
     );
   }
