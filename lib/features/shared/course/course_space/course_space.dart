@@ -4,13 +4,19 @@
 // screen). Plain values only — no provider is read here — so `test/ui/course_space_layout_test.dart` pumps it at
 // every size, in both languages.
 //
-//   phone / tablet (< 1000)   hero (full bleed) → spotlight cards → quick actions strip → PINNED tab bar →
-//                             the active tab → footer, with an optional sticky bottom bar (price + enroll).
-//   desktop (≥ 1000)          main column: hero (rounded) → pinned tab bar → the active tab → footer;
+//   phone / tablet (< 1000)   hero (the cover full bleed, the hero block overlapping its foot) → spotlight cards →
+//                             quick actions strip → PINNED tab bar → the active tab → footer, with an optional sticky
+//                             bottom bar (price + enroll).
+//   desktop (≥ 1000)          main column: hero (chrome on the canvas, the block with the cover framed beside the
+//                             title) → pinned tab bar → the active tab → footer;
 //                             side column (sticky, own scroll): aside card → spotlight cards → quick actions list.
 //
+// Warm Editorial (D-610 – D-629): the hero block is the page's one memorable thing — the title in the editorial
+// serif, the figures that count up once and the emerald progress that fills; the spotlight cards rise in after it
+// (the page's one orchestrated entrance); everything else is still paper on the canvas.
+//
 // Slots:
-//   hero        CourseSpaceHeroData — title, pills, teacher, glass stats strip, progress ring
+//   hero        CourseSpaceHeroData — title, pills, teacher, figures, progress, the block's tone
 //   spotlight   contextual cards ("live now", "continue learning", "open attendance", the setup checklist …).
 //               A card that has nothing to say returns SizedBox.shrink() and leaves no gap.
 //   actions     CourseSpaceAction tiles — every "go somewhere" entry of the course in one place
@@ -23,7 +29,9 @@ import 'package:flutter/material.dart';
 
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
-import '../../../../design/app_kit.dart' show AppRefresh, AppShimmer, AppSkeletonBox, AppListSkeleton;
+import '../../../../design/app_kit.dart'
+    show AppRefresh, AppShimmer, AppSkeletonBox, AppListSkeleton, AppSpace, AppRadius, AppShadow, AppMotion, AppBlockTone;
+import '../../../../design/app_motion_kit.dart' show AppReveal, AppEase;
 import '../../../../design/app_responsive.dart';
 import 'course_space_parts.dart';
 
@@ -31,7 +39,7 @@ export 'course_space_parts.dart';
 export 'course_sessions.dart';
 
 /// The horizontal gutter every block of the page lines up on.
-const double kCourseGutter = 16;
+const double kCourseGutter = AppSpace.md;
 
 /// Width of the side column on desktop.
 const double kCourseAsideW = 340;
@@ -105,6 +113,7 @@ class CourseSpaceHeroData {
     this.stats = const [],
     this.progress,
     this.progressLabel,
+    this.tone = AppBlockTone.peach,
   });
 
   final String title;
@@ -118,9 +127,12 @@ class CourseSpaceHeroData {
   final VoidCallback? onTeacher;
   final List<CourseSpaceStat> stats;
 
-  /// 0…1; a ring at the end of the stats strip when set (an enrolled student's progress).
+  /// 0…1; the emerald bar under the figures when set (an enrolled student's progress).
   final double? progress;
   final String? progressLabel;
+
+  /// The hero block's tint (peach: learning; sky for an information-led page).
+  final AppBlockTone tone;
 }
 
 /// One entry of the quick actions (course profile · attendance · students · schedule · support …).
@@ -266,16 +278,12 @@ class CourseSpace extends StatelessWidget {
         ),
       if (active != null)
         SliverToBoxAdapter(
+          // a tab is opened many times a day: a quick crossfade, no travel
           child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 260),
-            switchInCurve: Curves.easeOutCubic,
-            transitionBuilder: (child, a) => FadeTransition(
-              opacity: a,
-              child: SlideTransition(
-                position: Tween(begin: const Offset(0, 0.02), end: Offset.zero).animate(a),
-                child: child,
-              ),
-            ),
+            duration: AppMotion.of(context).fast,
+            switchInCurve: AppEase.out,
+            switchOutCurve: AppEase.out,
+            transitionBuilder: (child, a) => FadeTransition(opacity: a, child: child),
             layoutBuilder: (current, previous) => Stack(
               alignment: Alignment.topCenter,
               children: [...previous.map((p) => Positioned(top: 0, left: 0, right: 0, child: p)), ?current],
@@ -284,7 +292,7 @@ class CourseSpace extends StatelessWidget {
           ),
         ),
       if (footer != null) SliverToBoxAdapter(child: footer!),
-      const SliverToBoxAdapter(child: SizedBox(height: 32)),
+      const SliverToBoxAdapter(child: SizedBox(height: AppSpace.xl)),
     ];
   }
 
@@ -295,6 +303,12 @@ class CourseSpace extends StatelessWidget {
     onBack: onBack,
     rounded: rounded,
   );
+
+  /// The page's one entrance: the spotlight cards rise in once, a beat apart, after the hero (which arrives with
+  /// the route and then counts its figures and fills its bar).
+  static List<Widget> _revealed(List<Widget> cards) => [
+    for (final (i, w) in cards.indexed) AppReveal(index: i + 1, group: 'course_spotlight', rise: AppSpace.xs, child: w),
+  ];
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -314,18 +328,18 @@ class CourseSpace extends StatelessWidget {
           if (spotlight.isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(kCourseGutter, 16, kCourseGutter, 0),
-                child: CourseSpotlightStack(children: spotlight),
+                padding: const EdgeInsets.fromLTRB(kCourseGutter, AppSpace.md, kCourseGutter, 0),
+                child: CourseSpotlightStack(children: _revealed(spotlight)),
               ),
             ),
           if (actions.isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.only(top: 16),
+                padding: const EdgeInsets.only(top: AppSpace.md),
                 child: CourseActionStrip(actions: actions),
               ),
             ),
-          const SliverToBoxAdapter(child: SizedBox(height: 8)),
+          const SliverToBoxAdapter(child: SizedBox(height: AppSpace.xs)),
           ..._tabSlivers(context, w),
         ]),
       ),
@@ -337,7 +351,7 @@ class CourseSpace extends StatelessWidget {
   Widget _single(BuildContext context, double w) => _scroll(context, [
     SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(kCourseGutter, kCourseGutter, kCourseGutter, 8),
+        padding: const EdgeInsets.fromLTRB(kCourseGutter, AppSpace.xs, kCourseGutter, AppSpace.xs),
         child: _heroWidget(rounded: true),
       ),
     ),
@@ -351,7 +365,7 @@ class CourseSpace extends StatelessWidget {
         child: _scroll(context, [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(kCourseGutter, kCourseGutter, 8, 8),
+              padding: const EdgeInsetsDirectional.fromSTEB(kCourseGutter, AppSpace.xs, AppSpace.xs, AppSpace.xs),
               child: _heroWidget(rounded: true),
             ),
           ),
@@ -361,12 +375,16 @@ class CourseSpace extends StatelessWidget {
       SizedBox(
         width: kCourseAsideW,
         child: SingleChildScrollView(
-          padding: const EdgeInsetsDirectional.fromSTEB(8, kCourseGutter, kCourseGutter, kCourseGutter),
+          // level with the hero block (under the masthead's chrome row: its 48 px targets)
+          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs, AppSpace.xs * 2 + 48, kCourseGutter, kCourseGutter),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (aside != null) ...[aside!, const SizedBox(height: 14)],
-              if (spotlight.isNotEmpty) ...[CourseSpotlightStack(children: spotlight), const SizedBox(height: 14)],
+              if (aside != null) ...[aside!, const SizedBox(height: AppSpace.sm)],
+              if (spotlight.isNotEmpty) ...[
+                CourseSpotlightStack(children: _revealed(spotlight)),
+                const SizedBox(height: AppSpace.sm),
+              ],
               if (actions.isNotEmpty) CourseActionList(actions: actions, title: actionsTitle),
             ],
           ),
@@ -399,16 +417,12 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    final c = context.colors;
     final lifted = overlapsContent || shrinkOffset > 0;
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      decoration: BoxDecoration(
-        color: background,
-        boxShadow: lifted
-            ? [BoxShadow(color: c.heroShade.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))]
-            : null,
-      ),
+      duration: AppMotion.of(context).fast,
+      curve: AppEase.out,
+      // pinned over the list it floats: the faint level-1 lift, none at rest
+      decoration: BoxDecoration(color: background, boxShadow: lifted ? AppShadow.card(context) : null),
       // fills the whole extent: a pinned header whose child is shorter fails its geometry check
       child: SizedBox(height: extent, child: Center(child: CourseSpaceTabBar(tabs: tabs, active: active, onTab: onTab))),
     );
@@ -440,18 +454,18 @@ class CourseSpaceSkeleton extends StatelessWidget {
           children: [
             Padding(
               padding: wide ? const EdgeInsets.all(kCourseGutter) : EdgeInsets.zero,
-              child: AppShimmer(child: AppSkeletonBox(height: wide ? 300 : 320, radius: wide ? 28 : 0)),
+              child: AppShimmer(child: AppSkeletonBox(height: wide ? 300 : 320, radius: wide ? AppRadius.block : 0)),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.md),
             if (!wide)
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: kCourseGutter),
-                child: AppShimmer(child: AppSkeletonBox(height: 84, radius: 18)),
+                child: AppShimmer(child: AppSkeletonBox(height: 84, radius: AppRadius.card)),
               ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: kCourseGutter),
-              child: AppShimmer(child: AppSkeletonBox(height: 48, radius: 16)),
+              child: AppShimmer(child: AppSkeletonBox(height: 48, radius: AppRadius.control)),
             ),
             const AppListSkeleton(items: 4),
           ],
@@ -468,9 +482,9 @@ class CourseSpaceSkeleton extends StatelessWidget {
               padding: EdgeInsets.all(kCourseGutter),
               child: Column(
                 children: [
-                  AppShimmer(child: AppSkeletonBox(height: 220, radius: 24)),
-                  SizedBox(height: 14),
-                  AppShimmer(child: AppSkeletonBox(height: 260, radius: 24)),
+                  AppShimmer(child: AppSkeletonBox(height: 220, radius: AppRadius.card)),
+                  SizedBox(height: AppSpace.sm),
+                  AppShimmer(child: AppSkeletonBox(height: 260, radius: AppRadius.card)),
                 ],
               ),
             ),

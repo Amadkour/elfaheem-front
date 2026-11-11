@@ -1,6 +1,9 @@
 // lib/features/shared/course/course_space/course_sessions.dart
 //
-// The session list of the course page, the same for the student and the teacher: a timeline inside ONE calm card.
+// The session list of the course page, the same for the student and the teacher: ONE timeline, each session its
+// own card on the line. Warm Editorial: done is emerald (the walked part of the line too), the one to take next is
+// ink on its node and the sky block on its card, live is the danger tint; the opened materials unfold under a row
+// with the lesson-card motion (AppExpandCard's 260 / 220 ms on AppEase.out), progress fills once (AppFill).
 // Plain values only (no provider), so the layout harness and the visual renders pump it; the role screens
 // (SessionMaterialCard, used by student/…/session.dart and teacher/…/sessions_section.dart) draw each row with
 // [CourseSessionTile] and add their own actions in its slots.
@@ -26,22 +29,17 @@ import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../core/app_time.dart';
 import '../../../../core/plural.dart' show arabicPluralForm;
-import '../../../../core/display/app_fonts.dart';
+import '../../../../design/app_contrast.dart' show ensureContrast;
 import '../../../../design/app_display.dart' show syncMotionLoop;
+import '../../../../design/app_kit.dart'
+    show AppSpace, AppRadius, AppType, AppIconSize, AppBorder, AppTouch, AppMotion, AppBlockColors, AppBlockTone,
+        appInk, appInkOn, appInkOnFill, appTintOn;
+import '../../../../design/app_motion_kit.dart' show AppEase, AppPressScale, appMotionOff;
 import '../../../../utils/helpers.dart';
 import 'course_space.dart' show kCourseGutter;
-import 'package:flutter_education_app/design/app_gradients.dart';
+import 'course_space_parts.dart' show CourseProgressBar;
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
-
-TextStyle _ts(double size, FontWeight w, Color color, {double? h}) =>
-    TextStyle(fontFamily: AppFonts.family, fontSize: size, fontWeight: w, color: color, height: h);
-
-/// A tone as ink on the page: in dark mode a deep brand colour is mixed toward the light text.
-Color _ink(BuildContext context, Color tone) {
-  final c = context.colors;
-  return c.isDark ? Color.lerp(tone, c.textDark, 0.35)! : tone;
-}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Plain values + pure helpers
@@ -271,7 +269,7 @@ class CourseSessionsSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: margin ?? const EdgeInsets.symmetric(horizontal: kCourseGutter - 4),
+    padding: margin ?? const EdgeInsets.symmetric(horizontal: kCourseGutter - AppSpace.xxs),
     child: child,
   );
 }
@@ -302,17 +300,112 @@ class _CourseSessionsTimelineState extends State<CourseSessionsTimeline> {
   @override
   Widget build(BuildContext context) {
     final fold = widget.foldCount.clamp(0, widget.itemCount);
-    final from = fold > 0 && !_open ? fold : 0;
     return CourseSessionsSurface(
       margin: widget.margin,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (fold > 0) CourseSessionFoldRow(count: fold, open: _open, onTap: () => setState(() => _open = !_open)),
-          for (var i = from; i < widget.itemCount; i++) widget.itemBuilder(context, i),
+          if (fold > 0) ...[
+            CourseSessionFoldRow(count: fold, open: _open, onTap: () => setState(() => _open = !_open)),
+            // the completed sessions open under the fold row the way a lesson card opens (AppExpandCard's motion)
+            _Unfold(
+              open: _open,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [for (var i = 0; i < fold; i++) widget.itemBuilder(context, i)],
+              ),
+            ),
+          ],
+          for (var i = fold; i < widget.itemCount; i++) widget.itemBuilder(context, i),
         ],
       ),
     );
+  }
+}
+
+/// Opens [child] from its top edge and closes it back (260 ms open / 220 ms close on [AppEase.out], from where it
+/// is), fading it in a beat after the height — the motion of [AppExpandCard]. Closed, it is offstage: not painted,
+/// not focusable, not read. At once under Reduce motion.
+class _Unfold extends StatefulWidget {
+  const _Unfold({required this.open, required this.child});
+
+  final bool open;
+  final Widget child;
+
+  @override
+  State<_Unfold> createState() => _UnfoldState();
+}
+
+class _UnfoldState extends State<_Unfold> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    value: widget.open ? 1 : 0,
+    duration: const Duration(milliseconds: 260),
+    reverseDuration: const Duration(milliseconds: 220),
+  );
+
+  @override
+  void didUpdateWidget(_Unfold old) {
+    super.didUpdateWidget(old);
+    if (old.open == widget.open) return;
+    if (appMotionOff(context)) {
+      _c.value = widget.open ? 1 : 0;
+    } else if (widget.open) {
+      _c.animateTo(1, curve: AppEase.out);
+    } else {
+      _c.animateBack(0, curve: AppEase.out);
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _c,
+    child: widget.child,
+    builder: (context, child) {
+      final v = _c.value;
+      final closed = v == 0 && !widget.open;
+      return Offstage(
+        offstage: closed,
+        child: TickerMode(
+          enabled: !closed,
+          child: ClipRect(
+            child: Align(
+              alignment: AlignmentDirectional.topStart,
+              heightFactor: v,
+              child: Opacity(opacity: ((v - 0.25) / 0.75).clamp(0.0, 1.0), child: child),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+/// Keeps the last [child] it was given while it closes, so a panel the caller removes still folds away.
+class _PanelReveal extends StatefulWidget {
+  const _PanelReveal({required this.child});
+
+  final Widget? child;
+
+  @override
+  State<_PanelReveal> createState() => _PanelRevealState();
+}
+
+class _PanelRevealState extends State<_PanelReveal> {
+  Widget? _last;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.child != null) _last = widget.child;
+    final last = _last;
+    if (last == null) return const SizedBox.shrink();
+    return _Unfold(open: widget.child != null, child: last);
   }
 }
 
@@ -327,15 +420,16 @@ class CourseSessionFoldRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final ok = _ink(context, c.success);
+    final well = appTintOn(context, c.success, surface: c.background);
+    final action = appInk(context, c.primary);
     return Semantics(
       button: true,
       expanded: open,
       child: _Rail(
         rail: (top: null, bottom: CourseRailTone.done),
-        nodeTop: 10,
+        nodeTop: AppSpace.sm - 2,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
           child: Row(
             children: [
               SizedBox(
@@ -344,8 +438,8 @@ class CourseSessionFoldRow extends StatelessWidget {
                   child: Container(
                     width: _nodeSize,
                     height: _nodeSize,
-                    decoration: BoxDecoration(color: c.success.withValues(alpha: 0.14), shape: BoxShape.circle),
-                    child: Icon(Icons.done_all_rounded, size: 15, color: ok),
+                    decoration: BoxDecoration(color: well, shape: BoxShape.circle),
+                    child: Icon(Icons.done_all_rounded, size: AppIconSize.sm, color: appInkOn(context, c.success, well)),
                   ),
                 ),
               ),
@@ -354,11 +448,11 @@ class CourseSessionFoldRow extends StatelessWidget {
                   type: MaterialType.transparency,
                   child: InkWell(
                     onTap: onTap,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(AppRadius.control),
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(minHeight: 48),
+                      constraints: const BoxConstraints(minHeight: AppTouch.min),
                       child: Padding(
-                        padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 8, 8),
+                        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xs, AppSpace.xs, AppSpace.xs),
                         child: Row(
                           children: [
                             Expanded(
@@ -366,18 +460,19 @@ class CourseSessionFoldRow extends StatelessWidget {
                                 _t('$count جلسات مكتملة', '$count completed sessions'),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: _ts(13, FontWeight.w500, c.textMedium),
+                                style: AppType.label(context),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AppSpace.xs),
                             Text(
                               open ? _t('إخفاء', 'Hide') : _t('عرض', 'Show'),
-                              style: _ts(12.5, FontWeight.w600, _ink(context, c.primary)),
+                              style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: action),
                             ),
                             AnimatedRotation(
                               turns: open ? 0.5 : 0,
-                              duration: const Duration(milliseconds: 220),
-                              child: Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: _ink(context, c.primary)),
+                              duration: AppMotion.of(context).base,
+                              curve: AppEase.out,
+                              child: Icon(Icons.keyboard_arrow_down_rounded, size: AppIconSize.md, color: action),
                             ),
                           ],
                         ),
@@ -400,11 +495,11 @@ class CourseSessionFoldRow extends StatelessWidget {
 
 /// Geometry: the line runs down the middle of a [_railW] column at the row's start; the node sits [_nodeTop] below
 /// the row's top, level with the middle of the card's kind tile.
-const double _railW = 36, _nodeSize = 28, _rowGap = 5, _cardPad = 12, _tileSize = 44;
+const double _railW = 36, _nodeSize = 28, _rowGap = 5, _cardPad = AppSpace.sm, _tileSize = 44;
 const double _nodeTop = _rowGap + _cardPad + _tileSize / 2 - _nodeSize / 2;
 const double _railX = _railW / 2;
 
-/// Draws the timeline line behind [child]: above the node and below it.
+/// Draws the timeline line behind [child]: above the node and below it. The walked part is emerald.
 class _Rail extends StatelessWidget {
   const _Rail({required this.rail, required this.child, this.nodeTop = _nodeTop});
 
@@ -415,8 +510,8 @@ class _Rail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    Color tone(CourseRailTone t) => t == CourseRailTone.done ? c.success.withValues(alpha: 0.5) : c.divider;
-    const w = 2.0;
+    Color tone(CourseRailTone t) => t == CourseRailTone.done ? c.success.withValues(alpha: 0.6) : c.divider;
+    const w = AppBorder.focus;
     return Stack(
       children: [
         if (rail.top != null)
@@ -446,7 +541,8 @@ class _Rail extends StatelessWidget {
 }
 
 /// The round node on the line: its number (with a ring of the student's progress through it), or a check / lock /
-/// live mark (the live one breathes, unless Reduce motion is on).
+/// live mark (the live one breathes, unless Reduce motion is on). Done is emerald, the one to take next is ink,
+/// live is the danger red; the rest are paper.
 class CourseSessionNode extends StatelessWidget {
   const CourseSessionNode({super.key, required this.number, required this.state, this.progress});
 
@@ -459,21 +555,25 @@ class CourseSessionNode extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final primary = _ink(context, c.primary);
+    final doneWell = appTintOn(context, c.success, surface: c.background);
     final (Color bg, Color? border, Widget mark) = switch (state) {
       CourseSessionState.done => (
-        c.success.withValues(alpha: c.isDark ? 0.24 : 0.14),
+        doneWell,
         null,
-        Icon(Icons.check_rounded, size: 15, color: _ink(context, c.success)),
+        Icon(Icons.check_rounded, size: AppIconSize.sm, color: appInkOn(context, c.success, doneWell)),
       ),
-      CourseSessionState.live => (c.danger, null, Icon(Icons.sensors_rounded, size: 15, color: c.onHero)),
+      CourseSessionState.live => (
+        c.danger,
+        null,
+        Icon(Icons.sensors_rounded, size: AppIconSize.sm, color: appInkOnFill(context, c.danger)),
+      ),
       CourseSessionState.locked => (
-        c.textDark.withValues(alpha: 0.06),
+        c.inputBg,
         null,
-        Icon(Icons.lock_rounded, size: 13, color: c.textLight),
+        Icon(Icons.lock_rounded, size: AppIconSize.xs, color: c.textLight),
       ),
-      CourseSessionState.next => (c.primary, null, _num(number, c.onHero)),
-      _ => (c.cardBg, c.divider, _num(number, c.textMedium)),
+      CourseSessionState.next => (c.textDark, null, _num(context, number, c.background)),
+      _ => (c.cardBg, c.divider, _num(context, number, c.textMedium)),
     };
     final ring = progress != null && state != CourseSessionState.done && state != CourseSessionState.locked
         ? progress!.clamp(0.0, 1.0)
@@ -485,22 +585,20 @@ class CourseSessionNode extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         shape: BoxShape.circle,
-        border: border == null ? null : Border.all(color: border, width: 1.5),
-        boxShadow: state == CourseSessionState.next
-            ? [BoxShadow(color: c.primary.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 3))]
-            : null,
+        border: border == null ? null : Border.all(color: border, width: AppBorder.strong),
       ),
       child: mark,
     );
     if (ring != null) {
+      final next = state == CourseSessionState.next;
       node = SizedBox(
         width: _nodeSize,
         height: _nodeSize,
         child: CustomPaint(
           foregroundPainter: _RingPainter(
             value: ring,
-            color: state == CourseSessionState.next ? c.onHero.withValues(alpha: 0.9) : primary,
-            track: state == CourseSessionState.next ? c.onHero.withValues(alpha: 0.25) : c.primary.withValues(alpha: 0.14),
+            color: next ? c.background : appInk(context, c.primary),
+            track: next ? c.background.withValues(alpha: 0.3) : c.primary.withValues(alpha: 0.14),
           ),
           child: node,
         ),
@@ -510,11 +608,19 @@ class CourseSessionNode extends StatelessWidget {
     return SizedBox(width: _nodeSize, height: _nodeSize, child: node);
   }
 
-  static Widget _num(int n, Color color) => Padding(
-    padding: const EdgeInsets.all(4),
+  static Widget _num(BuildContext context, int n, Color color) => Padding(
+    padding: const EdgeInsets.all(AppSpace.xxs),
     child: FittedBox(
       fit: BoxFit.scaleDown,
-      child: Text('$n', maxLines: 1, style: _ts(12, FontWeight.w600, color)),
+      child: Text(
+        '$n',
+        maxLines: 1,
+        style: AppType.meta(context).copyWith(
+          fontWeight: FontWeight.w600,
+          color: color,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
+      ),
     ),
   );
 }
@@ -590,11 +696,14 @@ class _HaloState extends State<_Halo> with SingleTickerProviderStateMixin {
 
 /// The kind of a session as a soft tile at the card's start: live · recorded · section.
 class CourseSessionKindTile extends StatelessWidget {
-  const CourseSessionKindTile({super.key, required this.kind, this.state = CourseSessionState.open, this.size = _tileSize});
+  const CourseSessionKindTile({super.key, required this.kind, this.state = CourseSessionState.open, this.size = _tileSize, this.on});
 
   final CourseSessionKind kind;
   final CourseSessionState state;
   final double size;
+
+  /// The surface the tile sits on (its tint is laid over it); null = the card.
+  final Color? on;
 
   @override
   Widget build(BuildContext context) {
@@ -605,22 +714,17 @@ class CourseSessionKindTile extends StatelessWidget {
       CourseSessionKind.recorded => (Icons.play_arrow_rounded, c.primary, _t('فيديو', 'Video')),
     };
     final quiet = state == CourseSessionState.done || state == CourseSessionState.locked;
-    final tone = quiet ? c.textLight : base;
     final live = state == CourseSessionState.live;
+    final fill = live ? c.danger : (quiet ? c.inputBg : appTintOn(context, base, surface: on));
+    final ink = live ? appInkOnFill(context, c.danger) : (quiet ? c.textLight : appInkOn(context, base, fill));
     return Semantics(
       label: label,
       child: ExcludeSemantics(
         child: Container(
           width: size,
           height: size,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(size * 0.3),
-            color: live ? null : tone.withValues(alpha: c.isDark ? 0.2 : (quiet ? 0.07 : 0.10)),
-            gradient: live
-                ? AppGradients.blend(context, color: c.danger)
-                : null,
-          ),
-          child: Icon(icon, size: size * 0.48, color: live ? c.onHero : _ink(context, tone)),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppRadius.control), color: fill),
+          child: Icon(icon, size: size * 0.48, color: ink),
         ),
       ),
     );
@@ -643,7 +747,7 @@ class CourseSessionGroupHeader extends StatelessWidget {
       rail: (top: top, bottom: CourseRailTone.plain),
       nodeTop: 14,
       child: Padding(
-        padding: const EdgeInsets.only(top: 10, bottom: 6),
+        padding: const EdgeInsets.only(top: AppSpace.sm - 2, bottom: AppSpace.xs - 2),
         child: Row(
           children: [
             SizedBox(
@@ -655,7 +759,7 @@ class CourseSessionGroupHeader extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: c.background,
                     shape: BoxShape.circle,
-                    border: Border.all(color: c.textLight, width: 2),
+                    border: Border.all(color: c.textLight, width: AppBorder.focus),
                   ),
                 ),
               ),
@@ -667,7 +771,7 @@ class CourseSessionGroupHeader extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: _ts(12.5, FontWeight.w600, c.textMedium),
+                  style: AppType.label(context).copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -680,7 +784,8 @@ class CourseSessionGroupHeader extends StatelessWidget {
 
 /// One session of the timeline: the node on the line, then the session's card — kind tile · (state chip) · title ·
 /// date chip · length · files · (progress) · [below] — and [trailing] at its end (the teacher's ⋮, the student's
-/// chevron). "Up next" and "Live now" are the highlighted cards; a done one steps back.
+/// chevron). "Up next" is the sky block (the next thing on the schedule) and "Live now" the danger tint; a done or
+/// locked one steps back onto the canvas. The opened materials ([panel]) unfold under the row.
 class CourseSessionTile extends StatelessWidget {
   const CourseSessionTile({
     super.key,
@@ -717,17 +822,21 @@ class CourseSessionTile extends StatelessWidget {
     final s = data.state;
     final locked = s == CourseSessionState.locked;
     final done = s == CourseSessionState.done;
-    final Color? tone = switch (s) {
-      CourseSessionState.live => c.danger,
-      CourseSessionState.next => c.primary,
-      _ => null,
-    };
+    final live = s == CourseSessionState.live;
+    final next = s == CourseSessionState.next;
+    final sky = AppBlockColors.of(context, AppBlockTone.sky);
+    final Color surface = live
+        ? appTintOn(context, c.danger)
+        : next
+        ? sky.surface
+        : (done || locked ? c.background : c.cardBg);
+    final Color? tone = live ? c.danger : (next ? c.primary : null);
     final titleColor = locked ? c.textLight : (done ? c.textMedium : c.textDark);
-    final metaColor = locked ? c.textLight : c.textMedium;
+    final metaColor = locked ? c.textLight : ensureContrast(c.textMedium, [surface]);
 
     final chip = switch (s) {
-      CourseSessionState.live => _Chip(label: _t('مباشر الآن', 'Live now'), tone: c.danger, live: true),
-      CourseSessionState.next => _Chip(label: _t('التالي', 'Up next'), tone: c.primary),
+      CourseSessionState.live => _Chip(label: _t('مباشر الآن', 'Live now'), tone: c.danger, on: surface, live: true),
+      CourseSessionState.next => _Chip(label: _t('التالي', 'Up next'), on: surface),
       _ => null,
     };
 
@@ -737,7 +846,8 @@ class CourseSessionTile extends StatelessWidget {
         data.title,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
-        style: _ts(tone != null ? 15 : 14.5, tone != null ? FontWeight.w600 : FontWeight.w500, titleColor, h: 1.35),
+        style: (tone != null ? AppType.section(context) : AppType.row(context).copyWith(height: 1.35))
+            .copyWith(color: titleColor),
       ),
     );
 
@@ -746,43 +856,47 @@ class CourseSessionTile extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (chip != null) ...[chip, const SizedBox(height: 6)],
+        if (chip != null) ...[chip, const SizedBox(height: AppSpace.xs - 2)],
         title,
-        const SizedBox(height: 6),
-        _Meta(data: data, color: metaColor, tone: tone),
+        const SizedBox(height: AppSpace.xs - 2),
+        _Meta(data: data, color: metaColor, tone: tone, on: surface),
         if (wide && data.subtitle != null && data.subtitle!.trim().isNotEmpty && !done) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs - 2),
           Text(
             data.subtitle!.trim(),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: _ts(12.5, FontWeight.w400, c.textLight, h: 1.4),
+            style: AppType.meta(context).copyWith(color: metaColor, height: 1.4),
           ),
         ],
         if (progress != null) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm - 2),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 360),
             child: Row(
               children: [
                 Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      minHeight: 4,
-                      backgroundColor: c.primary.withValues(alpha: 0.10),
-                      valueColor: AlwaysStoppedAnimation(_ink(context, c.primary)),
-                    ),
+                  child: CourseProgressBar(
+                    value: progress,
+                    height: AppSpace.xxs + 1,
+                    color: c.primary,
+                    track: c.textDark.withValues(alpha: 0.08),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Text('${data.materialsDone}/${data.materials}', style: _ts(11.5, FontWeight.w600, c.textMedium)),
+                const SizedBox(width: AppSpace.xs),
+                Text(
+                  '${data.materialsDone}/${data.materials}',
+                  style: AppType.meta(context).copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: metaColor,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
               ],
             ),
           ),
         ],
-        if (below != null) ...[const SizedBox(height: 12), below!],
+        if (below != null) ...[const SizedBox(height: AppSpace.sm), below!],
       ],
     );
 
@@ -797,9 +911,9 @@ class CourseSessionTile extends StatelessWidget {
             children: [
               Padding(
                 padding: EdgeInsets.only(top: (_tileSize - tile) / 2),
-                child: CourseSessionKindTile(kind: data.kind, state: s, size: tile),
+                child: CourseSessionKindTile(kind: data.kind, state: s, size: tile, on: surface),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpace.sm),
               Expanded(child: body),
               ?trailing,
             ],
@@ -808,22 +922,19 @@ class CourseSessionTile extends StatelessWidget {
       },
     );
 
-    final radius = BorderRadius.circular(18);
+    final radius = BorderRadius.circular(AppRadius.card);
     final card = DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: radius,
-        color: tone != null
-            ? Color.alphaBlend(tone.withValues(alpha: c.isDark ? 0.12 : 0.045), c.cardBg)
-            : (done || locked ? c.cardBg.withValues(alpha: c.isDark ? 0.5 : 0.6) : c.cardBg),
+        color: surface,
         border: Border.all(
-          color: tone != null
-              ? tone.withValues(alpha: c.isDark ? 0.5 : 0.32)
-              : c.divider.withValues(alpha: done || locked ? 0.45 : 0.85),
-          width: tone != null ? 1.2 : 1,
+          color: live
+              ? c.danger.withValues(alpha: c.isDark ? 0.5 : 0.32)
+              : next
+              ? (sky.border ?? Color.lerp(sky.surface, c.textDark, 0.12)!)
+              : c.divider,
+          width: AppBorder.hairline,
         ),
-        boxShadow: tone != null
-            ? [BoxShadow(color: tone.withValues(alpha: c.isDark ? 0.10 : 0.08), blurRadius: 18, offset: const Offset(0, 6))]
-            : null,
       ),
       child: ClipRRect(
         borderRadius: radius,
@@ -834,8 +945,11 @@ class CourseSessionTile extends StatelessWidget {
               type: MaterialType.transparency,
               child: InkWell(onTap: onTap, onLongPress: onLongPress, child: row),
             ),
-            if (panel != null)
-              Padding(padding: const EdgeInsetsDirectional.fromSTEB(_cardPad, 0, _cardPad, 4), child: panel),
+            _PanelReveal(
+              child: panel == null
+                  ? null
+                  : Padding(padding: const EdgeInsetsDirectional.fromSTEB(_cardPad, 0, _cardPad, AppSpace.xxs), child: panel),
+            ),
           ],
         ),
       ),
@@ -886,7 +1000,7 @@ class CourseSessionTile extends StatelessWidget {
 
 /// date chip · length · files — one quiet line (the kind is the tile).
 class _Meta extends StatelessWidget {
-  const _Meta({required this.data, required this.color, this.tone});
+  const _Meta({required this.data, required this.color, this.tone, required this.on});
 
   final CourseSessionView data;
   final Color color;
@@ -894,52 +1008,50 @@ class _Meta extends StatelessWidget {
   /// The card's accent (next / live): the date chip takes it.
   final Color? tone;
 
+  /// The card's surface.
+  final Color on;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final when = data.when;
     final length = courseSessionLength(data.durationMinutes);
     final hint = data.hint != null && data.hint!.isNotEmpty;
+    final style = AppType.meta(context).copyWith(height: 1.45);
     // Each fact is one unbreakable item (icon + words); the items wrap as wholes, never mid-fact.
     Widget item(IconData icon, String text, {Color? ink}) => Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: ink ?? color),
-        const SizedBox(width: 4),
+        Icon(icon, size: AppIconSize.xs, color: ink ?? color),
+        const SizedBox(width: AppSpace.xxs),
         Flexible(
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: _ts(12, FontWeight.w400, ink ?? color, h: 1.45),
-          ),
+          child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: style.copyWith(color: ink ?? color)),
         ),
       ],
     );
-    final dateInk = tone == null ? color : _ink(context, tone!);
+    // the date chip: paper on a tinted card, the input well on paper
+    final chipFill = tone == null ? c.inputBg : c.cardBg;
+    final dateInk = tone == null ? ensureContrast(c.textMedium, [chipFill]) : appInkOn(context, tone!, chipFill);
     return Wrap(
-      spacing: 12,
-      runSpacing: 6,
+      spacing: AppSpace.sm,
+      runSpacing: AppSpace.xs - 2,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         if (when != null)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: tone == null ? c.inputBg : tone!.withValues(alpha: c.isDark ? 0.2 : 0.10),
-              borderRadius: BorderRadius.circular(8),
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs - 1),
+            decoration: BoxDecoration(color: chipFill, borderRadius: BorderRadius.circular(AppRadius.chip - 2)),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.event_rounded, size: 13, color: dateInk),
-                const SizedBox(width: 5),
+                Icon(Icons.event_rounded, size: AppIconSize.xs - 1, color: dateInk),
+                const SizedBox(width: AppSpace.xxs + 1),
                 Flexible(
                   child: Text(
                     '${AppTime.date(when, pattern: 'EEE d MMM')} · ${AppTime.time(when)}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: _ts(11.5, FontWeight.w500, dateInk, h: 1.4),
+                    style: style.copyWith(fontWeight: FontWeight.w500, color: dateInk, height: 1.4),
                   ),
                 ),
               ],
@@ -947,7 +1059,7 @@ class _Meta extends StatelessWidget {
           ),
         if (length.isNotEmpty) item(Icons.schedule_rounded, length),
         if (hint)
-          item(Icons.info_outline_rounded, data.hint!, ink: _ink(context, c.warning))
+          item(Icons.info_outline_rounded, data.hint!, ink: appInkOn(context, c.warning, on))
         else if (data.materials > 0)
           item(Icons.attach_file_rounded, data.materials == 1 ? _t('ملف واحد', '1 file') : _t('${data.materials} ملفات', '${data.materials} files')),
       ],
@@ -955,25 +1067,35 @@ class _Meta extends StatelessWidget {
   }
 }
 
+/// The state word above a highlighted row: paper with ink on the sky card ("Up next"), the danger tint with its
+/// ink and a beating dot on the live one.
 class _Chip extends StatelessWidget {
-  const _Chip({required this.label, required this.tone, this.live = false});
+  const _Chip({required this.label, this.tone, required this.on, this.live = false});
 
   final String label;
-  final Color tone;
+  final Color? tone;
+  final Color on;
   final bool live;
 
   @override
   Widget build(BuildContext context) {
-    final ink = _ink(context, tone);
+    final c = context.colors;
+    final fill = tone == null ? c.cardBg : appTintOn(context, tone!, surface: on);
+    final ink = tone == null ? c.textDark : appInkOn(context, tone!, fill);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
+      decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(AppRadius.pill)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (live) ...[_Pulse(color: ink), const SizedBox(width: 5)],
+          if (live) ...[_Pulse(color: ink), const SizedBox(width: AppSpace.xxs + 1)],
           Flexible(
-            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: _ts(11, FontWeight.w600, ink, h: 1.4)),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: ink, height: 1.4),
+            ),
           ),
         ],
       ),
@@ -1018,6 +1140,7 @@ class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
 // ═════════════════════════════════════════════════════════════════════════════
 
 /// A small action under a row's meta line (Join · End · Start exam …): tinted, or [filled] for the one that matters.
+/// A 40 px control (radius control) in a 48 px target; it presses in a little (AppPressScale).
 class CourseSessionAction extends StatelessWidget {
   const CourseSessionAction({
     super.key,
@@ -1040,32 +1163,53 @@ class CourseSessionAction extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final t = tone ?? c.primary;
-    final fg = filled ? c.onHero : _ink(context, t);
+    final fill = filled ? t : appTintOn(context, t);
+    final fg = filled ? appInkOnFill(context, t) : appInkOn(context, t, fill);
     final disabled = onTap == null && !loading;
+    final radius = BorderRadius.circular(AppRadius.control);
     return Opacity(
-      opacity: disabled ? 0.5 : 1,
-      child: Material(
-        color: filled ? t : t.withValues(alpha: c.isDark ? 0.2 : 0.10),
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          onTap: loading ? null : onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 36),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (loading)
-                    SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: fg))
-                  else if (icon != null)
-                    Icon(icon, size: 16, color: fg),
-                  if (loading || icon != null) const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: _ts(12.5, FontWeight.w600, fg)),
+      opacity: disabled ? 0.45 : 1,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AppTouch.min),
+        child: Center(
+          widthFactor: 1,
+          child: AppPressScale(
+            scale: 0.97,
+            enabled: !disabled && !loading,
+            child: Material(
+              color: fill,
+              borderRadius: radius,
+              child: InkWell(
+                onTap: loading ? null : onTap,
+                borderRadius: radius,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs - 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (loading)
+                          SizedBox(
+                            width: AppIconSize.xs,
+                            height: AppIconSize.xs,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: fg),
+                          )
+                        else if (icon != null)
+                          Icon(icon, size: AppIconSize.sm, color: fg),
+                        if (loading || icon != null) const SizedBox(width: AppSpace.xs - 2),
+                        Flexible(
+                          child: Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: fg),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -1084,11 +1228,12 @@ class CourseSessionChevron extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
     width: 40,
-    height: 44,
+    height: AppTouch.min,
     child: AnimatedRotation(
       turns: open ? 0.5 : 0,
-      duration: const Duration(milliseconds: 220),
-      child: Icon(Icons.keyboard_arrow_down_rounded, size: 22, color: context.colors.textLight),
+      duration: const Duration(milliseconds: 260),
+      curve: AppEase.out,
+      child: Icon(Icons.expand_more_rounded, size: AppIconSize.lg, color: context.colors.textMedium),
     ),
   );
 }
@@ -1110,12 +1255,12 @@ class CourseSessionPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(top: 2, bottom: 4),
+      padding: const EdgeInsets.only(top: AppSpace.xxs / 2, bottom: AppSpace.xxs),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Divider(height: 1, color: c.divider.withValues(alpha: 0.7)),
-          const SizedBox(height: 12),
+          Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+          const SizedBox(height: AppSpace.sm),
           Row(
             children: [
               Expanded(
@@ -1123,15 +1268,15 @@ class CourseSessionPanel extends StatelessWidget {
                   title ?? _t('المواد', 'Materials'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: _ts(12.5, FontWeight.w600, c.textMedium),
+                  style: AppType.label(context).copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
               ?action,
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm - 2),
           child,
-          if (footer != null) ...[const SizedBox(height: 10), footer!],
+          if (footer != null) ...[const SizedBox(height: AppSpace.sm - 2), footer!],
         ],
       ),
     );

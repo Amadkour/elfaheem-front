@@ -145,7 +145,7 @@ class _CourseRoadmapBodyState extends State<CourseRoadmapBody> {
     } else {
       child = const SizedBox(height: 320, child: AppListSkeleton(items: 4));
     }
-    return Padding(padding: const EdgeInsets.fromLTRB(kCourseGutter, 8, kCourseGutter, 16), child: child);
+    return Padding(padding: const EdgeInsets.fromLTRB(kCourseGutter, AppSpace.md, kCourseGutter, AppSpace.md), child: child);
   }
 }
 
@@ -177,7 +177,6 @@ class RoadmapTabContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = roadmap;
-    final c = context.colors;
     final empty = r.next.isEmpty;
     final picks = staff || roadmapOff(kRoadmapTeacherPicksKey)
         ? const <CourseSummary>[]
@@ -188,38 +187,45 @@ class RoadmapTabContent extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text(
-                staff ? t('مسار هذا الكورس', 'This course’s path') : t('رحلتك في هذا المسار', 'Your way through this path'),
-                style: appText(16, w: FontWeight.w600, c: c.textDark),
+              child: Semantics(
+                header: true,
+                child: Text(
+                  staff ? t('مسار هذا الكورس', 'This course’s path') : t('رحلتك في هذا المسار', 'Your way through this path'),
+                  style: AppType.section(context),
+                ),
               ),
             ),
             if (onShare != null && !roadmapOff(kShareLinksKey))
-              IconButton(
+              AppIconButton(
                 key: const ValueKey('roadmap.share'),
                 tooltip: t('مشاركة المسار', 'Share the path'),
                 onPressed: onShare,
-                icon: Icon(Icons.ios_share_rounded, color: c.textMedium),
+                icon: Icons.ios_share_rounded,
               ),
-            if (onEdit != null)
-              OutlinedButton.icon(
-                onPressed: onEdit,
-                style: OutlinedButton.styleFrom(minimumSize: const Size(48, 44)),
-                icon: const Icon(Icons.edit_rounded, size: 18),
-                label: Text(t('تعديل المسار', 'Edit path')),
+            if (onEdit != null) ...[
+              const SizedBox(width: AppSpace.xxs),
+              Flexible(
+                child: AppButton.secondary(
+                  label: t('تعديل المسار', 'Edit path'),
+                  icon: Icons.edit_rounded,
+                  size: AppButtonSize.sm,
+                  onPressed: onEdit,
+                ),
               ),
+            ],
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpace.xxs),
         Text(
           staff
               ? t('ما يدرسه الطالب بعد هذا الكورس، بالترتيب.', 'What a student takes after this course, in order.')
               : t('ما درسته قبله، وأين أنت، وما يأتي بعده.', 'What you took before, where you are, and what comes next.'),
-          style: appText(13, w: FontWeight.w400, c: c.textMedium),
+          style: AppType.body(context),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.lg),
         RoadmapPathView(stops: roadmapStops(r), staff: staff, onTap: onOpenCourse),
         if (empty) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           if (staff)
             AppBanner(
               icon: Icons.add_road_rounded,
@@ -228,10 +234,10 @@ class RoadmapTabContent extends StatelessWidget {
             )
           else
             Text(t('لم يحدد المدرّس الخطوة التالية بعد.', 'The instructor has not set the next step yet.'),
-                textAlign: TextAlign.center, style: appText(13, w: FontWeight.w400, c: c.textLight)),
+                textAlign: TextAlign.center, style: AppType.body(context)),
         ],
         if (staff && onEdit != null && !empty && (r.course.level == null || r.course.tags.isEmpty)) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           AppBanner(
             icon: Icons.sell_outlined,
             text: t('أضف مستوى الكورس وكلماته المفتاحية ليُقترح على الطلاب المناسبين.', 'Add the course’s level and topic words so it is suggested to the right students.'),
@@ -239,13 +245,21 @@ class RoadmapTabContent extends StatelessWidget {
           ),
         ],
         if (!staff && onEnrollAll != null && r.hasNotTaken && !roadmapOff(kRoadmapEnrollKey)) ...[
-          const SizedBox(height: 16),
-          AppPrimaryButton(label: t('اشترك في المسار كاملاً', 'Enroll in the whole path'), icon: Icons.route_rounded, onPressed: onEnrollAll!),
+          const SizedBox(height: AppSpace.lg),
+          AppButton.primary(
+            label: t('اشترك في المسار كاملاً', 'Enroll in the whole path'),
+            icon: Icons.route_rounded,
+            expand: true,
+            onPressed: onEnrollAll!,
+          ),
         ],
         if (picks.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          Text(t('اختيارات المدرّس', 'Picked by your instructor'), style: appText(16, w: FontWeight.w600, c: c.textDark)),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xl),
+          Semantics(
+            header: true,
+            child: Text(t('اختيارات المدرّس', 'Picked by your instructor'), style: AppType.section(context)),
+          ),
+          const SizedBox(height: AppSpace.sm),
           for (final p in picks.take(4)) _PickRow(course: p, onTap: onOpenPick == null ? null : () => onOpenPick!(p)),
         ],
       ],
@@ -265,27 +279,33 @@ class _PickRow extends StatelessWidget {
     return ParentComponent(
       featureKey: 'roadmap.course_card',
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.only(bottom: AppSpace.xs),
         child: Material(
           color: c.cardBg,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: c.divider)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            side: BorderSide(color: c.divider, width: AppBorder.hairline),
+          ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: onTap,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 56),
+              constraints: const BoxConstraints(minHeight: AppTouch.primary),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.sm - 2),
                 child: Row(
                   children: [
-                    Icon(Icons.auto_awesome_rounded, size: 18, color: appInk(context, c.primary)),
-                    const SizedBox(width: 10),
+                    Icon(Icons.auto_awesome_rounded, size: AppIconSize.md, color: appInk(context, c.primary)),
+                    const SizedBox(width: AppSpace.sm - 2),
                     Expanded(
-                      child: Text(course.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w500, c: c.textDark)),
+                      child: Text(course.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
                     ),
-                    const SizedBox(width: 8),
-                    Text(coursePriceLabel(course.currency, course.finalPrice), style: appText(12.5, w: FontWeight.w500, c: c.textMedium)),
-                    Icon(Icons.chevron_right_rounded, size: 20, color: c.textLight),
+                    const SizedBox(width: AppSpace.xs),
+                    Text(
+                      coursePriceLabel(course.currency, course.finalPrice),
+                      style: AppType.meta(context).copyWith(fontWeight: FontWeight.w500),
+                    ),
+                    Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.textLight),
                   ],
                 ),
               ),

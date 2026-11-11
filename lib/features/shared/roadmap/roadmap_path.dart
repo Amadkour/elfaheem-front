@@ -11,15 +11,22 @@
 //
 // A node and its card share one row; the rail is drawn by the node so a card can grow (two-line names, chips)
 // without breaking the line. The teacher's view shows drafts ("Draft") and no states.
+//
+// Warm Editorial: the walked part of the line and a completed stop are emerald, "You are here" is ink on its node
+// and the path's one block (emerald: the page's subject), the stops ahead are paper with their step number; course
+// names are editorial section headings; a stop presses in under the finger.
 library;
 
 import 'package:flutter/material.dart';
 
 import '../../../config/theme/theme_config_provider.dart';
+import '../../../design/app_contrast.dart' show ensureContrast;
 import '../../../design/app_kit.dart';
+import '../../../design/app_motion_kit.dart' show AppPressScale;
 import '../../../utils/widget/app_network_image.dart';
 import '../../admin/admin_common.dart' show t;
 import '../course/course_price_tag.dart' show coursePriceLabel;
+import '../course/course_space/course_space_parts.dart' show CourseProgressBar;
 import 'roadmap_api.dart';
 
 enum RoadmapStopRole { taken, here, next }
@@ -115,24 +122,31 @@ class _StopRow extends StatelessWidget {
     final c = context.colors;
     final here = stop.role == RoadmapStopRole.here;
     final tap = here || onTap == null ? null : () => onTap!(stop.course);
+    // "You are here" is the path's one block (emerald: the subject of the page); the other stops are paper
+    final emerald = AppBlockColors.of(context, AppBlockTone.emerald);
+    final radius = BorderRadius.circular(AppRadius.card);
+    final body = Padding(
+      padding: const EdgeInsets.all(AppSpace.sm),
+      child: _StopBody(stop: stop, step: step, staff: staff, hereLabel: hereLabel, tappable: tap != null),
+    );
     // the card sizes the row; the rail is stretched beside it (no IntrinsicHeight: the card holds LayoutBuilders)
     return Stack(
       children: [
         Padding(
-          padding: EdgeInsetsDirectional.only(start: _rail + 8, bottom: last ? 0 : 12),
-          child: Material(
-            color: here ? c.primaryTint : c.cardBg,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: here ? c.primary.withValues(alpha: 0.45) : c.divider, width: here ? 1.4 : 1),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: tap,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: _StopBody(stop: stop, step: step, staff: staff, hereLabel: hereLabel, tappable: tap != null),
+          padding: EdgeInsetsDirectional.only(start: _rail + AppSpace.xs, bottom: last ? 0 : AppSpace.sm),
+          child: AppPressScale(
+            enabled: tap != null,
+            child: Material(
+              color: here ? emerald.surface : c.cardBg,
+              shape: RoundedRectangleBorder(
+                borderRadius: radius,
+                side: BorderSide(
+                  color: here ? (emerald.border ?? Color.lerp(emerald.surface, c.textDark, 0.14)!) : c.divider,
+                  width: AppBorder.hairline,
+                ),
               ),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(onTap: tap, child: body),
             ),
           ),
         ),
@@ -160,6 +174,7 @@ class _StopRow extends StatelessWidget {
   }
 }
 
+/// The path's line: emerald where it has been walked, the warm hairline ahead.
 class _Line extends StatelessWidget {
   const _Line({required this.done});
 
@@ -167,14 +182,16 @@ class _Line extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    width: 2,
+    width: AppBorder.focus,
     decoration: BoxDecoration(
-      color: done ? context.colors.success.withValues(alpha: 0.55) : context.colors.divider,
+      color: done ? context.colors.success.withValues(alpha: 0.6) : context.colors.divider,
       borderRadius: BorderRadius.circular(1),
     ),
   );
 }
 
+/// A stop's node: emerald with a check when done, ink at "You are here", a paper disc with the step's number
+/// ahead (its edge emerald while the student is in it).
 class _Node extends StatelessWidget {
   const _Node({required this.stop, required this.step, required this.staff});
 
@@ -191,9 +208,9 @@ class _Node extends StatelessWidget {
     IconData? icon;
     switch (stop.role) {
       case RoadmapStopRole.here:
-        fill = c.primary;
-        border = c.primary;
-        ink = c.onHero;
+        fill = c.textDark;
+        border = c.textDark;
+        ink = c.background;
         icon = Icons.place_rounded;
       case RoadmapStopRole.taken when staff:          // the owner's view: a course that comes before, no state
         fill = c.cardBg;
@@ -204,25 +221,32 @@ class _Node extends StatelessWidget {
         final done = s == RmState.completed;
         fill = done ? c.success : c.cardBg;
         border = done ? c.success : c.primary;
-        ink = done ? c.onHero : appInk(context, c.primary);
+        ink = done ? appInkOnFill(context, c.success) : appInk(context, c.primary);
         icon = done ? Icons.check_rounded : Icons.timelapse_rounded;
       case RoadmapStopRole.next:
         final done = !staff && s == RmState.completed;
         fill = done ? c.success : c.cardBg;
         border = done ? c.success : (!staff && s == RmState.inProgress ? c.primary : c.divider);
-        ink = done ? c.onHero : c.textMedium;
+        ink = done ? appInkOnFill(context, c.success) : c.textMedium;
         if (done) {
           icon = Icons.check_rounded;
         } else {
-          child = Text('${step ?? ''}', style: appText(12, w: FontWeight.w600, c: ink));
+          child = Text(
+            '${step ?? ''}',
+            style: AppType.meta(context).copyWith(
+              fontWeight: FontWeight.w600,
+              color: ink,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          );
         }
     }
     return Container(
       width: _StopRow._node,
       height: _StopRow._node,
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: fill, shape: BoxShape.circle, border: Border.all(color: border, width: 1.6)),
-      child: child ?? Icon(icon, size: 16, color: ink),
+      decoration: BoxDecoration(color: fill, shape: BoxShape.circle, border: Border.all(color: border, width: AppBorder.strong)),
+      child: child ?? Icon(icon, size: AppIconSize.sm, color: ink),
     );
   }
 }
@@ -240,6 +264,9 @@ class _StopBody extends StatelessWidget {
     final c = context.colors;
     final co = stop.course;
     final here = stop.role == RoadmapStopRole.here;
+    // on the emerald block the captions keep AA against the block, on paper against the card
+    final surface = here ? AppBlockColors.of(context, AppBlockTone.emerald).surface : c.cardBg;
+    final muted = ensureContrast(c.textMedium, [surface]);
     final (caption, captionColor) = _caption(context);
     final meta = [
       if (co.level != null && co.level!.isNotEmpty) roadmapLevelLabel(co.level),
@@ -255,62 +282,71 @@ class _StopBody extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _Thumb(url: co.imageUrl),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (here)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(999)),
-                      child: Text(caption, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w600, c: c.onHero)),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
+                      decoration: BoxDecoration(color: c.textDark, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                      child: Text(
+                        caption,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.background),
+                      ),
                     )
                   else
-                    Text(caption, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w500, c: appInk(context, captionColor))),
-                  const SizedBox(height: 4),
-                  Text(
-                    co.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: appText(15, w: FontWeight.w600, c: c.textDark, h: 1.3),
-                  ),
+                    Text(
+                      caption,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.meta(context).copyWith(
+                        fontWeight: FontWeight.w500,
+                        color: captionColor == null ? muted : appInkOn(context, captionColor, surface),
+                      ),
+                    ),
+                  const SizedBox(height: AppSpace.xxs),
+                  Text(co.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
                   if (meta.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(meta, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w400, c: c.textMedium)),
+                    const SizedBox(height: AppSpace.xxs / 2),
+                    Text(meta, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: muted)),
                   ],
                 ],
               ),
             ),
             if (tappable) ...[
-              const SizedBox(width: 4),
+              const SizedBox(width: AppSpace.xxs),
               Padding(
-                padding: const EdgeInsets.only(top: 14),
-                child: Icon(Icons.chevron_right_rounded, size: 20, color: c.textLight),
+                padding: const EdgeInsets.only(top: AppSpace.sm + 2),
+                child: Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.textLight),
               ),
             ],
           ],
         ),
         if (showBar) ...[
-          const SizedBox(height: 10),
-          AppProgressBar(value: co.progress, height: 4, color: appInk(context, c.primary)),
+          const SizedBox(height: AppSpace.sm - 2),
+          CourseProgressBar(value: co.progress / 100, height: AppSpace.xxs + 1, color: c.primary),
         ],
         if (co.prerequisites.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          _Prereqs(items: co.prerequisites, staff: staff),
+          const SizedBox(height: AppSpace.sm - 2),
+          _Prereqs(items: co.prerequisites, staff: staff, on: surface),
         ],
       ],
     );
   }
 
-  (String, Color) _caption(BuildContext context) {
+  /// The caption above the name and its tone (null = the muted ink).
+  (String, Color?) _caption(BuildContext context) {
     final c = context.colors;
     final co = stop.course;
     switch (stop.role) {
       case RoadmapStopRole.here:
-        return (hereLabel ?? t('أنت هنا', 'You are here'), c.primary);
+        return (hereLabel ?? t('أنت هنا', 'You are here'), null);
       case RoadmapStopRole.taken when staff:
-        return (t('يأتي قبله', 'Comes before'), c.textMedium);
+        return (t('يأتي قبله', 'Comes before'), null);
       case RoadmapStopRole.taken:
         return co.state == RmState.completed
             ? (t('مكتمل', 'Completed'), c.success)
@@ -320,7 +356,7 @@ class _StopBody extends StatelessWidget {
         return switch (staff ? null : co.state) {
           RmState.completed => (t('الخطوة $step · مكتمل', 'Step $step · Completed'), c.success),
           RmState.inProgress => (t('الخطوة $step · ${co.progress.round()}٪', 'Step $step · ${co.progress.round()}%'), c.primary),
-          _ => (t('الخطوة $step', 'Step $step'), c.textMedium),
+          _ => (t('الخطوة $step', 'Step $step'), null),
         };
     }
   }
@@ -336,33 +372,40 @@ class _Thumb extends StatelessWidget {
     final c = context.colors;
     final u = url;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppRadius.chip),
       child: SizedBox(
-        width: 48,
-        height: 48,
+        width: AppTouch.min,
+        height: AppTouch.min,
         child: u == null
-            ? ColoredBox(color: c.primaryTint, child: Icon(Icons.menu_book_rounded, size: 22, color: appInk(context, c.primary)))
-            : AppNetworkImage(url: u, width: 48, height: 48, fit: BoxFit.cover, borderRadius: BorderRadius.zero),
+            ? ColoredBox(
+                color: c.inputBg,
+                child: Icon(Icons.menu_book_rounded, size: AppIconSize.md, color: c.textLight),
+              )
+            : AppNetworkImage(url: u, width: AppTouch.min, height: AppTouch.min, fit: BoxFit.cover, borderRadius: BorderRadius.zero),
       ),
     );
   }
 }
 
 class _Prereqs extends StatelessWidget {
-  const _Prereqs({required this.items, required this.staff});
+  const _Prereqs({required this.items, required this.staff, required this.on});
 
   final List<RmPrereq> items;
   final bool staff;
 
+  /// The card's surface.
+  final Color on;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final okFill = appTintOn(context, c.success, surface: on);
     return Wrap(
-      spacing: 6,
-      runSpacing: 6,
+      spacing: AppSpace.xs - 2,
+      runSpacing: AppSpace.xs - 2,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Text(t('يتطلب', 'Needs'), style: appText(12, w: FontWeight.w500, c: c.textMedium)),
+        Text(t('يتطلب', 'Needs'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w500, color: ensureContrast(c.textMedium, [on]))),
         for (final p in items)
           Semantics(
             label: staff
@@ -371,22 +414,27 @@ class _Prereqs extends StatelessWidget {
             excludeSemantics: true,
             child: Container(
               constraints: const BoxConstraints(maxWidth: 220),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
               decoration: BoxDecoration(
-                color: p.done == true ? c.successTint : c.inputBg,
-                borderRadius: BorderRadius.circular(999),
+                color: p.done == true ? okFill : c.inputBg,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     staff ? Icons.link_rounded : (p.done == true ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded),
-                    size: 14,
-                    color: p.done == true ? appInk(context, c.success) : c.textMedium,
+                    size: AppIconSize.xs,
+                    color: p.done == true ? appInkOn(context, c.success, okFill) : c.textMedium,
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AppSpace.xxs),
                   Flexible(
-                    child: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w500, c: c.textDark)),
+                    child: Text(
+                      p.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.meta(context).copyWith(fontWeight: FontWeight.w500, color: c.textDark),
+                    ),
                   ),
                 ],
               ),
