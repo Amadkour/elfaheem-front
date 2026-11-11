@@ -7,9 +7,10 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
-import 'package:flutter_education_app/design/app_kit.dart' show AppEmpty, AppListSkeleton;
+import 'package:flutter_education_app/design/app_states.dart' show AppEmpty, AppErrorState;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/shared/course/course_list_card.dart'
+    show CourseListSkeleton, CourseListToolbar, CourseSearchField;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
 import 'package:flutter_education_app/features/student/courses/my_courses/my_courses_provider.dart';
@@ -20,9 +21,8 @@ import '../../../../config/app_config.dart' as Helpers;
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/paged_progress.dart';
-import '../../../../utils/widget/search_text_field.dart';
 import '../../models.dart';
-import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
+import 'package:flutter_education_app/design/app_tokens.dart' show AppSpace, AppWidth;
 
 class CoursesListScreen extends StatefulWidget {
   const CoursesListScreen({
@@ -136,15 +136,17 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
           children: [
             ParentComponent(
               featureKey: 'courses_list.search',
-              // a search box reads best at a form's width, even on a wide window
+              // the same well as My courses; a search box reads best at a form's width, even on a wide window
               child: Align(
                 alignment: AlignmentDirectional.centerStart,
                 child: ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: AppWidth.form.max),
-                  child: MySearchBar(
-                    controller: _searchCtrl,
-                    hint: 'search_course_by_name_description',
-                    onChanged: _onQuery,
+                  child: CourseListToolbar(
+                    search: CourseSearchField(
+                      controller: _searchCtrl,
+                      hint: 'search_course_by_name_description',
+                      onChanged: _onQuery,
+                    ),
                   ),
                 ),
               ),
@@ -156,13 +158,13 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
                 loadingMore: loadingMore,
                 done: !hasMore,
                 icon: Icons.library_books_rounded,
-                margin: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
               ),
             Expanded(
               child: loading
-                  ? const AppListSkeleton()
+                  ? const CourseListSkeleton()
                   : error
-                  ? ErrorRetry(message: errorText ?? 'retry'.tr, onRetry: refresh)
+                  ? AppErrorState(message: errorText, onRetry: refresh)
                   : (courses.isEmpty && !hasMore)
                   ? AppEmpty(
                 icon: Icons.menu_book_rounded,

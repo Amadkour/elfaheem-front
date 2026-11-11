@@ -2,7 +2,7 @@
 //
 // The student-only pieces of the course page, plain values only (test/ui/course_detail_layout_test.dart):
 //   CoursePriceBlock        price · discount ribbon · countdown
-//   CourseEnrollButton      the gradient call to action
+//   CourseEnrollButton      the call to action (the kit's solid emerald primary, 56 px)
 //   CourseIncludedList      what the course includes (lessons · hours · live / recorded · certificate)
 //   CourseBuyCard           desktop side card: price · payment status slot · enroll · included
 //   CourseEnrolledCard      desktop side card once enrolled
@@ -12,6 +12,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_back_button.dart';
+import 'package:flutter_education_app/design/app_badges.dart' show appTintOn, appInkOn;
+import 'package:flutter_education_app/design/app_blocks.dart' show AppBlockTone;
+import 'package:flutter_education_app/design/app_buttons.dart';
+import 'package:flutter_education_app/design/app_states.dart' show AppStatePlate;
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 import '../../../../../config/app_config.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
@@ -23,7 +28,6 @@ import '../growth_tr.dart';
 import '../../../../../core/course_access.dart';
 import 'course_access_parts.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Price (+ discount ribbon / countdown).
 class CoursePriceBlock extends StatelessWidget {
@@ -37,16 +41,10 @@ class CoursePriceBlock extends StatelessWidget {
     final discount = course.discountActive ?? false;
     final c = context.colors;
     final free = (course.finalPrice ?? 0) == 0;
+    // the price is the page's key figure: the figure roles, tabular digits
+    final figure = compact ? AppType.figure(context) : AppType.figureLarge(context);
     final priceRow = free
-        ? Text(
-            gt('مجاناً', 'Free'),
-            style: TextStyle(
-              fontFamily: AppFonts.family,
-              fontSize: compact ? 20 : 28,
-              fontWeight: FontWeight.w600,
-              color: c.success,
-            ),
-          )
+        ? Text(gt('مجاناً', 'Free'), style: figure.copyWith(color: c.success))
         : Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -56,11 +54,11 @@ class CoursePriceBlock extends StatelessWidget {
                 finalPrice: course.finalPrice ?? 0,
                 discountActive: discount,
                 format: (v) => coursePriceLabel(course.currency, v),
-                fontSize: compact ? 20 : 28,
-                originalFontSize: compact ? 12 : 14,
+                fontSize: figure.fontSize ?? AppType.figureLarge(context).fontSize!,
+                originalFontSize: (compact ? AppType.meta(context) : AppType.body(context)).fontSize!,
               ),
               if (discount) ...[
-                const SizedBox(width: 10),
+                const SizedBox(width: AppSpace.xs),
                 DiscountRibbon(percentage: course.discountPercentage ?? 0),
               ],
             ],
@@ -72,7 +70,7 @@ class CoursePriceBlock extends StatelessWidget {
       children: [
         FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.centerStart, child: priceRow),
         if (!free && discount && course.discountEndsAt != null) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs),
           DiscountCountdown(endsAt: course.discountEndsAt!),
         ],
       ],
@@ -80,7 +78,8 @@ class CoursePriceBlock extends StatelessWidget {
   }
 }
 
-/// The gradient call to action ("Enroll now" / "Enroll for free").
+/// The call to action ("Enroll now" / "Enroll for free"): the kit's primary button — solid emerald, 56 px, presses
+/// in — across the width it is given.
 class CourseEnrollButton extends StatelessWidget {
   const CourseEnrollButton({super.key, required this.free, required this.onTap, this.label});
 
@@ -92,42 +91,9 @@ class CourseEnrollButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     // The price is right next to the button, so the label only carries the action.
     final label = this.label ?? (free ? gt('سجّل مجاناً الآن', 'Enroll for free') : gt('انضم الآن', 'Enroll now'));
-    return Container(
-      constraints: const BoxConstraints(minHeight: 52),
-      decoration: BoxDecoration(
-        gradient: c.primaryGradient,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: c.primary.withValues(alpha: 0.2), blurRadius: 12, offset: const Offset(0, 4))],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: c.onHero, fontWeight: FontWeight.w600, fontSize: 15, fontFamily: AppFonts.family),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Icon(Icons.arrow_forward_rounded, color: c.onHero, size: 18, textDirection: Directionality.of(context)),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+    return AppButton.primary(label: label, onPressed: onTap, size: AppButtonSize.lg, expand: true);
   }
 }
 
@@ -141,44 +107,38 @@ class CourseIncludedList extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final hours = course.totalHours.toStringAsFixed(course.totalHours % 1 == 0 ? 0 : 1);
+    // one quiet ink for every fact; only "live" keeps its red (it means something)
     final rows = <(IconData, String, Color)>[
       if (course.sessionsCount > 0)
-        (Icons.play_lesson_rounded, gt('${course.sessionsCount} جلسة', '${course.sessionsCount} sessions'), c.primary),
-      if (course.totalHours > 0) (Icons.schedule_rounded, gt('$hours ساعة محتوى', '$hours hours of content'), c.warning),
+        (Icons.play_lesson_rounded, gt('${course.sessionsCount} جلسة', '${course.sessionsCount} sessions'), c.textMedium),
+      if (course.totalHours > 0)
+        (Icons.schedule_rounded, gt('$hours ساعة محتوى', '$hours hours of content'), c.textMedium),
       if (course.type == 'live')
         (Icons.sensors_rounded, gt('بث مباشر مع المدرس', 'Live sessions with the teacher'), c.danger)
       else
-        (Icons.play_circle_outline_rounded, gt('دروس مسجّلة بوقتك', 'Recorded, learn at your pace'), c.primary),
+        (Icons.play_circle_outline_rounded, gt('دروس مسجّلة بوقتك', 'Recorded, learn at your pace'), c.textMedium),
       if (course.certificates.isNotEmpty)
-        (Icons.workspace_premium_rounded, gt('شهادة إتمام', 'Certificate of completion'), c.success),
+        (Icons.workspace_premium_rounded, gt('شهادة إتمام', 'Certificate of completion'), c.textMedium),
       if (course.schedules.isNotEmpty)
         (
           Icons.event_repeat_rounded,
           gt('${course.schedules.length} مواعيد أسبوعية', '${course.schedules.length} weekly slots'),
-          c.accent,
+          c.textMedium,
         ),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          gt('يتضمن الكورس', 'This course includes'),
-          style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w600, color: c.textMedium),
-        ),
-        const SizedBox(height: 6),
+        Text(gt('يتضمن الكورس', 'This course includes'), style: AppType.section(context)),
+        const SizedBox(height: AppSpace.xs),
         for (final (icon, label, tone) in rows)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5),
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
             child: Row(
               children: [
-                Icon(icon, size: 18, color: c.isDark ? Color.lerp(tone, c.textDark, 0.4) : tone),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w400, color: c.textDark),
-                  ),
-                ),
+                Icon(icon, size: AppIconSize.md, color: tone),
+                const SizedBox(width: AppSpace.sm),
+                Expanded(child: Text(label, style: AppType.body(context).copyWith(color: c.textDark))),
               ],
             ),
           ),
@@ -209,12 +169,12 @@ class CourseBuyCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           CoursePriceBlock(course: course),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           ?status,
           ..._accessActions(course, onEnroll, onSupport),
-          const SizedBox(height: 18),
-          Divider(height: 1, color: c.divider),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.lg),
+          Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+          const SizedBox(height: AppSpace.md),
           CourseIncludedList(course: course),
         ],
       ),
@@ -238,33 +198,34 @@ class CourseEnrolledCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(color: c.success.withValues(alpha: 0.14), shape: BoxShape.circle),
-                child: Icon(Icons.verified_rounded, color: c.success, size: 22),
-              ),
-              const SizedBox(width: 12),
+              Builder(builder: (context) {
+                final tint = appTintOn(context, c.success);
+                return Container(
+                  width: AppTouch.min,
+                  height: AppTouch.min,
+                  decoration: BoxDecoration(color: tint, borderRadius: AppRadius.controlAll),
+                  child: Icon(Icons.verified_rounded, color: appInkOn(context, c.success, tint), size: AppIconSize.lg),
+                );
+              }),
+              const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'you_are_enrolled'.tr,
-                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 15, fontWeight: FontWeight.w600, color: c.textDark),
-                    ),
+                    Text('you_are_enrolled'.tr, style: AppType.section(context)),
+                    const SizedBox(height: AppSpace.xxs),
                     Text(
                       gt('وصول كامل لكل الجلسات والاختبارات', 'Full access to every session and exam'),
-                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium),
+                      style: AppType.meta(context),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Divider(height: 1, color: c.divider),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.md),
+          Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+          const SizedBox(height: AppSpace.md),
           CourseIncludedList(course: course),
         ],
       ),
@@ -286,13 +247,13 @@ Widget _renewOrEnrollButton(CourseModel course, VoidCallback onEnroll) {
       if (sub != null)
         Builder(
           builder: (context) => Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: AppSpace.xxs),
             child: Text(
               sub,
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, color: context.colors.textMedium),
+              style: AppType.meta(context),
             ),
           ),
         ),
@@ -307,8 +268,8 @@ List<Widget> _accessActions(CourseModel course, VoidCallback onEnroll, VoidCallb
     return [
       CourseAccessNote(mode: mode, access: course.access),
       if (mode == EnrollBarMode.support && onSupport != null) ...[
-        const SizedBox(height: 8),
-        TextButton(onPressed: onSupport, child: Text('course_access_support_btn'.tr)),
+        const SizedBox(height: AppSpace.xs),
+        AppButton.ghost(label: 'course_access_support_btn'.tr, onPressed: onSupport, expand: true),
       ],
     ];
   }
@@ -327,14 +288,19 @@ class CourseBuyBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    // the bar floats over the page: paper, the sheet's corner, the raised shadow cast upward
+    final lift = AppElevation.of(context, 2)
+        .map((s) => BoxShadow(color: s.color, blurRadius: s.blurRadius, offset: Offset(0, -s.offset.dy)))
+        .toList();
     return Container(
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border(top: BorderSide(color: c.divider)),
-        boxShadow: [BoxShadow(color: c.heroShade.withValues(alpha: 0.06), blurRadius: 18, offset: const Offset(0, -6))],
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
+        border: Border(top: BorderSide(color: c.divider, width: AppBorder.hairline)),
+        boxShadow: lift,
       ),
-      padding: EdgeInsets.fromLTRB(kCourseGutter, 12, kCourseGutter, 12 + MediaQuery.paddingOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(
+          kCourseGutter, AppSpace.md, kCourseGutter, AppSpace.sm + MediaQuery.paddingOf(context).bottom),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -344,7 +310,7 @@ class CourseBuyBar extends StatelessWidget {
             Row(
               children: [
                 Expanded(flex: 5, child: CoursePriceBlock(course: course, compact: true)),
-                const SizedBox(width: 14),
+                const SizedBox(width: AppSpace.md),
                 Expanded(flex: 6, child: _renewOrEnrollButton(course, onEnroll)),
               ],
             )
@@ -396,7 +362,7 @@ Widget courseLearningCard({
       if (progress >= 1) {
         return CourseSpotlightCard(
           icon: Icons.emoji_events_rounded,
-          title: gt('أتممت الكورس 🎉', 'Course completed 🎉'),
+          title: gt('أتممت الكورس', 'Course completed'),
           subtitle: hasCertificates
               ? gt('شهادتك جاهزة في تبويب "عن الكورس"', 'Your certificate is in the About tab')
               : gt('أحسنت! يمكنك مراجعة الجلسات في أي وقت', 'Well done! Review any session at any time'),
@@ -438,11 +404,12 @@ class CourseBlockedView extends StatelessWidget {
   final VoidCallback? onBack;
   final VoidCallback? onEnterCode;
 
+  /// The text block's measure.
+  static const double _measure = 420;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final tone = locked ? c.primary : c.textMedium;
-    final ink = c.isDark ? Color.lerp(tone, c.textDark, 0.4)! : tone;
     final name = title?.trim() ?? '';
     return SafeArea(
       child: Column(
@@ -452,42 +419,42 @@ class CourseBlockedView extends StatelessWidget {
             Align(
               alignment: AlignmentDirectional.centerStart,
               child: Padding(
-                padding: const EdgeInsets.all(4),
+                padding: const EdgeInsets.all(AppSpace.xxs),
                 child: AppBackButton(onPressed: onBack),
               ),
             ),
           Expanded(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.xl),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 420),
+                  constraints: const BoxConstraints(maxWidth: _measure),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(color: tone.withValues(alpha: 0.1), shape: BoxShape.circle),
-                        child: Icon(locked ? Icons.lock_outline_rounded : Icons.visibility_off_outlined, size: 30, color: ink),
+                      // the kit's drawn plate: a private course on a paper sheet with the lock, a missing one quieter
+                      AppStatePlate(
+                        icon: locked ? Icons.lock_outline_rounded : Icons.visibility_off_outlined,
+                        tone: locked ? AppBlockTone.sky : AppBlockTone.paper,
+                        accent: locked ? null : c.textMedium,
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: AppSpace.lg),
                       Text(
                         locked ? gt('هذا الكورس خاص', 'This course is private') : gt('الكورس غير متاح', 'This course is not available'),
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontFamily: AppFonts.family, fontSize: 18, fontWeight: FontWeight.w600, color: c.textDark),
+                        style: AppType.headline(context),
                       ),
                       if (name.isNotEmpty) ...[
-                        const SizedBox(height: 4),
+                        const SizedBox(height: AppSpace.xxs),
                         Text(
                           name,
                           textAlign: TextAlign.center,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 14, fontWeight: FontWeight.w500, color: c.textMedium),
+                          style: AppType.row(context).copyWith(color: c.textMedium),
                         ),
                       ],
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpace.sm),
                       Text(
                         locked
                             ? gt('أدخل كود الدخول الذي أرسله لك المدرس لتفتح الكورس.',
@@ -495,31 +462,17 @@ class CourseBlockedView extends StatelessWidget {
                             : gt('ربما لم يُنشر بعد أو أُزيل. جرّب لاحقاً أو تصفح كورسات أخرى.',
                                 'It may not be published yet, or it was removed. Try again later or browse other courses.'),
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontFamily: AppFonts.family, fontSize: 13.5, height: 1.55, color: c.textMedium),
+                        style: AppType.body(context).copyWith(height: 1.55),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: AppSpace.lg),
                       if (locked && onEnterCode != null)
-                        FilledButton.icon(
+                        AppButton.primary(
+                          label: gt('أدخل الكود', 'Enter the code'),
+                          icon: Icons.key_rounded,
                           onPressed: onEnterCode,
-                          icon: const Icon(Icons.key_rounded, size: 18),
-                          label: Text(gt('أدخل الكود', 'Enter the code')),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: c.primary,
-                            foregroundColor: c.onHero,
-                            minimumSize: const Size(200, 48),
-                            textStyle: TextStyle(fontFamily: AppFonts.family, fontSize: 14, fontWeight: FontWeight.w600),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          ),
                         )
                       else if (onBack != null)
-                        OutlinedButton(
-                          onPressed: onBack,
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size(160, 44),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          ),
-                          child: Text(gt('رجوع', 'Go back')),
-                        ),
+                        AppButton.secondary(label: gt('رجوع', 'Go back'), onPressed: onBack),
                     ],
                   ),
                 ),

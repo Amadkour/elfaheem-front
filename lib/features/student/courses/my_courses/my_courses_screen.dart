@@ -17,7 +17,7 @@ import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/features/org/org_member_pages.dart' show OrgCoursesScreen;
 import 'package:flutter_education_app/features/shared/course/course_scope.dart';
 import 'package:flutter_education_app/features/shared/course/course_scope_bar.dart';
-import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
+import 'package:flutter_education_app/design/app_tokens.dart' show AppSpace, AppWidth;
 import 'package:flutter_education_app/core/entities/entity_models.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/master_detail/entity_detail_view.dart' show EntityPanelAction;
@@ -150,7 +150,7 @@ class _ScopeBar extends StatelessWidget {
         final chips = courseScopeChips(p.scopes, selected: p.scope, modeOrg: modeOrg);
         if (chips.length < 2) return const SizedBox.shrink();
         return Padding(
-          padding: const EdgeInsets.only(top: 12, bottom: 4),
+          padding: const EdgeInsets.only(top: AppSpace.sm, bottom: AppSpace.xxs),
           child: CourseScopeChipBar(chips: chips, selected: p.scope, onSelect: p.selectScope),
         );
       },
@@ -171,7 +171,7 @@ class _Toolbar extends StatelessWidget {
     final counts = !courseFeatureOff('my_courses.stats');
     final hasSearch = !courseFeatureOff('my_courses.search');
     final hasFilter = !courseFeatureOff('my_courses.filters');
-    if (!hasSearch && !hasFilter) return const SizedBox(height: 8);
+    if (!hasSearch && !hasFilter) return const SizedBox(height: AppSpace.xs);
     return CourseListToolbar(
       search: hasSearch
           ? CourseSearchField(controller: controller, hint: 'search_course_by_name_description', onChanged: p.setQuery)
@@ -242,7 +242,7 @@ class _CourseList extends StatelessWidget {
             loadingMore: provider.isLoadingMore,
             done: !provider.hasMore,
             icon: Icons.library_books_rounded,
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
           ),
         Expanded(
           child: showEmpty

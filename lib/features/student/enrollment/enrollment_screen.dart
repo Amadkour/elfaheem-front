@@ -5,8 +5,13 @@
 /// a new card, and free enrollment.
 library;
 
+import 'package:flutter_education_app/design/app_badges.dart' show AppStatusBadge, AppTone, appInkOn, appTintOn;
+import 'package:flutter_education_app/design/app_blocks.dart';
+import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
-import 'package:flutter_education_app/design/app_gradients.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase, AppPressScale;
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/features/shared/course/course_list_card.dart' show CourseCoverArt, coursePrimaryInk;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/features/student/enrollment/saved_cards/saved_payment_models.dart';
@@ -20,7 +25,6 @@ import '../../student/models.dart';
 import 'enrollment_models.dart';
 import 'enrollment_provider.dart';
 import 'enrollment_widgets.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 
 class EnrollmentScreen extends StatelessWidget {
@@ -140,6 +144,7 @@ class _MethodStep extends StatelessWidget {
           Expanded(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(AppSpace.xs, AppSpace.xs, AppSpace.xs, AppSpace.lg),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -148,16 +153,17 @@ class _MethodStep extends StatelessWidget {
                     currencySymbol: enroll.currencySymbol,
                     price: enroll.selectedOption?.finalPrice,
                   ),
-                  const SizedBox(height: 24),
                   if (!enroll.optionsLoaded)
-                    const AppListSkeleton(items: 3, padding: EdgeInsets.zero)
+                    const Padding(
+                      padding: EdgeInsets.only(top: AppSpace.lg),
+                      child: AppListSkeleton(items: 3, padding: EdgeInsets.zero),
+                    )
                   else if (enroll.isFree)
                     const _FreeCourseBanner()
                   else ...[
                     const _PricePlanPicker(),
-                    const SizedBox(height: 20),
                     const _PaymentMethodPicker(),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: AppSpace.lg),
                     FeeBreakdownCard(
                       quote: quote,
                       currencySymbol: enroll.currencySymbol,
@@ -183,7 +189,8 @@ class _MethodStep extends StatelessWidget {
 String _fmtMoney(double v, String symbol) =>
     '${v.toStringAsFixed(v.truncateToDouble() == v ? 0 : 2)} $symbol';
 
-/// Gradient icon chip + title used by every section on this screen.
+/// A section of the checkout: an editorial heading beside a quiet glyph, with the editorial rhythm (32 above it,
+/// 12 under it — the space above comes from [AppSpace.sectionHead]).
 class _SectionHeader extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -193,33 +200,23 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Row(
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            gradient: AppGradients.brand(context),
-            borderRadius: BorderRadius.circular(11),
-            boxShadow: [
-              BoxShadow(
-                color: c.primary.withValues(alpha: .25),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Icon(icon, size: 18, color: c.onHero),
-        ),
-        const SizedBox(width: 10),
-        Text(title, style: c.h3.copyWith(fontSize: 15)),
-      ],
+    return Padding(
+      padding: AppSpace.sectionHead,
+      child: Row(
+        children: [
+          Icon(icon, size: AppIconSize.md, color: c.textMedium),
+          const SizedBox(width: AppSpace.xs),
+          Flexible(child: Text(title, style: AppType.section(context))),
+        ],
+      ),
     );
   }
 }
 
 // ── Course summary ────────────────────────────────────────────────────────────
 
+/// The checkout's one block: the course in its own tone (the tone its card wears in every list), its cover, the
+/// title in the editorial headline, the teacher, the price and the kind of course.
 class _CourseSummaryCard extends StatelessWidget {
   final CourseModel course;
   final String currencySymbol;
@@ -233,87 +230,77 @@ class _CourseSummaryCard extends StatelessWidget {
     this.price,
   });
 
+  /// The cover's side.
+  static const double _cover = 92;
+
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        gradient: AppGradients.wash(context),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: c.primary.withValues(alpha: .16)),
-        boxShadow: [
-          BoxShadow(
-            color: c.primary.withValues(alpha: .10),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: [
-                BoxShadow(
-                  color: c.heroShade.withValues(alpha: .14),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
-                ),
-              ],
+    final title = (AppConfig.lang == 'ar' ? course.titleAr : course.titleEn) ?? '';
+    return AppBlock(
+      tone: AppBlockTone.forKey(title),
+      padding: const EdgeInsets.all(AppSpace.md),
+      child: Builder(builder: (context) {
+        final b = AppBlock.colorsOf(context);
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              // concentric with the block: its radius less the inset
+              borderRadius: BorderRadius.circular(AppRadius.block - AppSpace.xs),
+              child: course.imageUrl.trim().isEmpty
+                  ? CourseCoverArt(
+                      seed: title.hashCode,
+                      width: _cover,
+                      height: _cover,
+                      label: title,
+                      toneKey: 'cover:$title',
+                    )
+                  : AppNetworkImage(
+                      url: course.imageUrl,
+                      width: _cover,
+                      height: _cover,
+                      heroTag: 'course-enrollment-${course.id}',
+                    ),
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(18),
-              child: AppNetworkImage(
-                url: course.imageUrl,
-                width: 92,
-                height: 92,
-                heroTag: 'course-enrollment-${course.id}',
-              ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  (AppConfig.lang == 'ar' ? course.titleAr : course.titleEn) ??
-                      '',
-                  style: c.h3.copyWith(fontSize: 16, height: 1.3),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (course.teacher != null) ...[
-                  const SizedBox(height: 6),
-                  InstructorAvatar(
-                    teacher: course.teacher!,
-                    size: 50,
-                    canOpen: true,
-                    showTitle: true,
+            const SizedBox(width: AppSpace.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AppType.headline(context).copyWith(color: b.ink),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (course.teacher != null) ...[
+                    const SizedBox(height: AppSpace.xs),
+                    InstructorAvatar(
+                      teacher: course.teacher!,
+                      size: AppTouch.min,
+                      canOpen: true,
+                      showTitle: true,
+                    ),
+                  ],
+                  const SizedBox(height: AppSpace.sm),
+                  Wrap(
+                    spacing: AppSpace.xs,
+                    runSpacing: AppSpace.xs,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      _PriceBadge(
+                        price: price ?? course.finalPrice ?? 0,
+                        currencySymbol: currencySymbol,
+                      ),
+                      _TypeTag(type: course.type),
+                    ],
                   ),
                 ],
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    _PriceBadge(
-                      price: price ?? course.finalPrice ?? 0,
-                      currencySymbol: currencySymbol,
-                    ),
-                    _TypeTag(type: course.type),
-                  ],
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        );
+      }),
     );
   }
 }
@@ -326,24 +313,10 @@ class _PriceBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final isFree = price == 0;
-    final tone = isFree ? c.success : c.primary;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: tone.withValues(alpha: .12),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: tone.withValues(alpha: .3)),
-      ),
-      child: Text(
-        isFree ? 'free'.tr : '${price.toStringAsFixed(2)} $currencySymbol',
-        style: c.label.copyWith(
-          color: tone,
-          fontWeight: FontWeight.w800,
-          fontSize: 12,
-        ),
-      ),
+    return AppStatusBadge(
+      label: isFree ? 'free'.tr : '${price.toStringAsFixed(2)} $currencySymbol',
+      tone: isFree ? AppTone.success : AppTone.brand,
     );
   }
 }
@@ -355,70 +328,54 @@ class _TypeTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final isLive = type == 'live';
-    final tone = isLive ? c.danger : c.primary;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: tone.withValues(alpha: .08),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        isLive ? 'type_tag_live'.tr : 'type_tag_recorded'.tr,
-        style: c.caption.copyWith(
-          color: tone,
-          fontWeight: FontWeight.w700,
-          fontSize: 11,
-        ),
-      ),
+    // the strings carry a "🔴" / "▶" mark: the badge draws its own dot / icon instead (no emoji as icons)
+    final label = (isLive ? 'type_tag_live'.tr : 'type_tag_recorded'.tr)
+        .replaceFirst(RegExp(r'^[^\p{L}\p{N}]+', unicode: true), '');
+    return AppStatusBadge(
+      label: label,
+      tone: isLive ? AppTone.danger : AppTone.neutral,
+      dot: isLive,
+      icon: isLive ? null : Icons.play_arrow_rounded,
     );
   }
 }
 
+/// A free course: an emerald block (nothing to pay — it is already "yours"), the gift on a paper plate.
 class _FreeCourseBanner extends StatelessWidget {
   const _FreeCourseBanner();
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: c.success.withValues(alpha: .08),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: c.success.withValues(alpha: .3)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: c.success.withValues(alpha: .12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.card_giftcard_rounded,
-              color: c.success,
-              size: 28,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'free_course_banner_title'.tr,
-                  style: c.h3.copyWith(color: c.success),
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpace.lg),
+      child: AppBlock(
+        tone: AppBlockTone.emerald,
+        child: Builder(builder: (context) {
+          final b = AppBlock.colorsOf(context);
+          return Row(
+            children: [
+              Container(
+                width: AppTouch.primary,
+                height: AppTouch.primary,
+                decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.cardAll),
+                child: Icon(Icons.card_giftcard_rounded, color: b.accentInk(c.success), size: AppIconSize.lg),
+              ),
+              const SizedBox(width: AppSpace.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('free_course_banner_title'.tr, style: AppType.section(context).copyWith(color: b.ink)),
+                    const SizedBox(height: AppSpace.xxs),
+                    Text('free_banner_subtitle'.tr, style: AppType.body(context).copyWith(color: b.muted)),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text('free_banner_subtitle'.tr, style: c.caption),
-              ],
-            ),
-          ),
-        ],
+              ),
+            ],
+          );
+        }),
       ),
     );
   }
@@ -467,37 +424,48 @@ class _PricePlanPicker extends StatelessWidget {
           icon: Icons.event_available_rounded,
           title: 'choose_plan_title'.tr,
         ),
-        const SizedBox(height: 14),
         if (options.length == 1)
-          _PlanTile(
-            option: options[0],
-            selected: enroll.selectedPlan == options[0].plan,
-            currencySymbol: enroll.currencySymbol,
-            savePercent: _savePercent(options, options[0]),
-            isBestValue: options[0].plan == bestPlan,
-            onTap: () => enroll.selectPlan(options[0].plan),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: IntrinsicHeight(
+              child: _PlanTile(
+                option: options[0],
+                selected: enroll.selectedPlan == options[0].plan,
+                currencySymbol: enroll.currencySymbol,
+                savePercent: _savePercent(options, options[0]),
+                isBestValue: options[0].plan == bestPlan,
+                onTap: () => enroll.selectPlan(options[0].plan),
+              ),
+            ),
           )
         else
-          Row(
-            children: [
-              for (final o in options)
-                Expanded(
-                  child: _PlanTile(
-                    option: o,
-                    selected: enroll.selectedPlan == o.plan,
-                    currencySymbol: enroll.currencySymbol,
-                    savePercent: _savePercent(options, o),
-                    isBestValue: o.plan == bestPlan,
-                    onTap: () => enroll.selectPlan(o.plan),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < options.length; i++) ...[
+                  if (i > 0) const SizedBox(width: AppSpace.xs),
+                  Expanded(
+                    child: _PlanTile(
+                      option: options[i],
+                      selected: enroll.selectedPlan == options[i].plan,
+                      currencySymbol: enroll.currencySymbol,
+                      savePercent: _savePercent(options, options[i]),
+                      isBestValue: options[i].plan == bestPlan,
+                      onTap: () => enroll.selectPlan(options[i].plan),
+                    ),
                   ),
-                ),
-            ],
+                ],
+              ],
+            ),
           ),
       ],
     );
   }
 }
 
+/// One plan: paper on a warm hairline; the chosen one carries the primary ring and tint (system.md: emerald for
+/// selection). The monthly cost is the plan's figure, the whole plan's total sits in an inset well under it.
 class _PlanTile extends StatelessWidget {
   final PriceOption option;
   final bool selected;
@@ -515,189 +483,130 @@ class _PlanTile extends StatelessWidget {
     required this.onTap,
   });
 
+  /// A lone plan stays a card, not a full-width band.
+  static const double _maxWidth = 240;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final motion = AppMotion.of(context);
 
     final m = PlanKeys.months(option.plan);
     final months = m <= 0 ? 1 : m;
     final perMonth = option.finalPrice / months;
+    final ink = selected ? coursePrimaryInk(context) : c.textDark;
+    const tabular = [FontFeature.tabularFigures()];
 
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
-      child: AnimatedContainer(
-        constraints: BoxConstraints(minHeight: 200, maxWidth: 200),
-        duration: const Duration(milliseconds: 240),
-        curve: Curves.easeOutCubic,
-        margin: const EdgeInsets.all(2),
-        padding: const EdgeInsets.all(7),
-        decoration: BoxDecoration(
-          color: selected ? c.primary.withValues(alpha: .08) : c.cardBg,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected ? c.primary : c.divider,
-            width: selected ? 2 : 1,
-          ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: c.primary.withValues(alpha: .20),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ]
-              : c.cardShadow,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            Row(
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        child: AppPressScale(
+          child: AnimatedContainer(
+            constraints: const BoxConstraints(maxWidth: _maxWidth),
+            duration: motion.base,
+            curve: AppEase.out,
+            padding: const EdgeInsets.all(AppSpace.sm),
+            decoration: BoxDecoration(
+              color: selected ? c.primaryTint : c.cardBg,
+              borderRadius: AppRadius.cardAll,
+              border: Border.all(
+                color: selected ? c.primary : c.divider,
+                width: selected ? AppBorder.focus : AppBorder.hairline,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _RadioDot(selected: selected),
-                SizedBox(width: 3,),
-                Flexible(
-                  child: (isBestValue)
-                      ? _PlanBadge(
-                          label: 'plan_best_value'.tr,
-                          icon: Icons.workspace_premium_rounded,
-                          tone: context.colors.warning,
-                          filled: true,
-                        )
-                      : (savePercent != null)
-                      ? _PlanBadge(
-                          label: '${'plan_save'.tr} $savePercent%',
-                          tone: c.success,
-                        )
-                      : SizedBox.shrink(),
+                const SizedBox(height: AppSpace.sm),
+                // ── Title ────────────────────────────────────────────────────
+                Text(
+                  PlanKeys.titleKey(option.plan).tr,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.section(context).copyWith(color: ink),
                 ),
-              ],
-            ),
-            // ── Title row ────────────────────────────────────────────────
-            Row(
-              children: [
-                const SizedBox(width: 12),
-                Expanded(
+                const SizedBox(height: AppSpace.xxs / 2),
+                Text(PlanKeys.accessKey(option.plan).tr, style: AppType.meta(context)),
+                // the saving, or "Best value" on the biggest one (gold: a top mark), on its own line so it never
+                // has to share the tile's width with the radio
+                if (isBestValue || savePercent != null) ...[
+                  const SizedBox(height: AppSpace.xs),
+                  isBestValue
+                      ? AppStatusBadge(label: 'plan_best_value'.tr, tone: AppTone.gold, dense: true)
+                      : AppStatusBadge(label: '${'plan_save'.tr} $savePercent%', tone: AppTone.success, dense: true),
+                ],
+                const SizedBox(height: AppSpace.sm),
+                // ── Monthly cost (the plan's figure), "/ month" under it ─────
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    _fmtMoney(perMonth, currencySymbol),
+                    style: AppType.figure(context).copyWith(color: ink, fontFeatures: tabular),
+                  ),
+                ),
+                Text('plan_per_month'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                const Spacer(),
+                const SizedBox(height: AppSpace.sm),
+                // ── Total for the whole plan ─────────────────────────────────
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xs),
+                  decoration: BoxDecoration(
+                    color: selected ? c.cardBg : c.inputBg,
+                    borderRadius: BorderRadius.circular(AppRadius.control - AppSpace.xxs),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        PlanKeys.titleKey(option.plan).tr,
-                        style: c.label.copyWith(
-                          color: selected ? c.primary : c.textDark,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        PlanKeys.accessKey(option.plan).tr,
-                        style: c.caption.copyWith(fontSize: 11),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 3),
-            // ── Monthly cost (hero number) ───────────────────────────────
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Text(
-                      _fmtMoney(perMonth, currencySymbol),
-                      style: c.h3.copyWith(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        fontFamily: AppFonts.display,
-                        color: selected ? c.primary : c.textDark,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 3),
-                  child: Text(
-                    'plan_per_month'.tr,
-                    style: c.caption.copyWith(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 3),
-            // ── Total for the whole plan ─────────────────────────────────
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 10),
-              decoration: BoxDecoration(
-                color: selected
-                    ? c.primary.withValues(alpha: .08)
-                    : c.divider.withValues(alpha: .35),
-                borderRadius: BorderRadius.circular(12),
-              ),
-
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.receipt_long_rounded,
-                        size: 15,
-                        color: selected
-                            ? c.primary
-                            : c.textDark.withValues(alpha: .6),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'plan_total'.tr,
-                        style: c.caption.copyWith(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      if (option.hasDiscount) ...[
-                        Text(
-                          _fmtMoney(option.price, currencySymbol),
-                          style: c.caption.copyWith(
-                            fontSize: 11,
-                            fontFamily: AppFonts.display,
-                            decoration: TextDecoration.lineThrough,
-                            decorationColor: context.colors.danger,
+                      Row(
+                        children: [
+                          Icon(Icons.receipt_long_rounded, size: AppIconSize.xs, color: c.textMedium),
+                          const SizedBox(width: AppSpace.xxs),
+                          Flexible(
+                            child: Text(
+                              'plan_total'.tr,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppType.meta(context),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      Text(
-                        _fmtMoney(option.finalPrice, currencySymbol),
-                        style: c.label.copyWith(
-                          fontFamily: AppFonts.display,
-
-                          color: selected ? c.primary : c.textDark,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                        ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpace.xxs / 2),
+                      Wrap(
+                        spacing: AppSpace.xs,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          if (option.hasDiscount)
+                            Text(
+                              _fmtMoney(option.price, currencySymbol),
+                              style: AppType.meta(context).copyWith(
+                                color: c.textLight,
+                                fontFeatures: tabular,
+                                decoration: TextDecoration.lineThrough,
+                                decorationColor: c.textLight,
+                              ),
+                            ),
+                          Text(
+                            _fmtMoney(option.finalPrice, currencySymbol),
+                            style: AppType.bodyStrong(context).copyWith(color: ink, fontFeatures: tabular),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -713,68 +622,20 @@ class _RadioDot extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      width: 24,
-      height: 24,
+      duration: AppMotion.of(context).fast,
+      curve: AppEase.out,
+      width: AppIconSize.lg,
+      height: AppIconSize.lg,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: selected ? c.primary : Colors.transparent,
-        border: Border.all(color: selected ? c.primary : c.divider, width: 2),
+        border: Border.all(color: selected ? c.primary : c.divider, width: AppBorder.focus),
       ),
-      child: selected
-          ? Icon(Icons.check_rounded, size: 14, color: c.onHero)
-          : null,
+      child: selected ? Icon(Icons.check_rounded, size: AppIconSize.xs, color: c.onHero) : null,
     );
   }
 }
 
-class _PlanBadge extends StatelessWidget {
-  final String label;
-  final IconData? icon;
-  final Color tone;
-  final bool filled;
-
-  const _PlanBadge({
-    required this.label,
-    required this.tone,
-    this.icon,
-    this.filled = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(
-        color: tone.withValues(alpha: filled ? .16 : .12),
-        borderRadius: BorderRadius.circular(8),
-        border: filled ? Border.all(color: tone.withValues(alpha: .35)) : null,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 12, color: tone),
-            const SizedBox(width: 4),
-          ],
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.visible,
-              style: c.caption.copyWith(
-                color: tone,
-                fontSize: 10.5,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 // ── Payment method picker ─────────────────────────────────────────────────────
 
 class _PaymentMethodPicker extends StatelessWidget {
@@ -794,7 +655,6 @@ class _PaymentMethodPicker extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionHeader(icon: Icons.payment_rounded, title: 'payment_method'.tr),
-        const SizedBox(height: 14),
         if (g == null || !g.anyMethodEnabled)
           _NoMethodsNotice(onRetry: enroll.prepareMethodStep)
         else ...[
@@ -864,7 +724,8 @@ class _PaymentMethodPicker extends StatelessWidget {
   }
 }
 
-/// Tile colour per card network: the networks' own brand colours (falls back to the theme's primary).
+/// Tile colour per card network: the networks' own brand colours (falls back to the theme's primary). These are
+/// the networks' identities, not the app's palette, so they stay fixed in every theme.
 Color _brandColor(BuildContext context, String? apiKey) => switch (apiKey?.toLowerCase()) {
   'mada' => const Color(0xFF0B8A4F),
   'visa' => const Color(0xFF1A1F71),
@@ -884,23 +745,23 @@ class _NoMethodsNotice extends StatelessWidget {
     final c = context.colors;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(AppSpace.lg),
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: c.divider),
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Column(
         children: [
-          Icon(Icons.payments_outlined, size: 30, color: c.textLight),
-          const SizedBox(height: 10),
+          Icon(Icons.payments_outlined, size: AppIconSize.xl, color: c.textLight),
+          const SizedBox(height: AppSpace.sm),
           Text(
             'payment_no_methods_available'.tr,
-            style: c.body.copyWith(height: 1.6),
+            style: AppType.body(context).copyWith(height: 1.6),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 6),
-          TextButton(onPressed: onRetry, child: Text('retry'.tr)),
+          const SizedBox(height: AppSpace.xs),
+          AppButton.ghost(label: 'retry'.tr, icon: Icons.refresh_rounded, onPressed: onRetry),
         ],
       ),
     );
@@ -911,31 +772,12 @@ class _SecureBadge extends StatelessWidget {
   const _SecureBadge();
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-    decoration: BoxDecoration(
-      color: context.colors.success.withValues(alpha: .10),
-      borderRadius: BorderRadius.circular(6),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.lock_rounded, size: 9, color: context.colors.success),
-        const SizedBox(width: 3),
-        Text(
-          'secure_badge'.tr,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: context.colors.success,
-            fontFamily: AppFonts.display,
-          ),
-        ),
-      ],
-    ),
-  );
+  Widget build(BuildContext context) =>
+      AppStatusBadge(label: 'secure_badge'.tr, tone: AppTone.success, icon: Icons.lock_rounded, dense: true);
 }
 
+/// One way to pay: paper on a warm hairline, its mark in a tinted well; the chosen one carries the primary ring
+/// and tint and a filled check at the end.
 class _MethodTile extends StatelessWidget {
   final bool selected;
   final IconData icon;
@@ -959,113 +801,72 @@ class _MethodTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: selected ? c.primary.withValues(alpha: .05) : c.cardBg,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? c.primary : c.divider,
-            width: selected ? 2 : 1,
-          ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: c.primary.withValues(alpha: .14),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : c.cardShadow,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
+    final motion = AppMotion.of(context);
+    final well = appTintOn(context, iconColor);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
+      child: Semantics(
+        button: true,
+        selected: selected,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
+          child: AppPressScale(
+            child: AnimatedContainer(
+              duration: motion.base,
+              curve: AppEase.out,
+              padding: const EdgeInsets.all(AppSpace.sm),
               decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: selected ? .18 : .09),
-                borderRadius: BorderRadius.circular(12),
+                color: selected ? c.primaryTint : c.cardBg,
+                borderRadius: AppRadius.cardAll,
+                border: Border.all(
+                  color: selected ? c.primary : c.divider,
+                  width: selected ? AppBorder.focus : AppBorder.hairline,
+                ),
               ),
-              child: Icon(icon, color: iconColor, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          title,
-                          style: c.label.copyWith(
-                            color: selected ? c.primary : c.textDark,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                      if (badge != null) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: context.colors.warning.withValues(alpha: .15),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            badge!,
-                            style: c.caption.copyWith(
-                              color: context.colors.warning,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ),
-                      ],
-                      if (customBadge != null) ...[
-                        const SizedBox(width: 6),
-                        customBadge!,
-                      ],
-                    ],
+                  Container(
+                    width: AppTouch.min,
+                    height: AppTouch.min,
+                    decoration: BoxDecoration(color: well, borderRadius: AppRadius.controlAll),
+                    child: Icon(icon, color: appInkOn(context, iconColor, well), size: AppIconSize.lg),
                   ),
-                  const SizedBox(height: 3),
-                  Text(subtitle, style: c.caption.copyWith(fontSize: 11)),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: AppSpace.xs,
+                          runSpacing: AppSpace.xxs,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(
+                              title,
+                              style: AppType.row(context).copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: selected ? coursePrimaryInk(context) : c.textDark,
+                              ),
+                            ),
+                            if (badge != null) AppStatusBadge(label: badge!, tone: AppTone.brand, dense: true),
+                            ?customBadge,
+                          ],
+                        ),
+                        const SizedBox(height: AppSpace.xxs / 2),
+                        Text(subtitle, style: AppType.meta(context)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpace.xs),
+                  _RadioDot(selected: selected),
                 ],
               ),
             ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: selected ? c.primary : Colors.transparent,
-                border: Border.all(
-                  color: selected ? c.primary : c.divider,
-                  width: 2,
-                ),
-              ),
-              child: selected
-                  ? Icon(
-                      Icons.check_rounded,
-                      size: 13,
-                      color: c.onHero,
-                    )
-                  : null,
-            ),
-          ],
+          ),
         ),
       ),
     );

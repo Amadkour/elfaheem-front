@@ -278,7 +278,7 @@ class _CpManualAttendanceSheetState extends State<CpManualAttendanceSheet> {
           ),
         ],
         const SizedBox(height: 8),
-        AppPrimaryButton(icon: Icons.check_rounded, label: t('تم', 'Done'), onPressed: () => Navigator.of(context).pop(_changed)),
+        AppButton.primary(expand: true, icon: Icons.check_rounded, label: t('تم', 'Done'), onPressed: () => Navigator.of(context).pop(_changed)),
       ]),
     );
   }

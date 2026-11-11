@@ -5,6 +5,7 @@
 // plain values to [CourseAboutView] (tested by the layout harness).
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase, AppTilt;
 import 'package:provider/provider.dart';
 
 import '../../../../../config/app_config.dart';
@@ -17,7 +18,6 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'issued_certificate.dart';
 import '../growth_tr.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AboutTab extends StatelessWidget {
   const AboutTab({super.key});
@@ -79,16 +79,18 @@ class CourseAboutView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final col = context.colors;
-    // ONE card, its sections split by hairlines (no stack of boxes)
+    // ONE card, its sections split by hairlines (no stack of boxes). Colour only where it means something: gold for
+    // what the student earned (their certificates, the rating), emerald for the certificate the course gives; every
+    // other section keeps the quiet ink.
     return Padding(
-      padding: const EdgeInsets.fromLTRB(kCourseGutter, 4, kCourseGutter, 24),
+      padding: const EdgeInsets.fromLTRB(kCourseGutter, AppSpace.xxs, kCourseGutter, AppSpace.lg),
       child: CourseInfoGroup(
         children: [
           if (myCertificates.isNotEmpty)
             CourseInfoSection(
               title: 'my_certificates_title'.tr,
               icon: Icons.emoji_events_outlined,
-              color: col.accent,
+              color: col.accent2,
               children: [for (final x in myCertificates) _IssuedCertificateCard(cert: x)],
             ),
           if (description.trim().isNotEmpty)
@@ -125,22 +127,20 @@ class CourseAboutView extends StatelessWidget {
             CourseInfoSection(
               title: gt('الأدوات المطلوبة', 'Required tools'),
               icon: Icons.build_outlined,
-              color: col.warning,
               children: [
                 for (final x in tools)
-                  CourseInfoRow(icon: Icons.settings_outlined, color: col.warning, title: x.name, subtitle: x.description),
+                  CourseInfoRow(icon: Icons.settings_outlined, color: col.textMedium, title: x.name, subtitle: x.description),
               ],
             ),
           if (prerequisites.isNotEmpty)
             CourseInfoSection(
               title: gt('المتطلبات المسبقة', 'Prerequisites'),
               icon: Icons.checklist_rounded,
-              color: col.accent,
               children: [
                 for (final x in prerequisites)
                   CourseInfoRow(
                     icon: Icons.check_circle_outline_rounded,
-                    color: col.accent,
+                    color: col.textMedium,
                     title: x.title,
                     subtitle: x.description,
                   ),
@@ -167,8 +167,8 @@ class _ExpandableTextState extends State<_ExpandableText> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final style = c.body.copyWith(height: 1.75);
+    // a reading measure: body ink, a generous line for long Arabic paragraphs
+    final style = AppType.body(context).copyWith(color: context.colors.textDark, height: 1.75);
     return LayoutBuilder(
       builder: (context, box) {
         final tp = TextPainter(
@@ -183,7 +183,8 @@ class _ExpandableTextState extends State<_ExpandableText> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             AnimatedSize(
-              duration: const Duration(milliseconds: 220),
+              duration: AppMotion.of(context).base,
+              curve: AppEase.out,
               alignment: AlignmentDirectional.topStart,
               child: Text(
                 widget.text,
@@ -193,10 +194,14 @@ class _ExpandableTextState extends State<_ExpandableText> {
               ),
             ),
             if (long)
-              TextButton(
-                onPressed: () => setState(() => _open = !_open),
-                style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 36)),
-                child: Text(_open ? gt('عرض أقل', 'Show less') : gt('عرض المزيد', 'Show more')),
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpace.xxs),
+                child: AppButton.ghost(
+                  label: _open ? gt('عرض أقل', 'Show less') : gt('عرض المزيد', 'Show more'),
+                  trailingIcon: _open ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                  size: AppButtonSize.sm,
+                  onPressed: () => setState(() => _open = !_open),
+                ),
               ),
           ],
         );
@@ -215,63 +220,50 @@ class CourseInstructorCard extends StatelessWidget {
 
   const CourseInstructorCard({super.key, required this.name, required this.category, this.onTap});
 
+  /// The portrait's side.
+  static const double _avatar = AppTouch.primary;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final ink = c.isDark ? Color.lerp(c.primary, c.textDark, 0.4)! : c.primary;
+    // the teacher's monogram on their own block tone (the same tone wherever this teacher appears)
+    final b = AppBlockColors.of(context, AppBlockTone.forKey('teacher:$name'));
     final row = Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpace.md),
       child: Row(
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: _avatar,
+            height: _avatar,
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: b.surface, borderRadius: AppRadius.cardAll),
             child: name.isNotEmpty
-                ? Text(
-                    name.characters.first,
-                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 17, fontWeight: FontWeight.w600, color: ink),
-                  )
-                : Icon(Icons.person_outline_rounded, color: ink, size: 22),
+                ? ExcludeSemantics(child: Text(name.characters.first, style: AppType.headline(context).copyWith(color: b.ink)))
+                : Icon(Icons.person_outline_rounded, color: b.ink, size: AppIconSize.lg),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  gt('المدرس', 'Instructor'),
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: c.textLight),
-                ),
-                const SizedBox(height: 2),
+                Text(gt('المدرس', 'Instructor'), style: AppType.meta(context)),
+                const SizedBox(height: AppSpace.xxs / 2),
                 Text(
                   name.isNotEmpty ? name : gt('المدرس', 'Instructor'),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: AppFonts.family,
-                    fontSize: 15,
-                    height: 1.35,
-                    fontWeight: FontWeight.w600,
-                    color: c.textDark,
-                  ),
+                  style: AppType.section(context),
                 ),
                 if (category.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    category,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.textMedium),
-                  ),
+                  const SizedBox(height: AppSpace.xxs / 2),
+                  Text(category, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
                 ],
               ],
             ),
           ),
           if (onTap != null) ...[
-            const SizedBox(width: 8),
-            Icon(Icons.chevron_right_rounded, color: c.textLight, size: 20),
+            const SizedBox(width: AppSpace.xs),
+            Icon(Icons.chevron_right_rounded, color: c.textLight, size: AppIconSize.md),
           ],
         ],
       ),
@@ -301,72 +293,58 @@ class _IssuedCertificateCard extends StatelessWidget {
     final isAr = AppConfig.lang == 'ar';
     final date = _fmtIssued(cert.issuedAt);
 
+    // an earned certificate is an image card worth lingering on: it leans a little under the pointer (D-620)
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => showDialog<void>(
-          context: context,
-          builder: (_) => _CertificateViewer(cert: cert),
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            color: c.cardBg,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: c.accent.withValues(alpha: 0.35)),
-            boxShadow: [
-              BoxShadow(
-                color: c.heroShade.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
+      child: AppTilt.subtle(
+        radius: AppRadius.card,
+        child: Material(
+          color: c.cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: AppRadius.cardAll,
+            side: BorderSide(color: c.divider, width: AppBorder.hairline),
           ),
           clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AspectRatio(
-                aspectRatio: 1600 / 1131,
-                child: _CertificateImage(url: cert.urlFor(isAr)),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    Icon(Icons.verified_rounded, color: c.accent, size: 22),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            cert.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: c.label.copyWith(
-                              color: c.textDark,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          if (date.isNotEmpty)
-                            Text(
-                              '${'certificate_issued_on'.tr} $date',
-                              style: c.caption,
-                            ),
-                        ],
-                      ),
-                    ),
-                    Icon(
-                      Icons.zoom_out_map_rounded,
-                      color: c.textMedium,
-                      size: 20,
-                    ),
-                  ],
+          child: InkWell(
+            onTap: () => showDialog<void>(
+              context: context,
+              builder: (_) => _CertificateViewer(cert: cert),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AspectRatio(
+                  aspectRatio: 1600 / 1131,
+                  child: _CertificateImage(url: cert.urlFor(isAr)),
                 ),
-              ),
-            ],
+                Padding(
+                  padding: const EdgeInsets.all(AppSpace.md),
+                  child: Row(
+                    children: [
+                      // gold: an achievement, as an icon fill only
+                      Icon(Icons.verified_rounded, color: c.accent2, size: AppIconSize.lg),
+                      const SizedBox(width: AppSpace.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              cert.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppType.row(context).copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            if (date.isNotEmpty)
+                              Text('${'certificate_issued_on'.tr} $date', style: AppType.meta(context)),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.zoom_out_map_rounded, color: c.textMedium, size: AppIconSize.md),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -397,7 +375,7 @@ class _CertificateImage extends StatelessWidget {
       child: Icon(
         Icons.broken_image_outlined,
         color: context.colors.textMedium,
-        size: 32,
+        size: AppIconSize.xl,
       ),
     ),
   );
@@ -420,15 +398,16 @@ class _CertificateViewerState extends State<_CertificateViewer> {
   Widget build(BuildContext context) {
     final cert = widget.cert;
     return Dialog(
+      // a dark viewing room: the certificate is the only bright thing on screen
       backgroundColor: context.colors.heroShade,
-      insetPadding: const EdgeInsets.all(12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      insetPadding: const EdgeInsets.all(AppSpace.sm),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sheet)),
       clipBehavior: Clip.antiAlias,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 6, 6),
+            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.xs, AppSpace.xxs, AppSpace.xxs),
             child: Row(
               children: [
                 Expanded(
@@ -436,11 +415,7 @@ class _CertificateViewerState extends State<_CertificateViewer> {
                     cert.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: context.colors.onHero,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
+                    style: AppType.section(context).copyWith(color: context.colors.onHero),
                   ),
                 ),
                 if (cert.hasArabic) ...[
@@ -449,7 +424,7 @@ class _CertificateViewerState extends State<_CertificateViewer> {
                     selected: _arabic,
                     onTap: () => setState(() => _arabic = true),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpace.xxs),
                   _LangChip(
                     label: 'English',
                     selected: !_arabic,
@@ -478,7 +453,7 @@ class _CertificateViewerState extends State<_CertificateViewer> {
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
         ],
       ),
     );
@@ -497,20 +472,31 @@ class _LangChip extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: selected ? context.colors.accent2 : context.colors.heroGlass,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: selected ? context.colors.charcoalDark : context.colors.onHeroMuted,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    selected: selected,
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      // a 48 px target around the pill
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AppTouch.min),
+        child: Center(
+          widthFactor: 1,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs + 2),
+            decoration: BoxDecoration(
+              color: selected ? context.colors.onHero : context.colors.heroGlass,
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+            ),
+            child: Text(
+              label,
+              style: AppType.meta(context).copyWith(
+                color: selected ? context.colors.charcoalDark : context.colors.onHeroMuted,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         ),
       ),
     ),
