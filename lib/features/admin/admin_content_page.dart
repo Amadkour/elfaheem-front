@@ -23,7 +23,6 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_buttons.dart';
-import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -791,14 +790,12 @@ class _AdminContentPageState extends State<AdminContentPage> {
           leading: Container(
             constraints: const BoxConstraints(minWidth: 60),
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.sm),
-            decoration: BoxDecoration(
-              gradient: AppGradients.blend(context, color: _pal(context).green.last),
-              borderRadius: BorderRadius.circular(AppRadius.card),
-            ),
+            // the figure on the emerald block tint (a stat is "done / counted"), never a gradient wash
+            decoration: BoxDecoration(color: c.blockEmerald, borderRadius: AppRadius.controlAll),
             child: Text(_loc(s, 'value'),
                 textAlign: TextAlign.center,
                 textDirection: TextDirection.ltr,
-                style: AppType.section(context).copyWith(color: c.onHero)),
+                style: AppType.figure(context).copyWith(color: c.blockAccentInk(c.primary, c.blockEmerald))),
           ),
           title: _loc(s, 'label'),
           subtitle: _other(s, 'label'),
@@ -820,17 +817,16 @@ class _AdminContentPageState extends State<AdminContentPage> {
           final path = '/about/team/${m['id']}/image';
           final busy = _uploading == path;
           final emoji = asStr(m['emoji']);
+          // the member's own emoji (content) or a person mark, on a faint tint (never a gradient wash)
+          final tint = Color.alphaBlend(_pal(context).purple.last.withValues(alpha: 0.14), c.cardBg);
           final fallback = Container(
-            width: 50,
-            height: 50,
+            width: AppTouch.min,
+            height: AppTouch.min,
             alignment: Alignment.center,
-            decoration: BoxDecoration(
-              gradient: AppGradients.blend(context, color: _pal(context).purple.last),
-              borderRadius: BorderRadius.circular(AppRadius.card),
-            ),
+            decoration: BoxDecoration(color: tint, borderRadius: AppRadius.controlAll),
             child: emoji.isNotEmpty
                 ? Text(emoji, style: AppType.figureLarge(context))
-                : Icon(Icons.person_rounded, color: c.onHero),
+                : Icon(Icons.person_rounded, color: c.blockAccentInk(_pal(context).purple.last, tint)),
           );
           return _row(
             kind: 'team',

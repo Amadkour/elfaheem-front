@@ -6,7 +6,6 @@ library;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
-import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -445,18 +444,14 @@ class _BrandMark extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     width: compact ? 42 : 54,
     height: compact ? 42 : 54,
+    // a faint emerald well with the icon in emerald ink (tone first, no glow)
     decoration: BoxDecoration(
-      gradient: AppGradients.blend(context, color: context.colors.primary),
-      borderRadius: BorderRadius.circular(compact ? 14 : 18),
-      boxShadow: [
-        BoxShadow(
-          color: context.colors.primary.withValues(alpha: 0.20),
-          blurRadius: 14,
-          offset: const Offset(0, 6),
-        ),
-      ],
+      color: context.colors.blockEmerald,
+      borderRadius: BorderRadius.circular(compact ? AppRadius.control : AppRadius.card),
     ),
-    child: Icon(icon, color: context.colors.onHero, size: compact ? 21 : 26),
+    child: Icon(icon,
+        color: context.colors.blockAccentInk(context.colors.primary, context.colors.blockEmerald),
+        size: compact ? AppIconSize.md : AppIconSize.lg),
   );
 }
 

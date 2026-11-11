@@ -245,7 +245,7 @@ class MfaSetupView extends StatelessWidget {
                 Expanded(
                   child: SelectableText(groupSecret(info.secret),
                       key: const ValueKey('mfa.secret'),
-                      style: AppType.section(context).copyWith(color: c.textDark).copyWith(letterSpacing: 1.2)),
+                      style: AppType.figure(context).copyWith(color: c.textDark, letterSpacing: 1.2)),
                 ),
                 IconButton(
                     tooltip: t('نسخ المفتاح', 'Copy the key'),
@@ -277,7 +277,7 @@ class MfaSetupView extends StatelessWidget {
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9٠-٩۰-۹ ]')),
                   LengthLimitingTextInputFormatter(7),
                 ],
-                style: AppType.pageTitle(context).copyWith(color: c.textDark).copyWith(letterSpacing: 6),
+                style: AppType.figureLarge(context).copyWith(color: c.textDark, letterSpacing: 6),
                 decoration: const InputDecoration(hintText: '000000', counterText: ''),
                 onSubmitted: (_) => onConfirm?.call(),
               ),

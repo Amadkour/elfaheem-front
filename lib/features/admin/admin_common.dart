@@ -179,6 +179,9 @@ List<Map<String, dynamic>> asMapList(dynamic v) => v is List
 
 // ── dialogs ──────────────────────────────────────────────────────────────────
 
+/// The confirm dialog's mark (54 px: a 48 px target plus its own breathing room, test/org/omr_r2_ui_test.dart).
+const double _confirmMark = AppTouch.min + AppSpace.xxs + 2;
+
 Future<bool> confirm(
     BuildContext context, {
       required String message,
@@ -201,7 +204,7 @@ Future<bool> confirm(
           child: ServiceIcon(
             icon: danger ? Icons.warning_amber_rounded : Icons.help_outline_rounded,
             colors: danger ? AdminPalette.rose : [c.primaryLight, c.primary],
-            size: AppTouch.min,
+            size: _confirmMark,
           ),
         ),
         content: Text(message, textAlign: TextAlign.center, style: AppType.body(ctx).copyWith(height: 1.5)),

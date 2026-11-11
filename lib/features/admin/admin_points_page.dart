@@ -542,7 +542,7 @@ class AdminPointsUsersView extends StatelessWidget {
                     ),
                     const SizedBox(width: AppSpace.xs),
                     Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                      Text('${r.balance}', style: AppType.section(context).copyWith(color: c.primary)),
+                      Text('${r.balance}', style: AppType.figure(context).copyWith(color: c.primary)),
                       Text(t('نقطة', 'points'), style: AppType.overline(context).copyWith(color: c.textLight)),
                     ]),
                   ]),

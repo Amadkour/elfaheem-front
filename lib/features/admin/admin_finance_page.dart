@@ -1334,7 +1334,7 @@ class _PaymentCardState extends State<_PaymentCard> {
                 children: [
                   Text(
                     money(asDouble(p['amount']), currency),
-                    style: AppType.section(context).copyWith(color: c.textDark),
+                    style: AppType.figure(context).copyWith(color: c.textDark),
                   ),
                   const SizedBox(height: AppSpace.xxs),
                   AppStatusBadge(label: _statusLabel(status), tone: _statusTone(status), dense: true),
@@ -1677,7 +1677,7 @@ class _PayoutCardState extends State<_PayoutCard> {
                   children: [
                     Text(
                       money(asDouble(w['amount']), currency),
-                      style: AppType.section(context).copyWith(color: c.textDark),
+                      style: AppType.figure(context).copyWith(color: c.textDark),
                     ),
                     const SizedBox(height: AppSpace.xxs),
                     AppStatusBadge(label: _statusLabel(status), tone: _statusTone(status), dense: true),
