@@ -34,11 +34,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
-import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
-import 'package:flutter_education_app/design/app_settings.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNav;
-import 'package:flutter_education_app/design/app_switch.dart';
+import 'package:flutter_education_app/design/chrome_button.dart' show ChromeIconButton;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
 import 'package:flutter_education_app/utils/top_route_observer.dart';
@@ -47,7 +44,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../admin/admin_common.dart' show asMap, asStr, t;
 import 'rag_chat_screen.dart';
-import 'package:flutter_education_app/design/app_gradients.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase;
 
 /// Kill-switch id (admin "Features" page / theme disable list).
 const appAssistantFeatureKey = 'rag.app_assistant';
@@ -453,8 +451,7 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
     final target = appAssistantDismissCenter(mq.size, mq.padding, bottomBar: bar);
     const half = appAssistantBubbleSize / 2;
     final over = _drag != null && appAssistantOverDismiss(_drag! + const Offset(half, half), target);
-    final reduce = MediaQuery.of(context).disableAnimations;
-    final dur = reduce ? Duration.zero : const Duration(milliseconds: 220);
+    final dur = AppMotion.of(context).base;
 
     void drop() {
       final d = _drag;
@@ -486,7 +483,7 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
         ),
       AnimatedPositioned(
         duration: _drag != null ? Duration.zero : dur,
-        curve: Curves.easeOutCubic,
+        curve: AppEase.out,
         left: pos.dx,
         top: pos.dy,
         child: IgnorePointer(
@@ -514,7 +511,7 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
                   })
               : AnimatedScale(
                   scale: over ? 0.82 : 1.08,
-                  duration: reduce ? Duration.zero : const Duration(milliseconds: 160),
+                  duration: AppMotion.of(context).fast,
                   child: AppAssistantBubble(onTap: () => AppAssistant.openPanel()),
                 ),
           ),
@@ -566,18 +563,23 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
         enabled: open,
         child: FocusTraversalGroup(
         child: Stack(children: [
-          if (!wide) Positioned.fill(child: GestureDetector(onTap: _close, child: ColoredBox(color: Colors.black.withValues(alpha: 0.35)))),
+          if (!wide) Positioned.fill(child: GestureDetector(onTap: _close, child: ColoredBox(color: appScrimColor(context)))),
           Positioned.fromRect(
             rect: r,
             child: MediaQuery.removePadding(
               context: context,
               removeTop: true,
               removeBottom: true,
-              child: Material(
+              // a floating paper panel on the canvas tone (the chat reads on it), radius sheet, the modal shadow in
+              // the warm shadow tone and a hairline that keeps its edge in dark mode
+              child: DecoratedBox(
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppRadius.sheet), boxShadow: AppElevation.of(context, 4)),
+                child: Material(
                 color: context.colors.background,
-                elevation: 12,
                 clipBehavior: Clip.antiAlias,
-                borderRadius: BorderRadius.circular(context.colors.radiusLarge),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.sheet),
+                    side: BorderSide(color: context.colors.divider, width: AppBorder.hairline)),
                 // its own Navigator (not a bare Overlay): the chat's sheets and dialogs (Chats, rename, feedback) need
                 // one, and the app's Navigator is below this layer, not above it (no heroes: the app's controller
                 // belongs to the app's Navigator)
@@ -619,6 +621,7 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
                   ),
                   ),
                 ),
+              ),
               ),
             ),
           ),
@@ -692,10 +695,17 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
 // Presentational parts (plain values: the layout harness pumps them)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// The bubble: a calm surface disc with the assistant's mark, a hairline primary ring and a soft tinted shadow.
+/// The assistant's mark in emerald ink (the tab, the bubble, the menu): one solid ink, never a gradient.
+Color _markInk(BuildContext context) => appInk(context, context.colors.primary);
+
+/// The bubble while it is dragged: a paper disc on a warm hairline, the assistant's mark in emerald, lifted (it
+/// floats: the overlay shadow in the warm shadow tone).
 class AppAssistantBubble extends StatelessWidget {
   const AppAssistantBubble({super.key, required this.onTap});
   final VoidCallback onTap;
+
+  /// The drawn disc inside the 48 dp target.
+  static const double disc = appAssistantBubbleSize - AppSpace.xxs;
 
   @override
   Widget build(BuildContext context) {
@@ -710,28 +720,16 @@ class AppAssistantBubble extends StatelessWidget {
         height: appAssistantBubbleSize,
         child: Center(
           child: DecoratedBox(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(color: c.primary.withValues(alpha: c.isDark ? 0.30 : 0.22), blurRadius: 14, offset: const Offset(0, 4)),
-              ],
-            ),
+            decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: AppElevation.of(context, 3)),
             child: Material(
               color: c.cardBg,
-              shape: CircleBorder(side: BorderSide(color: c.primary.withValues(alpha: c.isDark ? 0.45 : 0.22))),
+              shape: CircleBorder(side: BorderSide(color: c.divider, width: AppBorder.hairline)),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
                 onTap: onTap,
-                child: SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: Center(
-                    child: ShaderMask(
-                      blendMode: BlendMode.srcIn,
-                      shaderCallback: (r) => c.accentGradient.createShader(r),
-                      child: const Icon(Icons.auto_awesome_rounded, size: 22),
-                    ),
-                  ),
+                child: SizedBox.square(
+                  dimension: disc,
+                  child: Center(child: Icon(Icons.auto_awesome_rounded, size: AppIconSize.md, color: _markInk(context))),
                 ),
               ),
             ),
@@ -742,9 +740,10 @@ class AppAssistantBubble extends StatelessWidget {
   }
 }
 
-/// The bubble at rest: a slim tab docked flush against the screen edge ([onLeftSide]: the left edge), rounded on
-/// the page side only, with the assistant's mark. A 44 x 52 touch target whose drawn face is [appAssistantTabFace]
-/// wide at the screen edge (gutter + a card's padding), the rest transparent: it never hides a card's text.
+/// The bubble at rest: a slim paper tab docked flush against the screen edge ([onLeftSide]: the left edge), rounded
+/// on the page side only, with the assistant's mark in emerald and a soft lift in the warm shadow tone. A 44 x 52
+/// touch target whose drawn face is [appAssistantTabFace] wide at the screen edge (gutter + a card's padding), the
+/// rest transparent: it never hides a card's text.
 class AppAssistantEdgeTab extends StatelessWidget {
   const AppAssistantEdgeTab({super.key, required this.onLeftSide, required this.onTap});
   final bool onLeftSide;
@@ -755,7 +754,6 @@ class AppAssistantEdgeTab extends StatelessWidget {
     final c = context.colors;
     const r = Radius.circular(appAssistantTabHeight / 2);
     final radius = onLeftSide ? const BorderRadius.horizontal(right: r) : const BorderRadius.horizontal(left: r);
-    final ring = c.primary.withValues(alpha: c.isDark ? 0.45 : 0.22);
     return Semantics(
       button: true,
       label: 'assistant_entry_title'.tr,
@@ -774,28 +772,17 @@ class AppAssistantEdgeTab extends StatelessWidget {
               width: appAssistantTabFace,
               height: appAssistantTabHeight,
               child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: radius,
-                  boxShadow: [
-                    BoxShadow(color: c.primary.withValues(alpha: c.isDark ? 0.28 : 0.18), blurRadius: 12, offset: const Offset(0, 3)),
-                  ],
-                ),
+                decoration: BoxDecoration(borderRadius: radius, boxShadow: AppElevation.of(context, 2)),
                 child: Material(
                   color: c.cardBg,
-                  shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: ring)),
+                  shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: c.divider, width: AppBorder.hairline)),
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
                     onTap: onTap,
                     child: Padding(
                       // the mark sits a little toward the page, away from the screen edge
-                      padding: EdgeInsets.only(left: onLeftSide ? 2 : 0, right: onLeftSide ? 0 : 2),
-                      child: Center(
-                        child: ShaderMask(
-                          blendMode: BlendMode.srcIn,
-                          shaderCallback: (r) => c.accentGradient.createShader(r),
-                          child: const Icon(Icons.auto_awesome_rounded, size: 18),
-                        ),
-                      ),
+                      padding: EdgeInsets.only(left: onLeftSide ? AppBorder.focus : 0, right: onLeftSide ? 0 : AppBorder.focus),
+                      child: Center(child: Icon(Icons.auto_awesome_rounded, size: AppIconSize.sm + AppBorder.focus, color: _markInk(context))),
                     ),
                   ),
                 ),
@@ -808,7 +795,8 @@ class AppAssistantEdgeTab extends StatelessWidget {
   }
 }
 
-/// The long-press / right-click menu: open the assistant, or hide the button (Settings brings it back).
+/// The long-press / right-click menu: open the assistant, or hide the button (Settings brings it back). A floating
+/// paper panel (radius card, the overlay shadow), 48 px rows in the row role.
 class AppAssistantBubbleMenu extends StatelessWidget {
   const AppAssistantBubbleMenu({super.key, required this.onOpen, required this.onHide});
   final VoidCallback onOpen, onHide;
@@ -816,56 +804,58 @@ class AppAssistantBubbleMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    Widget row(IconData icon, String label, VoidCallback onTap, {Color? color}) => InkWell(
+    Widget row(IconData icon, String label, VoidCallback onTap, Color color) => InkWell(
           onTap: onTap,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 48),
+            constraints: const BoxConstraints(minHeight: AppTouch.min),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
               child: Row(children: [
-                Icon(icon, size: 20, color: color ?? c.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(label,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 14, fontWeight: FontWeight.w600, color: c.textDark)),
-                ),
+                Icon(icon, size: AppIconSize.md, color: color),
+                const SizedBox(width: AppSpace.sm),
+                Expanded(child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context))),
               ]),
             ),
           ),
         );
-    return Material(
-      color: c.cardBg,
-      elevation: 8,
-      shadowColor: c.primary.withValues(alpha: 0.25),
-      borderRadius: BorderRadius.circular(c.radiusLarge),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          row(Icons.auto_awesome_rounded, 'assistant_bubble_open'.tr, onOpen, color: c.isDark ? c.accent : c.primary),
-          Divider(height: 1, indent: 16, endIndent: 16, color: c.divider.withValues(alpha: 0.6)),
-          row(Icons.visibility_off_rounded, 'assistant_bubble_hide'.tr, onHide, color: c.textMedium),
-        ]),
+    return DecoratedBox(
+      decoration: BoxDecoration(borderRadius: AppRadius.cardAll, boxShadow: AppElevation.of(context, 3)),
+      child: Material(
+        color: c.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: BorderSide(color: c.divider, width: AppBorder.hairline)),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            row(Icons.auto_awesome_rounded, 'assistant_bubble_open'.tr, onOpen, _markInk(context)),
+            Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, indent: AppSpace.md, endIndent: AppSpace.md, color: c.divider),
+            row(Icons.visibility_off_rounded, 'assistant_bubble_hide'.tr, onHide, c.textMedium),
+          ]),
+        ),
       ),
     );
   }
 }
 
-/// The hide target shown at the bottom while the bubble is dragged: a soft scrim, a ring with "×" and a hint;
-/// it grows and turns to the danger colour when the bubble is over it.
+/// The hide target shown at the bottom while the bubble is dragged: a warm scrim rising from the bottom edge, a paper
+/// ring with "×" and a hint; it grows and turns to the danger fill when the bubble is over it.
 class AppAssistantDismissTarget extends StatelessWidget {
   const AppAssistantDismissTarget({super.key, required this.center, required this.active});
   final Offset center;
   final bool active;
 
+  /// The ring at rest and while the bubble is over it.
+  static const double ring = AppTouch.primary;
+  static const double ringActive = AppTouch.primary + AppSpace.sm;
+
+  /// The width the hint line may take under the ring.
+  static const double hintWidth = 240;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final reduce = MediaQuery.of(context).disableAnimations;
-    final dur = reduce ? Duration.zero : const Duration(milliseconds: 160);
-    final size = active ? 68.0 : 56.0;
+    final motion = AppMotion.of(context);
+    final size = active ? ringActive : ring;
     // above the Navigator: no Material of its own, so the label would get the debug text style
     return Material(type: MaterialType.transparency, child: Stack(children: [
       Positioned.fill(
@@ -875,42 +865,47 @@ class AppAssistantDismissTarget extends StatelessWidget {
               begin: Alignment.bottomCenter,
               end: Alignment.topCenter,
               stops: const [0, 0.35],
-              colors: [c.textDark.withValues(alpha: 0.22), c.textDark.withValues(alpha: 0)],
+              colors: [c.shadowTone.withValues(alpha: c.isDark ? 0.5 : 0.24), c.shadowTone.withValues(alpha: 0)],
             ),
           ),
         ),
       ),
       Positioned(
-        left: center.dx - 120,
-        width: 240,
-        top: center.dy - 34,
+        left: center.dx - hintWidth / 2,
+        width: hintWidth,
+        top: center.dy - ringActive / 2,
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           SizedBox(
-            height: 68,
+            height: ringActive,
             child: Center(
               child: AnimatedContainer(
-                duration: dur,
-                curve: Curves.easeOutBack,
+                duration: motion.fast,
+                curve: AppEase.out,
                 width: size,
                 height: size,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: active ? c.danger : c.cardBg,
-                  border: Border.all(color: active ? c.danger : c.divider, width: 1.5),
-                  boxShadow: c.cardShadow,
+                  border: Border.all(color: active ? c.danger : c.divider, width: AppBorder.strong),
+                  boxShadow: AppElevation.of(context, 3),
                 ),
-                child: Icon(Icons.close_rounded, size: active ? 30 : 26, color: active ? c.onHero : c.textMedium),
+                child: Icon(Icons.close_rounded, size: active ? AppIconSize.xl : AppIconSize.lg, color: active ? c.onHero : c.textMedium),
               ),
             ),
           ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(999), boxShadow: c.cardShadow),
-            child: Text(active ? 'assistant_bubble_drop'.tr : 'assistant_bubble_drag'.tr,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, fontWeight: FontWeight.w600, color: c.textDark)),
+          const SizedBox(height: AppSpace.xs),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: c.cardBg,
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              border: Border.all(color: c.divider, width: AppBorder.hairline),
+              boxShadow: AppElevation.of(context, 2),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
+              child: Text(active ? 'assistant_bubble_drop'.tr : 'assistant_bubble_drag'.tr,
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: c.textDark)),
+            ),
           ),
         ]),
       ),
@@ -918,8 +913,9 @@ class AppAssistantDismissTarget extends StatelessWidget {
   }
 }
 
-/// The pop-up's header: the assistant's name, the organization it follows (when one is open), New chat and Chats
-/// (chat sessions, when the server has them), expand and close.
+/// The pop-up's header: the editorial masthead of the kit on the canvas — the 2 px primary strip, the assistant's
+/// name in the section role (the organization it follows under it, when one is open), New chat and Chats (chat
+/// sessions, when the server has them), expand and close as quiet icon buttons, and the warm rule under it.
 class AppAssistantHeader extends StatelessWidget {
   const AppAssistantHeader({super.key, required this.onClose, required this.onExpand, this.orgName, this.onNewChat, this.onChats});
   final VoidCallback onClose, onExpand;
@@ -928,32 +924,36 @@ class AppAssistantHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final sub = orgName == null || orgName!.isEmpty ? null : t('يجيب عن التطبيق وعن $orgName', 'About the app and $orgName');
-    return AppMeshSurface(
-      child: Material(
+    return Material(
       type: MaterialType.transparency,
-      child: Padding(
-        padding: const EdgeInsetsDirectional.fromSTEB(14, 6, 4, 6),
-        child: Row(children: [
-          Icon(Icons.auto_awesome_rounded, color: c.onHero, size: 22),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(t('مساعد التطبيق', 'App assistant'),
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.onHero, fontWeight: FontWeight.w700, fontSize: 15)),
-              if (sub != null) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.onHeroMuted, fontSize: 11.5)),
-            ]),
-          ),
-          if (onNewChat != null)
-            IconButton(tooltip: 'rag_new_chat'.tr, onPressed: onNewChat, icon: Icon(Icons.add_comment_outlined, color: c.onHero, size: 20)),
-          if (onChats != null)
-            IconButton(tooltip: 'rag_chats'.tr, onPressed: onChats, icon: Icon(Icons.history_rounded, color: c.onHero, size: 20)),
-          IconButton(tooltip: t('ملء الشاشة', 'Full screen'), onPressed: onExpand, icon: Icon(Icons.open_in_full_rounded, color: c.onHero, size: 20)),
-          IconButton(tooltip: t('إغلاق', 'Close'), onPressed: onClose, icon: Icon(Icons.close_rounded, color: c.onHero)),
-        ]),
-      ),
-      ),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        const AppHeaderStrip(),
+        Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.xs, AppSpace.xxs, AppSpace.xs),
+          child: Row(children: [
+            Expanded(
+              child: Semantics(
+                header: true,
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  // the name stays whole on a narrow phone: it scales down rather than lose its end
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(t('مساعد التطبيق', 'App assistant'), maxLines: 1, style: AppType.section(context)),
+                  ),
+                  if (sub != null) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                ]),
+              ),
+            ),
+            if (onNewChat != null) AppIconButton(tooltip: 'rag_new_chat'.tr, onPressed: onNewChat, icon: Icons.add_comment_outlined),
+            if (onChats != null) AppIconButton(tooltip: 'rag_chats'.tr, onPressed: onChats, icon: Icons.history_rounded),
+            AppIconButton(tooltip: t('ملء الشاشة', 'Full screen'), onPressed: onExpand, icon: Icons.open_in_full_rounded),
+            AppIconButton(tooltip: t('إغلاق', 'Close'), onPressed: onClose, icon: Icons.close_rounded),
+          ]),
+        ),
+        const AppHeaderRule(),
+      ]),
     );
   }
 }
@@ -999,7 +999,7 @@ class AppAssistantBubbleTile extends StatelessWidget implements AppSettingsSearc
           return AppSettingsTile(
             featureKey: appAssistantFeatureKey,
             icon: Icons.chat_bubble_outline_rounded,
-            color: color ?? context.colors.accent2,
+            color: color ?? context.colors.textMedium,
             label: 'assistant_bubble_show'.tr,
             subtitle: 'assistant_bubble_show_sub'.tr,
             trailing: AppSwitch(
@@ -1012,32 +1012,14 @@ class AppAssistantBubbleTile extends StatelessWidget implements AppSettingsSearc
       );
 }
 
-/// The assistant in a top bar (desktop sidebar shell, tablet rail shell), next to the calendar and the bell.
+/// The assistant in a top bar (desktop sidebar shell, tablet rail shell), next to the calendar and the bell: the same
+/// paper chrome chip as they are (the assistant's mark in emerald ink — gold is kept for achievements).
 class AppAssistantIcon extends StatelessWidget {
   const AppAssistantIcon({super.key});
 
   @override
   Widget build(BuildContext context) {
     if (AppConfig.disableList.contains(appAssistantFeatureKey)) return const SizedBox.shrink();
-    final c = context.colors;
-    return Semantics(
-      button: true,
-      label: 'assistant_entry_title'.tr,
-      child: Padding(
-        padding: const EdgeInsets.all(5),
-        child: Material(
-          color: c.accent2,
-          borderRadius: BorderRadius.circular(10),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(10),
-            onTap: AppAssistant.openPanel,
-            child: Padding(
-              padding: const EdgeInsets.all(7),
-              child: Icon(Icons.auto_awesome_rounded, color: c.onHero, size: 20),
-            ),
-          ),
-        ),
-      ),
-    );
+    return ChromeIconButton(icon: Icons.auto_awesome_rounded, label: 'assistant_entry_title'.tr, onTap: AppAssistant.openPanel);
   }
 }

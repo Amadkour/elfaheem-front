@@ -11,6 +11,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart' show daysText;
 import 'package:flutter_education_app/design/app_icons.dart' show DirIcons;
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase, AppFill;
 
 import '../../../admin/admin_common.dart' show t;
 import 'rag_payload.dart';
@@ -60,25 +61,34 @@ class _RagChunkCardState extends State<RagChunkCard> {
     final long = ch.text.length > kRagChunkPreviewChars;
     final pages = ch.pageLabel(AppConfig.lang);
     final meta = [if (ch.section.isNotEmpty) ch.section, if (pages.isNotEmpty) pages].join(' · ');
-    return Container(
-      padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.sm, AppSpace.xxs),
+    // a passage slip: paper on a warm hairline (the answer around it sits on the canvas), the document's name over
+    // the quoted text
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: c.primary.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: c.primary.withValues(alpha: 0.18)),
+        color: c.cardBg,
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
+      child: Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.xxs, AppSpace.xxs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(
-            padding: const EdgeInsetsDirectional.only(top: 2, end: AppSpace.xs),
-            child: Icon(Icons.description_outlined, size: 18, color: appInk(context, c.primary)),
+            padding: const EdgeInsetsDirectional.only(end: AppSpace.sm),
+            child: SizedBox.square(
+              dimension: AppIconSize.xl,
+              child: DecoratedBox(
+                decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll),
+                child: Icon(Icons.description_outlined, size: AppIconSize.sm + AppBorder.focus, color: c.textMedium),
+              ),
+            ),
           ),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(ch.document.isEmpty ? t('مستند', 'Document') : ch.document,
-                  maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: c.textDark)),
+                  maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
               if (meta.isNotEmpty)
-                Text(meta, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textLight)),
+                Text(meta, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight)),
             ]),
           ),
           IconButton(
@@ -91,13 +101,22 @@ class _RagChunkCardState extends State<RagChunkCard> {
                 appToast(t('تم النسخ', 'Copied'));
               }
             },
-            icon: Icon(Icons.copy_rounded, size: 16, color: c.textLight),
+            icon: Icon(Icons.copy_rounded, size: AppIconSize.sm, color: c.textLight),
           ),
         ]),
-        Text(ch.text,
-            maxLines: long && !_open ? 4 : null,
-            overflow: long && !_open ? TextOverflow.ellipsis : TextOverflow.visible,
-            style: appText(13, c: c.textDark, h: 1.5)),
+        const SizedBox(height: AppSpace.xxs),
+        Padding(
+          padding: const EdgeInsetsDirectional.only(end: AppSpace.sm),
+          child: AnimatedSize(
+            duration: AppMotion.of(context).base,
+            curve: AppEase.out,
+            alignment: AlignmentDirectional.topStart,
+            child: Text(ch.text,
+                maxLines: long && !_open ? 4 : null,
+                overflow: long && !_open ? TextOverflow.ellipsis : TextOverflow.visible,
+                style: AppType.body(context).copyWith(color: c.textDark, height: 1.6)),
+          ),
+        ),
         if (long)
           Align(
             alignment: AlignmentDirectional.centerStart,
@@ -109,6 +128,7 @@ class _RagChunkCardState extends State<RagChunkCard> {
         else
           const SizedBox(height: AppSpace.xs),
       ]),
+      ),
     );
   }
 }
@@ -142,17 +162,17 @@ class RagToolCards extends StatelessWidget {
       _ => Icons.trending_up_rounded,
     };
     final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(AppSpace.sm),
+    // the asker's own data on one paper card, rows parted by warm hairlines
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: c.primary.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: c.primary.withValues(alpha: 0.18)),
+        color: c.cardBg,
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         for (var i = 0; i < rows.length; i++) ...[
-          if (i > 0) const SizedBox(height: AppSpace.sm),
-          _ToolRowView(row: rows[i], icon: icon),
+          if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, indent: AppSpace.md, endIndent: AppSpace.md, color: c.divider),
+          Padding(padding: const EdgeInsets.all(AppSpace.sm), child: _ToolRowView(row: rows[i], icon: icon)),
         ],
       ]),
     );
@@ -270,7 +290,7 @@ class _ToolRowView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final tone = row.warn ? c.warning : c.textLight;
+    final tone = row.warn ? appInk(context, c.warning) : c.textLight;
     final p = row.progress;
     return Semantics(
       container: true,
@@ -278,18 +298,36 @@ class _ToolRowView extends StatelessWidget {
       child: ExcludeSemantics(
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(
-            padding: const EdgeInsetsDirectional.only(top: 2, end: AppSpace.xs),
-            child: Icon(icon, size: 18, color: appInk(context, c.primary)),
+            padding: const EdgeInsetsDirectional.only(top: AppSpace.xxs / 2, end: AppSpace.sm),
+            child: Icon(icon, size: AppIconSize.md, color: appInk(context, c.primary)),
           ),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text(row.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: c.textDark)),
-              if (row.detail.isNotEmpty) Text(row.detail, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: tone)),
+              Text(row.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
+              if (row.detail.isNotEmpty)
+                Text(row.detail,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppType.meta(context).copyWith(color: tone, fontWeight: row.warn ? FontWeight.w600 : FontWeight.w400)),
               if (p != null) ...[
-                const SizedBox(height: AppSpace.xxs),
+                const SizedBox(height: AppSpace.xs),
+                // the progress fills once from empty, in the emerald of "done"
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.chip),
-                  child: LinearProgressIndicator(value: p, minHeight: 6, backgroundColor: c.primary.withValues(alpha: 0.12)),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  child: SizedBox(
+                    height: AppSpace.xxs + AppBorder.focus,
+                    child: ColoredBox(
+                      color: c.inputBg,
+                      child: AppFill(
+                        value: p.clamp(0.0, 1.0),
+                        builder: (context, v) => FractionallySizedBox(
+                          alignment: AlignmentDirectional.centerStart,
+                          widthFactor: v.clamp(0.0, 1.0),
+                          child: ColoredBox(color: c.primary),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ]),
