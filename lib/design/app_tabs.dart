@@ -267,7 +267,9 @@ class _TabStripState extends State<_TabStrip> {
           final width = focused ? AppBorder.focus : AppBorder.hairline;
           return AnimatedContainer(
             duration: motion.fast,
-            height: AppTouch.min,
+            // the border sits inside this height: leave room for the focus border so every tab keeps a full
+            // 48 px target and the bar does not jump when it takes focus
+            height: AppTouch.min + (underline ? AppBorder.focus : 2 * AppBorder.focus),
             padding: EdgeInsetsDirectional.symmetric(horizontal: pad),
             decoration: underline
                 ? BoxDecoration(border: Border(bottom: BorderSide(color: edge, width: width)))

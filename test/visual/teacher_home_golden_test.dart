@@ -237,11 +237,6 @@ List<MeLiveRoom> _live() => [
       ),
     ];
 
-int _wall(DateTime utc) {
-  final w = AppTime.toZone(utc);
-  return w.hour * 60 + w.minute;
-}
-
 Widget _home({bool free = false}) {
   final schedule = _schedule(free: free);
   return SingleChildScrollView(
