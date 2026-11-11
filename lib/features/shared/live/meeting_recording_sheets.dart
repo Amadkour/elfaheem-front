@@ -89,64 +89,77 @@ class CloudDestinationTile extends StatelessWidget {
   final VoidCallback? onConnect;
   final VoidCallback? onDisconnect;
 
+  /// Below this width the Connect / Disconnect button moves under the provider's name.
+  static const double narrow = 360;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final a = account;
     final usable = a.usable;
-    final tint = !a.configured ? c.textLight : (a.connected ? c.success : c.primary);
-    // A small glyph sits in the row; a pill (Connect / Disconnect) moves under the text on a narrow phone,
+    final tint = !a.configured ? c.textLight : appInk(context, a.connected ? c.success : c.primary);
+    final motion = AppMotion.of(context);
+    // A small glyph sits in the row; a button (Connect / Disconnect) moves under the text on a narrow phone,
     // where it would otherwise squeeze the name out of the row.
     Widget? glyph, pill;
     if (connecting) {
-      glyph = SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: c.primary));
+      glyph = SizedBox.square(
+          dimension: AppIconSize.sm, child: CircularProgressIndicator(strokeWidth: 2, color: appInk(context, c.primary)));
     } else if (a.configured && !a.connected && onConnect != null) {
-      pill = AppPill(icon: Icons.link_rounded, label: t('ربط', 'Connect'), onTap: onConnect);
+      pill = AppButton.secondary(icon: Icons.link_rounded, label: t('ربط', 'Connect'), size: AppButtonSize.sm, onPressed: onConnect);
     } else if (a.connected && onDisconnect != null) {
-      pill = AppPill(icon: Icons.link_off_rounded, label: t('فصل', 'Disconnect'), color: c.danger, onTap: onDisconnect);
+      pill = AppButton.danger(
+          icon: Icons.link_off_rounded, label: t('فصل', 'Disconnect'), size: AppButtonSize.sm, dangerOutline: true, onPressed: onDisconnect);
     } else if (selected) {
-      glyph = Icon(Icons.check_circle_rounded, color: c.primary);
+      glyph = Icon(Icons.check_circle_rounded, color: appInk(context, c.primary));
     }
+    final radius = AppRadius.cardAll;
     return Semantics(
       selected: selected,
       child: InkWell(
         key: ValueKey('cloud.${a.provider.wire}'),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: radius,
         onTap: usable ? onTap : null,
-        child: Container(
-          padding: const EdgeInsets.all(12),
+        // the chosen destination: the primary's tint inside a 1.5 px primary edge; the others paper on a hairline
+        child: AnimatedContainer(
+          duration: motion.fast,
+          curve: AppMotion.curve,
+          padding: const EdgeInsets.all(AppSpace.sm),
           decoration: BoxDecoration(
-            color: selected ? c.primary.withValues(alpha: 0.07) : c.cardBg,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: selected ? c.primary : c.divider, width: selected ? 1.5 : 1),
+            color: selected ? c.primaryTint : c.cardBg,
+            borderRadius: radius,
+            border: Border.all(
+              color: selected ? appInk(context, c.primary) : c.divider,
+              width: selected ? AppBorder.strong : AppBorder.hairline,
+            ),
           ),
           child: LayoutBuilder(builder: (context, bc) {
-            final pillBelow = pill != null && bc.maxWidth < 360;
+            final pillBelow = pill != null && bc.maxWidth < CloudDestinationTile.narrow;
             return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Row(children: [
                 Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(color: tint.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
-                  child: Icon(cloudProviderIcon(a.provider), color: tint, size: 22),
+                  width: AppSpace.xl + AppSpace.xs,
+                  height: AppSpace.xl + AppSpace.xs,
+                  decoration: BoxDecoration(color: tint.withValues(alpha: 0.12), borderRadius: AppRadius.controlAll),
+                  child: Icon(cloudProviderIcon(a.provider), color: tint, size: AppIconSize.md),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                    Text(a.provider.label, style: appText(14, w: FontWeight.w700, c: c.textDark), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 2),
+                    Text(a.provider.label, style: AppType.bodyStrong(context), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: AppSpace.xxs / 2),
                     Text(cloudAccountSubtitle(a),
                         key: ValueKey('cloud.${a.provider.wire}.subtitle'),
-                        style: appText(12, c: c.textMedium, h: 1.4),
+                        style: AppType.meta(context).copyWith(height: 1.4),
                         maxLines: a.configured ? 2 : 3,
                         overflow: TextOverflow.ellipsis),
                   ]),
                 ),
-                if (glyph != null) ...[const SizedBox(width: 8), glyph],
-                if (pill != null && !pillBelow) ...[const SizedBox(width: 8), pill],
+                if (glyph != null) ...[const SizedBox(width: AppSpace.xs), glyph],
+                if (pill != null && !pillBelow) ...[const SizedBox(width: AppSpace.xs), pill],
               ]),
               if (pillBelow) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpace.xs),
                 Align(alignment: AlignmentDirectional.centerEnd, child: pill),
               ],
             ]);
@@ -201,7 +214,7 @@ class RecordSetupLayout extends StatelessWidget {
     final list = accounts;
     final none = list != null && !list.any((a) => a.configured);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
       // D-306: the choices scroll when the sheet is short (a phone held sideways); Start stays in view under them.
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         Flexible(
@@ -209,10 +222,11 @@ class RecordSetupLayout extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         AppSheetHeader(t('تسجيل الاجتماع', 'Record the meeting')),
         Text(t('يُحفظ التسجيل في سحابتك أنت، لا على خوادم المنصة.', 'The recording is saved to your own drive, not on the platform.'),
-            style: appText(12.5, c: c.textMedium, h: 1.5)),
-        const SizedBox(height: 14),
-        AppSectionTitle(t('الحفظ في', 'Save to')),
-        const SizedBox(height: 8),
+            style: AppType.body(context).copyWith(height: 1.55)),
+        Padding(
+          padding: const EdgeInsetsDirectional.only(top: AppSpace.lg, bottom: AppSpace.sm),
+          child: Text(t('الحفظ في', 'Save to'), style: AppType.section(context)),
+        ),
         if (list == null)
           const AppListSkeleton(items: 2, padding: EdgeInsets.zero)
         else ...[
@@ -224,7 +238,7 @@ class RecordSetupLayout extends StatelessWidget {
               onTap: onPick == null ? null : () => onPick!(a.provider),
               onConnect: onConnect == null || connecting != null ? null : () => onConnect!(a.provider),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
           ],
           if (none)
             AppBanner(
@@ -240,23 +254,25 @@ class RecordSetupLayout extends StatelessWidget {
               text: t('أكمل تسجيل الدخول في المتصفح، وسنتابع هنا تلقائياً.', 'Finish signing in in the browser — this sheet follows automatically.'),
             ),
         ],
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.md),
         RecordingQualityField(value: quality, onChanged: onQuality),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.md),
         RecordingIncludes(audioOnly: quality.audioOnly),
         if (error != null) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: error!),
         ],
             ]),
           ),
         ),
-        const SizedBox(height: 16),
-        AppPrimaryButton(
+        const SizedBox(height: AppSpace.md),
+        AppButton.primary(
           key: const ValueKey('record_setup.start'),
           label: t('ابدأ التسجيل', 'Start recording'),
           icon: Icons.fiber_manual_record_rounded,
+          size: AppButtonSize.lg,
           busy: busy,
+          expand: true,
           onPressed: canStart ? onStart : null,
         ),
       ]),
@@ -274,7 +290,6 @@ class RecordingQualityField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       AppDropdown<RecordingQuality>(
         value: value,
@@ -283,11 +298,11 @@ class RecordingQualityField extends StatelessWidget {
         onChanged: onChanged == null ? null : (q) => onChanged!(q ?? RecordingQuality.p720),
       ),
       if (value.demanding) ...[
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         Text(
           t('تحتاج جهازاً قوياً واتصالاً سريعاً، والملف كبير. لن تكون الصورة أوضح من الكاميرا أو الشاشة المعروضة.',
               'Needs a powerful device and a fast connection, and the file is large. The picture is only as sharp as the camera or screen being shown.'),
-          style: appText(12, c: c.textMedium),
+          style: AppType.meta(context).copyWith(height: 1.45),
         ),
       ],
     ]);
@@ -311,26 +326,28 @@ class RecordingIncludes extends StatelessWidget {
       if (!audioOnly) (Icons.draw_rounded, t('السبورة', 'The whiteboard')),
       if (!audioOnly) (Icons.screen_share_rounded, t('الشاشات المشاركة', 'Shared screens')),
     ];
+    // information about what is about to happen: the sky tone at card radius, its parts as paper chips
+    final bc = AppBlockColors.of(context, AppBlockTone.sky);
     return Container(
       key: const ValueKey('record_setup.includes'),
       padding: const EdgeInsets.all(AppSpace.md),
       decoration: BoxDecoration(
-        color: c.primary.withValues(alpha: 0.06),
+        color: bc.surface,
         borderRadius: AppRadius.cardAll,
-        border: Border.all(color: c.primary.withValues(alpha: 0.16)),
+        border: bc.border == null ? null : Border.all(color: bc.border!, width: AppBorder.hairline),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(t('ما يتضمّنه التسجيل', 'What the recording holds'), style: appText(13, w: FontWeight.w700, c: c.textDark)),
+        Text(t('ما يتضمّنه التسجيل', 'What the recording holds'), style: AppType.section(context).copyWith(color: bc.ink)),
         const SizedBox(height: AppSpace.sm),
-        Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final (icon, label) in items)
             Container(
-              padding: const EdgeInsetsDirectional.fromSTEB(10, 6, 12, 6),
-              decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(999), border: Border.all(color: c.divider)),
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xxs + AppBorder.focus, AppSpace.sm, AppSpace.xxs + AppBorder.focus),
+              decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.pill)),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(icon, size: 16, color: c.primary),
-                const SizedBox(width: 6),
-                Flexible(child: Text(label, style: appText(12.5, w: FontWeight.w600, c: c.textDark))),
+                Icon(icon, size: AppIconSize.sm, color: appInk(context, c.primary)),
+                const SizedBox(width: AppSpace.xs),
+                Flexible(child: Text(label, style: AppType.label(context).copyWith(color: c.textDark))),
               ]),
             ),
         ]),
@@ -340,7 +357,7 @@ class RecordingIncludes extends StatelessWidget {
               ? t('صوت فقط: ملف أصغر، بلا صورة.', 'Audio only: a smaller file, no picture.')
               : t('في فيديو واحد: ما يُعرض يملأ الإطار والكاميرات بجانبه، والكاميرات وحدها في شبكة.',
                   'One video: what is shown fills the frame with the cameras beside it; cameras alone sit in a grid.'),
-          style: appText(12, c: c.textMedium, h: 1.45),
+          style: AppType.meta(context).copyWith(color: bc.muted, height: 1.45),
         ),
       ]),
     );
@@ -544,9 +561,9 @@ class RecordingStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final r = recording;
-    final color = r.isDone ? c.success : (r.isFailed ? c.danger : (r.isRecording ? c.danger : c.warning));
+    final tone = r.isDone ? AppTone.success : (r.isFailed || r.isRecording ? AppTone.danger : AppTone.warning);
+    final color = appToneInk(context, tone);
     final icon = r.isDone
         ? Icons.cloud_done_rounded
         : r.isFailed
@@ -566,47 +583,62 @@ class RecordingStatusCard extends StatelessWidget {
     ];
     return AppCard(
       key: ValueKey('recording.${r.id}'),
-      padding: const EdgeInsets.all(14),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-        Row(children: [
-          if (r.inProgress && !r.isRecording)
-            SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: color))
-          else
-            Icon(icon, color: color, size: 22),
-          const SizedBox(width: 10),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(
+            width: AppSpace.xl + AppSpace.xs,
+            height: AppSpace.xl + AppSpace.xs,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: appToneTint(context, tone), shape: BoxShape.circle),
+            child: r.inProgress && !r.isRecording
+                ? SizedBox.square(dimension: AppIconSize.md, child: CircularProgressIndicator(strokeWidth: 2, color: color))
+                : Icon(icon, color: color, size: AppIconSize.md),
+          ),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(t('تسجيل الاجتماع', 'Meeting recording'), style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
-              const SizedBox(height: 2),
-              Text(facts.join(' · '), style: appText(12, c: c.textMedium), maxLines: 2, overflow: TextOverflow.ellipsis),
+              Text(t('تسجيل الاجتماع', 'Meeting recording'), style: AppType.section(context), maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: AppSpace.xxs / 2),
+              Text(facts.join(' · '), style: AppType.meta(context), maxLines: 2, overflow: TextOverflow.ellipsis),
+              // the status sits under the facts, where its whole label fits even on a narrow phone
+              const SizedBox(height: AppSpace.xs),
+              AppStatusBadge(label: recordingStatusLabel(r.status), tone: tone, dot: r.isRecording),
             ]),
-          ),
-          const SizedBox(width: 8),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 120),
-            child: AppBadgePill(recordingStatusLabel(r.status), color: color, icon: icon),
           ),
         ]),
         if (r.isFailed && (r.error ?? '').isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(r.error!, style: appText(12, c: c.danger, h: 1.4)),
+          const SizedBox(height: AppSpace.sm),
+          Text(r.error!, style: AppType.meta(context).copyWith(color: color, height: 1.4)),
         ],
         if (r.inProgress) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.sm),
           Text(
             r.isRecording
                 ? t('يُرفع التسجيل أثناء الاجتماع، ويُجمَّع بعد انتهائه.', 'Uploads during the meeting and is assembled once it ends.')
                 : t('سيصلك إشعار عندما يصبح الملف جاهزاً في سحابتك.', 'You get a notification once the file is in your drive.'),
-            style: appText(12, c: c.textMedium, h: 1.4),
+            style: AppType.meta(context).copyWith(height: 1.45),
           ),
         ],
         if (r.canOpen && onOpen != null || r.isFailed && onRetry != null) ...[
-          const SizedBox(height: 10),
-          Wrap(spacing: 8, runSpacing: 8, children: [
+          const SizedBox(height: AppSpace.sm),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             if (r.canOpen && onOpen != null)
-              AppPill(key: const ValueKey('recording.open'), icon: Icons.open_in_new_rounded, label: t('فتح في السحابة', 'Open in drive'), onTap: busy ? null : onOpen),
+              AppButton.secondary(
+                key: const ValueKey('recording.open'),
+                icon: Icons.open_in_new_rounded,
+                label: t('فتح في السحابة', 'Open in drive'),
+                size: AppButtonSize.sm,
+                onPressed: busy ? null : onOpen,
+              ),
             if (r.isFailed && onRetry != null)
-              AppPill(key: const ValueKey('recording.retry'), icon: Icons.refresh_rounded, label: t('إعادة الرفع', 'Retry'), color: c.warning, onTap: busy ? null : onRetry),
+              AppButton.tonal(
+                key: const ValueKey('recording.retry'),
+                icon: Icons.refresh_rounded,
+                label: t('إعادة الرفع', 'Retry'),
+                size: AppButtonSize.sm,
+                busy: busy,
+                onPressed: busy ? null : onRetry,
+              ),
           ]),
         ],
       ]),
@@ -766,14 +798,37 @@ class CloudDrivesLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final none = !loading && accounts.isNotEmpty && !accounts.any((a) => a.configured);
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: [
-      AppHero(
-        title: t('السحابات المتصلة', 'Connected drives'),
-        subtitle: t('تُحفظ تسجيلات اجتماعاتك في سحابتك أنت — في مجلد "NextBrain recordings".',
-            'Your meeting recordings are saved to your own drive, in a "NextBrain recordings" folder.'),
-        icon: Icons.cloud_sync_rounded,
+    final bc = AppBlockColors.of(context, AppBlockTone.sky);
+    return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xl), children: [
+      // the page's one block: where the recordings go (sky, information), the drives as paper rows under it
+      AppBlock(
+        tone: AppBlockTone.sky,
+        hero: true,
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(
+            width: AppSpace.xxl,
+            height: AppSpace.xxl,
+            decoration: BoxDecoration(color: c.cardBg, shape: BoxShape.circle),
+            child: Icon(Icons.cloud_sync_rounded, size: AppIconSize.lg, color: bc.accentInk(c.primary)),
+          ),
+          const SizedBox(width: AppSpace.md),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Semantics(
+                header: true,
+                child: Text(t('السحابات المتصلة', 'Connected drives'), style: AppType.headline(context).copyWith(color: bc.ink)),
+              ),
+              const SizedBox(height: AppSpace.xs),
+              Text(
+                t('تُحفظ تسجيلات اجتماعاتك في سحابتك أنت — في مجلد "NextBrain recordings".',
+                    'Your meeting recordings are saved to your own drive, in a "NextBrain recordings" folder.'),
+                style: AppType.body(context).copyWith(color: bc.muted, height: 1.5),
+              ),
+            ]),
+          ),
+        ]),
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: AppSpace.lg),
       if (error != null) ...[
         AppBanner(
           icon: Icons.error_outline_rounded,
@@ -781,7 +836,7 @@ class CloudDrivesLayout extends StatelessWidget {
           text: error!,
           action: onRetry == null ? null : IconButton(tooltip: t('أعد المحاولة', 'Try again'), onPressed: onRetry, icon: const Icon(Icons.refresh_rounded)),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
       ],
       if (loading && accounts.isEmpty)
         const AppListSkeleton(items: 2, padding: EdgeInsets.zero)
@@ -793,7 +848,7 @@ class CloudDrivesLayout extends StatelessWidget {
             onConnect: onConnect == null || connecting != null ? null : () => onConnect!(a.provider),
             onDisconnect: onDisconnect == null ? null : () => onDisconnect!(a.provider),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.xs),
         ],
         if (none)
           AppEmpty(
@@ -808,12 +863,18 @@ class CloudDrivesLayout extends StatelessWidget {
             text: t('أكمل تسجيل الدخول في المتصفح، وسنتابع هنا تلقائياً.', 'Finish signing in in the browser — this page follows automatically.'),
           ),
       ],
-      const SizedBox(height: 16),
-      Text(
-        t('المنصة تطلب صلاحية الملفات التي تنشئها هي فقط، ويمكنك فصل الحساب في أي وقت.',
-            'The platform asks only for the files it creates itself; you can disconnect at any time.'),
-        style: appText(12, c: c.textMedium, h: 1.5),
-      ),
+      const SizedBox(height: AppSpace.lg),
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(Icons.lock_outline_rounded, size: AppIconSize.sm, color: c.textMedium),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(
+          child: Text(
+            t('المنصة تطلب صلاحية الملفات التي تنشئها هي فقط، ويمكنك فصل الحساب في أي وقت.',
+                'The platform asks only for the files it creates itself; you can disconnect at any time.'),
+            style: AppType.meta(context).copyWith(height: 1.5),
+          ),
+        ),
+      ]),
     ]);
   }
 }

@@ -20,6 +20,7 @@ import 'package:flutter/services.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../design/app_kit.dart';
+import '../../../design/app_motion_kit.dart' show AppReveal;
 import '../../../design/chrome_button.dart';
 import '../../../design/app_share_sheet.dart';
 import '../../../utils/live_events.dart';
@@ -250,6 +251,9 @@ class _MeetingLinksPageState extends State<MeetingLinksPage> {
             onCopyGuest: i.guest == null ? null : () => _copy(i.guest!.url),
             onShareGuest: i.guest == null ? null : () => _shareGuest(i),
           );
+      // the page's one entrance: the first cards rise in reading order, once per visit (AppReveal caps at 8)
+      var shownAt = 0;
+      Widget revealed(Widget w) => AppReveal(index: shownAt++, group: 'links', child: w);
       return ListView(padding: pad, children: [
         MeetingLinksSummary(
           live: counts[MeetingLinksFilter.live] ?? 0,
@@ -270,19 +274,23 @@ class _MeetingLinksPageState extends State<MeetingLinksPage> {
               _filter = MeetingLinksFilter.all;
             }),
           ),
-        for (final (label, items, showDay) in groups) ...[
+        for (final (g, (label, items, showDay)) in groups.indexed) ...[
+          // the editorial rhythm: more room above a day's heading than under it (the first sits close to the filters)
           Padding(
-            padding: const EdgeInsets.only(top: AppSpace.xs, bottom: AppSpace.xs),
-            child: AppSectionTitle(label),
+            padding: EdgeInsetsDirectional.only(top: g == 0 ? AppSpace.xs : AppSpace.lg, bottom: AppSpace.sm),
+            child: Semantics(header: true, child: Text(label, style: AppType.section(context))),
           ),
           if (cols == 1)
-            for (final i in items) ...[card(i, showDay), const SizedBox(height: AppSpace.sm)]
+            for (final i in items) ...[revealed(card(i, showDay)), const SizedBox(height: AppSpace.sm)]
           else
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpace.sm),
               child: Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [
                 for (final i in items)
-                  SizedBox(width: (box.maxWidth - pad.horizontal - AppSpace.sm * (cols - 1)) / cols, child: card(i, showDay)),
+                  SizedBox(
+                    width: (box.maxWidth - pad.horizontal - AppSpace.sm * (cols - 1)) / cols,
+                    child: revealed(card(i, showDay)),
+                  ),
               ]),
             ),
         ],

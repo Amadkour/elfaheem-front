@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/plural.dart';
 import '../../../design/app_kit.dart';
+import '../../../design/app_motion_kit.dart' show AppCountUp;
 import '../../admin/admin_common.dart' show t;
 import 'meeting_links.dart';
 
@@ -98,17 +99,17 @@ class MeetingLinkCard extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(color: appToneTint(context, tone), borderRadius: BorderRadius.circular(AppRadius.card)),
+            width: AppSpace.xxl - AppSpace.xxs,
+            height: AppSpace.xxl - AppSpace.xxs,
+            decoration: BoxDecoration(color: appToneTint(context, tone), borderRadius: AppRadius.controlAll),
             child: Icon(i.isMeeting ? Icons.groups_rounded : Icons.live_tv_rounded, color: ink, size: AppIconSize.md),
           ),
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(i.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
+              Text(i.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
               if (when.isNotEmpty) ...[
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpace.xxs),
                 Text(when, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
               ],
               if (who.isNotEmpty)
@@ -226,7 +227,8 @@ class _GuestLinkRow extends StatelessWidget {
   }
 }
 
-/// Live now · Upcoming · Guest links: three figures, each opens its filter.
+/// Live now · Upcoming · Guest links: three figures, each opens its filter. While a room is live its tile is the
+/// page's one tinted block (sky, the schedule's tone); the others stay paper. The figures count up once.
 class MeetingLinksSummary extends StatelessWidget {
   const MeetingLinksSummary({super.key, required this.live, required this.upcoming, required this.guestLinks, required this.onFilter});
   final int live, upcoming, guestLinks;
@@ -234,22 +236,34 @@ class MeetingLinksSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget tile(String label, int n, IconData icon, AppTone tone, MeetingLinksFilter f) => Expanded(
-          child: AppCard(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.sm),
-            onTap: () => onFilter(f),
-            // the figure beside its icon, the label under both on the card's full width (fits a 320 px phone)
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Icon(icon, size: AppIconSize.md, color: appToneInk(context, tone)),
-                const SizedBox(width: AppSpace.xs),
-                Expanded(child: Text('$n', maxLines: 1, style: AppType.figure(context))),
-              ]),
-              const SizedBox(height: AppSpace.xxs),
-              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
-            ]),
+    Widget tile(String label, int n, IconData icon, AppTone tone, MeetingLinksFilter f) {
+      final lead = f == MeetingLinksFilter.live && n > 0;
+      final bc = lead ? AppBlockColors.of(context, AppBlockTone.sky) : null;
+      final iconInk = bc == null ? appToneInk(context, tone) : bc.accentInk(appToneColor(context, tone));
+      // the figure beside its icon, the label under both on the card's full width (fits a 320 px phone)
+      final body = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(icon, size: AppIconSize.md, color: iconInk),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(
+            child: AppCountUp(
+              '$n',
+              memoryKey: 'links.summary.${f.name}',
+              style: AppType.figure(context).copyWith(color: bc?.ink),
+            ),
           ),
-        );
+        ]),
+        const SizedBox(height: AppSpace.xxs),
+        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: bc?.muted)),
+      ]);
+      const pad = EdgeInsets.all(AppSpace.sm);
+      return Expanded(
+        child: lead
+            ? AppBlock(tone: AppBlockTone.sky, padding: pad, onTap: () => onFilter(f), semanticLabel: '$label: $n', child: body)
+            : AppCard(padding: pad, onTap: () => onFilter(f), child: body),
+      );
+    }
+
     return Row(children: [
       tile(t('مباشر الآن', 'Live now'), live, Icons.sensors_rounded, AppTone.danger, MeetingLinksFilter.live),
       const SizedBox(width: AppSpace.xs),

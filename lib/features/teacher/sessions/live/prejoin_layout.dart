@@ -4,8 +4,13 @@
 // values + callbacks (the preview widget, mic/cam state, device lists, busy…) so it can be unit-tested with
 // `expectNoLayoutErrors` at every size and language (test/ui/prejoin_layout_test.dart).
 //
-//   wide (≥ 860 px)  → two columns: preview card + toggles on the start side, the settings/join panel on the end side
-//   phone            → one column: preview (16:9) on top, toggles, then the panel; the whole page scrolls
+//   wide (≥ 860 px)  → two columns: the stage + toggles on the start side, the join block + devices on the end side
+//   phone            → one column: the stage (16:9) on top, toggles, the join block, then the devices; it scrolls
+//
+// Warm Editorial (system.md): the dark camera stage is the page's one memorable thing (the room stays dark, video
+// needs it); the person joining is a tinted block — peach for a participant or a guest, sky for the host (the role
+// homes' tones) — holding their name in the editorial serif, the "may be recorded" note and the one primary action;
+// the device pickers are a quiet paper card. One entrance: the stage rises, the join block follows a beat later.
 //
 // D-106: the page never joins by itself — the person checks the camera / microphone and presses Join, the page's
 // one primary button, which holds the keyboard focus (Enter presses it on the web and desktop). Every text follows
@@ -18,6 +23,7 @@ import 'package:flutter_education_app/features/shared/help/help_info_button.dart
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase, AppPressScale, AppReveal;
 import 'package:flutter_education_app/features/shared/live/live_room.dart' show LiveRoomKind;
 import 'package:flutter_education_app/features/shared/live/live_room_words.dart';
 import 'package:flutter_education_app/features/shared/live/live_self_view.dart' show SelfViewShape;
@@ -33,6 +39,9 @@ enum PreJoinIssue { permissionDenied, noDevices }
 
 /// Width from which the two-column layout is used.
 const double kPreJoinWideBreakpoint = 860;
+
+/// The end column's width on wide windows: the join block and the device card.
+const double _kPanelWidth = 380;
 
 class PreJoinLayout extends StatelessWidget {
   const PreJoinLayout({
@@ -141,14 +150,13 @@ class PreJoinLayout extends StatelessWidget {
       child: SafeArea(
         child: LayoutBuilder(builder: (context, box) {
           final wide = box.maxWidth >= kPreJoinWideBreakpoint;
-          return _FadeIn(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1180),
-                  child: wide ? _wide(context) : _narrow(context),
-                ),
+          final gutter = AppSpace.gutter(box.maxWidth);
+          return SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(gutter, AppSpace.xs, gutter, AppSpace.xl),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: AppWidth.content.max),
+                child: wide ? _wide(context) : _narrow(context),
               ),
             ),
           );
@@ -161,11 +169,14 @@ class PreJoinLayout extends StatelessWidget {
   Widget _wide(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _header(context),
-      const SizedBox(height: 18),
+      const SizedBox(height: AppSpace.lg),
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Expanded(child: _previewColumn(context)),
-        const SizedBox(width: 20),
-        SizedBox(width: 380, child: _panel(context)),
+        Expanded(child: AppReveal(index: 0, group: 'prejoin', child: _previewColumn(context))),
+        const SizedBox(width: AppSpace.lg),
+        SizedBox(
+          width: _kPanelWidth,
+          child: AppReveal(index: 1, group: 'prejoin', rise: AppSpace.xs, child: _panel(context)),
+        ),
       ]),
     ]);
   }
@@ -174,33 +185,27 @@ class PreJoinLayout extends StatelessWidget {
   Widget _narrow(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       _header(context),
-      const SizedBox(height: 14),
-      _previewColumn(context),
-      const SizedBox(height: 16),
-      _panel(context),
+      const SizedBox(height: AppSpace.md),
+      AppReveal(index: 0, group: 'prejoin', child: _previewColumn(context)),
+      const SizedBox(height: AppSpace.lg),
+      AppReveal(index: 1, group: 'prejoin', rise: AppSpace.xs, child: _panel(context)),
     ]);
   }
 
-  // ── Header: back · title · role ───────────────────────────────────────────
+  // ── Header: back · title · help ───────────────────────────────────────────
   Widget _header(BuildContext context) {
-    final c = context.colors;
     return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
       AppBackButton(key: const ValueKey('prejoin.back'), onPressed: onBack),
-      const SizedBox(width: 12),
+      const SizedBox(width: AppSpace.sm),
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(
-            title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: appText(18, w: FontWeight.w800, c: c.textDark, h: 1.15),
-          ),
-          const SizedBox(height: 3),
+          Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context)),
+          const SizedBox(height: AppSpace.xxs),
           Text(
             subtitle ?? 'lr_check_devices'.tr,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: appText(12, c: c.textMedium),
+            style: AppType.meta(context),
           ),
         ]),
       ),
@@ -208,7 +213,7 @@ class PreJoinLayout extends StatelessWidget {
     ]);
   }
 
-  // ── Preview card + mic/cam pills ──────────────────────────────────────────
+  // ── The stage + mic/cam toggles ───────────────────────────────────────────
   Widget _previewColumn(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       PreJoinPreviewCard(
@@ -221,7 +226,7 @@ class PreJoinLayout extends StatelessWidget {
         onShape: canPublish ? onPreviewShape : null,
       ),
       if (!canPublish) ...[
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.sm),
         AppBanner(
           key: const ValueKey('prejoin.listen_only'),
           icon: Icons.hearing_rounded,
@@ -229,87 +234,157 @@ class PreJoinLayout extends StatelessWidget {
         ),
       ],
       if (canPublish) ...[
-      const SizedBox(height: 14),
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-            _TogglePill(
-              key: const ValueKey('prejoin.mic.toggle'),
-              on: micOn,
-              onIcon: Icons.mic_rounded,
-              offIcon: Icons.mic_off_rounded,
-              label: 'lr_microphone'.tr,
-              onTap: onToggleMic,
-            ),
-            if (micLevel != null && micOn)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
-                child: PreJoinMicMeter(level: micLevel!),
+        const SizedBox(height: AppSpace.sm),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+              _TogglePill(
+                key: const ValueKey('prejoin.mic.toggle'),
+                on: micOn,
+                onIcon: Icons.mic_rounded,
+                offIcon: Icons.mic_off_rounded,
+                label: 'lr_microphone'.tr,
+                onTap: onToggleMic,
               ),
-          ]),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _TogglePill(
-            key: const ValueKey('prejoin.cam.toggle'),
-            on: camOn,
-            onIcon: Icons.videocam_rounded,
-            offIcon: Icons.videocam_off_rounded,
-            label: 'lr_camera'.tr,
-            onTap: onToggleCam,
+              if (micLevel != null && micOn)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
+                  child: PreJoinMicMeter(level: micLevel!),
+                ),
+            ]),
           ),
-        ),
-      ]),
-      if (cameraOffHint && !camOn) ...[
-        const SizedBox(height: 12),
-        PreJoinCameraOffHint(onTurnOn: onToggleCam),
-      ],
-      if (phoneSlot != null) ...[
-        const SizedBox(height: 12),
-        phoneSlot!,
-      ],
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: _TogglePill(
+              key: const ValueKey('prejoin.cam.toggle'),
+              on: camOn,
+              onIcon: Icons.videocam_rounded,
+              offIcon: Icons.videocam_off_rounded,
+              label: 'lr_camera'.tr,
+              onTap: onToggleCam,
+            ),
+          ),
+        ]),
+        if (cameraOffHint && !camOn) ...[
+          const SizedBox(height: AppSpace.sm),
+          PreJoinCameraOffHint(onTurnOn: onToggleCam),
+        ],
+        if (phoneSlot != null) ...[
+          const SizedBox(height: AppSpace.sm),
+          phoneSlot!,
+        ],
       ],
     ]);
   }
 
-  // ── Settings / join panel ─────────────────────────────────────────────────
+  // ── The join block + the device card ──────────────────────────────────────
   Widget _panel(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _joinBlock(context),
+      if (canPublish) ...[
+        const SizedBox(height: AppSpace.md),
+        _devices(context),
+      ],
+    ]);
+  }
+
+  /// Who joins, as what, and Join: the host on sky, everyone else on peach (the role homes' tones).
+  Widget _joinBlock(BuildContext context) {
     final c = context.colors;
-    final roleColor = _host ? c.primary : c.accent;
+    final tone = _host && !isGuest ? AppBlockTone.sky : AppBlockTone.peach;
+    final bc = AppBlockColors.of(context, tone);
     final roleLabel = isGuest ? 'lr_guest'.tr : liveRoleLabel(host: _host, kind: roomKind);
     final roleIcon = isGuest
         ? Icons.person_outline_rounded
         : (_host ? (_meeting ? Icons.star_rounded : Icons.school_rounded) : Icons.person_rounded);
-    return AppCard(
-      padding: const EdgeInsets.all(16),
+    return AppBlock(
+      tone: tone,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        // Who joins
         Row(children: [
-          AppAvatar(name: userName, size: 40),
-          const SizedBox(width: 10),
+          _NameMark(name: userName, ink: bc.ink),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(userName, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: appText(14, w: FontWeight.w700, c: c.textDark)),
-              const SizedBox(height: 4),
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: AppBadgePill(
-                  roleLabel,
-                  color: roleColor,
-                  icon: roleIcon,
-                ),
+              Text(
+                userName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.section(context).copyWith(color: bc.ink),
               ),
+              const SizedBox(height: AppSpace.xxs),
+              Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(roleIcon, size: AppIconSize.sm, color: bc.muted),
+                const SizedBox(width: AppSpace.xxs),
+                Flexible(
+                  child: Text(
+                    roleLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppType.label(context).copyWith(color: bc.muted),
+                  ),
+                ),
+              ]),
             ]),
           ),
         ]),
-        if (canPublish) ...[
-        const SizedBox(height: 14),
-        Divider(height: 1, color: c.divider),
-        const SizedBox(height: 14),
 
-        Text('lr_devices'.tr, style: appText(12.5, w: FontWeight.w800, c: c.textMedium)),
-        const SizedBox(height: 10),
+        if (issue != null) ...[
+          const SizedBox(height: AppSpace.md),
+          AppBanner(
+            key: const ValueKey('prejoin.issue'),
+            icon: issue == PreJoinIssue.permissionDenied ? Icons.lock_outline_rounded : Icons.devices_other_rounded,
+            text: (issue == PreJoinIssue.permissionDenied ? 'lr_permission_denied_msg' : 'lr_no_devices_msg').tr,
+            color: bc.accentInk(c.warning),
+            action: onRetry == null
+                ? null
+                : IconButton(
+                    key: const ValueKey('prejoin.retry'),
+                    tooltip: 'retry'.tr,
+                    onPressed: onRetry,
+                    icon: Icon(Icons.refresh_rounded, color: bc.accentInk(c.warning)),
+                  ),
+          ),
+        ],
+
+        if (!_host) ...[
+          const SizedBox(height: AppSpace.md),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Padding(
+              padding: const EdgeInsetsDirectional.only(top: AppSpace.xxs + AppBorder.strong),
+              child: SizedBox.square(
+                dimension: AppSpace.xs,
+                child: DecoratedBox(decoration: BoxDecoration(shape: BoxShape.circle, color: c.danger)),
+              ),
+            ),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(
+              child: Text(
+                liveTr('lr_may_be_recorded', roomKind),
+                style: AppType.meta(context).copyWith(color: bc.muted, height: 1.45),
+              ),
+            ),
+          ]),
+        ],
+
+        const SizedBox(height: AppSpace.lg),
+        KeyedSubtree(
+          key: const ValueKey('prejoin.join'),
+          child: PreJoinJoinButton(
+            label: busy ? 'lr_joining'.tr : liveTr('lr_join_session', roomKind),
+            busy: busy,
+            onPressed: onJoin,
+            autofocus: autofocusJoin,
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _devices(BuildContext context) {
+    return AppCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text('lr_devices'.tr, style: AppType.section(context)),
+        const SizedBox(height: AppSpace.sm),
         AppDropdown<String>(
           key: const ValueKey('prejoin.mic'),
           items: [for (final d in mics) DropdownMenuItem(value: d.$1, child: Text(d.$2))],
@@ -323,7 +398,7 @@ class PreJoinLayout extends StatelessWidget {
             prefixIcon: const Icon(Icons.mic_none_rounded),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.md),
         AppDropdown<String>(
           key: const ValueKey('prejoin.cam'),
           items: [for (final d in cams) DropdownMenuItem(value: d.$1, child: Text(d.$2))],
@@ -337,51 +412,33 @@ class PreJoinLayout extends StatelessWidget {
             prefixIcon: const Icon(Icons.videocam_outlined),
           ),
         ),
-        ],
-
-        if (issue != null) ...[
-          const SizedBox(height: 14),
-          AppBanner(
-            key: const ValueKey('prejoin.issue'),
-            icon: issue == PreJoinIssue.permissionDenied ? Icons.lock_outline_rounded : Icons.devices_other_rounded,
-            text: (issue == PreJoinIssue.permissionDenied ? 'lr_permission_denied_msg' : 'lr_no_devices_msg').tr,
-            color: c.warning,
-            action: onRetry == null
-                ? null
-                : IconButton(
-                    key: const ValueKey('prejoin.retry'),
-                    tooltip: 'retry'.tr,
-                    onPressed: onRetry,
-                    icon: Icon(Icons.refresh_rounded, color: c.warning),
-                  ),
-          ),
-        ],
-
-        if (!_host) ...[
-          const SizedBox(height: 14),
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Padding(
-              padding: const EdgeInsetsDirectional.only(top: 3),
-              child: Icon(Icons.fiber_manual_record_rounded, size: 12, color: c.danger),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(liveTr('lr_may_be_recorded', roomKind), style: appText(12, c: c.textMedium, h: 1.4)),
-            ),
-          ]),
-        ],
-
-        const SizedBox(height: 18),
-        KeyedSubtree(
-          key: const ValueKey('prejoin.join'),
-          child: PreJoinJoinButton(
-            label: busy ? 'lr_joining'.tr : liveTr('lr_join_session', roomKind),
-            busy: busy,
-            onPressed: onJoin,
-            autofocus: autofocusJoin,
-          ),
-        ),
       ]),
+    );
+  }
+}
+
+/// The joining person's initial in the editorial serif on a paper disc: a place card, not a profile photo.
+class _NameMark extends StatelessWidget {
+  const _NameMark({required this.name, required this.ink});
+
+  final String name;
+  final Color ink;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final n = name.trim();
+    return ExcludeSemantics(
+      child: Container(
+        width: AppTouch.min,
+        height: AppTouch.min,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(shape: BoxShape.circle, color: c.cardBg),
+        child: Text(
+          n.isEmpty ? '?' : n.characters.first.toUpperCase(),
+          style: AppType.section(context).copyWith(color: ink, height: 1),
+        ),
+      ),
     );
   }
 }
@@ -389,9 +446,11 @@ class PreJoinLayout extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 // Join: the page's one primary action (D-106) — nothing joins until it is pressed
 // ─────────────────────────────────────────────────────────────────────────────
-/// The Join button: full width, filled primary, 54 high. It holds the keyboard focus ([autofocus]), so Enter presses
-/// it on the web and desktop (the framework's button shortcut), and takes the focus back when it is enabled again
-/// after a join that failed or was cancelled while nothing else holds the focus. On touch the focus draws nothing.
+/// The Join button: full width, solid primary, 56 high (a phone's hero action, system.md §4). It holds the keyboard
+/// focus ([autofocus]), so Enter presses it on the web and desktop (the framework's button shortcut), and takes the
+/// focus back when it is enabled again after a join that failed or was cancelled while nothing else holds the focus.
+/// Keyboard focus draws the kit's ring outside the button ([appFocusRing]); on touch the focus draws nothing. While
+/// [busy] the fill stays and a spinner sits beside the label; a press scales to 0.97 (AppPressScale).
 class PreJoinJoinButton extends StatefulWidget {
   const PreJoinJoinButton({super.key, required this.label, required this.onPressed, this.busy = false, this.autofocus = true});
 
@@ -433,44 +492,64 @@ class _PreJoinJoinButtonState extends State<PreJoinJoinButton> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final label = Flexible(
-      child: Text(widget.label, maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: appText(15.5, w: FontWeight.w800, c: c.onHero)),
+    final busy = widget.busy;
+    // A join in flight keeps the solid fill (the button did not go away); a button with nothing to do is the kit's
+    // flat neutral well, never a washed-out primary.
+    final well = !busy && widget.onPressed == null;
+    final ink = well ? c.textMedium : c.onHero;
+    final radius = AppRadius.controlAll;
+    final button = FilledButton(
+      focusNode: _focus,
+      autofocus: widget.autofocus,
+      style: ButtonStyle(
+        backgroundColor: WidgetStatePropertyAll(well ? c.inputBg : c.primary),
+        foregroundColor: WidgetStatePropertyAll(ink),
+        overlayColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.pressed)
+            ? c.primaryDark.withValues(alpha: 0.5)
+            : s.contains(WidgetState.hovered)
+                ? c.primaryDark.withValues(alpha: 0.22)
+                : null),
+        elevation: const WidgetStatePropertyAll(0),
+        shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: radius)),
+        side: WidgetStatePropertyAll(
+            well ? BorderSide(color: c.divider, width: AppBorder.hairline) : BorderSide.none),
+        padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: AppSpace.lg)),
+        // Solid emerald (system.md §4): the theme's brand gradient stays off the one primary action.
+        backgroundBuilder: (_, _, child) => child ?? const SizedBox.shrink(),
+      ),
+      onPressed: _enabled ? widget.onPressed : null,
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        if (busy)
+          SizedBox.square(
+            dimension: AppIconSize.md,
+            child: CircularProgressIndicator(strokeWidth: 2.2, color: ink),
+          )
+        else
+          Icon(DirIcons.login, size: AppIconSize.md, color: ink),
+        const SizedBox(width: AppSpace.xs),
+        Flexible(child: Text(widget.label, maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false)),
+      ]),
     );
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
-      child: FilledButton(
-        focusNode: _focus,
-        autofocus: widget.autofocus,
-        style: ButtonStyle(
-          backgroundColor: WidgetStateProperty.resolveWith(
-              (s) => s.contains(WidgetState.disabled) ? c.primary.withValues(alpha: 0.4) : c.primary),
-          foregroundColor: WidgetStatePropertyAll(c.onHero),
-          overlayColor: WidgetStatePropertyAll(c.onHero.withValues(alpha: 0.12)),
-          elevation: const WidgetStatePropertyAll(0),
-          shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-          // The keyboard focus is a clear ring (drawn in keyboard mode only).
-          side: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.focused)
-              ? BorderSide(color: c.primaryLight, width: 3, strokeAlign: BorderSide.strokeAlignOutside)
-              : BorderSide.none),
+    return ListenableBuilder(
+      listenable: _focus,
+      builder: (context, child) => DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          boxShadow: _focus.hasFocus && _enabled && appKeyboardFocus() ? appFocusRing(context) : null,
         ),
-        onPressed: _enabled ? widget.onPressed : null,
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          if (widget.busy)
-            SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: c.onHero))
-          else
-            Icon(DirIcons.login, size: 20, color: c.onHero),
-          const SizedBox(width: 10),
-          label,
-        ]),
+        child: child,
+      ),
+      child: AppPressScale(
+        scale: 0.97,
+        enabled: _enabled,
+        child: SizedBox(width: double.infinity, height: AppTouch.primary, child: button),
       ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Preview card: 16:9, rounded, dark; the self-view or the avatar + "camera off"
+// The stage: 16:9, dark (video needs it); the self-view or the initials + "camera off"
 // ─────────────────────────────────────────────────────────────────────────────
 class PreJoinPreviewCard extends StatelessWidget {
   const PreJoinPreviewCard({
@@ -499,13 +578,15 @@ class PreJoinPreviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final motion = AppMotion.of(context);
     final showVideo = camOn && preview != null;
     final circle = shape == SelfViewShape.circle;
     final offText = camOn
         ? 'lr_starting_camera'.tr
         : (hasCamera ? 'lr_camera_off_msg'.tr : 'lr_no_camera_found'.tr);
+    final radius = AppRadius.blockAll;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: radius,
       child: AspectRatio(
         aspectRatio: 16 / 9,
         child: DecoratedBox(
@@ -515,7 +596,7 @@ class PreJoinPreviewCard extends StatelessWidget {
                 ? RadialGradient(radius: 0.9, colors: [LivePalette.surfaceHi, LivePalette.bg])
                 : null,
             border: Border.all(color: LivePalette.ink(0.08)),
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: radius,
           ),
           child: Stack(fit: StackFit.expand, children: [
             if (showVideo)
@@ -525,14 +606,16 @@ class PreJoinPreviewCard extends StatelessWidget {
                 final d = box.maxHeight * 0.8;
                 return Center(
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 260),
-                    curve: Curves.easeOutCubic,
+                    duration: motion.slow,
+                    curve: AppEase.out,
                     width: circle ? d : box.maxWidth,
                     height: circle ? d : box.maxHeight,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(circle ? d / 2 : 0),
-                      border: circle ? Border.all(color: LivePalette.ink(0.78), width: 2.5) : null,
-                      boxShadow: circle ? [BoxShadow(color: LivePalette.shade(0.5), blurRadius: 24, offset: const Offset(0, 8))] : null,
+                      border: circle ? Border.all(color: LivePalette.ink(0.78), width: AppBorder.focus) : null,
+                      boxShadow: circle
+                          ? [BoxShadow(color: LivePalette.shade(0.5), blurRadius: AppSpace.lg, offset: const Offset(0, AppSpace.xs))]
+                          : null,
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(circle ? d / 2 : 0),
@@ -546,8 +629,8 @@ class PreJoinPreviewCard extends StatelessWidget {
 
             if (onShape != null && showVideo)
               PositionedDirectional(
-                top: 6,
-                end: 6,
+                top: AppSpace.xs,
+                end: AppSpace.xs,
                 child: _ShapeSwitch(shape: shape, onShape: onShape!),
               ),
 
@@ -556,14 +639,14 @@ class PreJoinPreviewCard extends StatelessWidget {
               left: 0,
               right: 0,
               bottom: 0,
-              height: 56,
+              height: AppSpace.xxl + AppSpace.xs,
               child: IgnorePointer(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, LivePalette.shade(0.45)],
+                      colors: [LivePalette.shade(0), LivePalette.shade(0.45)],
                     ),
                   ),
                 ),
@@ -572,16 +655,16 @@ class PreJoinPreviewCard extends StatelessWidget {
 
             // "Preview" tag
             PositionedDirectional(
-              top: 10,
-              start: 10,
+              top: AppSpace.sm,
+              start: AppSpace.sm,
               child: _Chip(icon: Icons.visibility_outlined, label: 'lr_preview'.tr, color: LivePalette.textHigh),
             ),
 
             // Mic / camera state chips
             PositionedDirectional(
-              bottom: 10,
-              start: 10,
-              end: 10,
+              bottom: AppSpace.sm,
+              start: AppSpace.sm,
+              end: AppSpace.sm,
               child: Row(children: [
                 Flexible(
                   child: _Chip(
@@ -590,7 +673,7 @@ class PreJoinPreviewCard extends StatelessWidget {
                     color: micOn ? c.success : c.danger,
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: AppSpace.xs),
                 Flexible(
                   child: _Chip(
                     icon: camOn ? Icons.videocam_rounded : Icons.videocam_off_rounded,
@@ -616,6 +699,7 @@ class _ShapeSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final motion = AppMotion.of(context);
     Widget option(SelfViewShape s, IconData icon, String label) {
       final on = s == shape;
       return Semantics(
@@ -626,16 +710,17 @@ class _ShapeSwitch extends StatelessWidget {
         child: InkResponse(
           key: ValueKey('prejoin.shape.${s.name}'),
           onTap: () => onShape(s),
-          radius: 22,
+          radius: AppTouch.min / 2,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: 40,
-            height: 40,
+            duration: motion.fast,
+            curve: AppEase.out,
+            width: AppSpace.xl + AppSpace.xs,
+            height: AppSpace.xl + AppSpace.xs,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: on ? LivePalette.accent.withValues(alpha: 0.9) : Colors.transparent,
+              color: on ? LivePalette.accent.withValues(alpha: 0.9) : LivePalette.shade(0),
             ),
-            child: Icon(icon, size: 19, color: on ? LivePalette.textHigh : LivePalette.textMid),
+            child: Icon(icon, size: AppIconSize.md, color: on ? LivePalette.textHigh : LivePalette.textMid),
           ),
         ),
       );
@@ -645,17 +730,17 @@ class _ShapeSwitch extends StatelessWidget {
       container: true,
       label: 'lr_self_view_shape_toggle'.tr,
       child: Container(
-        padding: const EdgeInsets.all(3),
+        padding: const EdgeInsets.all(AppSpace.xxs),
         decoration: BoxDecoration(
           color: LivePalette.shade(0.5),
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(AppRadius.pill),
           border: Border.all(color: LivePalette.glassBorder),
         ),
         child: Material(
           type: MaterialType.transparency,
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             option(SelfViewShape.box, Icons.crop_portrait_rounded, 'lr_self_view_box'.tr),
-            const SizedBox(width: 2),
+            const SizedBox(width: AppSpace.xxs),
             option(SelfViewShape.circle, Icons.circle_outlined, 'lr_self_view_circle'.tr),
           ]),
         ),
@@ -675,11 +760,11 @@ class _CameraOff extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return LayoutBuilder(builder: (context, box) {
-      // Avatar scales with the card so the column never overflows a small 16:9 box.
-      final avatar = (box.maxHeight * 0.34).clamp(36.0, 88.0);
+      // The mark scales with the card so the column never overflows a small 16:9 box.
+      final avatar = (box.maxHeight * 0.34).clamp(AppSpace.xl + AppSpace.xxs, AppSpace.xxxl + AppSpace.lg);
       return Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(
               width: avatar,
@@ -688,26 +773,32 @@ class _CameraOff extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: c.primary.withValues(alpha: 0.22),
-                border: Border.all(color: c.primary.withValues(alpha: 0.45), width: 1.5),
+                border: Border.all(color: c.primary.withValues(alpha: 0.45), width: AppBorder.strong),
               ),
               child: starting
-                  ? SizedBox(
-                      width: avatar * 0.4,
-                      height: avatar * 0.4,
+                  ? SizedBox.square(
+                      dimension: avatar * 0.4,
                       child: CircularProgressIndicator(strokeWidth: 2.2, color: c.primaryLight),
                     )
-                  : Text(
-                      _initials(name),
-                      style: appText(avatar * 0.36, w: FontWeight.w800, c: LivePalette.textHigh),
+                  : FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Padding(
+                        padding: EdgeInsets.all(avatar * 0.2),
+                        // The initials in the editorial serif, like the join block's name mark.
+                        child: Text(
+                          _initials(name),
+                          style: AppType.display(context).copyWith(color: LivePalette.textHigh, height: 1),
+                        ),
+                      ),
                     ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             Text(
               text,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: appText(12, w: FontWeight.w600, c: LivePalette.ink(0.72)),
+              style: AppType.label(context).copyWith(color: LivePalette.ink(0.78)),
             ),
           ]),
         ),
@@ -723,7 +814,8 @@ class _CameraOff extends StatelessWidget {
   }
 }
 
-/// "Your camera starts off to save data" under the toggles (D-090): why the camera is off, and a quick Turn on.
+/// "Your camera starts off to save data" under the toggles (D-090): why the camera is off, and a quick Turn on. An
+/// information note, so it wears the sky tone (system.md §2) at card radius.
 class PreJoinCameraOffHint extends StatelessWidget {
   const PreJoinCameraOffHint({super.key, this.onTurnOn});
 
@@ -733,43 +825,37 @@ class PreJoinCameraOffHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final bc = AppBlockColors.of(context, AppBlockTone.sky);
     final ar = AppConfig.lang == 'ar';
     final text = ar
         ? 'تبدأ الكاميرا مغلقة لتوفير البيانات والبطارية. شغّلها متى شئت.'
         : 'Your camera starts off to save data and battery. Turn it on whenever you like.';
     final button = ar ? 'تشغيل' : 'Turn on';
-    // The primary reads on light; its light tone on dark (the deep primary sinks into a dark card).
-    final tint = Theme.of(context).brightness == Brightness.dark ? c.primaryLight : c.primary;
     return Container(
       key: const ValueKey('prejoin.camera_off_hint'),
-      padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 6, 8),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.xs, AppSpace.xs, AppSpace.xs),
       decoration: BoxDecoration(
-        color: tint.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: tint.withValues(alpha: 0.24)),
+        color: bc.surface,
+        borderRadius: AppRadius.cardAll,
+        border: bc.border == null ? null : Border.all(color: bc.border!, width: AppBorder.hairline),
       ),
       child: Row(children: [
-        Container(
-          width: 32,
-          height: 32,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: tint.withValues(alpha: 0.16)),
-          child: Icon(Icons.data_saver_on_rounded, size: 17, color: tint),
+        Icon(Icons.data_saver_on_rounded, size: AppIconSize.md, color: bc.accentInk(c.primary)),
+        const SizedBox(width: AppSpace.sm),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
+            child: Text(text, style: AppType.meta(context).copyWith(color: bc.muted, height: 1.45)),
+          ),
         ),
-        const SizedBox(width: 10),
-        Expanded(child: Text(text, style: appText(12, c: c.textMedium, h: 1.4))),
         if (onTurnOn != null) ...[
-          const SizedBox(width: 4),
-          TextButton.icon(
+          const SizedBox(width: AppSpace.xxs),
+          AppButton.ghost(
             key: const ValueKey('prejoin.camera_off_hint.turn_on'),
+            label: button,
+            icon: Icons.videocam_rounded,
+            size: AppButtonSize.sm,
             onPressed: onTurnOn,
-            style: TextButton.styleFrom(
-              foregroundColor: tint,
-              minimumSize: const Size(48, 44),
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-            ),
-            icon: const Icon(Icons.videocam_rounded, size: 18),
-            label: Text(button, style: appText(12.5, w: FontWeight.w800, c: tint)),
           ),
         ],
       ]),
@@ -777,6 +863,7 @@ class PreJoinCameraOffHint extends StatelessWidget {
   }
 }
 
+/// A glass label over the stage.
 class _Chip extends StatelessWidget {
   const _Chip({required this.icon, required this.label, required this.color});
 
@@ -786,18 +873,18 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
         decoration: BoxDecoration(
           color: LivePalette.shade(0.45),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(AppRadius.pill),
           border: Border.all(color: color.withValues(alpha: 0.45)),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 13, color: color),
-          const SizedBox(width: 5),
+          Icon(icon, size: AppIconSize.xs, color: color),
+          const SizedBox(width: AppSpace.xxs),
           Flexible(
             child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: appText(11, w: FontWeight.w700, c: LivePalette.textHigh)),
+                style: AppType.overline(context).copyWith(color: LivePalette.textHigh, letterSpacing: 0)),
           ),
         ]),
       );
@@ -822,15 +909,16 @@ class PreJoinMicMeter extends StatelessWidget {
       label: 'lr_mic_level'.tr,
       value: '${(level.clamp(0.0, 1.0) * 100).round()}%',
       child: SizedBox(
-        height: 6,
+        height: AppSpace.xxs + AppBorder.focus,
         child: Row(children: [
           for (var i = 0; i < segments; i++) ...[
-            if (i > 0) const SizedBox(width: 3),
+            if (i > 0) const SizedBox(width: AppSpace.xxs),
             Expanded(
+              // A live level: a 90 ms step, not a UI animation (it follows the voice).
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 90),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                   color: i < lit
                       ? (i >= segments - 2 ? c.danger : (i >= segments - 4 ? c.warning : c.success))
                       : c.divider,
@@ -845,7 +933,7 @@ class PreJoinMicMeter extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Big mic / camera pill
+// Mic / camera toggle: a paper control with a state well
 // ─────────────────────────────────────────────────────────────────────────────
 class _TogglePill extends StatelessWidget {
   const _TogglePill({
@@ -866,64 +954,57 @@ class _TogglePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final motion = AppMotion.of(context);
     final enabled = onTap != null;
-    final tone = !enabled ? c.textLight : (on ? c.primary : c.danger);
+    // On: the solid primary well with on-hero ink. Off: the danger tint, the danger icon. No device: a neutral well.
+    final wellFill = !enabled ? c.inputBg : (on ? c.primary : c.dangerTint);
+    final wellInk = !enabled ? c.textLight : (on ? c.onHero : appInk(context, c.danger));
+    final stateInk = !enabled ? c.textMedium : appInk(context, on ? c.primary : c.danger);
+    final radius = AppRadius.controlAll;
     return Semantics(
       button: true,
       toggled: on,
       label: label,
-      child: Material(
-        color: tone.withValues(alpha: enabled ? 0.10 : 0.06),
-        shape: StadiumBorder(side: BorderSide(color: tone.withValues(alpha: enabled ? 0.35 : 0.18))),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: enabled && on ? tone : tone.withValues(alpha: 0.16),
+      child: AppPressScale(
+        scale: 0.97,
+        enabled: enabled,
+        child: Material(
+          color: c.cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: radius,
+            side: BorderSide(color: c.divider, width: AppBorder.hairline),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.md, AppSpace.sm),
+              child: Row(children: [
+                AnimatedContainer(
+                  duration: motion.fast,
+                  curve: AppEase.out,
+                  width: AppSpace.xl + AppSpace.xs,
+                  height: AppSpace.xl + AppSpace.xs,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: wellFill),
+                  child: Icon(on ? onIcon : offIcon, size: AppIconSize.md, color: wellInk),
                 ),
-                child: Icon(on ? onIcon : offIcon, size: 20, color: enabled && on ? LivePalette.textHigh : tone),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                  Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: appText(13, w: FontWeight.w800, c: c.textDark)),
-                  Text(
-                    !enabled ? 'lr_disabled'.tr : (on ? 'lr_on'.tr : 'lr_off'.tr),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: appText(11, w: FontWeight.w600, c: tone),
-                  ),
-                ]),
-              ),
-            ]),
+                const SizedBox(width: AppSpace.sm),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                    Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+                    Text(
+                      !enabled ? 'lr_disabled'.tr : (on ? 'lr_on'.tr : 'lr_off'.tr),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.meta(context).copyWith(color: stateInk, fontWeight: FontWeight.w600),
+                    ),
+                  ]),
+                ),
+              ]),
+            ),
           ),
         ),
       ),
     );
   }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// The one entrance animation: a short fade.
-// ─────────────────────────────────────────────────────────────────────────────
-class _FadeIn extends StatelessWidget {
-  const _FadeIn({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 420),
-        curve: Curves.easeOut,
-        child: child,
-        builder: (_, v, child) => Opacity(opacity: v, child: child),
-      );
 }

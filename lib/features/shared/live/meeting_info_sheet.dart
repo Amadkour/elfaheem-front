@@ -21,6 +21,7 @@ import 'package:flutter/material.dart';
 
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../design/app_kit.dart';
+import '../../../design/app_motion_kit.dart' show AppOdometer;
 import '../../admin/admin_common.dart' show t;
 import 'live_lobby_sheets.dart' show copyLiveLink;
 import 'live_room.dart';
@@ -226,28 +227,27 @@ class MeetingInfoSheet extends StatelessWidget {
       AppSheetHeader(t('عن الغرفة', 'About this room')),
       Flexible(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.lg),
           child: Column(key: const ValueKey('meeting_info'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text(title, style: appText(17, w: FontWeight.w800, c: c.textDark, h: 1.3)),
-            const SizedBox(height: 8),
-            Wrap(spacing: 6, runSpacing: 6, children: [
-              AppBadgePill(kind, icon: i.isMeeting ? Icons.groups_rounded : Icons.cast_for_education_rounded, color: c.primary),
-              AppBadgePill(role, icon: Icons.badge_rounded, color: i.isHost ? c.success : c.textMedium),
+            Semantics(header: true, child: Text(title, style: AppType.headline(context))),
+            const SizedBox(height: AppSpace.xs),
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+              AppStatusBadge(label: kind, tone: AppTone.brand, icon: i.isMeeting ? Icons.groups_rounded : Icons.cast_for_education_rounded),
+              AppStatusBadge(label: role, tone: i.isHost ? AppTone.success : AppTone.neutral, icon: Icons.badge_rounded),
               if (i.recording != LiveInfoRecording.off)
-                AppBadgePill(rec, icon: Icons.fiber_manual_record_rounded, color: c.danger),
+                AppStatusBadge(label: rec, tone: AppTone.danger, dot: i.recording != LiveInfoRecording.paused),
             ]),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpace.md),
+            // the sheet's one block: the room right now, as two key figures (how long it has been live, who is in it)
+            _NowBlock(
+              liveFor: _elapsed(i.liveFor ?? i.elapsed),
+              participants: i.participants,
+            ),
+            const SizedBox(height: AppSpace.xs),
             if ((i.hostName ?? '').trim().isNotEmpty)
               _InfoLine(icon: Icons.person_rounded, label: t('المضيف', 'Host'), value: i.hostName!.trim()),
             if (i.startsAt != null)
               _InfoLine(icon: Icons.event_rounded, label: t('الموعد', 'Scheduled'), value: AppTime.dateTime(i.startsAt!)),
-            _InfoLine(
-              key: const ValueKey('meeting_info.live_for'),
-              icon: Icons.sensors_rounded,
-              label: t('مدة البث', 'Live for'),
-              value: _elapsed(i.liveFor ?? i.elapsed),
-              ltrValue: true,
-            ),
             if (i.liveFor != null)
               _InfoLine(
                 key: const ValueKey('meeting_info.elapsed'),
@@ -256,12 +256,6 @@ class MeetingInfoSheet extends StatelessWidget {
                 value: _elapsed(i.elapsed),
                 ltrValue: true,
               ),
-            _InfoLine(
-              key: const ValueKey('meeting_info.participants'),
-              icon: Icons.people_alt_rounded,
-              label: t('المشاركون الآن', 'Participants now'),
-              value: '${i.participants}',
-            ),
             _InfoLine(icon: Icons.fiber_manual_record_rounded, label: t('التسجيل', 'Recording'), value: rec),
             if (i.freeLeft != null)
               _InfoLine(
@@ -273,13 +267,13 @@ class MeetingInfoSheet extends StatelessWidget {
                 color: i.freeLeft! <= const Duration(minutes: 3) ? c.warning : null,
               ),
             if (i.isHost) ...[
-              const SizedBox(height: 10),
-              Divider(height: 1, color: c.divider),
-              const SizedBox(height: 12),
-              AppSectionTitle(t('للمضيف', 'For the host')),
-              const SizedBox(height: 4),
+              // an editorial section: more air above the heading than below it, no rule
+              Padding(
+                padding: AppSpace.sectionHead,
+                child: Semantics(header: true, child: Text(t('للمضيف', 'For the host'), style: AppType.section(context))),
+              ),
               if (i.linkLoading)
-                const SizedBox(height: 64, child: AppListSkeleton(items: 1, withAvatar: false, padding: EdgeInsets.zero))
+                const SizedBox(height: AppSpace.xxxl, child: AppListSkeleton(items: 1, withAvatar: false, padding: EdgeInsets.zero))
               else if (i.linkUrl == null)
                 _InfoLine(
                   icon: Icons.link_off_rounded,
@@ -295,16 +289,19 @@ class MeetingInfoSheet extends StatelessWidget {
                   ltrValue: true,
                 ),
                 if (onCopyLink != null)
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: AppPill(
-                      key: const ValueKey('meeting_info.copy_link'),
-                      icon: Icons.copy_rounded,
-                      label: t('نسخ الرابط', 'Copy link'),
-                      onTap: onCopyLink,
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(start: _InfoLine.indent, bottom: AppSpace.xs),
+                    child: Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: AppButton.secondary(
+                        key: const ValueKey('meeting_info.copy_link'),
+                        icon: Icons.copy_rounded,
+                        label: t('نسخ الرابط', 'Copy link'),
+                        size: AppButtonSize.sm,
+                        onPressed: onCopyLink,
+                      ),
                     ),
                   ),
-                const SizedBox(height: 6),
               ],
               if (i.admission != null)
                 _InfoLine(
@@ -332,6 +329,65 @@ class MeetingInfoSheet extends StatelessWidget {
   }
 }
 
+/// The room right now: how long it has been live and how many are in it, as the sheet's two key figures on a sky
+/// block (information). The clock is plain text (it ticks every second); the head count rolls when it changes.
+class _NowBlock extends StatelessWidget {
+  const _NowBlock({required this.liveFor, required this.participants});
+
+  final String liveFor;
+  final int participants;
+
+  @override
+  Widget build(BuildContext context) {
+    final bc = AppBlockColors.of(context, AppBlockTone.sky);
+    final figure = AppType.figureLarge(context).copyWith(color: bc.ink);
+    Widget cell({required IconData icon, required String label, required Widget value}) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(children: [
+              Icon(icon, size: AppIconSize.xs, color: bc.muted),
+              const SizedBox(width: AppSpace.xxs),
+              Flexible(
+                child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: bc.muted)),
+              ),
+            ]),
+            const SizedBox(height: AppSpace.xxs),
+            FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.centerStart, child: value),
+          ],
+        );
+    return AppBlock(
+      tone: AppBlockTone.sky,
+      padding: const EdgeInsets.all(AppSpace.md),
+      child: Row(children: [
+        Expanded(
+          child: cell(
+            icon: Icons.sensors_rounded,
+            label: t('مدة البث', 'Live for'),
+            value: Text(liveFor, key: const ValueKey('meeting_info.live_for'), textDirection: TextDirection.ltr, style: figure),
+          ),
+        ),
+        Container(
+          width: AppBorder.hairline,
+          height: AppSpace.xxl,
+          margin: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+          color: bc.faint,
+        ),
+        Expanded(
+          child: cell(
+            icon: Icons.people_alt_rounded,
+            label: t('المشاركون الآن', 'Participants now'),
+            value: KeyedSubtree(
+              key: const ValueKey('meeting_info.participants'),
+              child: AppOdometer('$participants', style: figure, textDirection: TextDirection.ltr),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
 /// Icon · label over value.
 class _InfoLine extends StatelessWidget {
   const _InfoLine({super.key, required this.icon, required this.label, required this.value, this.ltrValue = false, this.color});
@@ -342,29 +398,35 @@ class _InfoLine extends StatelessWidget {
   final bool ltrValue;
   final Color? color;
 
+  /// The icon tile and the gap after it: what a follow-up action under a line indents by.
+  static const double _tile = AppSpace.xl;
+  static const double indent = _tile + AppSpace.sm;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final tone = color ?? c.primary;
+    final ink = appInk(context, tone);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(color: (color ?? c.primary).withValues(alpha: 0.10), borderRadius: BorderRadius.circular(10)),
-          child: Icon(icon, size: 17, color: color ?? c.primary),
+          width: _tile,
+          height: _tile,
+          decoration: BoxDecoration(color: tone.withValues(alpha: 0.10), borderRadius: AppRadius.chipAll),
+          child: Icon(icon, size: AppIconSize.sm, color: ink),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: appText(11.5, c: c.textLight, w: FontWeight.w600)),
-            const SizedBox(height: 2),
+            Text(label, style: AppType.meta(context)),
+            const SizedBox(height: AppSpace.xxs / 2),
             Text(
               value,
               textDirection: ltrValue ? TextDirection.ltr : null,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
-              style: appText(13.5, c: color ?? c.textDark, w: FontWeight.w700, h: 1.35),
+              style: AppType.bodyStrong(context).copyWith(color: color == null ? null : ink, height: 1.35),
             ),
           ]),
         ),
