@@ -672,7 +672,7 @@ class HomeActionCard extends StatelessWidget {
       child: Icon(icon, size: 21, color: appInk(context, color)),
     );
     if (attentionKey != null) iconBox = homeAttentionBadge(attentionKey!, iconBox);
-    final card = Material(
+    final card = AppLift(radius: r, child: Material(
       color: c.cardBg,
       borderRadius: r,
       child: InkWell(
@@ -682,7 +682,7 @@ class HomeActionCard extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: r,
-            border: Border.all(color: hot ? color.withValues(alpha: 0.45) : c.divider, width: hot ? 1.4 : 1),
+            border: Border.all(color: hot ? color.withValues(alpha: 0.45) : c.cardEdge, width: hot ? 1.4 : 1),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -706,7 +706,7 @@ class HomeActionCard extends StatelessWidget {
           ]),
         ),
       ),
-    );
+    ));
     // The description is no longer drawn (a calmer grid: icon · count · label); it stays the tooltip on hover /
     // long-press and what a screen reader says after the label.
     final hint = subtitle;
@@ -968,7 +968,8 @@ class _HomeAgendaState extends State<HomeAgenda> {
         decoration: BoxDecoration(
           color: c.cardBg,
           borderRadius: BorderRadius.circular(c.radiusLarge),
-          border: Border.all(color: c.divider),
+          border: Border.all(color: c.cardEdge),
+          boxShadow: AppShadow.card(context),
         ),
         child: Column(children: [
           for (var i = 0; i < items.length; i++)

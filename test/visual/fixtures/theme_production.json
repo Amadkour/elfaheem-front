@@ -11,16 +11,16 @@
  "warning": "#F2A93B",
  "purple": "#7C6CE0",
  "accent2": "#C98A3D",
- "background": "#FBF7EC",
+ "background": "#F1F4F0",
  "surface_card": "#FFFFFF",
  "card_bg": "#FFFFFF",
  "text_field_background": "#F5F8F5",
  "divider": "#E4EBE5",
  "text_dark": "#14201A",
  "text_medium": "#46544D",
- "text_light": "#68756D",
+ "text_light": "#617068",
  "text_action": "#0F7B5F",
- "second_text": "#68756D",
+ "second_text": "#617068",
  "dark_background": "#0C1511",
  "dark_surface": "#121D18",
  "dark_card": "#1A2822",
@@ -70,9 +70,9 @@
   "#0F7B5F"
  ],
  "gradient_background": [
-  "#FBF7EC",
+  "#F1F4F0",
   "#0F7B5F",
-  "#FBF7EC"
+  "#F1F4F0"
  ],
  "gradient_dark_background": [
   "#0C1511",

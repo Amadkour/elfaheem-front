@@ -179,15 +179,12 @@ class AppKpiCard extends StatelessWidget {
       label: semantic,
       excludeSemantics: true,
       onTap: onTap,
-      // a tappable card presses in (D-582); a resting card is tone + hairline, no shadow (D-612)
+      // a tappable card presses in (D-582); a resting card is white with one soft shadow (D-632)
       child: AppPressScale(
         enabled: onTap != null,
-        child: Material(
+        child: AppLift(child: Material(
           color: c.cardBg,
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.cardAll,
-            side: BorderSide(color: c.divider, width: AppBorder.hairline),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: AppShadow.cardEdge(context)),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: onTap,
@@ -199,7 +196,7 @@ class AppKpiCard extends StatelessWidget {
               ),
             ),
           ),
-        ),
+        )),
       ),
     );
   }
@@ -218,7 +215,8 @@ class AppKpiCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: c.cardBg,
             borderRadius: AppRadius.cardAll,
-            border: Border.all(color: c.divider, width: AppBorder.hairline),
+            border: Border.fromBorderSide(AppShadow.cardEdge(context)),
+            boxShadow: AppShadow.card(context),
           ),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [

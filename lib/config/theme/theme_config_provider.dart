@@ -222,6 +222,14 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       ? (_model?.darkBackground ?? AppTheme.darkBackground)
       : (_model?.cardBg ?? AppTheme.cardBg);
 
+  /// The edge of a resting card (D-632): in light mode a hairline at very low alpha (the white card and its soft
+  /// shadow do the lifting, so the edge is only felt); in dark mode, where a shadow barely shows, a quiet step above
+  /// the card tone. High contrast falls back to the full [divider].
+  Color get cardEdge {
+    if (_hc) return divider;
+    return isDark ? Color.lerp(cardBg, textDark, 0.07)! : shadowTone.withValues(alpha: 0.06);
+  }
+
   Color get inputBg => isDark
       ? (_model?.inputBgDark ?? AppTheme.inputBgDark)
       : (_model?.inputBg ?? AppTheme.inputBg);
@@ -742,15 +750,16 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     final base = isDark
         ? (_model?.cardShadowColorDark ?? AppTheme.cardShadowColorDark)
         : (_model?.cardShadowColor ?? AppTheme.cardShadowColor);
-    // level 1 (D-612): a whisper in the warm shadow tone; a resting card leans on tone + hairline instead
+    // level 1 (D-632): the white card lifts off the tinted page on ONE soft shadow (a wide, low ambient plus a tight
+    // contact line) instead of a visible border; dark mode keeps its deeper pair and the raised card tone
     return isDark
         ? [
       BoxShadow(color: base.withValues(alpha: 0.26), blurRadius: 18, offset: const Offset(0, 6)),
       BoxShadow(color: base.withValues(alpha: 0.16), blurRadius: 3, offset: const Offset(0, 1)),
     ]
         : [
-      BoxShadow(color: base.withValues(alpha: 0.035), blurRadius: 16, offset: const Offset(0, 6)),
-      BoxShadow(color: base.withValues(alpha: 0.03), blurRadius: 3, offset: const Offset(0, 1)),
+      BoxShadow(color: base.withValues(alpha: 0.06), blurRadius: 24, offset: const Offset(0, 8)),
+      BoxShadow(color: base.withValues(alpha: 0.05), blurRadius: 2, offset: const Offset(0, 1)),
     ];
   }
 

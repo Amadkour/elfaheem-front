@@ -131,7 +131,7 @@ class AppBlockColors {
       );
     }
     final Color? border = tone == AppBlockTone.paper
-        ? c.divider
+        ? c.cardEdge
         : c.isDark
             ? Color.lerp(surface, c.textDark, 0.08)
             : null;
@@ -194,9 +194,10 @@ class AppBlock extends StatelessWidget {
     if (onTap != null) {
       body = InkWell(onTap: onTap, borderRadius: radius, child: body);
     }
+    final paper = tone == AppBlockTone.paper;
     body = SizedBox(
       width: double.infinity,
-      child: Material(
+      child: _maybeLift(paper, radius, Material(
         color: colors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: radius,
@@ -204,13 +205,17 @@ class AppBlock extends StatelessWidget {
         ),
         clipBehavior: Clip.antiAlias,
         child: body,
-      ),
+      )),
     );
     if (onTap != null) {
       body = Semantics(button: true, label: semanticLabel, child: body);
     }
     return _AppBlockScope(colors: colors, child: body);
   }
+
+  /// A paper block is the white card of the page, so it lifts like one (D-632); a tinted block stays flat.
+  static Widget _maybeLift(bool lift, BorderRadius radius, Widget child) =>
+      lift ? AppLift(radius: radius, child: child) : child;
 }
 
 class _AppBlockScope extends InheritedWidget {

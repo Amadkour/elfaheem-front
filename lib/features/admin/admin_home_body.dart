@@ -442,7 +442,7 @@ class _NeedsYou extends StatelessWidget {
           icon: Icons.hourglass_top_rounded,
           title: 'admin_pending_subscriptions'.tr,
           count: data.pendingSubscriptions,
-          color: c.purple,
+          color: c.accent2, // gold, a theme tone (D-632), not the borrowed purple
           onTap: actions.openSubscriptions,
         ),
       if (data.hasOrganizations && !data.orgApprovalsInAlerts && data.orgPendingApproval > 0)

@@ -65,14 +65,17 @@ void main() {
     h.dispose();
   });
 
-  testWidgets('a resting card casts no shadow and wears the warm hairline', (tester) async {
+  testWidgets('a resting card is the white card on one soft shadow with a near-invisible edge (D-632)', (tester) async {
     await tester.pumpWidget(layoutHost(const AppCard(child: Text('x'))));
     await tester.pump(const Duration(milliseconds: 100));
     final m = tester.widget<Material>(find.descendant(of: find.byType(AppCard), matching: find.byType(Material)).first);
     final c = tester.element(find.text('x')).colors;
     expect(m.color, c.cardBg);
     expect(m.elevation, 0);
-    expect((m.shape as RoundedRectangleBorder).side.color, c.divider);
+    expect((m.shape as RoundedRectangleBorder).side.color, c.cardEdge);
+    final lift = tester.widget<AppLift>(find.descendant(of: find.byType(AppCard), matching: find.byType(AppLift)));
+    expect(lift.radius ?? AppRadius.cardAll, AppRadius.cardAll);
+    expect(c.cardShadow, isNotEmpty);
     expect((m.shape as RoundedRectangleBorder).borderRadius, AppRadius.cardAll);
   });
 

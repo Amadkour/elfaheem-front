@@ -32,7 +32,7 @@ import '../../../../core/plural.dart' show arabicPluralForm;
 import '../../../../design/app_contrast.dart' show ensureContrast;
 import '../../../../design/app_display.dart' show syncMotionLoop;
 import '../../../../design/app_kit.dart'
-    show AppSpace, AppRadius, AppType, AppIconSize, AppBorder, AppTouch, AppMotion, AppBlockColors, AppBlockTone,
+    show AppSpace, AppRadius, AppType, AppIconSize, AppBorder, AppShadow, AppTouch, AppMotion, AppBlockColors, AppBlockTone,
         appInk, appInkOn, appInkOnFill, appTintOn;
 import '../../../../design/app_motion_kit.dart' show AppEase, AppPressScale, appMotionOff;
 import '../../../../utils/helpers.dart';
@@ -932,9 +932,11 @@ class CourseSessionTile extends StatelessWidget {
               ? c.danger.withValues(alpha: c.isDark ? 0.5 : 0.32)
               : next
               ? (sky.border ?? Color.lerp(sky.surface, c.textDark, 0.12)!)
-              : c.divider,
+              : (surface == c.cardBg ? c.cardEdge : c.divider),
           width: AppBorder.hairline,
         ),
+        // a plain session is the white card on the tinted page and lifts like one (D-632); done / locked recede
+        boxShadow: surface == c.cardBg ? AppShadow.card(context) : null,
       ),
       child: ClipRRect(
         borderRadius: radius,

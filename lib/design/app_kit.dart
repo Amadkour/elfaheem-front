@@ -369,14 +369,14 @@ class AppCard extends StatelessWidget {
       enabled: tappable,
       child: Padding(
         padding: margin ?? EdgeInsets.zero,
-        child: Material(
-          color: c.cardBg,
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.cardAll,
-            side: BorderSide(color: c.divider, width: AppBorder.hairline),
+        // the white card on the tinted page: one soft shadow, a near-invisible edge (D-632)
+        child: AppLift(
+          child: Material(
+            color: c.cardBg,
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: AppShadow.cardEdge(context)),
+            clipBehavior: Clip.antiAlias,
+            child: tappable ? InkWell(onTap: onTap, onLongPress: onLongPress, child: body) : body,
           ),
-          clipBehavior: Clip.antiAlias,
-          child: tappable ? InkWell(onTap: onTap, onLongPress: onLongPress, child: body) : body,
         ),
       ),
     );

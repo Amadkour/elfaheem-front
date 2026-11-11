@@ -13,7 +13,8 @@
 //   appCompactNumber(1284) → "1.3K"               the figure format of tiles and ticks
 //
 // Colour (Warm Editorial, system.md §2, validated with the dataviz lightness script): five categorical slots in a
-// FIXED order — the primary (emerald) · peach (`accent`) · sky (`accent3`) · gold (`accent2`) · the theme's purple —
+// FIXED order — the primary (emerald) · peach (`accent`) · sage (`accent3`) · gold (`accent2`) · terracotta (gold
+// turned 30° toward red) — all from the theme's own block and accent roles, never the `purple` role (D-632),
 // each snapped into the mode's OKLab lightness band (light 0.45–0.72, dark 0.50–0.65), so the pale block tints
 // become readable series and a server theme stays legible in both modes. Series beyond five fold into "other"
 // (textLight). success / warning / danger are STATUS colours and never series colours. Every chart draws in once
@@ -128,7 +129,8 @@ Color appInk(BuildContext context, Color tone) {
   return h.toColor().withValues(alpha: tone.a);
 }
 
-/// The categorical palette of the open theme (fixed order, see the header): emerald · peach · sky · gold · purple,
+/// The categorical palette of the open theme (fixed order, see the header): emerald · peach · sage · gold ·
+/// terracotta (D-632: the borrowed `purple` role drew violet rings on an emerald theme),
 /// each snapped into the lightness band so the pale block tints become series colours. Index past the end →
 /// "other". A theme whose peach and gold land on the same hue is still told apart by lightness and saturation.
 List<Color> appChartPalette(BuildContext context) {
@@ -140,8 +142,10 @@ List<Color> appChartPalette(BuildContext context) {
     return h.withSaturation(math.max(h.saturation, 0.55)).toColor();
   }
 
+  final gold = HSLColor.fromColor(c.accent2);
+  final terracotta = gold.withHue((gold.hue - 30 + 360) % 360).withSaturation(math.max(gold.saturation, 0.55)).toColor();
   return [
-    for (final x in [c.primary, vivid(c.accent), vivid(c.accent3), c.accent2, c.purple]) chartSnapLightness(x, dark: dark),
+    for (final x in [c.primary, vivid(c.accent), vivid(c.accent3), c.accent2, terracotta]) chartSnapLightness(x, dark: dark),
   ];
 }
 
