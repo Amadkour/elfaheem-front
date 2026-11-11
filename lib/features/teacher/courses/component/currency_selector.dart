@@ -2,7 +2,7 @@
 //
 // Premium horizontal currency picker — SAR / EGP / USD, each translated via
 // `.tr` (ar/en depending on AppConfig.lang) with the active one highlighted
-// with a gradient fill + shadow. Built with a Wrap so it degrades cleanly
+// solid in the primary (the selection colour). Built with a Wrap so it degrades cleanly
 // from a wide web card down to a narrow phone width without overflowing.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -11,7 +11,8 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../student/models.dart' show AppCurrency, AppCurrencyX;
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppBorder, AppFieldLabel, AppIconSize, AppMotion, AppRadius, AppSpace, AppTouch, AppType;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase;
 
 class CurrencySelector extends StatelessWidget {
   final AppCurrency selected;
@@ -38,16 +39,7 @@ class CurrencySelector extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (label != null) ...[
-          Text(
-            label!,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              fontFamily: AppFonts.display,
-              color: context.colors.heroShade.withValues(alpha: 0.55),
-            ),
-          ),
-          const SizedBox(height: 8),
+          AppFieldLabel(label!),
         ],
         LayoutBuilder(
           builder: (context, constraints) {
@@ -55,8 +47,8 @@ class CurrencySelector extends StatelessWidget {
             // on narrow phone widths, chips wrap onto a second row cleanly.
             final isWide = constraints.maxWidth > 420;
             return Wrap(
-              spacing: 10,
-              runSpacing: 10,
+              spacing: AppSpace.xs,
+              runSpacing: AppSpace.xs,
               children: AppCurrency.values
                   .map((c) => _CurrencyChip(
                 currency: c,
@@ -88,71 +80,54 @@ class _CurrencyChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
+    final c = context.colors;
+    final ink = isSelected ? c.onHero : c.textDark;
+    // the chosen one is solid emerald (the selection colour), the others quiet wells; no shadow, no gradient
+    return Semantics(
+      button: true,
+      selected: isSelected,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        padding: EdgeInsets.symmetric(
-          horizontal: isWide ? 20 : 16,
-          vertical: 12,
-        ),
+        duration: AppMotion.of(context).fast,
+        curve: AppEase.out,
         decoration: BoxDecoration(
-          gradient: isSelected ? context.colors.primaryGradient : null,
-          color: isSelected ? null : context.colors.cardBg,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected
-                ? Colors.transparent
-                : context.colors.divider,
-            width: 1.2,
-          ),
-          boxShadow: isSelected
-              ? context.colors.primaryShadow
-              : [
-            BoxShadow(
-              color: context.colors.heroShade.withValues(alpha: 0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          color: isSelected ? c.primary : c.inputBg,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          border: Border.all(color: isSelected ? c.primary : c.divider, width: AppBorder.hairline),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isSelected
-                    ? context.colors.cardBg
-                    : context.colors.textLight.withValues(alpha: 0.4),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouch.min),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: isWide ? AppSpace.lg : AppSpace.md),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isSelected) ...[
+                      Icon(Icons.check_rounded, size: AppIconSize.sm, color: ink),
+                      const SizedBox(width: AppSpace.xs),
+                    ],
+                    Flexible(
+                      child: Text(
+                        currency.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: ink),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpace.xs),
+                    Text(
+                      currency.symbol,
+                      style: AppType.meta(context).copyWith(color: isSelected ? c.onHeroMuted : c.textMedium),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(width: 8),
-            Text(
-              currency.label,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: isSelected ? context.colors.onHero : context.colors.textDark,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              currency.symbol,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isSelected
-                    ? context.colors.onHero.withValues(alpha: 0.85)
-                    : context.colors.textMedium,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

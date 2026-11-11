@@ -23,7 +23,7 @@ import '../sessions/sessions_provider.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_infinite_scroll.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppActionCard, AppButton, AppSheetContent, AppWidth, appConfirm, appText, showAppSheet;
+import 'package:flutter_education_app/design/app_kit.dart' show AppActionCard, AppBorder, AppButton, AppIconSize, AppRadius, AppSheetContent, AppSpace, AppTouch, AppType, AppWidth, appConfirm, showAppSheet;
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/plural.dart' show countText;
 import 'package:flutter_education_app/design/context_switcher.dart' show contextSwitchVisible, openOrgDashboard, showContextSwitcherSheet;
@@ -250,7 +250,7 @@ class _ScopeHeader extends StatelessWidget {
       // each course (Exams, attendance, tools) — not the dashboard's home, where they could not be found
       final holding = scope.isPersonal ? orgsHoldingCourses(p.scopes) : const <CourseScopeCount>[];
       return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxs),
         child: CourseScopeBanner(
           scope: scope,
           org: scope.isOrg ? courseOrgFor(scope.orgId!, p.scopes, ctl.current) : null,
@@ -276,7 +276,7 @@ Future<void> openOrgCoursesOf(BuildContext context, List<CourseScopeCount> holdi
       children: [
         for (final h in holding)
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
             child: AppActionCard(
               key: ValueKey('course_scope.org.${h.org!.id}'),
               icon: Icons.account_balance_rounded,
@@ -318,7 +318,7 @@ class _CoursesProgress extends StatelessWidget {
       loadingMore: p.loadingMore || p.isLoading,
       done: done,
       icon: Icons.menu_book_rounded,
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
     );
   }
 }
@@ -336,7 +336,7 @@ class _FloatingAddBtn extends StatelessWidget {
     backgroundColor: context.colors.primary,
     foregroundColor: context.colors.onHero,
     elevation: 2,
-    child: const Icon(Icons.add_rounded, size: 26),
+    child: const Icon(Icons.add_rounded, size: AppIconSize.lg),
   );
 }
 
@@ -436,9 +436,9 @@ class _CourseListState extends State<_CourseList> {
               slivers: [
                 if (error != null) SliverToBoxAdapter(child: error),
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
                   sliver: CourseCardSliver(
-                    width: math.max(0.0, box.maxWidth - 32),
+                    width: math.max(0.0, box.maxWidth - 2 * AppSpace.md),
                     count: courses.length,
                     itemBuilder: (_, i, shape) => _TeacherCourseCard(
                       key: ValueKey(courses[i].id),
@@ -449,7 +449,7 @@ class _CourseListState extends State<_CourseList> {
                 ),
                 // room for the floating "Add course" button
                 SliverPadding(
-                  padding: const EdgeInsets.only(bottom: 96),
+                  padding: const EdgeInsets.only(bottom: AppSpace.xxl * 2),
                   sliver: SliverToBoxAdapter(child: footer),
                 ),
               ],
@@ -548,26 +548,26 @@ class _TeacherCourseCard extends StatelessWidget {
     ];
     if (actions.isEmpty) return null;
     return SizedBox(
-      width: 40,
-      height: 40,
+      width: AppTouch.min,
+      height: AppTouch.min,
       child: PopupMenuButton<_CourseAction>(
         tooltip: 'course_list_more'.tr,
         padding: EdgeInsets.zero,
-        iconSize: 20,
+        iconSize: AppIconSize.md,
         icon: Icon(Icons.more_vert_rounded, color: c.textMedium),
         color: c.cardBg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: c.divider)),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: BorderSide(color: c.divider, width: AppBorder.hairline)),
         onSelected: (a) => _act(context, a),
         itemBuilder: (_) => [
           for (final (action, icon, label) in actions)
             PopupMenuItem(
               value: action,
               child: Row(children: [
-                Icon(icon, size: 18, color: action == _CourseAction.delete ? c.danger : c.textMedium),
-                const SizedBox(width: 12),
+                Icon(icon, size: AppIconSize.sm, color: action == _CourseAction.delete ? c.danger : c.textMedium),
+                AppSpace.gapSm,
                 Text(
                   label,
-                  style: appText(14, w: FontWeight.w400, c: action == _CourseAction.delete ? c.danger : c.textDark),
+                  style: AppType.row(context).copyWith(color: action == _CourseAction.delete ? c.danger : c.textDark),
                 ),
               ]),
             ),

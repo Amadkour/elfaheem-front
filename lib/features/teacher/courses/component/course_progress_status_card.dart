@@ -2,9 +2,9 @@
 //
 // Segmented "in progress / completed" control for the teacher to mark a
 // course's content lifecycle — separate from publish/draft (visibility).
-// Matches the _FormCard / _StatusCard visual language already used in
-// course_form_screen.dart, but is self-contained so it can also be dropped
-// into the course hero / details screen.
+// Matches the _FormCard / _StatusCard visual language of course_form_screen.dart (paper on a warm hairline, a quiet
+// glyph and the editorial section title), but is self-contained so it can also be dropped into the course hero /
+// details screen. Completed is emerald (done), in progress the primary's quiet tint.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
@@ -14,7 +14,9 @@ import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../student/models.dart' show CourseStatus, CourseStatusX;
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_kit.dart'
+    show AppBorder, AppIconSize, AppMotion, AppRadius, AppSpace, AppStatusBadge, AppTone, AppTouch, AppType, appInkOn, appTintOn;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase;
 
 class CourseProgressStatusCard extends StatelessWidget {
   final CourseStatus status;
@@ -32,6 +34,9 @@ class CourseProgressStatusCard extends StatelessWidget {
     this.editable = true,
   });
 
+  /// The loading spinner beside the title.
+  static const double _spinner = AppIconSize.sm;
+
   @override
   Widget build(BuildContext context) => ParentComponent(
     featureKey: 'course_form.progress_status',
@@ -42,81 +47,57 @@ class CourseProgressStatusCard extends StatelessWidget {
     if (!editable) {
       return _StatusPill(status: status);
     }
+    final c = context.colors;
 
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: context.colors.cardBg,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: context.colors.heroShade.withValues(alpha: 0.06),
-            blurRadius: 18,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: c.cardBg,
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
+      padding: const EdgeInsets.all(AppSpace.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-            child: Row(
-              children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    gradient: context.colors.primaryGradient,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.timeline_rounded,
-                    size: 17,
-                    color: context.colors.onHero,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
+          Row(
+            children: [
+              Icon(Icons.timeline_rounded, size: AppIconSize.md, color: c.textMedium),
+              const SizedBox(width: AppSpace.sm),
+              Expanded(
+                child: Semantics(
+                  header: true,
                   child: Text(
                     'course_progress_status_title'.tr,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      fontFamily: AppFonts.display,
-                      color: context.colors.textDark,
-                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppType.section(context),
                   ),
                 ),
-                if (isLoading)
-                  const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: AppLoadingIndicator(),
-                  ),
-              ],
-            ),
+              ),
+              if (isLoading)
+                const SizedBox(
+                  width: _spinner,
+                  height: _spinner,
+                  child: AppLoadingIndicator(),
+                ),
+            ],
           ),
-          Divider(height: 1, color: context.colors.heroShade.withValues(alpha: 0.06)),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-            child: Row(
-              children: CourseStatus.values
-                  .where((s) => s != CourseStatus.all)
-                  .map(
-                    (s) => Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: _SegmentButton(
-                      status: s,
-                      isSelected: s == status,
-                      isLoading: isLoading,
-                      onTap: () => onChanged(s),
-                    ),
+          const SizedBox(height: AppSpace.sm),
+          Row(
+            children: [
+              for (final (i, s) in CourseStatus.values.where((s) => s != CourseStatus.all).indexed) ...[
+                if (i > 0) const SizedBox(width: AppSpace.xs),
+                Expanded(
+                  child: _SegmentButton(
+                    status: s,
+                    isSelected: s == status,
+                    isLoading: isLoading,
+                    onTap: () => onChanged(s),
                   ),
                 ),
-              )
-                  .toList(),
-            ),
+              ],
+            ],
           ),
         ],
       ),
@@ -137,8 +118,9 @@ class _SegmentButton extends StatelessWidget {
     required this.onTap,
   });
 
+  /// Completed = done (emerald success); in progress = the primary.
   Color _color(BuildContext context) => status == CourseStatus.completed
-      ? context.colors.accent2
+      ? context.colors.success
       : context.colors.primary;
 
   IconData get _icon => status == CourseStatus.completed
@@ -147,36 +129,51 @@ class _SegmentButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final color = _color(context);
-    return GestureDetector(
-      onTap: isLoading ? null : onTap,
+    final tint = appTintOn(context, color);
+    final ink = isSelected ? appInkOn(context, color, tint) : c.textMedium;
+    return Semantics(
+      button: true,
+      selected: isSelected,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        duration: AppMotion.of(context).fast,
+        curve: AppEase.out,
         decoration: BoxDecoration(
-          color: isSelected ? color.withValues(alpha: 0.12) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          color: isSelected ? tint : c.inputBg,
+          borderRadius: AppRadius.controlAll,
           border: Border.all(
-            color: isSelected ? color.withValues(alpha: 0.5) : context.colors.divider,
-            width: 1.2,
+            color: isSelected ? Color.lerp(tint, color, 0.5)! : c.divider,
+            width: AppBorder.hairline,
           ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(_icon, size: 20, color: isSelected ? color : context.colors.textLight),
-            const SizedBox(height: 4),
-            Text(
-              status.label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: isSelected ? color : context.colors.textMedium,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: AppRadius.controlAll,
+            onTap: isLoading ? null : onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouch.primary),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpace.sm, horizontal: AppSpace.xxs),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(_icon, size: AppIconSize.md, color: isSelected ? ink : c.textLight),
+                    const SizedBox(height: AppSpace.xxs),
+                    Text(
+                      status.label,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: ink),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -192,37 +189,10 @@ class _StatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isCompleted = status == CourseStatus.completed;
-    final color = isCompleted ? context.colors.accent2 : context.colors.primaryLight;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isCompleted ? Icons.check_circle_rounded : Icons.play_circle_fill_rounded,
-            size: 13,
-            color: color,
-          ),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              status.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: color,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return AppStatusBadge(
+      label: status.label,
+      tone: isCompleted ? AppTone.success : AppTone.brand,
+      icon: isCompleted ? Icons.check_circle_rounded : Icons.play_circle_fill_rounded,
     );
   }
 }

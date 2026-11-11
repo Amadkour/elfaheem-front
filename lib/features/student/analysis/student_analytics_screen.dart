@@ -15,10 +15,8 @@
 //
 // Uses the dashboard's StudentAnalyticsProvider when there is one (so the dashboard's refresh button refreshes what
 // you see), otherwise creates its own.
-import 'package:flutter_education_app/design/app_charts.dart' show appChartPalette;
-import 'package:flutter_education_app/design/app_gradients.dart';
-import 'package:flutter_education_app/design/app_header.dart';
-import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -34,9 +32,9 @@ import 'attendance/student_attendance_model.dart';
 import 'flags/student_flags_screen.dart';
 import 'student_analytics_profile_screen.dart';
 import 'student_analytics_provider.dart';
+import 'analytics_editorial.dart';
 import 'student_analytics_widgets.dart';
 import 'student_course_analytics_screen.dart';
-import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 class StudentAnalyticsScreen extends StatelessWidget {
   const StudentAnalyticsScreen({super.key});
@@ -174,25 +172,17 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
     if (prov.loading && !prov.loadedOnce) {
       body = const AnSummarySkeleton();
     } else if (prov.error != null && prov.courses.isEmpty) {
-      body = _withHeader(prov, AnErrorRetry(message: prov.error!, onRetry: prov.loadCourses));
+      body = _withHeader(prov, AppErrorState(message: prov.error!, onRetry: prov.loadCourses));
     } else if (prov.courses.isEmpty) {
       body = _withHeader(
         prov,
-        AnEmpty(
+        AppEmpty(
           icon: Icons.school_outlined,
           title: 'an_no_courses'.tr,
-          sub: 'an_go_enroll'.tr,
+          message: 'an_go_enroll'.tr,
           // the dashboard listens: the "My courses" tab opens (nothing happens when that tab is switched off)
-          action: FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: c.primary,
-              minimumSize: const Size(0, 48),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-            onPressed: () => AppNavigator.requestedTab.value = 'my_courses',
-            icon: Icon(Icons.menu_book_rounded, color: c.onHero, size: 20),
-            label: Text('my_courses'.tr, style: anText(14, w: FontWeight.w700, c: c.onHero)),
-          ),
+          actionLabel: 'my_courses'.tr,
+          onAction: () => AppNavigator.requestedTab.value = 'my_courses',
         ),
       );
     } else {
@@ -218,33 +208,32 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
 
   Widget _header(StudentAnalyticsProvider prov) {
     final first = (prov.profile?.name ?? '').trim().split(RegExp(r'\s+')).first;
-    return AnPageHeader(
+    return AnalyticsMasthead(
       title: anTr('an2_title', 'Analytics'),
       subtitle: first.isEmpty
           ? anTr('an2_sub_student', 'How your learning is going')
           : anFmt('an2_sub_student_name', {'name': first}, 'Hi {name}, here is how your learning is going.'),
-      actions: [AnHeaderIcon(icon: Icons.refresh_rounded, tooltip: anTr('an_refresh', 'Refresh'), onTap: prov.loadCourses)],
+      actions: [AnalyticsHeaderAction(icon: Icons.refresh_rounded, tooltip: anTr('an_refresh', 'Refresh'), onTap: prov.loadCourses)],
     );
   }
 
   Widget _withHeader(StudentAnalyticsProvider prov, Widget child) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xl),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           _header(prov),
-          const SizedBox(height: 24),
+          AppSpace.gapLg,
           child,
         ]),
       );
 
   Widget _summary(StudentAnalyticsProvider prov) {
-    final c = context.colors;
     final facts = studentCourseFacts(prov);
     final totals = anTotals(facts);
     final p = prov.profile;
     final metrics = p == null ? const [AnMetric.progress] : anAvailableMetrics(facts);
     final metric = metrics.contains(_metric) ? _metric : (metrics.isEmpty ? AnMetric.progress : metrics.first);
 
-    // ── hero
+    // ── hero: the page's one memorable element, the learner's rings on the peach block
     final rings = [
       for (final m in p == null ? const [AnMetric.progress] : AnMetric.values)
         AnRingSpec(
@@ -258,79 +247,81 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
     ];
     final hero = ParentComponent(
       featureKey: 'analytics.header',
-      child: AnSummaryHero(
+      child: AnalyticsHeroBlock(
         headline: anHeadlineText(studentHeadline(facts)),
         rings: rings,
         overall: p == null ? totals.progress : totals.overall,
         overallLabel: p == null ? anMetricLabel(AnMetric.progress) : null,
+        memoryKey: 'analytics.overall',
         footer: p == null
             ? null
             : ParentComponent(
                 featureKey: 'data_lab.my_profile',
-                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Divider(height: 1, thickness: 0.7, color: c.divider.withValues(alpha: 0.7)),
-                  const SizedBox(height: 4),
-                  AnShowAllRow(
-                    label: anTr('an_full_profile', 'My full analytics profile'),
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentAnalyticsProfileScreen.forStudent())),
-                  ),
-                ]),
+                child: AnShowAllRow(
+                  label: anTr('an_full_profile', 'My full analytics profile'),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentAnalyticsProfileScreen.forStudent())),
+                ),
               ),
       ),
     );
 
-    // ── tiles
+    // ── tiles: four counts; the key one (exams passed, or what is finished without the profile) is a block that rolls
     final allExams = <(EnrolledCourse, DlExam)>[
       for (final course in prov.courses)
         for (final e in prov.blockOf(course.id)?.exams ?? const <DlExam>[])
           if (e.best != null) (course, e),
     ];
     final passed = allExams.where((x) => x.$2.passed ?? (x.$2.best! >= 50)).length;
-    final tiles = AnStatTiles(tiles: [
-      AnTileSpec(
-        icon: Icons.menu_book_rounded,
-        label: anTr('an_courses', 'Courses'),
-        value: '${prov.courses.length}',
-        color: anMetricColor(context, AnMetric.progress),
-        onTap: _openAll,
-      ),
+    final completed = facts.where((x) => (x.progress ?? 0) >= 100).length;
+    final tiles = AppKpiGrid(children: [
       if (p != null) ...[
-        AnTileSpec(
-          icon: Icons.event_available_rounded,
-          label: anTr('an2_tile_attended', 'Sessions attended'),
-          value: totals.held == 0 ? '–' : '${totals.attended}/${totals.held}',
-          color: anMetricColor(context, AnMetric.attendance),
-        ),
-        AnTileSpec(
+        AppKpiCard(
           icon: Icons.verified_rounded,
           label: anTr('an2_tile_passed', 'Exams passed'),
           value: allExams.isEmpty ? '–' : '$passed/${allExams.length}',
-          color: anMetricColor(context, AnMetric.exams),
+          highlight: true,
+          // every exam passed is an achievement: the gold block
+          tone: allExams.isNotEmpty && passed == allExams.length ? AppBlockTone.gold : AppBlockTone.peach,
         ),
-        AnTileSpec(
+        AppKpiCard(
+          icon: Icons.menu_book_rounded,
+          label: anTr('an_courses', 'Courses'),
+          value: '${prov.courses.length}',
+          onTap: _openAll,
+        ),
+        AppKpiCard(
+          icon: Icons.event_available_rounded,
+          label: anTr('an2_tile_attended', 'Sessions attended'),
+          value: totals.held == 0 ? '–' : '${totals.attended}/${totals.held}',
+        ),
+        AppKpiCard(
           icon: Icons.bookmark_rounded,
           label: anTr('an2_tile_saved', 'Saved to review'),
           value: '${p.reviewFlags}',
-          color: anSpareColor(context),
         ),
       ] else ...[
-        AnTileSpec(
+        AppKpiCard(
+          icon: Icons.task_alt_rounded,
+          label: anTr('an2_tile_completed', 'Completed'),
+          value: '$completed',
+          highlight: true,
+          tone: completed > 0 ? AppBlockTone.emerald : AppBlockTone.peach,
+        ),
+        AppKpiCard(
+          icon: Icons.menu_book_rounded,
+          label: anTr('an_courses', 'Courses'),
+          value: '${prov.courses.length}',
+          onTap: _openAll,
+        ),
+        AppKpiCard(
           icon: Icons.video_library_rounded,
           label: anTr('an2_tile_lectures', 'Lectures'),
           value: '${prov.courses.fold<int>(0, (s, x) => s + x.sessionsCount)}',
-          color: appChartPalette(context)[1],
         ),
-        AnTileSpec(
+        AppKpiCard(
           icon: Icons.play_circle_rounded,
           label: anTr('an2_tile_in_progress', 'In progress'),
           value: '${facts.where((x) => (x.progress ?? 0) > 0 && (x.progress ?? 0) < 100).length}',
-          color: appChartPalette(context)[2],
-        ),
-        AnTileSpec(
-          icon: Icons.task_alt_rounded,
-          label: anTr('an2_tile_completed', 'Completed'),
-          value: '${facts.where((x) => (x.progress ?? 0) >= 100).length}',
-          color: appChartPalette(context)[3],
         ),
       ],
     ]);
@@ -448,116 +439,89 @@ class _AllCoursesPageState extends State<_AllCoursesPage> {
       appBar: AppHeader(title: anTr('an2_all_courses_title', 'All courses')),
       child: AppRefresh(
         onRefresh: prov.loadCourses,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-          slivers: [
-            SliverToBoxAdapter(child: ParentComponent(featureKey: 'analytics.search', child: _tools(prov))),
-            if (prov.attentionCount > 0 && prov.search.isEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-                  child: _AttentionBanner(
-                    count: prov.attentionCount,
-                    active: prov.sort == AnSort.attention,
-                    onTap: () => prov.setSort(AnSort.attention),
-                  ),
-                ),
-              ),
-            if (list.isEmpty)
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: AnEmpty(icon: Icons.search_off_rounded, title: 'an_no_results'.tr),
-              )
-            else
+        child: LayoutBuilder(builder: (context, box) {
+          // one reading column, centred: the cards read top to bottom like a report
+          final side = (box.maxWidth - AppWidth.reading.inside(box.maxWidth)) / 2;
+          return CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            slivers: [
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                sliver: SliverList.separated(
-                  itemCount: list.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 14),
-                  itemBuilder: (_, i) => _CourseCard(
-                    course: list[i],
-                    block: prov.blockOf(list[i].id),
-                    progress: prov.progressOf(list[i]),
-                    overall: prov.overallOf(list[i]),
-                    needsAttention: prov.needsAttention(list[i]),
-                    profileOn: prov.profile != null,
-                    onOpen: (tab) => _openCourse(list[i], tab),
+                padding: EdgeInsets.fromLTRB(side, AppSpace.xs, side, AppSpace.sm),
+                sliver: SliverToBoxAdapter(child: ParentComponent(featureKey: 'analytics.search', child: _tools(prov))),
+              ),
+              if (prov.attentionCount > 0 && prov.search.isEmpty)
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(side, 0, side, AppSpace.sm),
+                  sliver: SliverToBoxAdapter(
+                    child: _AttentionBanner(
+                      count: prov.attentionCount,
+                      active: prov.sort == AnSort.attention,
+                      onTap: () => prov.setSort(AnSort.attention),
+                    ),
                   ),
                 ),
-              ),
-          ],
-        ),
+              if (list.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: AppEmpty(icon: Icons.search_off_rounded, title: 'an_no_results'.tr),
+                )
+              else
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(side, AppSpace.xxs, side, AppSpace.xl),
+                  sliver: SliverList.separated(
+                    itemCount: list.length,
+                    separatorBuilder: (_, _) => AppSpace.gapSm,
+                    itemBuilder: (_, i) => AppReveal(
+                      index: i,
+                      group: 'an_all_courses',
+                      child: _CourseCard(
+                        course: list[i],
+                        block: prov.blockOf(list[i].id),
+                        progress: prov.progressOf(list[i]),
+                        overall: prov.overallOf(list[i]),
+                        needsAttention: prov.needsAttention(list[i]),
+                        profileOn: prov.profile != null,
+                        onOpen: (tab) => _openCourse(list[i], tab),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        }),
       ),
     );
   }
 
   Widget _tools(StudentAnalyticsProvider prov) {
-    final c = context.colors;
-    OutlineInputBorder b(Color col, [double w = 1]) =>
-        OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: col, width: w));
-    Widget sortChip(AnSort s, IconData icon, String label) {
-      final on = prov.sort == s;
-      return Padding(
-        padding: const EdgeInsetsDirectional.only(end: 8),
-        child: ChoiceChip(
-          selected: on,
-          showCheckmark: false,
-          avatar: Icon(icon, size: 16, color: on ? c.onHero : c.textMedium),
-          label: Text(label, style: anText(12, w: FontWeight.w700, c: on ? c.onHero : c.textDark)),
-          selectedColor: c.primary,
-          backgroundColor: c.cardBg,
-          side: BorderSide(color: on ? c.primary : c.divider),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          onSelected: (_) => prov.setSort(s),
+    // the sorts as one pill track, in the order they are read
+    final sorts = [
+      (AnSort.name, Icons.sort_by_alpha_rounded, anTr('an_sort_name', 'A–Z')),
+      if (prov.profile != null) (AnSort.attention, Icons.volunteer_activism_rounded, anTr('an_sort_attention', 'Needs attention')),
+      (AnSort.progress, Icons.trending_up_rounded, anTr('an_sort_progress', 'Progress')),
+    ];
+    final at = sorts.indexWhere((s) => s.$1 == prov.sort);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppSearchField(
+        controller: _searchCtrl,
+        hint: 'an_search_hint'.tr,
+        debounce: Duration.zero,
+        onChanged: prov.setSearch,
+      ),
+      AppSpace.gapSm,
+      Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: AppTabs(
+          items: [for (final s in sorts) AppTabItem(s.$3, icon: s.$2)],
+          index: at < 0 ? 0 : at,
+          onChanged: (i) => prov.setSort(sorts[i].$1),
         ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-      child: Column(children: [
-        TextField(
-          controller: _searchCtrl,
-          onChanged: prov.setSearch,
-          textInputAction: TextInputAction.search,
-          style: anText(14, c: c.textDark),
-          decoration: InputDecoration(
-            hintText: 'an_search_hint'.tr,
-            hintStyle: anText(13, c: c.textLight),
-            prefixIcon: Icon(Icons.search_rounded, color: c.textMedium, size: 20),
-            suffixIcon: prov.search.isNotEmpty
-                ? IconButton(
-                    tooltip: MaterialLocalizations.of(context).clearButtonTooltip,
-                    icon: Icon(Icons.close_rounded, color: c.textMedium, size: 18),
-                    onPressed: () {
-                      _searchCtrl.clear();
-                      prov.setSearch('');
-                    },
-                  )
-                : null,
-            filled: true,
-            fillColor: c.cardBg,
-            border: b(c.divider),
-            enabledBorder: b(c.divider),
-            focusedBorder: b(c.primary, 1.6),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          ),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 38,
-          child: ListView(scrollDirection: Axis.horizontal, children: [
-            sortChip(AnSort.name, Icons.sort_by_alpha_rounded, anTr('an_sort_name', 'A–Z')),
-            if (prov.profile != null)
-              sortChip(AnSort.attention, Icons.volunteer_activism_rounded, anTr('an_sort_attention', 'Needs attention')),
-            sortChip(AnSort.progress, Icons.trending_up_rounded, anTr('an_sort_progress', 'Progress')),
-          ]),
-        ),
-      ]),
-    );
+      ),
+    ]);
   }
 }
 
+/// "N of your courses could use a little extra attention" — a warm note that sorts them first.
 class _AttentionBanner extends StatelessWidget {
   const _AttentionBanner({required this.count, required this.active, required this.onTap});
 
@@ -568,26 +532,33 @@ class _AttentionBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final tint = appTintOn(context, c.warning, surface: c.background);
+    final ink = appInkOn(context, c.warning, tint);
     return Material(
-      color: c.warning.withValues(alpha: 0.10),
-      borderRadius: BorderRadius.circular(16),
+      color: tint,
+      borderRadius: AppRadius.cardAll,
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
         onTap: active ? null : onTap,
-        child: Container(
-          padding: const EdgeInsetsDirectional.fromSTEB(14, 11, 10, 11),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: c.warning.withValues(alpha: 0.3))),
-          child: Row(children: [
-            Icon(Icons.volunteer_activism_rounded, color: c.warning, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                anFmt('an_attention', {'n': count}, '{n} of your courses could use a little extra attention.'),
-                style: anText(12.5, w: FontWeight.w600, c: c.textDark, h: 1.4),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: AppTouch.min),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
+            child: Row(children: [
+              Icon(Icons.volunteer_activism_rounded, color: ink, size: AppIconSize.md),
+              AppSpace.gapSm,
+              Expanded(
+                child: Text(
+                  anFmt('an_attention', {'n': count}, '{n} of your courses could use a little extra attention.'),
+                  style: AppType.bodyStrong(context),
+                ),
               ),
-            ),
-            if (!active) Text(anTr('an_show_first', 'Show first'), style: anText(12, w: FontWeight.w800, c: c.warning)),
-          ]),
+              if (!active) ...[
+                AppSpace.gapSm,
+                Text(anTr('an_show_first', 'Show first'), style: AppType.label(context).copyWith(color: ink, fontWeight: FontWeight.w600)),
+              ],
+            ]),
+          ),
         ),
       ),
     );
@@ -614,73 +585,85 @@ class _CourseCard extends StatelessWidget {
   final bool needsAttention, profileOn;
   final ValueChanged<int> onOpen;
 
+  /// The width of a metric's label column (the bars line up under each other).
+  static const double _metricLabel = 104;
+
+  /// The width of a metric's figure column.
+  static const double _metricFigure = 48;
+
+  /// The overall ring beside the title.
+  static const double _ring = 56;
+  static const double _ringStroke = 5;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final b = block;
     Widget metric(String label, double? v, IconData icon) => Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.only(top: AppSpace.xs),
       child: Row(children: [
-        Icon(icon, size: 14, color: c.textLight),
-        const SizedBox(width: 6),
-        SizedBox(width: 92, child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(11.5, c: c.textMedium))),
-        Expanded(child: AnBar(value: v, height: 6)),
+        Icon(icon, size: AppIconSize.xs, color: c.textLight),
+        const SizedBox(width: AppSpace.xs),
         SizedBox(
-          width: 44,
-          child: Text(anPct(v), textAlign: TextAlign.end, style: anText(12, w: FontWeight.w800, c: anScoreColor(context, v))),
+          width: _metricLabel,
+          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+        ),
+        Expanded(child: AnBar(value: v, height: AppSpace.xs - 2)),
+        SizedBox(
+          width: _metricFigure,
+          child: Text(
+            anPct(v),
+            textAlign: TextAlign.end,
+            style: AppType.row(context).copyWith(
+              fontWeight: FontWeight.w600,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
         ),
       ]),
     );
 
-    return AnCard(
+    return AppCard(
       padding: EdgeInsets.zero,
-      borderColor: needsAttention ? c.warning.withValues(alpha: 0.45) : null,
       onTap: () => onOpen(0),
-      child: Column(children: [
-        Container(
-          padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 14, 10),
-          decoration: BoxDecoration(
-            gradient: AppGradients.wash(context),
-          ),
-          child: Row(children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: course.imageUrl != null && course.imageUrl!.isNotEmpty
-                  ? Image.network(course.imageUrl!, width: 52, height: 52, fit: BoxFit.cover, errorBuilder: (_, _, _) => _placeholder(context))
-                  : _placeholder(context),
-            ),
-            const SizedBox(width: 12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, AppSpace.sm, AppSpace.xs),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            AnalyticsCourseMark(courseId: course.id, imageUrl: course.imageUrl, size: AppTouch.primary),
+            AppSpace.gapSm,
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(course.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(15, w: FontWeight.w800, c: c.textDark)),
+                Text(course.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
                 if (course.teacherName != null && course.teacherName!.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Row(children: [
-                    Icon(Icons.person_outline_rounded, size: 13, color: c.textLight),
-                    const SizedBox(width: 3),
-                    Expanded(
-                      child: Text(course.teacherName!, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(12, c: c.textMedium)),
-                    ),
-                  ]),
+                  const SizedBox(height: AppSpace.xxs),
+                  AnalyticsFact(icon: Icons.person_outline_rounded, text: course.teacherName!),
                 ],
                 if (needsAttention) ...[
-                  const SizedBox(height: 5),
-                  AnTag(anTr('an_needs_attention', 'Needs attention'), c.warning, icon: Icons.volunteer_activism_rounded),
+                  const SizedBox(height: AppSpace.xs),
+                  AppStatusBadge(
+                    label: anTr('an_needs_attention', 'Needs attention'),
+                    tone: AppTone.warning,
+                    icon: Icons.volunteer_activism_rounded,
+                  ),
                 ],
               ]),
             ),
-            const SizedBox(width: 8),
+            AppSpace.gapXs,
             if (overall != null)
               Tooltip(
                 message: anTr('sa_overall_hint_full', 'An average of your progress, attendance and exam results.'),
-                child: AnRing(value: overall, size: 54, stroke: 5),
+                child: AnRing(value: overall, size: _ring, stroke: _ringStroke),
               )
             else
-              Icon(Icons.arrow_forward_ios_rounded, size: 16, color: c.textLight),
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpace.sm),
+                child: Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.textLight),
+              ),
           ]),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xxs),
           child: Column(children: [
             metric(anTr('an_course_progress', 'Course progress'), progress, Icons.route_rounded),
             if (b != null) ...[
@@ -690,57 +673,51 @@ class _CourseCard extends StatelessWidget {
           ]),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Expanded(
-              child: Wrap(spacing: 8, runSpacing: 8, children: [
-                ParentComponent(
-                  featureKey: 'analytics.attendance_chip',
-                  child: AnChip(icon: Icons.fact_check_rounded, label: 'an_attendance'.tr, color: c.success, onTap: () => onOpen(1)),
-                ),
-                ParentComponent(
-                  featureKey: 'analytics.exams_chip',
-                  child: AnChip(icon: Icons.quiz_rounded, label: 'an_exams'.tr, color: c.primary, onTap: () => onOpen(2)),
-                ),
-                if (profileOn)
-                  ParentComponent(
-                    featureKey: 'analytics.marks_chip',
-                    child: AnChip(
-                      icon: Icons.workspace_premium_rounded,
-                      label: anTr('sa_tab_marks', 'My marks'),
-                      color: c.purple,
-                      badge: b?.extraColumns.length,
-                      onTap: () => onOpen(3),
-                    ),
-                  ),
-                ParentComponent(
-                  featureKey: 'analytics.review_chip',
-                  child: AnChip(
-                    icon: Icons.bookmark_rounded,
-                    label: 'flag_review_bank'.tr,
-                    color: c.warning,
-                    badge: b?.reviewFlags,
-                    onTap: () => _flags(context, 0),
-                  ),
-                ),
-                ParentComponent(
-                  featureKey: 'analytics.read_flags_chip',
-                  child: AnChip(
-                    icon: Icons.menu_book_rounded,
-                    label: 'flag_read_bank'.tr,
-                    color: c.danger,
-                    badge: b?.readFlags,
-                    onTap: () => _flags(context, 1),
-                  ),
-                ),
-              ]),
+          padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.sm, AppSpace.sm),
+          child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            ParentComponent(
+              featureKey: 'analytics.attendance_chip',
+              child: AnalyticsShortcut(icon: Icons.fact_check_rounded, label: 'an_attendance'.tr, color: c.success, onTap: () => onOpen(1)),
             ),
-            const SizedBox(width: 8),
-            Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.video_library_outlined, size: 13, color: c.textLight),
-              const SizedBox(width: 3),
-              Text('${course.sessionsCount} ${'an_lectures'.tr}', style: anText(11.5, c: c.textLight)),
-            ]),
+            ParentComponent(
+              featureKey: 'analytics.exams_chip',
+              child: AnalyticsShortcut(icon: Icons.quiz_rounded, label: 'an_exams'.tr, color: c.primary, onTap: () => onOpen(2)),
+            ),
+            if (profileOn)
+              ParentComponent(
+                featureKey: 'analytics.marks_chip',
+                child: AnalyticsShortcut(
+                  icon: Icons.workspace_premium_rounded,
+                  label: anTr('sa_tab_marks', 'My marks'),
+                  color: c.purple,
+                  badge: b?.extraColumns.length,
+                  onTap: () => onOpen(3),
+                ),
+              ),
+            ParentComponent(
+              featureKey: 'analytics.review_chip',
+              child: AnalyticsShortcut(
+                icon: Icons.bookmark_rounded,
+                label: 'flag_review_bank'.tr,
+                color: c.warning,
+                badge: b?.reviewFlags,
+                onTap: () => _flags(context, 0),
+              ),
+            ),
+            ParentComponent(
+              featureKey: 'analytics.read_flags_chip',
+              child: AnalyticsShortcut(
+                icon: Icons.menu_book_rounded,
+                label: 'flag_read_bank'.tr,
+                color: c.danger,
+                badge: b?.readFlags,
+                onTap: () => _flags(context, 1),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs),
+              child: AnalyticsFact(icon: Icons.video_library_outlined, text: '${course.sessionsCount} ${'an_lectures'.tr}'),
+            ),
           ]),
         ),
       ]),
@@ -750,12 +727,5 @@ class _CourseCard extends StatelessWidget {
   void _flags(BuildContext context, int tab) => Navigator.push(
     context,
     MaterialPageRoute(builder: (_) => StudentFlagsScreen(courseId: course.id, courseTitle: course.title, initialTab: tab)),
-  );
-
-  Widget _placeholder(BuildContext context) => Container(
-    width: 52,
-    height: 52,
-    decoration: BoxDecoration(color: context.colors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
-    child: Icon(Icons.menu_book_rounded, color: context.colors.primary, size: 24),
   );
 }

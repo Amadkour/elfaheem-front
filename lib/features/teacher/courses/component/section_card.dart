@@ -1,8 +1,12 @@
+// A list the teacher builds in the course form (appointments, certificates, tools, prerequisites): paper on a warm
+// hairline, a quiet glyph and the name in the editorial section face, "Add" as a tonal button, the items as rows
+// parted by hairlines with a 48 px remove button each.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_kit.dart'
+    show AppBorder, AppButton, AppButtonSize, AppIconSize, AppRadius, AppSpace, AppTouch, AppType;
 
 class SectionCard extends StatelessWidget {
   final IconData icon;
@@ -28,75 +32,56 @@ class SectionCard extends StatelessWidget {
       ParentComponent(featureKey: featureKey, child: _buildCard(context));
 
   Widget _buildCard(BuildContext context) {
+    final c = context.colors;
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: context.colors.cardBg,
-        borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-        boxShadow: context.colors.cardShadow,
+        color: c.cardBg,
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Header
           Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 12, 12),
+            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.sm, AppSpace.sm),
             child: Row(
               children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: context.colors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, size: 18, color: context.colors.primary),
-                ),
-                const SizedBox(width: 10),
+                Icon(icon, size: AppIconSize.md, color: c.textMedium),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
-                  child: Text(title, style: context.colors.h3.copyWith(fontSize: 15)),
-                ),
-                GestureDetector(
-                  onTap: onAdd,
-                  child: Container(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: context.colors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.add,
-                            size: 14, color: context.colors.primary),
-                        const SizedBox(width: 4),
-                        Text('sc_add'.tr,
-                            style: context.colors.caption.copyWith(
-                                color: context.colors.primary,
-                                fontWeight: FontWeight.w700)),
-                      ],
-                    ),
+                  child: Semantics(
+                    header: true,
+                    child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
                   ),
+                ),
+                const SizedBox(width: AppSpace.xs),
+                AppButton.tonal(
+                  label: 'sc_add'.tr,
+                  icon: Icons.add_rounded,
+                  size: AppButtonSize.sm,
+                  onPressed: onAdd,
                 ),
               ],
             ),
           ),
-          if (items.isNotEmpty) const Divider(height: 1),
           // Items
-          ...items.asMap().entries.map((e) => _ItemRow(
-            label: e.value,
-            onRemove: () => onRemove(e.key),
-          )),
+          for (final e in items.asMap().entries) ...[
+            Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+            _ItemRow(label: e.value, onRemove: () => onRemove(e.key)),
+          ],
           if (items.isEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
-              child: Text('sc_empty'.tr,
-                  style: context.colors.caption.copyWith(color: context.colors.textLight)),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
+              child: Text('sc_empty'.tr, style: AppType.meta(context)),
             ),
         ],
       ),
     );
   }
 }
+
 class _ItemRow extends StatelessWidget {
   final String label;
   final VoidCallback onRemove;
@@ -104,15 +89,18 @@ class _ItemRow extends StatelessWidget {
   const _ItemRow({required this.label, required this.onRemove});
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    dense: true,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-    title: Text(label,
-        style: TextStyle(fontFamily: AppFonts.display, fontSize: 13)),
-    trailing: IconButton(
-      tooltip: 'remove'.tr,
-      onPressed: onRemove,
-      icon: Icon(Icons.close_rounded, size: 18, color: context.colors.danger),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsetsDirectional.only(start: AppSpace.md, end: AppSpace.xxs),
+    child: Row(
+      children: [
+        Expanded(child: Text(label, style: AppType.row(context))),
+        IconButton(
+          tooltip: 'remove'.tr,
+          constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+          onPressed: onRemove,
+          icon: Icon(Icons.close_rounded, size: AppIconSize.md, color: context.colors.danger),
+        ),
+      ],
     ),
   );
 }
