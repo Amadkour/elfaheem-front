@@ -222,7 +222,7 @@ class _CountChip extends StatelessWidget {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, size: AppIconSize.sm, color: color),
           const SizedBox(width: AppSpace.xxs),
-          Text(value, style: appText(13, w: FontWeight.w700, c: c.onHero)),
+          Text(value, style: AppType.label(context).copyWith(fontWeight: FontWeight.w700, color: c.onHero)),
         ]),
       ),
     );
@@ -273,13 +273,13 @@ class SheetTopStrip extends StatelessWidget {
           Expanded(
             flex: 3,
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(name, key: const ValueKey('sheet.name'), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w800, c: c.onHero)),
-              if (sub.isNotEmpty) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.onHeroMuted)),
+              Text(name, key: const ValueKey('sheet.name'), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.onHero)),
+              if (sub.isNotEmpty) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.onHeroMuted)),
             ]),
           ),
           const SizedBox(width: AppSpace.sm),
           if (reading)
-            Text(t('تُقرأ…', 'Reading…'), style: appText(14, w: FontWeight.w700, c: c.onHeroMuted))
+            Text(t('تُقرأ…', 'Reading…'), style: AppType.bodyStrong(context).copyWith(color: c.onHeroMuted))
           else
             Flexible(
               flex: 2,
@@ -290,8 +290,8 @@ class SheetTopStrip extends StatelessWidget {
                 alignment: AlignmentDirectional.centerEnd,
                 child: ExcludeSemantics(
                 child: Directionality(textDirection: TextDirection.ltr, child: Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, mainAxisSize: MainAxisSize.min, children: [
-                  Text(score == null ? '–' : sheetNum(score!), key: const ValueKey('sheet.total'), style: appText(32, w: FontWeight.w800, c: c.onHero, h: 1.05)),
-                  if (max != null) Text(' / ${sheetNum(max!)}', style: appText(14.5, w: FontWeight.w600, c: c.onHeroMuted)),
+                  Text(score == null ? '–' : sheetNum(score!), key: const ValueKey('sheet.total'), style: AppType.figureLarge(context).copyWith(color: c.onHero, height: 1.05)),
+                  if (max != null) Text(' / ${sheetNum(max!)}', style: AppType.bodyStrong(context).copyWith(color: c.onHeroMuted)),
                 ])),
                 ),
               ),
@@ -316,7 +316,7 @@ class SheetTopStrip extends StatelessWidget {
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Icon(Icons.rate_review_rounded, size: AppIconSize.sm, color: c.charcoalDark),
                       const SizedBox(width: AppSpace.xxs),
-                      Text(t('$review للمراجعة', '$review to review'), style: appText(12.5, w: FontWeight.w800, c: c.charcoalDark)),
+                      Text(t('$review للمراجعة', '$review to review'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w700, color: c.charcoalDark)),
                     ]),
                   ),
                 ),
@@ -402,7 +402,7 @@ class SheetQuestionsList extends StatelessWidget {
     if (questions.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(AppSpace.lg),
-        child: Text(t('لا توجد درجات لهذه الورقة بعد', 'No marks for this paper yet'), textAlign: TextAlign.center, style: appText(14, c: c.textMedium)),
+        child: Text(t('لا توجد درجات لهذه الورقة بعد', 'No marks for this paper yet'), textAlign: TextAlign.center, style: AppType.body(context)),
       );
     }
     return ListView.separated(
@@ -435,18 +435,18 @@ class SheetQuestionsList extends StatelessWidget {
                   const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(t('السؤال ${q.n}', 'Question ${q.n}'), style: appText(14.5, w: FontWeight.w700, c: c.textDark)),
+                      Text(t('السؤال ${q.n}', 'Question ${q.n}'), style: AppType.bodyStrong(context)),
                       Text(
                         q.isCorrect == true
                             ? t('إجابة الطالب: ${sheetAnswerText(q.selected)}', 'Answer: ${sheetAnswerText(q.selected)}')
                             : t('إجابة الطالب: ${sheetAnswerText(q.selected)} · الصحيحة: ${sheetAnswerText(q.correct)}',
                                 'Answer: ${sheetAnswerText(q.selected)} · Right: ${sheetAnswerText(q.correct)}'),
-                        style: appText(12.5, c: c.textMedium, h: 1.3),
+                        style: AppType.meta(context).copyWith(height: 1.3),
                       ),
                     ]),
                   ),
                   const SizedBox(width: AppSpace.xs),
-                  Directionality(textDirection: TextDirection.ltr, child: Text(q.degreeText, style: appText(15, w: FontWeight.w800, c: c.textDark))),
+                  Directionality(textDirection: TextDirection.ltr, child: Text(q.degreeText, style: AppType.figure(context))),
                 ]),
               ),
             ),
@@ -467,7 +467,7 @@ class SheetLegend extends StatelessWidget {
     Widget item(IconData i, Color tone, String label) => Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(i, size: AppIconSize.sm, color: appInk(context, tone)),
           const SizedBox(width: AppSpace.xxs),
-          Flexible(child: Text(label, style: appText(12, c: c.textMedium))),
+          Flexible(child: Text(label, style: AppType.meta(context))),
         ]);
     return Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs, children: [
       item(Icons.check_box_outlined, c.success, t('إجابة صحيحة', 'Right answer')),
@@ -648,7 +648,7 @@ class SheetReviewView extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
                     child: Text(t('هذه الورقة بلا مواضع على الصورة: الدرجات هنا', 'This paper has no positions on the photo: the marks are here'),
-                        style: appText(13, c: c.textMedium, h: 1.35)),
+                        style: AppType.body(context).copyWith(height: 1.35)),
                   ),
                   Expanded(child: SheetQuestionsList(questions: v?.questions ?? const [], onQuestion: onQuestion, focusN: focusN)),
                   Padding(padding: EdgeInsets.fromLTRB(AppSpace.xs, 0, AppSpace.xs, safe.bottom + AppSpace.xs), child: bottom),
@@ -681,11 +681,11 @@ class _SidePanel extends StatelessWidget {
       Padding(
         padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xs),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(t('الأسئلة', 'Questions'), style: appText(17, w: FontWeight.w800, c: c.textDark)),
+          Text(t('الأسئلة', 'Questions'), style: AppType.section(context)),
           const SizedBox(height: AppSpace.xxs),
           if (noBoxes)
             Text(t('هذه الورقة بلا مواضع على الصورة: الدرجات هنا', 'This paper has no positions on the photo: the marks are here'),
-                style: appText(13, c: c.textMedium, h: 1.35))
+                style: AppType.body(context).copyWith(height: 1.35))
           else
             const SheetLegend(),
         ]),
@@ -706,7 +706,7 @@ class _ReadingPill extends StatelessWidget {
         child: Semantics(
           liveRegion: true,
           child: Text(t('تُقرأ الورقة… يمكنك تصوير الورقة التالية', 'Reading this paper… you can shoot the next one'),
-              key: const ValueKey('sheet.reading'), textAlign: TextAlign.center, style: appText(14, w: FontWeight.w700, c: context.colors.onHero)),
+              key: const ValueKey('sheet.reading'), textAlign: TextAlign.center, style: AppType.bodyStrong(context).copyWith(color: context.colors.onHero)),
         ),
       );
 }
@@ -717,15 +717,14 @@ class _DeadNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 460),
       child: AppCard(
         key: const ValueKey('sheet.dead'),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(t('تعذّرت قراءة هذه الورقة', "This paper couldn't be read"), style: appText(16, w: FontWeight.w800, c: c.textDark)),
+          Text(t('تعذّرت قراءة هذه الورقة', "This paper couldn't be read"), style: AppType.section(context)),
           const SizedBox(height: AppSpace.xxs),
-          Text(t('لم تُصحَّح. صوّرها مرة أخرى في إضاءة جيدة.', 'It was not graded. Take it again in good light.'), style: appText(13.5, c: c.textMedium, h: 1.35)),
+          Text(t('لم تُصحَّح. صوّرها مرة أخرى في إضاءة جيدة.', 'It was not graded. Take it again in good light.'), style: AppType.body(context).copyWith(height: 1.35)),
           if (onRetake != null) ...[
             const SizedBox(height: AppSpace.sm),
             AppPrimaryButton(label: t('إعادة التصوير', 'Retake'), icon: Icons.camera_alt_rounded, onPressed: onRetake),
@@ -743,12 +742,11 @@ class _ErrorNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 460),
       child: AppCard(
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(message, style: appText(14.5, w: FontWeight.w700, c: c.textDark, h: 1.35)),
+          Text(message, style: AppType.bodyStrong(context).copyWith(height: 1.35)),
           if (onRetry != null) ...[
             const SizedBox(height: AppSpace.sm),
             OutlinedButton.icon(

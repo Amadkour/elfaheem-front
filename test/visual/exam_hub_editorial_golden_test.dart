@@ -18,6 +18,8 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_all.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/exam_hub_screen.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/hub_widgets.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/hub/correct/exam_correct_flow.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_scan.dart' show OmrBatchProgress;
 import 'package:flutter_education_app/features/shared/exam_engine/marks/mark_sessions_api.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/marks/review/grade_review_rows.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/result/exam_get_result_screen.dart';
@@ -198,6 +200,7 @@ void main() {
   testWidgets('empty', (t0) => _render(t0, 'empty', () => ExamHubScreen(loader: () async => const AllExamsData(exams: []))));
   resultScenes();
   marksScenes();
+  correctScenes();
   testWidgets('sheets', (t0) => _render(t0, 'sheets', sizes: const [Size(390, 844)], () => Builder(
       builder: (context) => _Sheet(
             title: AppConfig.lang == 'ar' ? 'لا درجات لهذا الاختبار بعد' : 'This exam has no degrees yet',
@@ -354,4 +357,16 @@ class _MarksHost extends StatelessWidget {
 
 void marksScenes() {
   testWidgets('marks', (t0) => _render(t0, 'marks', () => const _MarksHost()));
+}
+
+void correctScenes() {
+  testWidgets('correct', (t0) => _render(t0, 'correct', () {
+        final ar = AppConfig.lang == 'ar';
+        final b = OmrBatchProgress.fromJson({'batch_id': 1, 'kind': 'camera', 'total': 40, 'done': 30, 'graded': 28, 'review': 2, 'rejected': 1, 'pending': 10, 'status': 'processing', 'en': '30 of 40 papers processed', 'ar': 'تمت معالجة 30 من 40 ورقة'});
+        final p = OmrBatchProgress.fromJson({'batch_id': 2, 'kind': 'pdf', 'total': 12, 'done': 12, 'graded': 12, 'review': 0, 'rejected': 0, 'pending': 0, 'status': 'done', 'en': '12 of 12 papers processed', 'ar': 'تمت معالجة 12 من 12 ورقة'});
+        return Scaffold(
+          appBar: AppHeader(title: ar ? 'تصحيح الاختبار' : 'Correct the exam'),
+          body: CorrectionStartView(title: ar ? 'امتحان منتصف الفصل الورقي' : 'Midterm paper exam', batches: [b, p], onImport: () {}, onScan: () {}, onResume: () {}, onBatch: (_) {}, onReview: () {}, onResults: () {}),
+        );
+      }));
 }
