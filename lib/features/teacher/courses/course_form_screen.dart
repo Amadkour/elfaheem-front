@@ -1,4 +1,5 @@
-import 'package:flutter_education_app/design/app_kit.dart' show AppHeader, AppMeshStyle, AppMeshSurface, AppNumberField, AppSheetContent, showAppSheet;
+import 'package:flutter_education_app/design/app_kit.dart' show AppBlock, AppBlockTone, AppBorder, AppButton, AppButtonSize, AppFieldLabel, AppHeader, AppIconSize, AppMotion, AppNumberField, AppRadius, AppSheetContent, AppSpace, AppStatusBadge, AppTone, AppTouch, AppType, showAppSheet;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase;
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'dart:typed_data';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
@@ -22,7 +23,6 @@ import '../../student/models.dart' show CourseStatus;
 import '../schedules/schedules_provider.dart'
     show kDayOrder, kDayLabels, slotDayLabel;
 import 'component/add_item_dialog.dart';
-import 'component/gradient_button.dart';
 import 'component/number_pair.dart';
 import 'component/section_card.dart';
 import 'component/currency_selector.dart';
@@ -500,7 +500,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                 key: _formKey,
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.xs),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -534,7 +534,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                       : null,
                                 ),
                               ),
-                              const SizedBox(height: 14),
+                              const SizedBox(height: AppSpace.md),
                               _LabeledField(
                                 label: 'cf_title_en'.tr,
                                 child: MyTextField(
@@ -547,7 +547,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                       : null,
                                 ),
                               ),
-                              const SizedBox(height: 14),
+                              const SizedBox(height: AppSpace.md),
                               _LabeledField(
                                 label: 'cf_desc_ar'.tr,
                                 child: MyTextField(
@@ -564,7 +564,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                   //     : null,
                                 ),
                               ),
-                              const SizedBox(height: 14),
+                              const SizedBox(height: AppSpace.md),
                               _LabeledField(
                                 label: 'cf_desc_en'.tr,
                                 child: MyTextField(
@@ -581,7 +581,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                   //     : null,
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: AppSpace.md),
                               _LabeledField(
                                 label: 'course_type_label'.tr,
                                 child: _CourseTypeSelector(
@@ -593,7 +593,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                       provider.onChangeTeachingType(s, _typeCtrl),
                                 ),
                               ),
-                              const SizedBox(height: 14),
+                              const SizedBox(height: AppSpace.md),
                               _LabeledField(
                                 label: 'Specialization'.tr,
                                 child: MyPrimaryMenu(
@@ -608,7 +608,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                   label: 'choose_specialization'.tr,
                                 ),
                               ),
-                              const SizedBox(height: 14),
+                              const SizedBox(height: AppSpace.md),
                               // Yearly = the existing price field; the other two
                               // plans are optional (empty = not offered).
                               AppNumberField(
@@ -618,7 +618,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                 step: 10,
                                 decimals: 2,
                               ),
-                              const SizedBox(height: 14),
+                              const SizedBox(height: AppSpace.md),
                               NumberPair(
                                 first: AppNumberField(
                                   controller: _priceSixMonthsCtrl,
@@ -635,21 +635,17 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                   decimals: 2,
                                 ),
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: AppSpace.xs),
                               Text(
                                 'price_plans_hint'.tr,
-                                style: TextStyle(
-                                  fontFamily: AppFonts.family,
-                                  fontSize: 11.5,
-                                  color: context.colors.textLight,
-                                ),
+                                style: AppType.meta(context),
                               ),
-                              const SizedBox(height: 14),
+                              const SizedBox(height: AppSpace.md),
                               // Plan students see first (course profile + home).
                               _LabeledField(
                                 label: 'default_plan_label'.tr,
                                 child: Wrap(
-                                  spacing: 8,
+                                  spacing: AppSpace.xs,
                                   children: [
                                     for (final e in {
                                       0: 'price_yearly_label'.tr,
@@ -668,7 +664,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 14),
+                              const SizedBox(height: AppSpace.md),
                               CurrencySelector(
                                 label: 'currency_label'.tr,
                                 selected: provider.selectedCurrency,
@@ -676,7 +672,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                               ),
                             ],
                           )),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpace.md),
 
                       // edit mode: publish / progress status stay visible
                       if (_isEdit) ...[
@@ -688,14 +684,14 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                               onToggle: () =>
                                   _toggleStatus(listProvider: listProvider),
                             )),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpace.md),
                         CourseProgressStatusCard(
                           status: _progressStatus,
                           isLoading: _progressStatusLoading,
                           onChanged: (s) =>
                               _changeProgressStatus(s, listProvider),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpace.md),
                       ],
 
                       // ═══ ADVANCED — collapsed ════════════════════════════════════════
@@ -715,28 +711,19 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                 min: 0,
                                 decimals: 1,
                               ),
-                              const SizedBox(height: 18),
+                              const SizedBox(height: AppSpace.lg),
                               Text(
                                 'discount_section_title'.tr,
                                 // e.g. "Discount (optional)"
-                                style: TextStyle(
-                                  fontFamily: AppFonts.display,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: context.colors.heroShade.withValues(alpha: 0.55),
-                                ),
+                                style: AppType.label(context),
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: AppSpace.xxs),
                               Text(
                                 'discount_section_hint'.tr,
                                 // e.g. "Leave empty for no discount"
-                                style: TextStyle(
-                                  fontFamily: AppFonts.family,
-                                  fontSize: 11,
-                                  color: context.colors.textLight,
-                                ),
+                                style: AppType.meta(context),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: AppSpace.xs),
                               NumberPair(
                                 first: AppNumberField(
                                   controller: _discountPercentCtrl,
@@ -762,7 +749,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                               if (_isEdit &&
                                   (widget.course?.discountActive ?? false) &&
                                   _discountPercentCtrl.text.trim().isNotEmpty) ...[
-                                const SizedBox(height: 8),
+                                const SizedBox(height: AppSpace.xs),
                                 Align(
                                   alignment: AlignmentDirectional.centerEnd,
                                   child: TextButton(
@@ -773,17 +760,12 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                     }),
                                     child: Text(
                                       'remove_discount_btn'.tr, // "Remove discount"
-                                      style: TextStyle(
-                                        fontFamily: AppFonts.display,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: context.colors.danger,
-                                      ),
+                                      style: AppType.label(context).copyWith(color: context.colors.danger, fontWeight: FontWeight.w600),
                                     ),
                                   ),
                                 ),
                               ],
-                              const SizedBox(height: 12),
+                              const SizedBox(height: AppSpace.sm),
                               CoursePrivacyCard(
                                 isPrivate: _isPrivate,
                                 codeCtrl: _accessCodeCtrl,
@@ -791,7 +773,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                 // edit → loads the current code
                                 onChanged: (v) => setState(() => _isPrivate = v),
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: AppSpace.md),
                               ParentComponent(
                                   featureKey: 'course_form.relations',
                                   child: _FormCard(
@@ -800,22 +782,17 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                     children: [
                                       Text(
                                         'next_course_label'.tr,
-                                        style: TextStyle(
-                                          fontFamily: AppFonts.display,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: context.colors.heroShade.withValues(alpha: 0.55),
-                                        ),
+                                        style: AppType.label(context),
                                       ),
-                                      const SizedBox(height: 4),
+                                      const SizedBox(height: AppSpace.xxs),
                                       if (provider.nextCoursesInPath) ...[
                                         // ONE place to edit the path: the course's Path tab (D-120)
                                         Text(
                                           _t('تُحدَّد الكورسات التالية والمتطلبات السابقة في تبويب «المسار» للكورس.',
                                               'Next courses and prerequisites are set in the course’s Path tab.'),
-                                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, color: context.colors.textLight),
+                                          style: AppType.meta(context),
                                         ),
-                                        const SizedBox(height: 4),
+                                        const SizedBox(height: AppSpace.xxs),
                                         Align(
                                           alignment: AlignmentDirectional.centerStart,
                                           child: TextButton.icon(
@@ -828,13 +805,9 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                       ] else ...[
                                         Text(
                                           'next_course_hint'.tr,
-                                          style: TextStyle(
-                                            fontFamily: AppFonts.family,
-                                            fontSize: 11,
-                                            color: context.colors.textLight,
-                                          ),
+                                          style: AppType.meta(context),
                                         ),
-                                        const SizedBox(height: 8),
+                                        const SizedBox(height: AppSpace.xs),
                                         NextCoursesField(
                                           selected: provider.selectedNextCourses,
                                           availableOptions:
@@ -845,47 +818,32 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                         ),
                                       ],
                                       if (roadmapAllowedHere(context) && widget.course?.org == null) ...[
-                                        const SizedBox(height: 18),
+                                        const SizedBox(height: AppSpace.lg),
                                         Text(
                                           _t('المستوى', 'Level'),
-                                          style: TextStyle(
-                                            fontFamily: AppFonts.display,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: context.colors.heroShade.withValues(alpha: 0.55),
-                                          ),
+                                          style: AppType.label(context),
                                         ),
-                                        const SizedBox(height: 8),
+                                        const SizedBox(height: AppSpace.xs),
                                         RoadmapLevelChips(value: provider.level, onChanged: provider.setLevel),
-                                        const SizedBox(height: 18),
+                                        const SizedBox(height: AppSpace.lg),
                                         Text(
                                           _t('كلمات مفتاحية', 'Topic words'),
-                                          style: TextStyle(
-                                            fontFamily: AppFonts.display,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: context.colors.heroShade.withValues(alpha: 0.55),
-                                          ),
+                                          style: AppType.label(context),
                                         ),
-                                        const SizedBox(height: 4),
+                                        const SizedBox(height: AppSpace.xxs),
                                         Text(
                                           _t('تساعد على اقتراح كورسك للطلاب المهتمين.', 'They help suggest your course to interested students.'),
-                                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, color: context.colors.textLight),
+                                          style: AppType.meta(context),
                                         ),
-                                        const SizedBox(height: 8),
+                                        const SizedBox(height: AppSpace.xs),
                                         RoadmapTagsInput(tags: provider.tags, onAdd: provider.addTag, onRemove: provider.removeTag),
                                       ],
-                                      const SizedBox(height: 18),
+                                      const SizedBox(height: AppSpace.lg),
                                       Text(
                                         'recommended_courses_label'.tr,
-                                        style: TextStyle(
-                                          fontFamily: AppFonts.display,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: context.colors.heroShade.withValues(alpha: 0.55),
-                                        ),
+                                        style: AppType.label(context),
                                       ),
-                                      const SizedBox(height: 8),
+                                      const SizedBox(height: AppSpace.xs),
                                       RecommendedCoursesField(
                                         options: provider.otherCourses,
                                         selectedIds:
@@ -894,7 +852,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                       ),
                                     ],
                                   )),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: AppSpace.md),
                               // Appointments (both modes). Existing, already-saved
                               // appointments come from provider.form.schedules (edit
                               // mode) and are staged for removal on save, same as
@@ -929,7 +887,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                               ),
                             ],
                           )),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpace.md),
 
                       // ═══ OPTIONAL — collapsed ═════════════════════════════════════════════
                       ParentComponent(
@@ -950,7 +908,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                     ? null
                                     : widget.course?.imageUrl,
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: AppSpace.md),
                               // Certificate template: the create-mode "optional
                               // setup" card, or — when editing — a card that lets
                               // the teacher view/replace the template on their
@@ -961,7 +919,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                 featureKey: 'course_form.certificate_template',
                                 child: const _CertificateDesignsLink(),
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: AppSpace.sm),
                               SectionCard(
                                 featureKey: 'course_details.certificates',
                                 icon: Icons.workspace_premium_rounded,
@@ -974,7 +932,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                 ),
                                 onRemove: provider.removeFormCertificate,
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: AppSpace.sm),
                               SectionCard(
                                 featureKey: 'course_details.tools',
                                 icon: Icons.build_rounded,
@@ -987,7 +945,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                 ),
                                 onRemove: provider.removeFormTool,
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: AppSpace.sm),
                               SectionCard(
                                 featureKey: 'course_details.prerequisites',
                                 icon: Icons.checklist_rounded,
@@ -1002,7 +960,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                               ),
                             ],
                           )),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: AppSpace.lg),
                     ],
                   ),
                 ),
@@ -1056,7 +1014,7 @@ class _CoverPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
     child: Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.only(bottom: AppSpace.lg),
       child: EditableImage(
         onChange: onChange,
         imageUrl: imageUrl,
@@ -1072,6 +1030,8 @@ class _CoverPicker extends StatelessWidget {
 // Reusable form card with icon + title
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// A group of the form on paper (the card surface on a warm hairline, no shadow): a quiet glyph and the group's name
+/// in the editorial section face, then its fields.
 class _FormCard extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -1085,49 +1045,21 @@ class _FormCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
+    width: double.infinity,
     decoration: BoxDecoration(
       color: context.colors.cardBg,
-      borderRadius: BorderRadius.circular(20),
-      boxShadow: [
-        BoxShadow(
-          color: context.colors.heroShade.withValues(alpha: 0.06),
-          blurRadius: 18,
-          offset: const Offset(0, 4),
-        ),
-      ],
+      borderRadius: AppRadius.cardAll,
+      border: Border.all(color: context.colors.divider, width: AppBorder.hairline),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-          child: Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  gradient: context.colors.primaryGradient,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, size: 17, color: context.colors.onHero),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  fontFamily: AppFonts.display,
-                  color: context.colors.textDark,
-                ),
-              ),
-            ],
-          ),
+          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.sm),
+          child: _GroupTitle(icon: icon, title: title),
         ),
-        Divider(height: 1, color: context.colors.heroShade.withValues(alpha: 0.06)),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: children,
@@ -1135,6 +1067,40 @@ class _FormCard extends StatelessWidget {
         ),
       ],
     ),
+  );
+}
+
+/// A form group's heading: a quiet glyph in the medium ink and the name in the editorial section face.
+class _GroupTitle extends StatelessWidget {
+  const _GroupTitle({required this.icon, required this.title, this.subtitle});
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Padding(
+        padding: const EdgeInsets.only(top: AppSpace.xxs),
+        child: Icon(icon, size: AppIconSize.md, color: context.colors.textMedium),
+      ),
+      const SizedBox(width: AppSpace.sm),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Semantics(
+              header: true,
+              child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+            ),
+            if (subtitle != null && subtitle!.isNotEmpty)
+              Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+          ],
+        ),
+      ),
+    ],
   );
 }
 
@@ -1238,7 +1204,7 @@ class _EditCertificateTemplateCardState
             color: context.colors.textMedium,
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.md),
         if (hasExisting)
           _LabeledField(
             label: 'certificate_title_label'.tr,
@@ -1269,7 +1235,7 @@ class _EditCertificateTemplateCardState
               label: 'certificate_title_label'.tr,
             ),
           ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpace.md),
         GestureDetector(
           onTap: _uploading ? null : _pick,
           child: AspectRatio(
@@ -1324,7 +1290,7 @@ class _EditCertificateTemplateCardState
                       size: 28,
                       color: context.colors.textLight,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpace.xs),
                     Text(
                       'upload_template_btn'.tr,
                       style: TextStyle(
@@ -1349,6 +1315,7 @@ class _EditCertificateTemplateCardState
 // Labeled field
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// A field with the kit's label above its well.
 class _LabeledField extends StatelessWidget {
   final String label;
   final Widget child;
@@ -1357,18 +1324,9 @@ class _LabeledField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          fontFamily: AppFonts.display,
-          color: context.colors.heroShade.withValues(alpha: 0.55),
-        ),
-      ),
-      const SizedBox(height: 6),
+      AppFieldLabel(label),
       child,
     ],
   );
@@ -1390,6 +1348,55 @@ class _CourseTypeSelector extends StatelessWidget {
     child: _buildContent(context),
   );
 
+  /// One choice: solid emerald when chosen (the on-hero ink), a quiet well otherwise.
+  Widget _choice(BuildContext context, String value, IconData icon, String label) {
+    final c = context.colors;
+    final on = selected == value;
+    final motion = AppMotion.of(context);
+    return Semantics(
+      button: true,
+      selected: on,
+      child: AnimatedContainer(
+        duration: motion.fast,
+        curve: AppEase.out,
+        decoration: BoxDecoration(
+          color: on ? c.primary : c.inputBg,
+          borderRadius: AppRadius.controlAll,
+          border: Border.all(color: on ? c.primary : c.divider, width: AppBorder.hairline),
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: AppRadius.controlAll,
+            onTap: () => onChanged(value),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouch.primary),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpace.sm, horizontal: AppSpace.xxs),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, size: AppIconSize.md, color: on ? c.onHero : c.textMedium),
+                    const SizedBox(height: AppSpace.xxs),
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.label(context).copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: on ? c.onHero : c.textDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildContent(BuildContext context) {
     final items = <(String, IconData, String)>[
       ('live', Icons.sensors_rounded, 'cf_type_live'.tr),
@@ -1406,67 +1413,14 @@ class _CourseTypeSelector extends StatelessWidget {
       children: [
         Row(
           children: [
-            for (final (value, icon, label) in items)
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsetsDirectional.only(end: 8),
-                  child: GestureDetector(
-                    onTap: () => onChanged(value),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        gradient: selected == value
-                            ? context.colors.primaryGradient
-                            : null,
-                        color: selected == value
-                            ? null
-                            : context.colors.background,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: selected == value
-                              ? Colors.transparent
-                              : context.colors.heroShade.withValues(alpha: 0.08),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            icon,
-                            size: 20,
-                            color: selected == value
-                                ? context.colors.onHero
-                                : context.colors.textMedium,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            label,
-                            style: TextStyle(
-                              fontFamily: AppFonts.display,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: selected == value
-                                  ? context.colors.onHero
-                                  : context.colors.textDark,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            for (final (i, (value, icon, label)) in items.indexed) ...[
+              if (i > 0) const SizedBox(width: AppSpace.xs),
+              Expanded(child: _choice(context, value, icon, label)),
+            ],
           ],
         ),
-        const SizedBox(height: 6),
-        Text(
-          hint,
-          style: TextStyle(
-            fontFamily: AppFonts.family,
-            fontSize: 11,
-            color: context.colors.textLight,
-          ),
-        ),
+        const SizedBox(height: AppSpace.xs),
+        Text(hint, style: AppType.meta(context)),
       ],
     );
   }
@@ -1493,94 +1447,65 @@ class _CollapsibleSection extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Container(
-    decoration: BoxDecoration(
-      color: context.colors.cardBg,
-      borderRadius: BorderRadius.circular(20),
-      boxShadow: [
-        BoxShadow(
-          color: context.colors.heroShade.withValues(alpha: 0.06),
-          blurRadius: 18,
-          offset: const Offset(0, 4),
-        ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: onToggle,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-            child: Row(
-              children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    gradient: context.colors.primaryGradient,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, size: 17, color: context.colors.onHero),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final motion = AppMotion.of(context);
+    return Material(
+      color: c.cardBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.cardAll,
+        side: BorderSide(color: c.divider, width: AppBorder.hairline),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Semantics(
+            button: true,
+            expanded: expanded,
+            child: InkWell(
+              onTap: onToggle,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: AppTouch.primary),
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, AppSpace.sm, AppSpace.md),
+                  child: Row(
                     children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          fontFamily: AppFonts.display,
-                          color: context.colors.textDark,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          fontFamily: AppFonts.family,
-                          fontSize: 11,
-                          color: context.colors.textLight,
-                        ),
+                      Expanded(child: _GroupTitle(icon: icon, title: title, subtitle: subtitle)),
+                      const SizedBox(width: AppSpace.xs),
+                      AnimatedRotation(
+                        turns: expanded ? 0.5 : 0,
+                        duration: motion.base,
+                        curve: AppEase.out,
+                        child: Icon(Icons.keyboard_arrow_down_rounded, color: c.textMedium, size: AppIconSize.lg),
                       ),
                     ],
                   ),
                 ),
-                AnimatedRotation(
-                  turns: expanded ? 0.5 : 0,
-                  duration: const Duration(milliseconds: 200),
-                  child: Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: context.colors.textMedium,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOut,
-          alignment: Alignment.topCenter,
-          child: Visibility(
-            visible: expanded,
-            maintainState: true,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: children,
               ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
+          // children stay mounted while folded, so their validators still run
+          AnimatedSize(
+            duration: motion.slow,
+            curve: AppEase.out,
+            alignment: Alignment.topCenter,
+            child: Visibility(
+              visible: expanded,
+              maintainState: true,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: children,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1611,122 +1536,49 @@ class _StickyFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final bottom = MediaQuery.of(context).padding.bottom;
     final showDraftBtn = !isEdit && onSaveDraft != null;
+    final ready = canSave && !isLoading;
 
+    // the bar sits on paper under a warm hairline (it is part of the page, not a floating layer)
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 14, 20, 14 + bottom),
+      padding: EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.sm, AppSpace.lg, AppSpace.sm + bottom),
       decoration: BoxDecoration(
-        color: context.colors.cardBg,
-        boxShadow: [
-          BoxShadow(
-            color: context.colors.heroShade.withValues(alpha: 0.08),
-            blurRadius: 24,
-            offset: const Offset(0, -4),
-          ),
-        ],
+        color: c.cardBg,
+        border: Border(top: BorderSide(color: c.divider, width: AppBorder.hairline)),
       ),
       child: Row(
         children: [
           // Save as draft (create mode only)
           if (showDraftBtn) ...[
             Expanded(
-              child: GestureDetector(
-                onTap: (canSave && !isLoading) ? onSaveDraft : null,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: canSave
-                        ? context.colors.primary.withValues(alpha: 0.08)
-                        : context.colors.inputBg,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: canSave
-                          ? context.colors.primary.withValues(alpha: 0.35)
-                          : context.colors.divider,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      'save_as_draft_btn'.tr,
-                      style: TextStyle(
-                        color: canSave
-                            ? context.colors.primary
-                            : context.colors.textLight,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                        fontFamily: AppFonts.display,
-                      ),
-                    ),
-                  ),
-                ),
+              flex: 2,
+              child: AppButton.secondary(
+                label: 'save_as_draft_btn'.tr,
+                size: AppButtonSize.lg,
+                expand: true,
+                onPressed: ready ? onSaveDraft : null,
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpace.sm),
           ],
 
-          // Primary save/publish button
+          // Primary save/publish button: while it cannot save it says why (the wider of the two)
           Expanded(
-            child: GestureDetector(
-              onTap: (canSave && !isLoading) ? onSave : null,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                height: 52,
-                decoration: BoxDecoration(
-                  gradient: canSave ? context.colors.primaryGradient : null,
-                  color: canSave ? null : context.colors.divider,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: canSave ? context.colors.primaryShadow : null,
-                ),
-                child: Center(
-                  child: isLoading
-                      ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: AppLoadingIndicator(),
-                  )
-                      : Text(
-                    canSave
-                        ? (isEdit
-                        ? 'btn_save_edits'.tr
-                        : (showDraftBtn
-                        ? 'publish_course_btn'.tr
-                        : 'create_course_btn'.tr))
-                        : (isEdit
-                        ? 'no_changes_to_save'.tr
-                        : 'enter_course_title_first'.tr),
-                    style: TextStyle(
-                      color: context.colors.onHero,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                      fontFamily: AppFonts.display,
-                    ),
-                  ),
-                ),
-              ),
+            flex: 3,
+            child: AppButton.primary(
+              label: canSave
+                  ? (isEdit
+                      ? 'btn_save_edits'.tr
+                      : (showDraftBtn ? 'publish_course_btn'.tr : 'create_course_btn'.tr))
+                  : (isEdit ? 'no_changes_to_save'.tr : 'enter_course_title_first'.tr),
+              size: AppButtonSize.lg,
+              expand: true,
+              busy: isLoading,
+              onPressed: ready ? onSave : null,
             ),
           ),
-
-          // Schedule button (edit mode only)
-          // if (isEdit && course != null) ...[
-          //   const SizedBox(width: 10),
-          //   GestureDetector(
-          //     onTap: () => Navigator.of(context).push(MaterialPageRoute(
-          //         builder: (_) => TeacherSchedulesScreen(course: course!))),
-          //     child: Container(
-          //       width: 52, height: 52,
-          //       decoration: BoxDecoration(
-          //         color: context.colors.primary.withValues(alpha: 0.1),
-          //         borderRadius: BorderRadius.circular(14),
-          //         border: Border.all(
-          //             color: context.colors.primary.withValues(alpha: 0.3)),
-          //       ),
-          //       child: Icon(Icons.calendar_month_rounded,
-          //           size: 22, color: context.colors.primary),
-          //     ),
-          //   ),
-          // ],
         ],
       ),
     );
@@ -1750,35 +1602,20 @@ class _StatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = isPublished
-        ? context.colors.accent2
-        : context.colors.warning;
     return _FormCard(
       icon: Icons.visibility_rounded,
       title: 'course_status_title'.tr,
       children: [
         Row(
           children: [
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: statusColor,
+            Flexible(
+              child: AppStatusBadge(
+                label: isPublished ? 'status_published'.tr : 'status_draft'.tr,
+                tone: isPublished ? AppTone.success : AppTone.warning,
+                dot: true,
               ),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                isPublished ? 'status_published'.tr : 'status_draft'.tr,
-                style: TextStyle(
-                  fontFamily: AppFonts.display,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: statusColor,
-                ),
-              ),
-            ),
+            const Spacer(),
             if (isLoading)
               AppLoadingIndicator()
             else
@@ -1789,16 +1626,12 @@ class _StatusCard extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: AppSpace.xs),
         Text(
           isPublished
               ? 'course_status_published_hint'.tr
               : 'course_status_draft_hint'.tr,
-          style: TextStyle(
-            fontFamily: AppFonts.display,
-            fontSize: 11,
-            color: context.colors.textLight,
-          ),
+          style: AppType.meta(context),
         ),
       ],
     );
@@ -1915,45 +1748,38 @@ class _LocalAddScheduleSheetState extends State<_LocalAddScheduleSheet> {
     children: [
           Text(
             'today'.tr,
-            style: context.colors.label.copyWith(
-              color: context.colors.textDark,
-              fontWeight: FontWeight.w700,
-            ),
+            style: AppType.label(context),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.xs),
           SizedBox(
-            height: 44,
+            height: AppTouch.min,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _days.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              separatorBuilder: (_, _) => const SizedBox(width: AppSpace.xs),
               itemBuilder: (_, i) {
                 final (v, l) = _days[i];
                 final sel = _day == v;
                 return GestureDetector(
                   onTap: () => setState(() => _day = v),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
+                    duration: AppMotion.of(context).fast,
+                    curve: AppEase.out,
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
                     decoration: BoxDecoration(
-                      gradient: sel ? context.colors.primaryGradient : null,
-                      color: sel ? null : context.colors.background,
-                      borderRadius: BorderRadius.circular(22),
+                      color: sel ? context.colors.primary : context.colors.inputBg,
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
                       border: Border.all(
-                        color: sel
-                            ? Colors.transparent
-                            : context.colors.divider,
+                        color: sel ? context.colors.primary : context.colors.divider,
+                        width: AppBorder.hairline,
                       ),
-                      boxShadow: sel ? context.colors.primaryShadow : null,
                     ),
                     child: Text(
                       l,
                       style: context.colors.label.copyWith(
                         color: sel ? context.colors.onHero : context.colors.textMedium,
-                        fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight: sel ? FontWeight.w600 : FontWeight.w500,
                       ),
                     ),
                   ),
@@ -1961,7 +1787,7 @@ class _LocalAddScheduleSheetState extends State<_LocalAddScheduleSheet> {
               },
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpace.lg),
           Row(
             children: [
               Expanded(
@@ -1971,7 +1797,7 @@ class _LocalAddScheduleSheetState extends State<_LocalAddScheduleSheet> {
                   onTap: () => _pick(true),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: _TimeField(
                   label: 'end-time'.tr,
@@ -1983,7 +1809,7 @@ class _LocalAddScheduleSheetState extends State<_LocalAddScheduleSheet> {
             ],
           ),
           if (!_valid) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             Text(
               'end-time-must-be-after-start-time'.tr,
               style: context.colors.caption.copyWith(
@@ -1991,12 +1817,11 @@ class _LocalAddScheduleSheetState extends State<_LocalAddScheduleSheet> {
               ),
             ),
           ],
-          const SizedBox(height: 24),
-          GradientButton(
+          const SizedBox(height: AppSpace.lg),
+          AppButton.primary(
             label: 'add-appointment'.tr,
-            isLoading: false,
-            enable: _valid,
-            onTap: _submit,
+            expand: true,
+            onPressed: _valid ? _submit : null,
           ),
     ],
   );
@@ -2016,94 +1841,88 @@ class _TimeField extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        label,
-        style: context.colors.label.copyWith(
-          color: context.colors.textDark,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-      const SizedBox(height: 8),
-      GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: context.colors.background,
-            borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-            border: Border.all(
-              color: hasError ? context.colors.danger : context.colors.divider,
-              width: hasError ? 1.5 : 1,
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppFieldLabel(label),
+        Material(
+          color: c.inputBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: AppRadius.controlAll,
+            side: BorderSide(
+              color: hasError ? c.danger : c.divider,
+              width: hasError ? AppBorder.strong : AppBorder.hairline,
             ),
           ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.access_time_rounded,
-                size: 18,
-                color: hasError
-                    ? context.colors.danger
-                    : context.colors.primary,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouch.primary),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.access_time_rounded,
+                      size: AppIconSize.md,
+                      color: hasError ? c.danger : c.textMedium,
+                    ),
+                    const SizedBox(width: AppSpace.xs),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Text(
+                          AppTime.clockMinutes(time.hour * 60 + time.minute),
+                          style: AppType.figure(context).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(width: 8),
-              Text(
-                AppTime.clockMinutes(time.hour * 60 + time.minute),
-                style: context.colors.h3.copyWith(fontSize: 18),
-              ),
-            ],
+            ),
           ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }
 
 /// Certificates are designed once (Profile → My certificate designs) and assigned to all or some courses —
-/// no per-course template inputs here any more.
+/// no per-course template inputs here any more. A certificate is an achievement: the gold block.
 class _CertificateDesignsLink extends StatelessWidget {
   const _CertificateDesignsLink();
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    return Material(
-      color: c.cardBg,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredCertificateDesigns())),
-        child: AppMeshSurface(
-          color: c.accent2,
-          style: AppMeshStyle.wash,
-          radius: BorderRadius.circular(20),
-          child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: c.divider),
+    return AppBlock(
+      tone: AppBlockTone.gold,
+      padding: AppSpace.card,
+      semanticLabel: 'cert_designs_link_title'.tr,
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredCertificateDesigns())),
+      child: Builder(builder: (context) {
+        final b = AppBlock.colorsOf(context);
+        return Row(children: [
+          Container(
+            width: AppTouch.min - AppSpace.xxs,
+            height: AppTouch.min - AppSpace.xxs,
+            decoration: BoxDecoration(color: Color.lerp(b.surface, b.ink, 0.06), borderRadius: AppRadius.chipAll),
+            child: Icon(Icons.workspace_premium_rounded, color: b.accentInk(context.colors.accent2), size: AppIconSize.lg),
           ),
-          child: Row(children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(color: c.accent2.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(14)),
-              child: Icon(Icons.workspace_premium_rounded, color: c.accent2),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('cert_designs_link_title'.tr, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
-                Text('cert_designs_link_sub'.tr, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
-              ]),
-            ),
-            Icon(Icons.chevron_right_rounded, color: c.textLight),
-          ]),
-        ),
-        ),
-      ),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('cert_designs_link_title'.tr, style: AppType.bodyStrong(context).copyWith(color: b.ink)),
+              Text('cert_designs_link_sub'.tr, style: AppType.meta(context).copyWith(color: b.muted)),
+            ]),
+          ),
+          Icon(Icons.chevron_right_rounded, color: b.muted),
+        ]);
+      }),
     );
   }
 }

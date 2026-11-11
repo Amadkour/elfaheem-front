@@ -27,6 +27,7 @@ import '../../shared/analytics/analytics_summary.dart';
 import '../../shared/analytics/analytics_summary_ui.dart';
 import '../../shared/analytics/analytics_ui.dart';
 import '../../student/analysis/student_analytics_profile_screen.dart';
+import '../../student/analysis/analytics_editorial.dart';
 import '../../student/analysis/student_analytics_provider.dart';
 import '../courses/teacher_courses_provider.dart';
 import '../data_lab/data_lab_api.dart';
@@ -34,10 +35,8 @@ import '../data_lab/data_lab_models.dart';
 import '../home/teacher_models.dart';
 import 'attendance/teacher_attendance_screen.dart';
 import 'flags/teacher_read_flags_screen.dart';
-import 'package:flutter_education_app/design/app_charts.dart' show appCompactNumber;
-import 'package:flutter_education_app/design/app_kit.dart' show AppGradients, AppHeader, AppMeshStyle, AppMeshSurface, showAppSheet, AppSheetHeader;
-import 'package:flutter_education_app/design/app_refresh.dart';
-import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase, AppPressScale, AppReveal;
 
 String _courseTitle(TeacherCourse c) => (AppConfig.lang == 'ar' ? c.titleAr : c.titleEn) ?? c.titleAr ?? c.titleEn ?? '';
 
@@ -161,56 +160,21 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
     final title = _courseTitle(course);
     final s = _store.byCourse[course.id];
     showAppSheet<void>(context, (ctx) {
-      final c = ctx.colors;
       void go(Widget w) {
         Navigator.pop(ctx);
         _push(w);
       }
 
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          AppSheetHeader(title),
-          if (s == null || s.enabled) ...[
-            ParentComponent(
-              featureKey: 'analytics_hub.data_lab',
-              child: _DataLabButton(published: s?.published ?? 0, onTap: () => go(deferredDataLab(courseId: course.id, courseTitle: title))),
-            ),
-            const SizedBox(height: 10),
-          ],
-          ParentComponent(
-            featureKey: 'analytics_hub.attendance',
-            child: _ActionButton(
-              icon: Icons.fact_check_rounded,
-              label: 'analytics_btn_attendance'.tr,
-              sublabel: 'analytics_btn_attendance_sub'.tr,
-              color: c.success,
-              onTap: () => go(TeacherAttendanceScreen(courseId: course.id, courseTitle: title)),
-            ),
+      return AppSheetContent(
+        title: title,
+        children: [
+          _CourseTools(
+            course: course,
+            snapshot: s,
+            stacked: true,
+            open: go,
           ),
-          const SizedBox(height: 10),
-          ParentComponent(
-            featureKey: 'analytics_hub.exams',
-            child: _ActionButton(
-              icon: Icons.quiz_rounded,
-              label: 'analytics_btn_exams'.tr,
-              sublabel: 'analytics_btn_exams_sub'.tr,
-              color: c.primary,
-              onTap: () => go(deferredTeacherExamHub(courseId: course.id, courseTitle: title, orgId: course.org?.id)),
-            ),
-          ),
-          const SizedBox(height: 10),
-          ParentComponent(
-            featureKey: 'analytics_hub.read_flags',
-            child: _ActionButton(
-              icon: Icons.flag_rounded,
-              label: 'tflag_btn'.tr,
-              sublabel: 'tflag_btn_sub'.tr,
-              color: c.danger,
-              onTap: () => go(TeacherReadFlagsScreen(courseId: course.id, courseTitle: title)),
-            ),
-          ),
-        ]),
+        ],
       );
     });
   }
@@ -243,11 +207,11 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
       body = const AnSummarySkeleton();
     } else if (all.isEmpty) {
       body = Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xl),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           _header(all),
-          const SizedBox(height: 24),
-          AnEmpty(icon: Icons.school_outlined, title: 'no_courses_yet'.tr, sub: 'add_course_first_hint'.tr),
+          AppSpace.gapLg,
+          AppEmpty(icon: Icons.school_outlined, title: 'no_courses_yet'.tr, message: 'add_course_first_hint'.tr, tone: AppBlockTone.sky),
         ]),
       );
     } else {
@@ -272,20 +236,20 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
     );
   }
 
-  Widget _header(List<TeacherCourse> all) => AnPageHeader(
+  Widget _header(List<TeacherCourse> all) => AnalyticsMasthead(
         title: anTr('an2_title', 'Analytics'),
         subtitle: anTr('an2_sub_teacher', 'How your classes are doing'),
         actions: [
           ParentComponent(
             featureKey: 'exam.all_exams',
-            child: AnHeaderIcon(
+            child: AnalyticsHeaderAction(
               key: const ValueKey('analytics_hub.all_exams'),
               icon: Icons.fact_check_rounded,
               tooltip: anTr('an_all_exams', 'All exams'),
               onTap: _openAllExams,
             ),
           ),
-          AnHeaderIcon(
+          AnalyticsHeaderAction(
             icon: Icons.refresh_rounded,
             tooltip: anTr('an_refresh', 'Refresh'),
             onTap: () => _store.load([for (final c in all) c.id], force: true),
@@ -294,7 +258,6 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
       );
 
   Widget _summary(List<TeacherCourse> all) {
-    final c = context.colors;
     final facts = [for (final x in all) _facts(x, _store.byCourse[x.id])];
     final totals = anTotals(facts);
     final metrics = anAvailableMetrics(facts);
@@ -302,41 +265,43 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
     final risk = facts.fold<int>(0, (s, f) => s + f.atRisk);
     final passRate = anMean(facts.map((f) => f.passRate));
 
+    // the page's one memorable element: the class rings on the instructor's sky block
     final hero = ParentComponent(
       featureKey: 'analytics_hub.header',
-      child: AnSummaryHero(
+      child: AnalyticsHeroBlock(
         headline: anHeadlineText(teacherHeadline(facts)),
         rings: [for (final m in AnMetric.values) AnRingSpec(metric: m, value: totals.value(m))],
         overall: totals.overall,
         overallLabel: anTr('an2_class_overall', 'Average'),
+        tone: AppBlockTone.sky,
+        memoryKey: 'analytics_hub.overall',
       ),
     );
 
-    final tiles = AnStatTiles(tiles: [
-      AnTileSpec(
-        icon: Icons.menu_book_rounded,
-        label: anTr('an_courses', 'Courses'),
-        value: '${all.length}',
-        color: anMetricColor(context, AnMetric.progress),
-        onTap: _openAll,
-      ),
-      AnTileSpec(
-        icon: Icons.people_rounded,
-        label: anTr('an2_tile_students', 'Students'),
-        value: appCompactNumber(all.fold<int>(0, (s, x) => s + x.studentsCount)),
-        color: anSpareColor(context),
-      ),
-      AnTileSpec(
+    // the four counts; the ONE key figure is who needs you: a block whose number rolls (emerald when nobody does)
+    final tiles = AppKpiGrid(children: [
+      AppKpiCard(
         icon: Icons.volunteer_activism_rounded,
         label: anTr('an2_tile_need_attention', 'Need attention'),
         value: '$risk',
-        color: risk > 0 ? c.warning : c.success,
+        highlight: true,
+        tone: risk > 0 ? AppBlockTone.peach : AppBlockTone.emerald,
       ),
-      AnTileSpec(
+      AppKpiCard(
+        icon: Icons.menu_book_rounded,
+        label: anTr('an_courses', 'Courses'),
+        value: '${all.length}',
+        onTap: _openAll,
+      ),
+      AppKpiCard(
+        icon: Icons.people_rounded,
+        label: anTr('an2_tile_students', 'Students'),
+        value: appCompactNumber(all.fold<int>(0, (s, x) => s + x.studentsCount)),
+      ),
+      AppKpiCard(
         icon: Icons.verified_rounded,
         label: anTr('an2_tile_pass_rate', 'Exam pass rate'),
         value: anPct(passRate),
-        color: anMetricColor(context, AnMetric.exams),
         onTap: AppConfig.disableList.contains('exam.all_exams') ? null : _openAllExams,
       ),
     ]);
@@ -465,92 +430,108 @@ class _AllClassesPageState extends State<_AllClassesPage> {
       appBar: AppHeader(title: anTr('an2_all_courses_title', 'All courses')),
       body: AppRefresh(
         onRefresh: () => store.load([for (final x in all) x.id], force: true),
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-          slivers: [
-            SliverToBoxAdapter(child: ParentComponent(featureKey: 'analytics_hub.search', child: _tools())),
-            if (list.isEmpty)
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: AnEmpty(icon: Icons.search_off_rounded, title: 'no_search_results'.tr),
-              )
-            else
+        child: LayoutBuilder(builder: (context, box) {
+          // one reading column, centred: the cards read top to bottom like a report
+          final side = (box.maxWidth - AppWidth.reading.inside(box.maxWidth)) / 2;
+          return CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            slivers: [
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 6, 16, 32),
-                sliver: SliverList.separated(
-                  itemCount: list.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 14),
-                  itemBuilder: (_, i) => _CourseAnalyticsCard(
-                    course: list[i],
-                    snapshot: store.byCourse[list[i].id],
-                    loading: store.loading && store.byCourse.isEmpty,
-                  ),
+                padding: EdgeInsets.fromLTRB(side, AppSpace.xs, side, AppSpace.md),
+                sliver: SliverToBoxAdapter(
+                  child: ParentComponent(featureKey: 'analytics_hub.search', child: _tools()),
                 ),
               ),
-          ],
-        ),
+              if (list.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: AppEmpty(icon: Icons.search_off_rounded, title: 'no_search_results'.tr),
+                )
+              else
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(side, 0, side, AppSpace.xl),
+                  sliver: SliverList.separated(
+                    itemCount: list.length,
+                    separatorBuilder: (_, _) => AppSpace.gapSm,
+                    itemBuilder: (_, i) => AppReveal(
+                      index: i,
+                      group: 'an_all_classes',
+                      child: _CourseAnalyticsCard(
+                        course: list[i],
+                        snapshot: store.byCourse[list[i].id],
+                        loading: store.loading && store.byCourse.isEmpty,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        }),
       ),
     );
   }
 
-  Widget _tools() {
-    final c = context.colors;
-    OutlineInputBorder b(Color col, [double w = 1]) =>
-        OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: col, width: w));
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-      child: Row(children: [
+  Widget _tools() => Row(children: [
         Expanded(
-          child: TextField(
+          child: AppSearchField(
             controller: _searchCtrl,
-            textDirection: pageDirection,
-            style: anText(14, c: c.textDark),
-            decoration: InputDecoration(
-              hintText: 'search_course_hint'.tr,
-              hintStyle: anText(13, c: c.textLight),
-              prefixIcon: Icon(Icons.search_rounded, color: c.textMedium, size: 21),
-              suffixIcon: _search.isNotEmpty
-                  ? IconButton(
-                      tooltip: 'clear'.tr,
-                      icon: Icon(Icons.close_rounded, color: c.textMedium, size: 18),
-                      onPressed: () {
-                        _searchCtrl.clear();
-                        setState(() => _search = '');
-                      },
-                    )
-                  : null,
-              filled: true,
-              fillColor: c.cardBg,
-              border: b(c.divider),
-              enabledBorder: b(c.divider),
-              focusedBorder: b(c.primary, 1.6),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            ),
+            hint: 'search_course_hint'.tr,
+            debounce: Duration.zero,
             onChanged: (v) => setState(() => _search = v),
           ),
         ),
-        const SizedBox(width: 10),
-        Tooltip(
-          message: anTr('an_sort_attention', 'Needs attention'),
+        AppSpace.gapXs,
+        _AttentionToggle(
+          on: _attentionFirst,
+          onChanged: () => setState(() => _attentionFirst = !_attentionFirst),
+        ),
+      ]);
+}
+
+/// "Needs attention first": a 48 px square toggle beside the search, warm when it is on.
+class _AttentionToggle extends StatelessWidget {
+  const _AttentionToggle({required this.on, required this.onChanged});
+
+  final bool on;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tint = appTintOn(context, c.warning, surface: c.cardBg);
+    final fill = on ? tint : c.cardBg;
+    return Tooltip(
+      message: anTr('an_sort_attention', 'Needs attention'),
+      child: Semantics(
+        button: true,
+        toggled: on,
+        child: AnimatedContainer(
+          duration: AppMotion.of(context).fast,
+          curve: AppEase.out,
+          width: AppTouch.min,
+          height: AppTouch.min,
+          decoration: BoxDecoration(
+            color: fill,
+            borderRadius: AppRadius.controlAll,
+            border: Border.all(
+              color: on ? Color.lerp(tint, c.warning, 0.5)! : c.divider,
+              width: AppBorder.hairline,
+            ),
+          ),
           child: Material(
-            color: _attentionFirst ? c.warning : c.cardBg,
-            borderRadius: BorderRadius.circular(16),
+            type: MaterialType.transparency,
             child: InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: () => setState(() => _attentionFirst = !_attentionFirst),
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _attentionFirst ? c.warning : c.divider),
-                ),
-                child: Icon(Icons.volunteer_activism_rounded, color: _attentionFirst ? c.onHero : c.warning),
+              borderRadius: AppRadius.controlAll,
+              onTap: onChanged,
+              child: Icon(
+                Icons.volunteer_activism_rounded,
+                size: AppIconSize.md,
+                color: on ? appInkOn(context, c.warning, tint) : c.textMedium,
               ),
             ),
           ),
         ),
-      ]),
+      ),
     );
   }
 }
@@ -564,7 +545,15 @@ class _CourseAnalyticsCard extends StatelessWidget {
   final _Snapshot? snapshot;
   final bool loading;
 
-  void _push(BuildContext context, Widget screen) => Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+  /// The width of a metric's label column (the bars line up under each other).
+  static const double _metricLabel = 104;
+
+  /// The width of a metric's figure column.
+  static const double _metricFigure = 48;
+
+  /// The pass-rate ring beside the title.
+  static const double _ring = 56;
+  static const double _ringStroke = 5;
 
   @override
   Widget build(BuildContext context) {
@@ -575,142 +564,178 @@ class _CourseAnalyticsCard extends StatelessWidget {
     final risk = s?.atRisk ?? 0;
 
     Widget metric(String label, double? v, IconData icon) => Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.only(top: AppSpace.xs),
       child: Row(children: [
-        Icon(icon, size: 14, color: c.textLight),
-        const SizedBox(width: 6),
-        SizedBox(width: 96, child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(11.5, c: c.textMedium))),
-        Expanded(child: AnBar(value: v, height: 6)),
-        SizedBox(width: 44, child: Text(anPct(v), textAlign: TextAlign.end, style: anText(12, w: FontWeight.w600, c: anScoreColor(context, v)))),
+        Icon(icon, size: AppIconSize.xs, color: c.textLight),
+        const SizedBox(width: AppSpace.xs),
+        SizedBox(
+          width: _metricLabel,
+          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+        ),
+        Expanded(child: AnBar(value: v, height: AppSpace.xs - 2)),
+        SizedBox(
+          width: _metricFigure,
+          child: Text(
+            anPct(v),
+            textAlign: TextAlign.end,
+            style: AppType.row(context).copyWith(
+              fontWeight: FontWeight.w600,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
       ]),
     );
 
-    return AnCard(
+    return AppCard(
       padding: EdgeInsets.zero,
-      borderColor: risk > 0 ? c.warning.withValues(alpha: 0.45) : null,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // ── title ──
-        AppMeshSurface(
-          style: AppMeshStyle.wash,
-          child: Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 14, 12),
-          child: Row(children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15),
-                gradient: AppGradients.blend(context),
-              ),
-              child: Icon(Icons.menu_book_rounded, color: c.onHero, size: 24),
-            ),
-            const SizedBox(width: 12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        // ── title: the course's mark, its name, who is in it ──
+        Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, AppSpace.sm, AppSpace.xs),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            AnalyticsCourseMark(courseId: course.id),
+            AppSpace.gapSm,
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: anText(15, w: FontWeight.w600, c: c.textDark, h: 1.35)),
-                const SizedBox(height: 6),
-                Wrap(spacing: 6, runSpacing: 6, children: [
-                  AnTag(
-                      anStudentsWord(course.studentsCount),
-                      c.accent2,
-                      icon: Icons.people_rounded),
-                  AnTag(
-                      anSessionsWord(course.sessionsCount),
-                      c.purple,
-                      icon: Icons.video_library_outlined),
-                  if (risk > 0) AnTag(anFmt('ta_risk_n', {'n': risk}, '{n} need attention'), c.warning, icon: Icons.volunteer_activism_rounded),
+                Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+                const SizedBox(height: AppSpace.xxs),
+                Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs, children: [
+                  AnalyticsFact(icon: Icons.people_rounded, text: anStudentsWord(course.studentsCount)),
+                  AnalyticsFact(icon: Icons.video_library_outlined, text: anSessionsWord(course.sessionsCount)),
                 ]),
+                if (risk > 0) ...[
+                  const SizedBox(height: AppSpace.xs),
+                  AppStatusBadge(
+                    label: anFmt('ta_risk_n', {'n': risk}, '{n} need attention'),
+                    tone: AppTone.warning,
+                    icon: Icons.volunteer_activism_rounded,
+                  ),
+                ],
               ]),
             ),
             if (hasNumbers && s.n('exam_pass_rate') != null) ...[
-              const SizedBox(width: 8),
+              AppSpace.gapXs,
               Tooltip(
                 message: anTr('ta_pass_rate', 'Students passing on exam average'),
-                child: AnRing(value: s.n('exam_pass_rate'), size: 56, stroke: 5),
+                child: AnRing(value: s.n('exam_pass_rate'), size: _ring, stroke: _ringStroke),
               ),
             ],
           ]),
         ),
-        ),
         // ── class snapshot ──
         if (loading)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-            child: Column(children: [
-              for (var i = 0; i < 3; i++)
-                Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: Container(height: 8, decoration: BoxDecoration(color: c.divider.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(8))),
-                ),
-            ]),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xxs),
+            child: AppShimmer(
+              child: Column(children: [
+                for (var i = 0; i < 3; i++)
+                  const Padding(
+                    padding: EdgeInsets.only(top: AppSpace.sm),
+                    child: AppSkeletonBox(height: AppSpace.xs),
+                  ),
+              ]),
+            ),
           )
         else if (hasNumbers)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xxs),
             child: Column(children: [
               metric(anTr('ta_class_progress', 'Class progress'), s.n('progress'), Icons.route_rounded),
               metric('attendance_rate'.tr, s.n('attendance'), Icons.event_available_rounded),
               metric('sa_avg_score'.tr, s.n('exam_avg'), Icons.bar_chart_rounded),
             ]),
           ),
-        // ── actions ──
+        // ── the course's tools ──
         Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-          child: Column(children: [
-            if (s == null || s.enabled)
-              ParentComponent(
-                featureKey: 'analytics_hub.data_lab',
-                child: _DataLabButton(
-                  published: s?.published ?? 0,
-                  onTap: () => _push(context, deferredDataLab(courseId: course.id, courseTitle: title)),
-                ),
-              ),
-            const SizedBox(height: 10),
-            Row(children: [
-              Expanded(
-                child: ParentComponent(
-                  featureKey: 'analytics_hub.attendance',
-                  child: _ActionButton(
-                    icon: Icons.fact_check_rounded,
-                    label: 'analytics_btn_attendance'.tr,
-                    sublabel: 'analytics_btn_attendance_sub'.tr,
-                    color: c.success,
-                    onTap: () => _push(context, TeacherAttendanceScreen(courseId: course.id, courseTitle: title)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ParentComponent(
-                  featureKey: 'analytics_hub.exams',
-                  child: _ActionButton(
-                    icon: Icons.quiz_rounded,
-                    label: 'analytics_btn_exams'.tr,
-                    sublabel: 'analytics_btn_exams_sub'.tr,
-                    color: c.primary,
-                    onTap: () => _push(context, deferredTeacherExamHub(courseId: course.id, courseTitle: title, orgId: course.org?.id)),
-                  ),
-                ),
-              ),
-            ]),
-            const SizedBox(height: 10),
-            ParentComponent(
-              featureKey: 'analytics_hub.read_flags',
-              child: _ActionButton(
-                icon: Icons.flag_rounded,
-                label: 'tflag_btn'.tr,
-                sublabel: 'tflag_btn_sub'.tr,
-                color: c.danger,
-                onTap: () => _push(context, TeacherReadFlagsScreen(courseId: course.id, courseTitle: title)),
-              ),
-            ),
-          ]),
+          padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.sm, AppSpace.sm),
+          child: _CourseTools(
+            course: course,
+            snapshot: s,
+            open: (w) => Navigator.push(context, MaterialPageRoute(builder: (_) => w)),
+          ),
         ),
       ]),
     );
   }
 }
 
+/// The four shortcuts of a course: Data Lab (the primary one, solid emerald) and Attendance · Exams · Read flags as
+/// quiet wells. [stacked] puts every row on its own line (the sheet); otherwise Attendance and Exams share one.
+class _CourseTools extends StatelessWidget {
+  const _CourseTools({required this.course, required this.snapshot, required this.open, this.stacked = false});
+
+  final TeacherCourse course;
+  final _Snapshot? snapshot;
+  final ValueChanged<Widget> open;
+  final bool stacked;
+
+  /// From this width Attendance and Exams sit side by side.
+  static const double _pairFrom = 480;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final title = _courseTitle(course);
+    final s = snapshot;
+    final attendance = ParentComponent(
+      featureKey: 'analytics_hub.attendance',
+      child: _ToolRow(
+        icon: Icons.fact_check_rounded,
+        label: 'analytics_btn_attendance'.tr,
+        sublabel: 'analytics_btn_attendance_sub'.tr,
+        color: c.success,
+        onTap: () => open(TeacherAttendanceScreen(courseId: course.id, courseTitle: title)),
+      ),
+    );
+    final exams = ParentComponent(
+      featureKey: 'analytics_hub.exams',
+      child: _ToolRow(
+        icon: Icons.quiz_rounded,
+        label: 'analytics_btn_exams'.tr,
+        sublabel: 'analytics_btn_exams_sub'.tr,
+        color: c.primary,
+        onTap: () => open(deferredTeacherExamHub(courseId: course.id, courseTitle: title, orgId: course.org?.id)),
+      ),
+    );
+    // Attendance and Exams share a line only where both names fit (a phone stacks them)
+    return LayoutBuilder(builder: (context, box) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (s == null || s.enabled) ...[
+        ParentComponent(
+          featureKey: 'analytics_hub.data_lab',
+          child: _DataLabButton(
+            published: s?.published ?? 0,
+            onTap: () => open(deferredDataLab(courseId: course.id, courseTitle: title)),
+          ),
+        ),
+        AppSpace.gapXs,
+      ],
+      if (stacked || box.maxWidth < _pairFrom) ...[
+        attendance,
+        AppSpace.gapXs,
+        exams,
+      ] else
+        Row(children: [
+          Expanded(child: attendance),
+          AppSpace.gapXs,
+          Expanded(child: exams),
+        ]),
+      AppSpace.gapXs,
+      ParentComponent(
+        featureKey: 'analytics_hub.read_flags',
+        child: _ToolRow(
+          icon: Icons.flag_rounded,
+          label: 'tflag_btn'.tr,
+          sublabel: 'tflag_btn_sub'.tr,
+          color: c.danger,
+          onTap: () => open(TeacherReadFlagsScreen(courseId: course.id, courseTitle: title)),
+        ),
+      ),
+    ]));
+  }
+}
+
+/// Data Lab, the course's primary tool: solid emerald with the on-hero ink (the primary action, never a gradient).
 class _DataLabButton extends StatelessWidget {
   const _DataLabButton({required this.published, required this.onTap});
 
@@ -720,86 +745,96 @@ class _DataLabButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Ink(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-          decoration: BoxDecoration(
-            gradient: AppGradients.blend(context),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: c.primaryShadow,
-          ),
-          child: Row(children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(color: c.onHero.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(12)),
-              child: Icon(Icons.science_rounded, color: c.onHero, size: 20),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('dl_title'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(13.5, w: FontWeight.w600, c: c.onHero)),
-                Text(
-                  published > 0
-                      ? anFmt('ta_dl_published', {'n': published}, '{n} columns shared with students')
-                      : anTr('ta_dl_sub', 'Grades, formulas, imports and certificates — in one sheet'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: anText(10.5, c: c.onHeroMuted),
+    return AppPressScale(
+      child: Material(
+        color: c.primary,
+        borderRadius: AppRadius.controlAll,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppTouch.primary),
+            child: Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xs, AppSpace.sm, AppSpace.xs),
+              child: Row(children: [
+                Container(
+                  width: AppTouch.min - AppSpace.sm,
+                  height: AppTouch.min - AppSpace.sm,
+                  decoration: BoxDecoration(color: c.heroGlass, borderRadius: AppRadius.chipAll),
+                  child: Icon(Icons.science_rounded, color: c.onHero, size: AppIconSize.md),
                 ),
+                AppSpace.gapSm,
+                Expanded(
+                  child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('dl_title'.tr,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppType.bodyStrong(context).copyWith(color: c.onHero)),
+                    Text(
+                      published > 0
+                          ? anFmt('ta_dl_published', {'n': published}, '{n} columns shared with students')
+                          : anTr('ta_dl_sub', 'Grades, formulas, imports and certificates — in one sheet'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.meta(context).copyWith(color: c.onHeroMuted),
+                    ),
+                  ]),
+                ),
+                AppSpace.gapXs,
+                Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.onHeroMuted),
               ]),
             ),
-            Icon(Icons.arrow_forward_ios_rounded, size: 13, color: c.onHeroMuted),
-          ]),
+          ),
         ),
       ),
     );
   }
 }
 
-class _ActionButton extends StatelessWidget {
+/// A secondary tool: a quiet well (the input tone, no border) with a tinted icon, the name in ink and one line.
+class _ToolRow extends StatelessWidget {
   final IconData icon;
   final String label, sublabel;
   final Color color;
   final VoidCallback onTap;
 
-  const _ActionButton({required this.icon, required this.label, required this.sublabel, required this.color, required this.onTap});
+  const _ToolRow({required this.icon, required this.label, required this.sublabel, required this.color, required this.onTap});
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.transparent,
-    child: InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Ink(
-        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.25)),
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tint = appTintOn(context, color, surface: c.inputBg);
+    return AppPressScale(
+      child: Material(
+        color: c.inputBg,
+        borderRadius: AppRadius.controlAll,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppTouch.primary),
+            child: Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xs, AppSpace.xs, AppSpace.xs),
+              child: Row(children: [
+                Container(
+                  width: AppTouch.min - AppSpace.sm,
+                  height: AppTouch.min - AppSpace.sm,
+                  decoration: BoxDecoration(color: tint, borderRadius: AppRadius.chipAll),
+                  child: Icon(icon, color: appInkOn(context, color, tint), size: AppIconSize.md),
+                ),
+                AppSpace.gapSm,
+                Expanded(
+                  child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+                    Text(sublabel, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                  ]),
+                ),
+                Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.textLight),
+              ]),
+            ),
+          ),
         ),
-        child: Row(children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(11)),
-            child: Icon(icon, color: color, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(13, w: FontWeight.w600, c: color)),
-              const SizedBox(height: 1),
-              Text(sublabel, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(10.5, c: context.colors.textMedium)),
-            ]),
-          ),
-          Icon(Icons.arrow_forward_ios_rounded, size: 12, color: color.withValues(alpha: 0.6)),
-        ]),
       ),
-    ),
-  );
+    );
+  }
 }
