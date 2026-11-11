@@ -1,0 +1,8 @@
+{
+  "exam_hub_col_exam": {"en": "Exam", "ar": "الاختبار"},
+  "exam_hub_col_when": {"en": "When", "ar": "الموعد"},
+  "exam_result_col_student": {"en": "Student", "ar": "الطالب"},
+  "exam_result_col_paper": {"en": "Paper", "ar": "الورقة"},
+  "exam_result_col_score": {"en": "Score", "ar": "الدرجة"},
+  "exam_result_col_percent": {"en": "Percent", "ar": "النسبة"}
+}

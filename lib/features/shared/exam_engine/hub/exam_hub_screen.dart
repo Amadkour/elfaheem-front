@@ -228,7 +228,6 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
     final nav = Navigator.of(context);
     final creating = _surface == HubSurface.creation;
     final header = AppPageHeader(
-      accent: false,
       title: t('الاختبارات', 'Exams'),
       subtitle: _subtitle,
       icon: Icons.fact_check_rounded,
@@ -262,16 +261,8 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
       child: ColoredBox(
         color: c.background,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          DecoratedBox(
-            decoration: BoxDecoration(color: c.cardBg, border: Border(bottom: BorderSide(color: c.divider, width: AppBorder.hairline))),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-              const AppAccentStrip(),
-              Align(
-                alignment: Alignment.topCenter,
-                child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: hubMaxWidth + 2 * AppSpace.lg), child: header),
-              ),
-            ]),
-          ),
+          // the editorial masthead on the canvas (D-614): its own strip on top, the underline tabs close it
+          header,
           Expanded(
             child: ExamHubBody(
               data: d,

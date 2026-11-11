@@ -1,0 +1,289 @@
+// VISUAL review renders (not a CI suite): the Exam Hub (D-356) in the Warm Editorial theme — Creation, Correction and
+// Results, plus the two "before you go on" sheets — at 390x844 and 1440x900, ar / en, light / dark, into
+// test/visual/goldens/exam_hub_*.png. Compared by eye.
+//
+//   flutter test test/visual/exam_hub_editorial_golden_test.dart --update-goldens [--plain-name creation]
+@Tags(['visual'])
+library;
+
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/exam_all.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/hub/exam_hub_screen.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/hub/hub_widgets.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/hub/result/exam_get_result_screen.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/hub/result/exam_result_data.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../support/fake_api.dart';
+import 'home_screens_golden_test.dart' show pubspecFonts;
+
+String _sdkFonts() {
+  final root = Platform.environment['FLUTTER_ROOT'];
+  if (root != null && root.isNotEmpty) return '$root/bin/cache/artifacts/material_fonts';
+  final exe = File(Platform.resolvedExecutable).absolute.path.replaceAll('\\', '/');
+  return '${exe.substring(0, exe.indexOf('/bin/cache/'))}/bin/cache/artifacts/material_fonts';
+}
+
+Future<void> _loadFonts() async {
+  Future<void> load(String family, List<String> paths) async {
+    final loader = FontLoader(family);
+    for (final p in paths) {
+      loader.addFont(Future.value(ByteData.sublistView(File(p).readAsBytesSync())));
+    }
+    await loader.load();
+  }
+
+  for (final (family, assets) in pubspecFonts(File('pubspec.yaml').readAsStringSync())) {
+    await load(family, assets);
+  }
+  final sdk = _sdkFonts();
+  await load('Roboto', [for (final w in ['regular', 'medium', 'bold']) '$sdk/roboto-$w.ttf']);
+  await load('MaterialIcons', ['$sdk/materialicons-regular.otf']);
+}
+
+final _shot = GlobalKey();
+
+Map<String, dynamic> _g({bool ended = true, String state = 'waiting', int papers = 0, int review = 0, int answers = 0, int submitted = 0, bool degrees = false, String? source, bool published = false}) => {
+      'ended': ended,
+      'state': state,
+      'papers': papers,
+      'review_open': review,
+      'answers_open': answers,
+      'submitted': submitted,
+      'has_degrees': degrees,
+      'degrees_source': source,
+      'results_published': published,
+      'data_lab_column': null,
+    };
+
+AllExam _e(int id, String title, {String status = 'closed', Map<String, dynamic>? g, int? course = 10, Map<String, dynamic>? settings, String? ends, String type = 'online', int q = 12, int attempts = 30}) => AllExam({
+      'id': id,
+      'title': title,
+      'status': status,
+      'course_id': course,
+      'org_id': null,
+      'type': type,
+      'settings': settings,
+      'ends_at': ends,
+      'starts_at': '2026-11-03T09:00:00',
+      'duration_minutes': 45,
+      'question_count': q,
+      'attempts': {'total': attempts},
+      'grading': ?g,
+    });
+
+const _paper = {'mode': 'offline'};
+
+AllExamsData _data() {
+  final ar = AppConfig.lang == 'ar';
+  String x(String a, String e) => ar ? a : e;
+  return AllExamsData(exams: [
+    _e(1, x('اختبار الوحدة الرابعة: الدوال', 'Unit 4 check: functions'), status: 'draft', q: 8, g: _g(state: 'not_applicable', ended: false)),
+    _e(2, x('امتحان منتصف الفصل الورقي', 'Midterm paper exam'), g: _g(submitted: 3, papers: 3), settings: _paper, type: 'paper'),
+    _e(3, x('اختبار الأسبوع السادس', 'Week 6 quiz'), g: _g(state: 'in_progress', papers: 40, review: 3, answers: 2, submitted: 38, degrees: true, source: 'exam'), settings: _paper, type: 'paper'),
+    _e(4, x('مراجعة الفصل الثالث', 'Chapter 3 review'), g: _g(state: 'corrected', submitted: 30, degrees: true, source: 'exam')),
+    _e(5, x('اختبار نهاية الفصل الدراسي الأول في الرياضيات للصف الثاني الثانوي', 'End of term exam in mathematics for the second year of secondary school'),
+        status: 'published', g: _g(ended: false, state: 'waiting'), ends: '2026-12-01T10:00:00'),
+    _e(6, x('تمرين سريع على المتتابعات', 'Quick drill on sequences'), g: _g(state: 'waiting')),
+    _e(7, x('اختبار قصير في الهندسة', 'Short geometry quiz'), g: _g(state: 'corrected', degrees: true, source: 'import', published: true), course: null),
+    _e(8, x('اختبار تجريبي قديم', 'Old trial exam'), status: 'archived', g: _g(state: 'not_applicable')),
+  ], courseNames: {10: x('الرياضيات للصف الثاني الثانوي', 'Mathematics, second secondary')}, orgNames: const {});
+}
+
+Widget _host(Widget child, {required bool dark}) {
+  final theme = ThemeConfigProvider(api: ApiClient());
+  final rtl = AppConfig.lang == 'ar';
+  return ThemeConfigScope(
+    provider: theme,
+    child: MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: theme.materialTheme(dark: false),
+      darkTheme: theme.materialTheme(dark: true),
+      themeMode: dark ? ThemeMode.dark : ThemeMode.light,
+      builder: (context, w) => RepaintBoundary(
+        key: _shot,
+        child: Directionality(textDirection: rtl ? TextDirection.rtl : TextDirection.ltr, child: w!),
+      ),
+      home: child,
+    ),
+  );
+}
+
+Future<void> _render(WidgetTester tester, String name, Widget Function() build, {Future<void> Function(WidgetTester)? act, List<Size> sizes = const [Size(390, 844), Size(1440, 900)]}) async {
+  final prevLang = AppConfig.lang;
+  debugDisableShadows = false;
+  final fake = FakeApi(const {}, latency: const Duration(milliseconds: 5))..install();
+  try {
+    for (final size in sizes) {
+      for (final lang in const ['ar', 'en']) {
+        for (final dark in const [false, true]) {
+          AppConfig.lang = lang;
+          tester.view.devicePixelRatio = 1;
+          tester.view.physicalSize = size;
+          await tester.pumpWidget(const SizedBox());
+          await tester.pumpWidget(_host(build(), dark: dark));
+          for (var i = 0; i < 20; i++) {
+            await tester.pump(const Duration(milliseconds: 100));
+          }
+          if (act != null) await act(tester);
+          final e = tester.takeException();
+          expect(e, isNull, reason: '$name ${size.width.toInt()} $lang ${dark ? 'dark' : 'light'}: $e');
+          await expectLater(find.byKey(_shot), matchesGoldenFile('goldens/exam_hub_${name}_${size.width.toInt()}_${lang}_${dark ? 'dark' : 'light'}.png'));
+        }
+      }
+    }
+  } finally {
+    fake.uninstall();
+    AppConfig.lang = prevLang;
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 4));
+    debugDisableShadows = true;
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+  }
+}
+
+
+class _Sheet extends StatelessWidget {
+  const _Sheet({required this.title, required this.child});
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        body: Align(
+          alignment: Alignment.bottomCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: Material(
+              color: context.colors.cardBg,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
+              child: AppSheetContent(title: title, children: [child]),
+            ),
+          ),
+        ),
+      );
+}
+
+void main() {
+  setUpAll(() async {
+    translation = jsonDecode(File('assets/translation.json').readAsStringSync()) as Map<String, dynamic>;
+    // the sidecar strings this branch adds (folded into translation.json at merge)
+    for (final f in Directory('assets/translation_extra').listSync().whereType<File>()) {
+      translation.addAll(jsonDecode(f.readAsStringSync()) as Map<String, dynamic>);
+    }
+    await _loadFonts();
+  });
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    mockRequestPlugins();
+    AppConfig.disableList = [];
+  });
+
+  testWidgets('creation', (t0) => _render(t0, 'creation', () => ExamHubScreen(loader: () async => _data())));
+  testWidgets('correction', (t0) => _render(t0, 'correction', () => ExamHubScreen(initialTab: 1, loader: () async => _data())));
+  testWidgets('results', (t0) => _render(t0, 'results', () => ExamHubScreen(initialTab: 1, loader: () async => _data()),
+      act: (t) => _tapText(t, AppConfig.lang == 'ar' ? 'النتائج' : 'Results')));
+  testWidgets('empty', (t0) => _render(t0, 'empty', () => ExamHubScreen(loader: () async => const AllExamsData(exams: []))));
+  resultScenes();
+  testWidgets('sheets', (t0) => _render(t0, 'sheets', sizes: const [Size(390, 844)], () => Builder(
+      builder: (context) => _Sheet(
+            title: AppConfig.lang == 'ar' ? 'لا درجات لهذا الاختبار بعد' : 'This exam has no degrees yet',
+            child: HubNoDegreesBody(canImport: true, importRecommended: true, noCourse: false, onImport: () {}, onCorrect: () {}),
+          ))));
+}
+
+Future<void> _tapText(WidgetTester t, String text) async {
+  final f = find.descendant(of: find.byKey(const ValueKey('exam.hub.segments')), matching: find.text(text));
+  if (f.evaluate().isEmpty) return;
+  await t.tap(f.first, warnIfMissed: false);
+  for (var i = 0; i < 10; i++) {
+    await t.pump(const Duration(milliseconds: 100));
+  }
+}
+
+ResultsBoard _board({bool partial = true}) {
+  Map<String, dynamic> a(int id, int student, String state, {double? score, bool? passed}) => {
+        'id': id, 'student_id': student, 'state': state, 'score': score, 'max_score': 20,
+        'percentage': score == null ? null : score * 5, 'passed': passed, 'needs_review': false,
+      };
+  final ar = AppConfig.lang == 'ar';
+  const arNames = ['سارة أحمد', 'عمر خالد', 'ليلى محمود', 'يوسف إبراهيم', 'مريم حسن', 'عبد الرحمن الشافعي', 'نور علي', 'كريم سامي', 'هدى فؤاد', 'أحمد ناصر', 'سلمى رشدي', 'ياسين عادل'];
+  const enNames = ['Sara Ahmed', 'Omar Khaled', 'Laila Mahmoud', 'Youssef Ibrahim', 'Mariam Hassan', 'Abdelrahman El-Shafei', 'Nour Ali', 'Karim Samy', 'Hoda Fouad', 'Ahmed Nasser', 'Salma Roshdy', 'Yassin Adel'];
+  const scores = [18.0, 8.0, 15.5, 12.0, 19.0, 9.5, 16.0, 13.0, 17.0, 6.0, 14.0, 11.0];
+  return ResultsBoard.fromSources(
+    exam: {
+      'id': 9, 'title': 'Physics midterm', 'course_id': 7, 'status': 'closed', 'results_policy': 'when_published',
+      'results_published_at': null, 'anonymous_grading': false, 'settings': const {}, 'max_score': 20,
+      'sections': [
+        {
+          'title': 'A', 'mode': 'online',
+          'questions': [
+            {'id': 100, 'type': 'mcq', 'points': 10, 'body': {'prompt': ar ? 'ما تعريف القوة؟' : 'What is force?'}},
+            {'id': 101, 'type': 'mcq', 'points': 10, 'body': {'prompt': ar ? 'ما الفرق بين الكتلة والوزن؟' : 'What is the difference between mass and weight?'}},
+          ],
+        },
+      ],
+    },
+    attempts: {
+      'items': [
+        for (var i = 0; i < 12; i++)
+          partial && i == 3 ? a(i + 1, 100 + i, 'submitted') : a(i + 1, 100 + i, 'graded', score: scores[i], passed: scores[i] >= 10),
+      ],
+    },
+    names: {for (var i = 0; i < 12; i++) 100 + i: (ar ? arNames : enNames)[i]},
+    analytics: {
+      'state': 'ready',
+      'data': {
+        'items': [
+          {'question_id': 101, 'answered': 12, 'difficulty': 0.35, 'points': 10},
+          {'question_id': 100, 'answered': 12, 'difficulty': 0.62, 'points': 10},
+        ],
+      },
+    },
+    hubServer: true,
+  );
+}
+
+class _ResultHost extends StatelessWidget {
+  const _ResultHost({this.partial = true});
+  final bool partial;
+
+  @override
+  Widget build(BuildContext context) {
+    final board = _board(partial: partial);
+    return Scaffold(
+      appBar: AppHeader(title: AppConfig.lang == 'ar' ? 'امتحان الفيزياء النصفي' : 'Physics midterm'),
+      body: LayoutBuilder(builder: (context, box) {
+        final pad = AppSpace.gutter(box.maxWidth);
+        return ListView(padding: EdgeInsets.fromLTRB(pad, AppSpace.md, pad, AppSpace.xl), children: [
+          ResultBoardView(board: board, wide: box.maxWidth >= 1024, columnLabel: null, callbacks: ResultBoardCallbacks(onExport: () {}, onStudio: () {}, onImport: () {}, onScans: () {}, onAnswers: () {}, onPublish: () {}, onDataLab: () {})),
+        ]);
+      }),
+    );
+  }
+}
+
+Future<void> _scrollDown(WidgetTester t) async {
+  final s = find.byType(Scrollable);
+  if (s.evaluate().isEmpty) return;
+  final state = t.state<ScrollableState>(s.first);
+  state.position.jumpTo(state.position.maxScrollExtent * 0.55);
+  for (var i = 0; i < 6; i++) {
+    await t.pump(const Duration(milliseconds: 100));
+  }
+}
+
+void resultScenes() {
+  testWidgets('result', (t0) => _render(t0, 'result', () => const _ResultHost()));
+  testWidgets('result_done', (t0) => _render(t0, 'result_done', () => const _ResultHost(partial: false), act: _scrollDown));
+}

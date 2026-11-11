@@ -1,11 +1,18 @@
-// "Get result" as plain-value widgets (Exam Hub, F5): the summary, what is still open, where the results have gone, the
-// distribution, the hardest questions, the publish / Data Lab / export cards and the students. They read no provider and
-// call no server, so test/org/exam_hub_f5_test.dart pumps them under the layout harness.
+// "Get result" as plain-value widgets (Exam Hub, F5, editorial theme D-610 – D-629): the summary, what is still open,
+// where the results have gone, the distribution, the hardest questions, the publish / Data Lab / export cards and the
+// students. They read no provider and call no server, so test/org/exam_hub_f5_test.dart pumps them under the layout
+// harness.
+//
+// The page's one memorable element is the summary: a hero block (peach while marking goes on, emerald once every paper is
+// graded) whose average rolls in and leans under the pointer; everything around it is paper. The students are the kit's
+// AppDataTable (a table on a desktop, a card each on a phone).
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
 
 import '../../../../admin/admin_common.dart' show t;
 import '../../paper/review/omr_review.dart' show omrLtr, omrNum;
@@ -14,7 +21,11 @@ import 'exam_result_data.dart';
 String resultPct(double? v) => v == null ? '—' : omrLtr('${v.round()}%');
 String resultScore(double? score, double? max) => score == null ? '—' : omrLtr('${omrNum(score)} / ${omrNum(max)}');
 
-/// The headline: the average large, then the four numbers that answer "how did they do".
+/// The distribution chart's height and the outcome ring's size.
+const _chartHeight = 170.0;
+const _donutSize = 116.0;
+
+/// The headline: the average large in a hero block, then the four numbers that answer "how did they do".
 class ResultSummaryHero extends StatelessWidget {
   const ResultSummaryHero({super.key, required this.stats, required this.sourceLabel});
   final ResultStats stats;
@@ -22,9 +33,7 @@ class ResultSummaryHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final s = stats;
-    final r = BorderRadius.circular(c.radiusLarge);
     final progress = s.partial ? t('المصحّح حتى الآن: ${s.graded} من ${s.students}', 'Graded so far: ${s.graded} of ${s.students}') : t('اكتمل تصحيح ${resultStudentsText(s.graded)}', 'All ${resultStudentsText(s.graded)} graded');
     final cells = <(String, String, IconData)>[
       (t('الطلاب', 'Students'), '${s.students}', Icons.groups_rounded),
@@ -32,50 +41,86 @@ class ResultSummaryHero extends StatelessWidget {
       (t('الأدنى', 'Lowest'), resultPct(s.lowest), Icons.south_rounded),
       (t('نسبة النجاح', 'Pass rate'), resultPct(s.passRate), Icons.emoji_events_outlined),
     ];
-    return Container(
-      key: const ValueKey('result.summary'),
-      decoration: BoxDecoration(borderRadius: r, gradient: c.heroGradient, boxShadow: c.primaryShadow),
-      child: DecoratedBox(
-        decoration: BoxDecoration(borderRadius: r, gradient: c.heroGlow),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpace.lg),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(sourceLabel, style: appText(12.5, w: FontWeight.w600, c: c.onHero.withValues(alpha: .78))),
-            const SizedBox(height: AppSpace.sm),
-            Text(resultPct(s.average), style: appText(46, w: FontWeight.w800, c: c.onHero, h: 1.05)),
-            Text(t('متوسط الدرجات', 'Average score'), style: appText(14, w: FontWeight.w600, c: c.onHero)),
+    return AppTilt(
+      radius: AppRadius.block,
+      maxTilt: 3,
+      child: AppBlock(
+        key: const ValueKey('result.summary'),
+        tone: s.partial ? AppBlockTone.peach : AppBlockTone.emerald,
+        hero: true,
+        child: Builder(builder: (context) {
+          final b = AppBlock.colorsOf(context);
+          return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Icon(Icons.assessment_outlined, size: AppIconSize.md, color: b.muted),
+              AppSpace.gapXs,
+              Flexible(child: Text(sourceLabel, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: b.muted))),
+            ]),
+            AppSpace.gapSm,
+            // the one key figure: the editorial display face, drawn to the xxxl line (64) and rolled in once
+            SizedBox(
+              height: AppSpace.xxxl,
+              child: FittedBox(
+                alignment: AlignmentDirectional.centerStart,
+                child: AppOdometer(resultPct(s.average), style: AppType.display(context).copyWith(color: b.ink, height: 1)),
+              ),
+            ),
+            Text(t('متوسط الدرجات', 'Average score'), style: AppType.section(context).copyWith(color: b.ink)),
             const SizedBox(height: AppSpace.xxs),
-            Text(progress, style: appText(12.5, c: c.onHero.withValues(alpha: .78))),
-            const SizedBox(height: AppSpace.md),
+            Text(progress, style: AppType.meta(context).copyWith(color: b.muted)),
+            AppSpace.gapLg,
             LayoutBuilder(builder: (context, box) {
               final perRow = box.maxWidth < 420 ? 2 : 4;
-              final w = (box.maxWidth - AppSpace.xs * (perRow - 1)) / perRow;
-              return Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-                for (final (label, value, icon) in cells)
-                  Container(
-                    width: w,
+              final rule = b.ink.withValues(alpha: .12);
+              Widget cell((String, String, IconData) x) => Padding(
                     padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
-                    decoration: BoxDecoration(
-                      color: c.heroGlass,
-                      borderRadius: BorderRadius.circular(AppRadius.chip),
-                      border: Border.all(color: c.heroGlassBorder),
-                    ),
-                    child: Row(children: [
-                      Icon(icon, size: 18, color: c.onHero.withValues(alpha: .8)),
-                      const SizedBox(width: AppSpace.xs),
-                      Expanded(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w800, c: c.onHero)),
-                          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.onHero.withValues(alpha: .78))),
-                        ]),
-                      ),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      Row(children: [
+                        Icon(x.$3, size: AppIconSize.sm, color: b.muted),
+                        const SizedBox(width: AppSpace.xxs),
+                        Flexible(child: Text(x.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: b.muted))),
+                      ]),
+                      const SizedBox(height: AppSpace.xxs),
+                      Text(x.$2, maxLines: 1, style: AppType.figure(context).copyWith(color: b.ink)),
+                    ]),
+                  );
+              return Column(mainAxisSize: MainAxisSize.min, children: [
+                for (var r = 0; r < cells.length; r += perRow) ...[
+                  if (r > 0) Divider(height: AppSpace.xs, thickness: AppBorder.hairline, color: rule),
+                  IntrinsicHeight(
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      for (var i = r; i < r + perRow && i < cells.length; i++) ...[
+                        if (i > r) VerticalDivider(width: AppBorder.hairline, thickness: AppBorder.hairline, color: rule),
+                        Expanded(child: cell(cells[i])),
+                      ],
                     ]),
                   ),
+                ],
               ]);
             }),
-          ]),
-        ),
+          ]);
+        }),
       ),
+    );
+  }
+}
+
+/// A rail card's mark: the icon's tint carries the colour, never a wash.
+class _Mark extends StatelessWidget {
+  const _Mark(this.icon, {this.color});
+  final IconData icon;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ink = appInk(context, color ?? c.primary);
+    return Container(
+      width: AppIconSize.hero,
+      height: AppIconSize.hero,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: ink.withValues(alpha: .10), borderRadius: AppRadius.chipAll),
+      child: Icon(icon, size: AppIconSize.md, color: ink),
     );
   }
 }
@@ -93,22 +138,25 @@ class ResultOpenCard extends StatelessWidget {
     final second = scanItems > 0 && students > 0 ? onAnswers : null;
     return AppCard(
       key: const ValueKey('result.open'),
+      padding: AppSpace.block,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(Icons.rate_review_rounded, color: c.warning, size: 22),
-          const SizedBox(width: AppSpace.sm),
+          _Mark(Icons.rate_review_rounded, color: c.warning),
+          AppSpace.gapSm,
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(t('لم يكتمل التصحيح بعد', 'Marking is not finished'), style: appText(15, w: FontWeight.w700, c: c.textDark)),
+              Text(t('لم يكتمل التصحيح بعد', 'Marking is not finished'), style: AppType.section(context)),
               const SizedBox(height: AppSpace.xxs),
-              Text(resultStillOpenText(students, scanItems), style: appText(13, c: c.textMedium, h: 1.45)),
+              Text(resultStillOpenText(students, scanItems), style: AppType.body(context).copyWith(height: 1.45)),
             ]),
           ),
         ]),
-        const SizedBox(height: AppSpace.sm),
-        AppPrimaryButton(key: const ValueKey('result.open.go'), label: t('متابعة التصحيح', 'Continue marking'), icon: Icons.edit_note_rounded, onPressed: first),
-        if (second != null)
-          TextButton(key: const ValueKey('result.open.answers'), onPressed: second, child: Text(t('الإجابات التي تنتظر التصحيح', 'Answers waiting for marking'))),
+        AppSpace.gapMd,
+        AppButton.primary(key: const ValueKey('result.open.go'), label: t('متابعة التصحيح', 'Continue marking'), icon: Icons.edit_note_rounded, expand: true, onPressed: first),
+        if (second != null) ...[
+          AppSpace.gapXs,
+          AppButton.ghost(key: const ValueKey('result.open.answers'), label: t('الإجابات التي تنتظر التصحيح', 'Answers waiting for marking'), expand: true, onPressed: second),
+        ],
       ]),
     );
   }
@@ -130,17 +178,22 @@ class ResultStatusStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    // a destination that has the results is the success tint with an emerald check; one still waiting is paper
     Widget item(IconData icon, String label, String value, bool on) => Container(
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
-          decoration: BoxDecoration(color: (on ? c.success : c.textMedium).withValues(alpha: .10), borderRadius: BorderRadius.circular(AppRadius.chip)),
+          decoration: BoxDecoration(
+            color: on ? c.successTint : c.cardBg,
+            borderRadius: AppRadius.chipAll,
+            border: Border.all(color: on ? c.successTint : c.divider, width: AppBorder.hairline),
+          ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(on ? Icons.check_circle_rounded : icon, size: 18, color: on ? c.success : c.textMedium),
-            const SizedBox(width: AppSpace.xs),
+            Icon(on ? Icons.check_circle_rounded : icon, size: AppIconSize.sm, color: on ? appInk(context, c.success) : c.textMedium),
+            AppSpace.gapXs,
             Flexible(
               child: Text.rich(
                 TextSpan(children: [
-                  TextSpan(text: '$label: ', style: appText(12.5, c: c.textMedium)),
-                  TextSpan(text: value, style: appText(12.5, w: FontWeight.w700, c: c.textDark)),
+                  TextSpan(text: '$label: ', style: AppType.meta(context)),
+                  TextSpan(text: value, style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
                 ]),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -168,14 +221,14 @@ class ResultDistributionCard extends StatelessWidget {
     final s = stats;
     final bins = s.bins;
     Widget bars(bool narrow) => AppBarChart(
-          height: 170,
+          height: _chartHeight,
           labels: [for (final b in bins) narrow ? '${b.from}' : omrLtr('${b.from}–${b.to}')],
           series: [AppChartSeries(t('الطلاب', 'Students'), [for (final b in bins) b.count.toDouble()], color: c.primary)],
           integerAxis: true,
         );
     final hasOutcome = s.passed + s.failed > 0;
     final donut = AppDonut(
-      size: 116,
+      size: _donutSize,
       parts: [
         if (hasOutcome) ...[
           AppChartPart(t('ناجح', 'Passed'), s.passed.toDouble(), color: c.success),
@@ -186,14 +239,15 @@ class ResultDistributionCard extends StatelessWidget {
       ],
     );
     return AppCard(
+      padding: AppSpace.block,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        AppSectionTitle(t('توزيع الدرجات', 'Score distribution'), subtitle: t('عدد الطلاب في كل فئة (نسبة مئوية)', 'Students in each band (percent)')),
-        const SizedBox(height: AppSpace.sm),
+        _CardTitle(t('توزيع الدرجات', 'Score distribution'), subtitle: t('عدد الطلاب في كل فئة (نسبة مئوية)', 'Students in each band (percent)')),
+        AppSpace.gapMd,
         LayoutBuilder(builder: (context, box) {
-          if (box.maxWidth < 560) return Column(children: [bars(true), const SizedBox(height: AppSpace.md), donut]);
+          if (box.maxWidth < 560) return Column(children: [bars(true), AppSpace.gapLg, donut]);
           return Row(children: [
             Expanded(flex: 3, child: bars(false)),
-            const SizedBox(width: AppSpace.lg),
+            AppSpace.gapLg,
             Expanded(flex: 2, child: donut),
           ]);
         }),
@@ -212,25 +266,30 @@ class ResultHardestCard extends StatelessWidget {
     final c = context.colors;
     return AppCard(
       key: const ValueKey('result.hardest'),
+      padding: AppSpace.block,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        AppSectionTitle(t('أصعب الأسئلة', 'Hardest questions'),
-            trailing: onAll == null ? null : TextButton(onPressed: onAll, child: Text(t('كل الأسئلة', 'All questions')))),
-        for (final q in questions) ...[
-          const SizedBox(height: AppSpace.sm),
-          Row(children: [
-            Expanded(child: Text(t('السؤال ${q.n}', 'Question ${q.n}'), style: appText(14, w: FontWeight.w700, c: c.textDark))),
-            Text(q.isMeanMark ? t('متوسط الدرجة ${q.share.round()}%', 'Mean mark ${q.share.round()}%') : t('${q.share.round()}% أجابوا صحيحًا', '${q.share.round()}% right'),
-                style: appText(12.5, w: FontWeight.w600, c: appScoreColor(context, q.share))),
+        _CardTitle(t('أصعب الأسئلة', 'Hardest questions'),
+            trailing: onAll == null ? null : AppButton.ghost(label: t('كل الأسئلة', 'All questions'), size: AppButtonSize.sm, onPressed: onAll)),
+        for (final (i, q) in questions.indexed) ...[
+          if (i > 0) Divider(height: AppSpace.lg, thickness: AppBorder.hairline, color: c.divider) else AppSpace.gapSm,
+          // the number at the start, the share at the end; both keep their width until the line is too short
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Flexible(child: Text(t('السؤال ${q.n}', 'Question ${q.n}'), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context))),
+            AppSpace.gapXs,
+            Flexible(
+              child: Text(q.isMeanMark ? t('متوسط الدرجة ${q.share.round()}%', 'Mean mark ${q.share.round()}%') : t('${q.share.round()}% أجابوا صحيحًا', '${q.share.round()}% right'),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: appScoreColor(context, q.share))),
+            ),
           ]),
           if (q.prompt.trim().isNotEmpty) ...[
-            const SizedBox(height: 2),
-            Text(q.prompt.trim(), maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium, h: 1.4)),
+            const SizedBox(height: AppSpace.xxs),
+            Text(q.prompt.trim(), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.body(context).copyWith(height: 1.4)),
           ],
-          const SizedBox(height: AppSpace.xxs),
+          AppSpace.gapXs,
           AppProgressBar(value: q.share, color: appScoreColor(context, q.share)),
           if (q.wrong != null) ...[
             const SizedBox(height: AppSpace.xxs),
-            Text(t('الخطأ الأكثر: ${q.wrong} (${q.wrongCount})', 'Most chosen wrong: ${q.wrong} (${q.wrongCount})'), style: appText(12, c: c.textMedium)),
+            Text(t('الخطأ الأكثر: ${q.wrong} (${q.wrongCount})', 'Most chosen wrong: ${q.wrong} (${q.wrongCount})'), style: AppType.meta(context)),
           ],
         ],
       ]),
@@ -238,7 +297,29 @@ class ResultHardestCard extends StatelessWidget {
   }
 }
 
-/// A rail card: an icon, a title, what it is for.
+/// A card's own heading: the editorial section role, its one-line explanation, an optional action at the end.
+class _CardTitle extends StatelessWidget {
+  const _CardTitle(this.title, {this.subtitle, this.trailing});
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) => Row(children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text(title, style: AppType.section(context)),
+            if (subtitle != null) ...[
+              const SizedBox(height: AppSpace.xxs),
+              Text(subtitle!, style: AppType.meta(context)),
+            ],
+          ]),
+        ),
+        ?trailing,
+      ]);
+}
+
+/// A rail card: a mark, a title in the editorial face, what it is for.
 class _ActionCard extends StatelessWidget {
   const _ActionCard({super.key, required this.icon, required this.title, required this.children, this.subtitle});
   final IconData icon;
@@ -248,24 +329,19 @@ class _ActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return AppCard(
+      padding: AppSpace.block,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(color: c.primary.withValues(alpha: .10), borderRadius: BorderRadius.circular(AppRadius.chip)),
-            child: Icon(icon, size: 20, color: appInk(context, c.primary)),
-          ),
-          const SizedBox(width: AppSpace.sm),
-          Expanded(child: Text(title, style: appText(15, w: FontWeight.w700, c: c.textDark))),
+          _Mark(icon),
+          AppSpace.gapSm,
+          Expanded(child: Text(title, style: AppType.section(context))),
         ]),
         if (subtitle != null) ...[
-          const SizedBox(height: AppSpace.xs),
-          Text(subtitle!, style: appText(13, c: c.textMedium, h: 1.45)),
+          AppSpace.gapSm,
+          Text(subtitle!, style: AppType.body(context).copyWith(height: 1.45)),
         ],
-        const SizedBox(height: AppSpace.sm),
+        AppSpace.gapMd,
         ...children,
       ]),
     );
@@ -322,28 +398,29 @@ class ResultPublishCard extends StatelessWidget {
             value: parents || b.parentsTold,
             onChanged: busy || parentsLocked ? null : onParents,
           ),
-        const SizedBox(height: AppSpace.xs),
+        AppSpace.gapSm,
       ],
+      // what will happen, before it does: the information tint (sky) with the block's ink on it
       Container(
         key: const ValueKey('result.publish.plan'),
         padding: const EdgeInsets.all(AppSpace.sm),
-        decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.chip)),
+        decoration: BoxDecoration(color: c.blockSky, borderRadius: AppRadius.controlAll),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(Icons.info_outline_rounded, size: 18, color: c.textMedium),
-          const SizedBox(width: AppSpace.xs),
-          Expanded(child: Text(plan.text, style: appText(13, c: c.textDark, h: 1.5))),
+          Icon(Icons.info_outline_rounded, size: AppIconSize.md, color: c.blockMuted(c.blockSky)),
+          AppSpace.gapXs,
+          Expanded(child: Text(plan.text, style: AppType.body(context).copyWith(color: c.blockInk, height: 1.5))),
         ]),
       ),
       if (plan.note != null) ...[
-        const SizedBox(height: AppSpace.xs),
-        Text(plan.note!, style: appText(12.5, c: c.textMedium, h: 1.45)),
+        AppSpace.gapXs,
+        Text(plan.note!, style: AppType.meta(context).copyWith(height: 1.45)),
       ],
       if (plan.button != null) ...[
-        const SizedBox(height: AppSpace.sm),
+        AppSpace.gapMd,
         if (primary)
-          AppPrimaryButton(key: const ValueKey('result.publish'), label: plan.button!, icon: Icons.campaign_rounded, busy: busy, onPressed: busy ? null : onPublish)
+          AppButton.primary(key: const ValueKey('result.publish'), label: plan.button!, icon: Icons.campaign_rounded, expand: true, busy: busy, onPressed: busy ? null : onPublish)
         else
-          OutlinedButton.icon(key: const ValueKey('result.publish'), onPressed: busy ? null : onPublish, icon: const Icon(Icons.campaign_rounded, size: 18), label: Text(plan.button!)),
+          AppButton.secondary(key: const ValueKey('result.publish'), label: plan.button!, icon: Icons.campaign_rounded, expand: true, busy: busy, onPressed: busy ? null : onPublish),
       ],
     ]);
   }
@@ -370,9 +447,12 @@ class ResultDataLabCard extends StatelessWidget {
     };
     return _ActionCard(key: const ValueKey('result.datalab'), icon: Icons.table_chart_outlined, title: t('الكتابة في Data Lab', 'Write to the Data Lab'), subtitle: text, children: [
       if (ready)
-        OutlinedButton.icon(key: const ValueKey('result.datalab.open'), onPressed: onOpen, icon: const Icon(Icons.edit_outlined, size: 18), label: Text(t('اختيار العمود', 'Choose the column')))
+        AppButton.secondary(key: const ValueKey('result.datalab.open'), label: t('اختيار العمود', 'Choose the column'), icon: Icons.edit_outlined, expand: true, onPressed: onOpen)
       else
-        Icon(access == LabAccess.noCourse ? Icons.link_off_rounded : Icons.visibility_off_outlined, size: 18, color: c.textLight),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: Icon(access == LabAccess.noCourse ? Icons.link_off_rounded : Icons.visibility_off_outlined, size: AppIconSize.md, color: c.textLight),
+        ),
     ]);
   }
 }
@@ -396,10 +476,10 @@ class ResultExportCard extends StatelessWidget {
       title: t('التصدير', 'Export'),
       subtitle: perQuestion ? t('Excel أو Word أو PDF، وفيه عمود لكل سؤال.', 'Excel, Word or PDF, with a column per question.') : t('Excel أو Word أو PDF.', 'Excel, Word or PDF.'),
       children: [
-        OutlinedButton.icon(key: const ValueKey('result.export.file'), onPressed: enabled ? onExport : null, icon: const Icon(Icons.file_download_outlined, size: 18), label: Text(t('تصدير ملف', 'Export a file'))),
+        AppButton.secondary(key: const ValueKey('result.export.file'), label: t('تصدير ملف', 'Export a file'), icon: Icons.file_download_outlined, expand: true, onPressed: enabled ? onExport : null),
         if (onStudio != null) ...[
-          const SizedBox(height: AppSpace.xs),
-          OutlinedButton.icon(key: const ValueKey('result.export.studio'), onPressed: enabled ? onStudio : null, icon: const Icon(Icons.palette_outlined, size: 18), label: Text(t('عرض في الاستوديو', 'View in Studio'))),
+          AppSpace.gapXs,
+          AppButton.ghost(key: const ValueKey('result.export.studio'), label: t('عرض في الاستوديو', 'View in Studio'), icon: Icons.palette_outlined, expand: true, onPressed: enabled ? onStudio : null),
         ],
       ],
     );
@@ -422,6 +502,7 @@ class ResultNothingYet extends StatelessWidget {
             : t('تظهر النتائج هنا عندما يسلّم الطلاب.', 'Results appear here as students submit.'));
     return AppCard(
       key: const ValueKey('result.empty'),
+      padding: AppSpace.block,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppEmpty(
           icon: isPaper ? Icons.document_scanner_outlined : Icons.hourglass_empty_rounded,
@@ -432,7 +513,7 @@ class ResultNothingYet extends StatelessWidget {
         ),
         if (onImport != null)
           Center(
-            child: TextButton.icon(key: const ValueKey('result.import'), onPressed: onImport, icon: const Icon(Icons.upload_file_rounded, size: 18), label: Text(t('لديك الدرجات في Excel؟ استوردها', 'Marks in Excel? Import them'))),
+            child: AppButton.ghost(key: const ValueKey('result.import'), label: t('لديك الدرجات في Excel؟ استوردها', 'Marks in Excel? Import them'), icon: Icons.upload_file_rounded, onPressed: onImport),
           ),
       ]),
     );
@@ -441,7 +522,8 @@ class ResultNothingYet extends StatelessWidget {
 
 enum _Filter { all, passed, failed, open }
 
-/// Every student: a search once the list is long, a filter by outcome, one calm row each.
+/// Every student: the kit's table — a search once the list is long, a filter by outcome, one calm row each (a card each
+/// on a phone).
 class ResultStudentsCard extends StatefulWidget {
   const ResultStudentsCard({super.key, required this.entries, required this.anonymous, this.onOpen, this.wide = false});
   final List<ResultEntry> entries;
@@ -470,7 +552,6 @@ class _ResultStudentsCardState extends State<ResultStudentsCard> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final all = widget.entries;
     final rows = all.where(_match).toList();
     int n(_Filter f) => switch (f) {
@@ -485,84 +566,139 @@ class _ResultStudentsCardState extends State<ResultStudentsCard> {
           _Filter.failed => t('لم ينجح', 'Not passed'),
           _Filter.open => t('قيد التصحيح', 'Being marked'),
         }} (${n(f)})';
-    return AppCard(
+    final outcomes = [for (final f in _Filter.values) if (f != _Filter.all && n(f) > 0) f];
+    final open = widget.onOpen;
+    return AppSection(
       key: const ValueKey('result.students'),
-      padding: EdgeInsets.zero,
+      title: widget.anonymous ? t('الأوراق', 'Papers') : t('الطلاب', 'Students'),
+      spaceAbove: false,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xs),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            AppSectionTitle(widget.anonymous ? t('الأوراق', 'Papers') : t('الطلاب', 'Students')),
-            if (all.length > 8) ...[
-              const SizedBox(height: AppSpace.xs),
-              AppSearchField(dense: true, hint: t('ابحث بالاسم', 'Search by name'), onChanged: (v) => setState(() => _q = v.trim())),
-            ],
-            const SizedBox(height: AppSpace.xs),
-            Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
-              for (final f in _Filter.values)
-                if (f == _Filter.all || n(f) > 0) AppChoiceChip(label: label(f), selected: _filter == f, onTap: () => setState(() => _filter = f)),
-            ]),
-          ]),
-        ),
-        if (rows.isEmpty)
-          Padding(
+        AppDataTable<ResultEntry>(
+          shrinkWrap: true,
+          rows: rows.take(_shown).toList(),
+          rowId: (e) => e.key,
+          onRowTap: open == null
+              ? null
+              : (e) {
+                  if (e.attemptId != null) open(e);
+                },
+          onSearch: all.length > 8 ? (v) => setState(() => _q = v.trim()) : null,
+          searchHint: t('ابحث بالاسم', 'Search by name'),
+          filters: outcomes.isEmpty
+              ? null
+              : [
+                  AppTableFilter(
+                    label: 'status'.tr,
+                    options: [for (final f in outcomes) (f.name, label(f))],
+                    value: _filter == _Filter.all ? null : _filter.name,
+                    onChanged: (v) => setState(() => _filter = v == null ? _Filter.all : _Filter.values.byName(v)),
+                  ),
+                ],
+          empty: Padding(
             padding: const EdgeInsets.all(AppSpace.lg),
-            child: Text(t('لا نتائج مطابقة', 'Nothing matches'), textAlign: TextAlign.center, style: appText(13, c: c.textMedium)),
+            child: Text(t('لا نتائج مطابقة', 'Nothing matches'), textAlign: TextAlign.center, style: AppType.body(context)),
           ),
-        for (final (i, e) in rows.take(_shown).indexed) ...[
-          if (i > 0) Divider(height: 1, color: c.divider.withValues(alpha: .6)),
-          _StudentRow(entry: e, wide: widget.wide, onTap: e.attemptId == null || widget.onOpen == null ? null : () => widget.onOpen!(e)),
+          mobileCard: (context, e) => _StudentCard(entry: e),
+          columns: [
+            AppTableColumn<ResultEntry>(
+              key: 'name',
+              label: widget.anonymous ? 'exam_result_col_paper'.tr : 'exam_result_col_student'.tr,
+              primary: true,
+              flex: 4,
+              cell: (context, e) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
+                child: Row(children: [
+                  AppAvatar(name: e.name, size: AppIconSize.xl),
+                  AppSpace.gapSm,
+                  Expanded(child: Text(e.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600))),
+                ]),
+              ),
+            ),
+            AppTableColumn<ResultEntry>(key: 'status', label: 'status'.tr, flex: 4, cell: (context, e) => _StudentTags(entry: e)),
+            AppTableColumn<ResultEntry>(
+              key: 'score',
+              label: 'exam_result_col_score'.tr,
+              flex: 2,
+              numeric: true,
+              align: AppColAlignment.end,
+              cell: (context, e) => Text(resultScore(e.score, e.maxScore), maxLines: 1, style: AppType.meta(context)),
+            ),
+            AppTableColumn<ResultEntry>(
+              key: 'percent',
+              label: 'exam_result_col_percent'.tr,
+              flex: 2,
+              numeric: true,
+              align: AppColAlignment.end,
+              cell: (context, e) => _Percent(entry: e),
+            ),
+          ],
+        ),
+        if (rows.length > _shown) ...[
+          AppSpace.gapXs,
+          Center(
+            child: AppButton.ghost(
+                label: t('عرض المزيد (${rows.length - _shown})', 'Show more (${rows.length - _shown})'), icon: Icons.expand_more_rounded, onPressed: () => setState(() => _shown += _page)),
+          ),
         ],
-        if (rows.length > _shown)
-          TextButton(onPressed: () => setState(() => _shown += _page), child: Text(t('عرض المزيد (${rows.length - _shown})', 'Show more (${rows.length - _shown})'))),
-        const SizedBox(height: AppSpace.xxs),
       ]),
     );
   }
 }
 
-class _StudentRow extends StatelessWidget {
-  const _StudentRow({required this.entry, required this.wide, this.onTap});
+/// A student's standing: the outcome first, then where the mark came from.
+class _StudentTags extends StatelessWidget {
+  const _StudentTags({required this.entry});
   final ResultEntry entry;
-  final bool wide;
-  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final e = entry;
+    final (text, tone) = e.open
+        ? (t('قيد التصحيح', 'Being marked'), AppTone.warning)
+        : (e.passed == true ? (t('ناجح', 'Passed'), AppTone.success) : (e.passed == false ? (t('لم ينجح', 'Not passed'), AppTone.danger) : (t('مصحّح', 'Graded'), AppTone.neutral)));
+    return Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
+      AppStatusBadge(label: text, tone: tone, dot: true, dense: true),
+      if (e.imported) AppStatusBadge(label: t('من Excel', 'From Excel'), icon: Icons.upload_file_rounded, dense: true),
+      if (e.form.isNotEmpty) AppStatusBadge(label: t('النموذج ${e.form}', 'Form ${e.form}'), dense: true),
+    ]);
+  }
+}
+
+class _Percent extends StatelessWidget {
+  const _Percent({required this.entry});
+  final ResultEntry entry;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final p = entry.percent;
+    return Text(resultPct(p), maxLines: 1, style: AppType.figure(context).copyWith(color: p == null ? c.textLight : appScoreColor(context, p)));
+  }
+}
+
+/// One student on a phone: the name and standing beside the percent and the score.
+class _StudentCard extends StatelessWidget {
+  const _StudentCard({required this.entry});
+  final ResultEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
     final e = entry;
-    final (text, color) = e.open
-        ? (t('قيد التصحيح', 'Being marked'), c.warning)
-        : (e.passed == true ? (t('ناجح', 'Passed'), c.success) : (e.passed == false ? (t('لم ينجح', 'Not passed'), c.danger) : (t('مصحّح', 'Graded'), c.textMedium)));
-    final name = Text(e.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w700, c: c.textDark));
-    final tags = Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
-      AppBadgePill(text, color: color),
-      if (e.imported) AppBadgePill(t('من Excel', 'From Excel'), color: c.textMedium),
-      if (e.form.isNotEmpty) AppBadgePill(t('النموذج ${e.form}', 'Form ${e.form}'), color: c.textMedium),
-    ]);
-    final score = Text(resultScore(e.score, e.maxScore), maxLines: 1, style: appText(13, c: c.textMedium));
-    final pct = Text(resultPct(e.percent), maxLines: 1, style: appText(16, w: FontWeight.w800, c: e.percent == null ? c.textLight : appScoreColor(context, e.percent)));
-    return InkWell(
-      key: ValueKey('result.row.${e.key}'),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
-        child: Row(children: [
-          AppAvatar(name: e.name, size: 38),
-          const SizedBox(width: AppSpace.sm),
-          if (wide) ...[
-            Expanded(flex: 4, child: name),
-            Expanded(flex: 4, child: Align(alignment: AlignmentDirectional.centerStart, child: tags)),
-            SizedBox(width: 90, child: Align(alignment: AlignmentDirectional.centerEnd, child: score)),
-            const SizedBox(width: AppSpace.md),
-            SizedBox(width: 64, child: Align(alignment: AlignmentDirectional.centerEnd, child: pct)),
-          ] else ...[
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [name, const SizedBox(height: AppSpace.xxs), tags])),
-            const SizedBox(width: AppSpace.xs),
-            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [pct, score]),
-          ],
+    return Row(children: [
+      AppAvatar(name: e.name, size: AppIconSize.xl),
+      AppSpace.gapSm,
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(e.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: AppSpace.xxs),
+          _StudentTags(entry: e),
         ]),
       ),
-    );
+      AppSpace.gapXs,
+      Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        _Percent(entry: e),
+        Text(resultScore(e.score, e.maxScore), maxLines: 1, style: AppType.meta(context)),
+      ]),
+    ]);
   }
 }

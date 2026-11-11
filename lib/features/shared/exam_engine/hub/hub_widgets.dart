@@ -1,10 +1,13 @@
-// The Exam Hub's drawing (D-350). Plain values only, so the layout harness pumps every piece:
+// The Exam Hub's drawing (D-350, editorial theme D-610 – D-629). Plain values only, so the layout harness pumps every
+// piece:
 //
-//   HubAttentionStrip    what needs the teacher now, each one a way into the filtered list
-//   HubSegmented         the Correction / Results switch
-//   HubExamCard          an exam on a phone     HubExamRow + HubExamDetail   the same exam on a wide window
+//   HubAttentionStrip    the desk: what needs the teacher now, one sky block of counts, each a way into the filtered
+//                        list (the screen's one memorable element; its lead count rolls in)
+//   HubSegmented         the Correction / Results switch (the kit's pill tabs)
+//   HubExamCard          an exam on a phone     the kit's AppDataTable + HubExamDetail   the same exams on a wide window
+//   HubExamDetail        the selected exam: a block in the colour of where it stands, its figures, every action
 //   HubNotEndedBody · HubNoDegreesBody          the two "before you go on" sheets
-//   ExamHubBody          the page below the header
+//   ExamHubBody          the page below the header, with the screen's one entrance (the desk, then the first exams)
 //
 // The decisions are in `hub_logic.dart`.
 library;
@@ -14,6 +17,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_contrast.dart' show ensureContrast;
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
 
 import '../../../admin/admin_common.dart' show t;
 import '../exam_all.dart';
@@ -27,6 +31,12 @@ const hubSplitFrom = 1040.0;
 
 /// The content column's widest: the hub fills the window; its detail pane grows with it.
 const hubMaxWidth = double.infinity;
+
+/// The Correction / Results switch on a wide window: two pills, never stretched across the list.
+const _switchWidth = 400.0;
+
+/// The AppReveal group of the hub's one entrance: played once per visit, never again on a tab switch.
+const _revealGroup = 'exam.hub';
 
 IconData hubActionIcon(HubAction a) => switch (a) {
       HubAction.edit => Icons.edit_outlined,
@@ -55,6 +65,30 @@ IconData hubCorrectionIcon(HubCorrection c) => switch (c) {
       HubCorrection.corrected => Icons.check_circle_outline_rounded,
     };
 
+/// The block an exam's details sit on (system.md §5): peach while work is left (a draft, papers to correct, results
+/// to publish), sky while it is still on the calendar, emerald once it is done, paper when there is nothing to say.
+AppBlockTone hubBlockToneOf(AllExam e, HubSurface s) {
+  switch (s) {
+    case HubSurface.creation:
+      if (e.draft) return AppBlockTone.peach;
+      if (e.published) return AppBlockTone.sky;
+      return AppBlockTone.paper;
+    case HubSurface.correction:
+      return switch (hubCorrectionOf(e)) {
+        HubCorrection.notCorrected || HubCorrection.inProgress => AppBlockTone.peach,
+        HubCorrection.notEnded => AppBlockTone.sky,
+        HubCorrection.corrected => AppBlockTone.emerald,
+        null => AppBlockTone.paper,
+      };
+    case HubSurface.results:
+      final g = e.grading;
+      if (g == null) return AppBlockTone.paper;
+      if (!g.ended) return AppBlockTone.sky;
+      if (hubUnpublished(e)) return AppBlockTone.peach;
+      return g.hasDegrees ? AppBlockTone.emerald : AppBlockTone.paper;
+  }
+}
+
 /// A tone as an icon or small text on a card, readable in dark mode too (some tones are dark themselves).
 Color _toneFg(BuildContext context, AppTone tone) {
   final c = context.colors;
@@ -63,7 +97,7 @@ Color _toneFg(BuildContext context, AppTone tone) {
 
 String _whereOf(String? course, String? org) => [?course, if (org != null && org.isNotEmpty) org].join(' · ');
 
-// ═══════════════════════════════════════ the smart header ══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════ the desk (the smart header) ═══════════════════════════════════════════════
 
 AppTone _attentionTone(HubAttentionKind k) => switch (k) {
       HubAttentionKind.toCorrect => AppTone.warning,
@@ -79,7 +113,16 @@ IconData _attentionIcon(HubAttentionKind k) => switch (k) {
       HubAttentionKind.drafts => Icons.edit_note_rounded,
     };
 
-/// What needs the teacher now. Nothing to do: one calm line. Nothing to say (older server, no exams): nothing.
+/// The short name of a count on the desk; the whole sentence is what a screen reader hears.
+String _attentionLabel(HubAttentionKind k) => switch (k) {
+      HubAttentionKind.toCorrect => hubCorrectionLabel(HubCorrection.notCorrected),
+      HubAttentionKind.inCorrection => hubCorrectionLabel(HubCorrection.inProgress),
+      HubAttentionKind.unpublished => hubResultsFilterLabel(HubResultsFilter.unpublished),
+      HubAttentionKind.drafts => examStatusLabel('draft'),
+    };
+
+/// What needs the teacher now: one sky block of counts, most urgent first. Nothing to do: a calm emerald line.
+/// Nothing to say (older server, no exams): nothing.
 class HubAttentionStrip extends StatelessWidget {
   const HubAttentionStrip({super.key, required this.items, required this.onTap, this.allClear = false});
   final List<HubAttention> items;
@@ -90,95 +133,107 @@ class HubAttentionStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     if (items.isEmpty) {
       if (!allClear) return const SizedBox.shrink();
-      return Row(children: [
-        Icon(Icons.check_circle_rounded, size: 20, color: c.success),
-        AppSpace.gapXs,
-        Expanded(child: Text(t('لا شيء ينتظرك الآن', 'Nothing needs you right now'), style: appText(13.5, w: FontWeight.w500, c: c.textMedium))),
-      ]);
-    }
-    return LayoutBuilder(builder: (context, box) {
-      final fit = box.maxWidth >= 720;
-      final tiles = [
-        for (final a in items)
-          _AttentionTile(key: ValueKey('exam.hub.attention.${a.kind.name}'), item: a, onTap: () => onTap(a.kind)),
-      ];
-      if (fit) {
-        return IntrinsicHeight(
-          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            for (var i = 0; i < 4; i++) ...[
-              if (i > 0) AppSpace.gapSm,
-              Expanded(child: i < tiles.length ? tiles[i] : const SizedBox.shrink()),
-            ],
-          ]),
-        );
-      }
-      if (tiles.length == 1) return tiles.first;
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        clipBehavior: Clip.none,
-        child: IntrinsicHeight(
-          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            for (var i = 0; i < tiles.length; i++) ...[
-              if (i > 0) AppSpace.gapSm,
-              SizedBox(width: 216, child: tiles[i]),
-            ],
-          ]),
-        ),
+      return AppBlock(
+        tone: AppBlockTone.emerald,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.md),
+        child: Builder(builder: (context) {
+          final b = AppBlock.colorsOf(context);
+          return Row(children: [
+            Icon(Icons.check_circle_rounded, size: AppIconSize.lg, color: b.accentInk(context.colors.success)),
+            AppSpace.gapSm,
+            Expanded(child: Text(t('لا شيء ينتظرك الآن', 'Nothing needs you right now'), style: AppType.bodyStrong(context).copyWith(color: b.ink))),
+          ]);
+        }),
       );
-    });
+    }
+    return AppBlock(
+      key: const ValueKey('exam.hub.attention'),
+      tone: AppBlockTone.sky,
+      padding: const EdgeInsets.all(AppSpace.xs),
+      child: LayoutBuilder(builder: (context, box) {
+        final b = AppBlock.colorsOf(context);
+        final cells = [
+          for (var i = 0; i < items.length; i++)
+            _AttentionCell(key: ValueKey('exam.hub.attention.${items[i].kind.name}'), item: items[i], lead: i == 0, onTap: () => onTap(items[i].kind)),
+        ];
+        final rule = b.ink.withValues(alpha: .12);
+        if (box.maxWidth >= 720 || cells.length == 1) {
+          return IntrinsicHeight(
+            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              for (var i = 0; i < cells.length; i++) ...[
+                if (i > 0) Padding(padding: const EdgeInsets.symmetric(vertical: AppSpace.sm), child: VerticalDivider(width: AppBorder.hairline, thickness: AppBorder.hairline, color: rule)),
+                Expanded(child: cells[i]),
+              ],
+            ]),
+          );
+        }
+        // a phone: two counts a row, the lead first
+        return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (var r = 0; r < cells.length; r += 2) ...[
+            if (r > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, indent: AppSpace.sm, endIndent: AppSpace.sm, color: rule),
+            IntrinsicHeight(
+              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Expanded(child: cells[r]),
+                VerticalDivider(width: AppBorder.hairline, thickness: AppBorder.hairline, indent: AppSpace.sm, endIndent: AppSpace.sm, color: rule),
+                Expanded(child: r + 1 < cells.length ? cells[r + 1] : const SizedBox.shrink()),
+              ]),
+            ),
+          ],
+        ]);
+      }),
+    );
   }
 }
 
-class _AttentionTile extends StatelessWidget {
-  const _AttentionTile({super.key, required this.item, required this.onTap});
+/// One count on the desk: what it is, how many, and the way in.
+class _AttentionCell extends StatelessWidget {
+  const _AttentionCell({super.key, required this.item, required this.onTap, this.lead = false});
   final HubAttention item;
   final VoidCallback onTap;
 
+  /// The most urgent count: its figure rolls in (one per block).
+  final bool lead;
+
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final tone = _attentionTone(item.kind);
-    final col = _toneFg(context, tone);
+    final b = AppBlock.colorsOf(context);
+    final tone = b.accentInk(appToneColor(context, _attentionTone(item.kind)));
+    final figure = AppType.figureLarge(context).copyWith(color: b.ink);
+    final key = 'exam.hub.attention.${item.kind.name}';
     return Semantics(
       button: true,
-      label: hubAttentionText(item),
+      label: '${hubAttentionText(item)}. ${hubAttentionAction(item.kind)}',
       excludeSemantics: true,
       child: Material(
-        color: c.cardBg,
-        borderRadius: AppRadius.cardAll,
+        type: MaterialType.transparency,
         child: InkWell(
           onTap: onTap,
           borderRadius: AppRadius.cardAll,
-          child: Container(
-            padding: const EdgeInsets.all(AppSpace.sm),
-            decoration: BoxDecoration(
-              borderRadius: AppRadius.cardAll,
-              border: Border.all(color: col.withValues(alpha: .28), width: AppBorder.hairline),
-            ),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Container(
-                width: 36,
-                height: 36,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(color: col.withValues(alpha: .12), borderRadius: AppRadius.chipAll),
-                child: Icon(_attentionIcon(item.kind), size: 20, color: col),
-              ),
-              AppSpace.gapSm,
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                  Text(hubAttentionText(item), maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w600, c: c.textDark)),
-                  const SizedBox(height: AppSpace.xxs),
-                  Row(mainAxisSize: MainAxisSize.min, children: [
-                    Flexible(child: Text(hubAttentionAction(item.kind), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: col))),
-                    const SizedBox(width: AppSpace.xxs),
-                    Icon(Icons.arrow_forward_rounded, size: 14, color: col),
-                  ]),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppTouch.min),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpace.md),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                Row(children: [
+                  Icon(_attentionIcon(item.kind), size: AppIconSize.md, color: tone),
+                  AppSpace.gapXs,
+                  Flexible(child: Text(_attentionLabel(item.kind), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: b.muted))),
                 ]),
-              ),
-            ]),
+                AppSpace.gapXs,
+                if (lead) AppOdometer('${item.count}', memoryKey: key, style: figure) else AppCountUp('${item.count}', memoryKey: key, style: figure),
+                const SizedBox(height: AppSpace.xxs),
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  Flexible(
+                    child: Text(hubAttentionAction(item.kind),
+                        maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: b.ink, fontWeight: FontWeight.w600)),
+                  ),
+                  const SizedBox(width: AppSpace.xxs),
+                  Icon(Icons.arrow_forward_rounded, size: AppIconSize.xs, color: b.ink),
+                ]),
+              ]),
+            ),
           ),
         ),
       ),
@@ -198,7 +253,7 @@ class HubSegment<T> {
   final int? count;
 }
 
-/// Two or three equal choices on a sliding thumb. The thumb moves instantly under Reduce motion.
+/// Two or three equal choices: the kit's pill track (the chosen pill solid primary), as the Creation tab's statuses.
 class HubSegmented<T> extends StatelessWidget {
   const HubSegmented({super.key, required this.items, required this.value, required this.onChanged});
   final List<HubSegment<T>> items;
@@ -207,89 +262,33 @@ class HubSegmented<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final i = items.indexWhere((x) => x.value == value);
-    final motion = AppMotion.of(context);
-    return LayoutBuilder(builder: (context, box) {
-      final w = box.maxWidth / items.length;
-      return Container(
-        padding: const EdgeInsets.all(AppSpace.xxs),
-        decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.chipAll, border: Border.all(color: c.divider, width: AppBorder.hairline)),
-        child: Stack(children: [
-          AnimatedPositionedDirectional(
-            duration: motion.base,
-            curve: AppMotion.curve,
-            top: 0,
-            bottom: 0,
-            start: (i < 0 ? 0 : i) * ((box.maxWidth - 2 * AppSpace.xxs - 2) / items.length),
-            width: (box.maxWidth - 2 * AppSpace.xxs - 2) / items.length,
-            child: DecoratedBox(
-              decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.chip - AppSpace.xxs), boxShadow: AppShadow.card(context)),
-            ),
-          ),
-          Row(children: [
-            for (final x in items)
-              Expanded(
-                child: Semantics(
-                  button: true,
-                  selected: x.value == value,
-                  child: InkWell(
-                    key: ValueKey('exam.hub.segment.${x.value}'),
-                    borderRadius: BorderRadius.circular(AppRadius.chip - AppSpace.xxs),
-                    onTap: () => onChanged(x.value),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: AppTouch.min - 8, maxWidth: w),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
-                        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                          if (x.icon != null) ...[
-                            Icon(x.icon, size: 18, color: x.value == value ? ensureContrast(c.primary, [c.cardBg]) : c.textMedium),
-                            const SizedBox(width: AppSpace.xxs + 2),
-                          ],
-                          Flexible(
-                            child: Text(x.label,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: appText(13.5, w: x.value == value ? FontWeight.w600 : FontWeight.w500, c: x.value == value ? c.textDark : c.textMedium)),
-                          ),
-                          if ((x.count ?? 0) > 0) ...[
-                            const SizedBox(width: AppSpace.xxs + 2),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                              decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(AppRadius.chip)),
-                              child: Text('${x.count}', style: appText(11, w: FontWeight.w700, c: c.textDark)),
-                            ),
-                          ],
-                        ]),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ]),
-        ]),
-      );
-    });
+    return AppTabs(
+      expand: true,
+      items: [for (final x in items) AppTabItem(x.label, icon: x.icon, count: (x.count ?? 0) > 0 ? x.count : null)],
+      index: i < 0 ? 0 : i,
+      onChanged: (n) => onChanged(items[n].value),
+    );
   }
 }
 
 // ═══════════════════════════════════════ one exam ══════════════════════════════════════════════════════════════════
 
+/// The exam's kind as a tinted mark: the icon's tint carries the colour of where it stands, never a wash.
 class _TypeWell extends StatelessWidget {
-  const _TypeWell({required this.exam, required this.tone, this.size = 44});
+  const _TypeWell({required this.exam, required this.tone});
   final AllExam exam;
   final AppTone tone;
-  final double size;
 
   @override
   Widget build(BuildContext context) {
     final col = _toneFg(context, tone);
     return Container(
-      width: size,
-      height: size,
+      width: AppIconSize.hero,
+      height: AppIconSize.hero,
       alignment: Alignment.center,
       decoration: BoxDecoration(color: col.withValues(alpha: .12), borderRadius: AppRadius.chipAll),
-      child: Icon(allExamTypeIcon(exam.type), color: col, size: size * .5),
+      child: Icon(allExamTypeIcon(exam.type), color: col, size: AppIconSize.md),
     );
   }
 }
@@ -362,16 +361,16 @@ class _ExamMenu extends StatelessWidget {
     final c = context.colors;
     return PopupMenuButton<HubAction>(
       tooltip: t('إجراءات', 'Actions'),
-      icon: Icon(Icons.more_vert_rounded, color: c.textMedium),
+      icon: Icon(Icons.more_vert_rounded, size: AppIconSize.md, color: c.textMedium),
       onSelected: onAction,
       itemBuilder: (_) => [
         for (final a in actions)
           PopupMenuItem<HubAction>(
             value: a,
             child: Row(children: [
-              Icon(hubActionIcon(a), size: 18, color: c.textMedium),
+              Icon(hubActionIcon(a), size: AppIconSize.sm, color: c.textMedium),
               AppSpace.gapSm,
-              Flexible(child: Text(hubActionLabel(a))),
+              Flexible(child: Text(hubActionLabel(a), style: AppType.row(context))),
             ]),
           ),
       ],
@@ -379,7 +378,7 @@ class _ExamMenu extends StatelessWidget {
   }
 }
 
-/// One exam on a phone.
+/// One exam on a phone: a paper card, the name in the editorial face, where it stands, and the one next step.
 class HubExamCard extends StatelessWidget {
   const HubExamCard({super.key, required this.exam, required this.surface, this.course, this.org, this.busy = false, required this.onAction});
   final AllExam exam;
@@ -401,22 +400,19 @@ class HubExamCard extends StatelessWidget {
     return AppCard(
       key: ValueKey('exam.hub.card.${e.id}'),
       onTap: () => onAction(main),
-      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.xxs, AppSpace.sm),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, AppSpace.xxs, AppSpace.sm),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: _TypeWell(exam: e, tone: hubToneOf(e, surface))),
+          _TypeWell(exam: e, tone: hubToneOf(e, surface)),
           AppSpace.gapSm,
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: AppSpace.xxs),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(e.displayTitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w700, c: c.textDark)),
-                if (where.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(where, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium)),
-                ],
-              ]),
-            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(e.displayTitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+              if (where.isNotEmpty) ...[
+                const SizedBox(height: AppSpace.xxs),
+                Text(where, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+              ],
+            ]),
           ),
           if (more.isNotEmpty) _ExamMenu(actions: more, onAction: onAction) else const SizedBox(width: AppSpace.sm),
         ]),
@@ -429,10 +425,10 @@ class HubExamCard extends StatelessWidget {
           const SizedBox(height: AppSpace.xs),
           Padding(
             padding: const EdgeInsetsDirectional.only(end: AppSpace.sm),
-            child: Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textLight)),
+            child: Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight)),
           ),
         ],
-        const SizedBox(height: AppSpace.xs),
+        AppSpace.gapXs,
         Padding(
           padding: const EdgeInsetsDirectional.only(end: AppSpace.sm),
           child: Wrap(alignment: WrapAlignment.end, spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
@@ -455,108 +451,136 @@ class HubExamCard extends StatelessWidget {
   }
 }
 
-/// One exam in the list of a wide window; the details and every action are beside it.
-class HubExamRow extends StatelessWidget {
-  const HubExamRow({super.key, required this.exam, required this.surface, this.course, this.org, this.selected = false, required this.onTap});
-  final AllExam exam;
+/// The exams of a wide window as the kit's table: the exam, where it stands, when. A tap opens it beside the list.
+class _HubExamTable extends StatelessWidget {
+  const _HubExamTable({required this.data, required this.rows, required this.surface, required this.selectedId, required this.onSelect, required this.empty});
+  final AllExamsData data;
+  final List<AllExam> rows;
   final HubSurface surface;
-  final String? course, org;
-  final bool selected;
-  final VoidCallback onTap;
+  final int? selectedId;
+  final ValueChanged<AllExam>? onSelect;
+  final Widget empty;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final e = exam;
-    final where = _whereOf(course, org);
-    final flags = hubFlags(e, surface);
-    return LayoutBuilder(builder: (context, box) {
-      final roomy = box.maxWidth >= 640;
-      final sub = hubSubline(e, surface);
-      return Semantics(
-        selected: selected,
-        button: true,
-        child: Material(
-          color: selected ? c.primaryTint : Colors.transparent,
-          borderRadius: AppRadius.chipAll,
-          child: InkWell(
-            key: ValueKey('exam.hub.row.${e.id}'),
-            onTap: onTap,
-            borderRadius: AppRadius.chipAll,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.sm),
+    return AppDataTable<AllExam>(
+      shrinkWrap: true,
+      rows: rows,
+      rowId: (e) => e.id,
+      selectedRowId: selectedId,
+      onRowTap: onSelect,
+      empty: empty,
+      columns: [
+        AppTableColumn<AllExam>(
+          key: 'exam',
+          label: 'exam_hub_col_exam'.tr,
+          primary: true,
+          flex: 5,
+          cell: (context, e) {
+            final where = _whereOf(data.courseName(e), data.orgName(e));
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
               child: Row(children: [
-                _TypeWell(exam: e, tone: hubToneOf(e, surface), size: 40),
+                _TypeWell(exam: e, tone: hubToneOf(e, surface)),
                 AppSpace.gapSm,
                 Expanded(
-                  flex: 5,
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                    Text(e.displayTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark)),
-                    if (where.isNotEmpty) Text(where, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
-                    if (!roomy) ...[
-                      const SizedBox(height: AppSpace.xxs),
-                      Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: flags.take(1).toList()),
-                    ],
+                    Text(e.displayTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
+                    if (where.isNotEmpty) Text(where, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
                   ]),
                 ),
-                if (roomy) ...[
-                  AppSpace.gapSm,
-                  Expanded(
-                    flex: 3,
-                    child: Align(alignment: AlignmentDirectional.centerStart, child: flags.isEmpty ? const SizedBox.shrink() : flags.first),
-                  ),
-                  AppSpace.gapSm,
-                  Expanded(flex: 3, child: Text(sub ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textLight))),
-                ],
               ]),
-            ),
-          ),
+            );
+          },
         ),
-      );
-    });
+        AppTableColumn<AllExam>(
+          key: 'state',
+          label: 'status'.tr,
+          flex: 3,
+          cell: (context, e) {
+            final flags = hubFlags(e, surface);
+            return flags.isEmpty ? const SizedBox.shrink() : flags.first;
+          },
+        ),
+        AppTableColumn<AllExam>(
+          key: 'when',
+          label: 'exam_hub_col_when'.tr,
+          flex: 3,
+          hideBelow: 560,
+          cell: (context, e) => Text(hubSubline(e, surface) ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight)),
+        ),
+      ],
+    );
   }
 }
 
-/// A label over its value, for the details panel.
+/// The selected exam's figures inside its block: the counts that say where it stands.
+List<(String, int)> _figuresOf(AllExam e, HubSurface s) {
+  final g = e.grading;
+  return [
+    if (s == HubSurface.creation) ...[
+      (t('الأسئلة', 'Questions'), e.questionCount),
+      if (!e.draft) (t('المحاولات', 'Attempts'), e.attempts),
+    ],
+    if (s != HubSurface.creation && g != null) ...[
+      (t('التسليمات', 'Submissions'), g.submitted),
+      (t('الأوراق', 'Papers'), g.papers),
+      if (s == HubSurface.correction) ...[
+        (t('للمراجعة', 'To review'), g.reviewOpen),
+        (t('إجابات تنتظر درجة', 'Answers to mark'), g.answersOpen),
+      ],
+    ],
+  ];
+}
+
+/// The selected exam's other facts, as label · value lines under the block.
+List<(String, String)> _factsOf(AllExam e, HubSurface s) {
+  final g = e.grading;
+  return [
+    if (s == HubSurface.creation) ...[
+      if (e.durationMinutes != null) (t('المدة', 'Duration'), omrMinutesText(e.durationMinutes!)),
+      if (e.startsAt != null) (t('يبدأ', 'Starts'), AppTime.dateTime(e.startsAt!)),
+    ],
+    if (s == HubSurface.results && g?.dataLabColumn != null) (t('في Data Lab', 'In Data Lab'), g!.dataLabColumn!),
+    if (e.endsAt != null) (t('ينتهي', 'Ends'), AppTime.dateTime(e.endsAt!)),
+  ];
+}
+
+/// One figure in the block: the number over its name.
+class _Figure extends StatelessWidget {
+  const _Figure(this.label, this.value);
+  final String label;
+  final int value;
+
+  @override
+  Widget build(BuildContext context) {
+    final b = AppBlock.colorsOf(context);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+      Text('$value', maxLines: 1, style: AppType.figureLarge(context).copyWith(color: b.ink)),
+      Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: b.muted)),
+    ]);
+  }
+}
+
+/// A label and its value on one line of the facts card.
 class _Fact extends StatelessWidget {
   const _Fact(this.label, this.value);
   final String label, value;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-      Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w500, c: c.textLight)),
-      const SizedBox(height: 2),
-      Text(value, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w600, c: c.textDark)),
-    ]);
-  }
+  Widget build(BuildContext context) => ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AppTouch.min),
+        child: Row(children: [
+          Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context))),
+          AppSpace.gapSm,
+          Flexible(flex: 2, child: Text(value, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.end, style: AppType.row(context))),
+        ]),
+      );
 }
 
-List<(String, String)> _factsOf(AllExam e, HubSurface s) {
-  final g = e.grading;
-  return [
-    (t('النوع', 'Type'), allExamTypeLabel(e.type)),
-    if (s == HubSurface.creation) ...[
-      (t('الأسئلة', 'Questions'), '${e.questionCount}'),
-      if (!e.draft) (t('المحاولات', 'Attempts'), '${e.attempts}'),
-      if (e.durationMinutes != null) (t('المدة', 'Duration'), omrMinutesText(e.durationMinutes!)),
-      if (e.startsAt != null) (t('يبدأ', 'Starts'), AppTime.dateTime(e.startsAt!)),
-    ],
-    if (s != HubSurface.creation && g != null) ...[
-      (t('التسليمات', 'Submissions'), '${g.submitted}'),
-      (t('الأوراق', 'Papers'), '${g.papers}'),
-      if (s == HubSurface.correction) ...[
-        (t('للمراجعة', 'To review'), '${g.reviewOpen}'),
-        (t('إجابات تنتظر درجة', 'Answers to mark'), '${g.answersOpen}'),
-      ],
-      if (s == HubSurface.results && g.dataLabColumn != null) (t('في Data Lab', 'In Data Lab'), g.dataLabColumn!),
-    ],
-    if (e.endsAt != null) (t('ينتهي', 'Ends'), AppTime.dateTime(e.endsAt!)),
-  ];
-}
-
-/// The selected exam on a wide window: what it is, where it stands, everything you can do with it.
+/// The selected exam on a wide window: a block in the colour of where it stands (its kind, name, flags and figures),
+/// the remaining facts on paper, then everything you can do with it.
 class HubExamDetail extends StatelessWidget {
   const HubExamDetail({super.key, required this.exam, required this.surface, this.course, this.org, this.busy = false, required this.onAction});
   final AllExam exam;
@@ -572,60 +596,78 @@ class HubExamDetail extends StatelessWidget {
     final where = _whereOf(course, org);
     final main = hubMainAction(e, surface);
     final more = hubMoreActions(e, surface);
-    final sub = surface == HubSurface.correction ? hubCorrectionDetail(e) : null;
+    final figures = _figuresOf(e, surface);
+    // the correction line only where the figures do not already say it (an older server without the counts)
+    final sub = surface == HubSurface.correction && figures.isEmpty ? hubCorrectionDetail(e) : null;
     final facts = _factsOf(e, surface);
-    return AppCard(
-      key: ValueKey('exam.hub.detail.${e.id}'),
-      padding: const EdgeInsets.all(AppSpace.lg),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _TypeWell(exam: e, tone: hubToneOf(e, surface), size: 48),
-          AppSpace.gapSm,
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(e.displayTitle, maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(17, w: FontWeight.w700, c: c.textDark)),
-              if (where.isNotEmpty) ...[
-                const SizedBox(height: 2),
-                Text(where, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textMedium)),
-              ],
+    return Column(key: ValueKey('exam.hub.detail.${e.id}'), crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+      AppBlock(
+        tone: hubBlockToneOf(e, surface),
+        hero: true,
+        child: Builder(builder: (context) {
+          final b = AppBlock.colorsOf(context);
+          return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Row(children: [
+              Icon(allExamTypeIcon(e.type), size: AppIconSize.md, color: b.muted),
+              AppSpace.gapXs,
+              Flexible(child: Text(allExamTypeLabel(e.type), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: b.muted))),
             ]),
-          ),
-        ]),
-        AppSpace.gapMd,
-        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: hubFlags(e, surface)),
-        if (sub != null) ...[
-          const SizedBox(height: AppSpace.xs),
-          Text(sub, style: appText(12.5, c: c.textMedium)),
-        ],
-        AppSpace.gapMd,
-        Divider(height: 1, color: c.divider),
-        AppSpace.gapMd,
-        LayoutBuilder(builder: (context, box) {
-          final w = (box.maxWidth - AppSpace.md) / 2;
-          return Wrap(spacing: AppSpace.md, runSpacing: AppSpace.md, children: [
-            for (final f in facts) SizedBox(width: w, child: _Fact(f.$1, f.$2)),
+            AppSpace.gapXs,
+            Text(e.displayTitle, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.headline(context).copyWith(color: b.ink)),
+            if (where.isNotEmpty) ...[
+              const SizedBox(height: AppSpace.xxs),
+              Text(where, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.body(context).copyWith(color: b.muted)),
+            ],
+            AppSpace.gapMd,
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: hubFlags(e, surface)),
+            if (sub != null) ...[
+              AppSpace.gapXs,
+              Text(sub, style: AppType.meta(context).copyWith(color: b.muted)),
+            ],
+            if (figures.isNotEmpty) ...[
+              AppSpace.gapLg,
+              LayoutBuilder(builder: (context, box) {
+                final perRow = figures.length == 4 ? 2 : figures.length;
+                final w = (box.maxWidth - (perRow - 1) * AppSpace.md) / perRow;
+                return Wrap(spacing: AppSpace.md, runSpacing: AppSpace.md, children: [
+                  for (final f in figures) SizedBox(width: w, child: _Figure(f.$1, f.$2)),
+                ]);
+              }),
+            ],
           ]);
         }),
-        AppSpace.gapLg,
-        AppButton.primary(
-            key: const ValueKey('exam.hub.detail.main'),
-            label: hubActionLabel(main),
-            icon: hubActionIcon(main),
-            expand: true,
-            busy: busy,
-            onPressed: busy ? null : () => onAction(main)),
-        for (final a in more) ...[
-          const SizedBox(height: AppSpace.xs),
-          AppButton.secondary(label: hubActionLabel(a), icon: hubActionIcon(a), expand: true, onPressed: () => onAction(a)),
-        ],
-      ]),
-    );
+      ),
+      if (facts.isNotEmpty) ...[
+        AppSpace.gapSm,
+        AppCard(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xxs),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            for (var i = 0; i < facts.length; i++) ...[
+              if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+              _Fact(facts[i].$1, facts[i].$2),
+            ],
+          ]),
+        ),
+      ],
+      AppSpace.gapLg,
+      AppButton.primary(
+          key: const ValueKey('exam.hub.detail.main'),
+          label: hubActionLabel(main),
+          icon: hubActionIcon(main),
+          expand: true,
+          busy: busy,
+          onPressed: busy ? null : () => onAction(main)),
+      for (final a in more) ...[
+        AppSpace.gapXs,
+        AppButton.secondary(label: hubActionLabel(a), icon: hubActionIcon(a), expand: true, onPressed: () => onAction(a)),
+      ],
+    ]);
   }
 }
 
 // ═══════════════════════════════════════ the two sheets ════════════════════════════════════════════════════════════
 
-/// "This exam has not ended yet": when it ends, and the way to start anyway.
+/// "This exam has not ended yet": when it ends (a sky block: it is about the calendar), and the way to start anyway.
 class HubNotEndedBody extends StatelessWidget {
   const HubNotEndedBody({super.key, required this.text, required this.onWait, required this.onCorrectAnyway});
   final String text;
@@ -633,22 +675,22 @@ class HubNotEndedBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-          width: 44,
-          height: 44,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(color: c.primaryTint, borderRadius: AppRadius.chipAll),
-          child: Icon(Icons.schedule_rounded, color: c.primary, size: 24),
-        ),
-        AppSpace.gapSm,
-        Expanded(child: Text(text, style: appText(14, c: c.textMedium).copyWith(height: 1.5))),
-      ]),
+      AppBlock(
+        tone: AppBlockTone.sky,
+        padding: const EdgeInsets.all(AppSpace.md),
+        child: Builder(builder: (context) {
+          final b = AppBlock.colorsOf(context);
+          return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(Icons.schedule_rounded, size: AppIconSize.lg, color: b.ink),
+            AppSpace.gapSm,
+            Expanded(child: Text(text, style: AppType.body(context).copyWith(color: b.ink, height: 1.5))),
+          ]);
+        }),
+      ),
       AppSpace.gapLg,
       AppButton.primary(key: const ValueKey('exam.hub.not_ended.wait'), label: t('حسناً، سأنتظر', 'OK, I will wait'), expand: true, onPressed: onWait),
-      const SizedBox(height: AppSpace.xs),
+      AppSpace.gapXs,
       AppButton.secondary(
           key: const ValueKey('exam.hub.not_ended.correct'),
           label: t('صحّح على أي حال', 'Correct anyway'),
@@ -659,6 +701,7 @@ class HubNotEndedBody extends StatelessWidget {
   }
 }
 
+/// One way forward in a sheet: the suggested one on the emerald block, the other on paper.
 class _ChoiceRow extends StatelessWidget {
   const _ChoiceRow({super.key, required this.icon, required this.title, required this.text, required this.onTap, this.recommended = false});
   final IconData icon;
@@ -669,34 +712,37 @@ class _ChoiceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Material(
-      color: recommended ? c.primaryTint : c.cardBg,
-      borderRadius: AppRadius.cardAll,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadius.cardAll,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpace.md),
-          decoration: BoxDecoration(
-            borderRadius: AppRadius.cardAll,
-            border: Border.all(color: recommended ? c.primary.withValues(alpha: .35) : c.divider, width: AppBorder.hairline),
-          ),
-          child: Row(children: [
-            Icon(icon, color: c.primary, size: 24),
-            AppSpace.gapSm,
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                  Text(title, style: appText(14.5, w: FontWeight.w700, c: c.textDark)),
-                  if (recommended) AppStatusBadge(label: t('مقترح', 'Recommended'), tone: AppTone.brand, dense: true),
+    final b = AppBlockColors.of(context, recommended ? AppBlockTone.emerald : AppBlockTone.paper);
+    final border = b.border;
+    return AppPressScale(
+      child: Material(
+        color: b.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: AppRadius.cardAll,
+          side: border == null ? BorderSide.none : BorderSide(color: border, width: AppBorder.hairline),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpace.md),
+            child: Row(children: [
+              Icon(icon, color: b.accentInk(c.primary), size: AppIconSize.lg),
+              AppSpace.gapSm,
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                    Text(title, style: AppType.section(context).copyWith(color: b.ink)),
+                    if (recommended) AppStatusBadge(label: t('مقترح', 'Recommended'), tone: AppTone.brand, dense: true),
+                  ]),
+                  const SizedBox(height: AppSpace.xxs),
+                  Text(text, style: AppType.body(context).copyWith(color: b.muted)),
                 ]),
-                const SizedBox(height: 2),
-                Text(text, style: appText(12.5, c: c.textMedium)),
-              ]),
-            ),
-            AppSpace.gapXs,
-            Icon(Icons.chevron_right_rounded, color: c.textLight),
-          ]),
+              ),
+              AppSpace.gapXs,
+              Icon(Icons.chevron_right_rounded, size: AppIconSize.lg, color: b.faint),
+            ]),
+          ),
         ),
       ),
     );
@@ -756,7 +802,7 @@ class _FilterChips<T> extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         child: Row(children: [
           for (var i = 0; i < options.length; i++) ...[
-            if (i > 0) const SizedBox(width: AppSpace.xs),
+            if (i > 0) AppSpace.gapXs,
             AppChoiceChip(
               label: options[i].$3 == null ? options[i].$2 : '${options[i].$2}  ${options[i].$3}',
               selected: options[i].$1 == value,
@@ -908,6 +954,7 @@ class ExamHubBody extends StatelessWidget {
     final cc = hubCorrectionCounts(d, query: filter.query);
     final rc = hubResultsCounts(d, query: filter.query);
     final sw = HubSegmented<HubSurface>(
+      key: const ValueKey('exam.hub.segments'),
       items: [
         HubSegment(HubSurface.correction, t('التصحيح', 'Correction'), icon: Icons.task_alt_rounded, count: flags ? d.exams.where(hubNeedsCorrection).length : null),
         HubSegment(HubSurface.results, t('النتائج', 'Results'), icon: Icons.insights_rounded, count: flags ? d.exams.where(hubUnpublished).length : null),
@@ -946,7 +993,8 @@ class ExamHubBody extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       if (wide)
         Row(children: [
-          ConstrainedBox(constraints: const BoxConstraints(maxWidth: 380), child: SizedBox(width: 380, child: sw)),
+          Flexible(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: _switchWidth), child: sw)),
+          AppSpace.gapMd,
           const Spacer(),
           ?revision,
         ])
@@ -971,7 +1019,8 @@ class ExamHubBody extends StatelessWidget {
     final d = data;
     return LayoutBuilder(builder: (context, box) {
       final wide = box.maxWidth >= hubSplitFrom;
-      final side = box.maxWidth > hubMaxWidth + 2 * AppSpace.lg ? (box.maxWidth - hubMaxWidth) / 2 : (wide ? AppSpace.lg : AppSpace.md);
+      // the body lines up with the header's gutters
+      final side = AppSpace.gutter(box.maxWidth);
       if (error != null && d == null) {
         return ListView(physics: const AlwaysScrollableScrollPhysics(), padding: EdgeInsets.symmetric(horizontal: side, vertical: AppSpace.md), children: [AppErrorState(message: error, onRetry: onRetry)]);
       }
@@ -982,8 +1031,9 @@ class ExamHubBody extends StatelessWidget {
             children: const [AppListSkeleton(items: 5)]);
       }
       final attention = hubAttention(d);
-      final strip = HubAttentionStrip(items: attention, onTap: onAttention, allClear: hubHasFlags(d) && d.exams.isNotEmpty);
       final hasStrip = attention.isNotEmpty || (hubHasFlags(d) && d.exams.isNotEmpty);
+      // the one entrance: the desk leads, the first exams follow it
+      final strip = AppReveal(index: 0, group: _revealGroup, child: HubAttentionStrip(items: attention, onTap: onAttention, allClear: hubHasFlags(d) && d.exams.isNotEmpty));
       final shown = _shown(d);
       final controls = _controls(context, d, wide: wide);
       if (!wide) {
@@ -991,25 +1041,30 @@ class ExamHubBody extends StatelessWidget {
           onRefresh: onRefresh,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(side, AppSpace.md, side, AppSpace.lg),
+            padding: EdgeInsets.fromLTRB(side, AppSpace.md, side, AppSpace.xl),
             children: [
-              if (hasStrip) ...[strip, AppSpace.gapMd],
+              if (hasStrip) ...[strip, AppSpace.gapLg],
               ?controls,
               AppSpace.gapMd,
               if (d.fallback) ...[_fallbackBanner(), AppSpace.gapMd],
               if (shown.isEmpty)
                 _empty(d)
               else
-                for (final e in shown)
+                for (var i = 0; i < shown.length; i++)
                   Padding(
                     padding: const EdgeInsets.only(bottom: AppSpace.sm),
-                    child: HubExamCard(
-                      exam: e,
-                      surface: surface,
-                      course: d.courseName(e),
-                      org: d.orgName(e),
-                      busy: busy.contains(e.id),
-                      onAction: (a) => onAction(e, a),
+                    child: AppReveal(
+                      index: i + 1,
+                      group: _revealGroup,
+                      cap: 6,
+                      child: HubExamCard(
+                        exam: shown[i],
+                        surface: surface,
+                        course: d.courseName(shown[i]),
+                        org: d.orgName(shown[i]),
+                        busy: busy.contains(shown[i].id),
+                        onAction: (a) => onAction(shown[i], a),
+                      ),
                     ),
                   ),
             ],
@@ -1020,7 +1075,7 @@ class ExamHubBody extends StatelessWidget {
       return Padding(
         padding: EdgeInsets.fromLTRB(side, AppSpace.md, side, 0),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          if (hasStrip) ...[strip, AppSpace.gapMd],
+          if (hasStrip) ...[strip, AppSpace.gapLg],
           if (d.fallback) ...[_fallbackBanner(), AppSpace.gapMd],
           Expanded(
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1029,50 +1084,51 @@ class ExamHubBody extends StatelessWidget {
                   onRefresh: onRefresh,
                   child: ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.only(bottom: AppSpace.lg),
+                    padding: const EdgeInsets.only(bottom: AppSpace.xl),
                     children: [
                       ?controls,
                       AppSpace.gapMd,
                       if (shown.isEmpty)
                         _empty(d)
                       else
-                        AppCard(
-                          padding: const EdgeInsets.all(AppSpace.xs),
-                          child: Column(mainAxisSize: MainAxisSize.min, children: [
-                            for (var i = 0; i < shown.length; i++) ...[
-                              if (i > 0) Divider(height: AppSpace.xxs, thickness: AppBorder.hairline, indent: AppSpace.sm, endIndent: AppSpace.sm, color: context.colors.divider),
-                              HubExamRow(
-                                exam: shown[i],
-                                surface: surface,
-                                course: d.courseName(shown[i]),
-                                org: d.orgName(shown[i]),
-                                selected: selected?.id == shown[i].id,
-                                onTap: () => onSelect?.call(shown[i]),
-                              ),
-                            ],
-                          ]),
+                        AppReveal(
+                          index: 1,
+                          group: _revealGroup,
+                          child: _HubExamTable(
+                            data: d,
+                            rows: shown,
+                            surface: surface,
+                            selectedId: selected?.id,
+                            onSelect: onSelect,
+                            empty: _empty(d),
+                          ),
                         ),
                     ],
                   ),
                 ),
               ),
-              AppSpace.gapLg,
-              SizedBox(
-                width: (box.maxWidth * 0.28).clamp(380.0, 520.0),
-                child: selected == null
-                    ? const SizedBox.shrink()
-                    : SingleChildScrollView(
-                        padding: const EdgeInsets.only(bottom: AppSpace.lg),
-                        child: HubExamDetail(
-                          exam: selected,
-                          surface: surface,
-                          course: d.courseName(selected),
-                          org: d.orgName(selected),
-                          busy: busy.contains(selected.id),
-                          onAction: (a) => onAction(selected, a),
-                        ),
+              // nothing to open: the list (or its empty state) takes the whole width
+              if (selected != null) ...[
+                AppSpace.gapLg,
+                SizedBox(
+                  width: (box.maxWidth * 0.3).clamp(380.0, 520.0),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(bottom: AppSpace.xl),
+                    child: AppReveal(
+                      index: 2,
+                      group: _revealGroup,
+                      child: HubExamDetail(
+                        exam: selected,
+                        surface: surface,
+                        course: d.courseName(selected),
+                        org: d.orgName(selected),
+                        busy: busy.contains(selected.id),
+                        onAction: (a) => onAction(selected, a),
                       ),
-              ),
+                    ),
+                  ),
+                ),
+              ],
             ]),
           ),
         ]),

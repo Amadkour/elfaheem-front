@@ -299,9 +299,10 @@ void main() {
       await expectNoLayoutErrors(t, () => body(tab: 1, segment: HubSurface.results, d: AllExamsData(exams: [_e(1)])));
     });
     testWidgets('sheets', (t) async {
-      await expectNoLayoutErrors(t, () => HubNotEndedBody(text: hubNotEndedText(_e(5, status: 'published', ends: '2026-12-01T10:00:00')), onWait: () {}, onCorrectAnyway: () {}));
-      await expectNoLayoutErrors(t, () => HubNoDegreesBody(canImport: true, importRecommended: true, onImport: () {}, onCorrect: () {}));
-      await expectNoLayoutErrors(t, () => HubNoDegreesBody(canImport: false, importRecommended: false, noCourse: true, onImport: () {}, onCorrect: () {}));
+      // the bodies sit in AppSheetContent, which scrolls them
+      await expectNoLayoutErrors(t, () => SingleChildScrollView(child: HubNotEndedBody(text: hubNotEndedText(_e(5, status: 'published', ends: '2026-12-01T10:00:00')), onWait: () {}, onCorrectAnyway: () {})));
+      await expectNoLayoutErrors(t, () => SingleChildScrollView(child: HubNoDegreesBody(canImport: true, importRecommended: true, onImport: () {}, onCorrect: () {})));
+      await expectNoLayoutErrors(t, () => SingleChildScrollView(child: HubNoDegreesBody(canImport: false, importRecommended: false, noCourse: true, onImport: () {}, onCorrect: () {})));
     });
     testWidgets('import sheet', (t) async {
       await expectNoLayoutErrors(t, () => SingleChildScrollView(child: HubDegreesPickBody(onTemplate: () {}, onPick: () {})));
