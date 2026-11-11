@@ -89,7 +89,7 @@ List<GoLiveCourse> _courses() => [
       GoLiveCourse(id: 4, title: tr('تعلم الآلة المتقدم', 'Advanced machine learning'), students: 0, published: false),
     ];
 
-/// A slice of the instructor home behind the sheet: the real hero (the sky block, its day ribbon, Go live), enough
+/// A slice of the instructor home behind the sheet: the real hero (the forest greeting card, Go live), enough
 /// to read the page under it.
 Widget _homeBehind({bool live = false}) => ListView(padding: EdgeInsets.zero, children: [
       Center(
@@ -99,13 +99,9 @@ Widget _homeBehind({bool live = false}) => ListView(padding: EdgeInsets.zero, ch
             TeacherHomeHero(
               name: tr('أحمد حمدي', 'Ahmed Hamdy'),
               subtitle: tr('٣ حصص اليوم · التالية ١٢:١٢ م', '3 sessions today · next at 12:12 PM'),
-              day: const [
-                HomeAgendaItem(start: '', end: '', title: 'a', startMin: 9 * 60, endMin: 10 * 60 + 30),
-                HomeAgendaItem(start: '', end: '', title: 'b', startMin: 12 * 60 + 12, endMin: 13 * 60 + 42),
-              ],
-              nowMin: 12 * 60,
+              ring: 1 / 3,
               switcher: Text(tr('الحساب الشخصي', 'Personal')),
-              goLive: GoLiveButton(live: live, onTap: () {}),
+              goLive: GoLiveButton(live: live, onHero: true, onTap: () {}),
             ),
             const SizedBox(height: 400),
           ]),

@@ -89,6 +89,7 @@ void main() {
     List<ScheduleSession> schedule = const [],
     Map<String, int> pending = const {},
     List<TeacherCourse> courses = const [],
+    Widget Function(bool wide)? hero,
   }) =>
       SingleChildScrollView(
         child: TeacherHomeBody(
@@ -108,6 +109,7 @@ void main() {
           onOpenEarnings: () {},
           onOpenInbox: () {},
           showFeeds: false,
+          hero: hero,
         ),
       );
 
@@ -150,29 +152,62 @@ void main() {
     await expectNoLayoutErrors(tester, () => body(staleError: longEn, extra: extra, schedule: [session(1, '08:00', '09:30')]));
   });
 
-  testWidgets('hero (D-622): sky block, the day ribbon, a long switcher beside Go live; free day; no Go live', (tester) async {
-    final day = teacherDayRibbonItems([session(1, '06:00', '07:30', ongoing: true), session(2, '09:00', '10:30'), session(3, '13:00', '14:00')]);
+  testWidgets('hero (D-631): the greeting card, a long switcher under Go live, centred; the ribbon sits in Today', (tester) async {
+    final schedule = [session(1, '06:00', '07:30', ongoing: true), session(2, '09:00', '10:30'), session(3, '13:00', '14:00')];
+    for (final centered in [false, true]) {
+      await expectNoLayoutErrors(
+        tester,
+        () => SingleChildScrollView(
+          child: TeacherHomeHero(
+            name: '$longAr $longEn',
+            subtitle: '$longEn $longAr',
+            ring: 0.5,
+            centered: centered,
+            switcher: const Text('$longAr $longEn', maxLines: 1, overflow: TextOverflow.ellipsis),
+            goLive: GoLiveButton(onHero: true, onTap: () {}),
+          ),
+        ),
+      );
+    }
+    await expectNoLayoutErrors(tester, () => SingleChildScrollView(child: TeacherHomeHero(name: longEn, goLive: GoLiveButton(live: true, onHero: true, onTap: () {}))));
+    await expectNoLayoutErrors(tester, () => const SingleChildScrollView(child: TeacherHomeHero(name: longAr, switcher: Text(longEn))));
+    // the hero beside Today (desktop) and above it (phone), with the day ribbon in Today; huge counts, long names
     await expectNoLayoutErrors(
       tester,
-      () => SingleChildScrollView(
-        child: TeacherHomeHero(
+      () => body(
+        schedule: schedule,
+        pending: const {'attendance_missing': 3, 'grading': 1200, 'materials_missing': 0, 'enrollment_requests': 7},
+        courses: courses,
+        extra: extra,
+        hero: (wide) => TeacherHomeHero(
           name: '$longAr $longEn',
-          subtitle: '$longEn $longAr',
-          day: day,
-          nowMin: 9 * 60,
-          switcher: const Text('$longAr $longEn', maxLines: 1, overflow: TextOverflow.ellipsis),
-          goLive: GoLiveButton(onTap: () {}),
+          subtitle: longEn,
+          centered: wide,
+          ring: teacherDayProgress(schedule),
+          padding: wide ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 20),
+          goLive: GoLiveButton(onHero: true, onTap: () {}),
         ),
       ),
     );
-    await expectNoLayoutErrors(tester, () => SingleChildScrollView(child: TeacherHomeHero(name: longEn, goLive: GoLiveButton(live: true, onTap: () {}))));
-    await expectNoLayoutErrors(tester, () => SingleChildScrollView(child: TeacherHomeHero(name: longAr, day: day, switcher: const Text(longEn))));
-    await tester.pumpWidget(layoutHost(SingleChildScrollView(child: TeacherHomeHero(name: 'A', day: day))));
+    // nothing at all: no sessions, no courses, a lone hero
+    await expectNoLayoutErrors(tester, () => body(hero: (wide) => TeacherHomeHero(name: 'A', centered: wide)));
+    await expectNoLayoutErrors(tester, () => body(loading: true, hero: (wide) => const TeacherHomeHero(name: 'A')));
+    await tester.pumpWidget(layoutHost(body(schedule: schedule)));
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(HomeDayRibbon), findsOneWidget);
-    await tester.pumpWidget(layoutHost(const SingleChildScrollView(child: TeacherHomeHero(name: 'A'))));
+    await tester.pumpWidget(layoutHost(body(hero: (_) => const TeacherHomeHero(name: 'A'))));
+    await tester.pump(const Duration(seconds: 1));
     expect(find.byType(HomeDayRibbon), findsNothing, reason: 'a free day draws no ribbon');
     await tester.pumpWidget(const SizedBox());
+  });
+
+  test('day progress: the share of the sessions of the day that ended; null on a free day', () {
+    expect(teacherDayProgress(const []), isNull);
+    final now = DateTime.now().toUtc();
+    String hhmm(DateTime t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+    final past = session(1, hhmm(now.subtract(const Duration(hours: 3))), hhmm(now.subtract(const Duration(hours: 2))));
+    final later = session(2, hhmm(now.add(const Duration(hours: 2))), hhmm(now.add(const Duration(hours: 3))));
+    if (now.hour >= 3 && now.hour <= 20) expect(teacherDayProgress([past, later], now: now), 0.5);
   });
 
   testWidgets('weekly appointments: week block, cards, empty, loading; the rating figures', (tester) async {

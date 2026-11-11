@@ -1,6 +1,7 @@
 // lib/features/teacher/home/go_live_sheet.dart — "Go live" on the instructor home (D-091): the button and the sheet.
 //
-//   GoLiveButton     the header's red pill ("Go live" / "Return to live" while a room of mine runs), plain values
+//   GoLiveButton     the header's red pill ("Go live" / "Return to live" while a room of mine runs), plain values;
+//                    `onHero`: the greeting hero's paper call to action (D-631) — red again only while a room runs
 //   GoLiveEntry      the home's wiring: the button + LiveRoomHost (a minimized room → back to it) + the sheet
 //   GoLiveSheetView  the sheet's content over plain values (layout-tested: test/ui/go_live_layout_test.dart):
 //                      course (horizontal cards) · session (the one scheduled now first, or "New live session now"
@@ -41,14 +42,17 @@ import 'teacher_models.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// The red "Go live" pill (a 48 px tap target around a 40 px pill). [live] → "Return to live" with a ringed dot.
-/// [compact] → the round icon only (narrow headers).
+/// [compact] → the round icon only (narrow headers). [onHero] → the greeting hero's call to action: a full-height
+/// paper pill in the primary ink with a small live-red mark (red stays for what is live, D-630); while a room of
+/// mine runs it is the solid live red again.
 class GoLiveButton extends StatelessWidget {
-  const GoLiveButton({super.key, this.live = false, this.onTap, this.busy = false, this.compact = false});
+  const GoLiveButton({super.key, this.live = false, this.onTap, this.busy = false, this.compact = false, this.onHero = false});
 
   final bool live;
   final VoidCallback? onTap;
   final bool busy;
   final bool compact;
+  final bool onHero;
 
   static String labelFor(bool live) => live ? t('العودة للبث', 'Return to live') : t('ابدأ البث', 'Go live');
 
@@ -58,23 +62,30 @@ class GoLiveButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    // ONE solid live red (no gradient, no coloured glow): the home's strong accent, legible white ink on it
-    final fill = ensureContrast(c.danger, [c.onHero]);
+    // ONE solid live red (no gradient, no coloured glow): the home's strong accent, legible white ink on it; on the
+    // greeting hero the idle pill is paper (the hero's one call to action) with the red kept for its small mark
+    final red = ensureContrast(c.danger, [c.onHero]);
+    final paper = onHero && !live;
+    final fill = paper ? c.onHero : red;
+    final ink = paper ? c.blockAccentInk(c.primary, c.onHero) : c.onHero;
     final label = labelFor(live);
     final icon = busy
-        ? SizedBox.square(dimension: AppIconSize.sm, child: CircularProgressIndicator(strokeWidth: AppBorder.focus, color: c.onHero))
+        ? SizedBox.square(dimension: AppIconSize.sm, child: CircularProgressIndicator(strokeWidth: AppBorder.focus, color: ink))
         : live
             ? _RingDot(color: c.onHero)
-            : Icon(Icons.sensors_rounded, size: AppIconSize.md, color: c.onHero);
+            : Icon(Icons.sensors_rounded, size: AppIconSize.md, color: paper ? ensureContrast(c.danger, [c.onHero]) : ink);
+    final height = onHero ? AppTouch.min : _pill;
     final pill = DecoratedBox(
       decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(AppRadius.pill)),
       child: SizedBox(
-        height: _pill,
-        width: compact ? _pill : null,
+        height: height,
+        width: compact ? height : null,
         child: compact
             ? Center(child: icon)
             : Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, 0, AppSpace.md, 0),
+                padding: onHero
+                    ? const EdgeInsetsDirectional.fromSTEB(AppSpace.md, 0, AppSpace.lg, 0)
+                    : const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, 0, AppSpace.md, 0),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   icon,
                   const SizedBox(width: AppSpace.xs),
@@ -82,7 +93,7 @@ class GoLiveButton extends StatelessWidget {
                     child: Text(label,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppType.label(context).copyWith(color: c.onHero, fontWeight: FontWeight.w600)),
+                        style: AppType.label(context).copyWith(color: ink, fontWeight: FontWeight.w600)),
                   ),
                 ]),
               ),
@@ -172,7 +183,10 @@ GoLiveCourse goLiveCourseOf(TeacherCourse x) {
 
 /// The header's "Go live": follows the open room ([LiveRoomHost]) and the home's live sessions.
 class GoLiveEntry extends StatefulWidget {
-  const GoLiveEntry({super.key, required this.courses, required this.schedule, this.loading = false, this.onDone, this.onNewCourse});
+  const GoLiveEntry({super.key, required this.courses, required this.schedule, this.loading = false, this.onDone, this.onNewCourse, this.onHero = false});
+
+  /// Drawn as the greeting hero's call to action ([GoLiveButton.onHero]).
+  final bool onHero;
 
   /// The home is still loading its courses: the pill spins and waits.
   final bool loading;
@@ -227,6 +241,7 @@ class _GoLiveEntryState extends State<GoLiveEntry> {
           live: LiveRoomHost.isOpen || _liveSlot != null,
           busy: _busy || widget.loading,
           compact: MediaQuery.sizeOf(context).width < 340,
+          onHero: widget.onHero,
           onTap: _tap,
         ),
       );

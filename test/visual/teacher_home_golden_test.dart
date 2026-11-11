@@ -4,9 +4,10 @@
 //   flutter test test/visual/teacher_home_golden_test.dart --update-goldens [--plain-name todo]
 //
 // → test/visual/goldens/teacher_area_<scene>_<width>_<lang>_<light|dark>.png at 390×844 and 1440×900.
-//   home        the sky hero with the day ribbon + Go live, then the Personal body (live meeting, to-do, today,
-//               courses, inbox) over real /me/home teacher to-do data
-//   free        a day without sessions: no ribbon, Today folded
+//   home        the premium dashboard (D-631): the forest greeting hero + Go live (beside the Today card with the
+//               day ribbon on desktop), shortcuts, live meeting, to-do, figures, course tiles, inbox over real
+//               /me/home teacher to-do data
+//   free        a day without sessions: no ribbon, Today folded (phone) / says so (desktop)
 //   todo        the full to-do page over the real merged list (urgent = the peach block)
 //   schedules   a course's weekly appointments: the sky week block and the cards
 //   stats       the instructor profile's rating figures (the gold block + paper cards)
@@ -248,17 +249,17 @@ Widget _home({bool free = false}) {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: kHomeWideMax),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          TeacherHomeHero(
-            name: tr('أحمد حمدي', 'Ahmed Hamdy'),
-            subtitle: teacherDaySummary(schedule, const {'attendance_missing': 2, 'grading': 18}, free ? 0 : 1),
-            day: teacherDayRibbonItems(schedule),
-            nowMin: _wall(_now),
-            shellActions: const [CalendarEntryIcon(), NotificationIcon(unreadCount: 0)],
-            switcher: const ContextSwitcher(),
-            goLive: GoLiveButton(onTap: () {}),
-          ),
-          const SizedBox(height: AppSpace.xs),
           TeacherHomeBody(
+            hero: (wide) => TeacherHomeHero(
+              name: tr('أحمد حمدي', 'Ahmed Hamdy'),
+              subtitle: teacherDaySummary(schedule, const {'attendance_missing': 2, 'grading': 18}, free ? 0 : 1),
+              ring: teacherDayProgress(schedule, now: _now),
+              centered: wide,
+              padding: wide ? EdgeInsets.zero : const EdgeInsets.fromLTRB(20, AppSpace.sm, 20, 0),
+              shellActions: const [CalendarEntryIcon(), NotificationIcon(unreadCount: 0)],
+              switcher: const ContextSwitcher(),
+              goLive: GoLiveButton(onHero: true, onTap: () {}),
+            ),
             liveNow: free ? const [] : _live(),
             now: _now,
             loading: false,

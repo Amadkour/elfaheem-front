@@ -1,19 +1,23 @@
 // lib/features/teacher/home/home_screen.dart — the INSTRUCTOR home (Track B.5).
 //
-//   header      TeacherHomeHero: the sky block (D-622) — greeting · name · the day line · today's sessions as a
-//               ribbon that draws in once (the page's one memorable element) · ContextSwitcher · Go live
+//   header      TeacherHomeHero: the forest greeting card (D-631) — time chip · the avatar ring (the day's sessions
+//               done) · "Good morning, name" · the day line · Go live as its ONE call to action · ContextSwitcher;
+//               on desktop it sits beside the Today card at one height (the premium dashboard layout)
 //   Personal:   live now   the meetings I'm invited to that are live (HomeLiveNow, one-tap Join) — only while they
 //                          run; the page's one strong accent
+//               shortcuts  phone only: courses · schedule · analysis · earnings (AppShortcutGrid, 2 × 2)
 //               needs you  ONE slim row of pills (HomeStatStrip), the counts above zero only: attendance not taken ·
 //                          grading · material missing · enrollment requests · payout pending — every count drawn
 //                          ONCE on the page; hidden while nothing waits (the greeting's line says "all caught up")
-//               today      one line per session (live first, lightly tinted, "Ends in …" and its "Enter room"
+//               today      today's sessions as a ribbon that draws in once (the page's one memorable element),
+//                          then one line per session (live first, lightly tinted, "Ends in …" and its "Enter room"
 //                          button — long-press: the guest link; no separate "Live now" card), 3 + "Show all" → the
 //                          course; a free day folds by itself ("No sessions today · Next: … · Sun 1")
-//               courses    my teaching in one card (TeacherCourseSummary): students · rating · earnings this month
-//                          (→ analytics; they left the old blue hero) over the 3 courses with most students
-//               inbox      the inbox preview from /me/home (older server: the self-fetching card); beside Today on
-//                          a wide window
+//               courses    the courses with most students as course tiles (a sideways row on phones, three in a
+//                          section card on desktop)
+//               figures    students · rating · earnings this month · today's sessions as four stat cards (→ analytics)
+//               inbox      the inbox preview from /me/home (older server: the self-fetching card); in the side
+//                          column on a wide window, with the published ring and the enrollments line
 //               ads · organizations
 //   Every section folds from its title (HomeSection, remembered per user on the device). "Coming up" left the
 //   home (the timetable tab has the week; the folded line of a free day names the next session).
@@ -24,8 +28,12 @@
 // a failure shows AppErrorState (retried by itself when the connection comes back), pull-to-refresh via AppRefresh.
 // The screen is kept alive: it loads once per signed-in user (ensureLoaded), never again after a /login as the
 // same account. TeacherHomeBody takes plain values (test/ui/teacher_home_layout_test.dart).
+import 'dart:math' as math;
+
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/home/me_home.dart' show MeHomeService, MeLiveRoom;
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
@@ -39,7 +47,9 @@ import 'package:flutter_education_app/features/org/home_org_mix.dart';
 import 'package:flutter_education_app/features/org/org_home_tab.dart' show homeTabs;
 // (OrgMemberHome is built through deferredOrgMemberHome)
 import 'package:flutter_education_app/features/org/org_member_today.dart' show orgTodayEpoch;
+import 'package:flutter_education_app/features/shared/course/course_list_card.dart';
 import 'package:flutter_education_app/features/shared/course/course_scope.dart' show CourseScope;
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
 import 'package:flutter_education_app/features/shared/inbox/inbox_page.dart' show kInboxFeatureKey;
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart'
     show InboxEntry, InboxEntryCard, InboxItem, InboxScreen, inboxEntryCounts, inboxEntryShown;
@@ -213,6 +223,61 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
     final error = provider.hasError && !provider.loaded ? (provider.errorMessage ?? 'generic_error'.tr) : null;
     final staleError = provider.hasError && provider.loaded ? (provider.errorMessage ?? 'generic_error'.tr) : null;
     final quickLive = !AppConfig.disableList.contains(kQuickLiveFeatureKey); // D-091
+    final isOrg = AppModeController.instance.isOrg;
+
+    // the greeting hero; [wide] = the desktop card beside "Today" (centred, no side insets of its own)
+    Widget hero(bool wide) => ParentComponent(
+          featureKey: 'teacher_home_topbar',
+          child: HomeEntrance(
+            index: 0,
+            child: TeacherHomeHero(
+              name: user?.name ?? 'sir'.tr,
+              centered: wide,
+              padding: wide ? EdgeInsets.zero : const EdgeInsets.fromLTRB(_kInset, AppSpace.sm, _kInset, 0),
+              // the day in one line, from exactly what the page below draws (M6): in Organization mode that
+              // organization's today, strip and "What needs you" rows; else my sessions and pills
+              subtitle: !provider.loaded
+                  ? null
+                  : (isOrg
+                          ? orgModeDaySummary(MeHomeService.instance.home, AppModeController.instance, MeHomeService.instance.liveNow.length)
+                          : null) ??
+                      teacherDaySummary(provider.schedule, provider.pending, provider.liveNow.length,
+                          payoutWaiting: (provider.extra?.pendingPayout ?? 0) > 0,
+                          orgTodo: _orgTodo(),
+                          inboxWaiting: !isOrg && (provider.extra?.inboxPreview ?? const []).any((x) => '${x['segment'] ?? 'todo'}' == 'todo')),
+              // the ring fills as my sessions of the day end (Individual mode, once loaded)
+              ring: provider.loaded && !isOrg ? teacherDayProgress(provider.schedule) : null,
+              leading: user == null ? null : UserChipButton(user: user, showLabel: false),
+              actions: [
+                // "Meet now" moved into the Go live sheet; the icon comes back when Go live is switched off
+                if (!quickLive) const QuickMeetingIcon(),
+                const MeetingLinksIcon(chrome: true), // every session / meeting link to copy or share (D-307)
+              ],
+              // the top bar carries these on desktop / tablet: drawn here on phones only (M7); while the inbox entry
+              // is on the page it carries the count (to-dos + unread), so the bell stays plain
+              shellActions: [
+                const CalendarEntryIcon(),
+                const ChatEntryIcon(),
+                if (provider.extra != null && !isOrg && !AppConfig.disableList.contains(kInboxFeatureKey))
+                  const NotificationIcon(unreadCount: 0, withTodos: false)
+                else
+                  NotificationIcon(unreadCount: unread),
+              ],
+              switcher: const ContextSwitcher(),
+              // Go live is the hero's one call to action (the paper pill; the live red while a room of mine runs)
+              goLive: quickLive
+                  ? GoLiveEntry(
+                      courses: _sideCourses(provider),
+                      schedule: provider.schedule,
+                      loading: loading,
+                      onDone: provider.refreshSilently,
+                      onNewCourse: _newCourse,
+                      onHero: true,
+                    )
+                  : null,
+            ),
+          ),
+        );
 
     // a desktop window: one wide calm card over the page's pattern (the wide role, D-360), the dashboard inside it
     return BasePage(
@@ -228,63 +293,9 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
             builder: (context, _) => CustomScrollView(
               physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
               slivers: [
-                SliverToBoxAdapter(
-                  child: _Width(
-                    child: ParentComponent(
-                      featureKey: 'teacher_home_topbar',
-                      child: HomeEntrance(
-                        index: 0,
-                        child: TeacherHomeHero(
-                          name: user?.name ?? 'sir'.tr,
-                          // the day in one line, from exactly what the page below draws (M6): in Organization mode
-                          // that organization's today, strip and "What needs you" rows; else my sessions and pills
-                          subtitle: !provider.loaded
-                              ? null
-                              : (AppModeController.instance.isOrg
-                                      ? orgModeDaySummary(MeHomeService.instance.home, AppModeController.instance,
-                                          MeHomeService.instance.liveNow.length)
-                                      : null) ??
-                                  teacherDaySummary(provider.schedule, provider.pending, provider.liveNow.length,
-                                      payoutWaiting: (provider.extra?.pendingPayout ?? 0) > 0,
-                                      orgTodo: _orgTodo(),
-                                      inboxWaiting: !AppModeController.instance.isOrg &&
-                                          (provider.extra?.inboxPreview ?? const []).any((x) => '${x['segment'] ?? 'todo'}' == 'todo')),
-                          // the day as a ribbon in the hero: my own sessions (Individual mode, once loaded)
-                          day: provider.loaded && !AppModeController.instance.isOrg ? teacherDayRibbonItems(provider.schedule) : const [],
-                          leading: user == null ? null : UserChipButton(user: user, showLabel: false),
-                          actions: [
-                            // "Meet now" moved into the Go live sheet; the icon comes back when Go live is switched off
-                            if (!quickLive) const QuickMeetingIcon(),
-                            const MeetingLinksIcon(chrome: true), // every session / meeting link to copy or share (D-307)
-                          ],
-                          // the top bar carries these on desktop / tablet: drawn here on phones only (M7); while the
-                          // inbox entry is on the page it carries the count (to-dos + unread), so the bell stays plain
-                          shellActions: [
-                            const CalendarEntryIcon(),
-                            const ChatEntryIcon(),
-                            if (provider.extra != null && !AppModeController.instance.isOrg && !AppConfig.disableList.contains(kInboxFeatureKey))
-                              const NotificationIcon(unreadCount: 0, withTodos: false)
-                            else
-                              NotificationIcon(unreadCount: unread),
-                          ],
-                          // the switcher at the start, "Go live" at the end; each may take half the line
-                          switcher: const ContextSwitcher(),
-                          goLive: quickLive
-                              ? GoLiveEntry(
-                                  courses: _sideCourses(provider),
-                                  schedule: provider.schedule,
-                                  loading: loading,
-                                  onDone: provider.refreshSilently,
-                                  onNewCourse: _newCourse,
-                                )
-                              : null,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: AppSpace.xs)),
                 if (AppModeController.instance.isOrg) ...[
+                  SliverToBoxAdapter(child: _Width(child: hero(false))),
+                  const SliverToBoxAdapter(child: SizedBox(height: AppSpace.xs)),
                   // the organization's side of my to-do list (the /me/home block follows the mode's scope)
                   if ((_todo(provider)?.items ?? const []).isNotEmpty)
                     SliverToBoxAdapter(
@@ -326,6 +337,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                         onNewCourse: _newCourse,
                         onOpenEarnings: _openEarnings,
                         onOpenInbox: _openInbox,
+                        hero: hero,
                       ),
                     ),
                   ),
@@ -386,10 +398,21 @@ List<HomeAgendaItem> teacherDayRibbonItems(List<ScheduleSession> schedule) => [
         ),
     ];
 
-/// The instructor's hero (D-622): the sky block with the greeting, the name in the editorial display face and the
-/// day line; under them the day itself — today's sessions on a 07:00–22:00 ribbon with a "now" mark, drawn in once
-/// from the start edge (the home's one memorable element) — then the context switcher and Go live. Plain values:
-/// the screen hands in the live widgets, the renders and the layout harness draw it as it is.
+/// How much of today's teaching is behind me (0..1): today's sessions that already ended over all of them; null on a
+/// free day. The hero's avatar ring draws it.
+double? teacherDayProgress(List<ScheduleSession> schedule, {DateTime? now}) {
+  final today = teacherTodaySessions(schedule);
+  if (today.isEmpty) return null;
+  final t = (now ?? DateTime.now()).toUtc();
+  final done = today.where((s) => !(s.isOngoing || s.isLive) && !teacherSessionUtc(s, s.endTime).isAfter(t)).length;
+  return done / today.length;
+}
+
+/// The instructor's hero (D-631): the forest greeting card — the time chip, the avatar in a ring that fills as the
+/// day's sessions end ([ring], [teacherDayProgress]), "Good morning, Ahmed" in the display face, the day line, Go live
+/// as the ONE call to action and the context switcher under it; the buttons sit at its top end as glass. [centered]:
+/// the desktop card beside "Today". Plain values: the screen hands in the live widgets, the renders and the layout
+/// harness draw it as it is.
 class TeacherHomeHero extends StatelessWidget {
   const TeacherHomeHero({
     super.key,
@@ -398,10 +421,11 @@ class TeacherHomeHero extends StatelessWidget {
     this.leading,
     this.actions = const [],
     this.shellActions = const [],
-    this.day = const [],
-    this.nowMin,
     this.switcher,
     this.goLive,
+    this.ring,
+    this.centered = false,
+    this.padding = const EdgeInsets.fromLTRB(_kInset, AppSpace.sm, _kInset, AppSpace.xs),
     this.helpPageId = 'home.teacher',
   });
 
@@ -410,49 +434,44 @@ class TeacherHomeHero extends StatelessWidget {
   final Widget? leading;
   final List<Widget> actions, shellActions;
 
-  /// Today's sessions for the ribbon ([teacherDayRibbonItems]); empty → no ribbon (a free day, Organization mode).
-  final List<HomeAgendaItem> day;
-
-  /// A fixed "now" in wall-clock minutes (renders); null = the clock.
-  final int? nowMin;
-
-  /// The context switcher (start) and the Go live pill (end).
+  /// The context switcher (under the call to action) and the Go live pill (the call to action).
   final Widget? switcher, goLive;
+
+  /// The day's progress, 0..1 (null = a closed quiet ring).
+  final double? ring;
+  final bool centered;
+  final EdgeInsetsGeometry padding;
   final String? helpPageId;
 
   @override
   Widget build(BuildContext context) {
-    final timed = day.where((x) => x.startMin != null && x.endMin != null).toList();
-    final Widget? controls = goLive == null
-        ? switcher
-        // Go live keeps its own width (up to half the line, so it reads whole); the switcher takes the rest
-        : LayoutBuilder(
-            builder: (context, box) => Row(children: [
-              Expanded(child: Align(alignment: AlignmentDirectional.centerStart, child: switcher ?? const SizedBox.shrink())),
-              const SizedBox(width: AppSpace.sm),
-              ConstrainedBox(constraints: BoxConstraints(maxWidth: box.maxWidth / 2), child: goLive),
-            ]),
-          );
-    return HomeHeader(
-      tone: AppBlockTone.sky, // an instructor runs a schedule: the sky block whatever the account's role string
-      helpPageId: helpPageId,
-      name: name,
-      subtitle: subtitle,
-      leading: leading,
-      actions: actions,
-      shellActions: shellActions,
-      contextSwitcher: timed.isEmpty
-          ? controls
-          : Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              // the agenda below reads it out row by row: the ribbon is the picture of the same day
-              ExcludeSemantics(child: _WipeIn(child: HomeDayRibbon(items: timed, nowMin: nowMin))),
-              if (controls != null) ...[const SizedBox(height: AppSpace.md), controls],
-            ]),
+    // the shell's top bar carries the calendar / chat / bell and help on desktop and tablet: drawn here on phones
+    final buttons = [
+      ?leading,
+      ...actions,
+      if (!HomeHeader.shellTopBar(context)) ...[...shellActions, if (helpPageId != null) HelpInfoButton(pageId: helpPageId!)],
+    ];
+    final initial = name.trim().isEmpty ? '' : name.trim().characters.first.toUpperCase();
+    return Padding(
+      padding: padding,
+      child: ValueListenableBuilder<int>(
+        valueListenable: AppTime.version, // the time chip and the greeting follow the effective timezone
+        builder: (context, _, _) => AppGreetingHero(
+          greeting: HomeHeader.greetingLine(name),
+          summary: subtitle,
+          initials: initial,
+          ring: ring,
+          centered: centered,
+          actions: buttons,
+          cta: goLive,
+          footer: switcher,
+        ),
+      ),
     );
   }
 }
 
-/// Reveals [child] once from the start edge (the day drawing itself along the ribbon), with the hero's entrance;
+/// Reveals [child] once from the start edge (the day drawing itself along the ribbon), with the page's entrance;
 /// drawn whole at once under Reduce motion. Clip only: nothing is laid out again while it moves.
 class _WipeIn extends StatelessWidget {
   const _WipeIn({required this.child});
@@ -482,6 +501,17 @@ class _StartClip extends CustomClipper<Rect> {
   bool shouldReclip(_StartClip old) => old.t != t || old.dir != dir;
 }
 
+/// Today's sessions on the 07:00–22:00 ribbon with a "now" mark, drawn in once from the start edge (the home's one
+/// memorable element); the agenda reads the same day out row by row, so the picture stays out of the semantics tree.
+class _DayRibbon extends StatelessWidget {
+  const _DayRibbon({required this.items, this.nowMin});
+  final List<HomeAgendaItem> items;
+  final int? nowMin;
+
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(child: _WipeIn(child: HomeDayRibbon(items: items, nowMin: nowMin)));
+}
+
 /// Centered, at most the desktop home's width — phones use the full width.
 class _Width extends StatelessWidget {
   const _Width({required this.child});
@@ -493,6 +523,12 @@ class _Width extends StatelessWidget {
 }
 
 /// The Personal side of the instructor home (no providers inside → layout-tested on its own).
+///
+///   phone      the hero · live now · four shortcuts (2 × 2) · your to-do · needs you · today (the day ribbon over
+///              the agenda) · my courses as a sideways row of course tiles · the inbox · the four figures
+///   desktop    the hero (centred) beside "Today" at one height · live now · the four figures · your to-do / needs
+///              you / my courses beside the inbox and the published ring (+ the enrollments line when the server
+///              sends a series)
 class TeacherHomeBody extends StatelessWidget {
   const TeacherHomeBody({
     super.key,
@@ -519,6 +555,7 @@ class TeacherHomeBody extends StatelessWidget {
     this.onOpenTodo,
     this.onTodoMenu,
     this.onSeeAllTodo,
+    this.hero,
   });
 
   /// The automatic to-do list (D-303, the /me/home `todo` block, [extra]'s unless given); null on an older server
@@ -565,20 +602,28 @@ class TeacherHomeBody extends StatelessWidget {
   /// "Enter room" on the session that runs now; null = the pre-join page (openTeacherPreJoin).
   final ValueChanged<ScheduleSession>? onEnterRoom;
 
+  /// The greeting hero, built for the layout (`wide` = the desktop card beside "Today"); null = drawn elsewhere.
+  final Widget Function(bool wide)? hero;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) => _build(context, homeIsWide(box.maxWidth)));
+
+  Widget _build(BuildContext context, bool wide) {
     final c = context.colors;
-    if (loading) {
-      return const Padding(
-        padding: EdgeInsets.fromLTRB(_kInset, AppSpace.xs, _kInset, AppSpace.xl),
-        child: AppListSkeleton(items: 5, withAvatar: false, padding: EdgeInsets.zero),
-      );
-    }
-    if (error != null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpace.lg),
-        child: AppErrorState(message: error, onRetry: onRetry),
-      );
+    if (loading || error != null) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (hero != null) hero!(false),
+        if (loading)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(_kInset, AppSpace.md, _kInset, AppSpace.xl),
+            child: AppListSkeleton(items: 5, withAvatar: false, padding: EdgeInsets.zero),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.lg),
+            child: AppErrorState(message: error, onRetry: onRetry),
+          ),
+      ]);
     }
 
     // today's sessions, plus one still running from another day (carried over midnight) — it keeps its line
@@ -606,6 +651,14 @@ class TeacherHomeBody extends StatelessWidget {
           onActionLongPress: s.isOngoing || s.isLive ? () => openTeacherGuestLink(context, s) : null,
         ),
     ];
+    final ribbon = teacherDayRibbonItems(schedule).where((x) => x.startMin != null && x.endMin != null).toList();
+    final nowMin = now == null ? null : _wallMin(now!);
+    final nextLine = coming.isEmpty
+        ? null
+        : 'home_next_on'.tr
+            .replaceAll('{t}', coming.first.courseName)
+            .replaceAll('{d}', AppTime.date(teacherSessionUtc(coming.first, coming.first.startTime), pattern: 'EEE d'));
+    final freeDay = ['home_no_sessions_today'.tr, ?nextLine].join(' · ');
     // the automatic to-do list carries attendance · grading · material · requests with their evidence (D-303): those
     // pills leave "Needs you" while it is on, so every count is drawn once
     final todoList = todo ?? extra?.todo;
@@ -618,15 +671,15 @@ class TeacherHomeBody extends StatelessWidget {
       counts: extra?.inboxCounts ?? const {},
       now: now,
     );
-    // ONE orchestrated entrance (choreography): the hero leads (index 0, its ribbon drawing in), the first two
-    // sections follow it in reading order; everything under them is simply there — no fade-up on every section
+    // ONE orchestrated entrance (choreography): the hero leads (index 0), the first two sections follow it in reading
+    // order; everything under them is simply there — no fade-up on every section
     var i = 1;
     Widget enter(Widget w) => i > 2 ? w : HomeEntrance(index: i++, child: w);
 
     // ── what needs you: one slim row of the counts above zero (every count once) — only while something waits
     final needsYou = needs == 0
         ? null
-        : enter(HomeSection(
+        : HomeSection(
             id: 'teacher.needs_you',
             title: 'home_needs_you'.tr,
             // folded, the title still says how much waits (L8)
@@ -645,117 +698,161 @@ class TeacherHomeBody extends StatelessWidget {
                 onTap: onOpenEarnings,
               ),
             ]),
-          ));
+          );
 
     // ── your to-do: the top items of the automatic list, each with its reason and one tap to where it is done
     final todoSection = todoList == null || todoList.items.isEmpty
         ? null
-        : enter(TeacherTodoSection(
+        : TeacherTodoSection(
             list: todoList,
             onOpenItem: onOpenTodo ?? (_) {},
             onMenu: onTodoMenu ?? (_, _) {},
             onSeeAll: onSeeAllTodo ?? () {},
-          ));
+          );
 
-    // ── today: one line per session, live first (with "Enter room"), 3 + "Show all"
-    final todaySection = enter(ParentComponent(
+    // ── today: the day ribbon over one line per session, live first (with "Enter room"), 3 + "Show all". Phone: a
+    //    folding section; desktop: the card beside the hero
+    final Widget todaySection = ParentComponent(
       key: const ValueKey('teacher_home_schedule'),
-      child: HomeSection(
-        id: 'teacher.today',
-        title: 'home_today_sessions'.tr,
-        count: items.length,
-        // a free day folds by itself: one line says so and names the next session
-        empty: items.isEmpty,
-        emptySummary: [
-          'home_no_sessions_today'.tr,
-          if (coming.isNotEmpty)
-            'home_next_on'.tr
-                .replaceAll('{t}', coming.first.courseName)
-                .replaceAll('{d}', AppTime.date(teacherSessionUtc(coming.first, coming.first.startTime), pattern: 'EEE d')),
-        ].join(' · '),
-        actionLabel: 'home_full_timetable'.tr,
-        onAction: () => onTab(2),
-        child: HomeAgenda(
-          items: items,
-          nowMin: now == null ? null : _wallMin(now!),
-          emptyTitle: 'home_no_sessions_today'.tr,
-          emptyMessage: 'home_no_sessions_today_hint'.tr,
-          emptyActionLabel: 'home_full_timetable'.tr,
-          onEmptyAction: () => onTab(2),
-        ),
-      ),
-    ));
-
-    // ── my teaching in one card: the key figures (students · rating · this month → analytics) over the courses
-    //    that matter now — the figures left the old blue hero
-    final coursesSection = enter(HomeSection(
-      id: 'teacher.courses',
-      title: 'my_courses'.tr,
-      count: courses.length,
-      empty: courses.isEmpty,
-      emptySummary: 'home_t_no_courses'.tr,
-      actionLabel: courses.isEmpty ? 'hs_add_course'.tr : null,
-      onAction: courses.isEmpty ? onNewCourse : null,
-      child: courses.isEmpty
-          ? Padding(
-              padding: _kSides,
-              child: AppEmpty(
-                icon: Icons.auto_stories_rounded,
-                title: 'home_t_no_courses'.tr,
-                message: 'home_t_no_courses_hint'.tr,
-                actionLabel: 'hs_add_course'.tr,
-                onAction: onNewCourse,
-              ),
+      child: wide
+          ? _TodayCard(
+              items: items,
+              ribbon: ribbon,
+              nowMin: nowMin,
+              date: AppTime.date((now ?? DateTime.now()).toUtc(), pattern: 'EEEE d MMMM'),
+              freeDay: nextLine ?? 'home_no_sessions_today_hint'.tr,
+              onTimetable: () => onTab(2),
             )
-          : ParentComponent(
-              key: const ValueKey('teacher_home_courses_row'),
-              child: TeacherCourseSummary(
-                courses: courses,
-                stats: stats,
-                earningsMonth: extra?.earningsMonth,
-                onOpen: onOpenCourse,
-                onShowAll: () => onTab(1),
-                onFigures: () => onTab(3),
-              ),
+          : HomeSection(
+              id: 'teacher.today',
+              title: 'home_today_sessions'.tr,
+              count: items.length,
+              // a free day folds by itself: one line says so and names the next session
+              empty: items.isEmpty,
+              emptySummary: freeDay,
+              actionLabel: 'home_full_timetable'.tr,
+              onAction: () => onTab(2),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                if (ribbon.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(_kInset, 0, _kInset, AppSpace.sm),
+                    child: _DayRibbon(items: ribbon, nowMin: nowMin),
+                  ),
+                HomeAgenda(
+                  items: items,
+                  nowMin: nowMin,
+                  emptyTitle: 'home_no_sessions_today'.tr,
+                  emptyMessage: 'home_no_sessions_today_hint'.tr,
+                  emptyActionLabel: 'home_full_timetable'.tr,
+                  onEmptyAction: () => onTab(2),
+                ),
+              ]),
             ),
-    ));
+    );
+
+    // ── my teaching: the courses with the most students as course tiles (a sideways row on phones, a card of three
+    //    on desktop); the figures (students · rating · this month) are the stat cards
+    final focus = teacherCourseFocus(courses);
+    Widget tile(TeacherCourse x) => _TeacherCourseTile(course: x, onTap: () => onOpenCourse(x));
+    final allLabel = 'home_courses_all'.tr.replaceAll('{n}', '${courses.length}');
+    final noCourses = Padding(
+      padding: wide ? EdgeInsets.zero : _kSides,
+      child: AppEmpty(
+        icon: Icons.auto_stories_rounded,
+        title: 'home_t_no_courses'.tr,
+        message: 'home_t_no_courses_hint'.tr,
+        actionLabel: 'hs_add_course'.tr,
+        onAction: onNewCourse,
+      ),
+    );
+    final Widget coursesSection = wide
+        ? Padding(
+            padding: _kSides,
+            child: AppSectionCard(
+              title: 'my_courses'.tr,
+              actions: [
+                if (courses.isNotEmpty) AppButton.ghost(label: allLabel, size: AppButtonSize.sm, onPressed: () => onTab(1)),
+              ],
+              child: courses.isEmpty
+                  ? noCourses
+                  : ParentComponent(
+                      key: const ValueKey('teacher_home_courses_row'),
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        for (var k = 0; k < 3; k++) ...[
+                          if (k > 0) const SizedBox(width: AppSpace.md),
+                          Expanded(child: k < focus.length ? tile(focus[k]) : const SizedBox.shrink()),
+                        ],
+                      ]),
+                    ),
+            ),
+          )
+        : HomeSection(
+            id: 'teacher.courses',
+            title: 'my_courses'.tr,
+            count: courses.length,
+            empty: courses.isEmpty,
+            emptySummary: 'home_t_no_courses'.tr,
+            actionLabel: courses.isEmpty ? 'hs_add_course'.tr : allLabel,
+            onAction: courses.isEmpty ? onNewCourse : () => onTab(1),
+            child: courses.isEmpty
+                ? noCourses
+                : ParentComponent(
+                    key: const ValueKey('teacher_home_courses_row'),
+                    child: SizedBox(
+                      height: CourseListCard.tileHeight(context, _kTile),
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: _kSides,
+                        itemCount: math.min(focus.length, 6),
+                        separatorBuilder: (_, _) => const SizedBox(width: AppSpace.sm),
+                        itemBuilder: (_, k) => SizedBox(width: _kTile, child: tile(focus[k])),
+                      ),
+                    ),
+                  ),
+          );
 
     // ── inbox: ONE slim entry into the inbox page over the /me/home counts, only while the inbox holds something;
     //    an older server gets the self-fetching entry (at the end)
     //    its count is the actionable one: to-dos + unread notifications (they share the inbox page)
     final unread = extra?.notificationsUnread ?? 0;
-    final inbox = extra != null && inboxEntryShown(inboxCounts, unread: unread)
-        ? enter(InboxEntry(counts: inboxCounts, unread: unread, onTap: onOpenInbox))
-        : null;
+    final inboxShown = extra != null && inboxEntryShown(inboxCounts, unread: unread);
 
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      if (staleError != null)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(_kInset, 0, _kInset, AppSpace.md),
-          child: AppBanner(
-            icon: Icons.cloud_off_rounded,
-            text: 'home_refresh_failed'.tr,
-            color: c.warning,
-            action: TextButton(onPressed: onRetry, child: Text('retry'.tr)),
-          ),
-        ),
-
-      // ── live now: the meetings I'm invited to that are live (my own running sessions sit in Today, with their
-      //    "Enter room")
-      if (liveNow.isNotEmpty) HomeLiveNow(rooms: liveNow, now: now, padding: const EdgeInsets.fromLTRB(_kInset, 0, _kInset, AppSpace.lg)),
-
-      // phone: needs you · today · courses · inbox. The desktop dashboard: what happens (today, my teaching) beside
-      // what waits (needs you as a list, the inbox); with nothing waiting the courses card takes the side column —
-      // unless today is free too: a one-line folded day beside a tall card left a blank column, so both stack
-      HomeDashboard(
-        narrow: [?todoSection, ?needsYou, todaySection, coursesSection, ?inbox],
-        main: [todaySection, if (todoSection != null || needsYou != null || inbox != null || items.isEmpty) coursesSection],
-        side: todoSection == null && needsYou == null && inbox == null
-            ? [if (items.isNotEmpty) coursesSection]
-            : [?todoSection, ?needsYou, ?inbox],
+    // ── the figures: students · rating · this month (published courses on an older server) · today's sessions
+    final s = stats;
+    final published = courses.where((x) => x.isPublished).length;
+    final earnings = extra?.earningsMonth;
+    final figures = AppKpiGrid(children: [
+      AppStatCard(icon: Icons.groups_rounded, value: appCompactNumber(s.totalStudents), label: 'home_students'.tr, tone: AppBlockTone.peach, onTap: () => onTab(3)),
+      AppStatCard(
+        icon: Icons.star_rounded,
+        value: s.overallRating > 0 ? s.overallRating.toStringAsFixed(1) : '–',
+        label: 'home_rating'.tr,
+        tone: AppBlockTone.gold,
+        onTap: () => onTab(3),
       ),
-      if (extra == null && showFeeds) const InboxEntryCard(padding: EdgeInsets.fromLTRB(_kInset, 0, _kInset, AppSpace.md)),
+      if (earnings != null)
+        AppStatCard(icon: Icons.payments_outlined, value: appCompactNumber(earnings), label: 'home_t_earnings_month'.tr, tone: AppBlockTone.emerald, onTap: () => onTab(3))
+      else
+        AppStatCard(icon: Icons.public_rounded, value: '$published', label: 'home_t_published'.tr, tone: AppBlockTone.emerald, onTap: () => onTab(3)),
+      AppStatCard(icon: Icons.event_note_rounded, value: '${items.length}', label: 'home_today_sessions'.tr, tone: AppBlockTone.sky, onTap: () => onTab(2)),
+    ]);
 
+    final stale = staleError == null
+        ? null
+        : Padding(
+            padding: const EdgeInsets.fromLTRB(_kInset, 0, _kInset, AppSpace.md),
+            child: AppBanner(
+              icon: Icons.cloud_off_rounded,
+              text: 'home_refresh_failed'.tr,
+              color: c.warning,
+              action: TextButton(onPressed: onRetry, child: Text('retry'.tr)),
+            ),
+          );
+    // ── live now: the meetings I'm invited to that are live (my own running sessions sit in Today, with their
+    //    "Enter room")
+    final live = liveNow.isEmpty ? null : HomeLiveNow(rooms: liveNow, now: now, padding: _kSides);
+    final feeds = <Widget>[
+      if (extra == null && showFeeds) const InboxEntryCard(padding: EdgeInsets.fromLTRB(_kInset, 0, _kInset, AppSpace.md)),
       if (showFeeds) ...[
         const HomeAdsSlider(padding: EdgeInsets.fromLTRB(_kInset, 0, _kInset, AppSpace.sm)),
         const ParentComponent(
@@ -763,8 +860,259 @@ class TeacherHomeBody extends StatelessWidget {
         ),
       ],
       const SizedBox(height: AppSpace.lg),
-    ]);
+    ];
+
+    if (!wide) {
+      // phone: the hero · live now · shortcuts · to-do · needs you · today · courses · inbox · figures
+      final shortcuts = Padding(
+        padding: _kSides,
+        child: AppShortcutGrid(maxColumns: 2, children: [
+          AppShortcutTile(icon: Icons.auto_stories_rounded, label: 'my_courses'.tr, tone: AppBlockTone.emerald, onTap: () => onTab(1)),
+          AppShortcutTile(icon: Icons.calendar_month_rounded, label: 'my_schedule'.tr, tone: AppBlockTone.sky, onTap: () => onTab(2)),
+          AppShortcutTile(icon: Icons.insights_rounded, label: 'analysis'.tr, tone: AppBlockTone.peach, onTap: () => onTab(3)),
+          if (onOpenEarnings != null)
+            AppShortcutTile(icon: Icons.account_balance_wallet_rounded, label: 'my_earnings_title'.tr, tone: AppBlockTone.gold, onTap: onOpenEarnings),
+        ]),
+      );
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _spaced([
+        if (hero != null) hero!(false),
+        ?stale,
+        ?live,
+        enter(shortcuts),
+        if (todoSection != null) enter(todoSection),
+        if (needsYou != null) enter(needsYou),
+        enter(todaySection),
+        coursesSection,
+        if (inboxShown) InboxEntry(counts: inboxCounts, unread: unread, onTap: onOpenInbox),
+        Padding(padding: _kSides, child: figures),
+      ])..addAll(feeds));
+    }
+
+    // desktop: the hero beside today (one height), live now, the figures, then what waits and my courses beside the
+    // inbox and the course rings
+    final side = <Widget>[
+      if (inboxShown) InboxEntry(counts: inboxCounts, unread: unread, onTap: onOpenInbox, padding: EdgeInsets.zero),
+      if (courses.isNotEmpty)
+        AppRingStat(
+          label: 'home_t_published'.tr,
+          value: '$published',
+          progress: published / courses.length,
+          caption: 'home_courses_all'.tr.replaceAll('{n}', '${courses.length}'),
+          tone: AppBlockTone.emerald,
+          onTap: () => onTab(1),
+        ),
+      if ((extra?.enrollmentSeries.length ?? 0) >= 2)
+        AppKpiSpark(
+          label: 'home_t_enrollments_trend'.tr,
+          value: appCompactNumber(extra!.enrollmentSeries.fold<double>(0, (a, b) => a + b)),
+          values: extra!.enrollmentSeries,
+          icon: Icons.trending_up_rounded,
+          tone: AppBlockTone.peach,
+        ),
+    ];
+    final main = <Widget>[?todoSection, ?needsYou, coursesSection];
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _spaced([
+      ?stale,
+      Padding(
+        padding: _kSides,
+        child: hero == null
+            ? todaySection
+            : _EqualRow(flex: const [5, 6], gap: AppSpace.lg, children: [hero!(true), enter(todaySection)]),
+      ),
+      ?live,
+      enter(Padding(padding: _kSides, child: figures)),
+      if (side.isEmpty)
+        ..._spacedChildren(main)
+      else
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(flex: 7, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _spacedChildren(main))),
+          Expanded(
+            flex: 4,
+            child: Padding(
+              padding: const EdgeInsetsDirectional.only(end: _kInset),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _spacedChildren(side, gap: AppSpace.md)),
+            ),
+          ),
+        ]),
+    ])..addAll(feeds));
   }
+}
+
+/// A course tile's width in the phone's sideways row.
+const double _kTile = 220;
+
+/// [items] with the home's section rhythm (24) between them and after the last.
+List<Widget> _spaced(List<Widget> items) => [
+      for (var i = 0; i < items.length; i++) ...[if (i > 0) const SizedBox(height: AppSpace.lg), items[i]],
+      if (items.isNotEmpty) const SizedBox(height: AppSpace.lg),
+    ];
+
+/// [items] with [gap] between them, nothing after the last.
+List<Widget> _spacedChildren(List<Widget> items, {double gap = AppSpace.lg}) => [
+      for (var i = 0; i < items.length; i++) ...[if (i > 0) SizedBox(height: gap), items[i]],
+    ];
+
+/// One of my courses as the shared course tile: the cover (or its initial art), the status chip, live / recorded,
+/// students · sessions · rating.
+class _TeacherCourseTile extends StatelessWidget {
+  const _TeacherCourseTile({required this.course, required this.onTap});
+  final TeacherCourse course;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final x = course;
+    final ar = x.titleAr ?? '', en = x.titleEn ?? '';
+    return CourseListCard(
+      shape: CourseCardShape.tile,
+      title: AppConfig.lang == 'ar' ? (ar.isEmpty ? en : ar) : (en.isEmpty ? ar : en),
+      imageUrl: x.imageUrl,
+      chip: CourseCoverChip.status(context, published: x.isPublished),
+      meta: [x.type == 'live' ? 'course_list_live'.tr : 'course_list_recorded'.tr],
+      isPrivate: x.isPrivate,
+      footer: CourseStatsFooter(
+        students: x.studentsCount,
+        sessions: x.sessionsCount,
+        rating: x.rateSummary != null && x.rateSummary!.total > 0 ? x.rateSummary!.average : null,
+      ),
+      onTap: onTap,
+    );
+  }
+}
+
+/// "Today" as the desktop card beside the hero: the date under the title, "Full timetable" at its end, the day
+/// ribbon, then one line per session (live first, the first 3 + "Show all"); a free day says so and names the next
+/// session.
+class _TodayCard extends StatefulWidget {
+  const _TodayCard({
+    required this.items,
+    required this.ribbon,
+    required this.date,
+    required this.freeDay,
+    required this.onTimetable,
+    this.nowMin,
+  });
+
+  final List<HomeAgendaItem> items, ribbon;
+  final String date, freeDay;
+  final VoidCallback onTimetable;
+  final int? nowMin;
+
+  @override
+  State<_TodayCard> createState() => _TodayCardState();
+}
+
+class _TodayCardState extends State<_TodayCard> {
+  bool _all = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final w = widget;
+    final now = w.nowMin ?? (homeNow().hour * 60 + homeNow().minute);
+    bool done(HomeAgendaItem x) => !x.live && (x.endMin ?? 1 << 20) <= now;
+    final ordered = homeAgendaFocus(w.items, now);
+    final more = ordered.length > 3;
+    final shown = _all || !more ? ordered : ordered.take(3).toList();
+    final anyLive = ordered.any((x) => x.live);
+    final nextItem = anyLive ? null : ordered.where((x) => !done(x) && (x.startMin ?? -1) > now).firstOrNull;
+    return AppSectionCard(
+      title: 'home_today_sessions'.tr,
+      subtitle: w.date,
+      actions: [AppButton.ghost(label: 'home_full_timetable'.tr, size: AppButtonSize.sm, onPressed: w.onTimetable)],
+      child: w.items.isEmpty
+          ? AppEmpty(icon: Icons.event_available_rounded, title: 'home_no_sessions_today'.tr, message: w.freeDay, tone: AppBlockTone.sky)
+          : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              if (w.ribbon.isNotEmpty) ...[
+                _DayRibbon(items: w.ribbon, nowMin: w.nowMin),
+                const SizedBox(height: AppSpace.sm),
+              ],
+              for (final x in shown) HomeAgendaLine(item: x, done: done(x), focus: x.live, note: homeAgendaNote(x, now, next: identical(x, nextItem))),
+              if (more) HomeShowAllRow(expanded: _all, count: ordered.length, onTap: () => setState(() => _all = !_all)),
+            ]),
+    );
+  }
+}
+
+/// Two cards side by side at ONE height (the taller one's), split by [flex] — the hero beside "Today". Each child is
+/// laid out at its width first, then again at the shared height; no intrinsic sizes are asked (the cards hold
+/// LayoutBuilders). Mirrors in RTL.
+class _EqualRow extends MultiChildRenderObjectWidget {
+  const _EqualRow({required super.children, required this.flex, required this.gap});
+  final List<int> flex;
+  final double gap;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderEqualRow(flex, gap, Directionality.of(context));
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderEqualRow renderObject) {
+    renderObject
+      ..flex = flex
+      ..gap = gap
+      ..direction = Directionality.of(context);
+  }
+}
+
+class _EqualRowData extends ContainerBoxParentData<RenderBox> {}
+
+class _RenderEqualRow extends RenderBox
+    with ContainerRenderObjectMixin<RenderBox, _EqualRowData>, RenderBoxContainerDefaultsMixin<RenderBox, _EqualRowData> {
+  _RenderEqualRow(this._flex, this._gap, this._direction);
+
+  List<int> _flex;
+  set flex(List<int> v) {
+    if (listEquals(v, _flex)) return;
+    _flex = v;
+    markNeedsLayout();
+  }
+
+  double _gap;
+  set gap(double v) {
+    if (v == _gap) return;
+    _gap = v;
+    markNeedsLayout();
+  }
+
+  TextDirection _direction;
+  set direction(TextDirection v) {
+    if (v == _direction) return;
+    _direction = v;
+    markNeedsLayout();
+  }
+
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _EqualRowData) child.parentData = _EqualRowData();
+  }
+
+  @override
+  void performLayout() {
+    final kids = getChildrenAsList();
+    final width = constraints.maxWidth;
+    int f(int i) => i < _flex.length ? _flex[i] : 1;
+    final total = [for (var i = 0; i < kids.length; i++) f(i)].fold<int>(0, (a, b) => a + b);
+    final avail = math.max(0.0, width - _gap * math.max(0, kids.length - 1));
+    final widths = [for (var i = 0; i < kids.length; i++) total == 0 ? 0.0 : avail * f(i) / total];
+    var height = 0.0;
+    for (var i = 0; i < kids.length; i++) {
+      kids[i].layout(BoxConstraints.tightFor(width: widths[i]), parentUsesSize: true);
+      height = math.max(height, kids[i].size.height);
+    }
+    var x = 0.0;
+    for (var i = 0; i < kids.length; i++) {
+      kids[i].layout(BoxConstraints.tight(Size(widths[i], height)), parentUsesSize: true);
+      final dx = _direction == TextDirection.rtl ? width - x - widths[i] : x;
+      (kids[i].parentData! as _EqualRowData).offset = Offset(dx, 0);
+      x += widths[i] + _gap;
+    }
+    size = constraints.constrain(Size(width, height));
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) => defaultPaint(context, offset);
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) => defaultHitTestChildren(result, position: position);
 }
 
 /// The courses with the most students first, drafts last.
@@ -773,71 +1121,6 @@ List<TeacherCourse> teacherCourseFocus(List<TeacherCourse> all) => [...all]
     if (a.isPublished != b.isPublished) return a.isPublished ? -1 : 1;
     return b.studentsCount.compareTo(a.studentsCount);
   });
-
-/// The instructor's teaching in one card: the key figures — students · rating · earnings this month (published
-/// courses on an older server without earnings) → analytics — over the three courses with the most students; tap
-/// a course → the course, the foot → the courses tab.
-class TeacherCourseSummary extends StatelessWidget {
-  const TeacherCourseSummary({
-    super.key,
-    required this.courses,
-    this.stats,
-    this.earningsMonth,
-    this.onOpen,
-    this.onShowAll,
-    this.onFigures,
-  });
-  final List<TeacherCourse> courses;
-
-  /// The dashboard's totals; null → no figures row.
-  final TeacherStats? stats;
-
-  /// Earnings this month (the /me/home teacher block); null on an older server.
-  final double? earningsMonth;
-  final ValueChanged<TeacherCourse>? onOpen;
-  final VoidCallback? onShowAll, onFigures;
-
-  @override
-  Widget build(BuildContext context) {
-    final top = teacherCourseFocus(courses).take(3).toList();
-    final published = courses.where((x) => x.isPublished).length;
-    final s = stats;
-    String title(TeacherCourse x) {
-      final ar = x.titleAr ?? '', en = x.titleEn ?? '';
-      return AppConfig.lang == 'ar' ? (ar.isEmpty ? en : ar) : (en.isEmpty ? ar : en);
-    }
-
-    return HomeCourseSummary(
-      figures: s == null
-          ? const []
-          : [
-              (appCompactNumber(s.totalStudents), 'home_students'.tr),
-              (s.overallRating > 0 ? s.overallRating.toStringAsFixed(1) : '–', 'home_rating'.tr),
-              if (earningsMonth != null)
-                (appCompactNumber(earningsMonth!), 'home_t_earnings_month'.tr)
-              else
-                ('$published', 'home_t_published'.tr),
-            ],
-      onFigures: s == null ? null : onFigures,
-      lines: [
-        for (final x in top)
-          HomeCourseLine(
-            title: title(x),
-            subtitle: 'home_t_course_line'.tr
-                .replaceAll('{s}', appCompactNumber(x.studentsCount))
-                .replaceAll('{n}', '${x.sessionsCount}'),
-            imageUrl: x.imageUrl,
-            trailing: x.isPublished
-                ? (x.rateSummary != null && x.rateSummary!.total > 0 ? '★ ${x.rateSummary!.average.toStringAsFixed(1)}' : null)
-                : 'draft'.tr,
-            onTap: onOpen == null ? null : () => onOpen!(x),
-          ),
-      ],
-      moreLabel: courses.length > top.length ? 'home_courses_all'.tr.replaceAll('{n}', '${courses.length}') : null,
-      onMore: onShowAll,
-    );
-  }
-}
 
 /// "Your to-do" on the instructor home (D-303): a HomeSection over [TeacherTodoCard] — the count of open items in its
 /// title, how many are urgent under it, "See all" to the whole list. Kill switch `teacher_home.todo`.
