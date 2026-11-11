@@ -32,7 +32,8 @@ import 'package:flutter_education_app/utils/widget/paged_progress.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_mentions.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppSheetContent;
+import 'package:flutter_education_app/design/app_kit.dart' show AppSheetContent, AppBlock, AppBlockTone;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppPressScale;
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
@@ -1353,7 +1354,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
               Expanded(
                 child: ListView(
                   controller: _scrollCtrl,
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xs),
                   children: [
                     // ── Info card ──────────────────────────────────────────
                     ParentComponent(featureKey: 'complaint_detail.info', child: _InfoCard(
@@ -1361,12 +1362,12 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                       isAdmin: !auth.isStudent,
                       provider: p,
                     )),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpace.xl),
                     // ── Replies ────────────────────────────────────────────
                     if (complaint.replies.isNotEmpty) ParentComponent(featureKey: 'complaint_detail.replies', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Text('replies_label'.tr, style: c.h3),
+                        padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                        child: Text('replies_label'.tr, style: AppType.section(context).copyWith(color: c.textDark)),
                       ),
                       ...complaint.replies.map(
                             (r) => _ReplyBubble(
@@ -1374,7 +1375,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                           myId: auth.currentUser?.id ?? 0,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpace.xs),
                     ])),
                   ],
                 ),
@@ -1402,6 +1403,8 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
 
 // ── Info Card ─────────────────────────────────────────────────────────────────
 
+/// The thread's opening block (sky, the complaints subject — the same tone as the Complaints page): who sent it
+/// (staff), the title in the editorial face, its status, the facts on paper chips and the text on a paper inset.
 class _InfoCard extends StatelessWidget {
   const _InfoCard({
     required this.complaint,
@@ -1414,177 +1417,150 @@ class _InfoCard extends StatelessWidget {
   final ComplaintProvider provider;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final statusClr = _statusClr(context.colors, complaint.status);
+  Widget build(BuildContext context) => AppBlock(
+        tone: AppBlockTone.sky,
+        hero: true,
+        child: Builder(builder: _body),
+      );
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(c.radiusMedium),
-        boxShadow: c.cardShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Who sent it (staff only)
-          if (isAdmin) ...[
-            Row(
-              children: [
-                _OwnerAvatar(
-                  name: complaint.userName,
-                  imageUrl: complaint.userImage,
-                  size: 42,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        complaint.userName,
-                        style: c.h3.copyWith(fontSize: 14),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        AppTime.dateTime(complaint.createdAt),
-                        style: c.caption,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Divider(height: 1, color: c.divider),
-            ),
-          ],
-          // Title + status
+  Widget _body(BuildContext context) {
+    final c = context.colors;
+    final b = AppBlock.colorsOf(context);
+    final statusClr = _statusClr(context.colors, complaint.status);
+    final motion = AppMotion.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Who sent it (staff only)
+        if (isAdmin) ...[
           Row(
             children: [
+              _OwnerAvatar(
+                name: complaint.userName,
+                imageUrl: complaint.userImage,
+                size: AppTouch.min - AppSpace.xxs,
+              ),
+              const SizedBox(width: AppSpace.sm),
               Expanded(
-                child: Text(
-                  complaint.title,
-                  style: c.h2.copyWith(fontSize: 16),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: statusClr.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  _statusLabel(complaint.status),
-                  style: TextStyle(
-                    fontFamily: AppFonts.display,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: statusClr,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // Meta
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: [
-              _MetaChip(
-                icon: Icons.label_outline_rounded,
-                label: _categoryLabel(complaint.category),
-                color: c.primary,
-              ),
-              _MetaChip(
-                icon: Icons.flag_outlined,
-                label: _priorityLabel(complaint.priority),
-                color: _priorityClr(context.colors, complaint.priority),
-              ),
-              if (complaint.courseTitle != null)
-                _MetaChip(
-                  icon: Icons.book_outlined,
-                  label: complaint.courseTitle!,
-                  color: c.accent,
-                ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          // Description
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: c.background,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: MentionText(
-              complaint.description,
-              style: c.body.copyWith(height: 1.7),
-            ),
-          ),
-
-          // ── Suggested solution ───────────────────────────────────────────
-          if (complaint.suggestedSolution != null) ...[
-            const SizedBox(height: 14),
-            _SuggestedSolutionBlock(text: complaint.suggestedSolution!),
-          ],
-
-          // ── Complaint-level attachments ──────────────────────────────────
-          if (complaint.attachments.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            AttachmentGalleryGrid(attachments: complaint.attachments),
-          ],
-
-          // Admin status updater
-          if (isAdmin) ...[
-            const SizedBox(height: 16),
-            Text('update_status_label'.tr, style: c.caption),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: ComplaintStatus.values.map((s) {
-                final selected = complaint.status == s;
-                final sc = _statusClr(context.colors, s);
-                return GestureDetector(
-                  onTap: selected
-                      ? null
-                      : () => provider.updateStatus(complaint.id, s),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 7,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      complaint.userName,
+                      style: AppType.bodyStrong(context).copyWith(color: b.ink),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: AppSpace.xxs / 2),
+                    Text(AppTime.dateTime(complaint.createdAt), style: AppType.meta(context).copyWith(color: b.muted)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.md),
+        ],
+        // Title + status
+        Semantics(
+          header: true,
+          child: Text(complaint.title, style: AppType.headline(context).copyWith(color: b.ink)),
+        ),
+        const SizedBox(height: AppSpace.sm),
+        // Meta
+        Wrap(
+          spacing: AppSpace.xs,
+          runSpacing: AppSpace.xs,
+          children: [
+            _MetaChip(icon: Icons.circle, label: _statusLabel(complaint.status), color: statusClr, dot: true),
+            _MetaChip(
+              icon: Icons.label_outline_rounded,
+              label: _categoryLabel(complaint.category),
+              color: c.primary,
+            ),
+            _MetaChip(
+              icon: Icons.flag_outlined,
+              label: _priorityLabel(complaint.priority),
+              color: _priorityClr(context.colors, complaint.priority),
+            ),
+            if (complaint.courseTitle != null)
+              _MetaChip(
+                icon: Icons.book_outlined,
+                label: complaint.courseTitle!,
+                color: c.accent,
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpace.md),
+        // Description
+        Container(
+          width: double.infinity,
+          padding: AppSpace.card,
+          decoration: BoxDecoration(
+            color: c.cardBg,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+          ),
+          child: MentionText(
+            complaint.description,
+            style: AppType.body(context).copyWith(color: c.textDark, height: 1.7),
+          ),
+        ),
+
+        // ── Suggested solution ───────────────────────────────────────────
+        if (complaint.suggestedSolution != null) ...[
+          const SizedBox(height: AppSpace.sm),
+          _SuggestedSolutionBlock(text: complaint.suggestedSolution!),
+        ],
+
+        // ── Complaint-level attachments ──────────────────────────────────
+        if (complaint.attachments.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.md),
+          AttachmentGalleryGrid(attachments: complaint.attachments),
+        ],
+
+        // Admin status updater
+        if (isAdmin) ...[
+          const SizedBox(height: AppSpace.lg),
+          Text('update_status_label'.tr, style: AppType.label(context).copyWith(color: b.muted)),
+          const SizedBox(height: AppSpace.xs),
+          Wrap(
+            spacing: AppSpace.xs,
+            runSpacing: AppSpace.xs,
+            children: ComplaintStatus.values.map((s) {
+              final selected = complaint.status == s;
+              final sc = _statusClr(context.colors, s);
+              final ink = c.blockAccentInk(sc, c.cardBg);
+              return Semantics(
+                button: true,
+                selected: selected,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: selected ? null : () => provider.updateStatus(complaint.id, s),
+                  child: AnimatedContainer(
+                    duration: motion.fast,
+                    curve: AppMotion.curve,
+                    constraints: const BoxConstraints(minHeight: AppTouch.min),
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
                     decoration: BoxDecoration(
-                      color: selected ? sc : c.background,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: sc, width: 1.5),
+                      color: selected ? ink : c.cardBg,
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      border: Border.all(color: selected ? ink : c.divider, width: AppBorder.hairline),
                     ),
                     child: Text(
                       _statusLabel(s),
-                      style: TextStyle(
-                        fontFamily: AppFonts.display,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: selected ? context.colors.onHero : sc,
+                      style: AppType.label(context).copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: selected ? c.onHero : ink,
                       ),
                     ),
                   ),
-                );
-              }).toList(),
-            ),
-          ],
+                ),
+              );
+            }).toList(),
+          ),
         ],
-      ),
+      ],
     );
   }
 
@@ -1615,37 +1591,46 @@ class _InfoCard extends StatelessWidget {
 
 // ── Meta Chip ─────────────────────────────────────────────────────────────────
 
+/// A fact on the info block: paper, the tone as readable ink (a dot for the status).
 class _MetaChip extends StatelessWidget {
   const _MetaChip({
     required this.icon,
     required this.label,
     required this.color,
+    this.dot = false,
   });
 
   final IconData icon;
   final String label;
   final Color color;
+  final bool dot;
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    final ink = c.blockAccentInk(color, c.cardBg);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      constraints: const BoxConstraints(minHeight: AppIconSize.xl),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: AppFonts.display,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: color,
+          if (dot)
+            Container(width: AppSpace.xs, height: AppSpace.xs, decoration: BoxDecoration(color: color, shape: BoxShape.circle))
+          else
+            Icon(icon, size: AppIconSize.xs, color: ink),
+          const SizedBox(width: AppSpace.xs - AppSpace.xxs / 2),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: dot ? c.textDark : ink),
             ),
           ),
         ],
@@ -1656,6 +1641,8 @@ class _MetaChip extends StatelessWidget {
 
 // ── Reply Bubble ──────────────────────────────────────────────────────────────
 
+/// One message of the thread: mine in the primary on the end side, the team's on a peach tint, anyone else on
+/// paper; the tail corner points at the sender (mirrors in RTL).
 class _ReplyBubble extends StatelessWidget {
   const _ReplyBubble({required this.reply, required this.myId});
 
@@ -1666,9 +1653,13 @@ class _ReplyBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final isMe = reply.senderId == myId;
+    final bubble = isMe ? c.primary : (reply.isAdmin ? c.accentTint : c.cardBg);
+    final ink = isMe ? c.onHero : c.textDark;
+    const big = Radius.circular(AppRadius.card);
+    const tail = Radius.circular(AppSpace.xxs);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: Row(
         mainAxisAlignment: isMe
             ? MainAxisAlignment.end
@@ -1677,98 +1668,89 @@ class _ReplyBubble extends StatelessWidget {
         children: [
           if (!isMe) ...[
             CircleAvatar(
-              radius: 16,
+              radius: AppIconSize.sm,
               backgroundColor: reply.isAdmin
                   ? c.primary.withValues(alpha: 0.15)
-                  : c.accent.withValues(alpha: 0.15),
+                  : c.inputBg,
               backgroundImage: reply.senderImage != null
                   ? NetworkImage(reply.senderImage!)
                   : null,
               child: reply.senderImage == null
                   ? Icon(
                 Icons.person_rounded,
-                size: 18,
-                color: reply.isAdmin ? c.primary : c.accent,
+                size: AppIconSize.sm,
+                color: reply.isAdmin ? c.blockAccentInk(c.primary, c.cardBg) : c.textMedium,
               )
                   : null,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.xs),
           ],
-          ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.72,
-            ),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isMe
-                    ? c.primary
-                    : reply.isAdmin
-                    ? c.accentTint
-                    : c.cardBg,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16),
-                  topRight: const Radius.circular(16),
-                  bottomLeft: Radius.circular(isMe ? 16 : 4),
-                  bottomRight: Radius.circular(isMe ? 4 : 16),
-                ),
-                boxShadow: c.cardShadow,
+          Flexible(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.72,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (!isMe)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text(
-                        reply.senderName,
-                        style: TextStyle(
-                          fontFamily: AppFonts.display,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: reply.isAdmin ? c.accent : c.textMedium,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+                decoration: BoxDecoration(
+                  color: bubble,
+                  borderRadius: BorderRadiusDirectional.only(
+                    topStart: big,
+                    topEnd: big,
+                    bottomStart: isMe ? big : tail,
+                    bottomEnd: isMe ? tail : big,
+                  ),
+                  border: isMe ? null : Border.all(color: c.divider, width: AppBorder.hairline),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (!isMe)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpace.xxs),
+                        child: Text(
+                          reply.senderName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppType.meta(context).copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: reply.isAdmin ? c.blockAccentInk(c.primary, bubble) : c.textMedium,
+                          ),
                         ),
                       ),
-                    ),
-                  if (reply.message.isNotEmpty)
-                    MentionText(
-                      reply.message,
-                      style: TextStyle(
-                        fontFamily: AppFonts.display,
-                        fontSize: 14,
-                        height: 1.5,
-                        color: isMe ? context.colors.onHero : c.textDark,
+                    if (reply.message.isNotEmpty)
+                      MentionText(
+                        reply.message,
+                        style: AppType.body(context).copyWith(height: 1.5, color: ink),
+                        mentionStyle: isMe
+                            ? TextStyle(color: c.onHero, decoration: TextDecoration.underline)
+                            : null,
                       ),
-                      mentionStyle: isMe
-                          ? TextStyle(color: context.colors.onHero, decoration: TextDecoration.underline)
-                          : null,
-                    ),
 
-                  // ── Reply image attachments ──────────────────────────────
-                  if (reply.attachments.isNotEmpty) ...[
-                    if (reply.message.isNotEmpty) const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: reply.attachments
-                          .map((a) => NetworkAttachmentTile(
-                        attachment: a,
-                        size: 70,
-                      ))
-                          .toList(),
+                    // ── Reply image attachments ──────────────────────────────
+                    if (reply.attachments.isNotEmpty) ...[
+                      if (reply.message.isNotEmpty) const SizedBox(height: AppSpace.xs),
+                      Wrap(
+                        spacing: AppSpace.xs - AppSpace.xxs / 2,
+                        runSpacing: AppSpace.xs - AppSpace.xxs / 2,
+                        children: reply.attachments
+                            .map((a) => NetworkAttachmentTile(
+                          attachment: a,
+                          size: AppTouch.min * 1.5,
+                        ))
+                            .toList(),
+                      ),
+                    ],
+
+                    const SizedBox(height: AppSpace.xxs),
+                    Text(
+                      _formatTime(reply.createdAt),
+                      style: AppType.overline(context).copyWith(
+                        color: isMe ? c.onHero.withValues(alpha: 0.75) : c.textLight,
+                      ),
                     ),
                   ],
-
-                  const SizedBox(height: 4),
-                  Text(
-                    _formatTime(reply.createdAt),
-                    style: TextStyle(
-                      fontFamily: AppFonts.display,
-                      fontSize: 10,
-                      color: isMe ? context.colors.onHero.withValues(alpha: 0.6) : c.textLight,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -1815,16 +1797,11 @@ class _ReplyInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    const tap = AppTouch.min;
     return Container(
       decoration: BoxDecoration(
         color: c.cardBg,
-        boxShadow: [
-          BoxShadow(
-            color: context.colors.heroShade.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        border: Border(top: BorderSide(color: c.divider, width: AppBorder.hairline)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1838,81 +1815,70 @@ class _ReplyInput extends StatelessWidget {
 
           // ── Text input row ─────────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.xs, AppSpace.sm, AppSpace.sm),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end, // the @mention list grows above the field
               children: [
-                // Camera / gallery button
-                GestureDetector(
-                  onTap: () => _showImagePicker(context),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    margin: const EdgeInsetsDirectional.only(start: 6),
-                    decoration: BoxDecoration(
-                      color: c.primaryTint,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.attach_file_rounded,
-                      size: 20,
-                      color: c.primary,
-                    ),
-                  ),
+                // Camera / gallery / file
+                IconButton(
+                  tooltip: 'add_attachment'.tr,
+                  constraints: const BoxConstraints.tightFor(width: tap, height: tap),
+                  onPressed: () => _showImagePicker(context),
+                  icon: Icon(Icons.attach_file_rounded, size: AppIconSize.md, color: c.textMedium),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xxs),
 
                 // Text field
                 Expanded(
                   child: _withMentions(Container(
+                    constraints: const BoxConstraints(minHeight: tap),
+                    alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: c.background,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: c.divider),
+                      color: c.inputBg,
+                      borderRadius: BorderRadius.circular(AppRadius.control),
                     ),
                     child: TextField(
                       controller: controller,
-                      maxLines: null,
-                      textDirection: TextDirection.rtl,
-                      style: TextStyle(fontFamily: AppFonts.display, color: c.textDark),
+                      maxLines: 5,
+                      minLines: 1,
+                      style: AppType.body(context).copyWith(color: c.textDark),
                       decoration: InputDecoration(
+                        isDense: true,
+                        filled: false,
                         hintText: 'write_reply_hint'.tr,
-                        hintStyle: TextStyle(
-                          fontFamily: AppFonts.display,
-                          color: c.textLight,
-                        ),
+                        hintStyle: AppType.body(context).copyWith(color: c.textLight),
                         contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
+                          horizontal: AppSpace.md,
+                          vertical: AppSpace.sm,
                         ),
                         border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
                       ),
                     ),
                   )),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: AppSpace.xs),
 
                 // Send button
-                GestureDetector(
-                  onTap: isSending ? null : onSend,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      gradient: c.primaryGradient,
-                      shape: BoxShape.circle,
-                      boxShadow: c.primaryShadow,
-                    ),
-                    child: isSending
-                        ? const Padding(
-                      padding: EdgeInsets.all(13),
-                      child: AppLoadingIndicator(),
-                    )
-                        : Icon(
-                      Icons.send_rounded,
-                      color: context.colors.onHero,
-                      size: 20,
+                Semantics(
+                  button: true,
+                  label: 'send_btn'.tr,
+                  child: AppPressScale(
+                    enabled: !isSending,
+                    child: GestureDetector(
+                      onTap: isSending ? null : onSend,
+                      child: Container(
+                        width: tap,
+                        height: tap,
+                        decoration: BoxDecoration(color: c.primary, shape: BoxShape.circle),
+                        child: isSending
+                            ? const Padding(
+                          padding: EdgeInsets.all(AppSpace.sm),
+                          child: AppLoadingIndicator(),
+                        )
+                            : Icon(Icons.send_rounded, color: c.onHero, size: AppIconSize.md),
+                      ),
                     ),
                   ),
                 ),
@@ -1944,7 +1910,7 @@ class _ReplyInput extends StatelessWidget {
                     height: 40,
                     decoration: BoxDecoration(
                       color: c.primaryTint,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(AppRadius.chip),
                     ),
                     child: Icon(Icons.photo_library_outlined, color: c.primary),
                   ),
@@ -1968,7 +1934,7 @@ class _ReplyInput extends StatelessWidget {
                     height: 40,
                     decoration: BoxDecoration(
                       color: c.accentTint,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(AppRadius.chip),
                     ),
                     child: Icon(Icons.camera_alt_outlined, color: c.accent),
                   ),
@@ -1991,7 +1957,7 @@ class _ReplyInput extends StatelessWidget {
                   height: 40,
                   decoration: BoxDecoration(
                     color: c.inputBg,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(AppRadius.chip),
                   ),
                   child: Icon(Icons.folder_open_outlined, color: c.textLight),
                 ),
@@ -2030,15 +1996,15 @@ class _PendingImageStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      height: _size + 16,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      height: _size + AppSpace.md,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: c.divider, width: 0.5)),
+        border: Border(top: BorderSide(color: c.divider, width: AppBorder.hairline)),
       ),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: attachments.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpace.xs),
         itemBuilder: (_, i) => PendingAttachmentTile(
           attachment: attachments[i],
           onRemove: () => onRemove(i),
@@ -2060,57 +2026,43 @@ class _SuggestedSolutionBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final Color accent = c.success;
     final Color tint = c.successTint;
+    final Color ink = c.blockAccentInk(c.success, tint);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: AppSpace.card,
       decoration: BoxDecoration(
-        color: tint.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: accent.withValues(alpha: 0.35)),
+        color: tint,
+        borderRadius: BorderRadius.circular(AppRadius.card),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                Icons.lightbulb_outline_rounded,
-                size: 15,
-                color: accent,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'suggested_solution_label'.tr,
-                style: TextStyle(
-                  fontFamily: AppFonts.display,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: accent,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                ),
+              Icon(Icons.lightbulb_outline_rounded, size: AppIconSize.sm, color: ink),
+              const SizedBox(width: AppSpace.xs),
+              Flexible(
                 child: Text(
-                  'by_student'.tr,
-                  style: TextStyle(
-                    fontFamily: AppFonts.display,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    color: accent,
-                  ),
+                  'suggested_solution_label'.tr,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: ink),
                 ),
+              ),
+              const SizedBox(width: AppSpace.xs),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 1),
+                decoration: BoxDecoration(
+                  color: c.cardBg,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+                child: Text('by_student'.tr, style: AppType.overline(context).copyWith(color: c.textMedium)),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Text(text, style: c.body.copyWith(fontSize: 13, height: 1.6)),
+          const SizedBox(height: AppSpace.xs),
+          Text(text, style: AppType.body(context).copyWith(height: 1.6, color: c.textDark)),
         ],
       ),
     );

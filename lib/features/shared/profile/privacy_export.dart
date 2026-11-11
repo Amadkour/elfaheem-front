@@ -175,31 +175,31 @@ class DataExportView extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final s = status;
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.lg), children: [
       AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Icon(Icons.inventory_2_rounded, color: c.primary),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
                 child: Text(t('نسخة من بياناتك', 'A copy of your data'),
-                    style: appText(16, w: FontWeight.w800, c: c.textDark))),
+                    style: AppType.section(context).copyWith(color: c.textDark))),
           ]),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           Text(
               t('ملف مضغوط (ZIP) يضم ملفات JSON لكل جزء من بياناتك (الحساب، الدورات، المدفوعات، الحضور، الاختبارات، '
                       'الأسئلة، الإشعارات، الشكاوى، الأجهزة، المؤسسات، الموافقات) مع ملف يشرح محتوى كل ملف بالعربية والإنجليزية.',
                   'A ZIP file with one JSON file per part of your data (account, courses, payments, attendance, exams, '
                       'questions, notifications, complaints, devices, organizations, consents) and a file that explains each one in Arabic and English.'),
-              style: appText(12.5, c: c.textMedium, h: 1.5)),
-          const SizedBox(height: 6),
+              style: AppType.label(context).copyWith(color: c.textMedium, height: 1.5)),
+          const SizedBox(height: AppSpace.xs - 2),
           Text(
               t('يُحتفظ بالملف ${daysText(s.keepDays, lang: 'ar')} ثم يُحذف، ويمكنك طلب نسخة جديدة مرة كل ${hoursText(s.cooldownHours, lang: 'ar')}.',
                   'The file is kept for ${daysText(s.keepDays, lang: 'en')}, then deleted. You can ask for a new copy once every ${hoursText(s.cooldownHours, lang: 'en')}.'),
-              style: appText(12, c: c.textMedium, h: 1.5)),
+              style: AppType.meta(context).copyWith(color: c.textMedium, height: 1.5)),
         ]),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       if (loading)
         const SizedBox(height: 120, child: AppListSkeleton(items: 2))
       else ...[
@@ -211,15 +211,15 @@ class DataExportView extends StatelessWidget {
               action: onRetry == null
                   ? null
                   : TextButton(onPressed: onRetry, child: Text(t('إعادة المحاولة', 'Retry')))),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
         ],
         AppCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-              Text(t('الحالة', 'Status'), style: appText(13, w: FontWeight.w700, c: c.textDark)),
+              Text(t('الحالة', 'Status'), style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
               AppBadgePill(dataExportStateText(s.state), color: _stateColor(context)),
             ]),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             if (s.requestedAt != null)
               AppInfoRow(Icons.schedule_rounded, '${t('طُلب في', 'Requested')}: ${AppTime.dateTime(s.requestedAt!)}'),
             if (s.ready && s.expiresAt != null)
@@ -230,21 +230,21 @@ class DataExportView extends StatelessWidget {
               AppInfoRow(Icons.info_outline_rounded, dataExportCodeText(s.errorCode, t('تعذّر التجهيز', 'Could not be prepared'))),
             if (s.busy)
               Padding(
-                padding: const EdgeInsets.only(top: 6),
+                padding: const EdgeInsets.only(top: AppSpace.xs - 2),
                 child: Text(t('نجهّز ملفك الآن، ستتحدث هذه الصفحة تلقائياً.', 'We are preparing your file; this page updates by itself.'),
-                    style: appText(12, c: c.textMedium, h: 1.5)),
+                    style: AppType.meta(context).copyWith(color: c.textMedium, height: 1.5)),
               ),
             if (!s.canRequest && !s.busy && s.nextRequestAt != null)
               AppInfoRow(Icons.hourglass_bottom_rounded,
                   '${t('يمكنك طلب نسخة جديدة بعد', 'You can ask for a new copy after')}: ${AppTime.dateTime(s.nextRequestAt!)}'),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpace.md),
             if (s.ready)
               AppPrimaryButton(
                   label: t('تنزيل بياناتي', 'Download my data'),
                   icon: Icons.download_rounded,
                   busy: downloading,
                   onPressed: downloading ? null : onDownload),
-            if (s.ready && s.canRequest) const SizedBox(height: 10),
+            if (s.ready && s.canRequest) const SizedBox(height: AppSpace.sm),
             if (!s.ready || s.canRequest)
               AppPrimaryButton(
                   label: s.state == 'none' ? t('طلب نسخة من بياناتي', 'Request a copy of my data') : t('طلب نسخة جديدة', 'Request a new copy'),

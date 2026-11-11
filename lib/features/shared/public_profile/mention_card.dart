@@ -89,7 +89,7 @@ class MentionCardBody extends StatelessWidget {
     final Widget body;
     if (r == null) {
       body = const Padding(
-        padding: EdgeInsets.symmetric(vertical: 8),
+        padding: EdgeInsets.symmetric(vertical: AppSpace.xs),
         child: AppListSkeleton(items: 1),
       );
     } else if (p != null) {
@@ -97,34 +97,34 @@ class MentionCardBody extends StatelessWidget {
       body = Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           AppAvatar(name: p.name, url: p.imageUrl, size: 56),
-          const SizedBox(width: 14),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(p.name,
-                  maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w800, c: c.textDark)),
-              const SizedBox(height: 2),
+                  maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.headline(context).copyWith(color: c.textDark)),
+              const SizedBox(height: AppSpace.xxs / 2),
               Text('$lri$handle$pdi',
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w600, c: c.primary)),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: c.blockAccentInk(c.primary, c.cardBg), fontWeight: FontWeight.w600)),
               if (spec != null && spec.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(spec, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium)),
+                const SizedBox(height: AppSpace.xxs),
+                Text(spec, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: c.textMedium)),
               ],
             ]),
           ),
         ]),
         if (p.isTeacher && p.coursesCount > 0) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           Row(children: [
             Icon(Icons.menu_book_rounded, size: 18, color: c.textMedium),
-            const SizedBox(width: 6),
+            const SizedBox(width: AppSpace.xs - 2),
             Flexible(
               child: Text(t('${p.coursesCount} كورسات', '${p.coursesCount} courses'),
-                  style: appText(13, w: FontWeight.w600, c: c.textDark)),
+                  style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
             ),
           ]),
         ],
         if (onOpenProfile != null) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           FilledButton.icon(
             onPressed: onOpenProfile,
             icon: const Icon(Icons.person_rounded),
@@ -144,20 +144,20 @@ class MentionCardBody extends StatelessWidget {
       body = Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           AppAvatar(name: UsernameRules.normalize(username), size: 48),
-          const SizedBox(width: 14),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Text('$lri$handle$pdi',
-                maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w800, c: c.primary)),
+                maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.blockAccentInk(c.primary, c.cardBg))),
           ),
         ]),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(icon, size: 18, color: c.textMedium),
-          const SizedBox(width: 8),
-          Expanded(child: Text(text, style: appText(13, c: c.textMedium))),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: Text(text, style: AppType.body(context).copyWith(color: c.textMedium))),
         ]),
         if (r.status == PublicProfileStatus.failed && onRetry != null) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           OutlinedButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded),
@@ -170,7 +170,7 @@ class MentionCardBody extends StatelessWidget {
     return SafeArea(
       top: false,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+        padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xs, AppSpace.lg, AppSpace.lg),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           body,
         ]),

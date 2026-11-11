@@ -1,13 +1,10 @@
 // lib/features/shared/profile/compalints/new_complaint_screen.dart
 //
-// Redesign: every colour, gradient, shadow and radius comes from YOUR theme
-// (context.colors) — no hard-coded hex values — so it follows light / dark mode
-// and the palette the admin edits. Logic is unchanged.
-//
-//   • hero banner (+ the course the complaint is about)
-//   • each part of the form is a titled card with a gradient icon
-//   • gradient pill tab bar, friendly pickers, themed status colours
-//   • RTL-safe (start/end instead of left/right) and re-translates live
+// The platform complaint form and the "my complaints" history (D-086 keeps the history on the hub page for most
+// callers). Warm Editorial (D-610 – D-629): the sky hero block (the complaints subject, the same tone as the hub)
+// is the one memorable element; every part of the form is a paper card on a warm hairline with a flat tinted icon
+// tile, the editorial face on section titles, kit buttons, and tokens for every space, radius and type role.
+// Colours come from the theme (context.colors), so light / dark and the admin palette follow. Logic is unchanged.
 library;
 
 import 'package:flutter_education_app/design/app_side_sheet.dart';
@@ -16,7 +13,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh, AppTime;
+import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
@@ -25,7 +22,6 @@ import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/base_page.dart';
-import '../../../../utils/widget/primary_button.dart';
 import '../../../../utils/widget/text_field.dart';
 import 'complaint_attachement_widgets.dart';
 import 'complaint_model.dart';
@@ -35,8 +31,6 @@ import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_username.dart';
 import 'package:flutter_education_app/design/app_mentions.dart';
-import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
-import 'package:flutter_education_app/design/app_kit.dart' show AppSheetContent;
 
 class NewComplaintScreen extends StatefulWidget {
   const NewComplaintScreen({super.key, this.courseId, this.courseTitle, this.formOnly = false});
@@ -221,34 +215,32 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
 //  Small shared building blocks
 // ══════════════════════════════════════════════════════════════════════════════
 
-/// Gradient rounded-square icon (same language as the admin area).
+/// A section's icon tile: a flat tint of the gradient's first colour with its readable ink (Warm Editorial: no
+/// gradient washes, no glow — the tone carries it).
 class _GradIcon extends StatelessWidget {
-  const _GradIcon({required this.icon, required this.gradient, this.size = 38});
+  const _GradIcon({required this.icon, required this.gradient, this.size = AppTouch.min - AppSpace.xs});
 
   final IconData icon;
   final LinearGradient gradient;
   final double size;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(
-      gradient: gradient,
-      borderRadius: BorderRadius.circular(size * 0.36),
-      boxShadow: [
-        BoxShadow(
-          color: gradient.colors.last.withValues(alpha: 0.24),
-          blurRadius: 12,
-          offset: const Offset(0, 5),
-        ),
-      ],
-    ),
-    child: Icon(icon, color: context.colors.onHero, size: size * 0.52),
-  );
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tone = gradient.colors.first;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: tone.withValues(alpha: 0.13),
+        borderRadius: BorderRadius.circular(AppRadius.control - AppSpace.xxs),
+      ),
+      child: Icon(icon, color: c.blockAccentInk(tone, c.cardBg), size: AppIconSize.md),
+    );
+  }
 }
 
-/// Titled card that holds one part of the form.
+/// Titled paper card that holds one part of the form (tone + warm hairline, no resting shadow).
 class _SectionCard extends StatelessWidget {
   const _SectionCard({
     required this.icon,
@@ -269,24 +261,23 @@ class _SectionCard extends StatelessWidget {
     final c = context.colors;
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: AppSpace.md),
+      padding: AppSpace.card,
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(c.radiusLarge),
-        border: Border.all(color: c.divider),
-        boxShadow: c.cardShadow,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            _GradIcon(icon: icon, gradient: gradient, size: 36),
-            const SizedBox(width: 10),
-            Expanded(child: Text(title, style: c.h3.copyWith(fontSize: 15))),
+            _GradIcon(icon: icon, gradient: gradient),
+            const SizedBox(width: AppSpace.sm),
+            Expanded(child: Text(title, style: AppType.section(context).copyWith(color: c.textDark))),
             if (trailing != null) trailing!,
           ]),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.sm),
           child,
         ],
       ),
@@ -294,110 +285,75 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
-/// Friendly banner at the top of the form.
+/// The form's opening block (sky, the complaints subject): the editorial title, what happens next, and the course
+/// the complaint is about on a paper chip.
 class _Hero extends StatelessWidget {
   const _Hero({this.courseTitle});
 
   final String? courseTitle;
 
-  Widget _blob(BuildContext context, double size, double alpha) => Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: context.colors.onHero.withValues(alpha: alpha),
-    ),
-  );
-
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final hasCourse = courseTitle != null && courseTitle!.trim().isNotEmpty;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 18),
-      decoration: BoxDecoration(
-        gradient: c.primaryGradient,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: c.primaryShadow,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: Stack(children: [
-          PositionedDirectional(end: -30, top: -30, child: _blob(context, 130, 0.10)),
-          PositionedDirectional(start: -24, bottom: -44, child: _blob(context, 110, 0.08)),
-          Padding(
-            padding: const EdgeInsets.all(22),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Container(
-                  width: 54,
-                  height: 54,
-                  decoration: BoxDecoration(
-                    color: context.colors.onHero.withValues(alpha: 0.20),
-                    borderRadius: BorderRadius.circular(18),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.lg),
+      child: AppBlock(
+        tone: AppBlockTone.sky,
+        hero: true,
+        child: Builder(builder: (context) {
+          final b = AppBlock.colorsOf(context);
+          return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                width: AppTouch.primary,
+                height: AppTouch.primary,
+                decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.card)),
+                child: Icon(Icons.support_agent_rounded, color: b.accentInk(c.primary), size: AppIconSize.lg),
+              ),
+              const SizedBox(width: AppSpace.md),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Semantics(
+                    header: true,
+                    child: Text('complaint_hero_title'.tr, style: AppType.headline(context).copyWith(color: b.ink)),
                   ),
-                  child: Icon(Icons.support_agent_rounded,
-                      color: context.colors.onHero, size: 29),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(
-                      'complaint_hero_title'.tr,
-                      style: TextStyle(
-                        fontFamily: AppFonts.display,
-                        fontSize: 19,
-                        fontWeight: FontWeight.w800,
-                        color: context.colors.onHero,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'complaint_hero_sub'.tr,
-                      style: TextStyle(
-                        fontFamily: AppFonts.display,
-                        fontSize: 12.5,
-                        height: 1.5,
-                        color: context.colors.onHero.withValues(alpha: 0.9),
-                      ),
-                    ),
-                  ]),
-                ),
-              ]),
-              if (hasCourse) ...[
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: context.colors.onHero.withValues(alpha: 0.20),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.menu_book_rounded, size: 14, color: context.colors.onHero),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        'complaint_about_course'.tr.replaceAll('{course}', courseTitle!),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: AppFonts.display,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: context.colors.onHero,
-                        ),
-                      ),
-                    ),
-                  ]),
-                ),
-              ],
+                  const SizedBox(height: AppSpace.xxs),
+                  Text('complaint_hero_sub'.tr, style: AppType.body(context).copyWith(color: b.muted)),
+                ]),
+              ),
             ]),
-          ),
-        ]),
+            if (hasCourse) ...[
+              const SizedBox(height: AppSpace.md),
+              Container(
+                constraints: const BoxConstraints(minHeight: AppIconSize.xl),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
+                decoration: BoxDecoration(
+                  color: c.cardBg,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  border: Border.all(color: c.divider, width: AppBorder.hairline),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.menu_book_rounded, size: AppIconSize.sm, color: c.textMedium),
+                  const SizedBox(width: AppSpace.xs),
+                  Flexible(
+                    child: Text(
+                      'complaint_about_course'.tr.replaceAll('{course}', courseTitle!),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ]),
+              ),
+            ],
+          ]);
+        }),
       ),
     );
   }
 }
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Tab bar
@@ -412,45 +368,42 @@ class _TabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final label = AppType.label(context);
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      padding: const EdgeInsets.all(5),
+      margin: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
+      padding: const EdgeInsets.all(AppSpace.xxs),
       decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: c.divider),
-        boxShadow: c.cardShadow,
+        color: c.inputBg,
+        borderRadius: BorderRadius.circular(AppRadius.control),
       ),
       child: TabBar(
         controller: controller,
         indicator: BoxDecoration(
-          gradient: c.primaryGradient,
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: c.primaryShadow,
+          color: c.cardBg,
+          borderRadius: BorderRadius.circular(AppRadius.control - AppSpace.xxs),
+          border: Border.all(color: c.divider, width: AppBorder.hairline),
         ),
         indicatorSize: TabBarIndicatorSize.tab,
-        dividerColor: Colors.transparent,
-        labelColor: context.colors.onHero,
+        dividerColor: c.divider.withValues(alpha: 0),
+        labelColor: c.textDark,
         unselectedLabelColor: c.textMedium,
-        labelStyle: TextStyle(
-            fontFamily: AppFonts.display, fontSize: 13, fontWeight: FontWeight.w700),
-        unselectedLabelStyle: TextStyle(
-            fontFamily: AppFonts.display, fontSize: 13, fontWeight: FontWeight.w500),
+        labelStyle: label.copyWith(fontWeight: FontWeight.w600),
+        unselectedLabelStyle: label,
         tabs: [
           Tab(
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.edit_note_rounded, size: 18),
-              const SizedBox(width: 6),
-              Text('new_complaint_tab'.tr),
+              const Icon(Icons.edit_note_rounded, size: AppIconSize.md),
+              const SizedBox(width: AppSpace.xs),
+              Flexible(child: Text('new_complaint_tab'.tr, maxLines: 1, overflow: TextOverflow.ellipsis)),
             ]),
           ),
           Tab(
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.history_rounded, size: 18),
-              const SizedBox(width: 6),
-              Text('my_complaints_tab'.tr),
+              const Icon(Icons.history_rounded, size: AppIconSize.md),
+              const SizedBox(width: AppSpace.xs),
+              Flexible(child: Text('my_complaints_tab'.tr, maxLines: 1, overflow: TextOverflow.ellipsis)),
               if (unreadCount > 0) ...[
-                const SizedBox(width: 6),
+                const SizedBox(width: AppSpace.xs),
                 _Badge(count: unreadCount),
               ],
             ]),
@@ -468,21 +421,16 @@ class _Badge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    constraints: const BoxConstraints(minWidth: 18),
-    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    constraints: const BoxConstraints(minWidth: AppIconSize.md),
+    padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs + 2, vertical: 1),
     decoration: BoxDecoration(
       color: context.colors.danger,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppRadius.pill),
     ),
     child: Text(
       '$count',
       textAlign: TextAlign.center,
-      style: TextStyle(
-        fontFamily: AppFonts.display,
-        fontSize: 10,
-        fontWeight: FontWeight.w800,
-        color: context.colors.onHero,
-      ),
+      style: AppType.meta(context).copyWith(color: context.colors.onHero, fontWeight: FontWeight.w600),
     ),
   );
 }
@@ -539,7 +487,7 @@ class _FormTab extends StatelessWidget {
     final c = context.colors;
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xxl),
       child: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
@@ -549,8 +497,8 @@ class _FormTab extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-          if (target != null) target!,
                 _Hero(courseTitle: courseTitle),
+                if (target != null) target!,
 
                 // ── Title ──────────────────────────────────────────────
                 _SectionCard(
@@ -636,11 +584,13 @@ class _FormTab extends StatelessWidget {
                 ),
 
                 // ── Submit ─────────────────────────────────────────────
-                PrimaryButton(
+                AppButton.primary(
                   label: 'send_complaint_btn'.tr,
-                  isLoading: isSending,
-                  onPressed: onSubmit,
+                  busy: isSending,
+                  onPressed: isSending ? null : onSubmit,
                   icon: Icons.send_rounded,
+                  size: AppButtonSize.lg,
+                  expand: true,
                 ),
               ],
             ),
@@ -666,122 +616,112 @@ class _SuggestedSolutionField extends StatelessWidget {
   final bool isExpanded;
   final VoidCallback onToggle;
 
+  /// The field's length limit, shown under it.
+  static const int _max = 2000;
+
+  /// From here the counter turns to a warning.
+  static const int _near = 1800;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final accent = c.success;
+    final motion = AppMotion.of(context);
+    final ink = c.blockAccentInk(c.success, isExpanded ? c.successTint : c.cardBg);
+    final radius = BorderRadius.circular(AppRadius.card);
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeInOut,
+      duration: motion.slow,
+      curve: AppMotion.curve,
       decoration: BoxDecoration(
         color: isExpanded ? c.successTint : c.cardBg,
-        borderRadius: BorderRadius.circular(c.radiusLarge),
+        borderRadius: radius,
         border: Border.all(
-          color: isExpanded ? accent.withValues(alpha: 0.55) : c.divider,
-          width: 1.5,
+          color: isExpanded ? c.success.withValues(alpha: 0.45) : c.divider,
+          width: AppBorder.hairline,
         ),
-        boxShadow: c.cardShadow,
       ),
       child: Column(
         children: [
           InkWell(
             onTap: onToggle,
-            borderRadius: BorderRadius.circular(c.radiusLarge),
+            borderRadius: radius,
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: AppSpace.card,
               child: Row(children: [
-                _GradIcon(
-                  icon: Icons.lightbulb_rounded,
-                  gradient: c.successGradient,
-                  size: 38,
-                ),
-                const SizedBox(width: 12),
+                _GradIcon(icon: Icons.lightbulb_rounded, gradient: c.successGradient),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
                       Flexible(
                         child: Text(
                           'suggested_solution_label'.tr,
-                          style: TextStyle(
-                            fontFamily: AppFonts.display,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: isExpanded ? accent : c.textDark,
-                          ),
+                          style: AppType.section(context).copyWith(color: c.textDark),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpace.xs),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 1),
                         decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(20),
+                          color: c.cardBg,
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                          border: Border.all(color: c.divider, width: AppBorder.hairline),
                         ),
-                        child: Text(
-                          'optional'.tr,
-                          style: TextStyle(
-                            fontFamily: AppFonts.display,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: accent,
-                          ),
-                        ),
+                        child: Text('optional'.tr, style: AppType.meta(context).copyWith(color: c.textMedium)),
                       ),
                     ]),
-                    const SizedBox(height: 2),
-                    Text('suggested_solution_hint'.tr,
-                        style: c.caption.copyWith(fontSize: 11.5)),
+                    const SizedBox(height: AppSpace.xxs / 2),
+                    Text('suggested_solution_hint'.tr, style: AppType.meta(context).copyWith(color: c.textLight)),
                   ]),
                 ),
                 AnimatedRotation(
                   turns: isExpanded ? 0.5 : 0.0,
-                  duration: const Duration(milliseconds: 280),
-                  child: Icon(Icons.keyboard_arrow_down_rounded,
-                      color: isExpanded ? accent : c.textLight),
+                  duration: motion.slow,
+                  curve: AppMotion.curve,
+                  child: Icon(Icons.keyboard_arrow_down_rounded, color: isExpanded ? ink : c.textLight),
                 ),
               ]),
             ),
           ),
-          AnimatedCrossFade(
-            duration: const Duration(milliseconds: 280),
-            crossFadeState:
-            isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-            firstChild: const SizedBox(width: double.infinity, height: 0),
-            secondChild: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Divider(color: accent.withValues(alpha: 0.25), height: 1),
-                const SizedBox(height: 12),
-                MyTextField(
-                  controller: controller,
-                  maxLine: 3,
-                  label: 'suggested_solution_placeholder'.tr,
-                  // Optional field: empty is valid. The minimum length applies
-                  // only once the person started typing.
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return null;
-                    if (v.trim().length < 5) return 'suggested__too_short'.tr;
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: ValueListenableBuilder<TextEditingValue>(
-                    valueListenable: controller,
-                    builder: (_, v, _) => Text(
-                      '${v.text.length} / 2000',
-                      style: TextStyle(
-                        fontFamily: AppFonts.display,
-                        fontSize: 11,
-                        color: v.text.length > 1800 ? c.warning : c.textLight,
+          AnimatedSize(
+            duration: motion.slow,
+            curve: AppMotion.curve,
+            alignment: AlignmentDirectional.topStart,
+            child: !isExpanded
+                ? const SizedBox(width: double.infinity)
+                : Padding(
+                    padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Divider(color: c.success.withValues(alpha: 0.25), height: AppBorder.hairline),
+                      const SizedBox(height: AppSpace.sm),
+                      MyTextField(
+                        controller: controller,
+                        maxLine: 3,
+                        label: 'suggested_solution_placeholder'.tr,
+                        // Optional field: empty is valid. The minimum length applies
+                        // only once the person started typing.
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return null;
+                          if (v.trim().length < 5) return 'suggested__too_short'.tr;
+                          return null;
+                        },
                       ),
-                    ),
+                      const SizedBox(height: AppSpace.xs),
+                      Align(
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: ValueListenableBuilder<TextEditingValue>(
+                          valueListenable: controller,
+                          builder: (_, v, _) => Text(
+                            '${v.text.length} / $_max',
+                            style: AppType.meta(context).copyWith(
+                              color: v.text.length > _near ? c.blockAccentInk(c.warning, c.successTint) : c.textLight,
+                              fontFeatures: const [FontFeature.tabularFigures()],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ]),
                   ),
-                ),
-              ]),
-            ),
           ),
         ],
       ),
@@ -1175,23 +1115,22 @@ class _AttachmentSection extends StatelessWidget {
       gradient: c.accentGradient,
       title: 'attachments_label'.tr,
       trailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
         decoration: BoxDecoration(
           color: c.inputBg,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(AppRadius.pill),
         ),
         child: Text(
           '${attachments.length} / $_max',
-          style: TextStyle(
-            fontFamily: AppFonts.display,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
+          style: AppType.meta(context).copyWith(
             color: c.textMedium,
+            fontWeight: FontWeight.w600,
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Wrap(spacing: 10, runSpacing: 10, children: [
+        Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [
           ...attachments.asMap().entries.map(
                 (e) => _AttachmentThumb(
               index: e.key,
@@ -1207,14 +1146,16 @@ class _AttachmentSection extends StatelessWidget {
             ),
         ]),
         if (attachments.isEmpty) ...[
-          const SizedBox(height: 10),
-          Text('attachments_hint'.tr,
-              style: TextStyle(fontFamily: AppFonts.display, fontSize: 12, color: c.textLight)),
+          const SizedBox(height: AppSpace.sm),
+          Text('attachments_hint'.tr, style: AppType.meta(context).copyWith(color: c.textLight)),
         ],
       ]),
     );
   }
 }
+
+/// The side of an attachment thumbnail and of the "add" tile.
+const double _thumb = AppTouch.min * 1.75;
 
 class _AttachmentThumb extends StatelessWidget {
   const _AttachmentThumb({
@@ -1226,7 +1167,6 @@ class _AttachmentThumb extends StatelessWidget {
   final int index;
   final PendingAttachment attachment;
   final ValueChanged<int> onRemove;
-  static const double _size = 84;
 
   bool get _isPdf =>
       attachment.file.name.toLowerCase().endsWith('.pdf') ||
@@ -1237,48 +1177,59 @@ class _AttachmentThumb extends StatelessWidget {
     final c = context.colors;
     return Stack(clipBehavior: Clip.none, children: [
       ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         child: _isPdf
             ? Container(
-          width: _size,
-          height: _size,
-          decoration: BoxDecoration(gradient: c.primaryGradient),
+          width: _thumb,
+          height: _thumb,
+          color: c.inputBg,
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(Icons.picture_as_pdf_rounded, size: 28, color: context.colors.onHero),
-            const SizedBox(height: 4),
+            Icon(Icons.picture_as_pdf_rounded, size: AppIconSize.lg, color: c.blockAccentInk(c.danger, c.inputBg)),
+            const SizedBox(height: AppSpace.xxs),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
               child: Text(
                 attachment.file.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontFamily: AppFonts.display, fontSize: 9, color: context.colors.onHero),
+                style: AppType.overline(context).copyWith(color: c.textMedium),
               ),
             ),
           ]),
         )
             : kIsWeb
             ? Image.network(attachment.localPreviewUrl,
-            width: _size, height: _size, fit: BoxFit.cover)
+            width: _thumb, height: _thumb, fit: BoxFit.cover)
             : Image.file(File(attachment.localPreviewUrl),
-            width: _size, height: _size, fit: BoxFit.cover),
+            width: _thumb, height: _thumb, fit: BoxFit.cover),
       ),
+      // the remove badge sits inside the corner (a target outside the thumb would not be hit-tested)
       PositionedDirectional(
-        top: -6,
-        end: -6,
-        child: GestureDetector(
-          onTap: () => onRemove(index),
-          child: Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              color: c.danger,
-              shape: BoxShape.circle,
-              border: Border.all(color: c.cardBg, width: 2),
+        top: 0,
+        end: 0,
+        child: Semantics(
+          button: true,
+          label: 'delete'.tr,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => onRemove(index),
+            child: SizedBox(
+              width: AppTouch.min - AppSpace.xs,
+              height: AppTouch.min - AppSpace.xs,
+              child: Center(
+                child: Container(
+                  width: AppIconSize.lg,
+                  height: AppIconSize.lg,
+                  decoration: BoxDecoration(
+                    color: c.danger,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: c.cardBg, width: AppBorder.focus),
+                  ),
+                  child: Icon(Icons.close_rounded, size: AppIconSize.xs, color: c.onHero),
+                ),
+              ),
             ),
-            child: Icon(Icons.close_rounded, size: 14, color: context.colors.onHero),
           ),
         ),
       ),
@@ -1296,38 +1247,38 @@ class _AddImageButton extends StatelessWidget {
   final VoidCallback onPickGallery;
   final VoidCallback onPickCamera;
   final VoidCallback onPickFile;
-  static const double _size = 84;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () => _show(context),
-      child: Container(
-        width: _size,
-        height: _size,
-        decoration: BoxDecoration(
-          color: c.primaryTint,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: c.primary.withValues(alpha: 0.4), width: 1.5),
-        ),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.add_photo_alternate_rounded, size: 28, color: c.primary),
-          const SizedBox(height: 4),
-          Flexible(
-            child: Text(
-              'add_attachment'.tr,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: AppFonts.display,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: c.primary,
+    final ink = c.blockAccentInk(c.primary, c.inputBg);
+    final radius = BorderRadius.circular(AppRadius.control);
+    return Material(
+      color: c.inputBg,
+      shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: c.divider, width: AppBorder.hairline)),
+      child: InkWell(
+        borderRadius: radius,
+        onTap: () => _show(context),
+        child: SizedBox(
+          width: _thumb,
+          height: _thumb,
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(Icons.add_photo_alternate_rounded, size: AppIconSize.lg, color: ink),
+            const SizedBox(height: AppSpace.xxs),
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
+                child: Text(
+                  'add_attachment'.tr,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.meta(context).copyWith(color: ink, fontWeight: FontWeight.w600),
+                ),
               ),
             ),
-          ),
-        ]),
+          ]),
+        ),
       ),
     );
   }
@@ -1339,7 +1290,7 @@ class _AddImageButton extends StatelessWidget {
       context: context,
       builder: (_) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             // The browser file picker already covers "gallery" on web.
             if (!kIsWeb)
@@ -1360,12 +1311,10 @@ class _AddImageButton extends StatelessWidget {
       VoidCallback onTap) {
     final c = context.colors;
     return ListTile(
-      leading: _GradIcon(icon: icon, gradient: g, size: 42),
-      title: Text(
-        label,
-        style: TextStyle(
-            fontFamily: AppFonts.display, fontWeight: FontWeight.w700, color: c.textDark),
-      ),
+      minTileHeight: AppTouch.primary,
+      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
+      leading: _GradIcon(icon: icon, gradient: g),
+      title: Text(label, style: AppType.row(context).copyWith(color: c.textDark)),
       onTap: () {
         Navigator.pop(context);
         onTap();
@@ -1661,6 +1610,55 @@ const kComplaintKinds = [
   ComplaintCategory.courseContent,
 ];
 
+/// One choice of a picker: paper at rest, the primary filled when chosen (the selection colour, system.md §2).
+class _ChoicePill extends StatelessWidget {
+  const _ChoicePill({required this.label, required this.icon, required this.selected, required this.onTap});
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final motion = AppMotion.of(context);
+    final ink = selected ? c.onHero : c.textMedium;
+    final radius = BorderRadius.circular(AppRadius.control);
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: InkWell(
+        borderRadius: radius,
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: motion.fast,
+          curve: AppMotion.curve,
+          constraints: const BoxConstraints(minHeight: AppTouch.min),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+          decoration: BoxDecoration(
+            color: selected ? c.primary : c.cardBg,
+            borderRadius: radius,
+            border: Border.all(color: selected ? c.primary : c.divider, width: AppBorder.hairline),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, size: AppIconSize.sm, color: selected ? c.onHero : c.textLight),
+            const SizedBox(width: AppSpace.xs),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.label(context).copyWith(color: ink, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
 class _CategoryPicker extends StatelessWidget {
   const _CategoryPicker({required this.selected, required this.onChanged});
 
@@ -1669,7 +1667,6 @@ class _CategoryPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final labels = {
       ComplaintCategory.general: ('category_general'.tr, Icons.help_outline_rounded),
       ComplaintCategory.technical: ('category_technical'.tr, Icons.bug_report_outlined),
@@ -1679,39 +1676,11 @@ class _CategoryPicker extends StatelessWidget {
       ComplaintCategory.student: ('category_student'.tr, Icons.school_outlined),
     };
     return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+      spacing: AppSpace.xs,
+      runSpacing: AppSpace.xs,
       children: kComplaintKinds.map((cat) {
         final (label, icon) = labels[cat]!;
-        final sel = selected == cat;
-        return InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => onChanged(cat),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: sel ? null : c.inputBg,
-              gradient: sel ? c.primaryGradient : null,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: sel ? Colors.transparent : c.divider, width: 1.2),
-              boxShadow: sel ? c.primaryShadow : null,
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(icon, size: 17, color: sel ? context.colors.onHero : c.textLight),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontFamily: AppFonts.display,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: sel ? context.colors.onHero : c.textMedium,
-                ),
-              ),
-            ]),
-          ),
-        );
+        return _ChoicePill(label: label, icon: icon, selected: selected == cat, onTap: () => onChanged(cat));
       }).toList(),
     );
   }
@@ -1726,6 +1695,7 @@ class _PriorityPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final motion = AppMotion.of(context);
     final meta = {
       ComplaintPriority.low: ('priority_low'.tr, c.success, Icons.arrow_downward_rounded),
       ComplaintPriority.medium: ('priority_medium'.tr, c.warning, Icons.remove_rounded),
@@ -1741,43 +1711,45 @@ class _PriorityPicker extends StatelessWidget {
       ),
     };
     final items = ComplaintPriority.values;
+    final radius = BorderRadius.circular(AppRadius.control);
     return Row(children: [
       for (var i = 0; i < items.length; i++) ...[
-        if (i > 0) const SizedBox(width: 8),
+        if (i > 0) const SizedBox(width: AppSpace.xs),
         Expanded(
           child: Builder(builder: (_) {
             final (label, color, icon) = meta[items[i]]!;
             final sel = selected == items[i];
-            return InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: () => onChanged(items[i]),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 11),
-                decoration: BoxDecoration(
-                  color: sel ? color : color.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: sel ? color : color.withValues(alpha: 0.35),
-                    width: 1.2,
+            // the tone as text: readable on its own faint tint at rest; white on the filled tone when chosen
+            final ink = sel ? c.onHero : c.blockAccentInk(color, c.cardBg);
+            final fill = sel ? c.blockAccentInk(color, c.onHero) : color.withValues(alpha: 0.08);
+            return Semantics(
+              button: true,
+              selected: sel,
+              child: InkWell(
+                borderRadius: radius,
+                onTap: () => onChanged(items[i]),
+                child: AnimatedContainer(
+                  duration: motion.fast,
+                  curve: AppMotion.curve,
+                  constraints: const BoxConstraints(minHeight: AppTouch.primary),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpace.xs, horizontal: AppSpace.xxs),
+                  decoration: BoxDecoration(
+                    color: fill,
+                    borderRadius: radius,
+                    border: Border.all(color: sel ? fill : color.withValues(alpha: 0.35), width: AppBorder.hairline),
                   ),
-                ),
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(icon, size: 16, color: sel ? context.colors.onHero : color),
-                  const SizedBox(height: 3),
-                  Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: AppFonts.display,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: sel ? context.colors.onHero : color,
+                  child: Column(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(icon, size: AppIconSize.sm, color: ink),
+                    const SizedBox(height: AppSpace.xxs / 2),
+                    Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.meta(context).copyWith(color: ink, fontWeight: FontWeight.w600),
                     ),
-                  ),
-                ]),
+                  ]),
+                ),
               ),
             );
           }),
@@ -1837,7 +1809,8 @@ class _ComplaintTargetPickerState extends State<ComplaintTargetPicker> {
           Material(
             type: MaterialType.transparency,
             child: ListTile(
-              title: Text('${x['label']}', style: TextStyle(fontFamily: AppFonts.family)),
+              minTileHeight: AppTouch.min + AppSpace.xs,
+              title: Text('${x['label']}', style: AppType.row(ctx).copyWith(color: ctx.colors.textDark)),
               subtitle: usernameFrom(x) == null ? null : AppUsernameLine(usernameFrom(x)),
               onTap: () => Navigator.pop(ctx, x),
             ),
@@ -1850,36 +1823,36 @@ class _ComplaintTargetPickerState extends State<ComplaintTargetPicker> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final chosen = widget.type != 'general' && (widget.label ?? '').isNotEmpty;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: AppSpace.md),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('complaint_about'.tr, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
-        const SizedBox(height: 8),
-        Wrap(spacing: 8, runSpacing: 8, children: [
+        Text('complaint_about'.tr, style: AppType.section(context).copyWith(color: c.textDark)),
+        const SizedBox(height: AppSpace.sm),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final x in _types)
-            ChoiceChip(
-              avatar: Icon(x.$2, size: 17, color: widget.type == x.$1 ? c.primary : c.textMedium),
-              label: Text(x.$3.tr, style: TextStyle(fontFamily: AppFonts.family)),
-              selected: widget.type == x.$1,
-              onSelected: (_) => _pick(x.$1),
-            ),
+            _ChoicePill(label: x.$3.tr, icon: x.$2, selected: widget.type == x.$1, onTap: () => _pick(x.$1)),
         ]),
-        if (widget.type != 'general' && (widget.label ?? '').isNotEmpty)
+        if (chosen)
           Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: c.primary.withValues(alpha: 0.25))),
+            padding: const EdgeInsets.only(top: AppSpace.sm),
+            child: AppCard(
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.xxs, AppSpace.xxs, AppSpace.xxs),
               child: Row(children: [
-                Icon(_types.firstWhere((x) => x.$1 == widget.type).$2, color: c.primary, size: 20),
-                const SizedBox(width: 8),
-                Expanded(child: Text('${widget.label}', style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, color: c.textDark))),
-                TextButton(onPressed: () => _pick(widget.type), child: Text('change'.tr)),
+                Icon(_types.firstWhere((x) => x.$1 == widget.type).$2, color: hubSafeInk(c), size: AppIconSize.md),
+                const SizedBox(width: AppSpace.sm),
+                Expanded(
+                  child: Text('${widget.label}',
+                      maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
+                ),
+                AppButton.ghost(label: 'change'.tr, onPressed: () => _pick(widget.type)),
               ]),
             ),
           ),
       ]),
     );
   }
+
+  /// The primary as an icon on paper, lifted in dark mode where it is too dark.
+  static Color hubSafeInk(ThemeConfigProvider c) => c.blockAccentInk(c.primary, c.cardBg);
 }

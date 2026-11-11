@@ -13,8 +13,10 @@ library;
 
 import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/design/app_refresh.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'dart:math' as math;
+
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase, AppPressScale, AppReveal;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -23,10 +25,7 @@ import 'package:flutter_education_app/features/shared/profile/profile_provider.d
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
-import '../../../utils/widget/primary_button.dart';
 import 'subscription_provider.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
-import 'package:flutter_education_app/design/app_header.dart';
 
 class SubscriptionScreen extends StatelessWidget {
   const SubscriptionScreen({super.key});
@@ -81,23 +80,19 @@ class _ViewState extends State<_View> {
   }
 
   Widget _refreshAndLogout(SubscriptionProvider p) {
-    final c = context.colors;
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      OutlinedButton.icon(
+      AppButton.secondary(
+        label: 'sub_refresh_status'.tr,
+        icon: Icons.refresh_rounded,
         onPressed: () {
           _continuedAt = null;
           p.load();
         },
-        icon: const Icon(Icons.refresh_rounded),
-        label: Text('sub_refresh_status'.tr),
       ),
-      const SizedBox(height: 6),
+      const SizedBox(height: AppSpace.xs),
       ParentComponent(
         featureKey: 'subscription.logout',
-        child: TextButton(
-          onPressed: () => context.read<ProfileProvider>().logout(context),
-          child: Text('sub_logout'.tr, style: TextStyle(fontFamily: AppFonts.family, color: c.textMedium)),
-        ),
+        child: AppButton.ghost(label: 'sub_logout'.tr, onPressed: () => context.read<ProfileProvider>().logout(context)),
       ),
     ]);
   }
@@ -162,32 +157,29 @@ class _ViewState extends State<_View> {
     if (!p.loaded) {
       body = const AppListSkeleton(withAvatar: false);
     } else if (p.error != null && p.plans.isEmpty) {
-      body = ErrorRetry(message: p.error!, onRetry: p.load);
+      body = AppErrorState(message: p.error!, onRetry: p.load);
     } else if (p.hasAccess && p.required && p.active != null) {
       body = _Status(
         icon: Icons.verified_rounded,
-        color: c.success,
+        tone: AppBlockTone.emerald,
+        accent: c.success,
         title: 'sub_active_title'.tr,
         subtitle: '${'sub_ends_on'.tr} ${shortDate('${p.active!['ends_at']}')}',
-        action: PrimaryButton(label: 'sub_continue'.tr, onPressed: _goHome, isLoading: false,),
+        action: AppButton.primary(label: 'sub_continue'.tr, onPressed: _goHome),
       );
     } else if (p.pending != null) {
       body = _Status(
         icon: Icons.hourglass_top_rounded,
-        color: c.warning,
+        accent: c.warning,
         title: 'sub_under_review'.tr,
         subtitle: 'sub_review_subtitle'.tr,
-        action: OutlinedButton.icon(
-          onPressed: p.load,
-          icon: const Icon(Icons.refresh_rounded),
-          label: Text('sub_refresh_status'.tr),
-        ),
+        action: AppButton.secondary(label: 'sub_refresh_status'.tr, icon: Icons.refresh_rounded, onPressed: p.load),
       );
     } else if (p.hasAccess && _bouncedBack) {
       // the status says "free" but every other call still answers 402 (an older server): never loop
       body = _Status(
         icon: Icons.lock_clock_rounded,
-        color: c.warning,
+        accent: c.warning,
         title: 'sub_access_paused'.tr,
         subtitle: 'sub_access_paused_hint'.tr,
         action: _refreshAndLogout(p),
@@ -195,10 +187,11 @@ class _ViewState extends State<_View> {
     } else if (p.hasAccess) {
       body = _Status(
         icon: Icons.celebration_rounded,
-        color: c.success,
+        tone: AppBlockTone.emerald,
+        accent: c.success,
         title: p.platformRequired ? 'sub_covered_title'.tr : 'sub_app_free'.tr,
         subtitle: 'sub_no_subscription_needed'.tr,
-        action: PrimaryButton(label: 'sub_continue'.tr, onPressed: _goHome, isLoading: false,),
+        action: AppButton.primary(label: 'sub_continue'.tr, onPressed: _goHome),
       );
     } else if (p.plans.isEmpty) {
       // a subscription is needed but none can be bought here: say who to ask
@@ -206,140 +199,166 @@ class _ViewState extends State<_View> {
       final line = _orgLine(p, isAr);
       body = _Status(
         icon: org ? Icons.apartment_rounded : Icons.workspace_premium_rounded,
-        color: c.warning,
+        accent: c.warning,
         title: org ? 'sub_org_requires_title'.tr : 'sub_subscribe_to_continue'.tr,
         subtitle: [org ? 'sub_org_no_plans'.tr : 'sub_no_plans'.tr, if (org && line.isNotEmpty) line].join('\n\n'),
         action: _refreshAndLogout(p),
       );
     } else {
       final transferEnabled = p.transfer['bank_transfer_enabled'] == true || p.transfer['instapay_enabled'] == true;
+      final methods = <String, String>{
+        if (p.transfer['bank_transfer_enabled'] == true) 'bank_transfer': 'sub_bank_transfer'.tr,
+        if (p.transfer['instapay_enabled'] == true) 'instapay': 'InstaPay',
+      };
+      final shownMethod = method == 'instapay' && p.transfer['instapay_enabled'] != true
+          ? 'bank_transfer'
+          : (method == 'bank_transfer' && p.transfer['bank_transfer_enabled'] != true ? 'instapay' : method);
+      final rejected = p.last != null && '${p.last!['status']}' == 'rejected';
       scrollable = true;
-      body = ListView(padding: const EdgeInsets.all(16), children: [
-        Icon(Icons.workspace_premium_rounded, size: 56, color: c.primary),
-        const SizedBox(height: 8),
-        Text(p.reason == 'organization' ? 'sub_org_requires_title'.tr : 'sub_subscribe_to_continue'.tr,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w900, fontSize: 22, color: c.textDark)),
-        if (p.reason == 'organization')
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(
-              ['sub_org_requires_hint'.tr, if (_orgLine(p, isAr).isNotEmpty) _orgLine(p, isAr)].join('\n'),
-              textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: AppFonts.family, color: c.textMedium, fontSize: 13),
-            ),
-          ),
-        if (p.last != null && '${p.last!['status']}' == 'rejected')
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              '${'sub_prev_rejected'.tr}${p.last!['rejection_reason'] != null ? ': ${p.last!['rejection_reason']}' : ''}',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: AppFonts.family, color: c.danger, fontSize: 12.5),
-            ),
-          ),
-        const SizedBox(height: 16),
-        for (final x in p.plans)
-          ParentComponent(
-            featureKey: 'subscription.plans',
-            child: GestureDetector(
-              onTap: () {
-                setState(() => planCode = x.code);
-                p.loadTransferDetails(x.code);
-              },
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: c.cardBg,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: x.code == planCode ? c.primary : c.divider, width: x.code == planCode ? 2 : 1),
+      // ONE entrance (system.md §6): the intro block leads, the plans follow it once; the payment part answers a
+      // choice, so it is simply there
+      Widget enter(int i, Widget w) => AppReveal(index: i, group: 'subscription', child: w);
+      body = ListView(
+        padding: const EdgeInsets.only(top: AppSpace.md, bottom: AppSpace.xl),
+        children: [
+          AppWidthBox(
+            width: AppWidth.form,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              enter(
+                0,
+                _Intro(
+                  title: p.reason == 'organization' ? 'sub_org_requires_title'.tr : 'sub_subscribe_to_continue'.tr,
+                  hint: p.reason == 'organization'
+                      ? ['sub_org_requires_hint'.tr, if (_orgLine(p, isAr).isNotEmpty) _orgLine(p, isAr)].join('\n')
+                      : null,
+                  rejected: rejected
+                      ? '${'sub_prev_rejected'.tr}${p.last!['rejection_reason'] != null ? ': ${p.last!['rejection_reason']}' : ''}'
+                      : null,
                 ),
-                child: Row(children: [
-                  Icon(x.code == planCode ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded, color: c.primary),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(isAr ? x.nameAr : x.nameEn,
-                          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 16, color: c.textDark)),
-                      Text('${x.durationDays} ${'sub_days'.tr}',
-                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight)),
-                    ]),
-                  ),
-                  Text(x.isFree ? 'sub_free'.tr : money(x.price, x.currency),
-                      style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w900, fontSize: 18, color: c.primary)),
-                ]),
               ),
-            ),
+              const SizedBox(height: AppSpace.lg),
+              for (var i = 0; i < p.plans.length; i++)
+                ParentComponent(
+                  featureKey: 'subscription.plans',
+                  child: enter(
+                    1 + i,
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                      child: _PlanCard(
+                        plan: p.plans[i],
+                        isAr: isAr,
+                        selected: p.plans[i].code == planCode,
+                        onTap: () {
+                          setState(() => planCode = p.plans[i].code);
+                          p.loadTransferDetails(p.plans[i].code);
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              if (plan != null && !plan.isFree) ...[
+                if (!transferEnabled)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpace.sm),
+                    child: Text('sub_no_payment_methods'.tr,
+                        style: AppType.body(context).copyWith(color: c.blockAccentInk(c.danger, c.background))),
+                  )
+                else ...[
+                  ParentComponent(
+                    featureKey: 'subscription.payment_method',
+                    child: AppSection(
+                      title: 'sub_payment_method'.tr,
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: AppTabs(
+                          items: [for (final v in methods.values) AppTabItem(v)],
+                          index: math.max(0, methods.keys.toList().indexOf(shownMethod)),
+                          onChanged: (i) => setState(() => method = methods.keys.elementAt(i)),
+                        ),
+                      ),
+                    ),
+                  ),
+                  ParentComponent(
+                    featureKey: 'subscription.transfer_details',
+                    child: AppSection(
+                      title: 'sub_transfer_to'.tr,
+                      child: AppCard(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                          if (shownMethod == 'bank_transfer') ...[
+                            _Detail('sub_bank'.tr, '${p.transfer['bank_name'] ?? ''}'),
+                            _Detail('sub_account'.tr, '${p.transfer['account_name'] ?? ''}'),
+                            _Detail('IBAN', '${p.transfer['iban'] ?? ''}', ltr: true),
+                            if (p.transfer['bank_instructions'] != null)
+                              _Detail('sub_notes'.tr, '${p.transfer['bank_instructions']}'),
+                          ] else ...[
+                            _Detail('InstaPay', '${p.transfer['instapay_id'] ?? ''}', ltr: true),
+                            if (p.transfer['instapay_instructions'] != null)
+                              _Detail('sub_notes'.tr, '${p.transfer['instapay_instructions']}'),
+                          ],
+                          _Detail('sub_amount'.tr, money(plan.price, plan.currency), strong: true, last: true),
+                        ]),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpace.lg),
+                  ParentComponent(
+                    featureKey: 'subscription.sender_info',
+                    child: AppField(controller: _sender, label: 'sub_sender_name'.tr, icon: Icons.person_rounded),
+                  ),
+                  const SizedBox(height: AppSpace.md),
+                  ParentComponent(
+                    featureKey: 'subscription.sender_info',
+                    child: AppField(
+                        controller: _phone,
+                        label: 'sub_sender_phone'.tr,
+                        icon: Icons.phone_rounded,
+                        keyboard: TextInputType.phone,
+                        ltr: true),
+                  ),
+                  const SizedBox(height: AppSpace.md),
+                  ParentComponent(
+                    featureKey: 'subscription.sender_info',
+                    child: AppField(controller: _ref, label: 'sub_reference'.tr, icon: Icons.tag_rounded, ltr: true),
+                  ),
+                  const SizedBox(height: AppSpace.md),
+                  ParentComponent(
+                    featureKey: 'subscription.receipt',
+                    child: AppButton.secondary(
+                      expand: true,
+                      label: _proof == null ? 'sub_attach_receipt'.tr : _proof!.name,
+                      icon: _proof == null ? Icons.upload_file_rounded : Icons.check_circle_rounded,
+                      onPressed: () async {
+                        final f = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
+                        if (f != null) setState(() => _proof = f);
+                      },
+                    ),
+                  ),
+                ],
+              ],
+              const SizedBox(height: AppSpace.lg),
+              AppButton.primary(
+                expand: true,
+                size: AppButtonSize.lg,
+                label: plan == null
+                    ? 'sub_choose_plan'.tr
+                    : (plan.isFree ? 'sub_activate_free'.tr : 'sub_send_request'.tr),
+                busy: busy,
+                onPressed: plan == null ? null : () => _submit(p),
+              ),
+              const SizedBox(height: AppSpace.xs),
+              ParentComponent(
+                featureKey: 'subscription.logout',
+                child: Center(
+                  child: AppButton.ghost(
+                    label: 'sub_logout'.tr,
+                    onPressed: () => context.read<ProfileProvider>().logout(context),
+                  ),
+                ),
+              ),
+            ]),
           ),
-        if (plan != null && !plan.isFree) ...[
-          const SizedBox(height: 6),
-          if (!transferEnabled)
-            Text('sub_no_payment_methods'.tr,
-                style: TextStyle(fontFamily: AppFonts.family, color: c.danger))
-          else ...[
-            ParentComponent(
-                featureKey: 'subscription.payment_method',
-                child: ChoiceRow<String>(
-                  label: 'sub_payment_method'.tr,
-                  options: {
-                    if (p.transfer['bank_transfer_enabled'] == true) 'bank_transfer': 'sub_bank_transfer'.tr,
-                    if (p.transfer['instapay_enabled'] == true) 'instapay': 'InstaPay',
-                  },
-                  value: method == 'instapay' && p.transfer['instapay_enabled'] != true
-                      ? 'bank_transfer'
-                      : (method == 'bank_transfer' && p.transfer['bank_transfer_enabled'] != true ? 'instapay' : method),
-                  onChanged: (v) => setState(() => method = v),
-                )),
-            ParentComponent(
-                featureKey: 'subscription.transfer_details',
-                child: Section(
-                  title: 'sub_transfer_to'.tr,
-                  child: Column(children: [
-                    if (method == 'bank_transfer') ...[
-                      KeyValue('sub_bank'.tr, '${p.transfer['bank_name'] ?? ''}'),
-                      KeyValue('sub_account'.tr, '${p.transfer['account_name'] ?? ''}'),
-                      KeyValue('IBAN', '${p.transfer['iban'] ?? ''}'),
-                      if (p.transfer['bank_instructions'] != null) KeyValue('sub_notes'.tr, '${p.transfer['bank_instructions']}'),
-                    ] else ...[
-                      KeyValue('InstaPay', '${p.transfer['instapay_id'] ?? ''}'),
-                      if (p.transfer['instapay_instructions'] != null) KeyValue('sub_notes'.tr, '${p.transfer['instapay_instructions']}'),
-                    ],
-                    KeyValue('sub_amount'.tr, money(plan.price, plan.currency)),
-                  ]),
-                )),
-            ParentComponent(featureKey: 'subscription.sender_info', child: Field(controller: _sender, label: 'sub_sender_name'.tr)),
-            ParentComponent(featureKey: 'subscription.sender_info', child: Field(controller: _phone, label: 'sub_sender_phone'.tr, keyboard: TextInputType.phone, ltr: true)),
-            ParentComponent(featureKey: 'subscription.sender_info', child: Field(controller: _ref, label: 'sub_reference'.tr, ltr: true)),
-            ParentComponent(
-                featureKey: 'subscription.receipt',
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    final f = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
-                    if (f != null) setState(() => _proof = f);
-                  },
-                  icon: Icon(_proof == null ? Icons.upload_file_rounded : Icons.check_circle_rounded,
-                      color: _proof == null ? null : c.success),
-                  label: Text(_proof == null ? 'sub_attach_receipt'.tr : _proof!.name),
-                )),
-            const SizedBox(height: 14),
-          ],
         ],
-        PrimaryButton(
-          label: plan == null
-              ? 'sub_choose_plan'.tr
-              : (plan.isFree ? 'sub_activate_free'.tr : 'sub_send_request'.tr),
-        isLoading: busy,
-          onPressed: plan == null ? null : () => _submit(p),
-        ),
-        const SizedBox(height: 10),
-        ParentComponent(
-            featureKey: 'subscription.logout',
-            child: TextButton(
-              onPressed: () => context.read<ProfileProvider>().logout(context),
-              child: Text('sub_logout'.tr, style: TextStyle(color: c.textMedium)),
-            )),
-      ]);
+      );
     }
 
     return Directionality(
@@ -357,31 +376,177 @@ class _ViewState extends State<_View> {
   }
 }
 
-class _Status extends StatelessWidget {
-  const _Status({required this.icon, required this.color, required this.title, required this.subtitle, required this.action});
-  final IconData icon;
-  final Color color;
+/// The paywall's opening block: the one tinted surface of the page (peach), the editorial title, who asks for the
+/// subscription and, after a rejection, why — in the danger tone made legible on the block.
+class _Intro extends StatelessWidget {
+  const _Intro({required this.title, this.hint, this.rejected});
+
   final String title;
-  final String subtitle;
-  final Widget action;
+  final String? hint, rejected;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 72, color: color),
-          const SizedBox(height: 14),
-          Text(title,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w900, fontSize: 20, color: c.textDark)),
-          const SizedBox(height: 6),
-          Text(subtitle, textAlign: TextAlign.center, style: TextStyle(fontFamily: AppFonts.family, color: c.textMedium)),
-          const SizedBox(height: 22),
-          action,
+    return AppBlock(
+      tone: AppBlockTone.peach,
+      child: Builder(builder: (context) {
+        final b = AppBlock.colorsOf(context);
+        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(Icons.workspace_premium_rounded, size: AppIconSize.xl, color: b.accentInk(c.primary)),
+          const SizedBox(height: AppSpace.sm),
+          Semantics(header: true, child: Text(title, style: AppType.headline(context).copyWith(color: b.ink))),
+          if (hint != null && hint!.isNotEmpty) ...[
+            const SizedBox(height: AppSpace.xs),
+            Text(hint!, style: AppType.body(context).copyWith(color: b.muted)),
+          ],
+          if (rejected != null) ...[
+            const SizedBox(height: AppSpace.sm),
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(Icons.error_rounded, size: AppIconSize.sm, color: b.accentInk(c.danger)),
+              const SizedBox(width: AppSpace.xs),
+              Expanded(child: Text(rejected!, style: AppType.label(context).copyWith(color: b.accentInk(c.danger)))),
+            ]),
+          ],
+        ]);
+      }),
+    );
+  }
+}
+
+/// One plan as a radio card: paper on a hairline, the chosen one ringed in the primary with a filled mark; the
+/// price is the row's figure (tabular, in ink), the length a meta line under the name.
+class _PlanCard extends StatelessWidget {
+  const _PlanCard({required this.plan, required this.isAr, required this.selected, required this.onTap});
+
+  final SubPlan plan;
+  final bool isAr, selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final motion = AppMotion.of(context);
+    return Semantics(
+      inMutuallyExclusiveGroup: true,
+      checked: selected,
+      button: true,
+      child: AppPressScale(
+        child: AnimatedContainer(
+          duration: motion.fast,
+          curve: AppEase.out,
+          decoration: BoxDecoration(
+            color: selected ? appTintOn(context, c.primary, surface: c.cardBg) : c.cardBg,
+            borderRadius: AppRadius.cardAll,
+            border: Border.all(
+              color: selected ? c.primary : c.divider,
+              width: selected ? AppBorder.focus : AppBorder.hairline,
+            ),
+          ),
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: AppRadius.cardAll,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: AppTouch.primary),
+                child: Padding(
+                  padding: AppSpace.card,
+                  child: Row(children: [
+                    Icon(selected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                        size: AppIconSize.lg, color: selected ? c.primary : c.textLight),
+                    const SizedBox(width: AppSpace.sm),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                        Text(isAr ? plan.nameAr : plan.nameEn,
+                            maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+                        const SizedBox(height: AppSpace.xxs / 2),
+                        Text('${plan.durationDays} ${'sub_days'.tr}', style: AppType.meta(context)),
+                      ]),
+                    ),
+                    const SizedBox(width: AppSpace.sm),
+                    Text(plan.isFree ? 'sub_free'.tr : money(plan.price, plan.currency),
+                        maxLines: 1, style: AppType.figure(context)),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A line of the transfer details: the label in meta, the value in the row face (copyable; IBAN and ids LTR).
+class _Detail extends StatelessWidget {
+  const _Detail(this.label, this.value, {this.ltr = false, this.strong = false, this.last = false});
+
+  final String label, value;
+  final bool ltr, strong, last;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(flex: 2, child: Text(label, style: AppType.meta(context))),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            flex: 5,
+            child: SelectableText(
+              value,
+              textDirection: ltr ? TextDirection.ltr : null,
+              textAlign: ltr && Directionality.of(context) == TextDirection.rtl ? TextAlign.end : TextAlign.start,
+              style: strong ? AppType.bodyStrong(context) : AppType.row(context),
+            ),
+          ),
         ]),
+      ),
+      if (!last) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+    ]);
+  }
+}
+
+/// A full-page state (active, under review, paused, nothing to buy): the drawn plate in the state's tone, an
+/// editorial headline, one line of direction and ONE action.
+class _Status extends StatelessWidget {
+  const _Status({
+    required this.icon,
+    required this.accent,
+    required this.title,
+    required this.subtitle,
+    required this.action,
+    this.tone = AppBlockTone.peach,
+  });
+  final IconData icon;
+  final Color accent;
+  final AppBlockTone tone;
+  final String title;
+  final String subtitle;
+  final Widget action;
+
+  /// The comfortable measure of the state's text.
+  static const double _measure = 420;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.xl),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: _measure),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            AppStatePlate(icon: icon, tone: tone, accent: accent),
+            const SizedBox(height: AppSpace.lg),
+            Semantics(header: true, child: Text(title, textAlign: TextAlign.center, style: AppType.headline(context))),
+            const SizedBox(height: AppSpace.xs),
+            Text(subtitle, textAlign: TextAlign.center, style: AppType.body(context)),
+            const SizedBox(height: AppSpace.lg),
+            action,
+          ]),
+        ),
       ),
     );
   }

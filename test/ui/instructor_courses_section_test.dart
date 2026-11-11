@@ -7,6 +7,7 @@
 //     Retry / a card tap reach their callbacks.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/design/app_buttons.dart' show AppButton;
 import 'package:flutter_education_app/features/auth/teacher_document_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/course_instractor_profile.dart';
 import 'package:flutter_education_app/features/shared/profile/instructor_courses_section.dart';
@@ -218,7 +219,7 @@ void main() {
         onOpen: (c) => opened = c,
       )), scale: 1));
       await tester.pump(const Duration(milliseconds: 300));
-      await tester.tap(find.byType(OutlinedButton));
+      await tester.tap(find.byType(AppButton)); // "Show more courses" is the kit's secondary button
       expect(more, 1);
       await tester.tap(find.byKey(const ValueKey('instructor-course-2')));
       expect(opened?.id, '2');
