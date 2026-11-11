@@ -1,13 +1,15 @@
-// lib/features/parent/parent_overview_page.dart — the parent's "Today" tab (Track B.5, D-305).
+// lib/features/parent/parent_overview_page.dart — the parent's "Today" tab (Track B.5, D-305; premium dashboard D-631).
 //
-//   header     greeting · name · calendar · notifications
-//   needs you     HomeStatStrip: alerts (→ Alerts tab) · pending link requests (→ Link tab), only counts above zero
-//   my child   (D-305, with the server's pulse) the child switcher, then "How is <name> doing" (status · one
-//              sentence · attendance / average vs class / missed work with their 6-week lines), "Needs your
-//              attention" (findings with one action each: message the teacher · report · alerts), "This week",
-//              Subjects (strength / focus, class-average marker), the learning path, Latest marks
-//              (parent_pulse_widgets.dart); without a pulse (older server, `parent.insights` off) the cards below
-//   today for my children   one AppCard per child: avatar · name · courses, then today's sessions as agenda rows,
+//   hero       the forest greeting (AppGreetingHero): greeting · the selected child's sentence · ONE call to action
+//              (Full report / Children / Link a child); the child switcher in its footer (two children or more);
+//              on a wide screen it shares an equal-height row with "This week"
+//   shortcuts  AppShortcutGrid: alerts (count) · children · message the teacher · link requests (count) — under the
+//              hero on a phone (2 columns), at the end on a wide screen (4 columns)
+//   my child   (D-305, with the server's pulse) ParentPulseHero = "How is <name> doing" + four AppStatCards, then
+//              "Needs your attention", "This week", Subjects beside a side column (the 6-week lines as AppKpiSparks,
+//              the learning path as an AppRingStat, Latest marks) (parent_pulse_widgets.dart); without a pulse
+//              (older server, `parent.insights` off) the cards below
+//   today for my children   one AppBlock per child: avatar · name · courses, then today's sessions as agenda rows,
 //              attendance of the last 30 days as a pill, the 3 newest marks, the next exam, the open alerts (→ the
 //              Alerts tab filtered on that child); the card opens the child's report
 //   empty      "no children linked yet" → the Link tab (and the pending requests, if any)
@@ -21,6 +23,8 @@ import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/calendar_entry.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
+import 'package:flutter_education_app/core/plural.dart';
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 import 'package:provider/provider.dart';
 
@@ -94,28 +98,23 @@ class _ParentOverviewPageState extends State<ParentOverviewPage> with AutomaticK
             Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: kHomeWideMax),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  HomeEntrance(
-                    index: 0,
-                    child: HomeHeader(
-                      helpPageId: 'home.parent',
-                      name: user?.name ?? 'role_parent'.tr,
-                      leading: user == null ? null : UserChipButton(user: user, showLabel: false),
-                      shellActions: [const CalendarEntryIcon(), const ChatEntryIcon(), NotificationIcon(unreadCount: unread)],
-                    ),
+                // the greeting hero is drawn by the body (D-631): on a wide screen it shares a row with the week
+                child: ParentOverviewBody(
+                  greeting: ParentHomeGreeting(
+                    helpPageId: 'home.parent',
+                    name: user?.name ?? 'role_parent'.tr,
+                    leading: user == null ? null : UserChipButton(user: user, showLabel: false),
+                    shellActions: [const CalendarEntryIcon(), const ChatEntryIcon(), NotificationIcon(unreadCount: unread)],
                   ),
-                  const SizedBox(height: AppSpace.xs),
-                  ParentOverviewBody(
-                    data: p.data,
-                    loading: p.isLoading && !p.loaded,
-                    error: p.hasError && !p.loaded ? (p.errorMessage ?? 'generic_error'.tr) : null,
-                    onRetry: p.load,
-                    onOpenAlerts: widget.onOpenAlerts,
-                    onOpenLink: widget.onOpenLink,
-                    onOpenChildren: widget.onOpenChildren,
-                    onOpenChild: _openChild,
-                  ),
-                ]),
+                  data: p.data,
+                  loading: p.isLoading && !p.loaded,
+                  error: p.hasError && !p.loaded ? (p.errorMessage ?? 'generic_error'.tr) : null,
+                  onRetry: p.load,
+                  onOpenAlerts: widget.onOpenAlerts,
+                  onOpenLink: widget.onOpenLink,
+                  onOpenChildren: widget.onOpenChildren,
+                  onOpenChild: _openChild,
+                ),
               ),
             ),
           ],
@@ -125,16 +124,30 @@ class _ParentOverviewPageState extends State<ParentOverviewPage> with AutomaticK
   }
 }
 
-/// The Today tab below the header, over plain values.
+/// The greeting hero's plain values: the parent's name, the profile chip, the buttons the shell's top bar already
+/// carries on wide screens (drawn on phones only) and the Info button's page id.
+class ParentHomeGreeting {
+  const ParentHomeGreeting({required this.name, this.leading, this.shellActions = const [], this.helpPageId});
+
+  final String name;
+  final Widget? leading;
+  final List<Widget> shellActions;
+  final String? helpPageId;
+}
+
+/// The Today tab, over plain values (the premium dashboard, D-631).
 ///
-/// With the server's pulse (D-305): the child switcher (two children or more), then the selected child's "How is
-/// `name` doing" hero, "Needs your attention" and "This week" — beside Subjects, the learning path and Latest marks
-/// on a wide screen (HomeDashboard), one column on a phone. Without it (an older server, `parent.insights` off) the
-/// per-child cards of every child, as before.
+/// Phone: the forest greeting hero (the child switcher in its footer), the shortcut grid (alerts · children ·
+/// message the teacher · link), the child's figures (ParentPulseHero: four stat cards), "Needs your attention",
+/// "This week", the learning path ring, Subjects, Latest marks.
+/// Wide: the hero beside "This week" (equal height), the child's figures, then "Needs your attention" + Subjects
+/// beside a side column (lines, ring, marks), then the shortcuts. Without a pulse (an older server, `parent.insights`
+/// off) the per-child cards of every child, as before. [greeting] null = no hero (a preview of the body alone).
 class ParentOverviewBody extends StatefulWidget {
   const ParentOverviewBody({
     super.key,
     required this.data,
+    this.greeting,
     this.loading = false,
     this.error,
     this.onRetry,
@@ -146,6 +159,7 @@ class ParentOverviewBody extends StatefulWidget {
   });
 
   final ParentOverviewData? data;
+  final ParentHomeGreeting? greeting;
   final bool loading;
   final String? error;
   final VoidCallback? onRetry;
@@ -190,79 +204,169 @@ class _ParentOverviewBodyState extends State<ParentOverviewBody> {
     }
   }
 
+  // ── the greeting hero ──────────────────────────────────────────────────────
+
+  /// The hero's one line: the selected child's sentence with a pulse, today's sessions without, the link hint with no
+  /// child yet (nothing while the overview loads).
+  String? _summary(ParentOverviewData? d, ParentChildOverview? ch, ParentPulse? pulse) {
+    if (d == null) return null;
+    if (ch == null) return 'pl_no_children_hint'.tr;
+    if (pulse != null) return 'pp_head_${pulse.status.wire}'.tr.replaceAll('{name}', ch.name.split(' ').first);
+    final n = d.sessionsToday;
+    if (n == 0) return 'pl_ov_no_sessions'.tr;
+    return countText(n,
+        ar1: 'جلسة واحدة اليوم', ar2: 'جلستان اليوم', arFew: '{n} جلسات اليوم', arMany: '{n} جلسة اليوم', en1: '1 session today', en: '{n} sessions today');
+  }
+
+  Widget? _hero(ParentOverviewData? d, ParentChildOverview? ch, ParentPulse? pulse, {required bool centered}) {
+    final g = widget.greeting;
+    if (g == null) return null;
+    final buttons = [
+      if (!HomeHeader.shellTopBar(context)) ...[...g.shellActions, if (g.helpPageId != null) HelpInfoButton(pageId: g.helpPageId!)],
+    ];
+    final name = g.name.trim();
+    final hasChildren = d != null && d.children.isNotEmpty;
+    final cta = d == null
+        ? null
+        : pulse != null && ch != null
+            ? AppGreetingHeroButton(label: 'pp_full_report'.tr, icon: Icons.insights_rounded, onTap: () => widget.onOpenChild(ch))
+            : hasChildren
+                ? AppGreetingHeroButton(label: 'pl_tab_children'.tr, icon: Icons.family_restroom_rounded, onTap: widget.onOpenChildren)
+                : AppGreetingHeroButton(label: 'pl_link_child'.tr, icon: Icons.add_link_rounded, onTap: widget.onOpenLink);
+    return ValueListenableBuilder<int>(
+      valueListenable: AppTime.version,
+      builder: (context, _, _) => AppGreetingHero(
+        greeting: HomeHeader.greetingLine(name),
+        summary: _summary(d, ch, pulse),
+        initials: name.isEmpty ? '' : name.characters.first.toUpperCase(),
+        centered: centered,
+        cta: cta,
+        actions: [?g.leading, ...buttons],
+        // my children: one chip each (status dot) — the hero's footer, since everything under it follows the choice
+        footer: d != null && pulse != null && ch != null && d.children.length > 1
+            ? ParentChildSwitcher(children: d.children, selectedId: ch.id, onSelect: (id) => setState(() => _selected = id), inset: 0)
+            : null,
+      ),
+    );
+  }
+
+  // ── the shortcuts ──────────────────────────────────────────────────────────
+
+  Widget _shortcuts(ParentOverviewData d, ParentChildOverview? ch, ParentPulse? pulse, {required int columns}) {
+    final pending = d.pendingRequests;
+    final canMessage = ch != null && pulse != null && parentMessageTeacherOn && pulse.teachers.isNotEmpty;
+    return AppShortcutGrid(maxColumns: columns, children: [
+      AppShortcutTile(
+        icon: Icons.notifications_active_outlined,
+        label: 'pl_tab_alerts'.tr,
+        tone: AppBlockTone.peach,
+        badge: d.alertsTotal,
+        onTap: () => widget.onOpenAlerts(null),
+      ),
+      // an even grid (2 or 4 tiles): Children and Message the teacher come as a pair — without a teacher to message
+      // the hero's call to action or the tab bar already opens Children
+      if (canMessage) ...[
+        AppShortcutTile(
+          icon: Icons.family_restroom_rounded,
+          label: 'pl_tab_children'.tr,
+          tone: AppBlockTone.emerald,
+          onTap: widget.onOpenChildren,
+        ),
+        AppShortcutTile(
+          icon: Icons.forum_outlined,
+          label: 'pp_act_message'.tr,
+          tone: AppBlockTone.sky,
+          onTap: () => _message(ch, null),
+        ),
+      ],
+      AppShortcutTile(
+        icon: pending > 0 ? Icons.link_rounded : Icons.add_link_rounded,
+        label: pending > 0 ? 'pl_ov_requests'.tr : 'pl_link_another'.tr,
+        tone: AppBlockTone.paper,
+        badge: pending,
+        onTap: widget.onOpenLink,
+      ),
+    ]);
+  }
+
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) => _build(context, homeIsWide(box.maxWidth)));
+
+  Widget _build(BuildContext context, bool wide) {
     final d = widget.data;
+    final ch = d == null ? null : _current(d);
+    final pulse = _pulseOn ? ch?.pulse : null;
+    final gutter = wide ? AppSpace.lg : parentHomeGutter;
+    Widget pad(Widget w) => Padding(padding: EdgeInsets.symmetric(horizontal: gutter), child: w);
+    // ONE orchestrated entrance (HomeEntrance): the hero, then each band of the page in turn
+    var i = 0;
+    Widget enter(Widget w) => HomeEntrance(index: i++, child: w);
+
+    final side = wide && pulse != null && ch != null ? ParentWeekCard(events: pulse.upcoming) : null;
+    final hero = _hero(d, ch, pulse, centered: side != null);
+    final top = <Widget>[
+      if (hero != null)
+        enter(Padding(
+          padding: EdgeInsets.fromLTRB(gutter, AppSpace.sm, gutter, 0),
+          child: side == null
+              ? hero
+              : IntrinsicHeight(
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Expanded(flex: 5, child: hero),
+                    const SizedBox(width: AppSpace.lg),
+                    Expanded(flex: 6, child: side),
+                  ]),
+                ),
+        )),
+      const SizedBox(height: AppSpace.lg),
+    ];
+
     if (d == null && widget.loading) {
-      return const Padding(
-        padding: EdgeInsets.fromLTRB(parentHomeGutter, AppSpace.xs, parentHomeGutter, AppSpace.xl),
-        child: AppListSkeleton(items: 4, padding: EdgeInsets.zero),
-      );
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        ...top,
+        pad(const AppListSkeleton(items: 4, padding: EdgeInsets.zero)),
+        const SizedBox(height: AppSpace.xl),
+      ]);
     }
     if (d == null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpace.lg),
-        child: ErrorRetry(message: widget.error ?? 'generic_error'.tr, onRetry: widget.onRetry ?? () {}),
-      );
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        ...top,
+        ErrorRetry(message: widget.error ?? 'generic_error'.tr, onRetry: widget.onRetry ?? () {}),
+        const SizedBox(height: AppSpace.xl),
+      ]);
     }
-    // ONE orchestrated entrance (HomeEntrance, after the header's 0): the strip, the switcher and the child's block
-    // rise in turn; the sections under the block arrive with it (one entrance per container)
-    var i = 1;
-    Widget enter(Widget w) => HomeEntrance(index: i++, child: w);
+
     final pending = d.pendingRequests;
-    final ch = _current(d);
-    final pulse = _pulseOn ? ch?.pulse : null;
+    final shortcuts = d.children.isEmpty ? null : _shortcuts(d, ch, pulse, columns: wide ? 4 : 2);
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      // ── what waits for me: one slim row of the counts above zero (the children are listed below) — the same calm
-      //    "Needs you" strip as the student and instructor homes
-      if (d.alertsTotal > 0 || pending > 0) ...[
-        enter(HomeSection(
-          id: 'parent.needs_you',
-          title: 'home_needs_you'.tr,
-          foldedSummary: 'home_needs_folded'.tr.replaceAll('{n}', '${d.alertsTotal + pending}'),
-          child: HomeStatStrip(items: [
-            HomeStat(
-              icon: Icons.notifications_active_outlined,
-              label: 'pl_tab_alerts'.tr,
-              count: d.alertsTotal,
-              tone: c.danger,
-              onTap: () => widget.onOpenAlerts(null),
-            ),
-            HomeStat(icon: Icons.link_rounded, label: 'pl_ov_requests'.tr, count: pending, tone: c.warning, onTap: widget.onOpenLink),
-          ]),
-        )),
-        const SizedBox(height: AppSpace.md),
-      ],
+      ...top,
+      // phones: the shortcut grid right under the hero (wide: at the end, the page's quick actions)
+      if (shortcuts != null && !wide) ...[enter(pad(shortcuts)), const SizedBox(height: AppSpace.lg)],
 
       if (d.children.isEmpty) ...[
         enter(HomeSectionTitle('pl_ov_today'.tr)),
-        enter(Padding(
-          padding: const EdgeInsets.symmetric(horizontal: parentHomeGutter),
-          child: AppEmpty(
-            icon: Icons.family_restroom_rounded,
-            title: 'pl_no_children_title'.tr,
-            message: pending > 0 ? 'pl_ov_requests_pending'.tr.replaceAll('{n}', '$pending') : 'pl_no_children_hint'.tr,
-            actionLabel: pending > 0 ? 'pl_tab_link'.tr : 'pl_link_child'.tr,
-            onAction: widget.onOpenLink,
-          ),
-        )),
+        enter(pad(AppEmpty(
+          icon: Icons.family_restroom_rounded,
+          title: 'pl_no_children_title'.tr,
+          message: pending > 0 ? 'pl_ov_requests_pending'.tr.replaceAll('{n}', '$pending') : 'pl_no_children_hint'.tr,
+          actionLabel: pending > 0 ? 'pl_tab_link'.tr : 'pl_link_child'.tr,
+          onAction: widget.onOpenLink,
+        ))),
       ] else if (pulse != null && ch != null) ...[
-        // ── my children: one chip each (status dot), the selected child's block below
-        if (d.children.length > 1) ...[
+        // a child without the greeting hero (a preview of the body alone) keeps its switcher above the figures
+        if (widget.greeting == null && d.children.length > 1) ...[
           enter(ParentChildSwitcher(children: d.children, selectedId: ch.id, onSelect: (id) => setState(() => _selected = id))),
           const SizedBox(height: AppSpace.sm),
         ],
-        enter(Padding(
-          padding: const EdgeInsets.symmetric(horizontal: parentHomeGutter),
+        enter(pad(
           // switching children crossfades the picture in place (it is the same block, another child)
-          child: AnimatedSwitcher(
+          AnimatedSwitcher(
             duration: AppMotion.of(context).base,
             switchInCurve: AppMotion.curve,
             switchOutCurve: AppMotion.curve,
             layoutBuilder: (current, previous) => Stack(alignment: Alignment.topCenter, children: [...previous, ?current]),
-            child: KeyedSubtree(key: ValueKey('pulse-${ch.id}'), child: _pulseLayout(ch, pulse)),
+            child: KeyedSubtree(key: ValueKey('pulse-${ch.id}'), child: _pulseLayout(ch, pulse, wide: wide, weekShown: side != null)),
           ),
         )),
       ] else ...[
@@ -271,7 +375,7 @@ class _ParentOverviewBodyState extends State<ParentOverviewBody> {
             count: d.sessionsToday, actionLabel: 'pl_tab_children'.tr, onAction: widget.onOpenChildren)),
         for (final x in d.children)
           enter(Padding(
-            padding: const EdgeInsets.fromLTRB(parentHomeGutter, 0, parentHomeGutter, AppSpace.md),
+            padding: EdgeInsets.fromLTRB(gutter, 0, gutter, AppSpace.md),
             child: ParentChildOverviewCard(
               child: x,
               onOpen: () => widget.onOpenChild(x),
@@ -279,45 +383,80 @@ class _ParentOverviewBodyState extends State<ParentOverviewBody> {
             ),
           )),
       ],
-      if (d.children.isNotEmpty)
-        Padding(
-          padding: const EdgeInsets.only(top: AppSpace.lg),
-          child: Center(
-            child: Wrap(alignment: WrapAlignment.center, spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
-              AppButton.ghost(label: 'pl_tab_children'.tr, icon: Icons.family_restroom_rounded, onPressed: widget.onOpenChildren),
-              AppButton.ghost(label: 'pl_link_another'.tr, icon: Icons.add_link_rounded, onPressed: widget.onOpenLink),
-            ]),
-          ),
-        ),
+      if (shortcuts != null && wide) ...[const SizedBox(height: AppSpace.lg), enter(pad(shortcuts))],
       const SizedBox(height: AppSpace.xl),
     ]);
   }
 
-  Widget _pulseLayout(ParentChildOverview ch, ParentPulse p) {
+  Widget _pulseLayout(ParentChildOverview ch, ParentPulse p, {required bool wide, required bool weekShown}) {
     final canMessage = parentMessageTeacherOn && p.teachers.isNotEmpty;
-    final hero = ParentPulseHero(child: ch, pulse: p, onOpenReport: () => widget.onOpenChild(ch));
+    final figures = ParentPulseHero(child: ch, pulse: p, onOpenReport: () => widget.onOpenChild(ch));
     final insights = ParentInsightsCard(
       childName: ch.name,
       insights: p.insights,
       canMessage: canMessage,
       onAction: (i) => _act(ch, i),
     );
-    final week = ParentWeekCard(events: p.upcoming);
+    final week = weekShown ? null : ParentWeekCard(events: p.upcoming);
     final subjects = p.subjects.isEmpty
         ? null
         : ParentSubjectsCard(subjects: p.subjects, onMessage: canMessage ? (s) => _message(ch, s.courseId) : null);
-    final road = p.roadmap == null ? null : ParentRoadmapCard(roadmap: p.roadmap!, childName: ch.name);
+    final r = p.roadmap;
+    final road = r == null
+        ? null
+        : r.total > 0
+            ? AppRingStat(
+                label: 'pp_roadmap'.tr,
+                // the figure is the courses done (a "2 / 5" pair does not count up); the caption says "of 5" and the next one
+                value: '${r.done}',
+                progress: r.ratio,
+                caption: [
+                  'pp_road_progress'.tr.replaceAll('{done}', '${r.done}').replaceAll('{total}', '${r.total}'),
+                  if (r.next.isNotEmpty) 'pp_road_next'.tr.replaceAll('{name}', r.next),
+                ].join(' · '),
+                tone: AppBlockTone.emerald,
+              )
+            : ParentRoadmapCard(roadmap: r, childName: ch.name);
+    final att = p.week.rate, avg = p.grades?.avg;
+    final attSpark = parentAttendanceSpark(p), gradeSpark = parentGradesSpark(p);
+    final sparks = <Widget>[
+      if (attSpark.isNotEmpty)
+        AppKpiSpark(
+          label: 'pp_m_attendance'.tr,
+          value: att == null ? '—' : '$att%',
+          values: attSpark,
+          icon: Icons.how_to_reg_rounded,
+          tone: AppBlockTone.sky,
+        ),
+      if (gradeSpark.isNotEmpty)
+        AppKpiSpark(
+          label: 'pp_m_grades'.tr,
+          value: avg == null ? '—' : '${avg.round()}%',
+          values: gradeSpark,
+          icon: Icons.grading_rounded,
+          tone: AppBlockTone.emerald,
+        ),
+    ];
     final marks = ch.latestMarks.isEmpty && ch.nextExam == null ? null : _MarksCard(child: ch);
-    return HomeDashboard(
-      gap: AppSpace.md,
-      main: [hero, insights, week],
-      // the side column's cards keep a gutter from the main column (HomeDashboard draws none of its own)
-      side: [
-        for (final w in [?subjects, ?road, ?marks])
-          Padding(padding: const EdgeInsetsDirectional.only(start: AppSpace.md), child: w),
-      ],
-      narrow: [hero, insights, week, ?subjects, ?road, ?marks],
-    );
+    Widget stack(List<Widget> ws) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (var k = 0; k < ws.length; k++) ...[if (k > 0) const SizedBox(height: AppSpace.md), ws[k]],
+        ]);
+    if (!wide) {
+      // phones: the stat cards already carry both figures, so the 6-week lines stay on the wide layout (calm, D-102)
+      return stack([figures, insights, ?week, ?road, ?subjects, ?marks]);
+    }
+    final sideCol = [...sparks, ?road, ?marks];
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      figures,
+      const SizedBox(height: AppSpace.lg),
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(flex: 7, child: stack([insights, ?week, ?subjects])),
+        if (sideCol.isNotEmpty) ...[
+          const SizedBox(width: AppSpace.lg),
+          Expanded(flex: 4, child: stack(sideCol)),
+        ],
+      ]),
+    ]);
   }
 }
 

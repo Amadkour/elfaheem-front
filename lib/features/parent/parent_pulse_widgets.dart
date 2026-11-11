@@ -2,8 +2,8 @@
 // over plain values (ParentPulse, parent_pulse.dart) so the layout harness pumps them without a provider:
 //
 //   ParentChildSwitcher   one chip per child (avatar · name · status dot); only drawn with two children or more
-//   ParentPulseHero       who · status · ONE plain sentence · Attendance / Average mark / Missed work figures, each
-//                         with its 6-week line; "Full report"
+//   ParentPulseHero       who · status · "Full report", then four AppStatCards (attendance · average mark · missed
+//                         work · courses + next exam); the 6-week lines are AppKpiSparks beside it (parent_overview_page)
 //   ParentInsightsCard    "Needs your attention": <= 4 findings in plain words, each with its one action
 //   ParentWeekCard        the child's next 7 days, grouped by day (today first)
 //   ParentSubjectsCard    per course: the child's average against the class average (a marker on the bar), the
@@ -11,8 +11,8 @@
 //   ParentRoadmapCard     the learning path: done / total and the next course
 //   parentInsightText     a finding → its sentence (translation keys pp_ins_*, countText for every count + noun)
 //
-// Calm-home rules (D-102) in the Warm Editorial theme (D-610 – D-629): the child's hero is a sky block under the
-// peach greeting, every other section one paper card with an editorial title and hairline dividers; tones as opaque
+// Calm-home rules (D-102) in the Warm Editorial theme (D-610 – D-629) and the premium dashboard (D-631): the one
+// hero is the forest greeting, every other section one paper card with an editorial title and hairline dividers; tones as opaque
 // tints (appTintOn / appInkOn), type from AppType, space from AppSpace, colours from context.colors only, times
 // through AppTime.
 library;
@@ -21,7 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppPressScale;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppPressScale;
 
 import '../../config/app_config.dart';
 import 'parent_overview.dart';
@@ -141,18 +141,15 @@ const double parentHomeGutter = AppSpace.md + AppSpace.xxs;
 
 /// An icon in a soft round well of its tone: the one colour of an insight / figure row.
 class _ToneWell extends StatelessWidget {
-  const _ToneWell({required this.icon, required this.tone, this.surface});
+  const _ToneWell({required this.icon, required this.tone});
   final IconData icon;
   final Color tone;
-
-  /// What the well sits on (the card by default, a block's tint inside a block).
-  final Color? surface;
 
   static const double size = AppTouch.min - AppSpace.sm;
 
   @override
   Widget build(BuildContext context) {
-    final tint = appTintOn(context, tone, surface: surface);
+    final tint = appTintOn(context, tone);
     return Container(
       width: size,
       height: size,
@@ -172,14 +169,18 @@ class ParentPulseSection extends StatelessWidget {
   final Widget? trailing;
   final bool padBody;
 
+  static const double _chip = AppTouch.min - AppSpace.sm;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return AppCard(
       padding: EdgeInsets.zero,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        // the premium section head (D-631): the editorial title at the start, its glyph in a soft emerald chip at
+        // the end — the same head as AppSectionCard
         Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.xs, AppSpace.xxs),
+          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xxs),
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
             child: Row(children: [
@@ -190,9 +191,15 @@ class ParentPulseSection extends StatelessWidget {
                 ),
               ),
               ?trailing,
-              Padding(
-                padding: const EdgeInsetsDirectional.only(start: AppSpace.xs, end: AppSpace.xs),
-                child: Icon(icon, size: AppIconSize.md, color: c.textLight),
+              const SizedBox(width: AppSpace.xs),
+              ExcludeSemantics(
+                child: Container(
+                  width: _chip,
+                  height: _chip,
+                  decoration: BoxDecoration(color: appTintOn(context, c.primary), borderRadius: BorderRadius.circular(AppRadius.control)),
+                  alignment: Alignment.center,
+                  child: Icon(icon, size: AppIconSize.sm, color: appInkOn(context, c.primary, appTintOn(context, c.primary))),
+                ),
               ),
             ]),
           ),
@@ -209,11 +216,14 @@ class ParentPulseSection extends StatelessWidget {
 // ── child switcher ─────────────────────────────────────────────────────────
 
 class ParentChildSwitcher extends StatelessWidget {
-  const ParentChildSwitcher({super.key, required this.children, required this.selectedId, required this.onSelect});
+  const ParentChildSwitcher({super.key, required this.children, required this.selectedId, required this.onSelect, this.inset = parentHomeGutter});
 
   final List<ParentChildOverview> children;
   final int? selectedId;
   final ValueChanged<int> onSelect;
+
+  /// The row's side inset: the home's gutter on the page, 0 inside the greeting hero's footer.
+  final double inset;
 
   @override
   Widget build(BuildContext context) {
@@ -221,8 +231,8 @@ class ParentChildSwitcher extends StatelessWidget {
       label: 'pp_switch_hint'.tr,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: parentHomeGutter),
-        child: Row(children: [
+        padding: EdgeInsets.symmetric(horizontal: inset),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
           for (final ch in children) ...[
             _ChildChip(child: ch, selected: ch.id == selectedId, onTap: () => onSelect(ch.id)),
             const SizedBox(width: AppSpace.xs),
@@ -308,11 +318,24 @@ class _ChildChip extends StatelessWidget {
   }
 }
 
-// ── hero: how is my child doing ────────────────────────────────────────────
+// ── the child's figures: how is my child doing ─────────────────────────────
 
-/// The child's block (D-305 in the Warm Editorial theme): a sky block under the peach greeting — the question in the
-/// editorial headline, the status, ONE plain sentence, then the three figures that answer it (they count up once
-/// and keep their 6-week lines), "Full report" at the end.
+/// The selected child's 6-week attendance line (rates), or empty when there are fewer than two points.
+List<double> parentAttendanceSpark(ParentPulse p) {
+  final t = [for (final v in p.attendanceTrend) if (v != null) v.toDouble()];
+  return t.length >= 2 ? t : const [];
+}
+
+/// The selected child's 6-week average-mark line, or empty when there are fewer than two points.
+List<double> parentGradesSpark(ParentPulse p) {
+  final t = [for (final v in p.grades?.trend ?? const <double?>[]) ?v];
+  return t.length >= 2 ? t : const [];
+}
+
+/// The child's figures (D-305 in the premium dashboard, D-631): a heading row — the child's avatar, "How is `name`
+/// doing?" in the editorial face, the status — that opens the full report, then four stat cards (attendance in
+/// the schedule tone, the average mark in emerald, missed work in peach, courses + the next exam on paper). The
+/// home's one hero is the greeting above it; the plain sentence lives there.
 class ParentPulseHero extends StatelessWidget {
   const ParentPulseHero({super.key, required this.child, required this.pulse, required this.onOpenReport});
 
@@ -320,199 +343,90 @@ class ParentPulseHero extends StatelessWidget {
   final ParentPulse pulse;
   final VoidCallback onOpenReport;
 
-  static const double _avatar = AppTouch.primary;
+  static const double _avatar = AppTouch.min;
 
-  @override
-  Widget build(BuildContext context) {
-    final first = child.name.split(' ').first;
-    final headline = _fmt('pp_head_${pulse.status.wire}', {'name': first});
-    return AppBlock(
-      tone: AppBlockTone.sky,
-      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.xs),
-      child: Builder(builder: (context) {
-        final ink = AppBlock.colorsOf(context);
-        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            AppAvatar(name: child.name, url: child.imageUrl.isEmpty ? null : child.imageUrl, size: _avatar),
-            const SizedBox(width: AppSpace.md),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Semantics(
-                  header: true,
-                  child: Text(_fmt('pp_how_title', {'name': first}), maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: AppType.headline(context).copyWith(color: ink.ink)),
-                ),
-                const SizedBox(height: AppSpace.xs),
-                AppStatusBadge(label: pulseStatusLabel(pulse.status), tone: pulseStatusTone(pulse.status), icon: pulseStatusIcon(pulse.status)),
-              ]),
-            ),
-          ]),
-          const SizedBox(height: AppSpace.md),
-          Text(headline, style: AppType.body(context).copyWith(color: ink.ink, height: 1.5)),
-          const SizedBox(height: AppSpace.md),
-          _PulseFigures(pulse: pulse),
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: AppButton.ghost(
-              label: 'pp_full_report'.tr,
-              icon: Icons.insights_rounded,
-              trailingIcon: Icons.chevron_right_rounded,
-              onPressed: onOpenReport,
-            ),
-          ),
-        ]);
-      }),
-    );
-  }
-}
-
-class _Figure {
-  const _Figure({required this.icon, required this.label, required this.value, required this.sub, required this.tone, this.spark = const []});
-  final IconData icon;
-  final String label, value, sub;
-  final Color tone;
-  final List<double> spark;
-}
-
-class _PulseFigures extends StatelessWidget {
-  const _PulseFigures({required this.pulse});
-  final ParentPulse pulse;
-
-  static const double _wide = 560;
-
-  List<_Figure> _figures(BuildContext context) {
-    final c = context.colors;
+  List<Widget> _stats() {
     final w = pulse.week, g = pulse.grades;
     final att = w.rate;
-    final trend = [for (final v in pulse.attendanceTrend) if (v != null) v.toDouble()];
-    final gTrend = [for (final v in g?.trend ?? const <double?>[]) ?v];
     final missedWork = w.missed + w.homeworkMissing;
     final delta = g?.delta;
     final gSub = <String>[
       if (g?.classAvg != null) _fmt('pp_m_grades_class', {'n': g!.classAvg!.round()}),
       if (delta != null && delta.round() != 0) '${delta > 0 ? '+' : '-'}${delta.abs().round()} ${'pp_m_vs_prev'.tr}',
     ];
+    final exam = child.nextExam;
     return [
-      _Figure(
+      AppStatCard(
         icon: Icons.how_to_reg_rounded,
         label: 'pp_m_attendance'.tr,
         value: att == null ? '—' : '$att%',
-        sub: w.scheduled == 0 ? 'pp_m_attendance_none'.tr : _fmt('pp_m_attendance_sub', {'a': w.attended, 's': w.scheduled}),
-        tone: att == null ? c.textLight : appScoreColor(context, att.toDouble()),
-        spark: trend.length >= 2 ? trend : const [],
+        tone: AppBlockTone.sky,
+        footer: w.scheduled == 0 ? 'pp_m_attendance_none'.tr : _fmt('pp_m_attendance_sub', {'a': w.attended, 's': w.scheduled}),
       ),
-      _Figure(
+      AppStatCard(
         icon: Icons.grading_rounded,
         label: 'pp_m_grades'.tr,
         value: g?.avg == null ? '—' : '${g!.avg!.round()}%',
-        sub: g?.avg == null ? 'pp_m_grades_none'.tr : (gSub.isEmpty ? _exams(g!.count) : gSub.join(' · ')),
-        tone: g?.avg == null ? c.textLight : appScoreColor(context, g!.avg),
-        spark: gTrend.length >= 2 ? gTrend : const [],
+        tone: AppBlockTone.emerald,
+        footer: g?.avg == null ? 'pp_m_grades_none'.tr : (gSub.isEmpty ? _exams(g!.count) : gSub.join(' · ')),
       ),
-      _Figure(
+      AppStatCard(
         icon: Icons.assignment_late_rounded,
         label: 'pp_m_work'.tr,
         value: '$missedWork',
-        sub: missedWork == 0
+        tone: AppBlockTone.peach,
+        footer: missedWork == 0
             ? 'pp_m_work_none'.tr
             : [if (w.missed > 0) _sessions(w.missed), if (w.homeworkMissing > 0) _homework(w.homeworkMissing)].join(' · '),
-        tone: missedWork == 0 ? c.success : c.danger,
+      ),
+      AppStatCard(
+        icon: Icons.menu_book_rounded,
+        label: 'courses'.tr,
+        value: '${child.courses}',
+        tone: AppBlockTone.paper,
+        footer: exam == null ? 'pl_ov_no_exam'.tr : '${'pl_ov_next_exam'.tr} · ${exam.name}',
       ),
     ];
   }
 
   @override
   Widget build(BuildContext context) {
-    final figures = _figures(context);
-    final ink = AppBlock.colorsOf(context);
-    // the block's own hairline: the faint ink, light enough to part the figures without boxing them
-    final rule = ink.faint.withValues(alpha: 0.28);
-    return LayoutBuilder(builder: (context, box) {
-      if (box.maxWidth >= _wide) {
-        return Container(
-          decoration: BoxDecoration(border: Border.symmetric(horizontal: BorderSide(color: rule, width: AppBorder.hairline))),
-          child: IntrinsicHeight(
-            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              for (var i = 0; i < figures.length; i++) ...[
-                if (i > 0) VerticalDivider(width: AppSpace.lg, thickness: AppBorder.hairline, color: rule),
-                Expanded(child: _FigureTile(f: figures[i])),
-              ],
-            ]),
-          ),
-        );
-      }
-      return Column(children: [
-        for (var i = 0; i < figures.length; i++) ...[
-          Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: rule),
-          _FigureRow(f: figures[i]),
-        ],
-        Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: rule),
-      ]);
-    });
-  }
-}
-
-class _FigureTile extends StatelessWidget {
-  const _FigureTile({required this.f});
-  final _Figure f;
-
-  static const double _spark = AppSpace.xl - AppSpace.xxs;
-
-  @override
-  Widget build(BuildContext context) {
-    final ink = AppBlock.colorsOf(context);
-    final tone = ink.accentInk(f.tone);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(f.icon, size: AppIconSize.sm, color: ink.muted),
-          const SizedBox(width: AppSpace.xs),
-          Expanded(child: Text(f.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: ink.muted))),
-        ]),
-        const SizedBox(height: AppSpace.xs),
-        // the figures count up once (and glide when a refresh changes them): the answer to the block's question
-        AppCountUp(f.value, memoryKey: 'parent.pulse.${f.label}', style: AppType.figureLarge(context).copyWith(color: tone)),
-        const SizedBox(height: AppSpace.xxs),
-        Text(f.sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: ink.muted, height: 1.4)),
-        if (f.spark.isNotEmpty) ...[
-          const SizedBox(height: AppSpace.xs),
-          AppSparkline(f.spark, color: f.tone, surface: ink.surface, height: _spark, label: f.label),
-        ],
-      ]),
-    );
-  }
-}
-
-class _FigureRow extends StatelessWidget {
-  const _FigureRow({required this.f});
-  final _Figure f;
-
-  static const double _sparkWidth = AppTouch.primary;
-  static const double _sparkHeight = AppSpace.lg;
-
-  @override
-  Widget build(BuildContext context) {
-    final ink = AppBlock.colorsOf(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
-      child: Row(children: [
-        _ToneWell(icon: f.icon, tone: f.tone, surface: ink.surface),
-        const SizedBox(width: AppSpace.sm),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(f.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: ink.ink)),
-            Text(f.sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: ink.muted, height: 1.4)),
-          ]),
+    final first = child.name.split(' ').first;
+    final head = Row(children: [
+      AppAvatar(name: child.name, url: child.imageUrl.isEmpty ? null : child.imageUrl, size: _avatar),
+      const SizedBox(width: AppSpace.sm),
+      Expanded(
+        child: Wrap(
+          spacing: AppSpace.xs,
+          runSpacing: AppSpace.xxs,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Semantics(
+              header: true,
+              child: Text(_fmt('pp_how_title', {'name': first}), maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: AppType.section(context)),
+            ),
+            AppStatusBadge(label: pulseStatusLabel(pulse.status), tone: pulseStatusTone(pulse.status), icon: pulseStatusIcon(pulse.status)),
+          ],
         ),
-        if (f.spark.isNotEmpty) ...[
-          const SizedBox(width: AppSpace.xs),
-          SizedBox(width: _sparkWidth, child: AppSparkline(f.spark, color: f.tone, surface: ink.surface, height: _sparkHeight, fill: false, label: f.label)),
-        ],
-        const SizedBox(width: AppSpace.sm),
-        AppCountUp(f.value, memoryKey: 'parent.pulse.${f.label}', style: AppType.figure(context).copyWith(color: ink.accentInk(f.tone))),
-      ]),
-    );
+      ),
+      const SizedBox(width: AppSpace.xs),
+      Icon(Icons.chevron_right_rounded, color: context.colors.textLight),
+    ]);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      // the heading row opens the full report (the hero's call to action says it in words)
+      Semantics(
+        button: true,
+        hint: 'pp_full_report'.tr,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.control),
+          onTap: onOpenReport,
+          child: ConstrainedBox(constraints: const BoxConstraints(minHeight: AppTouch.min), child: head),
+        ),
+      ),
+      const SizedBox(height: AppSpace.sm),
+      AppKpiGrid(children: _stats()),
+    ]);
   }
 }
 
