@@ -62,8 +62,9 @@ ParentOverviewData full() {
 void main() {
   setUp(() => homeAttentionBadge = (_, child) => child);
 
-  Widget body({ParentOverviewData? data, bool loading = false, String? error}) => SingleChildScrollView(
+  Widget body({ParentOverviewData? data, bool loading = false, String? error, ParentHomeGreeting? greeting}) => SingleChildScrollView(
         child: ParentOverviewBody(
+          greeting: greeting,
           data: data,
           loading: loading,
           error: error,
@@ -115,6 +116,36 @@ void main() {
     expect(find.byType(ParentSubjectsCard), findsNothing, reason: 'Sara has no subjects');
     expect(find.byType(ParentInsightsCard), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
+  });
+
+  // D-631 (break-ui): the premium layout with the greeting hero — a very long parent name, three children with long
+  // names (the switcher in the hero's footer), huge counts on every stat card and shortcut, an empty week, no marks
+  ParentOverviewData worst() {
+    final p = pulseJson();
+    p['week'] = {'scheduled': 99999, 'attended': 12345, 'missed': 87654, 'rate': 100, 'homework_due': 99999, 'homework_missing': 99999, 'homework_due_soon': 0, 'active_days': 7};
+    p['upcoming'] = [];
+    p['roadmap'] = {'field': {'name_ar': longAr, 'name_en': longEn}, 'done': 9999, 'total': 10000, 'next': {'id': 9, 'name_ar': longAr, 'name_en': longEn, 'progress': 99}};
+    final j = Map<String, dynamic>.from(full().children.first.child);
+    return ParentOverviewData.fromJson({
+      'children': [
+        {'child': j, 'pulse': p, 'courses': 123456, 'latest_marks': [], 'next_exam': {'name': '$longAr $longEn'}},
+        {'child': {'id': 8, 'name': '$longEn $longAr'}, 'pulse': {'status': 'needs_you'}},
+        {'child': {'id': 9, 'name': 'S'}, 'pulse': {'status': 'watch'}},
+      ],
+      'alerts_total': 987654,
+      'requests': [for (var i = 0; i < 120; i++) {'id': i, 'status': 'pending'}],
+    });
+  }
+
+  const greeting = ParentHomeGreeting(name: '$longAr $longEn', helpPageId: 'home.parent');
+
+  testWidgets('premium: greeting hero, shortcuts, stat cards — worst case', (tester) async {
+    await expectNoLayoutErrors(tester, () => body(data: worst(), greeting: greeting));
+    await expectNoLayoutErrors(tester, () => body(data: withPulse(), greeting: greeting));
+    await expectNoLayoutErrors(tester, () => body(data: full(), greeting: greeting));
+    await expectNoLayoutErrors(tester, () => body(data: ParentOverviewData.fromJson(const {}), greeting: const ParentHomeGreeting(name: '')));
+    await expectNoLayoutErrors(tester, () => body(loading: true, greeting: greeting));
+    await expectNoLayoutErrors(tester, () => body(error: '$longAr $longEn', greeting: greeting));
   });
 
   testWidgets('message the teacher sheet', (tester) async {

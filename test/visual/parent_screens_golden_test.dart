@@ -210,22 +210,18 @@ Widget _home({bool legacy = false}) {
     child: Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: kHomeWideMax),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          HomeHeader(
+        child: ParentOverviewBody(
+          greeting: ParentHomeGreeting(
             name: _tr('أحمد حمدي', 'Ahmed Hamdy'),
-            tone: AppBlockTone.peach,
             shellActions: const [CalendarEntryIcon(), NotificationIcon(unreadCount: 3)],
           ),
-          const SizedBox(height: AppSpace.xs),
-          ParentOverviewBody(
-            data: data,
-            onRetry: () {},
-            onOpenAlerts: (_) {},
-            onOpenLink: () {},
-            onOpenChildren: () {},
-            onOpenChild: (_) {},
-          ),
-        ]),
+          data: data,
+          onRetry: () {},
+          onOpenAlerts: (_) {},
+          onOpenLink: () {},
+          onOpenChildren: () {},
+          onOpenChild: (_) {},
+        ),
       ),
     ),
   );
