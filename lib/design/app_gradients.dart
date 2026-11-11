@@ -465,8 +465,8 @@ abstract final class AppBrandLayer {
 
   /// The doodle field's strength (D-650 r3): ONE token for the page canvas — the primary at this alpha in light mode,
   /// primary_light at [doodleDarkShare] of it in dark mode. Page headings over it get [AppHeadingHalo] when it would
-  /// drop their ink below AA. A setter only for the review renders (the 15 % variant).
-  static double doodleAlpha = 0.5;
+  /// drop their ink below AA. Owner picked 15 % (2026-11-12); a setter only for review renders.
+  static double doodleAlpha = 0.15;
 
   /// Dark mode's share of [doodleAlpha] (the old 3 % : 4 % proportion).
   static const double doodleDarkShare = 0.75;
@@ -1147,7 +1147,8 @@ class AppHeadingHalo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (off || !AppDoodleScope.of(context) || AppBrandLayer.headingContrast(context) >= kWcagAaText) return child;
+    // always on the doodle field: at a low strength the halo still keeps the line visually clean (owner: 15 %)
+    if (off || !AppDoodleScope.of(context)) return child;
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: AppRadius.controlAll,
