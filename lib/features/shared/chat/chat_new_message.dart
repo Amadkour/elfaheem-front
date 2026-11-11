@@ -73,7 +73,7 @@ class ChatReachPill extends StatelessWidget {
     final c = context.colors;
     final (String label, Color color) = switch (reach.state) {
       'direct' => ('chat_nm_reach_direct'.tr, c.success),
-      'request' => ('chat_nm_reach_request'.tr, c.accent2),
+      'request' => ('chat_nm_reach_request'.tr, c.warning),
       'request_sent' => ('chat_nm_reach_sent'.tr, c.textMedium),
       'request_received' => ('chat_nm_reach_received'.tr, c.primary),
       'thread' => ('chat_nm_reach_open'.tr, c.textLight),
@@ -166,10 +166,9 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpace.xxs, AppSpace.sm, AppSpace.xxs, AppSpace.xxs),
-      child: Text(text, style: appText(12.5, w: FontWeight.w700, c: c.textMedium)),
+      padding: const EdgeInsets.fromLTRB(AppSpace.xxs, AppSpace.md, AppSpace.xxs, AppSpace.xs),
+      child: Text(text, style: AppType.section(context)),
     );
   }
 }
@@ -263,7 +262,7 @@ class ChatRequestComposer extends StatelessWidget {
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Row(children: [
         IgnorePointer(ignoring: busy, child: AppBackButton(onPressed: onBack)),
-        Expanded(child: Text('chat_nm_request_title'.tr, style: appText(16, w: FontWeight.w700, c: c.textDark))),
+        Expanded(child: Text('chat_nm_request_title'.tr, style: AppType.section(context))),
       ]),
       const SizedBox(height: AppSpace.xs),
       Row(children: [
@@ -271,13 +270,13 @@ class ChatRequestComposer extends StatelessWidget {
         const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(person.user.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w700, c: c.textDark)),
+            Text(person.user.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w600, c: c.textDark)),
             if (chatRoleLabel(person.user.role).isNotEmpty) Text(chatRoleLabel(person.user.role), style: appText(12.5, w: FontWeight.w400, c: c.textMedium)),
           ]),
         ),
       ]),
       const SizedBox(height: AppSpace.sm),
-      AppBanner(icon: Icons.mark_chat_unread_outlined, text: 'chat_nm_request_explain'.tr.replaceAll('{name}', first), color: c.accent2),
+      AppBanner(icon: Icons.mark_chat_unread_outlined, text: 'chat_nm_request_explain'.tr.replaceAll('{name}', first), color: c.blockAccentInk(c.accent3, c.cardBg)),
       const SizedBox(height: AppSpace.sm),
       AppField(controller: controller, label: 'chat_nm_request_first'.tr, hint: 'chat_nm_request_hint'.tr, maxLines: 4),
       if (error != null) ...[

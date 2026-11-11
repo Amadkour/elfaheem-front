@@ -721,9 +721,10 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     final list = view == CalView.agenda;
     return ColoredBox(
       color: c.cardBg,
-      child: ListView(
+      // a short column, built whole (a lazy list would leave the filters unbuilt below the fold)
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.lg - 6, AppSpace.md, AppSpace.lg),
-        children: [
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           if (!widget.asTab) ...[
             Row(children: [
               if (Navigator.of(context).canPop()) ...[
@@ -782,7 +783,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
               orgs: calOrgsOf(all),
               onOrg: (id) => _setFilters(_filters.toggleOrg(id)),
             ),
-        ],
+        ]),
       ),
     );
   }

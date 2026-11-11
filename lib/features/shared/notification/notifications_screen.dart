@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty, appInk, appText;
-import 'package:flutter_education_app/design/app_tokens.dart' show AppSpace;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
 import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
 import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
@@ -136,9 +137,9 @@ class NotificationsStateBody extends StatelessWidget {
           physics: const BouncingScrollPhysics(),
           children: [
             const SizedBox(height: AppSpace.sm),
-            for (final w in children) ...[w, const SizedBox(height: 20)],
+            for (final w in children) ...[w, const SizedBox(height: AppSpace.lg)],
             if (loading) const AppListSkeleton(items: 2, padding: EdgeInsets.zero),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpace.xxs),
           ],
         ),
       ),
@@ -166,24 +167,30 @@ class _NotifGroup extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Group header (the page's single "Mark all read" sits above the groups, N12)
-        Text(groupTitle, style: context.colors.h2),
-        const SizedBox(height: 12),
-        // Notification tiles: two to a row while the list has the room (the panel beside it takes that room back)
+        Semantics(header: true, child: Text(groupTitle, style: AppType.section(context))),
+        const SizedBox(height: AppSpace.sm),
+        // Notification tiles: two to a row while the list has the room (the panel beside it takes that room back).
+        // ONE entrance: today's first rows rise in once; yesterday is simply there.
         LayoutBuilder(builder: (context, box) {
+          Widget tile(int i) {
+            final t = NotificationTile(notif: notifs[i]);
+            return group == NotifGroup.today ? AppReveal(index: i, group: 'notifs', cap: 5, child: t) : t;
+          }
+
           if (box.maxWidth < 900) {
             return Column(children: [
-              for (final n in notifs)
-                Padding(padding: const EdgeInsets.only(bottom: 12), child: NotificationTile(notif: n)),
+              for (var i = 0; i < notifs.length; i++)
+                Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: tile(i)),
             ]);
           }
           return Column(children: [
             for (var i = 0; i < notifs.length; i += 2)
               Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: AppSpace.sm),
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Expanded(child: NotificationTile(notif: notifs[i])),
-                  const SizedBox(width: 12),
-                  Expanded(child: i + 1 < notifs.length ? NotificationTile(notif: notifs[i + 1]) : const SizedBox.shrink()),
+                  Expanded(child: tile(i)),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(child: i + 1 < notifs.length ? tile(i + 1) : const SizedBox.shrink()),
                 ]),
               ),
           ]);
@@ -206,7 +213,7 @@ class NotificationsMarkAllBar extends StatelessWidget {
       child: TextButton.icon(
         style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
         onPressed: onPressed,
-        icon: Icon(Icons.done_all_rounded, size: 18, color: appInk(context, context.colors.primary)),
+        icon: Icon(Icons.done_all_rounded, size: AppIconSize.sm + 2, color: appInk(context, context.colors.primary)),
         label: Text('mark_all_read'.tr, style: context.colors.label.copyWith(color: appInk(context, context.colors.primary))),
       ),
     );
@@ -263,37 +270,21 @@ class NotificationTile extends StatelessWidget {
 
   Widget _buildIcon(String asset, BuildContext context) {
     final kind = notificationKind(notif.type, notif.relatedType);
+    final c = context.colors;
+    // The icon well carries the colour as a block tone (D-613): gold for an achievement, emerald for money that
+    // went through, sky for news and information; the icon is the tone's own ink, at AA.
+    _IconBadge well(IconData icon, Color block, Color accent) => _IconBadge(icon: icon, bg: block, iconColor: c.blockAccentInk(accent, block));
     if (kind != NotifKind.general) {
-      final c = context.colors;
-      final tone = kind == NotifKind.certificate ? c.accent : c.primary;
-      return _IconBadge(icon: notificationIcon(kind), bg: tone.withValues(alpha: 0.12), iconColor: appInk(context, tone));
+      return kind == NotifKind.certificate
+          ? well(notificationIcon(kind), c.blockGold, c.accent2)
+          : well(notificationIcon(kind), c.blockSky, c.primary);
     }
-    switch (asset) {
-      case 'payment':
-        return _IconBadge(
-          icon: Icons.credit_card_rounded,
-          bg: context.colors.primary.withValues(alpha: 0.15),
-          iconColor: context.colors.primary,
-        );
-      case 'badge':
-        return _IconBadge(
-          icon: Icons.workspace_premium_rounded,
-          bg: context.colors.accent.withValues(alpha: 0.15),
-          iconColor: context.colors.accent,
-        );
-      case 'new':
-        return _IconBadge(
-          icon: Icons.campaign_outlined,
-          bg: context.colors.primary.withValues(alpha: 0.10),
-          iconColor: context.colors.primary,
-        );
-      default:
-        return _IconBadge(
-          icon: Icons.notifications_rounded,
-          bg: context.colors.background,
-          iconColor: context.colors.textMedium,
-        );
-    }
+    return switch (asset) {
+      'payment' => well(Icons.credit_card_rounded, c.blockEmerald, c.primary),
+      'badge' => well(Icons.workspace_premium_rounded, c.blockGold, c.accent2),
+      'new' => well(Icons.campaign_outlined, c.blockSky, c.primary),
+      _ => _IconBadge(icon: Icons.notifications_rounded, bg: c.inputBg, iconColor: c.textMedium),
+    };
   }
 
   @override
@@ -309,9 +300,9 @@ class NotificationTile extends StatelessWidget {
       label: isRead ? null : (AppConfig.lang == 'ar' ? 'غير مقروء' : 'Unread'),
       child: Material(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(c.radiusMedium),
+        borderRadius: AppRadius.cardAll,
         child: InkWell(
-          borderRadius: BorderRadius.circular(c.radiusMedium),
+          borderRadius: AppRadius.cardAll,
           onTap: () async {
             final provider = context.read<NotificationsProvider>();
             if (!notif.isRead) {
@@ -321,16 +312,16 @@ class NotificationTile extends StatelessWidget {
             await AppNavigator.openNotification(notif.id);
           },
           child: Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AppSpace.md),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(c.radiusMedium),
-              border: Border.all(color: c.divider),
+              borderRadius: AppRadius.cardAll,
+              border: Border.all(color: c.divider, width: AppBorder.hairline),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildIcon(notif.iconAsset, context),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -342,7 +333,7 @@ class NotificationTile extends StatelessWidget {
                         style: appText(15, w: isRead ? FontWeight.w500 : FontWeight.w600, c: c.textDark),
                       ),
                       if (body.isNotEmpty) ...[
-                        const SizedBox(height: 4),
+                        const SizedBox(height: AppSpace.xxs),
                         Text(
                           body,
                           maxLines: 3,
@@ -358,12 +349,12 @@ class NotificationTile extends StatelessWidget {
                   ),
                 ),
                 if (!isRead) ...[
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpace.xs),
                   Padding(
-                    padding: const EdgeInsets.only(top: 6),
+                    padding: const EdgeInsets.only(top: AppSpace.xxs + 2),
                     child: Container(
-                      width: 8,
-                      height: 8,
+                      width: AppSpace.xs,
+                      height: AppSpace.xs,
                       decoration: BoxDecoration(color: c.primary, shape: BoxShape.circle),
                     ),
                   ),
@@ -405,13 +396,13 @@ class _IconBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 52,
-      height: 52,
+      width: AppTouch.min - AppSpace.xxs,
+      height: AppTouch.min - AppSpace.xxs,
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
       ),
-      child: Icon(icon, color: iconColor, size: 26),
+      child: Icon(icon, color: iconColor, size: AppIconSize.lg - 2),
     );
   }
 }

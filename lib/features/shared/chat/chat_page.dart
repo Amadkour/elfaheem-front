@@ -201,7 +201,7 @@ class _NoChatSelected extends StatelessWidget {
                 child: Icon(Icons.forum_rounded, size: AppIconSize.hero + 8, color: chatInk(c)),
               ),
               const SizedBox(height: AppSpace.md),
-              Text('chat_empty_detail_title'.tr, style: appText(19, w: FontWeight.w700, c: c.textDark), textAlign: TextAlign.center),
+              Text('chat_empty_detail_title'.tr, style: AppType.headline(context), textAlign: TextAlign.center),
               const SizedBox(height: AppSpace.xs),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 380),
@@ -251,7 +251,7 @@ class ChatListView extends StatelessWidget {
               AppBackButton(onPressed: onBack),
               const SizedBox(width: AppSpace.xxs),
             ],
-            Expanded(child: Text('chat_title'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(20, w: FontWeight.w700, c: c.textDark))),
+            Expanded(child: Text('chat_title'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context))),
             if (showBlocked)
               IconButton(
                 tooltip: 'chat_blocked_people'.tr,
@@ -301,7 +301,7 @@ class ChatListView extends StatelessWidget {
         listenable: hub,
         builder: (sheet, _) => AppSheetContent(title: 'chat_filter_more'.tr, children: [
           if (hub.filterRoles.isNotEmpty) ...[
-            Text('chat_filter_person'.tr, style: appText(13, w: FontWeight.w700, c: context.colors.textDark)),
+            Text('chat_filter_person'.tr, style: appText(13, w: FontWeight.w600, c: context.colors.textDark)),
             const SizedBox(height: AppSpace.xs),
             Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final r in const ['teacher', 'parent', 'student'])
@@ -311,7 +311,7 @@ class ChatListView extends StatelessWidget {
             const SizedBox(height: AppSpace.md),
           ],
           if (hub.filterCourses.isNotEmpty) ...[
-            Text('chat_filter_course'.tr, style: appText(13, w: FontWeight.w700, c: context.colors.textDark)),
+            Text('chat_filter_course'.tr, style: appText(13, w: FontWeight.w600, c: context.colors.textDark)),
             const SizedBox(height: AppSpace.xs),
             Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               for (final course in hub.filterCourses)
@@ -997,7 +997,7 @@ class _EmptyThread extends StatelessWidget {
           if (conv != null) ChatAvatar(name: conv.title, url: conv.isGroup ? conv.course?.imageUrl : conv.peer?.imageUrl, size: 72, group: conv.isGroup && conv.course?.imageUrl == null),
           if (conv != null) ...[
             const SizedBox(height: AppSpace.sm),
-            Text(conv.title, textAlign: TextAlign.center, style: appText(16, w: FontWeight.w700, c: c.textDark)),
+            Text(conv.title, textAlign: TextAlign.center, style: AppType.section(context)),
           ],
           const SizedBox(height: AppSpace.xs),
           Text('chat_start_hint'.tr, style: appText(13.5, c: c.textMedium), textAlign: TextAlign.center),
@@ -1053,7 +1053,7 @@ class _ChatHeader extends StatelessWidget {
                   const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                      Text(conv?.title ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w700, c: c.textDark)),
+                      Text(conv?.title ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w600, c: c.textDark)),
                       if (sub.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 1),

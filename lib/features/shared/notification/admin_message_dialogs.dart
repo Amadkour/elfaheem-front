@@ -14,7 +14,7 @@ import '../../../main.dart' show navigatorKey;
 import '../../../utils/widget/app_navigator.dart';
 import '../../../utils/widget/view_as_state.dart';
 import '../../student/courses/details/growth_tr.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 class AdminMessageDialogs {
   AdminMessageDialogs._();
@@ -81,24 +81,29 @@ class AdminMessageDialogs {
       builder: (ctx) => Directionality(
         textDirection: pageDirection,
         // the app's MaterialApp is LTR; Arabic dialogs must be RTL
+        // paper, radius 28, an editorial headline under a sky mark (the message is information, D-613)
         child: AlertDialog(
+          backgroundColor: c.cardBg,
+          surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(AppRadius.sheet),
           ),
-          icon: Icon(Icons.campaign_rounded, color: c.primary, size: 34),
+          icon: Container(
+            width: AppTouch.primary,
+            height: AppTouch.primary,
+            decoration: BoxDecoration(color: c.blockSky, shape: BoxShape.circle),
+            child: Icon(Icons.campaign_rounded, color: c.blockAccentInk(c.primary, c.blockSky), size: AppIconSize.xl - 4),
+          ),
           title: Text(
             '${m['title']}',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: AppFonts.family,
-              fontWeight: FontWeight.w800,
-            ),
+            style: AppType.headline(ctx),
           ),
           content: SingleChildScrollView(
             child: Text(
               '${m['body']}',
               textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: AppFonts.family, height: 1.6),
+              style: AppType.body(ctx).copyWith(color: c.textMedium, height: 1.6),
             ),
           ),
           actionsAlignment: MainAxisAlignment.center,
