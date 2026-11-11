@@ -9,13 +9,19 @@
 //   CourseScopeBanner  the teacher's header: the side the list follows (the mode), its count, how many courses
 //                      wait on the other sides and "Switch" (the context switcher)
 //   CourseScopeChipBar the student's switcher: All · Personal · each organization, with counts
+//
+// Warm Editorial: the organization's colour lives in its MARK only (the round logo / initial); the banner, the
+// badge and the chips are paper on a warm hairline, the chosen chip the ink outline with the mark's tint behind
+// its count. No washes, no resting shadows.
 library;
 
 import 'package:flutter/material.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
-import '../../../core/display/app_fonts.dart';
+import '../../../design/app_kit.dart'
+    show AppSpace, AppRadius, AppType, AppIconSize, AppBorder, AppTouch, AppMotion, AppButton, AppButtonSize;
+import '../../../design/app_motion_kit.dart' show AppEase;
 import '../../../utils/widget/app_network_image.dart';
 import 'course_scope.dart';
 
@@ -60,8 +66,12 @@ class CourseScopeMark extends StatelessWidget {
       inner = Center(
         child: Text(
           name.isEmpty ? '#' : name.characters.first.toUpperCase(),
-          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, fontSize: size * 0.42,
-              color: courseScopeInk(context, tone), height: 1),
+          style: AppType.label(context).copyWith(
+            fontWeight: FontWeight.w600,
+            fontSize: size * 0.42,
+            color: courseScopeInk(context, tone),
+            height: 1,
+          ),
         ),
       );
     } else {
@@ -74,7 +84,7 @@ class CourseScopeMark extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: Color.alphaBlend(tone.withValues(alpha: 0.14), c.cardBg),
-        border: Border.all(color: tone.withValues(alpha: 0.35), width: 1.2),
+        border: Border.all(color: tone.withValues(alpha: 0.35), width: AppBorder.hairline),
       ),
       clipBehavior: Clip.antiAlias,
       child: inner,
@@ -98,19 +108,18 @@ class CourseOrgBadge extends StatelessWidget {
       excludeSemantics: true,
       child: Container(
         constraints: const BoxConstraints(maxWidth: 150),
-        padding: const EdgeInsetsDirectional.fromSTEB(3, 3, 9, 3),
+        padding: const EdgeInsetsDirectional.fromSTEB(3, 3, AppSpace.xs + 1, 3),
         decoration: BoxDecoration(
           color: c.cardBg.withValues(alpha: 0.94),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: courseScopeColor(context, org).withValues(alpha: 0.45)),
-          boxShadow: [BoxShadow(color: c.heroShade.withValues(alpha: 0.12), blurRadius: 8, offset: const Offset(0, 2))],
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          border: Border.all(color: c.divider, width: AppBorder.hairline),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           CourseScopeMark(scope: scope, org: org, size: 18),
-          const SizedBox(width: 5),
+          const SizedBox(width: AppSpace.xxs + 1),
           Flexible(
             child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, fontWeight: FontWeight.w600, color: c.textDark)),
+                style: AppType.overline(context).copyWith(letterSpacing: 0, color: c.textDark)),
           ),
         ]),
       ),
@@ -149,7 +158,6 @@ class CourseScopeBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final tone = courseScopeColor(context, org);
     final title = scope.isOrg ? (org?.name ?? 'course_scope_org'.tr) : 'course_scope_personal_title'.tr;
     final sub = scope.isOrg ? 'course_scope_org_sub'.tr : 'course_scope_personal_sub'.tr;
     final hint = elsewhere <= 0
@@ -158,70 +166,53 @@ class CourseScopeBanner extends StatelessWidget {
     final show = hint == null ? null : onShowElsewhere;
     final action = show ?? onSwitch;
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: [
-            Color.alphaBlend(tone.withValues(alpha: 0.10), c.cardBg),
-            c.cardBg,
-          ],
-        ),
-        border: Border.all(color: tone.withValues(alpha: 0.22)),
-        boxShadow: [BoxShadow(color: c.heroShade.withValues(alpha: 0.05), blurRadius: 12, offset: const Offset(0, 3))],
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
           CourseScopeMark(scope: scope, org: org, size: 42),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 15, fontWeight: FontWeight.w600, color: c.textDark)),
-              const SizedBox(height: 2),
-              Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium, height: 1.3)),
+              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+              const SizedBox(height: AppSpace.xxs / 2),
+              Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(height: 1.35)),
             ]),
           ),
           if (count != null) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.xs),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm - 2, vertical: AppSpace.xxs),
+              decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.pill)),
               child: Text('$count',
-                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 14, fontWeight: FontWeight.w600, color: c.textDark)),
+                  style: AppType.bodyStrong(context).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
             ),
           ],
         ]),
         if (hint != null || action != null) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           Wrap(
-            spacing: 8,
-            runSpacing: 4,
+            spacing: AppSpace.xs,
+            runSpacing: AppSpace.xxs,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               if (hint != null)
                 Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.layers_rounded, size: 14, color: c.textLight),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(hint, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
-                  ),
+                  Icon(Icons.layers_rounded, size: AppIconSize.xs, color: c.textLight),
+                  const SizedBox(width: AppSpace.xxs),
+                  Flexible(child: Text(hint, style: AppType.meta(context))),
                 ]),
               if (action != null)
-                TextButton.icon(
+                AppButton.ghost(
                   key: ValueKey(show != null ? 'course_scope.show_elsewhere' : 'course_scope.switch'),
                   onPressed: action,
-                  style: TextButton.styleFrom(
-                    minimumSize: const Size(48, 40),
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    foregroundColor: courseScopeInk(context, c.primary),
-                  ),
-                  icon: Icon(show != null ? Icons.menu_book_rounded : Icons.swap_horiz_rounded, size: 18),
-                  label: Text((show != null ? 'course_scope_show_elsewhere' : 'course_scope_switch').tr,
-                      style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600, fontSize: 13)),
+                  size: AppButtonSize.sm,
+                  icon: show != null ? Icons.menu_book_rounded : Icons.swap_horiz_rounded,
+                  label: (show != null ? 'course_scope_show_elsewhere' : 'course_scope_switch').tr,
                 ),
             ],
           ),
@@ -242,12 +233,12 @@ class CourseScopeChipBar extends StatelessWidget {
   Widget build(BuildContext context) {
     if (chips.length < 2) return const SizedBox.shrink(); // one side only: nothing to tell apart
     return SizedBox(
-      height: 48,
+      height: AppTouch.min,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
         itemCount: chips.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpace.xs),
         itemBuilder: (context, i) => _ScopeChip(chip: chips[i], selected: chips[i].scope == selected, onSelect: onSelect),
       ),
     );
@@ -272,44 +263,47 @@ class _ScopeChip extends StatelessWidget {
       label: '$label, ${chip.count}',
       excludeSemantics: true,
       child: Material(
-        color: Colors.transparent,
+        type: MaterialType.transparency,
         child: InkWell(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(AppRadius.pill),
           onTap: () => onSelect(chip.scope),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-            constraints: const BoxConstraints(maxWidth: 220, minHeight: 48),
-            padding: const EdgeInsetsDirectional.fromSTEB(6, 6, 12, 6),
+            duration: AppMotion.of(context).fast,
+            curve: AppEase.out,
+            constraints: const BoxConstraints(maxWidth: 220, minHeight: AppTouch.min),
+            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs - 2, AppSpace.xs - 2, AppSpace.sm, AppSpace.xs - 2),
             decoration: BoxDecoration(
-              color: selected ? Color.alphaBlend(tone.withValues(alpha: 0.14), c.cardBg) : c.cardBg,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: selected ? tone : c.divider, width: selected ? 1.6 : 1),
-              boxShadow: selected
-                  ? [BoxShadow(color: tone.withValues(alpha: 0.18), blurRadius: 10, offset: const Offset(0, 3))]
-                  : const [],
+              color: c.cardBg,
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              // the chosen side: an ink outline (the brief's selection without a colour wash)
+              border: Border.all(
+                color: selected ? c.textDark : c.divider,
+                width: selected ? AppBorder.strong : AppBorder.hairline,
+              ),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               CourseScopeMark(scope: chip.scope, org: chip.org, size: 30),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               Flexible(
                 child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontSize: 13,
+                    style: AppType.label(context).copyWith(
                       fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                       color: selected ? c.textDark : c.textMedium,
                     )),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: AppSpace.xs - 2),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs - 1, vertical: AppSpace.xxs / 2),
                 decoration: BoxDecoration(
-                  color: selected ? tone.withValues(alpha: 0.18) : c.inputBg,
-                  borderRadius: BorderRadius.circular(10),
+                  color: selected ? Color.alphaBlend(tone.withValues(alpha: 0.16), c.cardBg) : c.inputBg,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
                 child: Text('${chip.count}',
-                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, fontWeight: FontWeight.w600, color: c.textDark)),
+                    style: AppType.overline(context).copyWith(
+                      letterSpacing: 0,
+                      color: c.textDark,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    )),
               ),
             ]),
           ),
