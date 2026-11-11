@@ -1,30 +1,47 @@
+// lib/features/shared/category/categories_screen.dart
+//
+// Browse by category (Warm Editorial Blocks, D-610 – D-629). Every category wears ONE block tone wherever it
+// appears (AppBlockTone.forKey(id): peach or sky) and a vector glyph picked from its name (categoryIconFor), never a
+// letter or an emoji. The page's one memorable element is the chosen category's block: its glyph, its name in the
+// editorial headline and its description; with nothing chosen the list just says "All courses".
+//
+//   phone   search well · a row of category tiles · the chosen category's block · the course cards
+//   wide    a paper column of categories on the start side · search, the block and the cards beside it
+library;
+
 import 'dart:math';
-import 'package:flutter_education_app/utils/widget/parent_component.dart';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_blocks.dart';
+import 'package:flutter_education_app/design/app_buttons.dart';
+import 'package:flutter_education_app/design/app_inputs.dart' show appFieldDecoration, appFieldTextStyle;
+import 'package:flutter_education_app/design/app_kit.dart' show AppShimmer, AppSkeletonBox;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppPressScale, AppTilt;
 import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/app_states.dart' show AppEmpty;
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
-import '../../../config/app_config.dart' as Helpers;
 import '../../../config/theme/theme_config_provider.dart';
-import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/app_bar.dart';
+import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../shared/course/home_course_list.dart';
-import '../../student/courses/details/course_detail_screen.dart';
 import '../../student/models.dart';
 import 'categories_provider.dart';
-import 'model.dart';
-import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
-import 'package:flutter_education_app/design/app_tokens.dart';
 
 const double _kWideBreakpoint = 840;
+
+/// The wide layout's category column.
+const double _kSideWidth = 280;
 
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({super.key, this.selectedId, this.mode});
 
   final String? selectedId;
+
   /// The guest search's filter ('any' / 'online' / 'center'); null for every other caller.
   final String? mode;
 
@@ -64,20 +81,91 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       width: AppWidth.wide,
       appBar: ScreenAppBar(title: 'categories'.tr),
       child: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final isWide = constraints.maxWidth >= _kWideBreakpoint;
-                  return isWide
-                      ? _WideLayout(searchCtrl: _searchCtrl)
-                      : _NarrowLayout(searchCtrl: _searchCtrl);
-                },
-              ),
-            ),
-          ],
+        child: LayoutBuilder(
+          builder: (context, constraints) => constraints.maxWidth >= _kWideBreakpoint
+              ? _WideLayout(searchCtrl: _searchCtrl)
+              : _NarrowLayout(searchCtrl: _searchCtrl),
         ),
+      ),
+    );
+  }
+}
+
+// ── Category glyphs ───────────────────────────────────────────────────────────
+
+/// The glyph of a category, from its name in either language: a subject it names gets its own symbol, anything
+/// else one of a few learning glyphs, always the same one for the same category.
+IconData categoryIconFor(CategoryModel category) {
+  final name = '${category.nameEn} ${category.nameAr}'.toLowerCase();
+  bool has(List<String> words) => words.any(name.contains);
+  // most specific first: "رياضيات" (maths) before "رياضة" (sport)
+  if (has(const ['math', 'algebra', 'رياضيات', 'جبر', 'حساب ', 'calcul'])) return Icons.calculate_rounded;
+  // "computer science" is computing, not a lab science
+  if (has(const ['program', 'comput', 'coding', 'software', 'tech', 'برمج', 'حاسب', 'حاسوب', 'تقنية'])) {
+    return Icons.computer_rounded;
+  }
+  if (has(const ['physic', 'chemi', 'biolog', 'science', 'فيزياء', 'كيمياء', 'أحياء', 'احياء', 'علوم'])) {
+    return Icons.science_rounded;
+  }
+  if (has(const ['quran', 'islam', 'relig', 'قرآن', 'قران', 'إسلام', 'اسلام', 'دين', 'تجويد', 'فقه'])) {
+    return Icons.menu_book_rounded;
+  }
+  if (has(const ['arabic', 'english', 'french', 'german', 'language', 'لغة', 'عربي', 'إنجليزي', 'انجليزي', 'فرنس'])) {
+    return Icons.translate_rounded;
+  }
+  if (has(const ['history', 'geograph', 'social', 'تاريخ', 'جغرافيا', 'دراسات'])) return Icons.public_rounded;
+  if (has(const ['art', 'design', 'draw', 'فن', 'رسم', 'تصميم'])) return Icons.palette_rounded;
+  if (has(const ['music', 'موسيق'])) return Icons.music_note_rounded;
+  if (has(const ['photo', 'تصوير'])) return Icons.photo_camera_rounded;
+  if (has(const ['business', 'account', 'market', 'econom', 'financ', 'محاسب', 'إدارة', 'ادارة', 'تسويق', 'اقتصاد'])) {
+    return Icons.business_center_rounded;
+  }
+  if (has(const ['health', 'medic', 'nurs', 'طب', 'صحة', 'تمريض'])) return Icons.medical_services_rounded;
+  if (has(const ['sport', 'fitness', 'رياضة', 'لياقة'])) return Icons.sports_soccer_rounded;
+  const fallback = [Icons.auto_stories_rounded, Icons.school_rounded, Icons.lightbulb_rounded, Icons.interests_rounded];
+  final h = category.id.codeUnits.fold<int>(7, (a, u) => (a * 31 + u) & 0x7fffffff);
+  return fallback[h % fallback.length];
+}
+
+String _nameOf(CategoryModel c) => AppConfig.lang == 'ar'
+    ? (c.nameAr.isNotEmpty ? c.nameAr : c.nameEn)
+    : (c.nameEn.isNotEmpty ? c.nameEn : c.nameAr);
+
+/// A category's mark: its picture, or its glyph on its block tone (on a paper [plate] inside its own block), in a
+/// [size] square.
+class _CategoryMark extends StatelessWidget {
+  const _CategoryMark({required this.category, required this.size, required this.radius, this.heroTag, this.plate = false});
+
+  final CategoryModel category;
+  final double size;
+  final double radius;
+  final String? heroTag;
+  final bool plate;
+
+  /// The glyph as a share of the mark.
+  static const double _glyph = 0.46;
+
+  @override
+  Widget build(BuildContext context) {
+    final b = AppBlockColors.of(context, AppBlockTone.forKey(category.id));
+    final url = category.imageUrl;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: SizedBox.square(
+        dimension: size,
+        child: url != null && url.isNotEmpty
+            ? AppNetworkImage(
+                url: url,
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
+                enableFullscreen: false,
+                heroTag: heroTag,
+              )
+            : ColoredBox(
+                color: plate ? context.colors.cardBg : b.surface,
+                child: Center(child: Icon(categoryIconFor(category), size: size * _glyph, color: b.ink)),
+              ),
       ),
     );
   }
@@ -94,33 +182,22 @@ class _SearchField extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.read<CategoriesProvider>();
     final isSearching = context.watch<CategoriesProvider>().isSearching;
-
-    return Container(
-      height: 50,
-      decoration: BoxDecoration(
-        color: context.colors.cardBg,
-        borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-        boxShadow: context.colors.cardShadow,
-      ),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: AppTouch.min),
       child: TextField(
         controller: controller,
-        textDirection: Helpers.pageDirection,
+        textDirection: pageDirection,
         onChanged: provider.onSearchChanged,
-        style: context.colors.h3.copyWith(fontSize: 15),
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          isCollapsed: true,
-          contentPadding: const EdgeInsets.symmetric(vertical: 15),
-          hintText: _tx('ابحث عن قسم أو كورس...', 'Search a category or course...'),
-          hintStyle: context.colors.caption,
-          prefixIcon: Icon(Icons.search_rounded, color: context.colors.primary),
-          suffixIcon: isSearching
+        textInputAction: TextInputAction.search,
+        style: appFieldTextStyle(context),
+        decoration: appFieldDecoration(
+          context,
+          hint: _tx('ابحث عن قسم أو كورس...', 'Search a category or course...'),
+          icon: Icons.search_rounded,
+          suffix: isSearching
               ? IconButton(
                   tooltip: MaterialLocalizations.of(context).deleteButtonTooltip,
-                  icon: Icon(
-                    Icons.close_rounded,
-                    color: context.colors.textDark,
-                  ),
+                  icon: const Icon(Icons.close_rounded, size: AppIconSize.md),
                   onPressed: () {
                     controller.clear();
                     provider.clearSearch();
@@ -147,42 +224,42 @@ class _NarrowLayout extends StatelessWidget {
     return AppRefresh(
       onRefresh: provider.refresh,
       child: CustomScrollView(
-      physics: const BouncingScrollPhysics(),
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-          sliver: SliverToBoxAdapter(
-            child: ParentComponent(
-              featureKey: 'categories.search',
-              child: _SearchField(controller: searchCtrl),
-            ),
-          ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.only(top: 18),
-          sliver: SliverToBoxAdapter(
-            child: ParentComponent(
-              featureKey: 'categories.chips',
-              child: SizedBox(
-                height: min(MediaQuery.of(context).size.width / 6, 100) + 34,
-                child: const _CategoryChipsRow(),
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
+            sliver: SliverToBoxAdapter(
+              child: ParentComponent(
+                featureKey: 'categories.search',
+                child: _SearchField(controller: searchCtrl),
               ),
             ),
           ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 22, 20, 8),
-          sliver: SliverToBoxAdapter(
-            child: ParentComponent(
-              featureKey: 'categories.section_header',
-              child: _SectionHeader(provider: provider),
+          SliverPadding(
+            padding: const EdgeInsets.only(top: AppSpace.md),
+            sliver: SliverToBoxAdapter(
+              child: ParentComponent(
+                featureKey: 'categories.chips',
+                child: SizedBox(
+                  height: CategoryAvatar.extentOf(context),
+                  child: const _CategoryChipsRow(),
+                ),
+              ),
             ),
           ),
-        ),
-        _CoursesSliver(crossAxisCount: 2),
-        const SliverToBoxAdapter(child: SizedBox(height: 24)),
-      ],
-    ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.lg, AppSpace.md, AppSpace.md),
+            sliver: SliverToBoxAdapter(
+              child: ParentComponent(
+                featureKey: 'categories.section_header',
+                child: _SectionHeader(provider: provider),
+              ),
+            ),
+          ),
+          const _CoursesSliver(crossAxisCount: 2),
+          const SliverToBoxAdapter(child: SizedBox(height: AppSpace.lg)),
+        ],
+      ),
     );
   }
 }
@@ -197,6 +274,7 @@ class _WideLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<CategoriesProvider>();
+    final c = context.colors;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,20 +282,22 @@ class _WideLayout extends StatelessWidget {
         ParentComponent(
           featureKey: 'categories.side_list',
           child: Container(
-            width: 280,
-            margin: const EdgeInsets.fromLTRB(20, 16, 0, 20),
-            padding: const EdgeInsets.all(16),
+            width: _kSideWidth,
+            margin: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, 0, AppSpace.md),
+            padding: const EdgeInsets.fromLTRB(AppSpace.xs, AppSpace.md, AppSpace.xs, AppSpace.xs),
             decoration: BoxDecoration(
-              color: context.colors.cardBg,
-              borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-              boxShadow: context.colors.cardShadow,
+              color: c.cardBg,
+              borderRadius: AppRadius.cardAll,
+              border: Border.all(color: c.divider, width: AppBorder.hairline),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(_tx('الأقسام', 'Categories'), style: context.colors.h2),
-                const SizedBox(height: 14),
-                Expanded(child: _CategorySideList()),
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(start: AppSpace.xs, bottom: AppSpace.sm),
+                  child: Text(_tx('الأقسام', 'Categories'), style: AppType.section(context)),
+                ),
+                const Expanded(child: _CategorySideList()),
               ],
             ),
           ),
@@ -226,30 +306,36 @@ class _WideLayout extends StatelessWidget {
           child: AppRefresh(
             onRefresh: context.read<CategoriesProvider>().refresh,
             child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                sliver: SliverToBoxAdapter(
-                  child: ParentComponent(
-                    featureKey: 'categories.search',
-                    child: _SearchField(controller: searchCtrl),
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.md, AppSpace.lg, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: ParentComponent(
+                      featureKey: 'categories.search',
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: AppWidth.form.max),
+                          child: _SearchField(controller: searchCtrl),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-                sliver: SliverToBoxAdapter(
-                  child: ParentComponent(
-                    featureKey: 'categories.section_header',
-                    child: _SectionHeader(provider: provider),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.md),
+                  sliver: SliverToBoxAdapter(
+                    child: ParentComponent(
+                      featureKey: 'categories.section_header',
+                      child: _SectionHeader(provider: provider),
+                    ),
                   ),
                 ),
-              ),
-              _CoursesSliver(crossAxisCount: 4),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-            ],
-          ),
+                const _CoursesSliver(crossAxisCount: 4),
+                const SliverToBoxAdapter(child: SizedBox(height: AppSpace.lg)),
+              ],
+            ),
           ),
         ),
       ],
@@ -257,7 +343,7 @@ class _WideLayout extends StatelessWidget {
   }
 }
 
-// ── Section header (title + clear) ────────────────────────────────────────────
+// ── Section header: the chosen category's block, or the plain heading ─────────────────────────────────────────
 
 class _SectionHeader extends StatelessWidget {
   final CategoriesProvider provider;
@@ -266,50 +352,89 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = provider.isSearching
-        ? _tx('نتائج البحث', 'Search results')
-        : provider.selectedCategory != null
-        ? AppConfig.lang == 'ar'
-              ? provider.selectedCategory!.nameAr
-              : provider.selectedCategory!.nameEn
-        : _tx('كل الكورسات', 'All courses');
-
-    final showClear =
-        provider.selectedCategoryId != null || provider.isSearching;
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(title, style: context.colors.h2),
-        if (provider.selectedCategory != null) ...[
-          SizedBox(width: 2),
-          Flexible(
-            child: Text(
-              provider.selectedCategory!.description,
-              style: context.colors.h4.copyWith(
-                overflow: TextOverflow.ellipsis,
-                color: context.colors.secondText,
-                fontSize: 12,
-              ),
-            ),
-          ),
+    final cat = provider.isSearching ? null : provider.selectedCategory;
+    final showClear = provider.selectedCategoryId != null || provider.isSearching;
+    final clear = AppButton.ghost(
+      label: _tx('عرض الكل', 'Show all'),
+      size: AppButtonSize.sm,
+      onPressed: () async => await provider.clearSelection(),
+    );
+    final Widget body;
+    if (cat != null) {
+      body = _CategoryBlock(key: ValueKey('cat-${cat.id}'), category: cat, action: clear);
+    } else {
+      final title = provider.isSearching ? _tx('نتائج البحث', 'Search results') : _tx('كل الكورسات', 'All courses');
+      body = Row(
+        key: ValueKey('plain-${provider.isSearching}'),
+        children: [
+          Expanded(child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context))),
+          if (showClear) Flexible(child: clear),
         ],
-        if (showClear)
-          GestureDetector(
-            onTap: () async => await provider.clearSelection(),
-            child: Text(
-              _tx('عرض الكل', 'Show all'),
-              style: context.colors.label.copyWith(
-                color: context.colors.primary,
-              ),
-            ),
-          ),
-      ],
+      );
+    }
+    // a new choice crossfades in place (it answers the tap); nothing moves on its own
+    return AnimatedSwitcher(
+      duration: AppMotion.of(context).fast,
+      switchInCurve: AppMotion.curve,
+      layoutBuilder: (current, previous) =>
+          Stack(alignment: AlignmentDirectional.topStart, children: [...previous, ?current]),
+      child: body,
     );
   }
 }
 
-// ── Category chips (mobile, horizontal) ───────────────────────────────────────
+/// The chosen category: ONE block in its own tone, its glyph on a paper plate, the name in the editorial headline
+/// and the description under it. It leans a little under the pointer (the screen's hero).
+class _CategoryBlock extends StatelessWidget {
+  const _CategoryBlock({super.key, required this.category, required this.action});
+
+  final CategoryModel category;
+  final Widget action;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = AppBlockTone.forKey(category.id);
+    final description = category.description.trim();
+    return AppTilt(
+      radius: AppRadius.block,
+      maxTilt: 2,
+      child: AppBlock(
+        tone: tone,
+        hero: true,
+        child: Builder(builder: (context) {
+          final b = AppBlock.colorsOf(context);
+          return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            _CategoryMark(category: category, size: AppTouch.primary, radius: AppRadius.card, plate: true),
+            const SizedBox(width: AppSpace.md),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(
+                  _nameOf(category),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.headline(context).copyWith(color: b.ink),
+                ),
+                if (description.isNotEmpty) ...[
+                  const SizedBox(height: AppSpace.xs),
+                  Text(
+                    description,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppType.body(context).copyWith(color: b.muted),
+                  ),
+                ],
+                const SizedBox(height: AppSpace.sm),
+                Align(alignment: AlignmentDirectional.centerStart, child: action),
+              ]),
+            ),
+          ]);
+        }),
+      ),
+    );
+  }
+}
+
+// ── Category tiles (mobile, horizontal) ───────────────────────────────────────
 
 class _CategoryChipsRow extends StatelessWidget {
   const _CategoryChipsRow();
@@ -318,34 +443,47 @@ class _CategoryChipsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<CategoriesProvider>();
     final categories = provider.filteredCategories;
+    final size = CategoryAvatar.sizeOf(context);
 
     if (provider.isLoadingCategory && categories.isEmpty) {
-      return ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: 6,
-        separatorBuilder: (_, _) => const SizedBox(width: 14),
-        itemBuilder: (_, _) => const _ShimmerCircle(),
+      return AppShimmer(
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+          itemCount: 6,
+          separatorBuilder: (_, _) => const SizedBox(width: AppSpace.sm),
+          itemBuilder: (_, _) => Column(children: [
+            AppSkeletonBox(width: size, height: size, radius: CategoryAvatar.radiusFor(size)),
+            const SizedBox(height: AppSpace.xs),
+            AppSkeletonBox(width: size * 0.6, height: AppSpace.xs),
+          ]),
+        ),
       );
     }
 
     if (categories.isEmpty) {
       return Center(
-        child: Text(_tx('لا توجد أقسام مطابقة', 'No matching categories'), style: context.colors.caption),
+        child: Text(_tx('لا توجد أقسام مطابقة', 'No matching categories'), style: AppType.meta(context)),
       );
     }
 
     return ListView.separated(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
       itemCount: categories.length,
-      separatorBuilder: (_, _) => const SizedBox(width: 14),
+      separatorBuilder: (_, _) => const SizedBox(width: AppSpace.xxs),
       itemBuilder: (_, i) {
         final cat = categories[i];
         final isSelected = provider.selectedCategoryId == cat.id;
-        return GestureDetector(
-          onTap: () => provider.selectCategory(cat.id),
-          child: CategoryAvatar(isSelected, categoryModel: cat, index: i),
+        return Semantics(
+          button: true,
+          selected: isSelected,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => provider.selectCategory(cat.id),
+            child: AppPressScale(child: CategoryAvatar(isSelected, categoryModel: cat, index: i)),
+          ),
         );
       },
     );
@@ -355,34 +493,43 @@ class _CategoryChipsRow extends StatelessWidget {
 // ── Category list (web, vertical sidebar) ──────────────────────────────────────
 
 class _CategorySideList extends StatelessWidget {
+  const _CategorySideList();
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<CategoriesProvider>();
     final categories = provider.filteredCategories;
 
     if (provider.isLoadingCategory && categories.isEmpty) {
-      return ListView.separated(
-        itemCount: 6,
-        separatorBuilder: (_, _) => const SizedBox(height: 10),
-        itemBuilder: (_, _) => const _ShimmerRow(),
+      return AppShimmer(
+        child: ListView.separated(
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
+          itemCount: 6,
+          separatorBuilder: (_, _) => const SizedBox(height: AppSpace.sm),
+          itemBuilder: (_, _) => const Row(children: [
+            AppSkeletonBox(width: AppIconSize.xl, height: AppIconSize.xl, radius: AppRadius.chip),
+            SizedBox(width: AppSpace.sm),
+            Expanded(child: AppSkeletonBox(height: AppSpace.sm)),
+          ]),
+        ),
       );
     }
 
     if (categories.isEmpty) {
       return Center(
-        child: Text(_tx('لا توجد أقسام مطابقة', 'No matching categories'), style: context.colors.caption),
+        child: Text(_tx('لا توجد أقسام مطابقة', 'No matching categories'), style: AppType.meta(context)),
       );
     }
 
     return ListView.separated(
       itemCount: categories.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 6),
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpace.xxs),
       itemBuilder: (_, i) {
         final cat = categories[i];
-        final isSelected = provider.selectedCategoryId == cat.id;
         return _CategorySideTile(
           category: cat,
-          isSelected: isSelected,
+          isSelected: provider.selectedCategoryId == cat.id,
           onTap: () => provider.selectCategory(cat.id),
         );
       },
@@ -390,104 +537,56 @@ class _CategorySideList extends StatelessWidget {
   }
 }
 
-class _CategorySideTile extends StatefulWidget {
+/// One category in the side column: its mark, its name, and — when chosen — the primary tint and a chevron toward
+/// the courses.
+class _CategorySideTile extends StatelessWidget {
   final CategoryModel category;
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _CategorySideTile({
-    required this.category,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  State<_CategorySideTile> createState() => _CategorySideTileState();
-}
-
-class _CategorySideTileState extends State<_CategorySideTile> {
-  bool _hovering = false;
+  const _CategorySideTile({required this.category, required this.isSelected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final bg = widget.isSelected
-        ? context.colors.primary.withValues(alpha: 0.12)
-        : _hovering
-        ? context.colors.background
-        : Colors.transparent;
-
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovering = true),
-      onExit: (_) => setState(() => _hovering = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            textDirection: Helpers.pageDirection,
-            children: [
-              ClipOval(
-                child: SizedBox(
-                  width: 34,
-                  height: 34,
-                  child: widget.category.imageUrl != null
-                      ? AppNetworkImage(
-                          url: widget.category.imageUrl!,
-                          width: 34,
-                          height: 34,
-                          fit: BoxFit.cover,
-                          enableFullscreen: false,
-                          heroTag: 'side_cat_${widget.category.id}',
-                        )
-                      : Container(
-                          color: context.colors.primary.withValues(alpha: 0.15),
-                          child: Center(
-                            child: Text(
-                              widget.category.nameEn.isNotEmpty
-                                  ? widget.category.nameEn.split(' ').first[0] +
-                                        widget.category.nameEn
-                                            .split(' ')
-                                            .last[0]
-                                  : '?',
-                              style: TextStyle(
-                                color: context.colors.primary,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  AppConfig.lang == 'ar'
-                      ? widget.category.nameAr
-                      : widget.category.nameEn,
-                  style: context.colors.navLabelSelected.copyWith(
-                    fontSize: 14,
-                    color: widget.isSelected ? context.colors.primary : null,
-                    fontWeight: widget.isSelected
-                        ? FontWeight.w700
-                        : FontWeight.w500,
+    final c = context.colors;
+    return Semantics(
+      selected: isSelected,
+      child: Material(
+        color: isSelected ? c.primaryTint : Colors.transparent,
+        borderRadius: AppRadius.controlAll,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: AppRadius.controlAll,
+          hoverColor: c.inputBg,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppTouch.min),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
+              child: Row(
+                textDirection: pageDirection,
+                children: [
+                  _CategoryMark(
+                    category: category,
+                    size: AppIconSize.xl,
+                    radius: AppRadius.chip,
+                    heroTag: 'side_cat_${category.id}',
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Text(
+                      _nameOf(category),
+                      style: AppType.row(context).copyWith(
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                        color: isSelected ? c.textDark : c.textMedium,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (isSelected) Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.primary),
+                ],
               ),
-              if (widget.isSelected)
-                Icon(
-                  Icons.chevron_left_rounded,
-                  size: 18,
-                  color: context.colors.primary,
-                ),
-            ],
+            ),
           ),
         ),
       ),
@@ -495,14 +594,18 @@ class _CategorySideTileState extends State<_CategorySideTile> {
   }
 }
 
-// ── Category avatar (mobile chip) ─────────────────────────────────────────────
+// ── Category tile (the mobile row here and on the student's home) ─────────────────────────────────────────
 
+/// A category as a square tile on its block tone with its glyph (or its picture), the name under it. A chosen one
+/// is ringed in the primary. Its height is [extentOf]; the student home's category row reserves the same.
 class CategoryAvatar extends StatelessWidget {
   final CategoryModel categoryModel;
+
+  /// The tile's place in its row (kept for callers; the tone comes from the category itself).
   final int index;
   final bool isSelected;
 
-  CategoryAvatar(
+  const CategoryAvatar(
     this.isSelected, {
     super.key,
     required this.categoryModel,
@@ -520,75 +623,65 @@ class CategoryAvatar extends StatelessWidget {
     return stem.characters.first.toUpperCase();
   }
 
+  /// The tile's side: a sixth of the screen, at most 100.
+  static double sizeOf(BuildContext context) => min(context.width / 6, 100);
+
+  /// The name's size: a seventh of the tile, at least 11 (the home's row is sized from this).
+  static double _labelSize(double size) => max(11, size / 7);
+
+  static const double _labelHeight = 1.15;
+
+  /// A tile's corner: the block radius on a large tile, the card radius on a small one.
+  static double radiusFor(double size) => size >= 72 ? AppRadius.block : AppRadius.card;
+
+  /// The whole tile's height (square, gap, two lines of name) at the current text scale.
+  static double extentOf(BuildContext context) {
+    final size = sizeOf(context);
+    return size +
+        AppSpace.xs +
+        2 * _labelHeight * _labelSize(size) * MediaQuery.textScalerOf(context).scale(1) +
+        AppSpace.xxs;
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final colors = [c.accent, c.accent2, c.primary];
-    final ar = AppConfig.lang == 'ar';
-    final name = ar
-        ? (categoryModel.nameAr.isNotEmpty ? categoryModel.nameAr : categoryModel.nameEn)
-        : (categoryModel.nameEn.isNotEmpty ? categoryModel.nameEn : categoryModel.nameAr);
-    double size = min(context.width / 6, 100);
+    final name = _nameOf(categoryModel);
+    final size = sizeOf(context);
+    final radius = radiusFor(size);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: AppMotion.of(context).fast,
+          curve: AppMotion.curve,
           width: size,
           height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
+          foregroundDecoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(radius),
             border: Border.all(
-              color: isSelected
-                  ? context.colors.warning
-                  : context.colors.background,
-              width: 3,
+              color: isSelected ? c.primary : Colors.transparent,
+              width: AppBorder.focus,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: context.colors.heroShade.withValues(alpha: isSelected ? 0.28 : 0.16),
-                blurRadius: isSelected ? 20 : 14,
-                offset: const Offset(0, 6),
-              ),
-            ],
           ),
-          child: ClipOval(
-            child: categoryModel.imageUrl != null
-                ? AppNetworkImage(
-                    url: categoryModel.imageUrl!,
-                    width: size,
-                    height: size,
-                    fit: BoxFit.cover,
-                    enableFullscreen: false,
-                    heroTag: 'category_avatar_${categoryModel.id}',
-                  )
-                : Container(
-                    color: isSelected
-                        ? context.colors.warning
-                        : colors[index % 3].withValues(alpha: 0.5),
-                    child: Center(
-                      child: Text(
-                        initialsOf(name),
-                        style: TextStyle(
-                          fontFamily: AppFonts.family,
-                          color: c.primary,
-                          fontSize: size / 3,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
+          child: _CategoryMark(
+            category: categoryModel,
+            size: size,
+            radius: radius,
+            heroTag: 'category_avatar_${categoryModel.id}',
           ),
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: AppSpace.xxs),
         SizedBox(
-          width: size,
+          // a little wider than the tile, so a long single word ("Mathematics") is not split
+          width: size + AppSpace.sm,
           child: Text(
             name,
-            style: context.colors.navLabelSelected.copyWith(
-              color: isSelected ? context.colors.warning : null,
-              height: 1.15,
-              fontSize: max(11, size / 7),
+            style: AppType.label(context).copyWith(
+              color: isSelected ? c.textDark : c.textMedium,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              height: _labelHeight,
+              fontSize: _labelSize(size),
             ),
             textAlign: TextAlign.center,
             maxLines: 2,
@@ -600,31 +693,35 @@ class CategoryAvatar extends StatelessWidget {
   }
 }
 
-// ── Courses sliver (grid, shared by both layouts) ──────────────────────────────
+// ── Courses (shared by both layouts) ──────────────────────────────────────────────
 
 class _CoursesSliver extends StatelessWidget {
   final int crossAxisCount;
 
   const _CoursesSliver({required this.crossAxisCount});
 
+  /// A skeleton tile's shape: a 16:9 cover over three lines.
+  static const double _skeletonAspect = 0.9;
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<CategoriesProvider>();
     final courses = provider.filteredCourses;
     final loading = provider.isLoadingCourse;
+    final side = crossAxisCount > 2 ? AppSpace.lg : AppSpace.md;
 
     if (loading && courses.isEmpty) {
       return SliverPadding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: EdgeInsets.symmetric(horizontal: side),
         sliver: SliverGrid(
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
-            childAspectRatio: 0.72,
+            mainAxisSpacing: AppSpace.md,
+            crossAxisSpacing: AppSpace.md,
+            childAspectRatio: _skeletonAspect,
           ),
           delegate: SliverChildBuilderDelegate(
-            (_, _) => const _ShimmerCard(),
+            (_, _) => const AppShimmer(child: AppSkeletonBox(radius: AppRadius.card)),
             childCount: crossAxisCount * 2,
           ),
         ),
@@ -632,25 +729,13 @@ class _CoursesSliver extends StatelessWidget {
     }
 
     if (courses.isEmpty) {
-      final hasFilter =
-          provider.selectedCategoryId != null || provider.isSearching;
+      final hasFilter = provider.selectedCategoryId != null || provider.isSearching;
       return SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 60),
-          child: Column(
-            children: [
-              Icon(
-                hasFilter ? Icons.search_off_rounded : Icons.category_outlined,
-                size: 48,
-                color: context.colors.textDark.withValues(alpha: 0.3),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                hasFilter ? _tx('لا توجد نتائج مطابقة', 'Nothing matches') : _tx('اختر قسمًا لعرض الكورسات', 'Pick a category to see its courses'),
-                style: context.colors.caption,
-              ),
-            ],
-          ),
+        child: AppEmpty(
+          icon: hasFilter ? Icons.search_off_rounded : Icons.category_rounded,
+          title: hasFilter
+              ? _tx('لا توجد نتائج مطابقة', 'Nothing matches')
+              : _tx('اختر قسمًا لعرض الكورسات', 'Pick a category to see its courses'),
         ),
       );
     }
@@ -660,286 +745,13 @@ class _CoursesSliver extends StatelessWidget {
         featureKey: 'categories.courses',
         child: HomeCourseList(
           maxWidth: AppWidth.wide.max,
-          courses: courses
-              .map((e) => e.toCourseModel)
-              .cast<CourseModel>()
-              .toList(),
+          courses: courses.map((e) => e.toCourseModel).cast<CourseModel>().toList(),
           pageName: 'category-my-courses',
           isTeacher: false,
           onTap: (CourseModel c) {
             Navigator.pushNamed(context, '/course-detail', arguments: c);
           },
           hasMore: true,
-        ),
-      ),
-    );
-  }
-}
-
-// ── Course card (premium, hoverable on web) ─────────────────────────────────
-
-class _CourseCard extends StatefulWidget {
-  final CategoryCourseModel course;
-
-  const _CourseCard({required this.course});
-
-  @override
-  State<_CourseCard> createState() => _CourseCardState();
-}
-
-class _CourseCardState extends State<_CourseCard> {
-  bool _hovering = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final course = widget.course;
-
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovering = true),
-      onExit: (_) => setState(() => _hovering = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: () {
-          final model = CourseModel.fromCategoryModel(course);
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              settings: RouteSettings(name: '/course-detail', arguments: model),
-              builder: (_) => CourseDetailScreen(course: model),
-            ),
-          );
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          transform: Matrix4.translationValues(0, _hovering ? -4 : 0, 0),
-          decoration: BoxDecoration(
-            color: context.colors.cardBg,
-            borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-            boxShadow: _hovering
-                ? [
-                    BoxShadow(
-                      color: context.colors.heroShade.withValues(alpha: 0.16),
-                      blurRadius: 22,
-                      offset: const Offset(0, 10),
-                    ),
-                  ]
-                : context.colors.cardShadow,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                flex: 3,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(context.colors.radiusMedium),
-                  ),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      course.imageUrl.isNotEmpty
-                          ? AppNetworkImage(
-                              url: course.imageUrl,
-                              fit: BoxFit.cover,
-                              heroTag: 'category-course-${course.id}',
-                            )
-                          : Container(
-                              color: context.colors.primary.withValues(
-                                alpha: 0.1,
-                              ),
-                            ),
-                      PositionedDirectional(
-                        top: 8,
-                        end: 8,
-                        child: _Badge(
-                          icon: Icons.star_rounded,
-                          label: course.rating.toStringAsFixed(1),
-                          color: context.colors.accent,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Expanded(
-                flex: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        course.title,
-                        style: context.colors.h3.copyWith(fontSize: 14),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (course.instructorName.isNotEmpty)
-                        Text(
-                          course.instructorName,
-                          style: context.colors.caption,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            course.price > 0
-                                ? '\$ ${course.price.toStringAsFixed(2)}'
-                                : _tx('مجاني', 'Free'),
-                            style: context.colors.h3.copyWith(
-                              color: context.colors.accent,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _Badge({required this.icon, required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: context.colors.heroShade.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 12),
-          const SizedBox(width: 3),
-          Text(
-            label,
-            style: TextStyle(
-              color: context.colors.onHero,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Lightweight shimmer placeholders (no external package) ───────────────────
-
-class _ShimmerBase extends StatefulWidget {
-  final Widget child;
-
-  const _ShimmerBase({required this.child});
-
-  @override
-  State<_ShimmerBase> createState() => _ShimmerBaseState();
-}
-
-class _ShimmerBaseState extends State<_ShimmerBase>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1100),
-  )..repeat(reverse: true);
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    syncMotionLoop(context, _ctrl, reverse: true); // reduce motion parks this decorative loop
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (_, _) =>
-          Opacity(opacity: 0.4 + (_ctrl.value * 0.35), child: widget.child),
-    );
-  }
-}
-
-class _ShimmerCircle extends StatelessWidget {
-  const _ShimmerCircle();
-
-  @override
-  Widget build(BuildContext context) {
-    final double size = min(context.width / 6, 100);
-    return _ShimmerBase(
-      child: Column(
-        children: [
-          Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: context.colors.divider,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(width: size * 0.6, height: 8, color: context.colors.divider),
-        ],
-      ),
-    );
-  }
-}
-
-class _ShimmerRow extends StatelessWidget {
-  const _ShimmerRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return _ShimmerBase(
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: context.colors.divider,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(child: Container(height: 12, color: context.colors.divider)),
-        ],
-      ),
-    );
-  }
-}
-
-class _ShimmerCard extends StatelessWidget {
-  const _ShimmerCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return _ShimmerBase(
-      child: Container(
-        decoration: BoxDecoration(
-          color: context.colors.divider,
-          borderRadius: BorderRadius.circular(context.colors.radiusMedium),
         ),
       ),
     );

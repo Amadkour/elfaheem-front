@@ -310,7 +310,14 @@ class CourseListCard extends StatelessWidget {
             size: _thumb,
             child: Stack(children: [
               Positioned.fill(child: AppParallaxImage(maxShift: AppSpace.xxs, image: _picture())),
-              if (chip case final chip?) PositionedDirectional(start: AppSpace.xxs, bottom: AppSpace.xxs, child: chip),
+              if (chip case final chip?)
+                PositionedDirectional(
+                  start: AppSpace.xxs,
+                  end: AppSpace.xxs,
+                  bottom: AppSpace.xxs,
+                  // the chip ellipsizes inside the picture instead of running off its edge
+                  child: Align(alignment: AlignmentDirectional.centerStart, child: chip),
+                ),
             ]),
           ),
         ),
@@ -336,7 +343,13 @@ class CourseListCard extends StatelessWidget {
       aspectRatio: 16 / 9,
       child: Stack(children: [
         Positioned.fill(child: AppParallaxImage(image: _picture())),
-        if (chip != null) PositionedDirectional(start: AppSpace.sm, top: AppSpace.sm, child: chip!),
+        if (chip != null)
+          PositionedDirectional(
+            start: AppSpace.sm,
+            end: AppSpace.xxl,
+            top: AppSpace.sm,
+            child: Align(alignment: AlignmentDirectional.centerStart, child: chip!),
+          ),
         if (corner != null) PositionedDirectional(end: AppSpace.xs, top: AppSpace.xs, child: _CornerBackdrop(child: corner!)),
       ]),
     );
