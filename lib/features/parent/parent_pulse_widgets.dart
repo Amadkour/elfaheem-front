@@ -11,14 +11,17 @@
 //   ParentRoadmapCard     the learning path: done / total and the next course
 //   parentInsightText     a finding → its sentence (translation keys pp_ins_*, countText for every count + noun)
 //
-// Calm-home rules (D-102): one card per section with hairline dividers, low-alpha tints, w600 at most, colours from
-// context.colors only, times through AppTime.
+// Calm-home rules (D-102) in the Warm Editorial theme (D-610 – D-629): the child's hero is a sky block under the
+// peach greeting, every other section one paper card with an editorial title and hairline dividers; tones as opaque
+// tints (appTintOn / appInkOn), type from AppType, space from AppSpace, colours from context.colors only, times
+// through AppTime.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppPressScale;
 
 import '../../config/app_config.dart';
 import 'parent_overview.dart';
@@ -123,9 +126,43 @@ IconData _insightIcon(String code) => switch (code) {
       _ => Icons.lightbulb_rounded,
     };
 
+AppTone pulseStatusTone(PulseStatus s) => switch (s) {
+      PulseStatus.onTrack => AppTone.success,
+      PulseStatus.watch => AppTone.warning,
+      PulseStatus.needsYou => AppTone.danger,
+      PulseStatus.quiet => AppTone.neutral,
+    };
+
+/// The home kit's side gutter (HomeHeader, HomeStatStrip and HomeSectionTitle inset their content 20 px): the parent
+/// home's own rows line up with it.
+const double parentHomeGutter = AppSpace.md + AppSpace.xxs;
+
 // ── shared bits ────────────────────────────────────────────────────────────
 
-/// A section card: title row (icon · title · optional trailing) + body, the home's one-card-per-section surface.
+/// An icon in a soft round well of its tone: the one colour of an insight / figure row.
+class _ToneWell extends StatelessWidget {
+  const _ToneWell({required this.icon, required this.tone, this.surface});
+  final IconData icon;
+  final Color tone;
+
+  /// What the well sits on (the card by default, a block's tint inside a block).
+  final Color? surface;
+
+  static const double size = AppTouch.min - AppSpace.sm;
+
+  @override
+  Widget build(BuildContext context) {
+    final tint = appTintOn(context, tone, surface: surface);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: tint, shape: BoxShape.circle),
+      child: Icon(icon, size: AppIconSize.sm, color: appInkOn(context, tone, tint)),
+    );
+  }
+}
+
+/// A section card: an editorial title row (a quiet glyph · the title · an optional trailing) over the body, on paper.
 class ParentPulseSection extends StatelessWidget {
   const ParentPulseSection({super.key, required this.title, required this.icon, required this.child, this.trailing, this.padBody = true});
 
@@ -142,21 +179,26 @@ class ParentPulseSection extends StatelessWidget {
       padding: EdgeInsets.zero,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.xs, AppSpace.xs),
+          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.xs, AppSpace.xxs),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 36),
+            constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
             child: Row(children: [
-              Icon(icon, size: 18, color: c.textMedium),
-              const SizedBox(width: AppSpace.xs),
               Expanded(
-                child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w600, c: c.textDark)),
+                child: Semantics(
+                  header: true,
+                  child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+                ),
               ),
               ?trailing,
+              Padding(
+                padding: const EdgeInsetsDirectional.only(start: AppSpace.xs, end: AppSpace.xs),
+                child: Icon(icon, size: AppIconSize.md, color: c.textLight),
+              ),
             ]),
           ),
         ),
         if (padBody)
-          Padding(padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md), child: child)
+          Padding(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md), child: child)
         else
           child,
       ]),
@@ -179,7 +221,7 @@ class ParentChildSwitcher extends StatelessWidget {
       label: 'pp_switch_hint'.tr,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: parentHomeGutter),
         child: Row(children: [
           for (final ch in children) ...[
             _ChildChip(child: ch, selected: ch.id == selectedId, onTap: () => onSelect(ch.id)),
@@ -197,50 +239,67 @@ class _ChildChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
+  static const double _avatar = AppTouch.min - AppSpace.sm - AppSpace.xxs;
+  static const double _dot = AppSpace.sm;
+  static const double _maxWidth = 220;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final status = child.pulse?.status;
     final dot = status == null ? (child.openAlerts > 0 ? c.danger : null) : pulseStatusColor(context, status);
-    final r = BorderRadius.circular(AppRadius.hero);
+    final surface = selected ? appTintOn(context, c.primary) : c.cardBg;
+    final r = BorderRadius.circular(AppRadius.pill);
     return Semantics(
       button: true,
       selected: selected,
       label: [child.name, if (status != null) pulseStatusLabel(status)].join(' · '),
-      child: Material(
-        color: selected ? c.primaryTint : c.cardBg,
-        shape: RoundedRectangleBorder(borderRadius: r, side: BorderSide(color: selected ? c.primary : c.divider, width: selected ? 1.5 : 1)),
-        child: InkWell(
-          borderRadius: r,
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 48, maxWidth: 220),
-            child: Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(6, 6, 14, 6),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Stack(clipBehavior: Clip.none, children: [
-                  AppAvatar(name: child.name, url: child.imageUrl.isEmpty ? null : child.imageUrl, size: 32),
-                  if (dot != null)
-                    PositionedDirectional(
-                      end: -1,
-                      bottom: -1,
-                      child: Container(
-                        width: 11,
-                        height: 11,
-                        decoration: BoxDecoration(color: dot, shape: BoxShape.circle, border: Border.all(color: c.cardBg, width: 2)),
+      child: AppPressScale(
+        child: Material(
+          color: surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: r,
+            side: BorderSide(color: selected ? c.primary : c.divider, width: selected ? AppBorder.strong : AppBorder.hairline),
+          ),
+          child: InkWell(
+            borderRadius: r,
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouch.min, maxWidth: _maxWidth),
+              child: Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xxs + AppBorder.focus, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Stack(clipBehavior: Clip.none, children: [
+                    AppAvatar(name: child.name, url: child.imageUrl.isEmpty ? null : child.imageUrl, size: _avatar),
+                    if (dot != null)
+                      PositionedDirectional(
+                        end: -AppBorder.hairline,
+                        bottom: -AppBorder.hairline,
+                        child: Container(
+                          width: _dot,
+                          height: _dot,
+                          decoration: BoxDecoration(
+                            color: dot,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: surface, width: AppBorder.focus),
+                          ),
+                        ),
+                      ),
+                  ]),
+                  const SizedBox(width: AppSpace.xs),
+                  Flexible(
+                    child: Text(
+                      child.name.split(' ').first,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.row(context).copyWith(
+                        fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                        color: selected ? appInkOn(context, c.primary, surface) : c.textDark,
                       ),
                     ),
-                ]),
-                const SizedBox(width: AppSpace.xs),
-                Flexible(
-                  child: Text(
-                    child.name.split(' ').first,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: appText(13.5, w: selected ? FontWeight.w600 : FontWeight.w500, c: selected ? appInk(context, c.primary) : c.textDark),
                   ),
-                ),
-              ]),
+                ]),
+              ),
             ),
           ),
         ),
@@ -251,6 +310,9 @@ class _ChildChip extends StatelessWidget {
 
 // ── hero: how is my child doing ────────────────────────────────────────────
 
+/// The child's block (D-305 in the Warm Editorial theme): a sky block under the peach greeting — the question in the
+/// editorial headline, the status, ONE plain sentence, then the three figures that answer it (they count up once
+/// and keep their 6-week lines), "Full report" at the end.
 class ParentPulseHero extends StatelessWidget {
   const ParentPulseHero({super.key, required this.child, required this.pulse, required this.onOpenReport});
 
@@ -258,45 +320,39 @@ class ParentPulseHero extends StatelessWidget {
   final ParentPulse pulse;
   final VoidCallback onOpenReport;
 
+  static const double _avatar = AppTouch.primary;
+
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final tone = pulseStatusColor(context, pulse.status);
     final first = child.name.split(' ').first;
     final headline = _fmt('pp_head_${pulse.status.wire}', {'name': first});
-    return AppCard(
-      padding: EdgeInsets.zero,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        // a hairline of the status colour along the top: the one accent of the card
-        Container(height: 3, color: tone.withValues(alpha: 0.85)),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.sm),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            AppAvatar(name: child.name, url: child.imageUrl.isEmpty ? null : child.imageUrl, size: 52),
-            const SizedBox(width: AppSpace.sm),
+    return AppBlock(
+      tone: AppBlockTone.sky,
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.xs),
+      child: Builder(builder: (context) {
+        final ink = AppBlock.colorsOf(context);
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            AppAvatar(name: child.name, url: child.imageUrl.isEmpty ? null : child.imageUrl, size: _avatar),
+            const SizedBox(width: AppSpace.md),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(_fmt('pp_how_title', {'name': first}), maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: appText(17, w: FontWeight.w600, c: c.textDark, h: 1.3)),
-                const SizedBox(height: 6),
-                AppBadgePill(pulseStatusLabel(pulse.status), color: tone, icon: pulseStatusIcon(pulse.status)),
+                Semantics(
+                  header: true,
+                  child: Text(_fmt('pp_how_title', {'name': first}), maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: AppType.headline(context).copyWith(color: ink.ink)),
+                ),
+                const SizedBox(height: AppSpace.xs),
+                AppStatusBadge(label: pulseStatusLabel(pulse.status), tone: pulseStatusTone(pulse.status), icon: pulseStatusIcon(pulse.status)),
               ]),
             ),
           ]),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(headline, style: appText(14, w: FontWeight.w500, c: c.textDark, h: 1.45)),
-          ]),
-        ),
-        Divider(height: 1, color: c.divider),
-        _PulseFigures(pulse: pulse),
-        Divider(height: 1, color: c.divider),
-        Align(
-          alignment: AlignmentDirectional.centerEnd,
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpace.xs),
+          const SizedBox(height: AppSpace.md),
+          Text(headline, style: AppType.body(context).copyWith(color: ink.ink, height: 1.5)),
+          const SizedBox(height: AppSpace.md),
+          _PulseFigures(pulse: pulse),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
             child: AppButton.ghost(
               label: 'pp_full_report'.tr,
               icon: Icons.insights_rounded,
@@ -304,8 +360,8 @@ class ParentPulseHero extends StatelessWidget {
               onPressed: onOpenReport,
             ),
           ),
-        ),
-      ]),
+        ]);
+      }),
     );
   }
 }
@@ -321,6 +377,8 @@ class _Figure {
 class _PulseFigures extends StatelessWidget {
   const _PulseFigures({required this.pulse});
   final ParentPulse pulse;
+
+  static const double _wide = 560;
 
   List<_Figure> _figures(BuildContext context) {
     final c = context.colors;
@@ -366,22 +424,29 @@ class _PulseFigures extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final figures = _figures(context);
+    final ink = AppBlock.colorsOf(context);
+    // the block's own hairline: the faint ink, light enough to part the figures without boxing them
+    final rule = ink.faint.withValues(alpha: 0.28);
     return LayoutBuilder(builder: (context, box) {
-      if (box.maxWidth >= 560) {
-        return IntrinsicHeight(
-          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            for (var i = 0; i < figures.length; i++) ...[
-              if (i > 0) VerticalDivider(width: 1, color: context.colors.divider),
-              Expanded(child: _FigureTile(f: figures[i])),
-            ],
-          ]),
+      if (box.maxWidth >= _wide) {
+        return Container(
+          decoration: BoxDecoration(border: Border.symmetric(horizontal: BorderSide(color: rule, width: AppBorder.hairline))),
+          child: IntrinsicHeight(
+            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              for (var i = 0; i < figures.length; i++) ...[
+                if (i > 0) VerticalDivider(width: AppSpace.lg, thickness: AppBorder.hairline, color: rule),
+                Expanded(child: _FigureTile(f: figures[i])),
+              ],
+            ]),
+          ),
         );
       }
       return Column(children: [
         for (var i = 0; i < figures.length; i++) ...[
-          if (i > 0) Divider(height: 1, indent: AppSpace.md, endIndent: AppSpace.md, color: context.colors.divider),
+          Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: rule),
           _FigureRow(f: figures[i]),
         ],
+        Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: rule),
       ]);
     });
   }
@@ -391,24 +456,28 @@ class _FigureTile extends StatelessWidget {
   const _FigureTile({required this.f});
   final _Figure f;
 
+  static const double _spark = AppSpace.xl - AppSpace.xxs;
+
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
+    final ink = AppBlock.colorsOf(context);
+    final tone = ink.accentInk(f.tone);
     return Padding(
-      padding: const EdgeInsets.all(AppSpace.md),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(f.icon, size: 16, color: c.textMedium),
-          const SizedBox(width: 6),
-          Expanded(child: Text(f.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w500, c: c.textMedium))),
+          Icon(f.icon, size: AppIconSize.sm, color: ink.muted),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(child: Text(f.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: ink.muted))),
         ]),
         const SizedBox(height: AppSpace.xs),
-        Text(f.value, style: appText(26, w: FontWeight.w600, c: appInk(context, f.tone), h: 1.1)),
-        const SizedBox(height: 4),
-        Text(f.sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w400, c: c.textMedium, h: 1.35)),
+        // the figures count up once (and glide when a refresh changes them): the answer to the block's question
+        AppCountUp(f.value, memoryKey: 'parent.pulse.${f.label}', style: AppType.figureLarge(context).copyWith(color: tone)),
+        const SizedBox(height: AppSpace.xxs),
+        Text(f.sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: ink.muted, height: 1.4)),
         if (f.spark.isNotEmpty) ...[
           const SizedBox(height: AppSpace.xs),
-          AppSparkline(f.spark, color: f.tone, height: 28, label: f.label),
+          AppSparkline(f.spark, color: f.tone, surface: ink.surface, height: _spark, label: f.label),
         ],
       ]),
     );
@@ -419,31 +488,29 @@ class _FigureRow extends StatelessWidget {
   const _FigureRow({required this.f});
   final _Figure f;
 
+  static const double _sparkWidth = AppTouch.primary;
+  static const double _sparkHeight = AppSpace.lg;
+
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
+    final ink = AppBlock.colorsOf(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
       child: Row(children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(color: f.tone.withValues(alpha: 0.10), shape: BoxShape.circle),
-          child: Icon(f.icon, size: 18, color: appInk(context, f.tone)),
-        ),
+        _ToneWell(icon: f.icon, tone: f.tone, surface: ink.surface),
         const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(f.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w500, c: c.textDark)),
-            Text(f.sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w400, c: c.textMedium, h: 1.35)),
+            Text(f.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: ink.ink)),
+            Text(f.sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: ink.muted, height: 1.4)),
           ]),
         ),
         if (f.spark.isNotEmpty) ...[
           const SizedBox(width: AppSpace.xs),
-          SizedBox(width: 56, child: AppSparkline(f.spark, color: f.tone, height: 24, fill: false, label: f.label)),
+          SizedBox(width: _sparkWidth, child: AppSparkline(f.spark, color: f.tone, surface: ink.surface, height: _sparkHeight, fill: false, label: f.label)),
         ],
         const SizedBox(width: AppSpace.sm),
-        Text(f.value, style: appText(18, w: FontWeight.w600, c: appInk(context, f.tone))),
+        AppCountUp(f.value, memoryKey: 'parent.pulse.${f.label}', style: AppType.figure(context).copyWith(color: ink.accentInk(f.tone))),
       ]),
     );
   }
@@ -485,14 +552,20 @@ class ParentInsightsCard extends StatelessWidget {
           ? Padding(
               padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
               child: Row(children: [
-                Icon(Icons.check_circle_rounded, size: 18, color: c.success),
-                const SizedBox(width: AppSpace.xs),
-                Expanded(child: Text('pp_all_clear'.tr, style: appText(13, w: FontWeight.w400, c: c.textMedium))),
+                _ToneWell(icon: Icons.check_rounded, tone: c.success),
+                const SizedBox(width: AppSpace.sm),
+                Expanded(child: Text('pp_all_clear'.tr, style: AppType.body(context))),
               ]),
             )
           : Column(children: [
               for (var i = 0; i < insights.length; i++) ...[
-                if (i > 0) Divider(height: 1, indent: 60, color: c.divider),
+                if (i > 0)
+                  Divider(
+                    height: AppBorder.hairline,
+                    thickness: AppBorder.hairline,
+                    indent: AppSpace.md + _ToneWell.size + AppSpace.sm,
+                    color: c.divider,
+                  ),
                 _InsightRow(
                   insight: insights[i],
                   text: parentInsightText(insights[i], childName),
@@ -517,23 +590,16 @@ class _InsightRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final tone = _levelColor(context, insight.level);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(color: tone.withValues(alpha: 0.10), shape: BoxShape.circle),
-          child: Icon(_insightIcon(insight.code), size: 17, color: appInk(context, tone)),
-        ),
+        _ToneWell(icon: _insightIcon(insight.code), tone: _levelColor(context, insight.level)),
         const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(text, style: appText(13.5, w: FontWeight.w500, c: c.textDark, h: 1.45)),
+              padding: const EdgeInsets.only(top: AppSpace.xxs + AppBorder.focus),
+              child: Text(text, style: AppType.row(context).copyWith(height: 1.5)),
             ),
             if (actionLabel != null)
               Padding(
@@ -574,17 +640,14 @@ class ParentWeekCard extends StatelessWidget {
     return ParentPulseSection(
       title: 'pp_this_week'.tr,
       icon: Icons.date_range_rounded,
-      trailing: groups.isEmpty ? null : Padding(
-        padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
-        child: Text('${events.length}', style: appText(13, w: FontWeight.w600, c: c.textMedium)),
-      ),
+      trailing: groups.isEmpty ? null : AppCountBadge(count: events.length, tone: AppTone.neutral),
       child: groups.isEmpty
-          ? Text('pp_week_empty'.tr, style: appText(13, w: FontWeight.w400, c: c.textMedium))
+          ? Text('pp_week_empty'.tr, style: AppType.body(context))
           : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              for (final g in groups.entries) ...[
+              for (final (i, g) in groups.entries.indexed) ...[
                 Padding(
-                  padding: const EdgeInsets.only(top: AppSpace.xs, bottom: 4),
-                  child: Text(g.key, style: appText(12, w: FontWeight.w600, c: c.textMedium)),
+                  padding: EdgeInsets.only(top: i == 0 ? 0 : AppSpace.sm, bottom: AppSpace.xxs),
+                  child: Text(g.key, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
                 ),
                 for (final e in g.value) _WeekRow(event: e),
               ],
@@ -597,38 +660,46 @@ class _WeekRow extends StatelessWidget {
   const _WeekRow({required this.event});
   final ParentEventRow event;
 
+  static const double _timeWidth = AppSpace.xxxl;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final exam = event.source == 'exam' || event.kind == 'exam';
-    final tone = exam ? c.accent2 : c.primary;
+    final tone = exam ? c.warning : c.primary;
     final sub = [if (event.subtitle.isNotEmpty) event.subtitle, if (event.location.isNotEmpty) event.location].join(' · ');
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(
-          width: 64,
-          child: Text(event.startsAt == null ? '—' : AppTime.time(event.startsAt!), maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: appText(12.5, w: FontWeight.w600, c: appInk(context, tone))),
-        ),
-        Container(
-          width: 3,
-          height: 30,
-          margin: const EdgeInsetsDirectional.only(end: 10, top: 2),
-          decoration: BoxDecoration(color: tone.withValues(alpha: 0.8), borderRadius: BorderRadius.circular(2)),
-        ),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(event.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w500, c: c.textDark, h: 1.3)),
-            if (sub.isNotEmpty) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w400, c: c.textMedium)),
-            if (exam)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: AppBadgePill('pp_exam_tag'.tr, color: c.accent2, icon: Icons.quiz_rounded),
-              ),
-          ]),
-        ),
-      ]),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs + AppBorder.hairline),
+      child: IntrinsicHeight(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          SizedBox(
+            width: _timeWidth,
+            child: Padding(
+              padding: const EdgeInsets.only(top: AppBorder.focus),
+              child: Text(event.startsAt == null ? '—' : AppTime.time(event.startsAt!), maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: appInk(context, tone),
+                      fontFeatures: const [FontFeature.tabularFigures()])),
+            ),
+          ),
+          // the day's rail: the tone of what it is (a class in the primary, an exam in the warning tone)
+          Container(
+            width: AppBorder.focus + AppBorder.hairline,
+            margin: const EdgeInsetsDirectional.only(end: AppSpace.sm, top: AppSpace.xxs / 2, bottom: AppSpace.xxs / 2),
+            decoration: BoxDecoration(color: tone, borderRadius: BorderRadius.circular(AppRadius.pill)),
+          ),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(event.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(height: 1.35)),
+              if (sub.isNotEmpty) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+              if (exam)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpace.xxs),
+                  child: AppStatusBadge(label: 'pp_exam_tag'.tr, tone: AppTone.warning, icon: Icons.quiz_rounded, dense: true),
+                ),
+            ]),
+          ),
+        ]),
+      ),
     );
   }
 }
@@ -653,16 +724,16 @@ class ParentSubjectsCard extends StatelessWidget {
       padBody: false,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         for (var i = 0; i < subjects.length; i++) ...[
-          if (i > 0) Divider(height: 1, indent: AppSpace.md, endIndent: AppSpace.md, color: c.divider),
+          if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, indent: AppSpace.md, endIndent: AppSpace.md, color: c.divider),
           _SubjectRow(subject: subjects[i], onMessage: onMessage == null || subjects[i].teacher == null ? null : () => onMessage!(subjects[i])),
         ],
         if (anyClass)
           Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpace.md, 4, AppSpace.md, AppSpace.md),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Icon(Icons.shield_outlined, size: 14, color: c.textLight),
-              const SizedBox(width: 6),
-              Expanded(child: Text('pp_subj_privacy'.tr, style: appText(11, w: FontWeight.w400, c: c.textLight, h: 1.4))),
+              Icon(Icons.shield_outlined, size: AppIconSize.xs, color: c.textLight),
+              const SizedBox(width: AppSpace.xs),
+              Expanded(child: Text('pp_subj_privacy'.tr, style: AppType.meta(context).copyWith(color: c.textLight, height: 1.4))),
             ]),
           )
         else
@@ -677,51 +748,55 @@ class _SubjectRow extends StatelessWidget {
   final PulseSubject subject;
   final VoidCallback? onMessage;
 
+  static const double _figureWidth = AppSpace.xxl;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final s = subject;
-    final tone = s.isFocus ? c.warning : (s.isStrength ? c.success : c.textMedium);
     final meta = [
       if (s.classAvg != null) _fmt('pp_subj_class', {'n': s.classAvg!.round()}),
       _fmt('pp_subj_progress', {'n': s.progress.round()}),
       if (s.missed > 0) _fmt('pp_subj_missed', {'n': s.missed}),
     ].join(' · ');
+    final score = s.avg == null ? c.textLight : appScoreColor(context, s.avg);
     return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.xs, AppSpace.sm),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.xxs, AppSpace.sm),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Wrap(spacing: AppSpace.xs, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
-              Text(s.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w500, c: c.textDark)),
-              if (s.isStrength || s.isFocus) AppBadgePill('pp_subj_${s.tone}'.tr, color: tone),
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              Text(s.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+              if (s.isStrength || s.isFocus)
+                AppStatusBadge(label: 'pp_subj_${s.tone}'.tr, tone: s.isFocus ? AppTone.warning : AppTone.success, dense: true),
             ]),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             Row(children: [
               Expanded(
                 child: AppProgressBar(
                   value: s.avg ?? 0,
                   marker: s.classAvg,
-                  color: s.avg == null ? c.divider : appScoreColor(context, s.avg),
+                  color: s.avg == null ? c.divider : score,
                 ),
               ),
               const SizedBox(width: AppSpace.xs),
               SizedBox(
-                width: 44,
+                width: _figureWidth,
                 child: Text(s.avg == null ? '—' : '${s.avg!.round()}%', textAlign: TextAlign.end,
-                    style: appText(13, w: FontWeight.w600, c: s.avg == null ? c.textLight : appInk(context, appScoreColor(context, s.avg)))),
+                    style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: s.avg == null ? c.textLight : appInk(context, score),
+                        fontFeatures: const [FontFeature.tabularFigures()])),
               ),
             ]),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpace.xxs),
             Text(s.avg == null ? '${'pp_subj_no_marks'.tr} · $meta' : meta, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: appText(11.5, w: FontWeight.w400, c: c.textMedium, h: 1.35)),
+                style: AppType.meta(context).copyWith(height: 1.4)),
           ]),
         ),
         if (onMessage != null)
-          IconButton(
+          AppIconButton(
+            icon: Icons.chat_bubble_outline_rounded,
             tooltip: '${'pp_act_message'.tr} · ${s.teacher!.name}',
             onPressed: onMessage,
-            icon: Icon(Icons.chat_bubble_outline_rounded, size: 20, color: c.primary),
           )
         else
           const SizedBox(width: AppSpace.xs),
@@ -747,26 +822,25 @@ class ParentRoadmapCard extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (r.field.isNotEmpty)
           Text(_fmt('pp_road_hint', {'name': childName.split(' ').first, 'field': r.field}), maxLines: 2, overflow: TextOverflow.ellipsis,
-              style: appText(13, w: FontWeight.w400, c: c.textMedium, h: 1.4)),
+              style: AppType.body(context).copyWith(height: 1.45)),
         if (r.total > 0) ...[
-          const SizedBox(height: AppSpace.xs),
+          const SizedBox(height: AppSpace.sm),
           Text(_fmt('pp_road_progress', {'done': r.done, 'total': r.total}), maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: appText(12, w: FontWeight.w600, c: c.textDark)),
-          const SizedBox(height: 6),
+              style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
+          const SizedBox(height: AppSpace.xs),
           AppProgressBar(value: r.ratio * 100, color: c.primary),
         ],
         if (r.next.isNotEmpty) ...[
           const SizedBox(height: AppSpace.sm),
           Row(children: [
-            Icon(Icons.flag_rounded, size: 16, color: c.accent2),
-            const SizedBox(width: 6),
+            Icon(Icons.flag_rounded, size: AppIconSize.sm, color: c.primary),
+            const SizedBox(width: AppSpace.xs),
             Expanded(
-              child: Text(_fmt('pp_road_next', {'name': r.next}), maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: appText(13, w: FontWeight.w500, c: c.textDark)),
+              child: Text(_fmt('pp_road_next', {'name': r.next}), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
             ),
             if (r.nextProgress != null && r.nextProgress! > 0) ...[
               const SizedBox(width: AppSpace.xs),
-              Text('${r.nextProgress!.round()}%', style: appText(12, w: FontWeight.w600, c: c.textMedium)),
+              Text('${r.nextProgress!.round()}%', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600)),
             ],
           ]),
         ],

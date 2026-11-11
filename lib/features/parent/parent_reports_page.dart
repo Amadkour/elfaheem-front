@@ -8,17 +8,21 @@
 //
 // Each report also shows "Marks from the teachers": the child's analytics profile (the same view the child has in
 // the student app — published marks with the class average). With several children, chips at the top show one.
+//
+// Warm Editorial (D-610 – D-629): the child's report opens on ONE block in the child's own tone (parentChildTone) —
+// the score ring is the page's memorable element, its figure rolls (AppOdometer) and the block leans a little under
+// the pointer (AppTilt.subtle); everything after it is paper: the findings, the figures (count up once), the trend
+// (the kit's AppBarChart), homework as an AppDonut, habits as bars that fill once.
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/design/app_gradients.dart';
-import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppTilt;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
-import '../shared/analytics/analytics_ui.dart';
+import '../shared/analytics/analytics_ui.dart' show anTr;
 import '../teacher/data_lab/data_lab_models.dart' show DlProfile;
 import 'parent_child_marks.dart';
 import 'parent_link_providers.dart';
@@ -106,49 +110,55 @@ class _ReportsBodyState extends State<_ReportsBody> {
         list: Column(children: [
         // period + date selector ------------------------------------------------
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Column(children: [
-            SizedBox(
-              width: double.infinity,
-              child: SegmentedButton<String>(
-                showSelectedIcon: false,
-                segments: [for (final x in _periods) ButtonSegment(value: x, label: Text('pl_period_$x'.tr))],
-                selected: {_period},
-                onSelectionChanged: (s) => setState(() => _period = s.first),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
+          child: AppWidthBox(
+            width: AppWidth.reading,
+            gutters: false,
+            child: Column(children: [
+              AppTabs(
+                expand: true,
+                items: [for (final x in _periods) AppTabItem('pl_period_$x'.tr)],
+                index: _periods.indexOf(_period),
+                onChanged: (i) => setState(() => _period = _periods[i]),
               ),
-            ),
-            const SizedBox(height: 6),
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              IconButton(
-                  icon: const Icon(Icons.chevron_left_rounded),
-                  onPressed: () => p.setDate(_step(p.refDate, _period, -1))),
-              TextButton.icon(
-                icon: const Icon(Icons.calendar_month_rounded, size: 18),
-                label: Text(plDate(p.refDate)),
-                onPressed: () async {
-                  final d = await showDatePicker(
-                      context: context,
-                      initialDate: p.refDate,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime.now());
-                  if (d != null) p.setDate(d);
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.chevron_right_rounded),
-                onPressed: _step(p.refDate, _period, 1).isAfter(DateTime.now())
-                    ? null
-                    : () => p.setDate(_step(p.refDate, _period, 1)),
-              ),
+              const SizedBox(height: AppSpace.xxs),
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                AppIconButton(
+                  icon: Icons.chevron_left_rounded,
+                  tooltip: MaterialLocalizations.of(context).previousPageTooltip,
+                  onPressed: () => p.setDate(_step(p.refDate, _period, -1)),
+                ),
+                Flexible(
+                  child: AppButton.ghost(
+                    icon: Icons.calendar_month_rounded,
+                    label: plDate(p.refDate),
+                    onPressed: () async {
+                      final d = await showDatePicker(
+                          context: context,
+                          initialDate: p.refDate,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now());
+                      if (d != null) p.setDate(d);
+                    },
+                  ),
+                ),
+                AppIconButton(
+                  icon: Icons.chevron_right_rounded,
+                  tooltip: MaterialLocalizations.of(context).nextPageTooltip,
+                  onPressed: _step(p.refDate, _period, 1).isAfter(DateTime.now())
+                      ? null
+                      : () => p.setDate(_step(p.refDate, _period, 1)),
+                ),
+              ]),
             ]),
-          ]),
+          ),
         ),
         if (widget.studentId == null && p.children.length > 1)
           SizedBox(
-            height: 46,
+            height: AppTouch.min + AppSpace.xs,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xxs),
               children: [
                 _childChip(context, null, anTr('pl_all_children', 'All children')),
                 for (final ch in p.children)
@@ -167,16 +177,20 @@ class _ReportsBodyState extends State<_ReportsBody> {
               : AppRefresh(
             onRefresh: p.reload,
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.lg),
               children: [
                 for (final ch in p.children)
                   if (ch[_period] is Map && (_only == null || (ch['student'] as Map?)?['id'] == _only))
-                    _ChildReportCard(
-                      childId: ((ch['student'] as Map?)?['id'] as num?)?.toInt(),
-                      name: '${(ch['student'] as Map)['name']}',
-                      report: Map<String, dynamic>.from(ch[_period] as Map),
-                      period: _period,
-                      profile: p.profiles[((ch['student'] as Map?)?['id'] as num?)?.toInt()],
+                    AppWidthBox(
+                      width: AppWidth.reading,
+                      gutters: false,
+                      child: _ChildReportCard(
+                        childId: ((ch['student'] as Map?)?['id'] as num?)?.toInt(),
+                        name: '${(ch['student'] as Map)['name']}',
+                        report: Map<String, dynamic>.from(ch[_period] as Map),
+                        period: _period,
+                        profile: p.profiles[((ch['student'] as Map?)?['id'] as num?)?.toInt()],
+                      ),
                     ),
               ],
             ),
@@ -190,18 +204,37 @@ class _ReportsBodyState extends State<_ReportsBody> {
   Widget _childChip(BuildContext context, int? id, String label) {
     final c = context.colors;
     final on = _only == id;
+    final surface = on ? c.primary : c.cardBg;
+    final ink = on ? c.onHero : c.textDark;
+    final r = BorderRadius.circular(AppRadius.pill);
     return Padding(
-      padding: const EdgeInsetsDirectional.only(end: 8),
-      child: ChoiceChip(
+      padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
+      child: Semantics(
+        button: true,
         selected: on,
-        showCheckmark: false,
-        avatar: id == null ? Icon(Icons.groups_rounded, size: 16, color: on ? c.onHero : c.textMedium) : AnAvatar(name: label, size: 22),
-        label: Text(label, style: anText(12.5, w: FontWeight.w700, c: on ? c.onHero : c.textDark)),
-        selectedColor: c.primary,
-        backgroundColor: c.cardBg,
-        side: BorderSide(color: on ? c.primary : c.divider),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        onSelected: (_) => setState(() => _only = id),
+        child: Material(
+          color: surface,
+          shape: RoundedRectangleBorder(borderRadius: r, side: BorderSide(color: on ? c.primary : c.divider, width: AppBorder.hairline)),
+          child: InkWell(
+            borderRadius: r,
+            onTap: () => setState(() => _only = id),
+            child: Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs, 0, AppSpace.md, 0),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                if (id == null)
+                  Icon(Icons.groups_rounded, size: AppIconSize.sm, color: ink)
+                else
+                  AppAvatar(name: label, size: AppSpace.lg),
+                const SizedBox(width: AppSpace.xs),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: AppSpace.xxxl * 3),
+                  child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: AppType.label(context).copyWith(color: ink, fontWeight: on ? FontWeight.w600 : FontWeight.w500)),
+                ),
+              ]),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -240,6 +273,9 @@ class _ChildReportCard extends StatelessWidget {
     return plFmt('pl_ins_${i['code']}', params);
   }
 
+  static const double _ring = AppSpace.xxxl + AppSpace.xl;
+  static const double _avatar = AppTouch.min - AppSpace.xxs;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -250,7 +286,7 @@ class _ChildReportCard extends StatelessWidget {
     final exams = plList(report['exams']);
     final log = plList(report['attendance_log']);
     final assignments = plList(report['assignments']);
-    final range = period == 'daily' ? '${report['start']}' : '${report['start']}  →  ${report['end']}';
+    final range = period == 'daily' ? '${report['start']}' : '${report['start']}  –  ${report['end']}';
     final days = (report['days'] as List).length;
 
     // ── plain-language deltas ───────────────────────────────────────────────
@@ -259,54 +295,62 @@ class _ChildReportCard extends StatelessWidget {
     final examNow = _s['exams_avg_percentage'] as num?, examOld = _prev['exams_avg_percentage'] as num?;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // ── HERO ────────────────────────────────────────────────────────────────
-      Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          gradient: AppGradients.blend(context, color: tierColor),
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: [BoxShadow(color: tierColor.withAlpha(70), blurRadius: 16, offset: const Offset(0, 6))],
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(shape: BoxShape.circle, color: context.colors.heroGlass),
-              child: AnAvatar(name: name, url: profile?.imageUrl, size: 34, color: tierColor, onColor: true),
-            ),
-            const SizedBox(width: 10),
-            Expanded(child: Text(name, style: TextStyle(color: context.colors.onHero, fontSize: 18, fontWeight: FontWeight.w800))),
-          ]),
-          Text(range, style: TextStyle(color: context.colors.onHeroMuted, fontSize: 12)),
-          const SizedBox(height: 14),
-          Row(children: [
-            PlScoreRing(value: _n(_score, 'value'), color: context.colors.onHero, size: 96, light: true),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('pl_tier_$tier'.tr, style: TextStyle(color: context.colors.onHero, fontSize: 20, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 4),
-                Text('pl_tier_desc_$tier'.tr, style: TextStyle(color: context.colors.onHero, fontSize: 12.5, height: 1.4)),
-              ]),
-            ),
-          ]),
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: TextButton.icon(
-              style: TextButton.styleFrom(foregroundColor: context.colors.onHero),
-              icon: const Icon(Icons.help_outline_rounded, size: 16),
-              label: Text('pl_score_how'.tr, style: const TextStyle(fontSize: 12)),
-              onPressed: () => _scoreSheet(context),
-            ),
+      // ── HERO: the child's block, the score ring its one key figure ──────────
+      Padding(
+        padding: const EdgeInsets.only(bottom: AppSpace.md),
+        child: AppTilt.subtle(
+          radius: AppRadius.block,
+          child: AppBlock(
+            tone: childId == null ? AppBlockTone.peach : parentChildTone(childId!),
+            hero: true,
+            child: Builder(builder: (context) {
+              final ink = AppBlock.colorsOf(context);
+              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  AppAvatar(name: name, url: profile?.imageUrl, size: _avatar),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Semantics(
+                        header: true,
+                        child: Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.headline(context).copyWith(color: ink.ink)),
+                      ),
+                      Text(range, textDirection: TextDirection.ltr, style: AppType.meta(context).copyWith(color: ink.muted)),
+                    ]),
+                  ),
+                ]),
+                const SizedBox(height: AppSpace.lg),
+                Row(children: [
+                  PlScoreRing(value: _n(_score, 'value'), color: tierColor, size: _ring, light: true, memoryKey: 'parent.report.score.$childId.$period'),
+                  const SizedBox(width: AppSpace.lg),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('pl_tier_$tier'.tr, style: AppType.section(context).copyWith(color: ink.accentInk(tierColor))),
+                      const SizedBox(height: AppSpace.xxs),
+                      Text('pl_tier_desc_$tier'.tr, style: AppType.body(context).copyWith(color: ink.ink, height: 1.5)),
+                    ]),
+                  ),
+                ]),
+                const SizedBox(height: AppSpace.xs),
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: AppButton.ghost(
+                    icon: Icons.help_outline_rounded,
+                    label: 'pl_score_how'.tr,
+                    size: AppButtonSize.sm,
+                    onPressed: () => _scoreSheet(context),
+                  ),
+                ),
+              ]);
+            }),
           ),
-        ]),
+        ),
       ),
 
       // ── WHAT STANDS OUT ─────────────────────────────────────────────────────
       if (insights.isNotEmpty)
         PlSection(
-          icon: Icons.lightbulb_rounded,
+          icon: Icons.lightbulb_outline_rounded,
           title: 'pl_sec_insights'.tr,
           hint: 'pl_sec_insights_hint'.tr,
           child: Column(children: [for (final i in insights) PlInsightTile(level: '${i['level']}', text: _insight(i))]),
@@ -316,86 +360,78 @@ class _ChildReportCard extends StatelessWidget {
       if (profile != null) ParentChildMarksSection(profile: profile!),
 
       // ── KEY NUMBERS ─────────────────────────────────────────────────────────
-      LayoutBuilder(builder: (context, box) {
-        final w = (box.maxWidth - 10) / 2;
-        Widget cell(Widget k) => SizedBox(width: w, child: k);
-        final kpis = <Widget>[
+      AppKpiGrid(children: [
+        PlKpi(
+          icon: Icons.timer_rounded,
+          label: 'pl_k_study'.tr,
+          value: plMinutes(_s['study_minutes']),
+          sub: 'pl_k_study_sub'.tr,
+          delta: studyDelta,
+          deltaSuffix: '%',
+        ),
+        PlKpi(
+          icon: Icons.event_available_rounded,
+          label: 'pl_k_attendance'.tr,
+          value: _pct(_att['rate']),
+          sub: _att['scheduled'] == 0 ? 'pl_att_none_short'.tr : plFmt('pl_k_attendance_sub', {'a': _att['attended'], 'b': _att['scheduled']}),
+          color: _att['rate'] == null ? c.textLight : plPctColor(context, _att['rate'] as num),
+        ),
+        PlKpi(
+          icon: Icons.local_fire_department_rounded,
+          label: 'pl_k_active_days'.tr,
+          value: '${_s['active_days']}/$days',
+          sub: plFmt('pl_k_streak_sub', {'n': _beh['streak']}),
+          // the streak is gold's (system.md §2)
+          color: c.accent2,
+          delta: _n(_s, 'active_days') - _n(_prev, 'active_days'),
+        ),
+        PlKpi(
+          icon: Icons.quiz_rounded,
+          label: 'pl_k_exams'.tr,
+          value: _pct(examNow),
+          sub: _n(_s, 'exams_taken') == 0 ? 'pl_k_exams_none'.tr : plFmt('pl_k_exams_sub', {'a': _s['exams_taken'], 'b': _s['exams_passed']}),
+          color: examNow == null ? c.textLight : plPctColor(context, examNow),
+          delta: (examNow != null && examOld != null) ? examNow - examOld : null,
+          deltaSuffix: '%',
+        ),
+        PlKpi(
+          icon: Icons.assignment_turned_in_rounded,
+          label: 'pl_k_homework'.tr,
+          value: _n(_hw, 'due') > 0 ? '${_hw['on_time']}/${_hw['due']}' : '${_s['assignments_submitted']}',
+          sub: _n(_hw, 'due') > 0 ? 'pl_k_homework_sub'.tr : 'pl_k_homework_sent'.tr,
+          color: _n(_hw, 'due') > 0 ? plPctColor(context, _n(_hw, 'on_time') / _n(_hw, 'due') * 100) : c.primary,
+        ),
+        PlKpi(
+          icon: Icons.task_alt_rounded,
+          label: 'pl_k_content'.tr,
+          value: '${_n(_s, 'materials_completed') + _n(_s, 'videos_completed')}',
+          sub: 'pl_k_content_sub'.tr,
+          color: c.success,
+          delta: _n(_s, 'materials_completed') + _n(_s, 'videos_completed') - _n(_prev, 'materials_completed') - _n(_prev, 'videos_completed'),
+        ),
+        if (_n(_s, 'weak_questions_open') > 0)
           PlKpi(
-            icon: Icons.timer_rounded,
-            label: 'pl_k_study'.tr,
-            value: plMinutes(_s['study_minutes']),
-            sub: 'pl_k_study_sub'.tr,
-            delta: studyDelta,
-            deltaSuffix: '%',
+            icon: Icons.bookmark_rounded,
+            label: 'pl_k_weak'.tr,
+            value: '${_s['weak_questions_open']}',
+            sub: 'pl_k_weak_sub'.tr,
+            color: c.warning,
+            higherIsBetter: false,
           ),
+        if (_n(_s, 'certificates_earned') > 0)
           PlKpi(
-            icon: Icons.event_available_rounded,
-            label: 'pl_k_attendance'.tr,
-            value: _pct(_att['rate']),
-            sub: _att['scheduled'] == 0 ? 'pl_att_none_short'.tr : plFmt('pl_k_attendance_sub', {'a': _att['attended'], 'b': _att['scheduled']}),
-            color: _att['rate'] == null ? context.colors.textLight : plPctColor(context, _att['rate'] as num),
+            icon: Icons.workspace_premium_rounded,
+            label: 'pl_k_certs'.tr,
+            value: '${_s['certificates_earned']}',
+            sub: 'pl_k_certs_sub'.tr,
+            // an achievement: gold
+            color: c.accent2,
           ),
-          PlKpi(
-            icon: Icons.local_fire_department_rounded,
-            label: 'pl_k_active_days'.tr,
-            value: '${_s['active_days']}/$days',
-            sub: plFmt('pl_k_streak_sub', {'n': _beh['streak']}),
-            color: const Color(0xFFFF7A00),
-            delta: _n(_s, 'active_days') - _n(_prev, 'active_days'),
-          ),
-          PlKpi(
-            icon: Icons.quiz_rounded,
-            label: 'pl_k_exams'.tr,
-            value: _pct(examNow),
-            sub: _n(_s, 'exams_taken') == 0 ? 'pl_k_exams_none'.tr : plFmt('pl_k_exams_sub', {'a': _s['exams_taken'], 'b': _s['exams_passed']}),
-            color: examNow == null ? context.colors.textLight : plPctColor(context, examNow),
-            delta: (examNow != null && examOld != null) ? examNow - examOld : null,
-            deltaSuffix: '%',
-          ),
-          PlKpi(
-            icon: Icons.assignment_turned_in_rounded,
-            label: 'pl_k_homework'.tr,
-            value: _n(_hw, 'due') > 0 ? '${_hw['on_time']}/${_hw['due']}' : '${_s['assignments_submitted']}',
-            sub: _n(_hw, 'due') > 0 ? 'pl_k_homework_sub'.tr : 'pl_k_homework_sent'.tr,
-            color: _n(_hw, 'due') > 0 ? plPctColor(context, _n(_hw, 'on_time') / _n(_hw, 'due') * 100) : c.accent,
-          ),
-          PlKpi(
-            icon: Icons.task_alt_rounded,
-            label: 'pl_k_content'.tr,
-            value: '${_n(_s, 'materials_completed') + _n(_s, 'videos_completed')}',
-            sub: 'pl_k_content_sub'.tr,
-            color: c.success,
-            delta: _n(_s, 'materials_completed') + _n(_s, 'videos_completed') - _n(_prev, 'materials_completed') - _n(_prev, 'videos_completed'),
-          ),
-          if (_n(_s, 'weak_questions_open') > 0)
-            PlKpi(
-              icon: Icons.bookmark_rounded,
-              label: 'pl_k_weak'.tr,
-              value: '${_s['weak_questions_open']}',
-              sub: 'pl_k_weak_sub'.tr,
-              color: c.warning,
-              higherIsBetter: false,
-            ),
-          if (_n(_s, 'certificates_earned') > 0)
-            PlKpi(
-              icon: Icons.workspace_premium_rounded,
-              label: 'pl_k_certs'.tr,
-              value: '${_s['certificates_earned']}',
-              sub: 'pl_k_certs_sub'.tr,
-              color: const Color(0xFFE0A800),
-            ),
-        ];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 4),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Wrap(spacing: 10, runSpacing: 10, children: [for (final k in kpis) cell(k)]),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 8, 4, 12),
-              child: Text('pl_vs_previous'.tr, style: c.caption.copyWith(fontSize: 11)),
-            ),
-          ]),
-        );
-      }),
+      ]),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(AppSpace.xxs, AppSpace.xs, AppSpace.xxs, AppSpace.md),
+        child: Text('pl_vs_previous'.tr, style: AppType.meta(context).copyWith(color: c.textLight)),
+      ),
 
       // ── TREND ───────────────────────────────────────────────────────────────
       PlSection(
@@ -416,21 +452,15 @@ class _ChildReportCard extends StatelessWidget {
       // ── HOMEWORK ────────────────────────────────────────────────────────────
       if (_n(_hw, 'due') > 0)
         PlSection(
-          icon: Icons.assignment_rounded,
+          icon: Icons.assignment_outlined,
           title: 'pl_sec_homework'.tr,
           hint: 'pl_sec_homework_hint'.tr,
-          child: Row(children: [
-            _pill(context, '${_hw['on_time']}', 'pl_hw_on_time'.tr, c.success),
-            const SizedBox(width: 8),
-            _pill(context, '${_hw['late']}', 'pl_hw_late'.tr, c.warning),
-            const SizedBox(width: 8),
-            _pill(context, '${_hw['missing']}', 'pl_hw_missing'.tr, c.danger),
-          ]),
+          child: _homework(context),
         ),
 
       // ── STUDY HABITS ────────────────────────────────────────────────────────
       PlSection(
-        icon: Icons.psychology_rounded,
+        icon: Icons.psychology_outlined,
         title: 'pl_sec_habits'.tr,
         hint: 'pl_sec_habits_hint'.tr,
         child: _habits(context),
@@ -439,114 +469,161 @@ class _ChildReportCard extends StatelessWidget {
       // ── COURSES ─────────────────────────────────────────────────────────────
       if (courses.isNotEmpty)
         PlSection(
-          icon: Icons.menu_book_rounded,
+          icon: Icons.menu_book_outlined,
           title: 'pl_sec_courses'.tr,
           hint: 'pl_sec_courses_hint'.tr,
-          child: Column(children: [for (final x in courses) _courseRow(context, x)]),
+          child: Column(children: [
+            for (var i = 0; i < courses.length; i++) ...[
+              if (i > 0) _rule(context),
+              _courseRow(context, courses[i]),
+            ],
+          ]),
         ),
 
       // ── DETAIL LISTS ────────────────────────────────────────────────────────
       if (exams.isNotEmpty)
         PlSection(
-          icon: Icons.quiz_rounded,
+          icon: Icons.quiz_outlined,
           title: 'pl_exams_list'.tr,
           child: Column(children: [
-            for (final x in exams)
-              _childCourseLink(context, x, 'exam', ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: CircleAvatar(
-                  radius: 18,
-                  backgroundColor: (x['percentage'] == null ? context.colors.textLight : plPctColor(context, x['percentage'] as num)).withAlpha(30),
-                  child: Icon(x['passed'] == true ? Icons.check_rounded : Icons.close_rounded,
-                      color: x['percentage'] == null ? context.colors.textLight : plPctColor(context, x['percentage'] as num)),
-                ),
-                title: Text('${x['exam']}'),
-                subtitle: Text('${plLabel(x, 'course')} · ${plDateTime(x['at'])}'),
-                trailing: Text(x['percentage'] == null ? '—' : '${(x['percentage'] as num).round()}%',
-                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: x['percentage'] == null ? null : plPctColor(context, x['percentage'] as num))),
-              )),
+            for (var i = 0; i < exams.length; i++) ...[
+              if (i > 0) _rule(context),
+              _childCourseLink(context, exams[i], 'exam', _examRow(context, exams[i])),
+            ],
           ]),
         ),
       if (log.isNotEmpty)
         PlSection(
-          icon: Icons.event_available_rounded,
+          icon: Icons.event_available_outlined,
           title: 'pl_attendance_list'.tr,
           child: Column(children: [
-            for (final x in log)
-              _childCourseLink(context, x, 'session', ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.videocam_rounded, color: c.primary),
-                title: Text('${x['session']}'),
-                subtitle: Text('${plLabel(x, 'course')} · ${plDateTime(x['at'])}'),
-                trailing: Text(plMinutes(x['minutes'])),
+            for (var i = 0; i < log.length; i++) ...[
+              if (i > 0) _rule(context),
+              _childCourseLink(context, log[i], 'session', _detailRow(
+                context,
+                icon: Icons.videocam_rounded,
+                tone: c.primary,
+                title: '${log[i]['session']}',
+                sub: '${plLabel(log[i], 'course')} · ${plDateTime(log[i]['at'])}',
+                trailing: plMinutes(log[i]['minutes']),
               )),
+            ],
           ]),
         ),
       if (assignments.isNotEmpty)
         PlSection(
-          icon: Icons.assignment_rounded,
+          icon: Icons.assignment_outlined,
           title: 'pl_assignments_list'.tr,
           child: Column(children: [
-            for (final x in assignments)
-              ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.assignment_turned_in_rounded, color: c.primary),
-                title: Text('${x['title']}'),
-                subtitle: Text(plDateTime(x['at'])),
-                trailing: Text(x['marks'] == null ? '—' : '${x['marks']}/${x['total'] ?? '—'}'),
+            for (var i = 0; i < assignments.length; i++) ...[
+              if (i > 0) _rule(context),
+              _detailRow(
+                context,
+                icon: Icons.assignment_turned_in_rounded,
+                tone: c.primary,
+                title: '${assignments[i]['title']}',
+                sub: plDateTime(assignments[i]['at']),
+                trailing: assignments[i]['marks'] == null ? '—' : '${assignments[i]['marks']}/${assignments[i]['total'] ?? '—'}',
               ),
+            ],
           ]),
         ),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
     ]);
   }
 
   // ── pieces ────────────────────────────────────────────────────────────────
 
-  Widget _pill(BuildContext context, String v, String label, Color col) => Expanded(
-    child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(color: col.withAlpha(24), borderRadius: BorderRadius.circular(14), border: Border.all(color: col.withAlpha(60))),
-      child: Column(children: [
-        Text(v, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: col)),
-        Text(label, style: const TextStyle(fontSize: 12)),
+  Widget _rule(BuildContext context) => Divider(height: AppSpace.md, thickness: AppBorder.hairline, color: context.colors.divider);
+
+  /// One line of a detail list: a tone well · title / meta · the figure at the end.
+  Widget _detailRow(BuildContext context,
+      {required IconData icon, required Color tone, required String title, required String sub, required String trailing, Color? trailingTone}) {
+    final c = context.colors;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: AppTouch.min),
+      child: Row(children: [
+        PlToneWell(icon: icon, tone: tone),
+        const SizedBox(width: AppSpace.sm),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+            Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+          ]),
+        ),
+        const SizedBox(width: AppSpace.xs),
+        Text(trailing,
+            style: AppType.figure(context).copyWith(
+                fontSize: AppType.row(context).fontSize,
+                color: trailingTone == null ? c.textDark : appInk(context, trailingTone),
+                fontFeatures: const [FontFeature.tabularFigures()])),
       ]),
-    ),
-  );
+    );
+  }
+
+  Widget _examRow(BuildContext context, Map<String, dynamic> x) {
+    final c = context.colors;
+    final pct = x['percentage'] as num?;
+    final tone = pct == null ? c.textLight : plPctColor(context, pct);
+    return _detailRow(
+      context,
+      icon: x['passed'] == true ? Icons.check_rounded : Icons.close_rounded,
+      tone: tone,
+      title: '${x['exam']}',
+      sub: '${plLabel(x, 'course')} · ${plDateTime(x['at'])}',
+      trailing: pct == null ? '—' : '${pct.round()}%',
+      trailingTone: pct == null ? null : tone,
+    );
+  }
+
+  /// On time · late · missing as the kit's donut (the share of each), the on-time count in its centre.
+  Widget _homework(BuildContext context) {
+    final c = context.colors;
+    final donut = AppDonut(
+      size: AppSpace.xxxl * 2,
+      thickness: AppSpace.sm,
+      title: 'pl_sec_homework'.tr,
+      center: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text('${_hw['on_time']}/${_hw['due']}', textDirection: TextDirection.ltr, style: AppType.figure(context)),
+        Text('pl_hw_on_time'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+      ]),
+      parts: [
+        AppChartPart('pl_hw_on_time'.tr, _n(_hw, 'on_time').toDouble(), color: c.success),
+        AppChartPart('pl_hw_late'.tr, _n(_hw, 'late').toDouble(), color: c.warning),
+        AppChartPart('pl_hw_missing'.tr, _n(_hw, 'missing').toDouble(), color: c.danger),
+      ],
+    );
+    return Center(child: donut);
+  }
 
   Widget _line(BuildContext context, IconData icon, Color col, String text) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 4),
+    padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Icon(icon, size: 18, color: col),
-      const SizedBox(width: 8),
-      Expanded(child: Text(text, style: const TextStyle(fontSize: 13, height: 1.35))),
+      Icon(icon, size: AppIconSize.sm + AppBorder.focus, color: appInk(context, col)),
+      const SizedBox(width: AppSpace.xs),
+      Expanded(child: Text(text, style: AppType.row(context).copyWith(fontWeight: FontWeight.w400, height: 1.4))),
     ]),
   );
+
+  Widget _subhead(BuildContext context, String text) =>
+      Text(text, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark));
 
   Widget _attendance(BuildContext context) {
     final c = context.colors;
     final scheduled = _n(_att, 'scheduled').toInt();
     final missed = plList(_att['missed']);
     if (scheduled == 0 && _n(_s, 'sessions_attended') == 0) {
-      return Text('pl_att_none'.tr, style: c.caption);
+      return Text('pl_att_none'.tr, style: AppType.body(context));
     }
     final rate = _att['rate'] as num?;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (rate != null) ...[
         Row(children: [
-          Text('${rate.round()}%', style: c.h2.copyWith(fontSize: 26, color: plPctColor(context, rate))),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(value: (rate / 100).toDouble().clamp(0.0, 1.0), minHeight: 12, color: plPctColor(context, rate), backgroundColor: plPctColor(context, rate).withAlpha(30)),
-            ),
-          ),
+          Text('${rate.round()}%', style: AppType.figureLarge(context).copyWith(color: appInk(context, plPctColor(context, rate)))),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(child: AppProgressBar(value: rate.toDouble(), height: AppSpace.xs + AppBorder.focus, color: plPctColor(context, rate))),
         ]),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         _line(context, Icons.check_circle_rounded, c.success, plFmt('pl_att_attended', {'a': _att['attended'], 'b': scheduled})),
       ],
       if (_n(_att, 'late_count') > 0)
@@ -558,8 +635,9 @@ class _ChildReportCard extends StatelessWidget {
       if (_att['avg_presence_percentage'] != null)
         _line(context, Icons.hourglass_bottom_rounded, c.primary, plFmt('pl_att_presence', {'p': (_att['avg_presence_percentage'] as num).round()})),
       if (missed.isNotEmpty) ...[
-        const SizedBox(height: 6),
-        Text('pl_att_missed_title'.tr, style: c.h2.copyWith(fontSize: 13)),
+        const SizedBox(height: AppSpace.sm),
+        _subhead(context, 'pl_att_missed_title'.tr),
+        const SizedBox(height: AppSpace.xxs),
         for (final m in missed)
           _line(context, Icons.event_busy_rounded, c.danger, '${m['session']} · ${plLabel(m, 'course')} · ${plDateTime(m['at'])}'),
       ],
@@ -581,10 +659,10 @@ class _ChildReportCard extends StatelessWidget {
     final counts = (_beh['weekday'] as List).map((e) => e as int).toList();
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (maxV == 0)
-        Text('pl_no_activity'.tr, style: c.caption)
+        Text('pl_no_activity'.tr, style: AppType.body(context))
       else ...[
-        Text('pl_habits_time'.tr, style: c.h2.copyWith(fontSize: 13)),
-        const SizedBox(height: 4),
+        _subhead(context, 'pl_habits_time'.tr),
+        const SizedBox(height: AppSpace.xxs),
         for (final k in const ['morning', 'afternoon', 'evening', 'night'])
           PlBarRow(
             icon: icons[k]!,
@@ -594,18 +672,19 @@ class _ChildReportCard extends StatelessWidget {
             highlight: k == peak,
           ),
         if (period != 'daily') ...[
-          const SizedBox(height: 12),
-          Text('pl_habits_days'.tr, style: c.h2.copyWith(fontSize: 13)),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.md),
+          _subhead(context, 'pl_habits_days'.tr),
+          const SizedBox(height: AppSpace.xs),
           PlWeekdayStrip(counts: counts, weekStart: (_beh['week_start'] as num).toInt()),
         ],
       ],
-      const SizedBox(height: 14),
+      const SizedBox(height: AppSpace.md),
       Row(children: [
-        Expanded(child: _mini(context, Icons.local_fire_department_rounded, '${_beh['streak']}', 'pl_streak_now'.tr, const Color(0xFFFF7A00))),
-        const SizedBox(width: 8),
-        Expanded(child: _mini(context, Icons.emoji_events_rounded, '${_beh['longest_streak']}', 'pl_streak_best'.tr, c.accent)),
-        const SizedBox(width: 8),
+        // streaks are gold's (system.md §2); the last activity says whether to worry
+        Expanded(child: _mini(context, Icons.local_fire_department_rounded, '${_beh['streak']}', 'pl_streak_now'.tr, c.accent2)),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(child: _mini(context, Icons.emoji_events_rounded, '${_beh['longest_streak']}', 'pl_streak_best'.tr, c.accent2)),
+        const SizedBox(width: AppSpace.xs),
         Expanded(
           child: _mini(context, Icons.history_rounded, since == null ? '—' : (since == 0 ? 'pl_today'.tr : '$since'), 'pl_last_active'.tr,
               (since ?? 99) >= 3 ? c.danger : c.success),
@@ -614,16 +693,19 @@ class _ChildReportCard extends StatelessWidget {
     ]);
   }
 
-  Widget _mini(BuildContext context, IconData icon, String v, String label, Color col) => Container(
-    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-    decoration: BoxDecoration(color: col.withAlpha(22), borderRadius: BorderRadius.circular(14)),
-    child: Column(children: [
-      Icon(icon, color: col, size: 20),
-      const SizedBox(height: 2),
-      Text(v, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: col)),
-      Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10.5), maxLines: 2),
-    ]),
-  );
+  Widget _mini(BuildContext context, IconData icon, String v, String label, Color col) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm, horizontal: AppSpace.xs),
+      decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.card)),
+      child: Column(children: [
+        Icon(icon, color: appInkOn(context, col, c.inputBg), size: AppIconSize.md),
+        const SizedBox(height: AppSpace.xxs),
+        FittedBox(fit: BoxFit.scaleDown, child: Text(v, style: AppType.figure(context))),
+        Text(label, textAlign: TextAlign.center, style: AppType.meta(context), maxLines: 2, overflow: TextOverflow.ellipsis),
+      ]),
+    );
+  }
 
   Widget _courseRow(BuildContext context, Map<String, dynamic> x) =>
       _childCourseLink(context, x, 'course', _courseRowBody(context, x), labelField: 'name');
@@ -655,23 +737,25 @@ class _ChildReportCard extends StatelessWidget {
     );
   }
 
+  static const double _courseRing = AppTouch.primary;
+
   Widget _courseRowBody(BuildContext context, Map<String, dynamic> x) {
     final c = context.colors;
     final progress = (x['progress'] as num).toDouble();
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
       child: Row(children: [
-        PlScoreRing(value: progress, color: plPctColor(context, progress), size: 54),
-        const SizedBox(width: 12),
+        PlScoreRing(value: progress, color: plPctColor(context, progress), size: _courseRing),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(plLabel(x, 'name'), style: c.h2.copyWith(fontSize: 14)),
-            const SizedBox(height: 4),
-            Wrap(spacing: 10, runSpacing: 2, children: [
-              _tag(Icons.videocam_rounded, '${x['sessions']}'),
-              _tag(Icons.timer_rounded, plMinutes(x['minutes'])),
-              if (x['exam_avg'] != null) _tag(Icons.quiz_rounded, '${(x['exam_avg'] as num).round()}%'),
-              if ((x['missed'] as num) > 0) _tag(Icons.event_busy_rounded, '${x['missed']}', color: c.danger),
+            Text(plLabel(x, 'name'), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
+            const SizedBox(height: AppSpace.xxs),
+            Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs / 2, children: [
+              _tag(context, Icons.videocam_rounded, '${x['sessions']}'),
+              _tag(context, Icons.timer_rounded, plMinutes(x['minutes'])),
+              if (x['exam_avg'] != null) _tag(context, Icons.quiz_rounded, '${(x['exam_avg'] as num).round()}%'),
+              if ((x['missed'] as num) > 0) _tag(context, Icons.event_busy_rounded, '${x['missed']}', color: c.danger),
             ]),
           ]),
         ),
@@ -679,19 +763,23 @@ class _ChildReportCard extends StatelessWidget {
     );
   }
 
-  Widget _tag(IconData i, String t, {Color? color}) => Row(mainAxisSize: MainAxisSize.min, children: [
-    Icon(i, size: 14, color: color ?? Colors.grey),
-    const SizedBox(width: 3),
-    Text(t, style: TextStyle(fontSize: 12, color: color)),
-  ]);
+  Widget _tag(BuildContext context, IconData i, String t, {Color? color}) {
+    final c = context.colors;
+    final ink = color == null ? c.textMedium : appInk(context, color);
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(i, size: AppIconSize.xs, color: color == null ? c.textLight : ink),
+      const SizedBox(width: AppSpace.xxs),
+      Text(t, style: AppType.meta(context).copyWith(color: ink)),
+    ]);
+  }
 
   void _scoreSheet(BuildContext context) {
     final comps = plList(_score['components']);
     showAppSheet(
       context,
       (ctx) => AppSheetContent(title: 'pl_score_how'.tr, children: [
-            Text('pl_score_explain'.tr, style: ctx.colors.caption.copyWith(height: 1.4)),
-            const SizedBox(height: 12),
+            Text('pl_score_explain'.tr, style: AppType.body(ctx).copyWith(height: 1.5)),
+            const SizedBox(height: AppSpace.sm),
             for (final k in comps)
               PlBarRow(
                 icon: Icons.analytics_rounded,
@@ -701,14 +789,15 @@ class _ChildReportCard extends StatelessWidget {
                 color: plPctColor(ctx, k['value'] as num),
                 highlight: true,
               ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.sm),
             for (final k in comps)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Text('• ${'pl_comp_${k['key']}'.tr} (${k['weight']}%): ${'pl_comp_desc_${k['key']}'.tr}', style: const TextStyle(fontSize: 12, height: 1.35)),
+                padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs / 2),
+                child: Text('${'pl_comp_${k['key']}'.tr} (${k['weight']}%): ${'pl_comp_desc_${k['key']}'.tr}',
+                    style: AppType.meta(ctx).copyWith(color: ctx.colors.textDark, height: 1.4)),
               ),
-            const SizedBox(height: 8),
-            Text('pl_score_note'.tr, style: ctx.colors.caption.copyWith(fontSize: 11)),
+            const SizedBox(height: AppSpace.xs),
+            Text('pl_score_note'.tr, style: AppType.meta(ctx).copyWith(color: ctx.colors.textLight)),
           ]),
     );
   }

@@ -33,6 +33,7 @@ import 'parent_overview.dart';
 import 'parent_pulse.dart';
 import 'parent_pulse_widgets.dart';
 import 'parent_reports_page.dart';
+import 'parent_widgets.dart' show parentChildTone;
 
 class ParentOverviewPage extends StatefulWidget {
   const ParentOverviewPage({
@@ -103,7 +104,7 @@ class _ParentOverviewPageState extends State<ParentOverviewPage> with AutomaticK
                       shellActions: [const CalendarEntryIcon(), const ChatEntryIcon(), NotificationIcon(unreadCount: unread)],
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.xs),
                   ParentOverviewBody(
                     data: p.data,
                     loading: p.isLoading && !p.loaded,
@@ -195,16 +196,18 @@ class _ParentOverviewBodyState extends State<ParentOverviewBody> {
     final d = widget.data;
     if (d == null && widget.loading) {
       return const Padding(
-        padding: EdgeInsets.fromLTRB(20, 8, 20, 36),
+        padding: EdgeInsets.fromLTRB(parentHomeGutter, AppSpace.xs, parentHomeGutter, AppSpace.xl),
         child: AppListSkeleton(items: 4, padding: EdgeInsets.zero),
       );
     }
     if (d == null) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 24),
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.lg),
         child: ErrorRetry(message: widget.error ?? 'generic_error'.tr, onRetry: widget.onRetry ?? () {}),
       );
     }
+    // ONE orchestrated entrance (HomeEntrance, after the header's 0): the strip, the switcher and the child's block
+    // rise in turn; the sections under the block arrive with it (one entrance per container)
     var i = 1;
     Widget enter(Widget w) => HomeEntrance(index: i++, child: w);
     final pending = d.pendingRequests;
@@ -230,13 +233,13 @@ class _ParentOverviewBodyState extends State<ParentOverviewBody> {
             HomeStat(icon: Icons.link_rounded, label: 'pl_ov_requests'.tr, count: pending, tone: c.warning, onTap: widget.onOpenLink),
           ]),
         )),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpace.md),
       ],
 
       if (d.children.isEmpty) ...[
         enter(HomeSectionTitle('pl_ov_today'.tr)),
         enter(Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: parentHomeGutter),
           child: AppEmpty(
             icon: Icons.family_restroom_rounded,
             title: 'pl_no_children_title'.tr,
@@ -246,22 +249,29 @@ class _ParentOverviewBodyState extends State<ParentOverviewBody> {
           ),
         )),
       ] else if (pulse != null && ch != null) ...[
-        // ── my children: one chip each (status dot), the selected child's picture below
+        // ── my children: one chip each (status dot), the selected child's block below
         if (d.children.length > 1) ...[
           enter(ParentChildSwitcher(children: d.children, selectedId: ch.id, onSelect: (id) => setState(() => _selected = id))),
-          const SizedBox(height: AppSpace.md),
+          const SizedBox(height: AppSpace.sm),
         ],
         enter(Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: KeyedSubtree(key: ValueKey('pulse-${ch.id}'), child: _pulseLayout(ch, pulse)),
+          padding: const EdgeInsets.symmetric(horizontal: parentHomeGutter),
+          // switching children crossfades the picture in place (it is the same block, another child)
+          child: AnimatedSwitcher(
+            duration: AppMotion.of(context).base,
+            switchInCurve: AppMotion.curve,
+            switchOutCurve: AppMotion.curve,
+            layoutBuilder: (current, previous) => Stack(alignment: Alignment.topCenter, children: [...previous, ?current]),
+            child: KeyedSubtree(key: ValueKey('pulse-${ch.id}'), child: _pulseLayout(ch, pulse)),
+          ),
         )),
       ] else ...[
-        // ── an older server / `parent.insights` off: today for my children, one card each (as before)
+        // ── an older server / `parent.insights` off: today for my children, one block each (as before)
         enter(HomeSectionTitle('pl_ov_today'.tr,
             count: d.sessionsToday, actionLabel: 'pl_tab_children'.tr, onAction: widget.onOpenChildren)),
         for (final x in d.children)
           enter(Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+            padding: const EdgeInsets.fromLTRB(parentHomeGutter, 0, parentHomeGutter, AppSpace.md),
             child: ParentChildOverviewCard(
               child: x,
               onOpen: () => widget.onOpenChild(x),
@@ -270,21 +280,16 @@ class _ParentOverviewBodyState extends State<ParentOverviewBody> {
           )),
       ],
       if (d.children.isNotEmpty)
-        Center(
-          child: Wrap(alignment: WrapAlignment.center, spacing: AppSpace.xs, children: [
-            TextButton.icon(
-              onPressed: widget.onOpenChildren,
-              icon: const Icon(Icons.family_restroom_rounded, size: 18),
-              label: Text('pl_tab_children'.tr),
-            ),
-            TextButton.icon(
-              onPressed: widget.onOpenLink,
-              icon: const Icon(Icons.add_link_rounded, size: 18),
-              label: Text('pl_link_another'.tr),
-            ),
-          ]),
+        Padding(
+          padding: const EdgeInsets.only(top: AppSpace.lg),
+          child: Center(
+            child: Wrap(alignment: WrapAlignment.center, spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
+              AppButton.ghost(label: 'pl_tab_children'.tr, icon: Icons.family_restroom_rounded, onPressed: widget.onOpenChildren),
+              AppButton.ghost(label: 'pl_link_another'.tr, icon: Icons.add_link_rounded, onPressed: widget.onOpenLink),
+            ]),
+          ),
         ),
-      const SizedBox(height: 36),
+      const SizedBox(height: AppSpace.xl),
     ]);
   }
 
@@ -330,30 +335,20 @@ class _MarksCard extends StatelessWidget {
       icon: Icons.grading_rounded,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (child.latestMarks.isEmpty)
-          Text('pl_ov_no_marks'.tr, style: appText(12.5, c: c.textLight))
+          Text('pl_ov_no_marks'.tr, style: AppType.body(context).copyWith(color: c.textLight))
         else
-          Wrap(spacing: 8, runSpacing: 8, children: [for (final m in child.latestMarks) _MarkChip(mark: m)]),
+          for (final m in child.latestMarks) _MarkLine(mark: m),
         if (exam != null) ...[
           const SizedBox(height: AppSpace.sm),
-          Row(children: [
-            Icon(Icons.event_note_rounded, size: 18, color: c.accent2),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                '${'pl_ov_next_exam'.tr} · ${exam.name}${exam.startsAt == null ? '' : ' · ${AppTime.dateTime(exam.startsAt!)}'}',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: appText(12.5, w: FontWeight.w500, c: c.textDark, h: 1.35),
-              ),
-            ),
-          ]),
+          _NextExam(exam: exam),
         ],
       ]),
     );
   }
 }
 
-/// One child's day: who · today's sessions · attendance · newest marks · next exam · open alerts.
+/// One child's day (an older server, or `parent.insights` off): a block in the child's own tone — who · today's
+/// sessions · attendance · newest marks · next exam · open alerts; the block opens the child's report.
 class ParentChildOverviewCard extends StatelessWidget {
   const ParentChildOverviewCard({super.key, required this.child, required this.onOpen, required this.onOpenAlerts});
 
@@ -361,122 +356,108 @@ class ParentChildOverviewCard extends StatelessWidget {
   final VoidCallback onOpen;
   final VoidCallback onOpenAlerts;
 
+  static const double _avatar = AppTouch.min;
+
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final ch = child;
     final now = homeNow();
     final nowMin = now.hour * 60 + now.minute;
     final att = ch.attendancePct30d;
-    final attColor = att == null ? c.textLight : appScoreColor(context, att.toDouble());
     final exam = ch.nextExam;
     final hot = ch.openAlerts > 0;
 
-    return AppCard(
-      padding: EdgeInsets.zero,
+    return AppBlock(
+      // a child keeps the same tone on every screen (the reports use it too)
+      tone: parentChildTone(ch.id),
       onTap: onOpen,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        // ── who
-        Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 12, 12),
-          child: Row(children: [
-            AppAvatar(name: ch.name, url: ch.imageUrl.isEmpty ? null : ch.imageUrl, size: 48),
-            const SizedBox(width: 12),
+      semanticLabel: ch.name,
+      padding: const EdgeInsets.all(AppSpace.md + AppSpace.xxs),
+      child: Builder(builder: (context) {
+        final ink = AppBlock.colorsOf(context);
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          // ── who
+          Row(children: [
+            AppAvatar(name: ch.name, url: ch.imageUrl.isEmpty ? null : ch.imageUrl, size: _avatar),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(ch.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w600, c: c.textDark)),
-                const SizedBox(height: 2),
+                Text(ch.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: ink.ink)),
+                const SizedBox(height: AppSpace.xxs / 2),
                 Text(
                   '${'pl_ov_courses_n'.tr.replaceAll('{n}', '${ch.courses}')} · ${'pl_ov_sessions_n'.tr.replaceAll('{n}', '${ch.todaySessions.length}')}',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: appText(12, c: c.textMedium, h: 1.4),
+                  style: AppType.meta(context).copyWith(color: ink.muted, height: 1.4),
                 ),
               ]),
             ),
-            Icon(Icons.chevron_right_rounded, color: c.textLight),
+            Icon(Icons.chevron_right_rounded, color: ink.muted),
           ]),
-        ),
 
-        // ── pills: attendance · alerts
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
-          child: Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-            AppBadgePill(
-              att == null ? 'pl_ov_attendance_none'.tr : 'pl_ov_attendance'.tr.replaceAll('{n}', '$att'),
-              color: attColor,
+          // ── pills: attendance · alerts
+          const SizedBox(height: AppSpace.xs),
+          Wrap(spacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            AppStatusBadge(
+              label: att == null ? 'pl_ov_attendance_none'.tr : 'pl_ov_attendance'.tr.replaceAll('{n}', '$att'),
+              tone: att == null ? AppTone.neutral : (att >= 75 ? AppTone.success : (att >= 50 ? AppTone.warning : AppTone.danger)),
               icon: Icons.how_to_reg_rounded,
             ),
-            InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: onOpenAlerts,
-              // the pill is 22 px; its tap target is 48 high (Android / iOS minimum)
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 48),
-                child: Center(
-                  widthFactor: 1,
-                  child: AppBadgePill(
-                hot ? 'pl_ov_alerts_n'.tr.replaceAll('{n}', '${ch.openAlerts}') : 'pl_ov_alerts_none'.tr,
-                color: hot ? c.danger : c.success,
-                icon: hot ? Icons.notifications_active_rounded : Icons.verified_rounded,
+            Semantics(
+              button: true,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                onTap: onOpenAlerts,
+                // the pill is 24 px; its tap target is 48 high (Android / iOS minimum)
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: AppTouch.min),
+                  child: Center(
+                    widthFactor: 1,
+                    child: AppStatusBadge(
+                      label: hot ? 'pl_ov_alerts_n'.tr.replaceAll('{n}', '${ch.openAlerts}') : 'pl_ov_alerts_none'.tr,
+                      tone: hot ? AppTone.danger : AppTone.success,
+                      icon: hot ? Icons.notifications_active_rounded : Icons.verified_rounded,
+                    ),
                   ),
                 ),
               ),
             ),
           ]),
-        ),
 
-        // ── today's sessions
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
-          child: _Label('pl_ov_today_sessions'.tr, icon: Icons.today_rounded),
-        ),
-        if (ch.todaySessions.isEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-            child: Text('pl_ov_no_sessions'.tr, style: appText(12.5, c: c.textLight)),
-          )
-        else
-          for (final s in ch.todaySessions)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
-              child: _SessionRow(event: s, nowMin: nowMin),
-            ),
+          // ── today's sessions: a paper sheet inside the block, so the rows read as a list
+          const SizedBox(height: AppSpace.xs),
+          _Label('pl_ov_today_sessions'.tr, icon: Icons.today_rounded),
+          const SizedBox(height: AppSpace.xxs),
+          if (ch.todaySessions.isEmpty)
+            Text('pl_ov_no_sessions'.tr, style: AppType.meta(context).copyWith(color: ink.muted))
+          else
+            for (final s in ch.todaySessions)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpace.xxs + AppBorder.focus),
+                child: _SessionRow(event: s, nowMin: nowMin),
+              ),
 
-        // ── newest marks
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
-          child: _Label('pl_ov_latest_marks'.tr, icon: Icons.grading_rounded),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
-          child: ch.latestMarks.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  child: Text('pl_ov_no_marks'.tr, style: appText(12.5, c: c.textLight)),
-                )
-              : Wrap(spacing: 8, runSpacing: 8, children: [for (final m in ch.latestMarks) _MarkChip(mark: m)]),
-        ),
+          // ── newest marks
+          const SizedBox(height: AppSpace.md),
+          _Label('pl_ov_latest_marks'.tr, icon: Icons.grading_rounded),
+          const SizedBox(height: AppSpace.xxs),
+          if (ch.latestMarks.isEmpty)
+            Text('pl_ov_no_marks'.tr, style: AppType.meta(context).copyWith(color: ink.muted))
+          else
+            for (final m in ch.latestMarks) _MarkLine(mark: m),
 
-        // ── next exam
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-          child: Row(children: [
-            Icon(Icons.event_note_rounded, size: 18, color: exam == null ? c.textLight : c.accent2),
-            const SizedBox(width: 8),
-            Expanded(
-              child: exam == null
-                  ? Text('pl_ov_no_exam'.tr, style: appText(12.5, c: c.textLight))
-                  : Text(
-                      '${'pl_ov_next_exam'.tr} · ${exam.name}${exam.startsAt == null ? '' : ' · ${AppTime.dateTime(exam.startsAt!)}'}',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: appText(12.5, w: FontWeight.w500, c: c.textDark, h: 1.35),
-                    ),
-            ),
-          ]),
-        ),
-      ]),
+          // ── next exam
+          const SizedBox(height: AppSpace.sm),
+          if (exam == null)
+            Row(children: [
+              Icon(Icons.event_note_rounded, size: AppIconSize.sm, color: ink.faint),
+              const SizedBox(width: AppSpace.xs),
+              Expanded(child: Text('pl_ov_no_exam'.tr, style: AppType.meta(context).copyWith(color: ink.muted))),
+            ])
+          else
+            _NextExam(exam: exam),
+        ]);
+      }),
     );
   }
 }
@@ -488,69 +469,99 @@ class _Label extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
+    final ink = AppBlock.colorsOf(context);
     return Row(children: [
-      Icon(icon, size: 15, color: c.textMedium),
-      const SizedBox(width: 6),
+      Icon(icon, size: AppIconSize.xs, color: ink.muted),
+      const SizedBox(width: AppSpace.xs),
       Expanded(
-        child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w600, c: c.textMedium)),
+        child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: ink.muted)),
       ),
     ]);
   }
 }
 
-/// An agenda-style row: time column · live / past tone · title · subtitle.
+/// The next exam: an icon well · "Next exam · name · when".
+class _NextExam extends StatelessWidget {
+  const _NextExam({required this.exam});
+  final ParentNextExam exam;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Row(children: [
+      Icon(Icons.event_note_rounded, size: AppIconSize.sm, color: appInk(context, c.warning)),
+      const SizedBox(width: AppSpace.xs),
+      Expanded(
+        child: Text(
+          '${'pl_ov_next_exam'.tr} · ${exam.name}${exam.startsAt == null ? '' : ' · ${AppTime.dateTime(exam.startsAt!)}'}',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: AppType.label(context).copyWith(color: c.textDark, height: 1.4),
+        ),
+      ),
+    ]);
+  }
+}
+
+/// An agenda-style row: time column · live / past rail · title · subtitle.
 class _SessionRow extends StatelessWidget {
   const _SessionRow({required this.event, required this.nowMin});
   final ParentEventRow event;
   final int nowMin;
 
+  static const double _timeWidth = AppSpace.xxxl;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final ink = AppBlock.colorsOf(context);
     final s = event.startsAt, e = event.endsAt;
     final startMin = event.wallMinutes(AppTime.toZone);
     final endMin = e == null ? null : AppTime.toZone(e).hour * 60 + AppTime.toZone(e).minute;
     final live = startMin != null && endMin != null && nowMin >= startMin && nowMin < endMin;
     final past = endMin != null && nowMin >= endMin;
-    final tone = live ? c.success : (past ? c.textLight : c.primary);
+    final tone = live ? c.success : (past ? ink.faint : c.primary);
     final sub = [
       if (event.subtitle.isNotEmpty) event.subtitle,
       if (event.location.isNotEmpty) event.location,
       // the server's mode keyword ("online" / "offline") in the reader's language — it was shown raw
       if (event.mode.isNotEmpty) _modeLabel(event.mode),
     ].join(' · ');
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      SizedBox(
-        width: 64,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(s == null ? '—' : AppTime.time(s), maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: appText(12, w: FontWeight.w600, c: appInk(context, tone))),
-          if (e != null)
-            Text(AppTime.time(e), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(10.5, c: c.textLight)),
-        ]),
-      ),
-      Container(
-        width: 3,
-        height: 34,
-        margin: const EdgeInsetsDirectional.only(end: 10, top: 2),
-        decoration: BoxDecoration(color: tone, borderRadius: BorderRadius.circular(2)),
-      ),
-      Expanded(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // the live pill gets its own line: beside a long title it overflowed a 320 px phone
-          Text(event.title, maxLines: 2, overflow: TextOverflow.ellipsis,
-              style: appText(13, w: FontWeight.w500, c: past ? c.textMedium : c.textDark, h: 1.25)),
-          if (live)
-            Padding(
-              padding: const EdgeInsets.only(top: 3, bottom: 1),
-              child: AppBadgePill('home_live'.tr, color: c.success, icon: Icons.sensors_rounded),
-            ),
-          if (sub.isNotEmpty)
-            Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textMedium)),
-        ]),
-      ),
-    ]);
+    const tabular = [FontFeature.tabularFigures()];
+    return IntrinsicHeight(
+      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        SizedBox(
+          width: _timeWidth,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(s == null ? '—' : AppTime.time(s), maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: ink.accentInk(tone), fontFeatures: tabular)),
+            if (e != null)
+              Text(AppTime.time(e), maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: AppType.meta(context).copyWith(color: ink.muted, fontFeatures: tabular)),
+          ]),
+        ),
+        Container(
+          width: AppBorder.focus + AppBorder.hairline,
+          margin: const EdgeInsetsDirectional.only(end: AppSpace.sm, top: AppBorder.focus, bottom: AppBorder.focus),
+          decoration: BoxDecoration(color: tone, borderRadius: BorderRadius.circular(AppRadius.pill)),
+        ),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // the live pill gets its own line: beside a long title it overflowed a 320 px phone
+            Text(event.title, maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: AppType.row(context).copyWith(color: past ? ink.muted : ink.ink, height: 1.3)),
+            if (live)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs / 2),
+                child: AppStatusBadge(label: 'home_live'.tr, tone: AppTone.success, icon: Icons.sensors_rounded, dense: true),
+              ),
+            if (sub.isNotEmpty)
+              Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: ink.muted)),
+          ]),
+        ),
+      ]),
+    );
   }
 }
 
@@ -560,36 +571,38 @@ String _modeLabel(String mode) => switch (mode) {
       _ => mode,
     };
 
-class _MarkChip extends StatelessWidget {
-  const _MarkChip({required this.mark});
+/// One mark as a quiet line: the figure in its score tone (a small tinted pill) · course · exam.
+class _MarkLine extends StatelessWidget {
+  const _MarkLine({required this.mark});
   final ParentMark mark;
+
+  static const double _figureWidth = AppTouch.primary;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final pct = mark.percentage;
-    final color = pct == null ? c.textLight : (mark.passed == false ? c.danger : appScoreColor(context, pct));
+    final tone = pct == null ? AppTone.neutral : (mark.passed == false ? AppTone.danger : (pct >= 75 ? AppTone.success : (pct >= 50 ? AppTone.warning : AppTone.danger)));
     final label = [
       if (mark.course.isNotEmpty) mark.course,
       mark.exam,
     ].join(' · ');
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 260),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.35)),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text(pct == null ? '—' : '${pct.round()}%', style: appText(13, w: FontWeight.w600, c: color)),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w600, c: c.textDark)),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
+      child: Row(children: [
+        SizedBox(
+          width: _figureWidth,
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: AppStatusBadge(label: pct == null ? '—' : '${pct.round()}%', tone: tone),
           ),
-        ]),
-      ),
+        ),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(
+          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: AppType.label(context).copyWith(color: c.textDark)),
+        ),
+      ]),
     );
   }
 }

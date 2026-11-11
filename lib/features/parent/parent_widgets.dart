@@ -4,6 +4,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
 
 // re-exported so every parent screen gets `.tr`, `context.colors` and Helpers with ONE import
 export 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -57,11 +58,22 @@ Color plStatusColor(BuildContext context, String s) {
     case 'failed':
       return c.danger;
     case 'cancelled':
-      return Colors.grey;
+      return c.textLight;
     default:
       return c.warning; // pending
   }
 }
+
+AppTone _statusTone(String s) => switch (s) {
+      'approved' => AppTone.success,
+      'rejected' || 'failed' => AppTone.danger,
+      'cancelled' => AppTone.neutral,
+      _ => AppTone.warning, // pending
+    };
+
+/// The tone a child wears on every parent screen (the home's legacy card, the report's hero): stable per child, among
+/// the category tones (peach / sky), so a parent learns each child's colour.
+AppBlockTone parentChildTone(int childId) => AppBlockTone.forKey('child-$childId');
 
 class PlStatusChip extends StatelessWidget {
   const PlStatusChip(this.status, {super.key});
@@ -69,18 +81,7 @@ class PlStatusChip extends StatelessWidget {
   final String status;
 
   @override
-  Widget build(BuildContext context) {
-    final col = plStatusColor(context, status);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: col.withAlpha(35),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text('pl_status_$status'.tr,
-          style: TextStyle(color: col, fontWeight: FontWeight.w700, fontSize: 12)),
-    );
-  }
+  Widget build(BuildContext context) => AppStatusBadge(label: 'pl_status_$status'.tr, tone: _statusTone(status), dot: true);
 }
 
 class PlEmpty extends StatelessWidget {
@@ -95,12 +96,17 @@ class PlEmpty extends StatelessWidget {
     final c = context.colors;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(AppSpace.xl),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 56, color: c.primary.withAlpha(150)),
-          const SizedBox(height: 12),
-          Text(text, textAlign: TextAlign.center, style: c.caption),
-          if (action != null) ...[const SizedBox(height: 16), action!],
+          Container(
+            width: AppTouch.min + AppSpace.md,
+            height: AppTouch.min + AppSpace.md,
+            decoration: BoxDecoration(color: c.inputBg, shape: BoxShape.circle),
+            child: Icon(icon, size: AppIconSize.xl, color: c.textMedium),
+          ),
+          const SizedBox(height: AppSpace.sm),
+          Text(text, textAlign: TextAlign.center, style: AppType.body(context)),
+          if (action != null) ...[const SizedBox(height: AppSpace.md), action!],
         ]),
       ),
     );
@@ -117,38 +123,25 @@ class PlError extends StatelessWidget {
   Widget build(BuildContext context) => PlEmpty(
     message,
     icon: Icons.cloud_off_rounded,
-    action: FilledButton.icon(
-        onPressed: onRetry, icon: const Icon(Icons.refresh_rounded), label: Text('pl_retry'.tr)),
+    action: AppButton.primary(onPressed: onRetry, icon: Icons.refresh_rounded, label: 'pl_retry'.tr),
   );
 }
 
+/// A paper card (the kit's AppCard: the card surface on a warm hairline, no resting shadow) with the parent screens'
+/// list spacing under it.
 class PlCard extends StatelessWidget {
-  const PlCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.onTap});
+  const PlCard({super.key, required this.child, this.padding = AppSpace.card, this.onTap});
 
   final Widget child;
   final EdgeInsetsGeometry padding;
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: c.primary.withAlpha(30)),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Padding(padding: padding, child: child),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      AppCard(margin: const EdgeInsets.only(bottom: AppSpace.sm), padding: padding, onTap: onTap, child: child);
 }
 
-/// Shows an error from a provider as a snackbar-style message (uses the project's Helpers).
+/// Shows an error from a provider as a toast (above sheets and dialogs).
 void plToast(String? m) {
   if (m == null || m.isEmpty) return;
   Helpers.showMessage(m);
@@ -164,16 +157,17 @@ Future<String?> plAskText(BuildContext context, String title,
       content: TextField(
         controller: ctrl,
         maxLines: 3,
-        decoration: InputDecoration(hintText: hint, border: const OutlineInputBorder()),
+        style: appFieldTextStyle(ctx),
+        decoration: appFieldDecoration(ctx, hint: hint),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: Text('pl_cancel'.tr)),
-        FilledButton(
+        AppButton.ghost(onPressed: () => Navigator.pop(ctx), label: 'pl_cancel'.tr),
+        AppButton.primary(
           onPressed: () {
             if (required && ctrl.text.trim().length < 3) return;
             Navigator.pop(ctx, ctrl.text.trim());
           },
-          child: Text('pl_confirm'.tr),
+          label: 'pl_confirm'.tr,
         ),
       ],
     ),
