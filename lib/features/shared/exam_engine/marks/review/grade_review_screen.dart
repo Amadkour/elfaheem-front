@@ -390,7 +390,7 @@ class _GradeReviewScreenState extends State<GradeReviewScreen> with SingleTicker
     );
   }
 
-  Tab _tab(IconData icon, String label, int n) => Tab(height: 48, child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, size: 18), const SizedBox(width: AppSpace.xxs), Text('$label ($n)')]));
+  Tab _tab(IconData icon, String label, int n) => Tab(height: AppTouch.min, child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, size: AppIconSize.sm), const SizedBox(width: AppSpace.xxs), Text('$label ($n)')]));
 
   Widget _body(MarkSession? s, bool wide) {
     final c = context.colors;
@@ -415,16 +415,15 @@ class _GradeReviewScreenState extends State<GradeReviewScreen> with SingleTicker
                   padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
                   child: Align(
                     alignment: AlignmentDirectional.centerStart,
-                    child: FilledButton.icon(
+                    child: AppButton.primary(
                       key: const ValueKey('gr.bulk'),
-                      style: const ButtonStyle(minimumSize: WidgetStatePropertyAll(Size(AppTouch.min, AppTouch.min))),
                       onPressed: _busy ? null : _applyAllClean,
-                      icon: const Icon(Icons.done_all_rounded, size: 18),
-                      label: Text(t('تطبيق كل الدرجات النظيفة (${clean.length})', 'Apply all clean marks (${clean.length})')),
+                      icon: Icons.done_all_rounded,
+                      label: t('تطبيق كل الدرجات النظيفة (${clean.length})', 'Apply all clean marks (${clean.length})'),
                     ),
                   ),
                 ),
-              if (_busy) const LinearProgressIndicator(minHeight: 2),
+              if (_busy) const LinearProgressIndicator(minHeight: AppBorder.focus),
               Expanded(
                 child: rows.isEmpty
                     ? (_loading ? const AppListSkeleton() : AppEmpty(icon: Icons.inbox_outlined, title: _emptyText(s), message: s.counts.pending > 0 ? t('${s.counts.pending} ورقة قيد القراءة', '${s.counts.pending} sheet(s) still being read') : null))
@@ -439,7 +438,7 @@ class _GradeReviewScreenState extends State<GradeReviewScreen> with SingleTicker
                         }),
                       ),
               ),
-              if (wide) Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: Text(gradeShortcutsText(), style: appText(12, c: c.textLight))),
+              if (wide) Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: Text(gradeShortcutsText(), style: AppType.meta(context).copyWith(color: c.textLight))),
             ]),
           ),
         ),
@@ -454,31 +453,55 @@ class _GradeReviewScreenState extends State<GradeReviewScreen> with SingleTicker
       };
 }
 
-/// Progress and decisions at a glance: "9 read · 2 waiting · 4 applied · 1 kept" with a bar while reading goes on.
+/// Progress and decisions at a glance: "9 read · 2 waiting · 4 applied · 1 kept" on a block in the colour of where the
+/// session stands — sky while sheets are still being read, peach while differences wait for a person, emerald once
+/// nothing is left, paper when the session is closed.
 class _Summary extends StatelessWidget {
   const _Summary({required this.session});
   final MarkSession session;
 
+  AppBlockTone get _tone {
+    final k = session.counts;
+    if (!session.open) return AppBlockTone.paper;
+    if (k.pending > 0) return AppBlockTone.sky;
+    if (k.mismatch > 0 || k.unreadable > 0) return AppBlockTone.peach;
+    return AppBlockTone.emerald;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final k = session.counts;
     final total = k.read + k.pending;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xs),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(
-          '${gradeCounterText(total, k.read, k.pending)} · ${t('${k.applied} طُبّقت', '${k.applied} applied')} · ${t('${k.kept} أُبقيت', '${k.kept} kept')}',
-          key: const ValueKey('gr.summary'),
-          style: appText(13, w: FontWeight.w600, c: c.textMedium, h: 1.35),
-        ),
-        if (session.converts)
-          Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text(gradeConversionText(session.paperMax, session.columnMax), style: appText(12, c: c.textLight))),
-        if (k.pending > 0)
-          Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: LinearProgressIndicator(value: total == 0 ? null : k.read / total, minHeight: 3)),
-        if (!session.open)
-          Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: AppTag(t('الجلسة مغلقة', 'Session closed'), c.textMedium, icon: Icons.lock_outline_rounded)),
-      ]),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.sm),
+      child: AppBlock(
+        tone: _tone,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.md),
+        child: Builder(builder: (context) {
+          final b = AppBlock.colorsOf(context);
+          return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(
+              '${gradeCounterText(total, k.read, k.pending)} · ${t('${k.applied} طُبّقت', '${k.applied} applied')} · ${t('${k.kept} أُبقيت', '${k.kept} kept')}',
+              key: const ValueKey('gr.summary'),
+              style: AppType.bodyStrong(context).copyWith(color: b.ink, height: 1.35),
+            ),
+            if (session.converts)
+              Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text(gradeConversionText(session.paperMax, session.columnMax), style: AppType.meta(context).copyWith(color: b.muted))),
+            if (k.pending > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpace.sm),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  child: LinearProgressIndicator(value: total == 0 ? null : k.read / total, minHeight: AppSpace.xxs, color: b.accentInk(context.colors.primary), backgroundColor: b.ink.withValues(alpha: .10)),
+                ),
+              ),
+            if (!session.open) ...[
+              AppSpace.gapXs,
+              AppStatusBadge(label: t('الجلسة مغلقة', 'Session closed'), icon: Icons.lock_outline_rounded, dense: true),
+            ],
+          ]);
+        }),
+      ),
     );
   }
 }

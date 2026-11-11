@@ -18,6 +18,8 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_all.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/exam_hub_screen.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/hub_widgets.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/marks/mark_sessions_api.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/marks/review/grade_review_rows.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/result/exam_get_result_screen.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/result/exam_result_data.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -195,6 +197,7 @@ void main() {
       act: (t) => _tapText(t, AppConfig.lang == 'ar' ? 'النتائج' : 'Results')));
   testWidgets('empty', (t0) => _render(t0, 'empty', () => ExamHubScreen(loader: () async => const AllExamsData(exams: []))));
   resultScenes();
+  marksScenes();
   testWidgets('sheets', (t0) => _render(t0, 'sheets', sizes: const [Size(390, 844)], () => Builder(
       builder: (context) => _Sheet(
             title: AppConfig.lang == 'ar' ? 'لا درجات لهذا الاختبار بعد' : 'This exam has no degrees yet',
@@ -286,4 +289,69 @@ Future<void> _scrollDown(WidgetTester t) async {
 void resultScenes() {
   testWidgets('result', (t0) => _render(t0, 'result', () => const _ResultHost()));
   testWidgets('result_done', (t0) => _render(t0, 'result_done', () => const _ResultHost(partial: false), act: _scrollDown));
+}
+
+const _session = MarkSession(id: 7, courseId: 3, mode: MarkMode.import, columnKey: 'midterm', columnMax: 20, paperMax: 50, roundingStep: 0.5, counts: MarkCounts(match: 3, mismatch: 4, unreadable: 2, pending: 5));
+
+MarkRow _markRow({int id = 1, bool student = true, List<String> issues = const ['scaled'], String status = 'open', double? recorded = 14, double diff = 2}) => MarkRow(
+      id: id,
+      studentId: student ? 11 : null,
+      studentName: student ? (AppConfig.lang == 'ar' ? 'سارة علي الشريف' : 'Sara Ali Al-Sherif') : null,
+      identifierMasked: '2024***17',
+      identifierMethod: 'qr',
+      marks: const [
+        MarkPart(fieldId: 'q1', questionNo: '1', value: 20, conf: .97, max: 25),
+        MarkPart(fieldId: 'q2', questionNo: '2', value: 20, conf: .9, max: 25),
+        MarkPart(fieldId: 'q3', questionNo: '3', status: 'unreadable', max: 10),
+      ],
+      written: 40,
+      computed: 40,
+      used: 40,
+      scaled: 16,
+      recorded: recorded,
+      diff: diff,
+      issues: issues,
+      status: status,
+    );
+
+class _MarksHost extends StatelessWidget {
+  const _MarksHost();
+
+  @override
+  Widget build(BuildContext context) {
+    final wide = MediaQuery.sizeOf(context).width >= 900;
+    final list = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      GradeRowTile(row: _markRow(diff: 0, recorded: 16), list: MarkList.match),
+      AppSpace.gapXs,
+      GradeRowTile(row: _markRow(id: 2), list: MarkList.mismatch, selected: true),
+      AppSpace.gapXs,
+      GradeRowTile(row: _markRow(id: 3, student: false, issues: const ['unknown_student']), list: MarkList.unreadable),
+      AppSpace.gapXs,
+      GradeRowTile(row: _markRow(id: 4, status: 'applied'), list: MarkList.mismatch),
+    ]);
+    final detail = GradeRowDetail(row: _markRow(id: 2), session: _session, onApply: () {}, onKeep: () {}, onDismiss: () {}, onFix: (_) {});
+    final apply = Material(
+      color: context.colors.cardBg,
+      borderRadius: AppRadius.cardAll,
+      child: Padding(padding: const EdgeInsets.all(AppSpace.lg), child: GradeApplySheet(row: _markRow(id: 2), columnLabel: 'Midterm', onConfirm: (_) {})),
+    );
+    return Scaffold(
+      appBar: AppHeader(title: AppConfig.lang == 'ar' ? 'مراجعة الدرجات' : 'Review grades'),
+      body: ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
+        if (wide)
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: list),
+            AppSpace.gapLg,
+            Expanded(child: detail),
+            AppSpace.gapLg,
+            Expanded(child: apply),
+          ])
+        else ...[list, AppSpace.gapLg, detail, AppSpace.gapLg, apply],
+      ]),
+    );
+  }
+}
+
+void marksScenes() {
+  testWidgets('marks', (t0) => _render(t0, 'marks', () => const _MarksHost()));
 }
