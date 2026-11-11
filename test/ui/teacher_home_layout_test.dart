@@ -5,9 +5,11 @@ import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxEntry;
 import 'package:flutter_education_app/features/teacher/courses/component/teacher_stats.dart';
+import 'package:flutter_education_app/features/teacher/home/go_live_sheet.dart' show GoLiveButton;
 import 'package:flutter_education_app/features/teacher/home/home_screen.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_extra.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
+import 'package:flutter_education_app/features/teacher/schedules/schedules_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';
@@ -146,5 +148,49 @@ void main() {
     await expectNoLayoutErrors(tester, () => body(loading: true));
     await expectNoLayoutErrors(tester, () => body(error: '$longAr $longEn'));
     await expectNoLayoutErrors(tester, () => body(staleError: longEn, extra: extra, schedule: [session(1, '08:00', '09:30')]));
+  });
+
+  testWidgets('hero (D-622): sky block, the day ribbon, a long switcher beside Go live; free day; no Go live', (tester) async {
+    final day = teacherDayRibbonItems([session(1, '06:00', '07:30', ongoing: true), session(2, '09:00', '10:30'), session(3, '13:00', '14:00')]);
+    await expectNoLayoutErrors(
+      tester,
+      () => SingleChildScrollView(
+        child: TeacherHomeHero(
+          name: '$longAr $longEn',
+          subtitle: '$longEn $longAr',
+          day: day,
+          nowMin: 9 * 60,
+          switcher: const Text('$longAr $longEn', maxLines: 1, overflow: TextOverflow.ellipsis),
+          goLive: GoLiveButton(onTap: () {}),
+        ),
+      ),
+    );
+    await expectNoLayoutErrors(tester, () => SingleChildScrollView(child: TeacherHomeHero(name: longEn, goLive: GoLiveButton(live: true, onTap: () {}))));
+    await expectNoLayoutErrors(tester, () => SingleChildScrollView(child: TeacherHomeHero(name: longAr, day: day, switcher: const Text(longEn))));
+    await tester.pumpWidget(layoutHost(SingleChildScrollView(child: TeacherHomeHero(name: 'A', day: day))));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(HomeDayRibbon), findsOneWidget);
+    await tester.pumpWidget(layoutHost(const SingleChildScrollView(child: TeacherHomeHero(name: 'A'))));
+    expect(find.byType(HomeDayRibbon), findsNothing, reason: 'a free day draws no ribbon');
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('weekly appointments: week block, cards, empty, loading; the rating figures', (tester) async {
+    const slots = [
+      CourseSchedule(id: 1, courseId: 3, day: 'sunday', startTime: '08:00', endTime: '09:30'),
+      CourseSchedule(id: 2, courseId: 3, day: 'tuesday', startTime: '10:00', endTime: '11:30'),
+      CourseSchedule(id: 3, courseId: 3, day: 'tuesday', startTime: '14:00', endTime: '15:00'),
+      CourseSchedule(id: 4, courseId: 3, day: 'wednesday', startTime: '23:30', endTime: '23:59'),
+    ];
+    await expectNoLayoutErrors(tester, () => TeacherSchedulesView(schedules: slots, onAdd: () {}, onDelete: (_) {}));
+    await expectNoLayoutErrors(tester, () => TeacherSchedulesView(schedules: const [], onAdd: () {}));
+    await expectNoLayoutErrors(tester, () => const TeacherSchedulesView(schedules: [], loading: true));
+    expect(TeacherSchedulesView.sorted(slots).map((s) => s.id).toList(), [2, 3, 4, 1]);
+    await expectNoLayoutErrors(
+      tester,
+      () => const SingleChildScrollView(
+        child: StatsRow(stats: TeacherStats(totalStudents: 1234567, totalCourses: 42, overallRating: 4.85, doctorRating: 4.9), isFull: true),
+      ),
+    );
   });
 }

@@ -25,6 +25,7 @@ import '../../../core/app_mode.dart';
 import '../../../core/plural.dart';
 import '../../../design/app_contrast.dart' show ensureContrast;
 import '../../../design/app_kit.dart';
+import '../../../design/app_motion_kit.dart' show AppEase, AppPressScale;
 import '../../../design/home_kit.dart' show homeDurationText;
 import '../../../utils/widget/app_network_image.dart';
 import '../../admin/admin_common.dart' show t;
@@ -51,37 +52,37 @@ class GoLiveButton extends StatelessWidget {
 
   static String labelFor(bool live) => live ? t('العودة للبث', 'Return to live') : t('ابدأ البث', 'Go live');
 
+  /// The pill's height inside its 48 px target.
+  static const double _pill = AppTouch.min - AppSpace.xs;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    // ONE solid live red (no gradient, no coloured glow): the home's strong accent, legible white ink on it
     final fill = ensureContrast(c.danger, [c.onHero]);
     final label = labelFor(live);
     final icon = busy
-        ? SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2, color: c.onHero))
+        ? SizedBox.square(dimension: AppIconSize.sm, child: CircularProgressIndicator(strokeWidth: AppBorder.focus, color: c.onHero))
         : live
             ? _RingDot(color: c.onHero)
-            : Icon(Icons.sensors_rounded, size: 19, color: c.onHero);
+            : Icon(Icons.sensors_rounded, size: AppIconSize.md, color: c.onHero);
     final pill = DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: AppGradients.blend(context, color: fill),
-        borderRadius: BorderRadius.circular(40),
-        boxShadow: [BoxShadow(color: fill.withValues(alpha: c.isDark ? 0.28 : 0.32), blurRadius: 14, offset: const Offset(0, 5))],
-      ),
+      decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(AppRadius.pill)),
       child: SizedBox(
-        height: 40,
-        width: compact ? 40 : null,
+        height: _pill,
+        width: compact ? _pill : null,
         child: compact
             ? Center(child: icon)
             : Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 16, 0),
+                padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, 0, AppSpace.md, 0),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   icon,
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpace.xs),
                   Flexible(
                     child: Text(label,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: appText(13.5, w: FontWeight.w800, c: c.onHero).copyWith(letterSpacing: 0.1)),
+                        style: AppType.label(context).copyWith(color: c.onHero, fontWeight: FontWeight.w600)),
                   ),
                 ]),
               ),
@@ -93,14 +94,18 @@ class GoLiveButton extends StatelessWidget {
       excludeSemantics: true,
       child: Tooltip(
         message: label,
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
-            onTap: busy ? null : onTap,
-            customBorder: const StadiumBorder(),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
-              child: Center(widthFactor: 1, child: pill),
+        child: AppPressScale(
+          enabled: !busy && onTap != null,
+          scale: 0.97,
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              onTap: busy ? null : onTap,
+              customBorder: const StadiumBorder(),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: AppTouch.min, minWidth: AppTouch.min),
+                child: Center(widthFactor: 1, child: pill),
+              ),
             ),
           ),
         ),
@@ -116,11 +121,15 @@ class _RingDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: 16,
-        height: 16,
+        width: AppIconSize.sm,
+        height: AppIconSize.sm,
         alignment: Alignment.center,
-        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: color.withValues(alpha: 0.55), width: 2)),
-        child: Container(width: 7, height: 7, decoration: BoxDecoration(shape: BoxShape.circle, color: color)),
+        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: color.withValues(alpha: 0.55), width: AppBorder.focus)),
+        child: Container(
+          width: AppSpace.xs - 1,
+          height: AppSpace.xs - 1,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+        ),
       );
 }
 
@@ -543,13 +552,10 @@ class GoLiveSheetView extends StatelessWidget {
         _NoCourse(onNewCourse: onNewCourse)
       else ...[
         _Label(t('الكورس', 'Course')),
-        const SizedBox(height: 8),
         _CoursePicker(courses: courses, selected: courseId, onPick: onCourse),
-        const SizedBox(height: 18),
-        _Label(t('الحصة', 'Session')),
-        const SizedBox(height: 8),
+        _Label(t('الحصة', 'Session'), first: false),
         if (loadingSessions)
-          const AppShimmer(child: AppSkeletonBox(width: double.infinity, height: 72, radius: 18))
+          const AppShimmer(child: AppSkeletonBox(width: double.infinity, height: AppTouch.min * 1.5, radius: AppRadius.card))
         else ...[
           if (s != null) ...[
             _Option(
@@ -560,42 +566,42 @@ class GoLiveSheetView extends StatelessWidget {
               title: s.title.isEmpty ? t('حصة اليوم', "Today's class") : s.title,
               subtitle: _suggestionLine(s, now ?? DateTime.now().toUtc()),
               badge: s.live ? t('مباشر الآن', 'Live now') : t('في موعدها', 'On schedule'),
+              badgeTone: s.live ? AppTone.danger : AppTone.success,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.xs),
           ],
           _Option(
             selected: !useSuggestion || s == null,
             onTap: onUseSuggestion == null || s == null ? null : () => onUseSuggestion!(false),
             icon: Icons.bolt_rounded,
-            tone: c.accent2,
+            tone: c.primary,
             title: t('حصة مباشرة جديدة الآن', 'New live session now'),
             subtitle: t('تُضاف إلى حصص الكورس وتبدأ فورًا', "Added to the course's sessions, starts right away"),
             child: !useSuggestion || s == null
                 ? Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: TextField(
-                      controller: title,
-                      enabled: !busy,
-                      textInputAction: TextInputAction.go,
-                      maxLength: 120,
-                      style: appText(14, w: FontWeight.w600, c: c.textDark),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        counterText: '',
-                        // the default title shows as the hint at once: an empty field is a valid answer
-                        floatingLabelBehavior: FloatingLabelBehavior.always,
-                        labelText: t('العنوان (اختياري)', 'Title (optional)'),
-                        hintText: titleHint,
-                        prefixIcon: Icon(Icons.edit_rounded, size: 18, color: c.textLight),
+                    padding: const EdgeInsets.only(top: AppSpace.md),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+                      AppFieldLabel(t('العنوان (اختياري)', 'Title (optional)')),
+                      // the label above is drawn for the eye only: the field says it to a screen reader
+                      Semantics(
+                        label: t('العنوان (اختياري)', 'Title (optional)'),
+                        child: TextField(
+                          controller: title,
+                          enabled: !busy,
+                          textInputAction: TextInputAction.go,
+                          maxLength: 120,
+                          style: appFieldTextStyle(context),
+                          // the default title shows as the hint at once: an empty field is a valid answer
+                          decoration: appFieldDecoration(context, hint: titleHint, icon: Icons.edit_rounded, enabled: !busy)
+                              .copyWith(counterText: ''),
+                        ),
                       ),
-                    ),
+                    ]),
                   )
                 : null,
           ),
         ],
-        const SizedBox(height: 18),
-        _Label(t('قبل الدخول', 'Before you go in')),
-        const SizedBox(height: 4),
+        _Label(t('قبل الدخول', 'Before you go in'), first: false),
         if (!rejoin)
           AppSwitchTile(
             icon: Icons.fiber_manual_record_rounded,
@@ -606,7 +612,7 @@ class GoLiveSheetView extends StatelessWidget {
             value: record,
             onChanged: busy ? null : onRecord,
           ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         Row(children: [
           Expanded(
             child: _DeviceToggle(
@@ -617,7 +623,7 @@ class GoLiveSheetView extends StatelessWidget {
               onChanged: busy ? null : onCamera,
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.xs),
           Expanded(
             child: _DeviceToggle(
               on: mic,
@@ -629,7 +635,7 @@ class GoLiveSheetView extends StatelessWidget {
           ),
         ]),
         if (error != null) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.md),
           AppBanner(icon: Icons.error_outline_rounded, text: error!, color: c.danger),
         ],
       ],
@@ -639,29 +645,29 @@ class GoLiveSheetView extends StatelessWidget {
       _Header(onClose: onClose),
       Flexible(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
-          // the course row runs edge to edge (it scrolls sideways); everything else keeps the 20 px gutter
+          padding: const EdgeInsets.only(bottom: AppSpace.md),
+          // the course row runs edge to edge (it scrolls sideways); everything else keeps the sheet's gutter
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            for (final w in body) w is _CoursePicker ? w : Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: w),
+            for (final w in body) w is _CoursePicker ? w : Padding(padding: _kSheetSides, child: w),
           ]),
         ),
       ),
       // the action stays in view: the big button, then the secondary way (a meeting without a course)
       DecoratedBox(
-        decoration: BoxDecoration(border: Border(top: BorderSide(color: c.divider))),
+        decoration: BoxDecoration(border: Border(top: BorderSide(color: c.divider, width: AppBorder.hairline))),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
+          padding: const EdgeInsets.fromLTRB(_kSheetInset, AppSpace.sm, _kSheetInset, AppSpace.xs),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             if (courses.isNotEmpty) _GoButton(label: rejoin ? t('العودة إلى البث', 'Rejoin the live') : t('ابدأ البث الآن', 'Go live now'), busy: busy, onPressed: onGo),
             if (onMeetNow != null)
               Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: TextButton.icon(
-                  onPressed: busy ? null : onMeetNow,
-                  style: TextButton.styleFrom(minimumSize: const Size(48, 48), foregroundColor: appInk(context, c.primary)),
-                  icon: const Icon(Icons.video_call_rounded, size: 20),
-                  label: Text(t('اجتماع مباشر بدون كورس', 'Meet now, without a course'),
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w700, c: appInk(context, c.primary))),
+                padding: const EdgeInsets.only(top: AppSpace.xxs),
+                child: Center(
+                  child: AppButton.ghost(
+                    label: t('اجتماع مباشر بدون كورس', 'Meet now, without a course'),
+                    icon: Icons.video_call_rounded,
+                    onPressed: busy ? null : onMeetNow,
+                  ),
                 ),
               ),
           ]),
@@ -670,6 +676,10 @@ class GoLiveSheetView extends StatelessWidget {
     ]);
   }
 }
+
+/// The sheet's side gutter (in line with the kit's sheet header).
+const double _kSheetInset = AppSpace.md + AppSpace.xxs;
+const EdgeInsets _kSheetSides = EdgeInsets.symmetric(horizontal: _kSheetInset);
 
 /// "On schedule · 10:00 – 11:30 · in 12 min" / "Live · since 10:02".
 String _suggestionLine(GoLiveSuggestion s, DateTime now) {
@@ -686,6 +696,8 @@ String _suggestionLine(GoLiveSuggestion s, DateTime now) {
   return '$range · $when';
 }
 
+/// The sheet's masthead: a live-red mark on its own tint, the editorial title, one line of direction, Close. No
+/// wash behind it: the mark carries the colour (D-612).
 class _Header extends StatelessWidget {
   const _Header({this.onClose});
   final VoidCallback? onClose;
@@ -693,56 +705,54 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final fill = ensureContrast(c.danger, [c.onHero]);
-    // a soft live-red wash behind the title
-    return AppMeshSurface(
-      color: fill,
-      style: AppMeshStyle.wash,
-      child: Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(20, 16, 12, 14),
+    final tint = appTintOn(context, c.danger);
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(_kSheetInset, AppSpace.lg, AppSpace.sm, AppSpace.md),
       child: Row(children: [
         Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: AppGradients.blend(context, color: fill),
-            boxShadow: [BoxShadow(color: fill.withValues(alpha: 0.30), blurRadius: 16, offset: const Offset(0, 6))],
-          ),
-          child: Icon(Icons.sensors_rounded, color: c.onHero, size: 24),
+          width: AppTouch.min,
+          height: AppTouch.min,
+          decoration: BoxDecoration(color: tint, borderRadius: AppRadius.controlAll),
+          child: Icon(Icons.sensors_rounded, color: appInkOn(context, c.danger, tint), size: AppIconSize.lg),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text(t('ابدأ بثًا مباشرًا', 'Go live'),
-                maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(20, w: FontWeight.w900, c: c.textDark, h: 1.2)),
-            const SizedBox(height: 2),
+            Semantics(
+              header: true,
+              child: Text(t('ابدأ بثًا مباشرًا', 'Go live'), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.headline(context)),
+            ),
             Text(t('اختر الكورس وستكون في الغرفة خلال ثوانٍ', "Pick the course, you'll be in the room in seconds"),
-                maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium, h: 1.35)),
+                maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
           ]),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpace.xs),
         IconButton(
           tooltip: t('إغلاق', 'Close'),
-          style: IconButton.styleFrom(backgroundColor: c.inputBg, minimumSize: const Size(44, 44)),
+          constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+          style: IconButton.styleFrom(backgroundColor: c.inputBg),
           onPressed: onClose,
-          icon: Icon(Icons.close_rounded, color: c.textMedium, size: 20),
+          icon: Icon(Icons.close_rounded, color: c.textMedium, size: AppIconSize.md),
         ),
       ]),
-      ),
     );
   }
 }
 
+/// A group's name in the sheet (sentence case, the label role): 24 above it from the group before, 8 under it.
 class _Label extends StatelessWidget {
-  const _Label(this.text);
+  const _Label(this.text, {this.first = true});
   final String text;
+  final bool first;
 
   @override
-  Widget build(BuildContext context) => Text(text,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: appText(12.5, w: FontWeight.w800, c: context.colors.textMedium).copyWith(letterSpacing: 0.2));
+  Widget build(BuildContext context) => Padding(
+        padding: EdgeInsets.only(top: first ? 0 : AppSpace.lg, bottom: AppSpace.xs),
+        child: Text(text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppType.label(context).copyWith(color: context.colors.textMedium, fontWeight: FontWeight.w600)),
+      );
 }
 
 /// The courses as a row of cards (scrolls sideways); one course → one full-width card.
@@ -752,26 +762,26 @@ class _CoursePicker extends StatelessWidget {
   final int? selected;
   final ValueChanged<int> onPick;
 
+  /// A card's width in the sideways row: two lines of a title and the next card peeking at a phone's edge.
+  static const double _cardWidth = 224;
+
   @override
   Widget build(BuildContext context) {
     if (courses.length == 1) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: _CourseCard(course: courses.first, selected: true, onTap: null),
-      );
+      return Padding(padding: _kSheetSides, child: _CourseCard(course: courses.first, selected: true, onTap: null));
     }
     final wide = MediaQuery.sizeOf(context).width >= 720;
     return AppHScroll(
       // a mouse needs the thumb; a finger swipes (the next card peeking at the edge says there is more)
       thumbVisibility: wide,
-      padding: EdgeInsets.fromLTRB(20, 0, 20, wide ? 12 : 2),
+      padding: EdgeInsets.fromLTRB(_kSheetInset, 0, _kSheetInset, wide ? AppSpace.sm : AppSpace.xxs),
       // every card as tall as the tallest (a two-line title must not make one card stick out)
       child: IntrinsicHeight(
         child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           for (var i = 0; i < courses.length; i++) ...[
-            if (i > 0) const SizedBox(width: 10),
+            if (i > 0) const SizedBox(width: AppSpace.xs),
             SizedBox(
-              width: 224,
+              width: _cardWidth,
               child: _CourseCard(course: courses[i], selected: courses[i].id == selected, onTap: () => onPick(courses[i].id)),
             ),
           ],
@@ -781,77 +791,87 @@ class _CoursePicker extends StatelessWidget {
   }
 }
 
+/// A course to pick: paper on a warm hairline; picked = the emerald ring and its check. A course without a cover
+/// shows its initial on its own block tone (a course keeps its tone everywhere: [AppBlockTone.forKey]).
 class _CourseCard extends StatelessWidget {
   const _CourseCard({required this.course, required this.selected, this.onTap});
   final GoLiveCourse course;
   final bool selected;
   final VoidCallback? onTap;
 
+  static const double _thumb = AppTouch.min - AppSpace.xxs / 2;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final r = BorderRadius.circular(18);
-    final ink = appInk(context, c.primary);
+    final r = AppRadius.cardAll;
+    final ring = appInk(context, c.primary);
+    final block = AppBlockColors.of(context, AppBlockTone.forKey('course:${course.id}'));
     final initial = course.title.trim().isEmpty ? '·' : course.title.trim().characters.first.toUpperCase();
+    final motion = AppMotion.of(context).fast;
     return Semantics(
       selected: selected,
       button: onTap != null,
-      child: Material(
-        color: selected ? Color.alphaBlend(c.primary.withValues(alpha: c.isDark ? 0.16 : 0.07), c.cardBg) : c.cardBg,
-        borderRadius: r,
-        child: InkWell(
+      child: AppPressScale(
+        enabled: onTap != null,
+        child: Material(
+          color: c.cardBg,
           borderRadius: r,
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.all(10),
-            alignment: AlignmentDirectional.centerStart,
-            decoration: BoxDecoration(
-              borderRadius: r,
-              border: Border.all(color: selected ? c.primary : c.divider, width: selected ? 1.6 : 1),
-            ),
-            child: Row(children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: SizedBox.square(
-                  dimension: 46,
-                  child: course.imageUrl.isNotEmpty
-                      ? AppNetworkImage(url: course.imageUrl, width: 46, height: 46)
-                      : ColoredBox(
-                          color: c.primaryTint,
-                          child: Center(child: Text(initial, style: appText(18, w: FontWeight.w900, c: ink))),
-                        ),
-                ),
+          child: InkWell(
+            borderRadius: r,
+            onTap: onTap,
+            child: AnimatedContainer(
+              duration: motion,
+              curve: AppMotion.curve,
+              padding: const EdgeInsets.all(AppSpace.xs),
+              alignment: AlignmentDirectional.centerStart,
+              decoration: BoxDecoration(
+                borderRadius: r,
+                border: Border.all(color: selected ? ring : c.divider, width: selected ? AppBorder.focus : AppBorder.hairline),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                  Text(course.title,
-                      maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w800, c: c.textDark, h: 1.25)),
-                  const SizedBox(height: 2),
-                  Text(
-                    [
-                      goLiveStudentsText(course.students),
-                      if (!course.published) t('مسودة', 'Draft'),
-                    ].join(' · '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: appText(11.5, w: FontWeight.w600, c: c.textMedium),
+              child: Row(children: [
+                ClipRRect(
+                  borderRadius: AppRadius.chipAll,
+                  child: SizedBox.square(
+                    dimension: _thumb,
+                    child: course.imageUrl.isNotEmpty
+                        ? AppNetworkImage(url: course.imageUrl, width: _thumb, height: _thumb)
+                        : ColoredBox(
+                            color: block.surface,
+                            child: Center(child: Text(initial, style: AppType.section(context).copyWith(color: block.ink))),
+                          ),
                   ),
-                ]),
-              ),
-              const SizedBox(width: 6),
-              AnimatedOpacity(
-                opacity: selected ? 1 : 0,
-                duration: const Duration(milliseconds: 160),
-                child: Container(
-                  width: 22,
-                  height: 22,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: ensureContrast(c.primary, [c.onHero])),
-                  child: Icon(Icons.check_rounded, size: 15, color: c.onHero),
                 ),
-              ),
-            ]),
+                const SizedBox(width: AppSpace.sm),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                    Text(course.title,
+                        maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600, height: 1.25)),
+                    const SizedBox(height: AppSpace.xxs / 2),
+                    Text(
+                      [
+                        goLiveStudentsText(course.students),
+                        if (!course.published) t('مسودة', 'Draft'),
+                      ].join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.meta(context),
+                    ),
+                  ]),
+                ),
+                const SizedBox(width: AppSpace.xxs),
+                AnimatedOpacity(
+                  opacity: selected ? 1 : 0,
+                  duration: motion,
+                  child: Container(
+                    width: AppIconSize.md + 2,
+                    height: AppIconSize.md + 2,
+                    decoration: BoxDecoration(shape: BoxShape.circle, color: ensureContrast(c.primary, [c.onHero])),
+                    child: Icon(Icons.check_rounded, size: AppIconSize.xs, color: c.onHero),
+                  ),
+                ),
+              ]),
+            ),
           ),
         ),
       ),
@@ -868,6 +888,7 @@ class _Option extends StatelessWidget {
     required this.title,
     required this.subtitle,
     this.badge,
+    this.badgeTone = AppTone.brand,
     this.onTap,
     this.child,
   });
@@ -877,55 +898,60 @@ class _Option extends StatelessWidget {
   final Color tone;
   final String title, subtitle;
   final String? badge;
+  final AppTone badgeTone;
   final VoidCallback? onTap;
   final Widget? child;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final r = BorderRadius.circular(18);
-    final ink = appInk(context, tone);
+    final r = AppRadius.cardAll;
+    final well = appTintOn(context, tone);
+    final ink = appInkOn(context, tone, well);
+    final ring = ensureContrast(tone, [c.cardBg], min: 3);
+    final motion = AppMotion.of(context).fast;
     return Semantics(
       selected: selected,
       inMutuallyExclusiveGroup: true,
       child: Material(
-        color: selected ? Color.alphaBlend(tone.withValues(alpha: c.isDark ? 0.14 : 0.06), c.cardBg) : c.cardBg,
+        color: c.cardBg,
         borderRadius: r,
         child: InkWell(
           borderRadius: r,
           onTap: onTap,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(borderRadius: r, border: Border.all(color: selected ? tone : c.divider, width: selected ? 1.6 : 1)),
+            duration: motion,
+            curve: AppMotion.curve,
+            padding: const EdgeInsets.all(AppSpace.md),
+            decoration: BoxDecoration(
+              borderRadius: r,
+              border: Border.all(color: selected ? ring : c.divider, width: selected ? AppBorder.focus : AppBorder.hairline),
+            ),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Row(children: [
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(color: tone.withValues(alpha: c.isDark ? 0.22 : 0.12), borderRadius: BorderRadius.circular(12)),
-                  child: Icon(icon, size: 21, color: ink),
+                  width: AppSpace.xxl - AppSpace.xs,
+                  height: AppSpace.xxl - AppSpace.xs,
+                  decoration: BoxDecoration(color: well, borderRadius: AppRadius.chipAll),
+                  child: Icon(icon, size: AppIconSize.md, color: ink),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                     if (badge != null) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(color: tone.withValues(alpha: c.isDark ? 0.24 : 0.12), borderRadius: BorderRadius.circular(20)),
-                        child: Text(badge!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, w: FontWeight.w800, c: ink)),
-                      ),
-                      const SizedBox(height: 5),
+                      AppStatusBadge(label: badge!, tone: badgeTone),
+                      const SizedBox(height: AppSpace.xxs),
                     ],
-                    Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w800, c: c.textDark, h: 1.25)),
-                    const SizedBox(height: 2),
-                    Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium, h: 1.35)),
+                    Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(height: 1.25)),
+                    const SizedBox(height: AppSpace.xxs / 2),
+                    Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
                   ]),
                 ),
-                const SizedBox(width: 10),
-                _Radio(on: selected, tone: tone),
+                const SizedBox(width: AppSpace.sm),
+                Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: _Radio(on: selected, ink: ring)),
               ]),
-              ?child,
+              // the title field opens under the picked option (the card grows, never jumps)
+              AnimatedSize(duration: motion, curve: AppEase.out, alignment: AlignmentDirectional.topStart, child: child ?? const SizedBox(width: double.infinity)),
             ]),
           ),
         ),
@@ -935,26 +961,27 @@ class _Option extends StatelessWidget {
 }
 
 class _Radio extends StatelessWidget {
-  const _Radio({required this.on, required this.tone});
+  const _Radio({required this.on, required this.ink});
   final bool on;
-  final Color tone;
+  final Color ink;
+
+  static const double _size = AppIconSize.md + 2;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final ink = ensureContrast(tone, [c.cardBg], min: 3);
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
-      width: 22,
-      height: 22,
+      duration: AppMotion.of(context).fast,
+      width: _size,
+      height: _size,
       alignment: Alignment.center,
-      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: on ? ink : c.textLight.withValues(alpha: 0.6), width: 2)),
-      child: on ? Container(width: 10, height: 10, decoration: BoxDecoration(shape: BoxShape.circle, color: ink)) : null,
+      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: on ? ink : c.textLight.withValues(alpha: 0.6), width: AppBorder.focus)),
+      child: on ? Container(width: _size / 2 - 1, height: _size / 2 - 1, decoration: BoxDecoration(shape: BoxShape.circle, color: ink)) : null,
     );
   }
 }
 
-/// Camera / microphone to start with: a tinted tile when on, a quiet one when off.
+/// Camera / microphone to start with: the emerald tint when on, the quiet input well when off.
 class _DeviceToggle extends StatelessWidget {
   const _DeviceToggle({required this.on, required this.iconOn, required this.iconOff, required this.label, this.onChanged});
   final bool on;
@@ -965,30 +992,34 @@ class _DeviceToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final r = BorderRadius.circular(14);
-    final ink = on ? appInk(context, c.primary) : c.textMedium;
+    final r = AppRadius.controlAll;
+    final tint = appTintOn(context, c.primary);
+    final ink = on ? appInkOn(context, c.primary, tint) : c.textMedium;
     return Semantics(
       toggled: on,
       button: true,
       label: label,
       excludeSemantics: true,
-      child: Material(
-        color: on ? Color.alphaBlend(c.primary.withValues(alpha: c.isDark ? 0.16 : 0.08), c.cardBg) : c.inputBg,
-        borderRadius: r,
-        child: InkWell(
+      child: AppPressScale(
+        enabled: onChanged != null,
+        child: Material(
+          color: on ? tint : c.inputBg,
           borderRadius: r,
-          onTap: onChanged == null ? null : () => onChanged!(!on),
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 48),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(borderRadius: r, border: Border.all(color: on ? c.primary.withValues(alpha: 0.45) : c.divider)),
-            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(on ? iconOn : iconOff, size: 19, color: ink),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w700, c: ink)),
-              ),
-            ]),
+          child: InkWell(
+            borderRadius: r,
+            onTap: onChanged == null ? null : () => onChanged!(!on),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: AppTouch.min),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+              decoration: BoxDecoration(borderRadius: r, border: Border.all(color: on ? ink.withValues(alpha: 0.35) : c.divider, width: AppBorder.hairline)),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(on ? iconOn : iconOff, size: AppIconSize.md, color: ink),
+                const SizedBox(width: AppSpace.xs),
+                Flexible(
+                  child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: ink, fontWeight: FontWeight.w600)),
+                ),
+              ]),
+            ),
           ),
         ),
       ),
@@ -996,6 +1027,7 @@ class _DeviceToggle extends StatelessWidget {
   }
 }
 
+/// The sheet's one big action: the solid live red at the phone hero height (56), the label in the button role.
 class _GoButton extends StatelessWidget {
   const _GoButton({required this.label, required this.busy, this.onPressed});
   final String label;
@@ -1003,34 +1035,14 @@ class _GoButton extends StatelessWidget {
   final VoidCallback? onPressed;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final fill = ensureContrast(c.danger, [c.onHero]);
-    return SizedBox(
-      height: 54,
-      child: FilledButton(
-        onPressed: busy ? null : onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: fill,
-          foregroundColor: c.onHero,
-          disabledBackgroundColor: fill.withValues(alpha: 0.55),
-          disabledForegroundColor: c.onHero,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          elevation: 0,
-        ),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          if (busy)
-            SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: c.onHero))
-          else
-            Icon(Icons.sensors_rounded, size: 22, color: c.onHero),
-          const SizedBox(width: 10),
-          Flexible(
-            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w900, c: c.onHero)),
-          ),
-        ]),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppButton.danger(
+        label: label,
+        icon: Icons.sensors_rounded,
+        size: AppButtonSize.lg,
+        expand: true,
+        busy: busy,
+        onPressed: onPressed,
+      );
 }
 
 class _NoCourse extends StatelessWidget {
@@ -1039,7 +1051,7 @@ class _NoCourse extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
         child: AppEmpty(
           icon: Icons.auto_stories_rounded,
           title: t('لا يوجد كورس بعد', 'No course yet'),
