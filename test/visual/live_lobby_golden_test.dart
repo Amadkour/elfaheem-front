@@ -10,6 +10,7 @@
 //   rejected   the same page after the host said no
 //   record     the meeting's Record sheet: Google Drive chosen, OneDrive to connect, quality, what it holds
 //   drives     Settings › Connected drives, with a recording's status card under it
+//   info       the room's (i) sheet as the host sees it: the live figures, the link, the admission rules
 //   links      the meeting links page (D-307): a live meeting I host, a session later today, a weekly meeting tomorrow
 @Tags(['visual'])
 library;
@@ -25,6 +26,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show showAppSheet;
 import 'package:flutter_education_app/features/shared/live/live_lobby_sheets.dart';
 import 'package:flutter_education_app/features/shared/live/live_room.dart';
+import 'package:flutter_education_app/features/shared/live/meeting_info_sheet.dart';
 import 'package:flutter_education_app/features/shared/live/meeting_links.dart';
 import 'package:flutter_education_app/features/shared/live/meeting_links_page.dart';
 import 'package:flutter_education_app/features/shared/live/meeting_recording.dart';
@@ -169,6 +171,24 @@ const _oneDrive = CloudAccount(provider: CloudProvider.onedrive, configured: tru
 
 Widget _record() => const RecordSetupLayout(accounts: [_drive, _oneDrive], quality: RecordingQuality.p720, selected: CloudProvider.googleDrive);
 
+Widget _info() => MeetingInfoSheet(
+      info: MeetingInfo(
+        title: tr('مراجعة الوحدة الثالثة', 'Unit 3 review'),
+        isMeeting: true,
+        role: LiveRoomRole.host,
+        hostName: tr('د. منى السيد', 'Dr. Mona Elsayed'),
+        recording: LiveInfoRecording.recording,
+        elapsed: const Duration(minutes: 41, seconds: 7),
+        liveFor: const Duration(minutes: 52, seconds: 18),
+        participants: 27,
+        linkUrl: 'https://nextbrain.site/live/4f3b1c9e8d7a6b5c',
+        admission: LiveAdmission.approve,
+        guestAdmission: LiveGuestAdmission.approve,
+        freeLeft: const Duration(minutes: 2, seconds: 40),
+      ),
+      onCopyLink: () {},
+    );
+
 /// Connected drives with the latest recording's card under it (the meeting detail's card, for the look).
 Widget _drives() => Column(children: [
       const Expanded(child: CloudDrivesLayout(accounts: [_drive, _oneDrive])),
@@ -191,7 +211,7 @@ Widget _drives() => Column(children: [
 Widget _host(String name, {required bool dark}) {
   final theme = ThemeConfigProvider(api: ApiClient());
   final rtl = AppConfig.lang == 'ar';
-  final sheet = name == 'lobby' || name == 'share' || name == 'record';
+  final sheet = name == 'lobby' || name == 'share' || name == 'record' || name == 'info';
   return ThemeConfigScope(
     provider: theme,
     child: MaterialApp(
@@ -209,6 +229,7 @@ Widget _host(String name, {required bool dark}) {
             showAppSheet<void>(context, (_) => switch (name) {
                   'lobby' => _lobby(),
                   'record' => _record(),
+                  'info' => _info(),
                   _ => _share(),
                 });
           });
@@ -280,4 +301,5 @@ void main() {
   testWidgets('links', (tester) => _render(tester, 'links'));
   testWidgets('record', (tester) => _render(tester, 'record'));
   testWidgets('drives', (tester) => _render(tester, 'drives'));
+  testWidgets('info', (tester) => _render(tester, 'info'));
 }
