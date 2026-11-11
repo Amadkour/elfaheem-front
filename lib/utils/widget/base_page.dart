@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_blocks.dart';
-import 'package:flutter_education_app/design/app_gradients.dart' show AppBrandLayer, AppPattern, AppPatternStyle;
+import 'package:flutter_education_app/design/app_gradients.dart' show AppBrandLayer, AppDoodleScope, AppPattern, AppPatternStyle;
 import 'package:flutter_education_app/design/app_tokens.dart';
 
 import '../../features/shared/upload/upload_progress_footer.dart';
@@ -110,7 +110,11 @@ class BasePage extends StatelessWidget {
     // canvas only, never a page that sets its own background, never inside a card); a web-card page draws it once,
     // on the outer canvas
     Widget canvas(Widget body) => background == null
-        ? AppPattern(color: AppBrandLayer.of(context).pagePattern, style: AppPatternStyle.study, child: body)
+        ? AppPattern(
+            color: AppBrandLayer.doodle(context),
+            style: AppPatternStyle.study,
+            child: AppDoodleScope(on: true, child: body),
+          )
         : body;
     Widget w = Scaffold(
       appBar: headerOutside ? null : appBar,

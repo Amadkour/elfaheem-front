@@ -55,7 +55,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_contrast.dart' show ensureContrast;
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
-import 'package:flutter_education_app/design/app_gradients.dart' show AppGradientIcon;
+import 'package:flutter_education_app/design/app_gradients.dart' show AppGradientIcon, AppHeadingHalo;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show ShellScope;
 import 'package:flutter_education_app/design/chrome_button.dart' show ChromeBar;
@@ -524,7 +524,8 @@ class HomeSectionTitle extends StatelessWidget {
       padding: padding ?? const EdgeInsetsDirectional.fromSTEB(20, 0, 12, 10), // the start side follows the language (an Arabic title sat 8 px past the cards' edge)
       // The title takes every pixel the action leaves (a Flexible + Spacer pair split the row in halves: the title
       // was cut at half the width and the action floated mid-row instead of sitting at the end).
-      child: LayoutBuilder(builder: (context, box) => Row(children: [
+      // D-650 r3: a page-colour halo when the doodle field would drop the heading (its muted line, its link) below AA
+      child: AppHeadingHalo(child: LayoutBuilder(builder: (context, box) => Row(children: [
         Expanded(child: heading),
         if (actionLabel != null && onAction != null)
           ConstrainedBox(
@@ -536,7 +537,7 @@ class HomeSectionTitle extends StatelessWidget {
               child: Text(actionLabel!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w500, c: appInk(context, c.primary))),
             ),
           ),
-      ])),
+      ]))),
     );
   }
 }
@@ -670,7 +671,10 @@ class HomeActionCard extends StatelessWidget {
       width: 40,
       height: 40,
       decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
-      child: Icon(icon, size: 21, color: appInk(context, color)),
+      // D-650 r3: a brand tile (no tone of its own) wears the gradient glyph
+      child: tone == null
+          ? AppGradientIcon(icon, size: 21, on: [Color.alphaBlend(color.withValues(alpha: 0.12), c.cardBg)])
+          : Icon(icon, size: 21, color: appInk(context, color)),
     );
     if (attentionKey != null) iconBox = homeAttentionBadge(attentionKey!, iconBox);
     final card = AppLift(radius: r, child: Material(
@@ -1339,7 +1343,9 @@ class _StatRow extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(color: (s.tone ?? c.primary).withValues(alpha: 0.10), shape: BoxShape.circle),
-                child: Icon(s.icon, size: 17, color: ink),
+                child: s.tone == null
+                    ? AppGradientIcon(s.icon, size: 17, on: [Color.alphaBlend(c.primary.withValues(alpha: 0.10), c.cardBg)])
+                    : Icon(s.icon, size: 17, color: ink),
               ),
               const SizedBox(width: 12),
               Expanded(

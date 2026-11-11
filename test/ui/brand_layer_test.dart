@@ -46,29 +46,38 @@ void main() {
         final l = BrandLayer.of(t);
         Color over(Color top, Color s) => Color.alphaBlend(top, s);
 
-        // sidebar (D-650 r2): primary → primary_dark under the cream wash; the inks at every point content can sit
-        expect(l.sidebar.first, isNot(l.sidebar.last));
-        expect(l.sideWash.a, inInclusiveRange(dark ? 0.2 : 0.25, 0.4), reason: 'the wash is a 25-40 % overlay');
+        // sidebar (D-650 r3): the green held solid to 60 %, then the blend to the cream end; the on-hero inks on
+        // the green part
+        expect(BrandLayer.sideStops, [0, 0.6, 1]);
+        expect(l.sidebar[0], l.sidebar[1], reason: 'solid green to 60 %');
+        if (!dark) expect(l.sidebar.last, t.accent.withValues(alpha: 1), reason: 'the cream end is accent1');
         final side = l.sideSurfaces;
         aa(l.sideInk, [...side, for (final s in side) over(l.sideActiveFill, s)], 'sidebar ink');
         aa(l.sideMuted, side, 'section label');
         aa(l.sideItem, [...side, for (final s in side) over(l.sideHover, s)], 'idle tab');
         aa(l.sideActiveInk, [for (final s in side) over(l.sideActiveFill, s)], 'open tab');
         aa(l.sideIndicator, [for (final s in side) over(l.sideActiveFill, s)], 'gold bar', min: 3);
-        // the person box at the foot (under the strongest wash): the name in white, the role muted, on its glass
-        final foot = l.sideFoot;
-        expect(foot, isNotEmpty);
-        aa(t.onHero.withValues(alpha: 1), [...foot, for (final s in foot) over(l.sideGlass, s)], 'person name');
-        for (final s in foot) {
-          final box = over(l.sideGlass, s);
-          aa(over(t.onHeroMuted, box), [box], 'person role');
+        // every 4 px down the panel (and the rail's), the inks chosen for that spot keep AA on what they sit on:
+        // bare, hovered, on the open item's glass and on a box's glass; the green part keeps the on-hero set, the
+        // foot (the person box, the login figures) the dark set
+        for (var y = 0.0; y <= 860; y += 4) {
+          final k = AppBrandLayer.inkFor(l, [l.sideAt(const Size(248, 860), Offset(24, y))]);
+          final on = k.surfaces, glass = [for (final s in on) over(k.glass, s)];
+          aa(k.ink, [...on, ...glass, ...k.activeSurfaces], 'title at $y');
+          aa(k.item, [...on, for (final s in on) over(k.hover, s)], 'item at $y');
+          aa(k.muted, [...on, ...glass], 'muted at $y');
+          aa(k.activeInk, k.activeSurfaces, 'open item at $y');
+          aa(k.indicator, k.activeSurfaces, 'bar at $y', min: 3);
+          if (y <= 0.6 * 860) expect(k.onCream, isFalse, reason: 'the green part keeps the on-hero ink at $y');
+          if (y >= 0.9 * 860) expect(k.onCream, isTrue, reason: 'the cream part takes the dark ink at $y');
         }
         // the open tab's ink stays the cream (accent1) itself
         expect(l.sideActiveInk, t.accent.withValues(alpha: 1));
 
-        // the primary button at rest, hovered and pressed: white on the two stops that sit under the label; the
-        // third stop is the cream the label never touches
+        // the primary button at rest, hovered and pressed: solid primary under the label (white at AA); the third
+        // stop is the cream the label never touches
         expect(l.buttonInk, t.onHero.withValues(alpha: 1));
+        expect(l.button[0], l.button[1], reason: 'solid primary to 60 %');
         for (final g in [l.button, l.buttonHover, l.buttonPressed]) {
           aa(l.buttonInk, BrandLayer.gradientSamples(g[0], g[1], 9), 'white under the label');
         }
@@ -91,8 +100,35 @@ void main() {
     }
   }
 
-  // The cream ramp starts past a centred label: hold = (width + label) / 2 + gap, never before 55 %.
-  test('holdFor: short labels leave the last 45 % to the cream, long ones only the end padding', () {
+  // D-650 r3: the doodle field's strength is ONE token; at the owner's 50 % the page headings' inks (title, muted
+  // line, link) over a doodle stroke fall below AA, so AppHeadingHalo turns on; at 15 % they read without it.
+  test('doodle token: heading inks over the field, halo when below AA', () {
+    final prev = AppBrandLayer.doodleAlpha;
+    addTearDown(() => AppBrandLayer.doodleAlpha = prev);
+    final seen = <String, double>{};
+    for (final alpha in const [0.5, 0.15]) {
+      AppBrandLayer.doodleAlpha = alpha;
+      for (final dark in const [false, true]) {
+        final t = theme(_prod(), dark);
+        final d = AppBrandLayer.doodleFor(t);
+        expect(d.a, closeTo(dark ? alpha * AppBrandLayer.doodleDarkShare : alpha, 0.01));
+        final tag = '${(alpha * 100).round()}% ${dark ? 'dark' : 'light'}';
+        final over = Color.alphaBlend(d, t.background);
+        seen['$tag title'] = contrastRatio(t.textDark, over);
+        seen['$tag muted'] = contrastRatio(t.textMedium, over);
+        seen['$tag any'] = AppBrandLayer.headingContrastFor(t);
+      }
+    }
+    // ignore: avoid_print
+    print('heading contrast over a doodle stroke: ${seen.map((k, v) => MapEntry(k, v.toStringAsFixed(2)))}');
+    // the halo's switch: at the owner's 50 % the heading inks fall below AA, so AppHeadingHalo clears the doodles
+    expect(seen['50% light any']!, lessThan(kWcagAaText));
+    expect(seen['50% dark any']!, lessThan(kWcagAaText));
+  });
+
+  // The cream ramp starts past a centred label: hold = max(0.6, (width + label) / 2 + gap) — the 60 / 40 rule.
+  test('holdFor: short labels leave the last 40 % to the cream, long ones only the end padding', () {
+    expect(AppBrandFill.minHold, 0.6);
     expect(AppBrandFill.holdFor(358, 20), AppBrandFill.minHold);
     expect(AppBrandFill.holdFor(358, 300), closeTo(((358 + 300) / 2 + AppBrandFill.gap) / 358, 1e-9));
     expect(AppBrandFill.holdFor(100, 200), 1.0);

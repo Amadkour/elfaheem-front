@@ -29,6 +29,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 
+import 'app_gradients.dart' show AppHeadingHalo;
 import 'app_kit.dart';
 import 'app_responsive.dart' show Breakpoints;
 import 'app_shell_nav.dart' show ShellChrome;
@@ -380,7 +381,8 @@ class AppSection extends StatelessWidget {
     return Padding(
       padding: EdgeInsetsDirectional.only(top: spaceAbove ? AppSpace.sectionHead.top : 0),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        // D-650 r3: on the doodle field the heading gets a soft page-colour halo when the doodles would drop it below AA
+        AppHeadingHalo(child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               Semantics(
@@ -399,7 +401,7 @@ class AppSection extends StatelessWidget {
             AppSpace.gapSm,
             ConstrainedBox(constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.6), child: trailing!),
           ],
-        ]),
+        ])),
         SizedBox(height: AppSpace.sectionHead.bottom),
         child,
       ]),

@@ -131,8 +131,16 @@ Map<String, FakeHandler> _routes() => {
           },
     };
 
+/// `VISUAL_THEME=production` paints with the production theme (test/visual/fixtures/theme_production.json); the files
+/// then end in `_prod`.
+final _prodTheme = Platform.environment['VISUAL_THEME'] == 'production';
+
 Widget _host(Widget child, {required bool dark, String role = 'student'}) {
   final theme = ThemeConfigProvider(api: ApiClient());
+  if (_prodTheme) {
+    theme.debugUseColors(
+        jsonDecode(File('test/visual/fixtures/theme_production.json').readAsStringSync()) as Map<String, dynamic>);
+  }
   final rtl = AppConfig.lang == 'ar';
   final auth = MyAuthProvider(storage: _storage)..loadCachedUser();
   return MultiProvider(
@@ -206,7 +214,8 @@ Future<void> _render(WidgetTester tester, String name, Widget Function() build,
           expect(e, isNull, reason: '$name ${size.width.toInt()} $lang ${dark ? 'dark' : 'light'}: $e');
           await expectLater(
             find.byKey(_shot),
-            matchesGoldenFile('goldens/account_${name}_${size.width.toInt()}_${lang}_${dark ? 'dark' : 'light'}.png'),
+            matchesGoldenFile(
+                'goldens/account_${name}_${size.width.toInt()}_${lang}_${dark ? 'dark' : 'light'}${_prodTheme ? '_prod' : ''}.png'),
           );
         }
       }

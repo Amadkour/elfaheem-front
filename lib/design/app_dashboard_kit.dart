@@ -31,7 +31,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'app_blocks.dart';
 import 'app_charts.dart' show AppSparkline;
-import 'app_gradients.dart' show AppBrandLayer, AppGradientIcon;
+import 'app_gradients.dart' show AppBrandLayer, AppDoodleScope, AppGradientIcon;
 import 'app_kpi.dart' show appDeltaText;
 import 'app_motion_kit.dart';
 import 'app_tokens.dart';
@@ -96,7 +96,7 @@ class _Paper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final body = Padding(padding: padding, child: child);
+    final body = AppDoodleScope(on: false, child: Padding(padding: padding, child: child));
     final card = AppLift(
       child: Material(
         color: c.cardBg,

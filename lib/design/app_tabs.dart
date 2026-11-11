@@ -18,7 +18,7 @@ import 'package:flutter/services.dart';
 
 import '../config/theme/theme_config_provider.dart';
 import 'app_badges.dart';
-import 'app_gradients.dart' show AppBrandLayer;
+import 'app_gradients.dart' show AppBrandLayer, AppGradientIcon;
 import 'app_tokens.dart';
 
 class AppTabItem {
@@ -210,7 +210,10 @@ class _TabStripState extends State<_TabStrip> {
               child: Center(
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   if (it.icon != null) ...[
-                    Icon(it.icon, size: AppIconSize.md, color: ink),
+                    // D-650 r3: the brand glyph family, on the green pill when open, on the track when not
+                    AppGradientIcon(it.icon!,
+                        size: AppIconSize.md,
+                        on: sel && !underline ? [AppBrandLayer.of(context).button.first] : [c.cardBg, c.background, c.inputBg]),
                     const SizedBox(width: _gap),
                   ],
                   Text(it.label, maxLines: 1, softWrap: false, overflow: TextOverflow.visible, style: ts),

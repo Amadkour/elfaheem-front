@@ -24,6 +24,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'app_badges.dart';
 import 'app_blocks.dart';
 import 'app_buttons.dart';
+import 'app_gradients.dart' show AppGradientIcon;
 import 'app_kit.dart' show AppListSkeleton, AppShimmer, AppSkeletonBox;
 import 'app_motion_kit.dart';
 import 'app_tokens.dart';
@@ -90,7 +91,10 @@ class AppStatePlate extends StatelessWidget {
             // the icon sits on the chip the painter drew, at the sheet's top-start corner
             Align(
               alignment: const AlignmentDirectional(_PlatePainter.chipAlignX, _PlatePainter.chipAlignY),
-              child: Icon(icon, size: chip * 0.55, color: appInkOn(context, ink, tint)),
+              // D-650 r3: the brand plate's glyph wears the gradient; an error plate keeps its danger ink
+              child: accent == null
+                  ? AppGradientIcon(icon, size: chip * 0.55, on: [Color.alphaBlend(tint, c.cardBg)])
+                  : Icon(icon, size: chip * 0.55, color: appInkOn(context, ink, tint)),
             ),
           ]),
         ),

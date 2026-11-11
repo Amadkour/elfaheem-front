@@ -30,6 +30,7 @@ import '../config/theme/theme_config_provider.dart';
 import '../utils/widget/app_network_image.dart';
 import '../utils/widget/parent_component.dart';
 import 'app_blocks.dart';
+import 'app_gradients.dart' show AppGradientIcon, AppHeadingHalo;
 import 'app_responsive.dart';
 import 'app_tokens.dart';
 
@@ -120,8 +121,11 @@ class AppSettingsTile extends StatelessWidget implements AppSettingsSearchable {
                 color: col.withValues(alpha: c.isDark ? 0.18 : 0.10),
                 borderRadius: AppRadius.chipAll,
               ),
-              // the glyph darkened (lifted in dark mode) until it reads on the card
-              child: Icon(icon, size: AppIconSize.md, color: c.blockAccentInk(col, c.cardBg)),
+              // the glyph darkened (lifted in dark mode) until it reads on the card; a brand row (no colour of its
+              // own) wears the gradient glyph on its well (D-650 r3)
+              child: color == null
+                  ? AppGradientIcon(icon, size: AppIconSize.md, on: [Color.alphaBlend(col.withValues(alpha: c.isDark ? 0.18 : 0.10), c.cardBg)])
+                  : Icon(icon, size: AppIconSize.md, color: c.blockAccentInk(col, c.cardBg)),
             ),
             const SizedBox(width: AppSpace.sm),
             Expanded(
@@ -213,11 +217,14 @@ class AppSettingsGroup extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Padding(
         padding: EdgeInsetsDirectional.fromSTEB(AppSpace.xxs, spaceAbove ? AppSpace.sectionHead.top : 0, AppSpace.xxs, AppSpace.sectionHead.bottom),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        // D-650 r3: a page-colour halo when the doodle field would drop the heading below AA
+        child: AppHeadingHalo(child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           if (icon != null) ...[
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpace.xxs / 2),
-              child: Icon(icon, size: AppIconSize.md, color: danger ? headInk : c.textMedium),
+              child: danger
+                  ? Icon(icon, size: AppIconSize.md, color: headInk)
+                  : AppGradientIcon(icon!, size: AppIconSize.md, on: [c.background]),
             ),
             const SizedBox(width: AppSpace.xs),
           ],
@@ -233,7 +240,7 @@ class AppSettingsGroup extends StatelessWidget {
               ],
             ]),
           ),
-        ]),
+        ])),
       ),
       // the white card on the tinted page (D-632); the sign-out group keeps its flat danger tint
       _lifted(danger, Material(

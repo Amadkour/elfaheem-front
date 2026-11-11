@@ -28,9 +28,11 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_identity.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_blocks.dart';
+import 'package:flutter_education_app/design/app_contrast.dart' show ensureContrast;
 import 'package:flutter_education_app/design/app_buttons.dart' show appFocusRing, appKeyboardFocus;
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
-import 'package:flutter_education_app/design/app_gradients.dart' show AppBrandLabel, AppBrandLayer, AppBrandSpan;
+import 'package:flutter_education_app/design/app_gradients.dart'
+    show AppBrandInk, AppBrandLabel, AppBrandLayer, AppBrandPanel, AppBrandSpan, AppGradientIcon, AppHeadingHalo, BrandInk;
 import 'package:flutter_education_app/design/app_inputs.dart'
     show validateEmail, kEmailRegex, appFieldDecoration, appFieldTextStyle, appFieldFocusInk;
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppEase, AppPressScale;
@@ -176,13 +178,16 @@ class AuthSidebar extends StatelessWidget {
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, 0, AppSpace.md),
-          child: AppBlock(
-            // D-649: the brand gradient panel (forest → emerald, a gold glow, the faint lattice), cream ink
-            tone: AppBlockTone.forest,
-            pattern: true,
+          // D-650 r3: the 60 / 40 brand panel (green held to 60 %, then the blend to the cream, top → bottom, the faint
+          // lattice); each line picks its ink from the colour under it (AppBrandInk): cream / on-hero on the green, a
+          // dark ink on the cream (the figures at the foot)
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.block),
+            child: AppBrandPanel(
+            borderRadius: BorderRadius.circular(AppRadius.block),
+            child: Padding(
             padding: EdgeInsets.all(inner),
             child: Builder(builder: (context) {
-              final ink = AppBlock.colorsOf(context);
               return CustomScrollView(
                 slivers: [
                   SliverFillRemaining(
@@ -196,25 +201,33 @@ class AuthSidebar extends StatelessWidget {
                             // a very narrow panel (the password page's third of a phone) keeps the logo only
                             if (!narrow) ...[
                               const SizedBox(width: AppSpace.sm),
-                              Expanded(child: AuthBrandName(large: true, ink: ink.ink, muted: ink.muted)),
+                              Expanded(
+                                child: AppBrandInk(
+                                  builder: (context, k) => AuthBrandName(large: true, ink: k.ink, muted: k.muted),
+                                ),
+                              ),
                             ],
                           ],
                         ),
                         const Spacer(),
                         const SizedBox(height: AppSpace.xxl),
-                        Semantics(
-                          header: true,
-                          child: Text(
-                            'unlock_potential'.tr,
-                            style: AppType.display(context).copyWith(color: ink.ink),
+                        AppBrandInk(
+                          builder: (context, k) => Semantics(
+                            header: true,
+                            child: Text(
+                              'unlock_potential'.tr,
+                              style: AppType.display(context).copyWith(color: k.ink),
+                            ),
                           ),
                         ),
                         const SizedBox(height: AppSpace.md),
-                        Text(
-                          id.mission.isNotEmpty ? id.mission : 'join_students_hint'.tr,
-                          maxLines: 4,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppType.body(context).copyWith(color: ink.muted, height: 1.6),
+                        AppBrandInk(
+                          builder: (context, k) => Text(
+                            id.mission.isNotEmpty ? id.mission : 'join_students_hint'.tr,
+                            maxLines: 4,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppType.body(context).copyWith(color: k.muted, height: 1.6),
+                          ),
                         ),
                         const SizedBox(height: AppSpace.xl),
                         _SidebarFeature(icon: Icons.live_tv_rounded, text: 'feature_live_sessions'.tr),
@@ -225,7 +238,10 @@ class AuthSidebar extends StatelessWidget {
                         const Spacer(),
                         const SizedBox(height: AppSpace.xl),
                         // the stats banner of the admin's "About us" page (the fixed badges until the admin adds some)
-                        Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: ink.border ?? ink.faint.withValues(alpha: 0.25)),
+                        AppBrandInk(
+                          builder: (context, k) => Divider(
+                              height: AppBorder.hairline, thickness: AppBorder.hairline, color: k.glassBorder),
+                        ),
                         const SizedBox(height: AppSpace.lg),
                         if (id.stats.isNotEmpty)
                           Wrap(
@@ -251,6 +267,8 @@ class AuthSidebar extends StatelessWidget {
                 ],
               );
             }),
+            ),
+            ),
           ),
         ),
       ),
@@ -283,21 +301,21 @@ class _SidebarFeature extends StatelessWidget {
   const _SidebarFeature({required this.icon, required this.text});
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final ink = AppBlock.colorsOf(context);
+  Widget build(BuildContext context) => AppBrandInk(builder: _row);
+
+  Widget _row(BuildContext context, BrandInk ink) {
     return Row(
       children: [
         Container(
           width: AppTouch.min - AppSpace.xs,
           height: AppTouch.min - AppSpace.xs,
-          // a glass well on the brand panel (D-649), the icon in the panel's ink
+          // a glass well on the brand panel (D-649), the glyph in the brand family for the spot (D-650 r3)
           decoration: BoxDecoration(
-            color: ink.surface == c.blockForest ? c.heroGlass : c.cardBg,
+            color: ink.activeFill,
             borderRadius: AppRadius.chipAll,
-            border: ink.surface == c.blockForest ? Border.all(color: c.heroGlassBorder, width: AppBorder.hairline) : null,
+            border: Border.all(color: ink.glassBorder, width: AppBorder.hairline),
           ),
-          child: Icon(icon, size: AppIconSize.md, color: ink.ink),
+          child: AppGradientIcon(icon, size: AppIconSize.md, on: ink.activeSurfaces),
         ),
         const SizedBox(width: AppSpace.sm),
         Expanded(
@@ -343,8 +361,9 @@ class _SidebarStat extends StatelessWidget {
   const _SidebarStat({required this.value, required this.label});
 
   @override
-  Widget build(BuildContext context) {
-    final ink = AppBlock.colorsOf(context);
+  Widget build(BuildContext context) => AppBrandInk(builder: _stat);
+
+  Widget _stat(BuildContext context, BrandInk ink) {
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 160),
       child: Column(
@@ -377,15 +396,17 @@ class _TrustBadge extends StatelessWidget {
   const _TrustBadge({required this.label});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => AppBrandInk(builder: _badge);
+
+  Widget _badge(BuildContext context, BrandInk ink) {
     final c = context.colors;
-    final ink = AppBlock.colorsOf(context);
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.md),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.check_rounded, size: AppIconSize.sm, color: ink.accentInk(c.success)),
+          // a status glyph: the success ink, made to read on the spot (3:1)
+          Icon(Icons.check_rounded, size: AppIconSize.sm, color: ensureContrast(c.success, ink.surfaces, min: 3)),
           const SizedBox(width: AppSpace.xs),
           Flexible(child: Text(label, style: AppType.label(context).copyWith(color: ink.ink))),
         ],
@@ -1105,7 +1126,8 @@ class AuthOrDivider extends StatelessWidget {
           flex: 3,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
-            child: Text(label, textAlign: TextAlign.center, style: AppType.meta(context)),
+            // D-650 r3: on the doodle canvas the label gets the page-colour halo when the doodles would drop it below AA
+            child: AppHeadingHalo(child: Text(label, textAlign: TextAlign.center, style: AppType.meta(context))),
           ),
         ),
         line(),

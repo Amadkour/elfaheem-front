@@ -19,6 +19,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_gradients.dart' show AppBrandLayer;
 import 'package:flutter_education_app/design/app_keyboard.dart' show AppCommandPaletteScope;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
@@ -61,7 +62,11 @@ final _shot = GlobalKey();
 /// `VISUAL_THEME=production` paints with the production theme (test/visual/fixtures/theme_production.json) instead
 /// of the built-in palette; the files then end in `_prod`.
 final _prodTheme = Platform.environment['VISUAL_THEME'] == 'production';
-String get _prodTag => _prodTheme ? '_prod' : '';
+
+/// `DOODLE_ALPHA=0.15` renders the canvas's doodle field at that strength (AppBrandLayer.doodleAlpha, D-650 r3); the
+/// files then end in `_doodle15`.
+final _doodle = double.tryParse(Platform.environment['DOODLE_ALPHA'] ?? '');
+String get _prodTag => '${_prodTheme ? '_prod' : ''}${_doodle == null ? '' : '_doodle${(_doodle! * 100).round()}'}';
 
 String _tr(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
@@ -228,6 +233,7 @@ void main() {
   });
 
   Widget host({required bool dark, required double width}) {
+    if (_doodle != null) AppBrandLayer.doodleAlpha = _doodle!;
     final theme = ThemeConfigProvider(api: ApiClient());
     if (_prodTheme) {
       theme.debugUseColors(

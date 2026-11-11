@@ -61,7 +61,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'app_badges.dart';
 import 'app_buttons.dart';
 import 'app_contrast.dart' show ensureContrast;
-import 'app_gradients.dart' show AppGradientIcon;
+import 'app_gradients.dart' show AppDoodleScope, AppGradientIcon;
 import 'app_inputs.dart';
 import 'app_motion_kit.dart';
 import 'app_search_field.dart';
@@ -365,7 +365,8 @@ class AppCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final tappable = onTap != null || onLongPress != null;
-    final body = Padding(padding: padding, child: child);
+    // a card is paper: the page's doodle halo rules (D-650 r3) do not reach inside it
+    final body = AppDoodleScope(on: false, child: Padding(padding: padding, child: child));
     return AppPressScale(
       enabled: tappable,
       child: Padding(
@@ -424,7 +425,10 @@ class AppActionCard extends StatelessWidget {
       width: _iconBox,
       height: _iconBox,
       decoration: BoxDecoration(color: tint, borderRadius: AppRadius.chipAll),
-      child: Icon(icon, size: AppIconSize.lg, color: appInkOn(context, col, tint)),
+      // D-650 r3: a brand card (no colour of its own) wears the gradient glyph on its tint
+      child: color == null
+          ? AppGradientIcon(icon, size: AppIconSize.lg, on: [Color.alphaBlend(tint, c.cardBg)])
+          : Icon(icon, size: AppIconSize.lg, color: appInkOn(context, col, tint)),
     );
     return AppCard(
       onTap: onTap,

@@ -28,8 +28,14 @@
 // 3:1 on their circle); a plain inline icon stays flat. The page canvas wears [AppPatternStyle.study], small
 // education line icons, instead of the dots.
 // D-650 round 2: the gradient's end is accent1 (cream), placed past the label so white stays at 4.5:1 where the
-// glyphs sit; the sidebar is primary → primary_dark under a cream wash; the canvas is a dense doodle tile (see the
-// D-649 / D-650 block below).
+// glyphs sit; the canvas is a dense doodle tile (see the D-649 / D-650 block below).
+// D-650 round 3 (the 60/40 rule): EVERY brand gradient is 60 % primary and 40 % accent1 — solid primary from 0 to
+// 0.6, then a blend to accent1 at 1.0, mirrored in Arabic. A labelled fill holds the green to just past its label
+// (max(0.6, label end)); the sidebar, the rail and the auth panel run it top → bottom ([AppBrandPanel]) and every
+// piece of content picks its ink from the colour actually under it ([AppBrandInk]): the cream / on-hero ink on the
+// green, a dark ink on the cream, a soft plate where the blend is between the two. The doodle field is twice as
+// dense and its strength is ONE token ([AppBrandLayer.doodleAlpha]); page headings get a page-colour halo when that
+// strength would drop their ink below AA ([AppHeadingHalo]).
 library;
 
 import 'dart:math' as math;
@@ -38,6 +44,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderProxyBox;
+import 'package:flutter/scheduler.dart' show SchedulerBinding;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'app_contrast.dart';
@@ -179,11 +186,10 @@ class AppGradientText extends StatelessWidget {
 //     last 45 % on a short label, a sliver of the end padding on a long one) — [AppBrandFill], [AppBrandLabel];
 //   · the glyph family ([AppGradientIcon]): primary_light → accent1 on a dark surface (the sidebar, the hero, a dark
 //     card), primary → a half accent1 / half accent2 blend on a light tint, every point at 3:1;
-//   · the sidebar / rail: primary (top-start) → primary_dark (bottom-end), diagonal, under a radial accent1 wash
-//     rising from the bottom-end corner (about 25-34 %); both stops are darkened until every sidebar ink keeps 4.5:1
-//     at every point where an item, a label or the person box can sit ([BrandLayer.sideAt]);
-//   · the page canvas wears a dense doodle field ([AppPatternStyle.study]): ONE 360 px tile of 100 small study glyphs,
-//     drawn once into an image per (colour, mode, pixel ratio) and repeated by an image shader.
+//   · the page canvas wears a dense doodle field ([AppPatternStyle.study]): ONE tile of small study glyphs, drawn
+//     once into an image per (colour, mode, pixel ratio) and repeated by an image shader.
+// D-650 round 3: the sidebar / rail / auth panel are the 60 / 40 gradient top → bottom ([AppBrandPanel],
+// [BrandLayer.sideAt]); the doodle tile is 384 px of 256 glyphs (24 px grid, 10-20 px) at [AppBrandLayer.doodleAlpha].
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// The resolved colours of the brand layer for one theme and mode. Read it through [AppBrandLayer.of]; widgets use
@@ -192,9 +198,7 @@ class AppGradientText extends StatelessWidget {
 class BrandLayer {
   const BrandLayer._({
     required this.sidebar,
-    required this.sideWash,
     required this.sideSurfaces,
-    required this.sideFoot,
     required this.sideSpots,
     required this.sideInk,
     required this.sideMuted,
@@ -218,26 +222,26 @@ class BrandLayer {
     required this.forestGlow,
     required this.forestMuted,
     required this.forestFaint,
-    required this.pagePattern,
+    required this.dark,
+    required this.textDark,
+    required this.textMedium,
+    required this.primary,
+    required this.primaryDark,
   });
 
-  /// The sidebar's two base stops, top-start → bottom-end (diagonal): primary → primary_dark, each darkened only as
-  /// far as the inks need under the wash.
+  /// The sidebar / rail / auth panel's three stops, top → bottom at [sideStops] (D-650 r3): the green (primary,
+  /// darkened only as far as the inks need), held solid to 60 %, then the blend to the cream end (accent1; in dark
+  /// mode a sand eased toward the card).
   final List<Color> sidebar;
 
-  /// The cream (accent1) light rising from the sidebar's bottom-end corner: its colour at full strength (the alpha
-  /// is the wash's peak), fading to nothing at [sideWashRadius] × the card's shorter side.
-  final Color sideWash;
+  /// Where [sidebar]'s stops sit: the 60 / 40 rule.
+  static const List<double> sideStops = [0, 0.6, 1];
 
-  /// The sidebar's colour at every point where a tab, a label or the wordmark can sit (above the person box's band),
-  /// on the desktop sidebar and on the rail (the base under the wash, no glass): what the inks are checked on.
+  /// The green part's colour: what the on-hero inks below are checked on (with the glass and the hover over it).
   final List<Color> sideSurfaces;
 
-  /// The sidebar's colour in the person box's band at its foot (the box's own glass not included).
-  final List<Color> sideFoot;
-
-  /// Five representative points of the sidebar (the corners inside the padding and the centre): the surfaces a glyph
-  /// or a ring is matched against.
+  /// The surfaces a glyph or a ring on the GREEN part is matched against (a piece of content lower down asks
+  /// [AppBrandInk] for the colour under it).
   final List<Color> sideSpots;
 
   /// Titles and the person's name on the sidebar (the on-hero ink).
@@ -290,22 +294,9 @@ class BrandLayer {
   final Color forestMuted;
   final Color forestFaint;
 
-  /// The colour of the page canvas's doodle field (the primary at 4 % light / 3 % dark, D-650).
-  final Color pagePattern;
-
-  /// The wash's reach, as a share of the card's shorter side (a RadialGradient radius), and its knee: full strength
-  /// in the corner (the person box), [sideWashKneeAlpha] of it at [sideWashKnee] of the reach, nothing at the reach —
-  /// a glow that is strong where the person box sits and soft over the tabs above it.
-  static const double sideWashRadius = 1.2, sideWashKnee = 0.3, sideWashKneeAlpha = 0.3;
-
-  /// The boxes the sidebar is checked on: the desktop sidebar and the rail, at a short window's height. Content sits
-  /// at least [_sideInset] inside their edges.
-  static const List<Size> sideBoxes = [Size(248, 860), Size(66, 860)];
-  static const double _sideInset = 12;
-
-  /// The person box's band at the foot of the card (the tabs' list ends above it); its avatar sits in the band's
-  /// start square (the whole band on the rail).
-  static const double _footBand = 72;
+  /// The theme roles the dark inks of the cream part are derived from ([AppBrandLayer.inkOver]).
+  final bool dark;
+  final Color textDark, textMedium, primary, primaryDark;
 
   /// The contrast every sidebar ink keeps: AA plus a small margin.
   static const double _sideMin = 4.6;
@@ -329,31 +320,10 @@ class BrandLayer {
     return h.withLightness((h.lightness * factor).clamp(0.0, 1.0)).toColor();
   }
 
-  /// The sidebar's colour at [p] (logical px from the card's top-START corner) in a card of [size]: the diagonal
-  /// base under the radial wash, exactly as [AppBrandLayer.sidebar] and [AppBrandLayer.sidebarWash] paint it.
-  Color sideAt(Size size, Offset p) => _sideAt(sidebar[0], sidebar[1], sideWash, size, p);
-
-  static Color _sideAt(Color s0, Color s1, Color wash, Size size, Offset p) {
-    final w = size.width, h = size.height;
-    final t = ((p.dx * w + p.dy * h) / (w * w + h * h)).clamp(0.0, 1.0);
-    final base = Color.lerp(s0, s1, t)!;
-    final r = (Offset(w, h) - p).distance / (sideWashRadius * math.min(w, h));
-    final k = r <= sideWashKnee
-        ? 1 - (1 - sideWashKneeAlpha) * r / sideWashKnee
-        : sideWashKneeAlpha * (1 - (r - sideWashKnee) / (1 - sideWashKnee)).clamp(0.0, 1.0);
-    final a = wash.a * k;
-    return Color.alphaBlend(wash.withValues(alpha: a), base);
-  }
-
-  static Iterable<Offset> _sidePoints(Size box) sync* {
-    const cols = 8, rows = 24;
-    final w = box.width - 2 * _sideInset, h = box.height - 2 * _sideInset;
-    for (var j = 0; j <= rows; j++) {
-      for (var i = 0; i <= cols; i++) {
-        yield Offset(_sideInset + w * i / cols, _sideInset + h * j / rows);
-      }
-    }
-  }
+  /// The panel's colour at [p] (logical px from its top-start corner) in a panel of [size]: the top → bottom 60 / 40
+  /// gradient, exactly as [AppBrandLayer.sidebar] paints it.
+  Color sideAt(Size size, Offset p) =>
+      AppBrandFill.colorAt(sidebar, sideStops, size.height <= 0 ? 0 : (p.dy / size.height).clamp(0.0, 1.0));
 
   static BrandLayer _derive(ThemeConfigProvider c) {
     final dark = c.isDark;
@@ -361,95 +331,41 @@ class BrandLayer {
     final cream = c.accent.withValues(alpha: 1);
     Color under(Color bg, double min) => ensureContrast(bg, [ink], min: min);
 
-    // ── sidebar (D-650 r2): primary → primary_dark diagonal under a cream wash from the bottom-end corner. Every ink
-    // is checked at every point content can sit; a failing point darkens the stop nearest to it (and, when the
-    // bottom stop is already near black, the wash steps down toward its 25 % floor) ──
+    // ── sidebar (D-650 r3): the green held solid to 60 %, then the blend to the cream end. The green is darkened
+    // until every on-hero ink reads on it: white on the card, on the hover wash and on the open tab's glass; the
+    // cream on that glass; the role line muted on the person box's glass. Content further down picks its own ink
+    // from the colour under it (AppBrandLayer.inkOver) ──
     final glass = c.heroGlass;
     final hover = ink.withValues(alpha: 0.08);
     final userGlass = ink.withValues(alpha: 0.10);
     final muted = c.onHeroMuted;
-    // the tabs' zone: white on the card, on the hover wash and on the open tab's glass; the cream on that glass
-    bool tabsRead(Color x) {
-      final g = Color.alphaBlend(glass, x);
-      return minContrast(ink, [x, g, Color.alphaBlend(hover, x)]) >= _sideMin && contrastRatio(cream, g) >= _sideMin;
-    }
-
-    // the person box's zone at the foot: the name in white and the role muted on the box's glass, the initial on the
-    // avatar's glass over it
-    bool footReads(Color x, bool avatar) {
-      final u = Color.alphaBlend(userGlass, x);
-      if (minContrast(ink, [x, u]) < _sideMin) return false;
-      if (contrastRatio(Color.alphaBlend(muted, u), u) < _sideMin) return false;
-      return !avatar || contrastRatio(ink, Color.alphaBlend(glass, u)) >= _sideMin;
+    bool greenReads(Color x) {
+      final g = Color.alphaBlend(glass, x), u = Color.alphaBlend(userGlass, x);
+      return minContrast(ink, [x, g, u, Color.alphaBlend(hover, x)]) >= _sideMin &&
+          contrastRatio(cream, g) >= _sideMin &&
+          contrastRatio(Color.alphaBlend(muted, u), u) >= _sideMin;
     }
 
     var s0 = dark ? _l(c.primary, 0.8) : c.primary;
-    var s1 = dark ? _l(c.primaryDark, 0.8) : c.primaryDark;
-    var washPct = dark ? 30 : 34;
-    final washFloor = dark ? 20 : 25;
-    var surfaces = <Color>[], foot = <Color>[];
-    for (var round = 0; round < 200; round++) {
-      final wash = cream.withValues(alpha: washPct / 100);
-      var bad0 = false, bad1 = false;
-      surfaces = [];
-      foot = [];
-      for (final box in sideBoxes) {
-        final rail = box.width < 100;
-        for (final p in _sidePoints(box)) {
-          final x = _sideAt(s0, s1, wash, box, p);
-          final inFoot = p.dy >= box.height - _footBand;
-          (inFoot ? foot : surfaces).add(x);
-          final ok = inFoot ? footReads(x, rail || p.dx <= _footBand) : tabsRead(x);
-          if (ok) continue;
-          final t = (p.dx * box.width + p.dy * box.height) / (box.width * box.width + box.height * box.height);
-          if (t < 0.5) {
-            bad0 = true;
-          } else {
-            bad1 = true;
-          }
-        }
-      }
-      if (!bad0 && !bad1) break;
-      if (bad0) s0 = _l(s0, 0.97);
-      if (bad1) {
-        // the bottom stop deepens first; once it is a deep forest the wash steps down (never below its floor)
-        if (HSLColor.fromColor(s1).lightness > 0.12 || washPct <= washFloor) {
-          s1 = _l(s1, 0.96);
-        } else {
-          washPct -= 1;
-        }
-      }
+    for (var round = 0; round < 200 && !greenReads(s0); round++) {
+      s0 = _l(s0, 0.97);
     }
-    final sidebar = [s0, s1];
-    final sideWash = cream.withValues(alpha: washPct / 100);
-    final spots = [
-      for (final p in [
-        const Offset(_sideInset, _sideInset),
-        Offset(sideBoxes.first.width - _sideInset, _sideInset),
-        Offset(sideBoxes.first.width / 2, sideBoxes.first.height / 2),
-        Offset(_sideInset, sideBoxes.first.height - _footBand),
-        Offset(sideBoxes.first.width - _sideInset, sideBoxes.first.height - _footBand),
-      ])
-        _sideAt(s0, s1, sideWash, sideBoxes.first, p),
-    ];
-    final glassOver = [for (final s in surfaces) Color.alphaBlend(glass, s)];
-    final hoverOver = [for (final s in surfaces) Color.alphaBlend(hover, s)];
-    Color onSide(double a) => ensureContrast(Color.alphaBlend(ink.withValues(alpha: a), s1), [...surfaces, ...hoverOver]);
+    final sideEnd = dark ? Color.lerp(cream, c.cardBg, 0.3)! : cream;
+    final sidebar = [s0, s0, sideEnd];
+    final surfaces = [s0];
+    final spots = [s0];
+    final glassOver = [Color.alphaBlend(glass, s0)];
+    final hoverOver = [Color.alphaBlend(hover, s0)];
+    final userOver = [Color.alphaBlend(userGlass, s0)];
+    Color onSide(double a) =>
+        ensureContrast(Color.alphaBlend(ink.withValues(alpha: a), s0), [...surfaces, ...hoverOver, ...userOver]);
 
-    // ── primary button (D-650 r2): primary → a slightly lifted primary → cream. The first two stops sit under the
-    // label and keep the on-hero ink at 4.5:1 (with a small margin); the cream end is placed past the label by
-    // AppBrandFill. Dark mode starts from primary_light and ends on a cream eased a little toward it ──
+    // ── primary button (D-650 r3): solid primary (the on-hero ink at 4.5:1 with a small margin) held to 60 % — or to
+    // just past the label, AppBrandFill — then the blend to cream. Dark mode starts from primary_light and ends on a
+    // cream eased a little toward it ──
     final bStart = under(dark ? c.primaryLight : c.primary, _buttonMin);
-    var bLift = bStart;
-    for (var t = 0.4; t > 0; t -= 0.02) {
-      final x = Color.lerp(bStart, dark ? cream : c.primaryLight, t)!;
-      if (contrastRatio(ink, x) >= _buttonMin) {
-        bLift = x;
-        break;
-      }
-    }
     final bEnd = dark ? Color.lerp(cream, bStart, 0.14)! : cream;
-    final button = [bStart, bLift, bEnd];
+    final button = [bStart, bStart, bEnd];
     final buttonHover = [for (final s in button) c.heroEnd(s, 0.08)];
     final buttonPressed = [for (final s in button) c.heroEnd(s, 0.18)];
     // the label sits on the first two stops only (of each state)
@@ -488,9 +404,7 @@ class BrandLayer {
 
     return BrandLayer._(
       sidebar: sidebar,
-      sideWash: sideWash,
       sideSurfaces: surfaces,
-      sideFoot: foot,
       sideSpots: spots,
       sideInk: ensureContrast(ink, [...surfaces, ...glassOver]),
       sideMuted: onSide(0.64),
@@ -514,7 +428,11 @@ class BrandLayer {
       forestGlow: glow,
       forestMuted: ensureContrast(c.heroInkMuted, heroSurfaces),
       forestFaint: ensureContrast(c.heroInkFaint, heroSurfaces),
-      pagePattern: c.primary.withValues(alpha: dark ? 0.03 : 0.04),
+      dark: dark,
+      textDark: c.textDark,
+      textMedium: c.textMedium,
+      primary: c.primary,
+      primaryDark: c.primaryDark,
     );
   }
 
@@ -536,22 +454,116 @@ abstract final class AppBrandLayer {
         colors: s,
       );
 
-  /// The sidebar / rail card's base: primary at the top-start → primary_dark at the bottom-end (mirrors in Arabic).
-  static LinearGradient sidebar(BuildContext context) => _diag(of(context).sidebar);
+  /// The sidebar / rail / auth panel (D-650 r3): the green held to 60 %, then the blend to the cream, top → bottom
+  /// (the content of a tall card sits on the green; what sits lower picks its ink through [AppBrandInk]).
+  static LinearGradient sidebar(BuildContext context) => LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: of(context).sidebar,
+        stops: BrandLayer.sideStops,
+      );
 
-  /// The cream light rising from the sidebar's bottom-end corner, painted over [sidebar].
-  static RadialGradient sidebarWash(BuildContext context) {
-    final w = of(context).sideWash;
-    return RadialGradient(
-      center: AlignmentDirectional.bottomEnd.resolve(Directionality.maybeOf(context) ?? TextDirection.ltr),
-      radius: BrandLayer.sideWashRadius,
-      colors: [w, w.withValues(alpha: w.a * BrandLayer.sideWashKneeAlpha), w.withValues(alpha: 0)],
-      stops: const [0, BrandLayer.sideWashKnee, 1],
-    );
+  /// The doodle field's strength (D-650 r3): ONE token for the page canvas — the primary at this alpha in light mode,
+  /// primary_light at [doodleDarkShare] of it in dark mode. Page headings over it get [AppHeadingHalo] when it would
+  /// drop their ink below AA. A setter only for the review renders (the 15 % variant).
+  static double doodleAlpha = 0.5;
+
+  /// Dark mode's share of [doodleAlpha] (the old 3 % : 4 % proportion).
+  static const double doodleDarkShare = 0.75;
+
+  /// The doodle field's colour on this theme's canvas.
+  static Color doodle(BuildContext context) => doodleFor(context.colors);
+
+  /// [doodle] for a theme (tests read it without a widget).
+  static Color doodleFor(ThemeConfigProvider c) {
+    return c.isDark
+        ? c.primaryLight.withValues(alpha: doodleAlpha * doodleDarkShare)
+        : c.primary.withValues(alpha: doodleAlpha);
   }
 
-  /// The brand gradient as a plain [LinearGradient], for a fill that carries NO text (the avatar's ring): the cream
-  /// end from 55 % on. A fill with a label is [buttonFill].
+  /// The inks of a page-level heading (the title, its muted line, an action link) over the doodle field at its
+  /// darkest point: the lowest contrast any of them gets.
+  static double headingContrast(BuildContext context) => headingContrastFor(context.colors);
+
+  /// [headingContrast] for a theme.
+  static double headingContrastFor(ThemeConfigProvider c) {
+    final under = [c.background, Color.alphaBlend(doodleFor(c), c.background)];
+    return [c.textDark, c.textMedium, ensureContrast(c.primary, [c.background])]
+        .map((ink) => minContrast(ink, under))
+        .reduce(math.min);
+  }
+
+  static final Map<int, BrandInk> _inkCache = {};
+
+  /// The inks for content sitting on [under] (the brand panel's colours under it, [AppBrandInk] measures them):
+  /// the on-hero set where it reads (the green part); else a dark set (titles in text_dark, items and the open tab in
+  /// primary_dark, a primary_dark glass) where THAT reads (the cream part); else the dark set on a soft cream plate
+  /// just strong enough (the blend between). Every ink is checked on the bare panel, the hover wash and the glass.
+  static BrandInk inkOver(BuildContext context, List<Color> under) => inkFor(of(context), under);
+
+  /// [inkOver] for a resolved layer (tests measure it without a widget).
+  static BrandInk inkFor(BrandLayer l, List<Color> under) {
+    final key = Object.hashAll([identityHashCode(l), ...under]);
+    final hit = _inkCache[key];
+    if (hit != null) return hit;
+    if (_inkCache.length > 96) _inkCache.clear();
+    const min = 4.5;
+    bool reads(Color ink, List<Color> on) => minContrast(ink, on) >= min;
+    List<Color> over(Color top, List<Color> on) => [for (final u in on) Color.alphaBlend(top, u)];
+
+    final glassL = over(l.sideActiveFill, under), userL = over(l.sideGlass, under), hoverL = over(l.sideHover, under);
+    final lightOk = reads(l.sideInk, [...under, ...glassL, ...userL]) &&
+        reads(l.sideItem, [...under, ...hoverL]) &&
+        reads(l.sideMuted, [...under, ...userL]) &&
+        reads(l.sideActiveInk, glassL);
+    if (lightOk) {
+      return _inkCache[key] = BrandInk(
+        onCream: false,
+        under: under,
+        ink: l.sideInk,
+        muted: l.sideMuted,
+        item: l.sideItem,
+        activeFill: l.sideActiveFill,
+        activeInk: l.sideActiveInk,
+        indicator: ensureContrast(l.sideIndicator, glassL, min: 3),
+        hover: l.sideHover,
+        glass: l.sideGlass,
+        glassBorder: l.sideGlassBorder,
+      );
+    }
+    final fill = l.primaryDark.withValues(alpha: 0.1), hover = l.primaryDark.withValues(alpha: 0.07);
+    BrandInk? dark(List<Color> on, Color? plate) {
+      final all = [...on, ...over(fill, on), ...over(hover, on)];
+      final ink = ensureContrast(l.textDark, all), item = ensureContrast(l.primaryDark, all);
+      final muted = ensureContrast(l.textMedium, all), active = ensureContrast(l.primaryDark, over(fill, on));
+      if (!reads(ink, all) || !reads(item, all) || !reads(muted, all) || !reads(active, over(fill, on))) return null;
+      return BrandInk(
+        onCream: true,
+        under: under,
+        plate: plate,
+        ink: ink,
+        muted: muted,
+        item: item,
+        activeFill: fill,
+        activeInk: active,
+        indicator: ensureContrast(l.primary, over(fill, on), min: 3),
+        hover: hover,
+        glass: fill,
+        glassBorder: l.primaryDark.withValues(alpha: 0.18),
+      );
+    }
+
+    var out = dark(under, null);
+    final cream = l.sidebar.last;
+    for (var a = 0.2; out == null && a <= 1.0; a += 0.1) {
+      final plate = cream.withValues(alpha: math.min(a, 1.0));
+      out = dark(over(plate, under), plate);
+    }
+    return _inkCache[key] = out ?? dark(over(cream, under), cream)!;
+  }
+
+  /// The brand gradient as a plain [LinearGradient], for a fill that carries NO text (the avatar's ring): solid
+  /// primary to 60 %, the cream at the end. A fill with a label is [buttonFill].
   static LinearGradient button(BuildContext context, {bool hover = false, bool pressed = false}) {
     final l = of(context);
     return LinearGradient(
@@ -750,15 +762,11 @@ class AppBrandFill extends Decoration {
   final BoxBorder? border;
   final BoxShape shape;
 
-  /// The cream never starts before this share of the width (the short-label look: the last 45 % is the ramp).
-  static const double minHold = 0.55;
+  /// The green holds solid at least to this share of the width (D-650 r3, the 60 / 40 rule).
+  static const double minHold = 0.6;
 
   /// The clear gap between the label's end and the start of the cream ramp.
   static const double gap = 2;
-
-  /// A ramp this long (px) reaches the full cream; a shorter one (a button that hugs its label, a pill) ends on a
-  /// proportionally lighter hint of it, so a narrow end never reads as a hard cream band.
-  static const double fullRamp = 64;
 
   /// The stop where the cream ramp starts in a box [width] wide around a centred label [label] wide.
   static double holdFor(double width, double label) {
@@ -769,14 +777,13 @@ class AppBrandFill extends Decoration {
   /// The label width this fill keeps the cream away from, in a box [width] wide.
   double labelWidth(double width) => span?.width ?? content ?? math.max(0, width - 2 * pad);
 
-  /// The gradient as painted in a box [width] wide.
+  /// The gradient as painted in a box [width] wide: solid to max(0.6, label end), then to the cream at the end.
   LinearGradient gradientFor(double width) {
     final hold = holdFor(width, labelWidth(width));
-    final strength = ((1 - hold) * width / fullRamp).clamp(0.0, 1.0);
     return LinearGradient(
       begin: AlignmentDirectional.centerStart,
       end: AlignmentDirectional.centerEnd,
-      colors: [colors[0], colors[1], Color.lerp(colors[1], colors[2], strength)!],
+      colors: [colors[0], colors[1], colors[2]],
       stops: [0, hold, 1],
     );
   }
@@ -879,22 +886,28 @@ class _BrandFillPainter extends BoxPainter {
   }
 }
 
-/// A glyph painted with the brand family (D-650): green → cream over [on], the surfaces its tinted circle sits on
-/// (every point at 3:1 there; [AppBrandLayer.iconStops]). For the icon of a shortcut tile, a stat chip, the sidebar's
-/// open tab and a tonal icon button only; a plain inline icon in text or a list stays flat. High contrast gets the
-/// flat start colour.
+/// A glyph painted with the brand family (D-650): green → cream over [on], the surfaces it sits on (every point at
+/// 3:1 there; [AppBrandLayer.iconStops]); [on] defaults to the card and the canvas. The glyph of every navigation
+/// item, chrome button, icon chip, stat, shortcut, kit list row, empty state and section heading (D-650 r3). A glyph
+/// of [flatMax] px or less (an inline icon in running text or a metadata row) stays flat in the start colour — a
+/// gradient blurs it — and so does high contrast. Status glyphs keep their own colour (pass a plain [Icon]).
 class AppGradientIcon extends StatelessWidget {
-  const AppGradientIcon(this.icon, {super.key, required this.on, this.size});
+  const AppGradientIcon(this.icon, {super.key, this.on, this.size});
 
   final IconData icon;
-  final List<Color> on;
+  final List<Color>? on;
   final double? size;
+
+  /// At or below this size a glyph stays flat.
+  static const double flatMax = 14;
 
   @override
   Widget build(BuildContext context) {
-    final stops = AppBrandLayer.iconStops(context, on);
+    final c = context.colors;
+    final stops = AppBrandLayer.iconStops(context, on ?? [c.cardBg, c.background]);
+    final px = size ?? IconTheme.of(context).size ?? AppIconSize.md;
     final glyph = Icon(icon, size: size, color: stops.first);
-    if (MediaQuery.maybeHighContrastOf(context) ?? false) return glyph;
+    if (px <= flatMax || (MediaQuery.maybeHighContrastOf(context) ?? false)) return glyph;
     final dir = Directionality.maybeOf(context) ?? TextDirection.ltr;
     return ShaderMask(
       blendMode: BlendMode.srcIn,
@@ -904,6 +917,243 @@ class AppGradientIcon extends StatelessWidget {
         colors: stops,
       ).createShader(rect, textDirection: dir),
       child: glyph,
+    );
+  }
+}
+
+/// The inks of one piece of content on a brand panel ([AppBrandInk] measures the colours under it; the values come
+/// from [AppBrandLayer.inkOver]).
+@immutable
+class BrandInk {
+  const BrandInk({
+    required this.onCream,
+    required this.under,
+    required this.ink,
+    required this.muted,
+    required this.item,
+    required this.activeFill,
+    required this.activeInk,
+    required this.indicator,
+    required this.hover,
+    required this.glass,
+    required this.glassBorder,
+    this.plate,
+  });
+
+  /// The dark set (the cream part, or the plate in the blend).
+  final bool onCream;
+
+  /// The panel's colours under the content.
+  final List<Color> under;
+
+  /// A soft cream plate behind the content where neither ink set reads on the bare blend; null = none.
+  final Color? plate;
+
+  /// Titles and names; section labels and roles; an idle item; the open item's glass, its ink and its start bar;
+  /// the hover wash; a box's glass and hairline.
+  final Color ink, muted, item, activeFill, activeInk, indicator, hover, glass, glassBorder;
+
+  /// What the content actually sits on (the plate included).
+  List<Color> get surfaces => plate == null ? under : [for (final u in under) Color.alphaBlend(plate!, u)];
+
+  /// The same on the open item's glass.
+  List<Color> get activeSurfaces => [for (final s in surfaces) Color.alphaBlend(activeFill, s)];
+
+  @override
+  bool operator ==(Object other) =>
+      other is BrandInk && other.onCream == onCream && other.plate == plate && listEquals(other.under, under);
+
+  @override
+  int get hashCode => Object.hash(onCream, plate, Object.hashAll(under));
+}
+
+/// The 60 / 40 brand panel (D-650 r3): the sidebar, the rail and the auth panel. The gradient runs top → bottom with
+/// the faint lattice over it; the [AppBrandInk]s inside learn the colour under them from it (re-measured on scroll
+/// and on a resize).
+class AppBrandPanel extends StatefulWidget {
+  const AppBrandPanel({super.key, required this.child, this.borderRadius, this.border, this.pattern = true});
+
+  final Widget child;
+  final BorderRadius? borderRadius;
+  final BoxBorder? border;
+  final bool pattern;
+
+  @override
+  State<AppBrandPanel> createState() => _AppBrandPanelState();
+}
+
+class _AppBrandPanelState extends State<AppBrandPanel> {
+  final _key = GlobalKey();
+  final _tick = ValueNotifier<int>(0);
+  BoxConstraints? _last;
+
+  void _bump() => _tick.value++;
+
+  @override
+  void dispose() {
+    _tick.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppBrandLayer.of(context);
+    return _BrandPanelScope(
+      panel: _key,
+      tick: _tick,
+      child: DecoratedBox(
+        key: _key,
+        decoration: BoxDecoration(gradient: AppBrandLayer.sidebar(context), borderRadius: widget.borderRadius, border: widget.border),
+        child: Stack(fit: StackFit.passthrough, children: [
+          if (widget.pattern) Positioned.fill(child: AppPattern(color: l.sidePattern, style: AppPatternStyle.lattice)),
+          NotificationListener<ScrollNotification>(
+            onNotification: (n) {
+              if (n is ScrollUpdateNotification) _bump();
+              return false;
+            },
+            child: LayoutBuilder(builder: (context, box) {
+              if (_last != box) {
+                _last = box;
+                SchedulerBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) _bump();
+                });
+              }
+              return widget.child;
+            }),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+class _BrandPanelScope extends InheritedWidget {
+  const _BrandPanelScope({required this.panel, required this.tick, required super.child});
+
+  final GlobalKey panel;
+  final ValueNotifier<int> tick;
+
+  @override
+  bool updateShouldNotify(_BrandPanelScope old) => old.panel != panel || old.tick != tick;
+}
+
+/// Content on an [AppBrandPanel] that picks its ink from the colour under it (D-650 r3): it measures where it sits
+/// after each layout (and when the panel scrolls or resizes) and builds with the [BrandInk] for that spot, under a
+/// soft plate when the blend needs one. Outside a panel it gets the green part's inks.
+class AppBrandInk extends StatefulWidget {
+  const AppBrandInk({super.key, required this.builder, this.plateRadius});
+
+  final Widget Function(BuildContext context, BrandInk ink) builder;
+
+  /// The plate's corners (a control's by default).
+  final BorderRadiusGeometry? plateRadius;
+
+  @override
+  State<AppBrandInk> createState() => AppBrandInkState();
+}
+
+class AppBrandInkState extends State<AppBrandInk> {
+  BrandInk? _ink;
+  _BrandPanelScope? _scope;
+  bool _queued = false;
+
+  /// The inks this piece of content is drawn with now.
+  BrandInk get ink => _ink ?? AppBrandLayer.inkOver(context, AppBrandLayer.of(context).sideSpots);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final s = context.dependOnInheritedWidgetOfExactType<_BrandPanelScope>();
+    if (!identical(s?.tick, _scope?.tick)) {
+      _scope?.tick.removeListener(_queue);
+      s?.tick.addListener(_queue);
+    }
+    _scope = s;
+    _ink = null;
+  }
+
+  @override
+  void dispose() {
+    _scope?.tick.removeListener(_queue);
+    super.dispose();
+  }
+
+  void _queue() {
+    if (_queued || _scope == null) return;
+    _queued = true;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _queued = false;
+      _measure();
+    });
+    SchedulerBinding.instance.ensureVisualUpdate();
+  }
+
+  void _measure() {
+    if (!mounted) return;
+    final me = context.findRenderObject();
+    final panel = _scope?.panel.currentContext?.findRenderObject();
+    if (me is! RenderBox || panel is! RenderBox || !me.attached || !panel.attached || !me.hasSize || !panel.hasSize) return;
+    final rect = MatrixUtils.transformRect(me.getTransformTo(panel), Offset.zero & me.size);
+    final l = AppBrandLayer.of(context);
+    final under = <Color>[];
+    for (final f in const [0.2, 0.5, 0.8]) {
+      // a 4 px grid, so a scroll does not mint a new ink for every pixel
+      final y = ((rect.top + rect.height * f).clamp(0.0, panel.size.height) / 4).round() * 4.0;
+      final x = l.sideAt(panel.size, Offset(rect.center.dx, y));
+      if (!under.contains(x)) under.add(x);
+    }
+    final next = AppBrandLayer.inkOver(context, under);
+    if (next != _ink) setState(() => _ink = next);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    _queue();
+    final k = ink;
+    final child = widget.builder(context, k);
+    if (k.plate == null) return child;
+    return DecoratedBox(
+      decoration: BoxDecoration(color: k.plate, borderRadius: widget.plateRadius ?? AppRadius.controlAll),
+      child: child,
+    );
+  }
+}
+
+/// Marks a page canvas that wears the doodle field (BasePage sets it; a card turns it off for its content).
+class AppDoodleScope extends InheritedWidget {
+  const AppDoodleScope({super.key, required this.on, required super.child});
+
+  final bool on;
+
+  static bool of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<AppDoodleScope>()?.on ?? false;
+
+  @override
+  bool updateShouldNotify(AppDoodleScope old) => old.on != on;
+}
+
+/// A page-level heading on the doodle field (D-650 r3): when the field's strength ([AppBrandLayer.doodleAlpha])
+/// would drop the heading's inks below 4.5:1 ([AppBrandLayer.headingContrast]), a soft halo of the page colour
+/// (a blurred backdrop, 8 px) clears the doodles behind it. Nothing at all off the doodle field or inside a card.
+class AppHeadingHalo extends StatelessWidget {
+  const AppHeadingHalo({super.key, required this.child, this.off = false});
+
+  final Widget child;
+
+  /// Never a halo (the content sits on a hero or a brand block, not on the canvas).
+  final bool off;
+
+  /// The halo's blur and its reach past the heading's box (the box's edge stays under the solid part).
+  static const double blur = 8, spread = 6;
+
+  @override
+  Widget build(BuildContext context) {
+    if (off || !AppDoodleScope.of(context) || AppBrandLayer.headingContrast(context) >= kWcagAaText) return child;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: AppRadius.controlAll,
+        boxShadow: [BoxShadow(color: context.colors.background, blurRadius: blur, spreadRadius: spread)],
+      ),
+      child: child,
     );
   }
 }
@@ -985,13 +1235,13 @@ class _PatternPainter extends CustomPainter {
       old.color != color || old.style != style || old.ratio != ratio || old.dark != dark;
 }
 
-/// The page canvas's doodle field (D-650 r2, the chat-wallpaper look): ONE [tile] px square of small study glyphs on
-/// a [step] px staggered grid, each nudged, sized and turned by a hash of its cell (a fixed seed). A glyph that
+/// The page canvas's doodle field (D-650 r2 / r3, the chat-wallpaper look): ONE [tile] px square of small study
+/// glyphs on a [step] px staggered grid (16 × 16 = 256 glyphs, twice r2's density), each nudged, sized and turned by a hash of its cell (a fixed seed). A glyph that
 /// crosses the tile's edge is drawn again on the opposite side, so the tile repeats without a seam. It is drawn once
 /// per (colour, mode, pixel ratio) into an image at the device resolution and painted as a repeating [ImageShader]:
 /// a page paints one rectangle, never a glyph.
 abstract final class _DoodleTile {
-  static const double tile = 360, step = 36, jitter = 7, minPx = 12, maxPx = 22, turn = 0.6;
+  static const double tile = 384, step = 24, jitter = 5, minPx = 10, maxPx = 20, turn = 0.6;
 
   static const List<IconData> glyphs = [
     Icons.menu_book_outlined,
@@ -1018,6 +1268,26 @@ abstract final class _DoodleTile {
     Icons.functions_rounded,
     Icons.psychology_outlined,
     Icons.backpack_outlined,
+    Icons.auto_stories_outlined,
+    Icons.history_edu_outlined,
+    Icons.quiz_outlined,
+    Icons.translate_rounded,
+    Icons.language_rounded,
+    Icons.calendar_today_outlined,
+    Icons.bookmark_border_rounded,
+    Icons.local_library_outlined,
+    Icons.sports_esports_outlined,
+    Icons.headphones_outlined,
+    Icons.camera_alt_outlined,
+    Icons.rocket_launch_outlined,
+    Icons.eco_outlined,
+    Icons.pie_chart_outline_rounded,
+    Icons.square_foot_rounded,
+    Icons.hub_outlined,
+    Icons.code_rounded,
+    Icons.brush_outlined,
+    Icons.workspace_premium_outlined,
+    Icons.sticky_note_2_outlined,
   ];
 
   static final Map<(int, int, bool), ImageShader> _shaders = {};

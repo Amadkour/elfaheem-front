@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
+import 'package:flutter_education_app/design/app_gradients.dart' show AppHeadingHalo;
 import 'package:flutter_education_app/design/app_kit.dart' show AppSettingsGroup, AppSettingsTile, AppSpace, AppTouch, appText;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
@@ -82,14 +83,18 @@ class LegalLinksRow extends StatelessWidget {
         );
     return ParentComponent(
       featureKey: 'terms.links',
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          link('privacy_policy'.tr, onPrivacy ?? () => openLegalPage(context, privacy: true)),
-          ExcludeSemantics(child: Text('·', style: appText(13, w: FontWeight.w700, c: ink))),
-          link('terms_of_service'.tr, onTerms ?? () => openLegalPage(context, privacy: false)),
-        ],
+      // D-650 r3: on the doodle canvas the links get the page-colour halo when the doodles would drop them below AA
+      child: AppHeadingHalo(
+        off: onHero,
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            link('privacy_policy'.tr, onPrivacy ?? () => openLegalPage(context, privacy: true)),
+            ExcludeSemantics(child: Text('·', style: appText(13, w: FontWeight.w700, c: ink))),
+            link('terms_of_service'.tr, onTerms ?? () => openLegalPage(context, privacy: false)),
+          ],
+        ),
       ),
     );
   }

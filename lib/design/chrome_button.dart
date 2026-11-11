@@ -19,6 +19,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../config/theme/theme_config_provider.dart';
+import 'app_gradients.dart' show AppBrandLayer, AppGradientIcon;
 import 'app_tokens.dart';
 
 /// Marks its subtree as the shell's top bar (the hero-coloured band): [ChromeIconButton]s inside it draw as glass.
@@ -225,7 +226,10 @@ class ChromeIconButton extends StatelessWidget {
                     dimension: AppIconSize.sm,
                     child: CircularProgressIndicator(strokeWidth: AppBorder.focus, color: k.ink),
                   )
-                : Icon(icon),
+                // D-650 r3: the glyph wears the brand family, matched to the plate it sits on
+                : AppGradientIcon(icon, on: onBar
+                    ? [for (final s in [AppBrandLayer.of(context).sidebar.first, c.blockForest]) Color.alphaBlend(k.plate, s)]
+                    : [c.cardBg, c.background]),
             if (badge > 0)
               PositionedDirectional(
                 top: _badgeInset,

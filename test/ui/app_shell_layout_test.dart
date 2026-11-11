@@ -169,11 +169,12 @@ void main() {
     handle.dispose();
   });
 
-  // D-650 r2: the sidebar is primary → primary_dark under a cream wash from its bottom-end corner. Every tab label,
-  // the wordmark and the group label is checked at the place it is drawn, with the colour it is drawn in, over the
-  // card's colour there (BrandLayer.sideAt — the same diagonal and radial the card paints), plain, hovered and on the
-  // open tab's glass; both modes, Arabic and English, on the production palette.
-  testWidgets('sidebar inks keep 4.5:1 where the items sit (the cream wash included)', (tester) async {
+  // D-650 r3: the sidebar is the 60 / 40 panel (green held to 60 %, then the blend to the cream, top → bottom) and
+  // each item picks its ink from the colour under it (AppBrandInk). Every tab label, the wordmark, the group labels
+  // and the person box are checked at the place they are drawn, with the colour they are drawn in, over the panel's
+  // colour there (BrandLayer.sideAt) and the item's plate if it has one, plain, hovered and on the open tab's glass;
+  // both modes, Arabic and English, on the production palette, at a short and a tall window.
+  testWidgets('sidebar inks keep 4.5:1 where the items sit (the cream part included)', (tester) async {
     final prod = jsonDecode(File('test/visual/fixtures/theme_production.json').readAsStringSync()) as Map<String, dynamic>;
     final prevLang = AppConfig.lang;
     addTearDown(() {
@@ -182,12 +183,14 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
     tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(1440, 900);
     var low = 21.0;
+    for (final height in const [900.0, 560.0]) {
+    tester.view.physicalSize = Size(1440, height);
     for (final dark in const [false, true]) {
       for (final lang in const ['ar', 'en']) {
         AppConfig.lang = lang;
         final t = ThemeConfigProvider(api: ApiClient())..debugUseColors(prod);
+        t.isDark = dark;
         final rtl = lang == 'ar';
         await tester.pumpWidget(const SizedBox());
         await tester.pumpWidget(ThemeConfigScope(
@@ -200,6 +203,7 @@ void main() {
             ),
           ),
         ));
+        await tester.pump();
         await tester.pump();
         final l = BrandLayer.of(t);
         final card = find.byWidgetPredicate((w) =>
@@ -215,23 +219,32 @@ void main() {
           if (ink == null || ink.a < 1) continue;
           if (RegExp(r'^[0-9+]+$').hasMatch(w.data ?? '')) continue; // the red count pills
           final r = tester.getRect(find.byWidget(w));
+          final region = find.ancestor(of: find.byWidget(w), matching: find.byType(AppBrandInk));
+          final k = region.evaluate().isEmpty
+              ? AppBrandLayer.inkFor(l, l.sideSpots)
+              : tester.state<AppBrandInkState>(region.first).ink;
           for (final p in [r.topLeft, r.topRight, r.center, r.bottomLeft, r.bottomRight]) {
             final local = Offset(rtl ? box.right - p.dx : p.dx - box.left, p.dy - box.top);
-            final under = l.sideAt(box.size, local);
-            final selected = ink == l.sideActiveInk;
-            final surfaces = selected
-                ? [Color.alphaBlend(l.sideActiveFill, under)]
-                : [under, Color.alphaBlend(l.sideHover, under)];
+            final bare = l.sideAt(box.size, local);
+            final under = k.plate == null ? bare : Color.alphaBlend(k.plate!, bare);
+            final surfaces = ink == k.activeInk && ink != k.item
+                ? [Color.alphaBlend(k.activeFill, under)]
+                : [
+                    under,
+                    Color.alphaBlend(k.hover, under),
+                    if (ink == k.ink || ink == k.muted) Color.alphaBlend(k.glass, under),
+                  ];
             for (final s in surfaces) {
               final ratio = contrastRatio(ink, s);
               if (ratio < low) low = ratio;
-              expect(ratio, greaterThanOrEqualTo(4.5), reason: '"${w.data}" at $local (${dark ? 'dark' : 'light'} $lang)');
+              expect(ratio, greaterThanOrEqualTo(4.5), reason: '"${w.data}" at $local (${dark ? 'dark' : 'light'} $lang $height)');
             }
           }
           checked++;
         }
         expect(checked, greaterThanOrEqualTo(5), reason: 'the tab labels and the wordmark were checked');
       }
+    }
     }
     // ignore: avoid_print
     print('lowest sidebar contrast at the items: ${low.toStringAsFixed(2)}');
