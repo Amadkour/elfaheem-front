@@ -32,7 +32,6 @@ import 'package:flutter_education_app/design/app_kit.dart'
         AppTabs, AppTone, AppType, appInkOn, appTintOn;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_back_button.dart';
-import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_number_field.dart';
 

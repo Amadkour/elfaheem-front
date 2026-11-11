@@ -5,6 +5,7 @@
 //     (clean and refused) · recording consent unchecked / checked · rate limited · error (final and retryable).
 // Plus the pure route helpers that resolve `/live/<token>` from a route name / browser URL, hash and path forms.
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/features/shared/guest/guest_live_api.dart';
 import 'package:flutter_education_app/features/shared/guest/guest_live_page.dart';
 import 'package:flutter_education_app/features/teacher/sessions/components/guest_link_sheet.dart';
@@ -142,8 +143,12 @@ GuestLiveInfo _copy(GuestLiveInfo i,
       requiresPin: requiresPin ?? i.requiresPin,
     );
 
-FilledButton _joinButton(WidgetTester t) => t.widget<FilledButton>(
-    find.descendant(of: find.byKey(const ValueKey('guest_live.join')), matching: find.byType(FilledButton)));
+// The join button is AppPrimaryButton, an AppButton since the editorial kit; a busy button takes no tap.
+({VoidCallback? onPressed}) _joinButton(WidgetTester t) {
+  final b = t.widget<AppButton>(
+      find.descendant(of: find.byKey(const ValueKey('guest_live.join')), matching: find.byType(AppButton)));
+  return (onPressed: b.busy ? null : b.onPressed);
+}
 
 void main() {
   group('GuestLinkBody', () {
@@ -317,8 +322,8 @@ void main() {
         () => _page(error: 'Too many attempts.', rateLimitSeconds: 60),
         act: (t) async {
           expect(find.byKey(const ValueKey('guest_live.rate_limited')), findsOneWidget);
-          final retry = t.widget<FilledButton>(find.descendant(
-              of: find.byKey(const ValueKey('guest_live.retry')), matching: find.byType(FilledButton)));
+          final retry = t.widget<AppButton>(find.descendant(
+              of: find.byKey(const ValueKey('guest_live.retry')), matching: find.byType(AppButton)));
           expect(retry.onPressed, isNull);
         },
       );

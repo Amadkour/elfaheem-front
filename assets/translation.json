@@ -24458,5 +24458,61 @@
   "imgbg_hint_erase": {
     "en": "Paint over a part to remove it.",
     "ar": "لوّن فوق أي جزء لإزالته."
+  },
+  "exam_hub_col_exam": {
+    "en": "Exam",
+    "ar": "الاختبار"
+  },
+  "exam_hub_col_when": {
+    "en": "When",
+    "ar": "الموعد"
+  },
+  "exam_result_col_student": {
+    "en": "Student",
+    "ar": "الطالب"
+  },
+  "exam_result_col_paper": {
+    "en": "Paper",
+    "ar": "الورقة"
+  },
+  "exam_result_col_score": {
+    "en": "Score",
+    "ar": "الدرجة"
+  },
+  "exam_result_col_percent": {
+    "en": "Percent",
+    "ar": "النسبة"
+  },
+  "exam_verdict_correct": {
+    "en": "Correct",
+    "ar": "إجابة صحيحة"
+  },
+  "exam_verdict_wrong": {
+    "en": "Incorrect",
+    "ar": "إجابة خاطئة"
+  },
+  "exam_verdict_partial": {
+    "en": "Partly correct",
+    "ar": "صحيحة جزئياً"
+  },
+  "exam_verdict_pending": {
+    "en": "Waiting for marking",
+    "ar": "بانتظار التصحيح"
+  },
+  "exam_verdict_cancelled": {
+    "en": "Cancelled",
+    "ar": "سؤال ملغى"
+  },
+  "session_exam_gate_note_teacher": {
+    "en": "Students must pass this exam to open the next session",
+    "ar": "على الطالب اجتياز هذا الاختبار لفتح الجلسة التالية"
+  },
+  "session_exam_gate_note_student": {
+    "en": "Pass this exam to open the next session",
+    "ar": "اجتز هذا الاختبار لفتح الجلسة التالية"
+  },
+  "session_exam_pinned_end": {
+    "en": "Pinned to the end of the session",
+    "ar": "مثبّت في نهاية الجلسة"
   }
 }

@@ -209,8 +209,10 @@ class RecordTile extends StatelessWidget {
             ),
             if (onRetry != null && r.retryMode != 'auto') ...[
               const SizedBox(width: AppSpace.xs),
-              AppPill(key: ValueKey('records.retry.${r.id}'), icon: Icons.refresh_rounded, label: t('إعادة المحاولة', 'Retry'),
-                  color: c.warning, onTap: onRetry),
+              Flexible(
+                child: AppPill(key: ValueKey('records.retry.${r.id}'), icon: Icons.refresh_rounded, label: t('إعادة المحاولة', 'Retry'),
+                    color: c.warning, onTap: onRetry),
+              ),
             ],
           ]),
         ],

@@ -1,7 +1,0 @@
-{
-  "exam_verdict_correct": {"en": "Correct", "ar": "إجابة صحيحة"},
-  "exam_verdict_wrong": {"en": "Incorrect", "ar": "إجابة خاطئة"},
-  "exam_verdict_partial": {"en": "Partly correct", "ar": "صحيحة جزئياً"},
-  "exam_verdict_pending": {"en": "Waiting for marking", "ar": "بانتظار التصحيح"},
-  "exam_verdict_cancelled": {"en": "Cancelled", "ar": "سؤال ملغى"}
-}

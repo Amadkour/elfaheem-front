@@ -226,7 +226,7 @@ void main() {
 
       await tester.pumpWidget(layoutHost(host(section(error: 'Failed', onRetry: () => retry++)), scale: 1));
       await tester.pump(const Duration(milliseconds: 300));
-      await tester.tap(find.byType(TextButton));
+      await tester.tap(find.byType(AppButton)); // Retry is the error state's ghost AppButton
       expect(retry, 1);
     });
   });

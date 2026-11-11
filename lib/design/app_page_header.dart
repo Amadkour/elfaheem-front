@@ -389,7 +389,12 @@ class AppSection extends StatelessWidget {
               ],
             ]),
           ),
-          if (trailing != null) ...[AppSpace.gapSm, trailing!],
+          // the trailing control never pushes the row past its edge (a pill at a big text scale on a phone): it is
+          // capped at 60 % of the row and its own label ellipsizes; a heading without one keeps the plain row
+          if (trailing != null) ...[
+            AppSpace.gapSm,
+            ConstrainedBox(constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.6), child: trailing!),
+          ],
         ]),
         SizedBox(height: AppSpace.sectionHead.bottom),
         child,

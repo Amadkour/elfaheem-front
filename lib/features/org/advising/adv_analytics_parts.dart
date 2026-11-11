@@ -1355,7 +1355,7 @@ class _ComplianceCard extends StatelessWidget {
                 Row(children: [
                   Expanded(child: Text(r.shown, style: AppType.row(context).copyWith(fontWeight: FontWeight.w700), maxLines: 2, overflow: TextOverflow.ellipsis)),
                   const SizedBox(width: AppSpace.xs),
-                  if (!r.total) _targetPill(context, r.meetsTarget),
+                  if (!r.total) Flexible(child: _targetPill(context, r.meetsTarget)),
                 ]),
                 const SizedBox(height: AppSpace.xs),
                 Row(children: [
