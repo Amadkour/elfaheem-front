@@ -50,6 +50,7 @@ import '../features/shared/profile/update_account_widget.dart';
 import '../utils/widget/app_navigator.dart' show AppNavigator;
 import '../utils/widget/app_network_image.dart';
 import '../utils/widget/base_page.dart';
+import 'app_contrast.dart' show ensureContrast;
 import 'app_dashboard_kit.dart' show AppBreadcrumb;
 import 'app_focus_mode.dart' show AppFocusMode, AppFocusToggle;
 import 'app_keyboard.dart' show AppCommandPaletteScope;
@@ -716,7 +717,9 @@ class _AppMark extends StatelessWidget {
       width: _ShellMetrics.mark,
       height: _ShellMetrics.mark,
       decoration: BoxDecoration(color: c.primary, borderRadius: AppRadius.chipAll),
-      child: Icon(Icons.school_rounded, color: c.onHero, size: AppIconSize.md),
+      // the primary fill's own ink (the pairing a primary button uses), lifted when a server theme's primary is
+      // light enough to wash it out — the mark keeps its contrast in both modes
+      child: Icon(Icons.school_rounded, color: ensureContrast(c.onHero, [c.primary], min: 3), size: AppIconSize.md),
     );
   }
 }

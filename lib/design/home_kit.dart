@@ -215,7 +215,9 @@ class HomeHeader extends StatelessWidget {
             padding: padding.resolve(Directionality.of(context)).copyWith(top: AppSpace.sm, bottom: AppSpace.xs),
             child: !wide
                 ? hero
-                : Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                // the toolbar (search · the home's buttons) at the top of the side column, level with the hero's
+                // first line, where a page's tools are looked for (at the bottom it hung under an empty column)
+                : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Expanded(child: hero),
                     const SizedBox(width: AppSpace.lg),
                     SizedBox(

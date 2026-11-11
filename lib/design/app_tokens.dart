@@ -16,6 +16,7 @@
 //               only what floats casts one, in the warm charcoal shadow tone (D-612)
 //   AppIconSize   xs 14 · sm 16 · md 20 · lg 24 · xl 32 · hero 40
 //   AppBorder     hairline 1 · strong 1.5 · focus 2
+//   AppDashSize   the dashboard kit's fixed sizes: avatar 56 / 72 · disc 64 · ring 76 · course tile 220
 //   AppType     the type roles (display · headline · page title · section · body · row · label · meta · overline ·
 //               figure · figureLarge) mapped onto the theme's styles; display → section are EDITORIAL (Amiri /
 //               Playfair Display, AppFonts.editorial, D-611, D-631) unless the person chose "Headings: Same as text"
@@ -152,6 +153,17 @@ abstract final class AppIconSize {
   static const double lg = 24;
   static const double xl = 32;
   static const double hero = 40;
+}
+
+/// The dashboard kit's fixed sizes (D-631): the hero's avatar (phone [avatarSm], desktop [avatar]), a shortcut
+/// tile's glyph [disc], a stat card's progress [ring] and the width of a course tile in a home's sideways row
+/// ([courseTile]: a second tile always peeks in at the end).
+abstract final class AppDashSize {
+  static const double avatarSm = 56;
+  static const double avatar = 72;
+  static const double disc = 64;
+  static const double ring = 76;
+  static const double courseTile = 220;
 }
 
 /// Border widths.

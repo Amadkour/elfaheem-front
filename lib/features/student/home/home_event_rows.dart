@@ -346,7 +346,7 @@ class StudentCourseTiles extends StatelessWidget {
   final int? featuredId;
 
   /// One tile's width: a second tile always peeks in at the end.
-  static const double tileWidth = 220;
+  static const double tileWidth = AppDashSize.courseTile;
 
   @override
   Widget build(BuildContext context) {

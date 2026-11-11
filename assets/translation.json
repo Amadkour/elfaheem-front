@@ -24554,5 +24554,21 @@
   "shell_search_hint": {
     "en": "Search…",
     "ar": "ابحث…"
+  },
+  "breadcrumb_path": {
+    "en": "Path",
+    "ar": "المسار"
+  },
+  "home_t_day_done": {
+    "en": "Done",
+    "ar": "انتهت"
+  },
+  "home_t_day_live": {
+    "en": "Live now",
+    "ar": "مباشرة الآن"
+  },
+  "home_t_day_ahead": {
+    "en": "Still ahead",
+    "ar": "قادمة"
   }
 }

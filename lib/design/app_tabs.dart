@@ -29,16 +29,20 @@ class AppTabItem {
 }
 
 class AppTabs extends StatelessWidget {
-  const AppTabs({super.key, required this.items, required this.index, required this.onChanged, this.expand = false});
+  const AppTabs({super.key, required this.items, required this.index, required this.onChanged, this.expand = false, this.hug = false});
 
   final List<AppTabItem> items;
   final int index;
   final ValueChanged<int> onChanged;
   final bool expand;
 
+  /// The track as wide as its pills (at the start) instead of the full width: a small period switch in a card's
+  /// header ([AppSectionCard.tabs]). Only while the pills fit; a strip that scrolls keeps the full width.
+  final bool hug;
+
   @override
   Widget build(BuildContext context) =>
-      _TabStrip(items: items, index: index, onChanged: onChanged, expand: expand, underline: false);
+      _TabStrip(items: items, index: index, onChanged: onChanged, expand: expand, underline: false, hug: hug);
 }
 
 class AppUnderlineTabs extends StatelessWidget {
@@ -61,6 +65,7 @@ class _TabStrip extends StatefulWidget {
     required this.onChanged,
     required this.expand,
     required this.underline,
+    this.hug = false,
   });
 
   final List<AppTabItem> items;
@@ -68,6 +73,7 @@ class _TabStrip extends StatefulWidget {
   final ValueChanged<int> onChanged;
   final bool expand;
   final bool underline;
+  final bool hug;
 
   @override
   State<_TabStrip> createState() => _TabStripState();
@@ -255,11 +261,14 @@ class _TabStripState extends State<_TabStrip> {
       );
 
       final fits = contentW <= avail + 0.5;
-      final body = fits
-          ? Align(alignment: AlignmentDirectional.centerStart, child: strip)
-          : SingleChildScrollView(scrollDirection: Axis.horizontal, child: strip);
+      final hug = widget.hug && fits && !widget.expand;
+      final body = hug
+          ? strip
+          : fits
+              ? Align(alignment: AlignmentDirectional.centerStart, child: strip)
+              : SingleChildScrollView(scrollDirection: Axis.horizontal, child: strip);
 
-      return Focus(
+      final track = Focus(
         onKeyEvent: _onKey,
         child: Builder(builder: (context) {
           final focused = Focus.of(context).hasFocus;
@@ -282,6 +291,7 @@ class _TabStripState extends State<_TabStrip> {
           );
         }),
       );
+      return hug ? Align(alignment: AlignmentDirectional.centerStart, widthFactor: 1, heightFactor: 1, child: track) : track;
     });
   }
 }

@@ -184,7 +184,7 @@ class AppGreetingHero extends StatelessWidget {
   final bool centered;
   final int greetingMaxLines;
 
-  static const double _avatar = 72, _avatarSmall = 56;
+  static const double _avatar = AppDashSize.avatar, _avatarSmall = AppDashSize.avatarSm;
 
   @override
   Widget build(BuildContext context) {
@@ -621,7 +621,7 @@ class AppRingStat extends StatelessWidget {
   final AppBlockTone tone;
   final VoidCallback? onTap;
 
-  static const double _ring = 76;
+  static const double _ring = AppDashSize.ring;
 
   @override
   Widget build(BuildContext context) {
@@ -687,7 +687,7 @@ class AppShortcutTile extends StatelessWidget {
   final String? subtitle;
 
   static const double minHeight = 112;
-  static const double _disc = 64;
+  static const double _disc = AppDashSize.disc;
 
   @override
   Widget build(BuildContext context) {
@@ -702,21 +702,20 @@ class AppShortcutTile extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: minHeight),
         child: Stack(children: [
-          // the disc leaves the bottom-end corner, the icon sits inside its visible part
+          // a whole soft disc in the bottom-end corner (never clipped by the tile's edge), the glyph at its centre
           PositionedDirectional(
-            end: -AppSpace.sm,
-            bottom: -AppSpace.sm,
+            end: AppSpace.sm,
+            bottom: AppSpace.sm,
             child: Container(
-              width: _disc + AppSpace.sm,
-              height: _disc + AppSpace.sm,
+              width: _disc,
+              height: _disc,
               decoration: BoxDecoration(color: b.surface, shape: BoxShape.circle),
-              alignment: AlignmentDirectional.topStart,
-              padding: const EdgeInsetsDirectional.only(start: AppSpace.md, top: AppSpace.md),
+              alignment: Alignment.center,
               child: Icon(icon, size: AppIconSize.xl, color: strong),
             ),
           ),
           Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, AppSpace.md, _disc),
+            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, AppSpace.md, _disc + AppSpace.sm),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(
@@ -852,7 +851,7 @@ class AppBreadcrumb extends StatelessWidget {
     );
     return Semantics(
       container: true,
-      label: '${AppConfig.lang == 'ar' ? 'المسار' : 'Path'}: ${shown.join(' / ')}',
+      label: '${'breadcrumb_path'.tr}: ${shown.join(' / ')}',
       excludeSemantics: true,
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(Icons.home_outlined, size: AppIconSize.sm, color: c.textMedium),

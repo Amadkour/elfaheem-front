@@ -53,6 +53,7 @@ import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter_education_app/features/org/org_member_today.dart' show orgTodayEpoch;
 import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart' show CalEvent;
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
+import 'package:flutter_education_app/features/shared/inbox/inbox_page.dart' show kInboxFeatureKey;
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxEntry, InboxItem, InboxScreen, inboxEntryCounts, inboxEntryShown;
 import 'package:flutter_education_app/features/shared/roadmap/journey_page.dart';
 import 'package:flutter_education_app/features/shared/roadmap/recommendations.dart' show showInterestsSheet;
@@ -651,38 +652,47 @@ class _StudentStats extends StatelessWidget {
     final cp = home.coursesProgress;
     final avg = ((studentAverageProgress(home) ?? 0) * 100).round();
     final done = cp.where((x) => x.progress >= 100).length;
+    // a figure that opens a tab the super admin switched off stays out (the shell drops the same tabs)
+    final courses = _studentTabOn('my_courses');
     return AppKpiGrid(children: [
-      AppStatCard(
-        icon: Icons.auto_stories_rounded,
-        value: '${cp.length}',
-        label: 'my_courses'.tr,
-        tone: AppBlockTone.emerald,
-        onTap: () => onTab('my_courses'),
-      ),
-      AppStatCard(
-        icon: Icons.event_note_rounded,
-        value: '${home.today.where((e) => !e.declined).length}',
-        label: 'home_s_today_items'.tr,
-        tone: AppBlockTone.sky,
-        onTap: () => onTab('my_schedule'),
-      ),
-      AppStatCard(
-        icon: Icons.trending_up_rounded,
-        value: '$avg%',
-        label: 'home_s_avg_progress'.tr,
-        tone: AppBlockTone.peach,
-        onTap: () => onTab('analysis'),
-      ),
-      AppStatCard(
-        icon: Icons.emoji_events_rounded,
-        value: '$done',
-        label: 'home_s_done_courses'.tr,
-        tone: AppBlockTone.gold,
-        onTap: () => onTab('my_courses'),
-      ),
+      if (courses)
+        AppStatCard(
+          icon: Icons.auto_stories_rounded,
+          value: '${cp.length}',
+          label: 'my_courses'.tr,
+          tone: AppBlockTone.emerald,
+          onTap: () => onTab('my_courses'),
+        ),
+      if (_studentTabOn('my_schedule'))
+        AppStatCard(
+          icon: Icons.event_note_rounded,
+          value: '${home.today.where((e) => !e.declined).length}',
+          label: 'home_s_today_items'.tr,
+          tone: AppBlockTone.sky,
+          onTap: () => onTab('my_schedule'),
+        ),
+      if (_studentTabOn('analysis'))
+        AppStatCard(
+          icon: Icons.trending_up_rounded,
+          value: '$avg%',
+          label: 'home_s_avg_progress'.tr,
+          tone: AppBlockTone.peach,
+          onTap: () => onTab('analysis'),
+        ),
+      if (courses)
+        AppStatCard(
+          icon: Icons.emoji_events_rounded,
+          value: '$done',
+          label: 'home_s_done_courses'.tr,
+          tone: AppBlockTone.gold,
+          onTap: () => onTab('my_courses'),
+        ),
     ]);
   }
 }
+
+/// Whether the student dashboard shows the tab [label]: the shell removes `student_tab_<label>` (dashboard_screen).
+bool _studentTabOn(String label) => !AppConfig.disableList.contains('student_tab_$label');
 
 /// The phone's shortcut grid under the hero (D-631, the reference's 2×2 tiles): the dashboard's own tabs and the
 /// inbox, each a large soft glyph in its tone. No counts here: "Needs you" and the inbox entry carry them.
@@ -693,10 +703,14 @@ class _StudentShortcuts extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AppShortcutGrid(maxColumns: 2, children: [
-        AppShortcutTile(icon: Icons.auto_stories_rounded, label: 'my_courses'.tr, tone: AppBlockTone.emerald, onTap: () => onTab('my_courses')),
-        AppShortcutTile(icon: Icons.calendar_month_rounded, label: 'my_schedule'.tr, tone: AppBlockTone.sky, onTap: () => onTab('my_schedule')),
-        AppShortcutTile(icon: Icons.insights_rounded, label: 'analysis'.tr, tone: AppBlockTone.peach, onTap: () => onTab('analysis')),
-        AppShortcutTile(icon: Icons.inbox_rounded, label: 'inbox_title'.tr, tone: AppBlockTone.sky, onTap: onOpenInbox),
+        if (_studentTabOn('my_courses'))
+          AppShortcutTile(icon: Icons.auto_stories_rounded, label: 'my_courses'.tr, tone: AppBlockTone.emerald, onTap: () => onTab('my_courses')),
+        if (_studentTabOn('my_schedule'))
+          AppShortcutTile(icon: Icons.calendar_month_rounded, label: 'my_schedule'.tr, tone: AppBlockTone.sky, onTap: () => onTab('my_schedule')),
+        if (_studentTabOn('analysis'))
+          AppShortcutTile(icon: Icons.insights_rounded, label: 'analysis'.tr, tone: AppBlockTone.peach, onTap: () => onTab('analysis')),
+        if (onOpenInbox != null && !AppConfig.disableList.contains(kInboxFeatureKey))
+          AppShortcutTile(icon: Icons.inbox_rounded, label: 'inbox_title'.tr, tone: AppBlockTone.sky, onTap: onOpenInbox),
       ]);
 }
 

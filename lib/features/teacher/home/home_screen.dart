@@ -129,7 +129,13 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
     if (p.hasError && !p.loaded) p.init();
   }
 
-  void _tab(int i) => context.read<TeacherDashboardProvider>().onChangeTab(i);
+  /// Opens the dashboard tab [i] in its full order (1 courses · 2 timetable · 3 analytics). The shell drops the tabs
+  /// the super admin switched off (`teacher_tab_<label>`), which shifts the later indices: count only the tabs on.
+  void _tab(int i) {
+    if (!teacherTabOn(i)) return;
+    final shown = [for (var k = 0; k < i; k++) if (teacherTabOn(k)) k].length;
+    context.read<TeacherDashboardProvider>().onChangeTab(shown);
+  }
 
   void _openCourse(TeacherCourse course) => Navigator.push(
         context,
@@ -821,20 +827,22 @@ class TeacherHomeBody extends StatelessWidget {
     final s = stats;
     final published = courses.where((x) => x.isPublished).length;
     final earnings = extra?.earningsMonth;
+    // a figure whose tab is switched off stays a plain figure (no tap into a tab the shell dropped)
+    final toAnalysis = teacherTabOn(3) ? () => onTab(3) : null;
     final figures = AppKpiGrid(children: [
-      AppStatCard(icon: Icons.groups_rounded, value: appCompactNumber(s.totalStudents), label: 'home_students'.tr, tone: AppBlockTone.peach, onTap: () => onTab(3)),
+      AppStatCard(icon: Icons.groups_rounded, value: appCompactNumber(s.totalStudents), label: 'home_students'.tr, tone: AppBlockTone.peach, onTap: toAnalysis),
       AppStatCard(
         icon: Icons.star_rounded,
         value: s.overallRating > 0 ? s.overallRating.toStringAsFixed(1) : '–',
         label: 'home_rating'.tr,
         tone: AppBlockTone.gold,
-        onTap: () => onTab(3),
+        onTap: toAnalysis,
       ),
       if (earnings != null)
-        AppStatCard(icon: Icons.payments_outlined, value: appCompactNumber(earnings), label: 'home_t_earnings_month'.tr, tone: AppBlockTone.emerald, onTap: () => onTab(3))
+        AppStatCard(icon: Icons.payments_outlined, value: appCompactNumber(earnings), label: 'home_t_earnings_month'.tr, tone: AppBlockTone.emerald, onTap: toAnalysis)
       else
-        AppStatCard(icon: Icons.public_rounded, value: '$published', label: 'home_t_published'.tr, tone: AppBlockTone.emerald, onTap: () => onTab(3)),
-      AppStatCard(icon: Icons.event_note_rounded, value: '${items.length}', label: 'home_today_sessions'.tr, tone: AppBlockTone.sky, onTap: () => onTab(2)),
+        AppStatCard(icon: Icons.public_rounded, value: '$published', label: 'home_t_published'.tr, tone: AppBlockTone.emerald, onTap: toAnalysis),
+      AppStatCard(icon: Icons.event_note_rounded, value: '${items.length}', label: 'home_today_sessions'.tr, tone: AppBlockTone.sky, onTap: teacherTabOn(2) ? () => onTab(2) : null),
     ]);
 
     final stale = staleError == null
@@ -867,9 +875,12 @@ class TeacherHomeBody extends StatelessWidget {
       final shortcuts = Padding(
         padding: _kSides,
         child: AppShortcutGrid(maxColumns: 2, children: [
-          AppShortcutTile(icon: Icons.auto_stories_rounded, label: 'my_courses'.tr, tone: AppBlockTone.emerald, onTap: () => onTab(1)),
-          AppShortcutTile(icon: Icons.calendar_month_rounded, label: 'my_schedule'.tr, tone: AppBlockTone.sky, onTap: () => onTab(2)),
-          AppShortcutTile(icon: Icons.insights_rounded, label: 'analysis'.tr, tone: AppBlockTone.peach, onTap: () => onTab(3)),
+          if (teacherTabOn(1))
+            AppShortcutTile(icon: Icons.auto_stories_rounded, label: 'my_courses'.tr, tone: AppBlockTone.emerald, onTap: () => onTab(1)),
+          if (teacherTabOn(2))
+            AppShortcutTile(icon: Icons.calendar_month_rounded, label: 'my_schedule'.tr, tone: AppBlockTone.sky, onTap: () => onTab(2)),
+          if (teacherTabOn(3))
+            AppShortcutTile(icon: Icons.insights_rounded, label: 'analysis'.tr, tone: AppBlockTone.peach, onTap: () => onTab(3)),
           if (onOpenEarnings != null)
             AppShortcutTile(icon: Icons.account_balance_wallet_rounded, label: 'my_earnings_title'.tr, tone: AppBlockTone.gold, onTap: onOpenEarnings),
         ]),
@@ -939,7 +950,7 @@ class TeacherHomeBody extends StatelessWidget {
 }
 
 /// A course tile's width in the phone's sideways row.
-const double _kTile = 220;
+const double _kTile = AppDashSize.courseTile;
 
 /// [items] with the home's section rhythm (24) between them and after the last.
 List<Widget> _spaced(List<Widget> items) => [
@@ -1015,7 +1026,13 @@ class _TodayCardState extends State<_TodayCard> {
     final shown = _all || !more ? ordered : ordered.take(3).toList();
     final anyLive = ordered.any((x) => x.live);
     final nextItem = anyLive ? null : ordered.where((x) => !done(x) && (x.startMin ?? -1) > now).firstOrNull;
-    return AppSectionCard(
+    // the day's tally (done · live · ahead) from the same rows: the card stands as tall as the hero beside it, so
+    // the tally sits at its foot instead of a blank band. An invisible copy in the flow keeps its room when the card
+    // is only as tall as its rows, the drawn one is pinned to the bottom when the card is stretched.
+    final live = ordered.where((x) => x.live).length;
+    final finished = ordered.where(done).length;
+    final tally = w.items.isEmpty ? null : _DayTally(done: finished, live: live, ahead: ordered.length - finished - live);
+    final card = AppSectionCard(
       title: 'home_today_sessions'.tr,
       subtitle: w.date,
       actions: [AppButton.ghost(label: 'home_full_timetable'.tr, size: AppButtonSize.sm, onPressed: w.onTimetable)],
@@ -1028,8 +1045,46 @@ class _TodayCardState extends State<_TodayCard> {
               ],
               for (final x in shown) HomeAgendaLine(item: x, done: done(x), focus: x.live, note: homeAgendaNote(x, now, next: identical(x, nextItem))),
               if (more) HomeShowAllRow(expanded: _all, count: ordered.length, onTap: () => setState(() => _all = !_all)),
+              if (tally != null) ...[
+                const SizedBox(height: AppSpace.md),
+                Visibility(visible: false, maintainSize: true, maintainAnimation: true, maintainState: true, child: tally),
+              ],
             ]),
     );
+    if (tally == null) return card;
+    return Stack(fit: StackFit.passthrough, children: [
+      card,
+      PositionedDirectional(start: AppSpace.md, end: AppSpace.md, bottom: AppSpace.md, child: tally),
+    ]);
+  }
+}
+
+/// The foot of the desktop "Today" card: how many of today's sessions are done, live and still ahead, over a
+/// hairline (the same rows as above, counted).
+class _DayTally extends StatelessWidget {
+  const _DayTally({required this.done, required this.live, required this.ahead});
+  final int done, live, ahead;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    Widget cell(int n, String label, Color ink) => Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text('$n',
+                maxLines: 1,
+                style: AppType.figure(context).copyWith(color: ink, fontFeatures: const [FontFeature.tabularFigures()])),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight)),
+          ]),
+        );
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+      Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+      const SizedBox(height: AppSpace.sm),
+      Row(children: [
+        cell(done, 'home_t_day_done'.tr, c.textMedium),
+        cell(live, 'home_t_day_live'.tr, live > 0 ? appInk(context, c.danger) : c.textMedium),
+        cell(ahead, 'home_t_day_ahead'.tr, appInk(context, c.primary)),
+      ]),
+    ]);
   }
 }
 
@@ -1149,3 +1204,10 @@ class TeacherTodoSection extends StatelessWidget {
     );
   }
 }
+
+/// The teacher dashboard's tabs in their full order (teacher_dashboard_screen.dart builds the same list).
+const _kTeacherTabs = ['home', 'my_courses', 'my_schedule', 'analysis', 'my_profile'];
+
+/// Whether the shell shows the tab at full-order index [i]: it drops `teacher_tab_<label>` (feature kill switch).
+bool teacherTabOn(int i) =>
+    i >= 0 && i < _kTeacherTabs.length && !AppConfig.disableList.contains('teacher_tab_${_kTeacherTabs[i]}');

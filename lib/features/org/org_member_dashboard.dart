@@ -32,6 +32,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -584,7 +585,7 @@ class OrgMemberHomeBody extends StatelessWidget {
           label: t('مطلوب منك', 'To do'),
           value: '${asInt(todo['total'])}',
           tone: AppBlockTone.peach,
-          footer: overdue > 0 ? t('$overdue متأخرة', '$overdue overdue') : t('لا شيء متأخر', 'Nothing late'),
+          footer: overdue > 0 ? countText(overdue, ar1: 'مهمة واحدة متأخرة', ar2: 'مهمتان متأخرتان', arFew: '{n} مهام متأخرة', arMany: '{n} مهمة متأخرة', en1: '1 overdue', en: '{n} overdue') : t('لا شيء متأخر', 'Nothing late'),
           onTap: openInbox)),
       (soon, AppStatCard(
           key: const ValueKey('member.stat.soon'),
@@ -600,7 +601,7 @@ class OrgMemberHomeBody extends StatelessWidget {
             label: t('بانتظار قرارك', 'Awaiting you'),
             value: '${asInt(ap['total'])}',
             tone: AppBlockTone.emerald,
-            footer: lateComplaints > 0 ? t('$lateComplaints شكاوى متأخرة', '$lateComplaints late complaints') : t('كلها في وقتها', 'All on time'))),
+            footer: lateComplaints > 0 ? countText(lateComplaints, ar1: 'شكوى واحدة متأخرة', ar2: 'شكويان متأخرتان', arFew: '{n} شكاوى متأخرة', arMany: '{n} شكوى متأخرة', en1: '1 late complaint', en: '{n} late complaints') : t('كلها في وقتها', 'All on time'))),
       (asInt(entry['news']), AppStatCard(
           key: const ValueKey('member.stat.news'),
           icon: Icons.campaign_rounded,

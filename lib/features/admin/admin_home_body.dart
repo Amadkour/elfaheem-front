@@ -481,7 +481,7 @@ class _NeedsYou extends StatelessWidget {
               ? AppBanner(icon: Icons.check_circle_rounded, text: 'admin_home_all_clear'.tr, color: c.success)
               : Column(children: [
                   for (var i = 0; i < all.length; i++) ...[
-                    if (i > 0) Divider(height: 1, thickness: 1, color: c.divider),
+                    if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
                     all[i],
                   ],
                 ]),
@@ -577,6 +577,7 @@ class _ActivityChartState extends State<_ActivityChart> {
       subtitle: daysText(recent.length),
       tabs: data.hasActivity
           ? AppTabs(
+              hug: true,
               items: [for (final n in _windows) AppTabItem(daysText(n))],
               index: _index,
               onChanged: (i) => setState(() => _index = i),
