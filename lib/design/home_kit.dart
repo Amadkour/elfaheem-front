@@ -11,7 +11,11 @@
 //   HomeHeader         THE hero block of a home (D-622): greeting (time of day, effective timezone), the name in the
 //                      editorial display face, the day line, the actions as paper chips and the context switcher,
 //                      on a tinted AppBlock (peach for a student / parent, sky for an instructor / admin /
-//                      organization; HomeHeader.toneForRole) with charcoal ink — never a gradient
+//                      organization; HomeHeader.toneForRole) with charcoal ink — never a gradient.
+//                      `greetingHero: true` draws it as the premium AppGreetingHero instead (D-631): the forest
+//                      card with the time chip, the avatar ring (`avatar:` / the name's initial, `ring:` progress),
+//                      "Good evening, Mona" in the display face, the day line, ONE `cta:`; `centered:` for the
+//                      desktop card beside a side card
 //   HomeEntrance       the ONE entrance motion (fade + 12px rise, staggered, once; off with reduced motion)
 //   HomeSectionTitle   section title with an optional count and action
 //   HomeActionCard /   important actions: icon, title, count (badge), tone; a responsive equal-height grid
@@ -123,7 +127,22 @@ class HomeHeader extends StatelessWidget {
     this.padding = const EdgeInsets.fromLTRB(20, 20, 20, 8),
     this.helpPageId,
     this.tone,
+    this.greetingHero = false,
+    this.avatar,
+    this.ring,
+    this.cta,
+    this.centered = false,
   });
+
+  /// Draw the header as the premium [AppGreetingHero] (D-631) instead of the tinted block. Same data, same buttons.
+  final bool greetingHero;
+
+  /// [greetingHero] only: the picture in the avatar ring (null = the name's first letter), the ring's progress
+  /// (0..1, null = a closed quiet ring), the ONE call to action ([AppGreetingHeroButton]) and the centred layout.
+  final Widget? avatar;
+  final double? ring;
+  final Widget? cta;
+  final bool centered;
 
   /// The page id of the Info button (help entry), drawn on phones only (the shell's top bar carries it on wide screens).
   final String? helpPageId;
@@ -166,6 +185,51 @@ class HomeHeader extends StatelessWidget {
     return s != null && s.sideChrome > 0 && !s.fullScreen;
   }
 
+  /// "Good evening, Mona" in the open language (the greeting of the hour, the name after the language's comma).
+  static String greetingLine(String name) {
+    final g = homeGreetingKey(homeNow().hour).tr;
+    if (name.trim().isEmpty) return g;
+    return AppConfig.lang == 'ar' ? '$g، $name' : '$g, $name';
+  }
+
+  Widget _greetingHero(BuildContext context, List<Widget> buttons) => ValueListenableBuilder<int>(
+        valueListenable: AppTime.version,
+        builder: (context, _, _) => LayoutBuilder(builder: (context, box) {
+          final wide = wideTrailing != null && homeIsWide(box.maxWidth);
+          final initial = name.trim().isEmpty ? '' : name.trim().characters.first.toUpperCase();
+          final hero = AppGreetingHero(
+            greeting: greetingLine(name),
+            summary: subtitle,
+            avatar: avatar,
+            initials: initial,
+            ring: ring,
+            cta: cta,
+            centered: centered,
+            actions: [
+              if (leading != null) leading!,
+              ...wide ? const <Widget>[] : buttons,
+            ],
+            footer: contextSwitcher,
+          );
+          return Padding(
+            padding: padding.resolve(Directionality.of(context)).copyWith(top: AppSpace.sm, bottom: AppSpace.xs),
+            child: !wide
+                ? hero
+                : Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                    Expanded(child: hero),
+                    const SizedBox(width: AppSpace.lg),
+                    SizedBox(
+                      width: HomeDashboard.sideWidthFor(box.maxWidth) - 40,
+                      child: Row(children: [
+                        Expanded(child: wideTrailing!),
+                        for (final b in buttons) ...[const SizedBox(width: AppSpace.xs), b],
+                      ]),
+                    ),
+                  ]),
+          );
+        }),
+      );
+
   @override
   Widget build(BuildContext context) {
     final blockTone = tone ?? toneOf(context);
@@ -173,6 +237,7 @@ class HomeHeader extends StatelessWidget {
       ...actions,
       if (!shellTopBar(context)) ...[...shellActions, if (helpPageId != null) HelpInfoButton(pageId: helpPageId!)],
     ];
+    if (greetingHero) return _greetingHero(context, buttons);
     // greeting · buttons on the first line, then the name and the day line on the full width: three 48 px buttons
     // next to the name truncated "Mark Mark…" and the day line at 390 px (M9)
     return ValueListenableBuilder<int>(

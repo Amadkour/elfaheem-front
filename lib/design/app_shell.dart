@@ -24,11 +24,13 @@
 //   UserChipButton · NotificationIcon · CalendarIcon
 //       the sidebar's user chip and the top bar's icons (the home headers use them too).
 //
-// The look (Warm Editorial Blocks, .interface-design/system.md): the page is the warm canvas; the sidebar and the
-// rail are a PAPER column (`cardBg`) set off by one warm hairline, the way a magazine's margin sits beside the
-// page — no gradient, no dark slab competing with the page's hero block; the selected tab is an emerald pill with
-// on-hero ink; the top bar is the canvas itself with the tab's title in the editorial face and the chrome buttons
-// as paper squares; the phone's bottom bar is paper with a hairline, the open tab an emerald pill under its label.
+// The look (premium dashboard, D-631, over Warm Editorial Blocks): the page is the warm canvas; the sidebar is a
+// PAPER column (`cardBg`) set off by one warm hairline, its tabs in groups — each under a soft tinted header (a
+// title and one line) — the open tab a tinted pill in the primary ink with its count, and a button folds it to its
+// icons (appSidebarCollapsed); the top bar is a paper band with the search box (when the screen has a Ctrl+K
+// palette), ghost icon buttons with small counts and the signed-in person (avatar, name, role); under it the page
+// head: the tab's title in the editorial face at the start and its breadcrumb at the end. The phone's bottom bar is
+// paper with a hairline, the open tab's icon on a tinted pill over its label in the primary ink.
 // Colours come from context.colors only. Layout test: test/ui/app_shell_layout_test.dart.
 library;
 
@@ -48,7 +50,9 @@ import '../features/shared/profile/update_account_widget.dart';
 import '../utils/widget/app_navigator.dart' show AppNavigator;
 import '../utils/widget/app_network_image.dart';
 import '../utils/widget/base_page.dart';
+import 'app_dashboard_kit.dart' show AppBreadcrumb;
 import 'app_focus_mode.dart' show AppFocusMode, AppFocusToggle;
+import 'app_keyboard.dart' show AppCommandPaletteScope;
 import 'app_motion_kit.dart';
 import 'app_tokens.dart';
 import 'app_responsive.dart';
@@ -135,6 +139,18 @@ class ShellBadge extends StatelessWidget {
 
 String _badgeText(int n) => n > 99 ? '99+' : '$n';
 
+/// The desktop sidebar folded to its icons (D-631): one switch for the session, flipped by the sidebar's own button.
+/// Presentation only: the tabs, their order and their callbacks are the same either way.
+final ValueNotifier<bool> appSidebarCollapsed = ValueNotifier(false);
+
+/// The tinted pill of an open tab and the ink on it (sidebar, rail, phone bar).
+({Color fill, Color ink}) _openTabColors(BuildContext context) {
+  final c = context.colors;
+  // an opaque tint of the primary over the paper (a translucent fill would fool the contrast check)
+  final fill = Color.lerp(c.cardBg, c.primary, c.isDark ? 0.22 : 0.12)!;
+  return (fill: fill, ink: c.blockAccentInk(c.primary, fill));
+}
+
 /// The shell's own measures, the few the tokens do not name.
 abstract final class _ShellMetrics {
   /// The sidebar's brand mark and the user chip's avatar.
@@ -157,25 +173,22 @@ abstract final class _ShellMetrics {
   static const double railCellH = AppTouch.min + AppSpace.xs;
 }
 
-/// A tab's count as a small pill in the colour of its meaning. On the open (emerald) tab it turns to glass, so a red
-/// count never sits on green; [ring] (the surface under it) separates a pill that overlaps an icon.
+/// A tab's count as a small pill in the colour of its meaning (the open tab is a light tint, so the count keeps its
+/// colour there too); [ring] (the surface under it) separates a pill that overlaps an icon.
 class _CountPill extends StatelessWidget {
-  const _CountPill(this.n, {required this.tone, this.onSelected = false, this.ring});
+  const _CountPill(this.n, {required this.tone, this.ring});
 
   final int n;
   final ShellBadgeTone tone;
-  final bool onSelected;
   final Color? ring;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final (Color fill, Color ink) = onSelected
-        ? (c.heroGlass, c.onHero)
-        : switch (tone) {
-            ShellBadgeTone.attention => (c.danger, c.onHero),
-            ShellBadgeTone.reward => (c.blockGold, c.blockAccentInk(c.accent2, c.blockGold)),
-          };
+    final (Color fill, Color ink) = switch (tone) {
+      ShellBadgeTone.attention => (c.danger, c.onHero),
+      ShellBadgeTone.reward => (c.blockGold, c.blockAccentInk(c.accent2, c.blockGold)),
+    };
     return Container(
       constraints: const BoxConstraints(minWidth: AppIconSize.md, minHeight: AppIconSize.md),
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs + 2),
@@ -336,6 +349,7 @@ class _AppShellState extends State<AppShell> {
     AppShellNav.register(_tabs);
     _tabs.addListener(_changed);
     AppFocusMode.instance.addListener(_changed);
+    appSidebarCollapsed.addListener(_changed);
     AppFocusMode.instance.ensureLoaded();
     AppNavigator.requestedTab.addListener(_onTabRequested);
     // a request made before this shell existed (a `<home>/<tab>` URL, a refresh)
@@ -363,6 +377,7 @@ class _AppShellState extends State<AppShell> {
   void dispose() {
     _tabs.removeListener(_changed);
     AppFocusMode.instance.removeListener(_changed);
+    appSidebarCollapsed.removeListener(_changed);
     AppNavigator.requestedTab.removeListener(_onTabRequested);
     AppShellNav.unregister(_tabs);
     _tabs.dispose();
@@ -409,7 +424,7 @@ class _AppShellState extends State<AppShell> {
     _tabs.sideChrome = full || focus
         ? 0
         : switch (kind) {
-            AppShellKind.wide => Breakpoints.sidebarW,
+            AppShellKind.wide => appSidebarCollapsed.value ? _ShellMetrics.railW + AppBorder.hairline : Breakpoints.sidebarW,
             AppShellKind.rail => _ShellMetrics.railW + AppBorder.hairline,
             AppShellKind.mobile => 0,
           };
@@ -538,7 +553,13 @@ class WideShell extends StatelessWidget {
         children: [
           _FocusFold(
             focus: focus,
-            child: _Sidebar(items: dashboardItems, current: current, onTap: onTap, user: user),
+            child: ValueListenableBuilder<bool>(
+              valueListenable: appSidebarCollapsed,
+              builder: (context, collapsed, _) => collapsed
+                  ? _RailColumn(
+                      items: dashboardItems, current: current, onTap: onTap, user: barShown ? null : user, foldable: true)
+                  : _Sidebar(items: dashboardItems, current: current, onTap: onTap, user: barShown ? null : user),
+            ),
           ),
           Expanded(
             child: Column(
@@ -550,7 +571,9 @@ class WideShell extends StatelessWidget {
                     onRefresh: dashboardItems[current].onRefresh,
                     helpPageId: shellHelpPageId(context, dashboardItems[current].label, current == 0),
                     focus: focus,
+                    user: user,
                   ),
+                if (barShown && !focus) _PageHead(items: dashboardItems, current: current),
                 // the top bar already sits under the status bar: the pages below must not pad for it again
                 Expanded(
                   child: MediaQuery.removePadding(
@@ -568,7 +591,8 @@ class WideShell extends StatelessWidget {
   }
 }
 
-/// The paper column: the wordmark, the tabs, the signed-in person. One warm hairline on its end side.
+/// The paper column: the wordmark and the fold button, the tabs in groups, the signed-in person (only when no top bar
+/// carries them). One warm hairline on its end side.
 class _Sidebar extends StatelessWidget {
   const _Sidebar({required this.items, required this.current, required this.onTap, required this.user});
 
@@ -588,32 +612,97 @@ class _Sidebar extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const SizedBox(height: AppSpace.lg),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: AppSpace.md),
-            child: _Wordmark(),
+          SizedBox(
+            height: _ShellMetrics.barH,
+            child: Padding(
+              padding: const EdgeInsetsDirectional.only(start: AppSpace.md, end: AppSpace.xxs),
+              child: Row(children: [
+                const Expanded(child: _Wordmark()),
+                const _FoldButton(),
+              ]),
+            ),
           ),
-          const SizedBox(height: AppSpace.lg),
+          Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
           Expanded(
             child: Semantics(
               container: true,
               explicitChildNodes: true,
               label: 'shell_navigation'.tr,
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+                padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.md, AppSpace.sm, AppSpace.md),
                 children: [
-                  for (int i = 0; i < items.length; i++)
+                  // the home tab under "General", the rest under "Workspace" (the reference's grouped menu, from the
+                  // tabs the role already has — no new destination)
+                  _GroupHeader(title: 'shell_group_general'.tr, subtitle: 'shell_group_general_sub'.tr),
+                  for (int i = 0; i < items.length; i++) ...[
+                    if (i == 1) ...[
+                      const SizedBox(height: AppSpace.md),
+                      _GroupHeader(title: 'shell_group_workspace'.tr, subtitle: 'shell_group_workspace_sub'.tr),
+                    ],
                     _SidebarTile(item: items[i], selected: current == i, onTap: () => onTap(i)),
+                  ],
                 ],
               ),
             ),
           ),
-          Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
-          if (user != null) UserChipButton(user: user!, showLabel: true),
+          if (user != null) ...[
+            Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+            UserChipButton(user: user!, showLabel: true),
+          ],
         ],
       ),
     );
   }
+}
+
+/// A group of sidebar tabs: a soft tinted plate with the group's title in the primary ink and one quiet line.
+class _GroupHeader extends StatelessWidget {
+  const _GroupHeader({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final plate = Color.lerp(c.cardBg, c.primary, c.isDark ? 0.12 : 0.06)!;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
+      child: Semantics(
+        header: true,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+          decoration: BoxDecoration(color: plate, borderRadius: AppRadius.controlAll),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.row(context).copyWith(color: c.blockAccentInk(c.primary, plate), fontWeight: FontWeight.w600)),
+            Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.blockMuted(plate))),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// Folds the desktop sidebar to its icons, or opens it again: a ghost button.
+class _FoldButton extends StatelessWidget {
+  const _FoldButton();
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<bool>(
+        valueListenable: appSidebarCollapsed,
+        builder: (context, collapsed, _) => ChromeGhost(
+          child: ChromeIconButton(
+            key: const ValueKey('app.shell.fold'),
+            icon: collapsed ? Icons.menu_rounded : Icons.menu_open_rounded,
+            label: collapsed ? 'shell_expand'.tr : 'shell_collapse'.tr,
+            onTap: () => appSidebarCollapsed.value = !collapsed,
+          ),
+        ),
+      );
 }
 
 /// The brand mark: a small emerald tile with the school glyph.
@@ -645,6 +734,7 @@ class _Wordmark extends StatelessWidget {
         const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
@@ -673,7 +763,11 @@ class UserChipButton extends StatelessWidget {
   final UserModel user;
   final bool showLabel;
 
-  const UserChipButton({super.key, required this.user, required this.showLabel});
+  /// With [showLabel]: the chip is as wide as its name (up to the width it is given) instead of filling it — the
+  /// top bar's person chip (D-631).
+  final bool hugLabel;
+
+  const UserChipButton({super.key, required this.user, required this.showLabel, this.hugLabel = false});
 
   @override
   Widget build(BuildContext context) {
@@ -718,13 +812,14 @@ class UserChipButton extends StatelessWidget {
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: showLabel ? AppSpace.xs : AppSpace.xxs, vertical: AppSpace.xxs),
                 child: Row(
-                  mainAxisSize: showLabel ? MainAxisSize.max : MainAxisSize.min,
+                  mainAxisSize: showLabel && !hugLabel ? MainAxisSize.max : MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     avatar,
                     if (showLabel) ...[
                       const SizedBox(width: AppSpace.sm),
-                      Expanded(
+                      Flexible(
+                        fit: hugLabel ? FlexFit.loose : FlexFit.tight,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -769,7 +864,8 @@ class _SidebarTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final ink = selected ? c.onHero : c.textDark;
+    final open = _openTabColors(context);
+    final ink = selected ? open.ink : c.textDark;
     // a real button for screen readers and the keyboard (H12): focusable, Enter / Space, selected state read out
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs / 2),
@@ -780,7 +876,7 @@ class _SidebarTile extends StatelessWidget {
           type: MaterialType.transparency,
           child: InkWell(
             onTap: onTap,
-            customBorder: const StadiumBorder(),
+            customBorder: RoundedRectangleBorder(borderRadius: AppRadius.controlAll),
             hoverColor: c.inputBg,
             focusColor: c.inputBg,
             child: AnimatedContainer(
@@ -789,12 +885,12 @@ class _SidebarTile extends StatelessWidget {
               constraints: const BoxConstraints(minHeight: AppTouch.min),
               padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
               decoration: BoxDecoration(
-                color: selected ? c.primary : Colors.transparent,
-                borderRadius: BorderRadius.circular(AppRadius.pill),
+                color: selected ? open.fill : open.fill.withValues(alpha: 0),
+                borderRadius: AppRadius.controlAll,
               ),
               child: Row(
                 children: [
-                  Icon(selected ? item.selectedIcon : item.icon, color: selected ? c.onHero : c.textMedium, size: AppIconSize.md),
+                  Icon(selected ? item.selectedIcon : item.icon, color: selected ? open.ink : c.textMedium, size: AppIconSize.md),
                   const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Text(
@@ -810,7 +906,7 @@ class _SidebarTile extends StatelessWidget {
                         ? const SizedBox.shrink()
                         : Padding(
                             padding: const EdgeInsetsDirectional.only(start: AppSpace.xs),
-                            child: _CountPill(n, tone: item.badgeTone, onSelected: selected),
+                            child: _CountPill(n, tone: item.badgeTone),
                           ),
                   ),
                 ],
@@ -839,8 +935,8 @@ String? shellHelpPageId(BuildContext context, String tabKey, bool first) {
 
 // ── Top bar (wide + rail) ─────────────────────────────────────────────────────
 
-/// The canvas bar over a tab's first page: the tab's title in the editorial face at the start, the chrome buttons
-/// (paper squares) at the end. No fill and no hairline — it is the page's own head, not a band.
+/// The paper band over a tab's first page (D-631): the search box at the start (when the screen has a palette), the
+/// chrome buttons as ghosts and the signed-in person at the end; the tab's title moved to [_PageHead] under it.
 class _TopBar extends StatelessWidget {
   final String title;
   final int unread;
@@ -850,51 +946,258 @@ class _TopBar extends StatelessWidget {
   /// Focus mode: a slim bar with the title and the way out, in the corner where focus mode was entered.
   final bool focus;
 
-  const _TopBar({required this.title, required this.unread, required this.onRefresh, this.helpPageId, this.focus = false});
+  /// The signed-in person drawn at the end (avatar, name, role); null = none (a guest, a test).
+  final UserModel? user;
+
+  const _TopBar({
+    required this.title,
+    required this.unread,
+    required this.onRefresh,
+    this.helpPageId,
+    this.focus = false,
+    this.user,
+  });
+
+  /// From this bar width the person's name and role show beside the avatar.
+  static const double _userLabelFrom = 900;
+
+  /// The person's chip with its name and role.
+  static const double _userW = 208;
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    // focus mode keeps the slim canvas bar it always had: the title and the way out
+    if (focus) {
+      return Semantics(
+        container: true,
+        explicitChildNodes: true,
+        label: 'shell_top_bar'.tr,
+        child: SizedBox(
+          height: _ShellMetrics.focusBarH,
+          child: Padding(
+            padding: const EdgeInsetsDirectional.only(start: AppSpace.lg, end: AppSpace.md),
+            child: Row(children: [
+              Expanded(
+                child: Semantics(
+                  header: true,
+                  child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context)),
+                ),
+              ),
+              const SizedBox(width: AppSpace.xs),
+              const _FocusExitPill(),
+            ]),
+          ),
+        ),
+      );
+    }
+    final palette = AppCommandPaletteScope.openerOf(context);
     return Semantics(
       container: true,
       explicitChildNodes: true,
       label: 'shell_top_bar'.tr,
-      child: SizedBox(
-        height: focus ? _ShellMetrics.focusBarH : _ShellMetrics.barH,
-        child: Padding(
-          padding: const EdgeInsetsDirectional.only(start: AppSpace.lg, end: AppSpace.md),
-          child: LayoutBuilder(builder: (context, box) => Row(
-            children: [
-              Expanded(
-                child: Semantics(
-                  header: true,
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppType.pageTitle(context),
+      child: Container(
+        height: _ShellMetrics.barH,
+        decoration: BoxDecoration(
+          color: c.cardBg,
+          border: Border(bottom: BorderSide(color: c.divider, width: AppBorder.hairline)),
+        ),
+        padding: const EdgeInsetsDirectional.only(start: AppSpace.lg, end: AppSpace.md),
+        child: LayoutBuilder(builder: (context, box) {
+          final withName = user != null && box.maxWidth >= _userLabelFrom;
+          return ChromeGhost(
+            // the search at the start, the buttons at the end, whatever room is left between them
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              // the search box opens the screen's own Ctrl+K palette (the same thing the shortcut does)
+              if (palette != null)
+                Flexible(
+                  flex: 3,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: AppWidth.form.max / 2 + AppSpace.xxl),
+                    child: _TopSearch(onTap: palette),
                   ),
-                ),
-              ),
-              const SizedBox(width: AppSpace.xs),
+                )
+              else
+                const SizedBox.shrink(),
+              const SizedBox(width: AppSpace.md),
               // the buttons keep their size and sit at the end; only a squeezed shell scales them down
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: box.maxWidth * 0.72),
+              Flexible(
+                flex: 4,
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: AlignmentDirectional.centerEnd,
-                  child: focus
-                      ? const _FocusExitPill()
-                      : Row(mainAxisSize: MainAxisSize.min, children: [
-                          if (onRefresh != null) _ChromeRefresh(onRefresh: onRefresh!),
-                          _GlobalTools(unread: unread),
-                          if (helpPageId != null) HelpInfoButton(pageId: helpPageId!),
-                          const AppFocusToggle(),
-                        ]),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    if (onRefresh != null) _ChromeRefresh(onRefresh: onRefresh!),
+                    _GlobalTools(unread: unread),
+                    if (helpPageId != null) HelpInfoButton(pageId: helpPageId!),
+                    const AppFocusToggle(),
+                    if (user != null) ...[
+                      Container(
+                        width: AppBorder.hairline,
+                        height: AppTouch.min - AppSpace.md,
+                        margin: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
+                        color: c.divider,
+                      ),
+                      if (withName)
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: _userW),
+                          child: UserChipButton(user: user!, showLabel: true, hugLabel: true),
+                        )
+                      else
+                        UserChipButton(user: user!, showLabel: false),
+                    ],
+                  ]),
                 ),
               ),
-            ],
-          )),
+            ]),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+/// The top bar's search box: a quiet field-shaped button with the shortcut hint, opening the screen's palette.
+class _TopSearch extends StatelessWidget {
+  const _TopSearch({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final hint = 'shell_search_hint'.tr;
+    return Semantics(
+      button: true,
+      label: hint,
+      excludeSemantics: true,
+      child: Material(
+        color: c.inputBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: AppRadius.controlAll,
+          side: BorderSide(color: c.divider, width: AppBorder.hairline),
         ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: const ValueKey('app.shell.search'),
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xxs),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+              child: Row(children: [
+                Icon(Icons.search_rounded, size: AppIconSize.md, color: c.textMedium),
+                const SizedBox(width: AppSpace.xs),
+                Expanded(
+                  child: Text(hint, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: c.textLight)),
+                ),
+                const SizedBox(width: AppSpace.xs),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
+                  decoration: BoxDecoration(
+                    color: c.cardBg,
+                    borderRadius: AppRadius.chipAll,
+                    border: Border.all(color: c.divider, width: AppBorder.hairline),
+                  ),
+                  child: Text('Ctrl K',
+                      maxLines: 1,
+                      textDirection: TextDirection.ltr,
+                      style: AppType.overline(context).copyWith(color: c.textMedium, letterSpacing: 0)),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The page head under the top bar: the open tab's title in the editorial face at the start, and on wide screens its
+/// breadcrumb at the end (home · the home tab · this tab) — orientation from the tabs the shell already has.
+class _PageHead extends StatelessWidget {
+  const _PageHead({required this.items, required this.current});
+
+  final List<DashboardItem> items;
+  final int current;
+
+  /// From this width the breadcrumb shows beside the title.
+  static const double _crumbFrom = 640;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = items[current].label.tr;
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.xxs),
+      child: LayoutBuilder(builder: (context, box) {
+        final crumb = box.maxWidth >= _crumbFrom;
+        return Row(children: [
+          Expanded(
+            child: Semantics(
+              header: true,
+              child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context)),
+            ),
+          ),
+          if (crumb) ...[
+            const SizedBox(width: AppSpace.md),
+            Flexible(
+              child: Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: AppBreadcrumb(parts: [
+                  if (current != 0) items[0].label.tr,
+                  title,
+                ]),
+              ),
+            ),
+          ],
+        ]);
+      }),
+    );
+  }
+}
+
+/// An icon column (the rail, and the desktop sidebar folded): the brand mark, the fold button when [foldable], the
+/// tabs as icon cells with the open one's tinted pill, the person at the bottom when no top bar carries them.
+class _RailColumn extends StatelessWidget {
+  const _RailColumn({required this.items, required this.current, required this.onTap, this.user, this.foldable = false});
+
+  final List<DashboardItem> items;
+  final int current;
+  final ValueChanged<int> onTap;
+  final UserModel? user;
+  final bool foldable;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      width: _ShellMetrics.railW + AppBorder.hairline,
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        border: BorderDirectional(end: BorderSide(color: c.divider, width: AppBorder.hairline)),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpace.md, bottom: AppSpace.xs),
+            child: foldable ? const _FoldButton() : const _AppMark(),
+          ),
+          Expanded(
+            child: Semantics(
+              container: true,
+              explicitChildNodes: true,
+              label: 'shell_navigation'.tr,
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  for (int i = 0; i < items.length; i++)
+                    _RailTile(item: items[i], selected: current == i, onTap: () => onTap(i)),
+                ],
+              ),
+            ),
+          ),
+          if (user != null) UserChipButton(user: user!, showLabel: false),
+        ],
       ),
     );
   }
@@ -1009,7 +1312,6 @@ class RailShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final user = context.watch<MyAuthProvider>().currentUser;
     final current = currentIndex.clamp(0, dashboardItems.length - 1);
     final barShown = showTopBar && !(ShellScope.maybeOf(context)?.activeCanPop ?? false);
@@ -1018,36 +1320,7 @@ class RailShell extends StatelessWidget {
         children: [
           _FocusFold(
             focus: focus,
-            child: Container(
-              width: _ShellMetrics.railW + AppBorder.hairline,
-              decoration: BoxDecoration(
-                color: c.cardBg,
-                border: BorderDirectional(end: BorderSide(color: c.divider, width: AppBorder.hairline)),
-              ),
-              child: Column(
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: AppSpace.lg, bottom: AppSpace.sm),
-                    child: _AppMark(),
-                  ),
-                  Expanded(
-                    child: Semantics(
-                      container: true,
-                      explicitChildNodes: true,
-                      label: 'shell_navigation'.tr,
-                      child: ListView(
-                        padding: EdgeInsets.zero,
-                        children: [
-                          for (int i = 0; i < dashboardItems.length; i++)
-                            _RailTile(item: dashboardItems[i], selected: current == i, onTap: () => onTap(i)),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (user != null) UserChipButton(user: user, showLabel: false),
-                ],
-              ),
-            ),
+            child: _RailColumn(items: dashboardItems, current: current, onTap: onTap, user: barShown ? null : user),
           ),
           Expanded(
             child: Column(
@@ -1059,7 +1332,9 @@ class RailShell extends StatelessWidget {
                     onRefresh: dashboardItems[current].onRefresh,
                     helpPageId: shellHelpPageId(context, dashboardItems[current].label, current == 0),
                     focus: focus,
+                    user: user,
                   ),
+                if (barShown && !focus) _PageHead(items: dashboardItems, current: current),
                 // the top bar already sits under the status bar: the pages below must not pad for it again
                 Expanded(
                   child: MediaQuery.removePadding(
@@ -1127,6 +1402,7 @@ class _TabIconPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final open = _openTabColors(context);
     return ShellBadge(
       item: item,
       builder: (context, n) => Stack(
@@ -1138,14 +1414,14 @@ class _TabIconPill extends StatelessWidget {
             width: width,
             height: _ShellMetrics.pillH,
             decoration: BoxDecoration(
-              color: active ? c.primary : Colors.transparent,
+              color: active ? open.fill : open.fill.withValues(alpha: 0),
               borderRadius: BorderRadius.circular(AppRadius.pill),
             ),
             child: Center(
               child: Icon(
                 active ? item.selectedIcon : item.icon,
                 size: AppIconSize.lg,
-                color: active ? c.onHero : c.textMedium,
+                color: active ? open.ink : c.textMedium,
               ),
             ),
           ),
@@ -1154,7 +1430,7 @@ class _TabIconPill extends StatelessWidget {
             PositionedDirectional(
               top: -(AppSpace.xxs + 2),
               end: -AppSpace.xxs,
-              child: _CountPill(n, tone: item.badgeTone, ring: active ? c.primary : c.cardBg),
+              child: _CountPill(n, tone: item.badgeTone, ring: c.cardBg),
             ),
         ],
       ),
@@ -1192,7 +1468,8 @@ class MobileShell extends StatelessWidget {
   }
 }
 
-/// Paper with one hairline on top; no shadow — the bar is a surface the page scrolls under, not something afloat.
+/// Paper with one hairline on top; no shadow — the bar is a surface the page scrolls under, not something afloat. The
+/// open tab's icon sits on a tinted pill and its label turns to the primary ink (D-631).
 class _BottomNav extends StatelessWidget {
   final int index;
   final ValueChanged<int> onSelect;
@@ -1277,7 +1554,7 @@ class BottomNavMetrics {
       height: _labelLine,
       letterSpacing: 0,
       fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-      color: active ? c.primary : c.textMedium,
+      color: active ? c.blockAccentInk(c.primary, c.cardBg) : c.textMedium,
     );
   }
 

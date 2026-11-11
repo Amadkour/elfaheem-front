@@ -746,7 +746,7 @@ TextStyle _wordmarkStyle(Color ink, {required bool en}) {
   final editorial = AppFonts.editorialHeadings;
   final size = editorial ? (optical * AppFonts.editorialScale(en ? 'en' : 'ar')).roundToDouble() : 28.0;
   return TextStyle(
-    fontFamily: AppFonts.editorial,
+    fontFamily: editorial ? AppFonts.editorialFamilyFor(en ? 'en' : 'ar') : AppFonts.editorial,
     fontFamilyFallback: AppFonts.editorialFallback,
     fontSize: size,
     fontWeight: FontWeight.w600,

@@ -323,7 +323,7 @@ class _Preview extends StatelessWidget {
     // the heading line in the face headings will use: the editorial one, or the chosen text font
     TextStyle h(AppFontOption f, Color color, String lang) => prefs.editorialHeadings
         ? TextStyle(
-            fontFamily: AppFonts.editorialFamily,
+            fontFamily: AppFonts.editorialFamilyFor(lang),
             fontFamilyFallback: [f.family],
             fontSize: (_sectionOptical * AppFonts.editorialScale(lang)).roundToDouble(),
             fontWeight: FontWeight.w600,

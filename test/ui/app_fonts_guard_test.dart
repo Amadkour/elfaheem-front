@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test("no hand-written UI font family in lib/ (use AppFonts.family / appText)", () {
-    final literal = RegExp(r"fontFamily:\s*'(tajawal|bahji|uiPlexArabic|uiInter|uiEditorial)'");
+    final literal = RegExp(r"fontFamily:\s*'(tajawal|bahji|uiPlexArabic|uiInter|uiEditorial|uiEditorialLatin)'");
     final problems = <String>[];
     for (final f in Directory('lib').listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.dart'))) {
       final s = f.readAsStringSync();

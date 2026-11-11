@@ -109,10 +109,25 @@ charcoal ink — no blue, no mint.
 | error text | `appErrorMessage(e)` (the server's message, never `'$e'`) | `app_states.dart` |
 | settings page | `AppSettingsPage(header:, groups:, footer:)` + `AppSettingsGroup(title:, icon:, children:, danger:)` (an editorial group heading — `AppType.section` in ink, a quiet glyph — with 32 above it over a paper card: card surface, warm hairline, hairline dividers, no shadow) / `AppSettingsTile(icon:, label:, subtitle:, color:, badge:, trailing:, onTap:)` (48 px rows, a faint icon well) · `AppSettingsHeader` (the profile hero: the page's one tinted block, peach) | `app_settings.dart` |
 | role dashboard | `AppShell(items: [DashboardItem(…, badgeTone: ShellBadgeTone.reward)])` | `app_shell.dart` |
+| greeting hero (D-631) | `AppGreetingHero(greeting:, summary:, avatar:, initials:, ring:, cta: AppGreetingHeroButton(label:, onTap:, icon:), actions:, illustration:, footer:, centered:)` — the forest card of a home (time chip, avatar in a progress ring, the greeting in the display face, one line, ONE paper pill); `HomeHeader(…, greetingHero: true, ring:, cta:, centered:)` draws a home's header as one | `app_dashboard_kit.dart`, `home_kit.dart` |
+| stat card (D-631) | `AppStatCard(icon:, value:, label:, tone:, footer:, delta:)` — the figure large in the tone's ink, the icon chip at the end, a tinted footer band with the change; four in an `AppKpiGrid` | `app_dashboard_kit.dart` |
+| KPI · ring (D-631) | `AppKpiSpark(label:, value:, values:, icon:, delta:, tone:)` (figure + sparkline) · `AppRingStat(label:, value:, progress:, caption:, delta:, tone:)` (text + a ring with its percentage) | `app_dashboard_kit.dart` |
+| shortcuts (D-631) | `AppShortcutGrid(children: [AppShortcutTile(icon:, label:, onTap:, tone:, badge:, subtitle:)])` — label on top, a large soft icon in a tinted disc at the bottom end; 2 columns on phones, 4 wide | `app_dashboard_kit.dart` |
+| section card (D-631) | `AppSectionCard(title:, subtitle:, actions:, tabs: AppTabs(…), child:)` — a paper card with a header row and a period-tabs slot · `AppBreadcrumb(parts:)` (text only) | `app_dashboard_kit.dart` |
 | where am I | `ContextSwitcher()` · `ContextPill(icon:, tone:, label:, onTap:)` · `showContextSwitcherSheet` | `context_switcher.dart` |
 | attention count | `AttentionBadge(tabKey: AttentionTabs.x, child: …)` (tappable, opens the items) | `attention_badge.dart` |
 | language | `AppLanguageTile()` · `AppLanguageSegmented(current:, onChanged:)` | `app_language_switch.dart` |
 | table export | `showAppExportSheet(context, AppTableExport(…))` | `app_table_export.dart` |
+
+**Premium dashboard (D-631).** The wide shell now draws the sidebar's tabs in two groups ("General": the home tab;
+"Workspace": the rest), each under a soft tinted header with one line, the open tab a TINTED pill (an opaque blend of
+the primary into the paper) in the primary ink with its count, and a ghost button that folds the sidebar to its icons
+(`appSidebarCollapsed`). The top bar is a paper band: the search box (only when the screen has an
+`AppCommandPaletteScope`, and it opens that palette), ghost chrome buttons (`ChromeGhost`) with small counts, a hairline
+and the signed-in person (avatar, name, role). Under it the page head: the tab's title in `AppType.pageTitle` at the
+start, `AppBreadcrumb` at the end from 640 px. The phone's open tab is a tinted pill with the primary ink. Headings
+are Amiri (Arabic) and Playfair Display (Latin), figures stay in the sans. The text below describes the shell before
+D-631 where it differs.
 
 **The role shell** (`app_shell.dart`, D-062) wears the editorial theme like this: the page is the warm canvas; the
 sidebar (wide) and the rail (tablet) are a PAPER column (`cardBg`) set off by one warm hairline — never a gradient

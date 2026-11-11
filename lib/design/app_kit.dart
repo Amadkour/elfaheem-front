@@ -41,6 +41,10 @@
 //   "needs attention"→ AttentionBadge(tabKey: AttentionTabs.x, child: …) (count + deep links, GET /me/attention)
 //   role dashboard   → AppShell(width:, currentIndex:, onTap:, items: [DashboardItem(…, attentionKeys:)]) — the one
 //                      sidebar / rail / bottom-bar shell, badges resolved at the leaf (app_shell.dart, D-062)
+//   premium home     → AppGreetingHero(greeting:, summary:, ring:, cta: AppGreetingHeroButton(…)) (or HomeHeader(
+//   (D-631)            greetingHero: true)) · AppStatCard(icon:, value:, label:, tone:, footer:, delta:) ×4 in an
+//                      AppKpiGrid · AppKpiSpark · AppRingStat · AppShortcutGrid([AppShortcutTile(…)]) ·
+//                      AppSectionCard(title:, actions:, tabs:, child:) · AppBreadcrumb (app_dashboard_kit.dart)
 //   chart / trend    → AppTrendTile(label:, value:, delta:, spark:) · AppBarChart(series:, labels:) · AppDonut(parts:)
 //                      · AppSparkline(values) · AppLegend — pure CustomPaint, theme palette (app_charts.dart, D-063)
 //   More / settings  → AppSettingsPage(header: AppSettingsHeader(…), groups: [AppSettingsGroup(children: [AppSettingsTile(…)])])
@@ -93,6 +97,7 @@ export 'app_switch.dart';
 export 'app_refresh.dart';
 export 'app_shell.dart';
 export 'app_charts.dart';
+export 'app_dashboard_kit.dart';
 export 'app_settings.dart';
 export 'app_keyboard.dart' show EnterSubmits;
 export 'attention_badge.dart';

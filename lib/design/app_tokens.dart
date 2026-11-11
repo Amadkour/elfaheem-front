@@ -17,8 +17,8 @@
 //   AppIconSize   xs 14 · sm 16 · md 20 · lg 24 · xl 32 · hero 40
 //   AppBorder     hairline 1 · strong 1.5 · focus 2
 //   AppType     the type roles (display · headline · page title · section · body · row · label · meta · overline ·
-//               figure · figureLarge) mapped onto the theme's styles; display → section are EDITORIAL (Markazi
-//               Text, AppFonts.editorial, D-611) unless the person chose "Headings: Same as text"
+//               figure · figureLarge) mapped onto the theme's styles; display → section are EDITORIAL (Amiri /
+//               Playfair Display, AppFonts.editorial, D-611, D-631) unless the person chose "Headings: Same as text"
 //   AppWidth    the page-width roles (D-304): form 600 · reading 860 · content 1120 · wide 1440 · full, plus the
 //               responsive side gutter (AppSpace.gutter: 16 phone · 24 above); `AppWidthBox` / `BasePage(width:)` apply them
 // The whole system (gradient rules, components, examples) is described in lib/design/README.md.
@@ -164,11 +164,10 @@ abstract final class AppBorder {
 /// Type roles over the theme's styles (fonts follow DisplaySettings, never a family name here). Weights stay at
 /// w400 – w600 (D-102).
 ///
-/// Headings are EDITORIAL (D-611): display · headline · pageTitle · section draw in Markazi Text
-/// ([AppFonts.editorial]) at the system.md sizes 32 · 24 · 22 · 18, which are OPTICAL sizes — what the heading reads
-/// like next to the UI sans. Markazi's letters are small on their body (cap height 0.48 em against Inter's 0.73, the
-/// Arabic alef 0.53 em against Plex's 0.74), so the face is drawn at [editorialScale] × that size (Latin 1.3, Arabic
-/// 1.25), negative tracking on Latin only (spaced Arabic loses its joins). With "Headings: Same as text" they fall
+/// Headings are EDITORIAL (D-611, D-631): display · headline · pageTitle · section draw in Amiri (Arabic) or Playfair
+/// Display (Latin) ([AppFonts.editorial]) at the system.md sizes 32 · 24 · 22 · 18, which are OPTICAL sizes — what the
+/// heading reads like next to the UI sans. Amiri's letters are small on their body (the alef about 0.5 em against
+/// Plex's 0.74), so the face is drawn at [editorialScale] × that size (Arabic 1.3, Latin 1.05), negative tracking on Latin only (spaced Arabic loses its joins). With "Headings: Same as text" they fall
 /// back to the text font at the sans scale 28 · 22 · 20 · 16.
 ///   body 14 · row 14 w500 · label 13 · meta 12 · overline 11 · figure 17 w600 · figureLarge 28 w600 (tabular digits)
 abstract final class AppType {
@@ -195,7 +194,7 @@ abstract final class AppType {
       fontFamilyFallback: AppFonts.editorialFallback,
       fontSize: size,
       fontWeight: FontWeight.w600,
-      // Markazi's own line (ascent + descent) is 1.2 em; Arabic marks want a little more air
+      // a tight line for the display faces; Arabic marks want a little more air
       height: ReadingSpacing.current.height(ar ? 1.3 : 1.15),
       letterSpacing: ar ? null : -size * 0.01,
       color: c.textDark,

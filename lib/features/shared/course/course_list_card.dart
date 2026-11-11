@@ -25,7 +25,9 @@
 // editorial serif (AppType.section), meta in the UI sans; the card leans a little under the pointer (AppTilt.subtle)
 // and its cover drifts against the scroll (AppParallaxImage). A course with no picture gets a BOOK cover: a block
 // tone picked by its title (AppBlockTone.forKey, the same tone on every screen), a spine on the start edge and the
-// title's first letter set large in the editorial face. One accent per card. The header
+// title's first letter set large in the editorial face. One accent per card. Premium dashboard (D-631): a tile's cover
+// is an inset picture with its own rounded corners inside the paper card (the reference's course cards), and the
+// price reads in the primary ink. The header
 // parts of a course list (CourseSearchField, CourseSegments) and its states (CourseListSkeleton, CourseListEmpty,
 // CourseListError) live here too, so the two screens build the same calm block.
 import 'dart:math' as math;
@@ -200,8 +202,10 @@ class CourseListCard extends StatelessWidget {
   /// footer and the insets).
   static const double _tileText = 148;
 
-  /// Row height is the content's; a tile's height for a grid cell of [width] is this.
-  static double tileHeight(BuildContext context, double width) => width * 9 / 16 + _tileText * _scale(context);
+  /// Row height is the content's; a tile's height for a grid cell of [width] is this (the cover is inset by
+  /// [_RenderTileLayout.inset] on its three outer sides).
+  static double tileHeight(BuildContext context, double width) =>
+      (width - 2 * _RenderTileLayout.inset) * 9 / 16 + _RenderTileLayout.inset + _tileText * _scale(context);
 
   /// The phone row's picture.
   static const Size _thumb = Size(104, 80);
@@ -339,7 +343,10 @@ class CourseListCard extends StatelessWidget {
   }
 
   Widget _tile(BuildContext context) {
-    final cover = AspectRatio(
+    final cover = ClipRRect(
+      // concentric with the card: its radius less the inset
+      borderRadius: BorderRadius.circular(AppRadius.card - _RenderTileLayout.inset),
+      child: AspectRatio(
       aspectRatio: 16 / 9,
       child: Stack(children: [
         Positioned.fill(child: AppParallaxImage(image: _picture())),
@@ -352,6 +359,7 @@ class CourseListCard extends StatelessWidget {
           ),
         if (corner != null) PositionedDirectional(end: AppSpace.xs, top: AppSpace.xs, child: _CornerBackdrop(child: corner!)),
       ]),
+      ),
     );
     // cover · title + meta · footer; the tile is its content's height, or the height it is given with the footer at
     // the bottom (a row's footers line up) — the same tree either way, so nothing is rebuilt between the two
@@ -370,8 +378,8 @@ class CourseListCard extends StatelessWidget {
   }
 }
 
-/// A tile's three parts — cover (full width), text block, footer — inset 16 on every side with 12 px between the
-/// text and the footer. Unbounded height → the content's height; a bounded one → that height, the footer at the
+/// A tile's three parts — cover (inset [_RenderTileLayout.inset] on its outer sides), text block, footer — the text
+/// inset 16 on the sides with 12 px between the text and the footer. Unbounded height → the content's height; a bounded one → that height, the footer at the
 /// bottom and the text block given what is left.
 class _TileLayout extends MultiChildRenderObjectWidget {
   const _TileLayout({required super.children});
@@ -384,7 +392,10 @@ class _TileParentData extends ContainerBoxParentData<RenderBox> {}
 
 class _RenderTileLayout extends RenderBox
     with ContainerRenderObjectMixin<RenderBox, _TileParentData>, RenderBoxContainerDefaultsMixin<RenderBox, _TileParentData> {
-  static const _side = AppSpace.md, _top = AppSpace.md, _gap = AppSpace.sm, _bottom = AppSpace.md;
+  static const _side = AppSpace.md, _top = AppSpace.sm, _gap = AppSpace.sm, _bottom = AppSpace.md;
+
+  /// The cover's inset inside the card.
+  static const inset = AppSpace.xs;
 
   @override
   void setupParentData(RenderBox child) {
@@ -396,15 +407,15 @@ class _RenderTileLayout extends RenderBox
     final w = constraints.maxWidth;
     final cover = firstChild!, text = childAfter(cover)!, foot = childAfter(text)!;
     final inner = math.max(0.0, w - 2 * _side);
-    cover.layout(BoxConstraints.tightFor(width: w), parentUsesSize: true);
+    cover.layout(BoxConstraints.tightFor(width: math.max(0.0, w - 2 * inset)), parentUsesSize: true);
     foot.layout(BoxConstraints(minWidth: inner, maxWidth: inner), parentUsesSize: true);
-    final fixed = cover.size.height + _top + _gap + foot.size.height + _bottom;
+    final fixed = inset + cover.size.height + _top + _gap + foot.size.height + _bottom;
     // the text block gets what a given height leaves (a finite bound either way: its title is Flexible)
     final room = constraints.hasBoundedHeight ? math.max(0.0, constraints.maxHeight - fixed) : 100000.0;
     text.layout(BoxConstraints(minWidth: inner, maxWidth: inner, maxHeight: room), parentUsesSize: true);
     size = constraints.constrain(Size(w, fixed + text.size.height));
-    (cover.parentData! as _TileParentData).offset = Offset.zero;
-    (text.parentData! as _TileParentData).offset = Offset(_side, cover.size.height + _top);
+    (cover.parentData! as _TileParentData).offset = const Offset(inset, inset);
+    (text.parentData! as _TileParentData).offset = Offset(_side, inset + cover.size.height + _top);
     (foot.parentData! as _TileParentData).offset = Offset(_side, size.height - _bottom - foot.size.height);
   }
 
@@ -634,7 +645,11 @@ class CoursePriceFooter extends StatelessWidget {
     return ParentComponent(
       featureKey: 'course_card.price',
       child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
-        Text(price, style: AppType.bodyStrong(context).copyWith(color: free ? c.success : c.textDark, height: 1.2)),
+        Text(price,
+            style: AppType.bodyStrong(context).copyWith(
+                color: free ? c.success : coursePrimaryInk(context),
+                height: 1.2,
+                fontFeatures: const [FontFeature.tabularFigures()])),
         if (original != null)
           ParentComponent(
             featureKey: 'course_card.discount',

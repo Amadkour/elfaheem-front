@@ -8,7 +8,7 @@
 //   AppFonts.fallback   the other language's choice: Arabic names inside English UI (and the reverse) use it;
 //                       the theme carries it, so Text widgets get it through DefaultTextStyle
 //   AppFonts.select(arabic:, latin:)   loads the files, switches, rebuilds every mounted widget
-//   AppFonts.editorial  the HEADING family (D-611): Markazi Text, the editorial serif made for Arabic and Latin, or
+//   AppFonts.editorial  the HEADING family (D-611, D-631): Amiri (Arabic) or Playfair Display (Latin), or
 //                       [family] when the person set "Headings: Same as text" (DisplayPrefs.editorialHeadings).
 //                       AppType display / headline / pageTitle / section and the theme's display, headline and
 //                       titleLarge styles use it; body text never does. A pubspec font (uiEditorial): no loading.
@@ -179,8 +179,18 @@ abstract final class AppFonts {
   static String get display => _displayReady.contains(current.id) ? current.displayFamily : current.family;
   static List<String> get fallback => [current.family, other.family];
 
-  /// The editorial display face (D-611): Markazi Text, static 500 / 600 / 700 (pubspec, assets/fonts/editorial/).
-  static const editorialFamily = 'uiEditorial';
+  /// The editorial display faces (D-611, D-631): Amiri Bold, a high-contrast naskh, draws Arabic headings and
+  /// Playfair Display (600 / 700) draws Latin ones (pubspec, assets/fonts/editorial/). Each falls back to the other,
+  /// so a Latin word inside an Arabic heading (and the reverse) still draws in a heading face.
+  static const editorialArabicFamily = 'uiEditorial';
+  static const editorialLatinFamily = 'uiEditorialLatin';
+
+  /// The heading face of [lang] (default: the open language).
+  static String editorialFamilyFor([String? lang]) =>
+      (lang ?? AppConfig.lang) == 'ar' ? editorialArabicFamily : editorialLatinFamily;
+
+  /// The heading face of the open language.
+  static String get editorialFamily => editorialFamilyFor();
 
   /// "Headings: Editorial" (true, the default) or "Same as text" — set by DisplaySettings from the person's prefs.
   static bool editorialHeadings = true;
@@ -188,13 +198,16 @@ abstract final class AppFonts {
   /// The family of headings: [editorialFamily], or the text family when the person turned editorial headings off.
   static String get editorial => editorialHeadings ? editorialFamily : family;
 
-  /// What a heading falls back to for a glyph the editorial face lacks: the person's text fonts.
-  static List<String> get editorialFallback => fallback;
+  /// What a heading falls back to for a glyph its face lacks: the other heading face, then the person's text fonts.
+  static List<String> get editorialFallback => [
+        AppConfig.lang == 'ar' ? editorialLatinFamily : editorialArabicFamily,
+        ...fallback,
+      ];
 
   /// How much larger the editorial face is drawn than a heading's optical size (system.md §3), per language:
-  /// Markazi's letters are small on their body (cap height 0.48 em against Inter's 0.73; the Arabic alef 0.53 em
-  /// against Plex's 0.74), so 24 "reads as" 24 only at about 1.3 × in Latin and 1.25 × in Arabic.
-  static double editorialScale([String? lang]) => (lang ?? AppConfig.lang) == 'ar' ? 1.25 : 1.3;
+  /// Amiri's letters are small on their body (the alef about 0.5 em against Plex's 0.74), so an Arabic 24 "reads as"
+  /// 24 only at about 1.3 ×; Playfair's cap height (0.71 em) is close to Inter's (0.73), so Latin needs 1.05 ×.
+  static double editorialScale([String? lang]) => (lang ?? AppConfig.lang) == 'ar' ? 1.3 : 1.05;
 
   // the ids whose files are registered; a bundled family joins after LazyFonts.ensure (instant when not lazy)
   static final Set<String> _loaded = {};

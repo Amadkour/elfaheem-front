@@ -12,7 +12,7 @@
 //                           (also kept on the account when the server has GET/PUT /api/v1/me/ui-prefs: display_sync.dart)
 //   spacing                 reading spacing 0 normal · 1 comfortable · 2 wide: line height and word spacing (and
 //                           letter spacing for English only — it would break Arabic joins); `ReadingSpacing`
-//   editorialHeadings       "Headings: Editorial" (true, the default: Markazi Text, AppFonts.editorial, D-611) or
+//   editorialHeadings       "Headings: Editorial" (true, the default: Amiri / Playfair Display, AppFonts.editorial, D-611, D-631) or
 //                           "Same as text" (headings in the chosen text font); JSON `headings`: 'editorial' | 'text'
 //
 // `presets` are one-tap bundles ("Young learners", "Easy reading") of the same fields. AppDisplayScope

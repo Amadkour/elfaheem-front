@@ -7,6 +7,9 @@
 //
 //   ChromeIconButton(icon: Icons.event_rounded, label: 'my_calendar'.tr, onTap: …, badge: 3)
 //   ChromePlate(onTap: …, child: Icon(…))     the bare plate (AppBackButton is one with the back arrow)
+//   ChromeGhost(child: …)                      the buttons inside draw as GHOSTS: no plate and no hairline until
+//                                              hovered / pressed, the count a small dot-sized pill (the desktop top
+//                                              bar and the sidebar header, D-631)
 //
 // Every button is a real button for screen readers and the keyboard (Semantics + focus + Enter / Space), with a
 // tooltip, keeps a 48 × 48 target around a 40 × 40 plate, and presses with a little depth (zero under Reduce
@@ -26,6 +29,16 @@ class ChromeBar extends InheritedWidget {
 
   @override
   bool updateShouldNotify(ChromeBar oldWidget) => false;
+}
+
+/// Marks its subtree as a surface whose chrome buttons are ghosts (the shell's paper top bar, D-631).
+class ChromeGhost extends InheritedWidget {
+  const ChromeGhost({super.key, required super.child});
+
+  static bool of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<ChromeGhost>() != null;
+
+  @override
+  bool updateShouldNotify(ChromeGhost oldWidget) => false;
 }
 
 /// "9+" style count for the small badges.
@@ -49,9 +62,10 @@ class ChromePlate extends StatefulWidget {
   /// The plate's surface and ink where it sits.
   static ({Color plate, Color border, Color ink}) colorsOf(BuildContext context, {required bool onHero}) {
     final c = context.colors;
-    return onHero
-        ? (plate: c.heroGlass, border: c.heroGlassBorder, ink: c.onHero)
-        : (plate: c.cardBg, border: c.divider, ink: c.textDark);
+    if (onHero) return (plate: c.heroGlass, border: c.heroGlassBorder, ink: c.onHero);
+    // a ghost has no plate: the surface under it (the paper bar) shows through, the hover tints it
+    if (ChromeGhost.of(context)) return (plate: c.cardBg.withValues(alpha: 0), border: c.cardBg.withValues(alpha: 0), ink: c.textMedium);
+    return (plate: c.cardBg, border: c.divider, ink: c.textDark);
   }
 
   @override
@@ -88,6 +102,7 @@ class _ChromePlateState extends State<ChromePlate> {
             child: InkWell(
               onTap: widget.onTap,
               onHighlightChanged: _press,
+              hoverColor: !onHero && ChromeGhost.of(context) ? context.colors.inputBg : null,
               mouseCursor: widget.onTap == null ? SystemMouseCursors.basic : SystemMouseCursors.click,
               child: SizedBox.square(
                 dimension: ChromePlate.size,
@@ -157,7 +172,8 @@ class ChromeIconButton extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: c.danger,
                     borderRadius: BorderRadius.circular(AppRadius.pill),
-                    border: Border.all(color: k.plate, width: AppBorder.strong),
+                    // a ghost's count rings itself with the bar's paper, a plate's with the plate
+                    border: Border.all(color: ChromeGhost.of(context) && !onBar ? c.cardBg : k.plate, width: AppBorder.strong),
                   ),
                   child: ExcludeSemantics(
                     child: Text(

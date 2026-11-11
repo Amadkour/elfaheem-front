@@ -24514,5 +24514,33 @@
   "session_exam_pinned_end": {
     "en": "Pinned to the end of the session",
     "ar": "مثبّت في نهاية الجلسة"
+  },
+  "shell_group_general": {
+    "en": "General",
+    "ar": "الرئيسية"
+  },
+  "shell_group_general_sub": {
+    "en": "Your home and your day",
+    "ar": "لوحتك ويومك"
+  },
+  "shell_group_workspace": {
+    "en": "Workspace",
+    "ar": "مساحة العمل"
+  },
+  "shell_group_workspace_sub": {
+    "en": "Courses, people and tools",
+    "ar": "المقررات والأشخاص والأدوات"
+  },
+  "shell_collapse": {
+    "en": "Collapse the menu",
+    "ar": "طيّ القائمة"
+  },
+  "shell_expand": {
+    "en": "Expand the menu",
+    "ar": "فتح القائمة"
+  },
+  "shell_search_hint": {
+    "en": "Search…",
+    "ar": "ابحث…"
   }
 }
