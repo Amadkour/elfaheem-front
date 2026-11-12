@@ -3991,3 +3991,26 @@ On desktop and rail the sidebar and the top bar are ONE `AppMeshSurface(seed: 3)
 **Decision.** (A) **Canvas.** The green and warm_editorial canvases become the pale sage-grey `#F1F4F0`; warm_editorial's cards become `#FFFFFF`, its inputs `#F4F6F2` and its divider `#E6EAE3` (green's caption ink `#68756D` → `#617068`, 4.7:1 on the new canvas). Backend preset + migration 0075 (only values that still equal the old ones) and the app's `AppTheme` fallbacks. Dark mode keeps its deep canvas and raised card tone. (B) **Cards lift by shadow, not border.** `ThemeConfigProvider.cardShadow` (level 1) is now a wide low ambient plus a tight contact line (6 % / 5 % of the shadow tone); `cardEdge` is the card's edge: the shadow tone at 6 % in light mode, a quiet step above the card in dark mode, the full divider under High contrast. `AppLift` casts the shadow under a `Material` card; `AppShadow.cardEdge` is the side. AppCard, the dashboard kit's paper (AppStatCard, AppSectionCard …), a paper AppBlock, AppKpiCard, AppSettingsGroup, CourseListCard, the home quick tiles / agenda and a plain course session card use them. This replaces D-612's "a resting card has no shadow". Tinted blocks stay flat. (C) **Chart series** come from theme tones only: `appChartPalette` is primary · peach (`accent`) · sage (`accent3`) · gold (`accent2`) · terracotta (gold −30°), never the `purple` role; `anDistinctColors` picks the metric colours from those first (hue gap 45°) and falls back to primary-derived hues only when no theme tone is even 20° apart — the green preset draws emerald · gold · terracotta. The super admin's pending-subscriptions row is gold, not purple. (D) The profile hero's initial watermark is removed (visual only).
 
 **Consequences.** No API shape, route, provider or model changed; the theme values are data (migration 0075, FLUTTER_API_CHANGES). `test/ui/analytics_metric_colors_test.dart` mirrors the new palette and checks no violet series on an emerald theme; `test/ui/design/app_cards_layout_test.dart` checks the lifted card. The shell, nav and top bar were restyled separately and keep their own surfaces.
+
+## D-662 - Grade written papers without creating an exam first (2026-11-12)
+
+**Context.** Exam flow v2: a teacher with a pile of written answers wants a suggested mark per answer without building
+an exam in the app. The Hub's Grade papers chooser opens `openEssayRun(context, courseId:, courseTitle:, orgId:)`.
+
+**Decision.** `hub/grade/` is the essay path over the engine's essay run (back D-651: a hidden paper exam, like a bubble
+run): `essay_run.dart` (pure: drafts, paste-many parser, the run as sent, check order, codes in words, calls),
+`essay_run_widgets.dart` (plain values), `essay_run_screen.dart`. 1) Setup: questions with a mark and a model answer,
+or rubric criteria whose marks make the question's (one by one or "Paste several questions": numbered lines, mark in
+brackets, `Answer:` lines, `-` criteria). 2) The run: a student from the course roster (`OmrAudiencePicker`), the pages
+from the existing scan source sheet (`showScanSourceSheet` + `prepareScanFile`; the phone's camera through
+image_picker), a page → question sheet when the count does not match (PDFs go in page order: the app cannot count
+their pages), live progress through EventOrPoll on `job_updated {kind: essay_run | omr_review}`. 3) One student: each
+answer's photo, what was read, the suggestion with its evidence (band, keywords found / missing, one line per rubric
+criterion, why it is doubtful, the photo's quality warnings), Accept in one tap or set the mark; doubtful readings
+first; "Full page" opens the existing review page on that answer (`openOmrReview` focus, fix the text there).
+4) Results and export: `openExamGetResult`. Every decision is the existing review item's resolve.
+
+**Consequences.** Kill switch `exam.essay_run` (BasePage key; the engine also needs `exam.auto_correct` to accept
+papers). A mark decided here is changed later from the results / review screens (a resolved item is not reopened).
+Arabic handwriting is always for the teacher to confirm. Tests: `test/org/essay_run_test.dart` (fixtures
+`test/fixtures/payloads/essay/`, recorded by the back e2e with ESSAY_DUMP), `test/ui/essay_run_layout_test.dart`.

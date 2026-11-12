@@ -1,0 +1,18 @@
+{
+ "batch_id": 1,
+ "answers": [
+  {
+   "n": 1,
+   "question_id": 1,
+   "page_id": 1,
+   "pages": 1
+  },
+  {
+   "n": 2,
+   "question_id": 2,
+   "page_id": 2,
+   "pages": 2
+  }
+ ],
+ "duplicates": 0
+}
