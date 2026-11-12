@@ -1762,6 +1762,7 @@
   "POST /api/v1/exam/exams/{exam_id:int}/omr/pages/{page_id:int}/replace",
   "POST /api/v1/exam/exams/{exam_id:int}/omr/results/publish",
   "POST /api/v1/exam/exams/{exam_id:int}/omr/sheets",
+  "POST /api/v1/exam/exams/{exam_id:int}/paper-design/preview",
   "POST /api/v1/exam/exams/{exam_id:int}/paper-file",
   "POST /api/v1/exam/exams/{exam_id:int}/people/file",
   "POST /api/v1/exam/exams/{exam_id:int}/print-plan",
