@@ -16,6 +16,7 @@ import 'dart:typed_data';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
 import 'exam_authoring.dart';
+import 'exam_open_key.dart';
 
 /// Where the exam is sat.
 enum QuickMode { online, offline }
@@ -98,7 +99,8 @@ class QuickQuestion {
         _ => QuickQuestion.mcq(),
       };
 
-  final String type;
+  /// Changes only between the open kinds: a number is `numeric`, the others `short_answer` / `essay` ([setOpenKind]).
+  String type;
   String prompt = '';
   double points;
 
@@ -116,6 +118,31 @@ class QuickQuestion {
   String keyText = '';
 
   bool get isEssay => type == 'essay' || type == 'short_answer';
+
+  /// The open answer's optional key overrides (D-686): kind, keywords, points, exact vs meaning.
+  OpenKeyExtras extras = OpenKeyExtras();
+
+  bool get isOpenKind => isOpenKindType(type);
+
+  /// The kind the card shows: the teacher's, else the type's own, else inferred from the model answer.
+  OpenKind get openKind => openKindShown(type, teacher: extras.kind, model: keyBy == EssayKey.model ? keyText : '');
+
+  /// Moves the question between the open kinds, keeping the prompt and the marks: a number becomes a `numeric` engine
+  /// draft; leaving it brings back a text answer (a long one is an essay).
+  void setOpenKind(OpenKind k) {
+    if (k == OpenKind.numeric) {
+      if (type != 'numeric') {
+        type = 'numeric';
+        engine = QuestionDraft(type: 'numeric');
+      }
+      return;
+    }
+    if (type == 'numeric') {
+      type = openTypeFor(k);
+      engine = null;
+    }
+    extras.kind = k;
+  }
 
   /// The engine question (body + answer key) this stands for.
   QuestionDraft toDraft() {
@@ -154,6 +181,7 @@ class QuickQuestion {
             RubricCriterion(id: 'c${i + 1}', criterion: kws[i].term, points: pts[i], keywords: [RubricKeyword(kws[i].term, kws[i].synonyms)]),
         ];
     }
+    extras.writeTo(d.extraAnswer);
     return d;
   }
 
@@ -311,6 +339,7 @@ String quickTypeLabel(String type) => switch (type) {
       'short_answer' => t('إجابة قصيرة', 'Short answer'),
       'matching' => t('مطابقة', 'Matching'),
       'essay' => t('مقالي', 'Essay'),
+      'numeric' => t('رقم', 'Number'),
       _ => t('اختيار من متعدد', 'Multiple choice'),
     };
 

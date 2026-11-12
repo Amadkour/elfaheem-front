@@ -54,10 +54,28 @@ String scanSkipText(ScanSkipReason r) => switch (r) {
 
 /// A part the server (or the gateway in front of it) refused, in plain words.
 String scanSendErrorText(EngineResult r) {
+  final retake = scanRetakeText(r);
+  if (retake != null) return retake;
   if (r.status == 413) {
     return t('أكبر مما يقبله الخادم في طلب واحد — قسّم الملف أو قلّل دقته', 'Too large for the server in one request — split the file or lower its resolution');
   }
   return omrErrorText(r);
+}
+
+/// An NB2 page refused by the quality check (contract B3), in words: what is wrong and what to do; null for any other.
+String? scanRetakeText(EngineResult r) {
+  switch (r.code) {
+    case 'sheet_marks_missing':
+      final found = r.detail['found'];
+      final seen = found is num ? t(' (ظهر ${found.toInt()} من 4)', ' (${found.toInt()} of 4 seen)') : '';
+      return t('أعد تصوير هذه الصفحة: لم تظهر المربعات الأربعة في الأركان$seen. صوّر الصفحة كاملة ومستوية.',
+          'Retake this page: the four corner squares were not found$seen. Photograph the whole page, flat.');
+    case 'page_blurry':
+      return t('أعد تصوير هذه الصفحة: الصورة غير واضحة. ثبّت الهاتف وأعد التصوير.', 'Retake this page: the photo is blurred. Hold still and take it again.');
+    case 'not_this_exam':
+      return t('هذه الورقة لاختبار آخر. ارفعها في اختبارها.', 'This sheet belongs to another exam. Upload it there.');
+  }
+  return null;
 }
 
 String _mb(int bytes) {
@@ -288,23 +306,43 @@ class ScanUploadFailures extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final n = failures.length;
+    // pages to photograph again come first, apart: sending the same photo again cannot help (D-687)
+    final retake = [for (final f in failures) if (f.retake) f];
+    final other = [for (final f in failures) if (!f.retake) f];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: scanNotUploadedText(n)),
-      const SizedBox(height: AppSpace.xs),
-      ScanFileList(
-        key: const ValueKey('scan.failed'),
-        title: t('الأسباب', 'Why'),
-        rows: [for (final f in failures) (f.file.label, f.reason)],
-        color: c.danger,
-      ),
+      if (retake.isNotEmpty) ...[
+        const SizedBox(height: AppSpace.xs),
+        ScanFileList(
+          key: const ValueKey('scan.retake'),
+          title: t('أعد تصوير هذه الصفحات', 'Retake these pages'),
+          rows: [for (final f in retake) (f.file.label, f.reason)],
+          color: appInkOn(context, c.warning, c.cardBg),
+        ),
+      ],
+      if (other.isNotEmpty) ...[
+        const SizedBox(height: AppSpace.xs),
+        ScanFileList(
+          key: const ValueKey('scan.failed'),
+          title: t('الأسباب', 'Why'),
+          rows: [for (final f in other) (f.file.label, f.reason)],
+          color: c.danger,
+        ),
+      ],
+      if (other.isEmpty) ...[
+        const SizedBox(height: AppSpace.xs),
+        Text(t('صوّرها من جديد ثم ارفع الصور الجديدة.', 'Photograph them again, then upload the new photos.'), style: AppType.meta(context)),
+      ],
+      if (other.isNotEmpty) ...[
       const SizedBox(height: AppSpace.sm),
       AppPrimaryButton(
         key: const ValueKey('scan.retry'),
-        label: t('إعادة رفع ${omrFilesText(n, after: true)}', 'Retry ${omrFilesText(n)}'),
+        label: t('إعادة رفع ${omrFilesText(other.length, after: true)}', 'Retry ${omrFilesText(other.length)}'),
         icon: Icons.refresh_rounded,
         busy: busy,
         onPressed: busy ? null : onRetry,
       ),
+      ],
     ]);
   }
 }

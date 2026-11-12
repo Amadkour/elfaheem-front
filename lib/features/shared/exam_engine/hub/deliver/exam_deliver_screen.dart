@@ -35,6 +35,8 @@ import '../../exam_versions_sheet.dart' show openExamVersions;
 import '../../paper/exam_setup.dart' show kExamOmrFeatureKey;
 import '../../paper/scan/omr_sheets_sheet.dart' show showOmrSheetsSheet;
 import '../create/answer_format.dart' show AnswerFormat;
+import '../create/answer_sheet_plan.dart';
+import '../create/answer_sheet_widgets.dart' show AnswerSheetPrintCard;
 import '../create/exam_create_logic.dart' show versionsCountText;
 import 'deliver_build.dart';
 import 'deliver_logic.dart';
@@ -79,6 +81,12 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
   bool _scopeSettled = false;
   bool _word = false;
   int _blank = 30;
+
+  // the NB2 written-answer sheets (D-687)
+  final _sheetApi = AnswerSheetApi();
+  int _nb2Blank = 30;
+  bool _nb2Busy = false;
+  String? _nb2Error;
   bool _printing = false;
 
   /// The booklet switch; null = what the exam's settings say (deliverBookletDefault).
@@ -300,6 +308,30 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
   }
 
   // ── email ──
+
+  /// The NB2 sheets as one PDF, saved like the paper itself.
+  Future<void> _answerSheets(SheetPlan plan) async {
+    setState(() {
+      _nb2Busy = true;
+      _nb2Error = null;
+    });
+    final (bytes, fail) = await _sheetApi.sheetsPdf(_id, answerSheetsBody(plan, blank: _nb2Blank));
+    if (!mounted) return;
+    if (bytes == null) {
+      setState(() {
+        _nb2Busy = false;
+        _nb2Error = fail == null ? null : answerSheetErrorText(fail);
+      });
+      return;
+    }
+    try {
+      final path = await saver.dlSaveBytes(bytes, '${deliverFileStem(widget.title, t('أوراق الإجابة', 'answer sheets'))}.pdf', _pdfMime);
+      _notice(path == null ? t('أوراق الإجابة جاهزة', 'The answer sheets are ready') : '${t('حُفظ في', 'Saved to')} $path');
+    } catch (_) {
+      _nb2Error = t('تعذّر حفظ الملف', 'The file could not be saved');
+    }
+    if (mounted) setState(() => _nb2Busy = false);
+  }
 
   Future<void> _reloadDeliveries() async {
     final r = await _api.deliveries(_id);
@@ -525,9 +557,23 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
         ),
         ]),
       ),
-      if (paper && s.bubble && !AppConfig.disableList.contains(kExamOmrFeatureKey))
+      if (paper && s.sheetPlan?.answerSheet == true && !AppConfig.disableList.contains(kExamAnswerSheetFeatureKey))
         _Step(
           n: 3,
+          title: t('أوراق الإجابة الكتابية', 'Written answer sheets'),
+          child: AnswerSheetPrintCard(
+            plan: s.sheetPlan!,
+            blank: _nb2Blank,
+            onBlank: (v) => setState(() => _nb2Blank = v),
+            busy: _nb2Busy,
+            error: _nb2Error,
+            onDownload: () => _answerSheets(s.sheetPlan!),
+          ),
+        ),
+      // sheets the teacher already has are only read, never printed here (D-687)
+      if (paper && s.bubble && s.sheetPlan?.bubble != BubbleSource.have && !AppConfig.disableList.contains(kExamOmrFeatureKey))
+        _Step(
+          n: paper && s.sheetPlan?.answerSheet == true ? 4 : 3,
           title: t('أوراق التظليل', 'Bubble answer sheets'),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text(t('يجيب الطلاب عليها، فاطبعها مع ورقة الأسئلة.', 'Students answer on these, so print them with the question paper.'), style: AppType.meta(context).copyWith(height: 1.4)),
@@ -538,7 +584,7 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
       ParentComponent(
         featureKey: kDeliverEmailFeatureKey,
         child: _Step(
-          n: paper && s.bubble ? 4 : 3,
+          n: 3 + (paper && s.bubble && s.sheetPlan?.bubble != BubbleSource.have ? 1 : 0) + (paper && s.sheetPlan?.answerSheet == true ? 1 : 0),
           title: t('أرسل بالبريد', 'Send by email'),
           child: DeliverEmailCard(
             canStudents: showStudents,

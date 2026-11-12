@@ -16,6 +16,8 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const notInCatalog = <String, String>{
+  'exam.auto_grade': 'auto-grade back pending merge',
+  'exam.answer_sheet': 'auto-grade back pending merge',
 };
 
 final _patterns = [

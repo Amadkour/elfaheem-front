@@ -22,6 +22,9 @@ import 'api_call_scan.dart';
 const knownMissing = <String, String>{
   // fallback for an older backend: tried only after GET /api/v1/my-enrolled-courses answers 404
   'GET /api/v1/my-enrollments': 'legacy fallback route (student_analytics_api.dart fetchMyEnrollments)',
+  'POST /api/v1/exam/questions/derive-key': 'auto-grade back pending merge',
+  'POST /api/v1/exam/exams/{}/people/file': 'auto-grade back pending merge',
+  'GET /api/v1/exam/exams/{}/people': 'auto-grade back pending merge',
 };
 
 void main() {
