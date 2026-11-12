@@ -17,6 +17,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
 import '../../exam_engine_api.dart';
@@ -277,6 +278,7 @@ class _PaperPreviewPaneState extends State<PaperPreviewPane> {
       _loading = false;
       _failed = got == null;
       if (got != null) _got = got;
+      if (got != null) SeenDesignAdjustments.remember(widget.examId, got.adjustments);
     });
     if (!r.ok && r.status != 0 && !r.unavailable) debugPrint('paper preview: ${offlinePlanErrorText(r)}');
   }
@@ -302,4 +304,78 @@ class _PaperPreviewPaneState extends State<PaperPreviewPane> {
       },
     );
   }
+}
+
+// ═══════════════════════════════════════ adjustments on a real print ═══════════════════════════════════════════
+
+/// The adjustments the teacher last saw for each exam (in the preview, or in a print's notice): in memory, and on the
+/// device under `paper_adjust_seen.<examId>`. A print says the adjustments again only when they differ from these.
+class SeenDesignAdjustments {
+  SeenDesignAdjustments._();
+  static final Map<int, String> _seen = {};
+
+  static String signature(List<DesignAdjustment> list) =>
+      ([for (final a in list) '${a.part}|${a.element ?? ''}|${a.action}|${a.reason}']..sort()).join('\n');
+
+  static String _key(int examId) => 'paper_adjust_seen.$examId';
+
+  /// What the teacher saw for [examId]: memory first, else the device; null when nothing was ever seen.
+  static Future<String?> seen(int examId) async {
+    final m = _seen[examId];
+    if (m != null) return m;
+    try {
+      return (await SharedPreferences.getInstance()).getString(_key(examId));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static void remember(int examId, List<DesignAdjustment> list) {
+    final s = signature(list);
+    if (_seen[examId] == s) return;
+    _seen[examId] = s;
+    unawaited(() async {
+      try {
+        await (await SharedPreferences.getInstance()).setString(_key(examId), s);
+      } catch (_) {
+        // memory alone then
+      }
+    }());
+  }
+
+  /// Tests.
+  static void clear() => _seen.clear();
+}
+
+/// One quiet line for a print's adjustments: at most two, then "and N more".
+String designAdjustmentsNoticeText(List<DesignAdjustment> list) {
+  final shown = [for (final a in list.take(2)) adjustmentText(a)];
+  final more = list.length - shown.length;
+  final head = shown.join(t('؛ ', '; '));
+  if (more <= 0) return head;
+  return t('$head، و$more غيرها', '$head, and $more more');
+}
+
+/// Reads a printed sheet's `X-Design-Adjustments` header for [examId] and says them once, only when they differ from the
+/// ones the teacher last saw. Missing or unreadable header: nothing. Never awaited by the print. Returns the line shown.
+Future<String?> noticePrintAdjustments(int examId, Map<String, List<String>> headers, {void Function(String text)? notify}) async {
+  String? raw;
+  for (final e in headers.entries) {
+    if (e.key.toLowerCase() == 'x-design-adjustments' && e.value.isNotEmpty) raw = e.value.first;
+  }
+  if (raw == null || raw.trim().isEmpty) return null;
+  List<DesignAdjustment> list;
+  try {
+    final decoded = jsonDecode(utf8.decode(base64.decode(raw.trim())));
+    if (decoded is! List) return null;
+    list = [for (final x in asMapList(decoded)) DesignAdjustment.fromJson(x)];
+  } catch (_) {
+    return null;
+  }
+  final seen = await SeenDesignAdjustments.seen(examId);
+  SeenDesignAdjustments.remember(examId, list);
+  if (list.isEmpty || seen == SeenDesignAdjustments.signature(list)) return null;
+  final text = designAdjustmentsNoticeText(list);
+  (notify ?? (s) => showAppNotice(s))(text);
+  return text;
 }

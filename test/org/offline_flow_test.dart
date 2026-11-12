@@ -4,9 +4,11 @@
 // and every new step widget under the layout harness.
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_quick.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_versions.dart' show versionsErrorText;
@@ -481,6 +483,8 @@ void main() {
       expect(find.textContaining('extra QR code'), findsOneWidget);
     });
   });
+
+  _printAdjustmentTests();
 }
 
 class _FailPreview extends PaperPreviewApi {
@@ -493,4 +497,73 @@ class _OkPreview extends PaperPreviewApi {
   final Map<String, dynamic> payload;
   @override
   Future<EngineResult> preview(int examId, Map<String, dynamic> body) async => EngineResult.ok(payload);
+}
+
+void _printAdjustmentTests() {
+  group('adjustments on a real print', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+      SeenDesignAdjustments.clear();
+    });
+    Map<String, dynamic> fx(String k) =>
+        Map<String, dynamic>.from((jsonDecode(File('test/fixtures/payloads/offline/paper_preview.json').readAsStringSync()) as Map)[k] as Map);
+    List<DesignAdjustment> real() => PaperPreview.fromJson(fx('nb2_student'))!.adjustments;
+    Map<String, List<String>> header(List<DesignAdjustment> l) => {
+          'x-design-adjustments': [
+            base64.encode(utf8.encode(jsonEncode([for (final a in l) {'part': a.part, 'element': a.element, 'action': a.action, 'reason': a.reason}]))),
+          ],
+        };
+
+    test('said once when unseen, two at most and "N more"; not again, nor after the preview showed them', () async {
+      final said = <String>[];
+      final list = real();
+      expect(await noticePrintAdjustments(5, header(list), notify: said.add), isNotNull);
+      expect(said.single, contains('and ${list.length - 2} more'));
+      expect(await noticePrintAdjustments(5, header(list), notify: said.add), isNull);
+      SeenDesignAdjustments.remember(6, list);   // what the preview showed for exam 6
+      expect(await noticePrintAdjustments(6, header(list), notify: said.add), isNull);
+      expect(said, hasLength(1));
+      // a different set is said again
+      expect(await noticePrintAdjustments(6, header(list.take(1).toList()), notify: said.add), adjustmentText(list.first));
+    });
+
+    test('the device remembers what was seen across a restart of the app', () async {
+      final said = <String>[];
+      SeenDesignAdjustments.remember(7, real());
+      await Future<void>.delayed(Duration.zero);
+      SeenDesignAdjustments.clear();
+      expect(await noticePrintAdjustments(7, header(real()), notify: said.add), isNull);
+    });
+
+    test('no header, an empty list or an unreadable one: nothing said', () async {
+      final said = <String>[];
+      expect(await noticePrintAdjustments(1, const {}, notify: said.add), isNull);
+      expect(await noticePrintAdjustments(1, const {'x-design-adjustments': ['%%%']}, notify: said.add), isNull);
+      expect(await noticePrintAdjustments(1, header(const []), notify: said.add), isNull);
+      expect(said, isEmpty);
+    });
+
+    test('the print goes through without the header', () async {
+      final api = _PdfServer(const {});
+      final (bytes, fail) = await AnswerSheetApi(api).sheetsPdf(3, {'layout': 'NB2'});
+      expect(fail, isNull);
+      expect(bytes!.length, 5);
+    });
+  });
+}
+
+/// A server answering a PDF to `postForBytes`, with [headers].
+class _PdfServer implements ApiClient {
+  _PdfServer(this.headers);
+  final Map<String, List<String>> headers;
+
+  @override
+  dynamic noSuchMethod(Invocation i) {
+    if (i.memberName == #postForBytes) {
+      final on = i.namedArguments[#onHeaders] as void Function(Map<String, List<String>>)?;
+      on?.call(headers);
+      return Future<Uint8List>.value(Uint8List.fromList('%PDF-'.codeUnits));
+    }
+    return super.noSuchMethod(i);
+  }
 }

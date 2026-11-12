@@ -1374,10 +1374,21 @@ class ApiClient {
   }
 
   /// POST a JSON body and receive raw bytes (e.g. a generated PDF). The body is small and not sensitive (ids).
-  Future<Uint8List> postForBytes(String path, {dynamic body, Map<String, String>? headers}) async {
-    final res = await _execute(() => _dio.post(path, data: body,
-        options: Options(method: 'POST', contentType: Headers.jsonContentType, responseType: ResponseType.bytes,
-            headers: headers, extra: {'auth': true, 'noEnc': true})));
+  /// [onHeaders] hears the answer's headers (e.g. `X-Design-Adjustments` on printed sheets).
+  Future<Uint8List> postForBytes(String path, {dynamic body, Map<String, String>? headers, void Function(Map<String, List<String>> headers)? onHeaders}) async {
+    final res = await _execute(() async {
+      final r = await _dio.post(path, data: body,
+          options: Options(method: 'POST', contentType: Headers.jsonContentType, responseType: ResponseType.bytes,
+              headers: headers, extra: {'auth': true, 'noEnc': true}));
+      if (onHeaders != null) {
+        try {
+          onHeaders(r.headers.map);
+        } catch (_) {
+          // a listener never breaks the download
+        }
+      }
+      return r;
+    });
     return _asBytes(res);
   }
 

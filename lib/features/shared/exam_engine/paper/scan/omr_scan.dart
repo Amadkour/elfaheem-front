@@ -28,6 +28,7 @@
 //   live: job_updated {kind: omr_scan, id: batch_id, exam_id, status, done, total, page_id, page_status, en, ar}
 library;
 
+import 'dart:async' show unawaited;
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -39,6 +40,7 @@ import 'package:flutter_education_app/core/app_time.dart';
 
 import '../../../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
 import '../../exam_engine_api.dart';
+import '../../hub/create/paper_preview.dart' show noticePrintAdjustments;
 import '../exam_setup.dart' show identifierZoneMismatchText;
 import '../omr_counts.dart';
 
@@ -1210,7 +1212,8 @@ class OmrScanApi {
   /// The PDF, or the failure (a JSON error body comes back as bytes here: parsed into an [EngineResult]).
   Future<(Uint8List?, EngineResult?)> sheetsPdf(int examId, Map<String, dynamic> body) async {
     try {
-      final bytes = await _api.postForBytes('$_b/exams/$examId/omr/sheets', body: body);
+      // the design's adjustments are said once, beside the print, never in its way (D-699)
+      final bytes = await _api.postForBytes('$_b/exams/$examId/omr/sheets', body: body, onHeaders: (h) => unawaited(noticePrintAdjustments(examId, h)));
       if (bytes.length > 4 && bytes[0] == 0x25 && bytes[1] == 0x50 && bytes[2] == 0x44 && bytes[3] == 0x46) return (bytes, null);
       return (null, EngineResult.fail(200, null, t('لم يصل ملف PDF', 'No PDF came back')));
     } on ApiException catch (e) {
