@@ -58,6 +58,7 @@ import 'exam_create_parts.dart';
 import 'exam_create_prefs.dart';
 import 'exam_create_sync.dart';
 import 'offline_steps.dart';
+import 'paper_preview.dart';
 
 /// Opens the wizard. [courseId] / [orgId] fix or narrow where the exam goes.
 Future<void> openExamCreateWizard(BuildContext context, {int? orgId, int? courseId}) => Navigator.of(context).push<void>(MaterialPageRoute(
@@ -130,6 +131,7 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
   final bool _identifierValid = true;   // nothing in the paper flow waits on the identifier plan any more (D-697)
   final _designApi = ExamPaperDesignApi();
   bool _designing = false;
+  int _designRev = 0;   // a saved design reloads the print preview
 
   /// The teacher picked the layout: kept while it fits. Until then it follows the questions (the best fit).
   late bool _layoutPicked = _plan.layout != null;
@@ -300,7 +302,7 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
   /// The steps that read the exam on the server (the student list, the attributes, the paper design): the draft is
   /// brought up to date first.
   Future<void> _open(CreateStep s) async {
-    if (const {CreateStep.identify, CreateStep.attributes, CreateStep.design}.contains(s) && !await _syncDraft()) return;
+    if (const {CreateStep.identify, CreateStep.attributes, CreateStep.design, CreateStep.review}.contains(s) && !await _syncDraft()) return;
     if (mounted) _go(s);
   }
 
@@ -796,14 +798,37 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
               if (mounted) setState(() => _plan.attributes = list);
             },
           ),
-        CreateStep.design => CreatePaperDesignBody(
-            designed: _plan.designed,
-            attributes: [for (final a in _plan.attributes) a.label],
-            busy: _designing,
-            onDesign: _designing ? null : _designPaper,
-          ),
-        CreateStep.review => CreateReviewBody(lines: _reviewLines(), onEdit: _busy ? null : _open),
+        CreateStep.design => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            CreatePaperDesignBody(
+              designed: _plan.designed,
+              attributes: [for (final a in _plan.attributes) a.label],
+              busy: _designing,
+              onDesign: _designing ? null : _designPaper,
+            ),
+            const SizedBox(height: AppSpace.md),
+            _printPreview(),
+          ]),
+        CreateStep.review => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            CreateReviewBody(lines: _reviewLines(), onEdit: _busy ? null : _open),
+            const SizedBox(height: AppSpace.md),
+            _printPreview(),
+          ]),
       };
+
+  /// The server's real page 1 of the sheet it prints (contract §5), the client's header preview when it cannot.
+  Widget _printPreview() {
+    final fallback = AttributeHeaderPreview(name: '', lines: [for (final a in _plan.attributes) if (a.key != 'name') (a.label, '')]);
+    final id = _sync.examId;
+    final parts = [if (_plan.wantsAnswerSheet) PreviewPart.nb2, if (_plan.printsBubbleSheets) PreviewPart.bubble];
+    if (id == null || parts.isEmpty) return fallback;
+    return PaperPreviewPane(
+      key: ValueKey('create.preview.$id.$_designRev'),
+      examId: id,
+      parts: parts,
+      attributes: [for (final a in _plan.attributes) a.key],
+      fallback: fallback,
+    );
+  }
 
   /// Each step taken, in a line: tapping one goes back to it with every answer kept.
   List<ReviewLine> _reviewLines() => [
@@ -856,7 +881,10 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
         showAppNotice(r.error ?? t('تعذّر حفظ التصميم', 'Could not save the design'), error: true);
         return;
       }
-      setState(() => _plan.designed = true);
+      setState(() {
+        _plan.designed = true;
+        _designRev++;
+      });
     } finally {
       if (mounted) setState(() => _designing = false);
     }

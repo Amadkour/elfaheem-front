@@ -2,6 +2,9 @@
 // course / no course × copies combination walks through, the sheet_plan v2 the wizard saves (back contract
 // OFFLINE_FLOW_CONTRACT.md §1) and how older exams read into it, the attribute payloads (§3), what the device remembers,
 // and every new step widget under the layout harness.
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart';
@@ -12,6 +15,7 @@ import 'package:flutter_education_app/features/shared/exam_engine/hub/create/exa
 import 'package:flutter_education_app/features/shared/exam_engine/hub/create/exam_create_prefs.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/create/offline_plan_api.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/create/offline_steps.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/hub/create/paper_preview.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -68,6 +72,12 @@ class _FakePlans extends OfflinePlanApi {
   final Map<String, dynamic> payload;
   @override
   Future<EngineResult> attributes(int examId) async => EngineResult.ok(payload);
+  @override
+  Future<EngineResult> attributeValues(int examId, String key) async => EngineResult.ok({
+        'items': [
+          {'student_id': 101, 'name': 'Student one', 'value': 'Student one'},
+        ],
+      });
 }
 
 const _attributesPayload = <String, dynamic>{
@@ -379,4 +389,87 @@ void main() {
     await t.pump();
     expect(got!.last.key, 'system_number');
   });
+
+  // contract §5, recorded from the back's e2e_offline_flow.py (pngs shrunk, no names)
+  group('the server print preview', () {
+    Map<String, dynamic> fx(String k) =>
+        Map<String, dynamic>.from((jsonDecode(File('test/fixtures/payloads/offline/paper_preview.json').readAsStringSync()) as Map)[k] as Map);
+
+    test('the REAL preview answers: the page, its part, the adjustments in words', () {
+      final nb2 = PaperPreview.fromJson(fx('nb2_student'))!;
+      expect(nb2.part, 'nb2');
+      expect(nb2.png.sublist(0, 4), [0x89, 0x50, 0x4E, 0x47]);
+      expect(nb2.adjustments.map((a) => a.reason), contains('qr_not_allowed'));
+      expect(nb2.adjustments.map(adjustmentText).every((s) => s.startsWith('Header: ') || s.startsWith('Footer: ')), isTrue);
+      expect(PaperPreview.fromJson(fx('nb2_generic_unsaved'))!.adjustments, isEmpty);
+      final bubble = PaperPreview.fromJson(fx('bubble_student'))!;
+      expect(bubble.part, 'bubble');
+      expect(adjustmentText(bubble.adjustments.firstWhere((a) => a.reason == 'no_footer_on_this_sheet')), 'Footer: this sheet has no room for a footer');
+      expect(PaperPreview.fromJson({'png': 'bm90IGEgcG5n'}), isNull);
+    });
+
+    test('the request body and the X-Design-Adjustments header', () {
+      expect(paperPreviewBody(PreviewPart.bubble, studentId: 101, attributes: ['name', 'section'], lang: 'ar'),
+          {'part': 'bubble', 'student_id': 101, 'attributes': ['name', 'section'], 'lang': 'ar'});
+      expect(paperPreviewBody(PreviewPart.nb2), {'part': 'nb2'});
+      final header = base64.encode(utf8.encode(jsonEncode(fx('nb2_student')['adjustments'])));
+      expect(adjustmentsOfHeader(header).length, PaperPreview.fromJson(fx('nb2_student'))!.adjustments.length);
+      expect(adjustmentsOfHeader(null), isEmpty);
+      expect(adjustmentsOfHeader('%%%'), isEmpty);
+    });
+
+    testWidgets('no overflow: loading, the page with a picker and notices', (t) => expectNoLayoutErrors(t, () {
+          final p = PaperPreview.fromJson(fx('nb2_student'))!;
+          return SingleChildScrollView(
+            child: Column(children: [
+              PaperPreviewView(png: null, students: const [], studentId: null, onStudent: (_) {}),
+              PaperPreviewView(
+                png: p.png,
+                adjustments: p.adjustments,
+                students: const [(id: 1, name: 'A student with a very long name that keeps on going'), (id: 2, name: 'B')],
+                studentId: 1,
+                onStudent: (_) {},
+                parts: PreviewPart.values,
+                part: PreviewPart.nb2,
+                onPart: (_) {},
+              ),
+            ]),
+          );
+        }));
+
+    testWidgets('a failing route or the switch off shows the client preview', (t) async {
+      final fallback = const Text('client preview', key: ValueKey('fb'));
+      await t.pumpWidget(layoutHost(SingleChildScrollView(child: PaperPreviewPane(examId: 1, parts: const [PreviewPart.nb2], attributes: const ['name'], fallback: fallback, api: _FailPreview(), people: _FakePlans(_attributesPayload))), scale: 1));
+      await t.pump(const Duration(milliseconds: 20));
+      await t.pump(const Duration(milliseconds: 20));
+      expect(find.byKey(const ValueKey('fb')), findsOneWidget);
+      AppConfig.disableList.add(kExamPaperDesignerKey);
+      addTearDown(() => AppConfig.disableList.remove(kExamPaperDesignerKey));
+      await t.pumpWidget(layoutHost(SingleChildScrollView(child: PaperPreviewPane(key: const ValueKey(2), examId: 1, parts: const [PreviewPart.nb2], attributes: const ['name'], fallback: fallback, api: _OkPreview(fx('nb2_student')))), scale: 1));
+      expect(find.byKey(const ValueKey('fb')), findsOneWidget);
+    });
+
+    testWidgets('the real page replaces the skeleton', (t) async {
+      await t.pumpWidget(layoutHost(
+          SingleChildScrollView(child: PaperPreviewPane(examId: 1, parts: const [PreviewPart.nb2], attributes: const ['name'], fallback: const SizedBox(), api: _OkPreview(fx('nb2_student')), people: _FakePlans(_attributesPayload))),
+          scale: 1));
+      expect(find.byKey(const ValueKey('create.preview.loading')), findsOneWidget);
+      await t.pump(const Duration(milliseconds: 20));
+      await t.pump(const Duration(milliseconds: 20));
+      expect(find.byKey(const ValueKey('create.preview.page')), findsOneWidget);
+      expect(find.textContaining('extra QR code'), findsOneWidget);
+    });
+  });
+}
+
+class _FailPreview extends PaperPreviewApi {
+  @override
+  Future<EngineResult> preview(int examId, Map<String, dynamic> body) async => EngineResult.fail(404, null, 'Not Found');
+}
+
+class _OkPreview extends PaperPreviewApi {
+  _OkPreview(this.payload);
+  final Map<String, dynamic> payload;
+  @override
+  Future<EngineResult> preview(int examId, Map<String, dynamic> body) async => EngineResult.ok(payload);
 }
