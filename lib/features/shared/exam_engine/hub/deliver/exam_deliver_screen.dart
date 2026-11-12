@@ -1,7 +1,8 @@
 // Exam Hub, "Deliver" (D-354): one screen from the real paper to the students. The preview draws the actual pages of the
 // actual file for a real student with their printed identifiers; Studio changes how it looks; one button prints every
 // version or every personal copy in one PDF or one Word file; email sends each student their own copy or the whole exam
-// to one address. A class is built paper by paper with visible progress and Cancel (deliver_build.dart).
+// to one address. "What will be printed" (deliver_summary_card.dart) counts every document before Print; an answer
+// booklet (D-663) goes after each question paper when the exam's answers go in a table or on paper. A class is built paper by paper with visible progress and Cancel (deliver_build.dart).
 //
 // Plain-value widgets (the layout harness pumps them): DeliverPreviewPane · DeliverPrintCard · DeliverEmailCard ·
 // DeliveryRow · BuildProgressDialog.
@@ -33,9 +34,11 @@ import '../../exam_versions.dart';
 import '../../exam_versions_sheet.dart' show openExamVersions;
 import '../../paper/exam_setup.dart' show kExamOmrFeatureKey;
 import '../../paper/scan/omr_sheets_sheet.dart' show showOmrSheetsSheet;
+import '../create/answer_format.dart' show AnswerFormat;
 import '../create/exam_create_logic.dart' show versionsCountText;
 import 'deliver_build.dart';
 import 'deliver_logic.dart';
+import 'deliver_summary_card.dart';
 import 'identifier_plan_step.dart' show openIdentifierPlanSheet;
 import 'paper_page_replay.dart';
 
@@ -78,11 +81,16 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
   int _blank = 30;
   bool _printing = false;
 
+  /// The booklet switch; null = what the exam's settings say (deliverBookletDefault).
+  bool? _booklet;
+
   IdCoverage? _email;
   List<ExamDelivery> _deliveries = const [];
   EventOrPoll? _watch;
 
   int get _id => widget.examId;
+
+  bool get _bookletOn => (_s?.bookletOffered ?? false) && (_booklet ?? _s?.bookletDefault ?? false);
 
   @override
   void initState() {
@@ -147,7 +155,7 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
     SampleCopy? fresh;
     try {
       final student = _roster.isEmpty ? null : _roster[_sampleIndex.clamp(0, _roster.length - 1)];
-      fresh = await buildSample(s, version: _version, student: student, api: _vApi, examId: _id);
+      fresh = await buildSample(s, version: _version, student: student, api: _vApi, examId: _id, booklet: _bookletOn);
     } catch (e) {
       debugPrint('deliver preview failed: $e');
     }
@@ -259,6 +267,7 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
     if (s.versions.stale) return _notice(versionsStaleText, error: true);
     setState(() => _printing = true);
     final word = _word;
+    final booklet = _bookletOn;
     final title = switch (_scope) {
       DeliverScope.students => t('جارٍ تجهيز نسخ الطلاب ...', 'Building the student copies ...'),
       DeliverScope.versions => t('جارٍ تجهيز النماذج ...', 'Building the versions ...'),
@@ -266,8 +275,9 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
     };
     try {
       final out = await _withProgress<(Uint8List?, String?, String?)>(title, (control, progress) async {
-        if (_scope == DeliverScope.versions) return (await buildAllVersionsFile(s, word: word, control: control), null, null);
-        final res = await buildClassFile(s, _id, word: word, named: _scope == DeliverScope.students, studentIds: [for (final x in _roster) x.studentId!], blank: _blank, api: _vApi, control: control);
+        if (_scope == DeliverScope.versions) return (await buildAllVersionsFile(s, word: word, control: control, booklet: booklet), null, null);
+        final res = await buildClassFile(s, _id,
+            word: word, named: _scope == DeliverScope.students, studentIds: [for (final x in _roster) x.studentId!], blank: _blank, api: _vApi, control: control, booklet: booklet);
         return (res.bytes, res.error, res.warning);
       });
       if (out == null || !mounted) return;
@@ -311,7 +321,7 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
         context, (_) => EmailComposeSheet(mode: EmailMode.students, earlyWarning: warn, count: _roster.length, noEmailNames: _email?.missingNames ?? const [], coverageKnown: _email != null && !_email!.unreadable && _email!.namesKnown));
     if (compose == null || !mounted) return;
     final out = await _withProgress<StudentsSendResult>(t('جارٍ إنشاء النسخ ...', 'Building the copies ...'), (control, progress) {
-      return sendPerStudentCopies(s, _id, _roster, word: compose.word, message: compose.message, api: _vApi, deliver: _api, control: control, onStage: (stage) {
+      return sendPerStudentCopies(s, _id, _roster, word: compose.word, message: compose.message, api: _vApi, deliver: _api, control: control, booklet: _bookletOn, onStage: (stage) {
         progress.value = BuildProgress(title: stage, done: progress.value.done, total: progress.value.total);
       });
     });
@@ -334,7 +344,7 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
     final warn = earlyEmailWarning(s.view.exam.startsAt, DateTime.now().toUtc());
     final compose = await showAppSheet<EmailCompose>(context, (_) => EmailComposeSheet(mode: EmailMode.whole, earlyWarning: warn));
     if (compose == null || !mounted) return;
-    final bytes = await _withProgress<Uint8List>(t('جارٍ تجهيز الملف ...', 'Building the file ...'), (control, _) => buildAllVersionsFile(s, word: compose.word, control: control));
+    final bytes = await _withProgress<Uint8List>(t('جارٍ تجهيز الملف ...', 'Building the file ...'), (control, _) => buildAllVersionsFile(s, word: compose.word, control: control, booklet: _bookletOn));
     if (bytes == null || !mounted) return;
     final name = '${deliverFileStem(widget.title, t('الاختبار', 'exam'))}.${compose.word ? 'docx' : 'pdf'}';
     final r = await _api.sendWhole(_id, to: compose.to!, file: bytes, fileName: name, message: compose.message);
@@ -385,6 +395,7 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
       onPrevStudent: _roster.length > 1 ? () => _stepStudent(-1) : null,
       onNextStudent: _roster.length > 1 ? () => _stepStudent(1) : null,
       online: !s.isPaper,
+      bookletFrom: _sample?.bookletFrom,
     );
     final actions = _actions(context, s);
     return LayoutBuilder(builder: (context, box) {
@@ -481,7 +492,21 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
       _Step(
         n: 2,
         title: t('اطبع', 'Print'),
-        child: DeliverPrintCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          DeliverSummaryCard(
+            summary: deliverPrintSummary(
+                scope: _scope, format: paper ? s.format : AnswerFormat.online, booklet: _bookletOn, students: _roster.length, versions: s.versions.items.length, blank: _blank),
+            bookletOffered: s.bookletOffered,
+            booklet: _bookletOn,
+            onBooklet: _printing
+                ? null
+                : (v) {
+                    setState(() => _booklet = v);
+                    _rebuildPreview();
+                  },
+          ),
+          const SizedBox(height: AppSpace.sm),
+          DeliverPrintCard(
           scope: _scope,
           onScope: (v) => setState(() {
             _scope = v;
@@ -498,6 +523,7 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
           onPrint: _printing || s.versions.stale ? null : _print,
           onMore: _moreOptions,
         ),
+        ]),
       ),
       if (paper && s.bubble && !AppConfig.disableList.contains(kExamOmrFeatureKey))
         _Step(
@@ -572,7 +598,11 @@ class DeliverPreviewPane extends StatefulWidget {
     this.onPrevStudent,
     this.onNextStudent,
     this.online = false,
+    this.bookletFrom,
   });
+
+  /// Where the answer booklet's pages start in [pages] (null = no booklet): the pane then offers Question paper / Booklet.
+  final int? bookletFrom;
 
   /// Null while the first preview is being made.
   final List<ReplayedPage>? pages;
@@ -589,6 +619,8 @@ class DeliverPreviewPane extends StatefulWidget {
 }
 
 class _DeliverPreviewPaneState extends State<DeliverPreviewPane> {
+  bool _showBooklet = false;
+
   void _zoom(ReplayedPage p) => showDialog<void>(
         context: context,
         builder: (ctx) => Dialog(
@@ -601,7 +633,9 @@ class _DeliverPreviewPaneState extends State<DeliverPreviewPane> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final w = widget;
-    final pages = w.pages;
+    final split = w.pages != null && w.bookletFrom != null && w.bookletFrom! > 0 && w.bookletFrom! < w.pages!.length ? w.bookletFrom : null;
+    final showBooklet = split != null && _showBooklet;
+    final pages = split == null ? w.pages : (showBooklet ? w.pages!.sublist(split) : w.pages!.sublist(0, split));
     final head = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Row(children: [
         Expanded(child: Text(t('معاينة الورقة الحقيقية', 'The real paper'), style: AppType.section(context))),
@@ -623,6 +657,23 @@ class _DeliverPreviewPaneState extends State<DeliverPreviewPane> {
       ] else ...[
         const SizedBox(height: AppSpace.xxs),
         Text(w.online ? t('هكذا ستبدو النسخة المطبوعة.', 'How the printed copy will look.') : t('نسخة فارغة، بلا اسم طالب.', 'A blank copy, no student name.'), style: AppType.meta(context)),
+      ],
+      if (split != null) ...[
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+          AppChoiceChip(
+              key: const ValueKey('deliver.preview.paper'),
+              label: printDocLabel(PrintDoc.questionPaper),
+              icon: Icons.description_outlined,
+              selected: !showBooklet,
+              onTap: () => setState(() => _showBooklet = false)),
+          AppChoiceChip(
+              key: const ValueKey('deliver.preview.booklet'),
+              label: printDocLabel(PrintDoc.booklet),
+              icon: Icons.menu_book_outlined,
+              selected: showBooklet,
+              onTap: () => setState(() => _showBooklet = true)),
+        ]),
       ],
       if (w.versions.length > 1) ...[
         const SizedBox(height: AppSpace.xs),

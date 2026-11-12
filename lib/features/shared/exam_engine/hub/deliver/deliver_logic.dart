@@ -14,8 +14,10 @@ import 'package:flutter_education_app/core/plural.dart';
 import '../../../../admin/admin_common.dart' show asInt, asMapList, t;
 import '../../exam_authoring.dart' show parseEngineUtc;
 import '../../exam_engine_api.dart' show EngineResult, engineCall;
+import '../../exam_paper.dart' show AnswerTablePlace, PaperPart;
 import '../../exam_paper_bands.dart' show PaperPrintedId, kPaperMaxIdentifiers;
 import '../../paper/exam_setup.dart';
+import '../create/answer_format.dart';
 
 /// Kill switch of the email part of delivery.
 const kDeliverEmailFeatureKey = 'exam.deliver_email';
@@ -60,6 +62,102 @@ DeliverScope deliverOpeningScope(DeliverPlan? plan, {required bool paper, requir
 /// The versions the plan asked for and nobody has made (the wizard makes them on Finish; a saved draft published from the
 /// list never got there). Null when there is nothing to offer, which includes a teacher who has made their own number.
 int? deliverVersionsOwed(DeliverPlan? plan, int made) => plan != null && !plan.personal && plan.versions > 1 && made < 2 ? plan.versions : null;
+
+// ── what gets printed (D-663) ──────────────────────────────────────────────────────────────────────────────────────
+
+/// How the students answer, for printing: the saved `settings.answer_format`, else what the exam's setup says (an online
+/// exam, a bubble exam, or a paper exam answered on the paper, as before the key existed).
+AnswerFormat deliverAnswerFormat(Map settings, {required bool paper, required bool bubble}) {
+  final saved = answerFormatOf(settings);
+  if (saved != null) return saved == AnswerFormat.online && paper ? (bubble ? AnswerFormat.bubble : AnswerFormat.onPaper) : saved;
+  if (!paper) return AnswerFormat.online;
+  return bubble ? AnswerFormat.bubble : AnswerFormat.onPaper;
+}
+
+/// Whether an answer booklet can go with this paper: an answer table, or answers written on paper. A bubble exam answers
+/// on its sheet; an online one in the app.
+bool deliverBookletOffered(AnswerFormat f) => f == AnswerFormat.table || f == AnswerFormat.onPaper;
+
+/// The booklet switch as Deliver opens: `settings.answer_booklet` when the wizard saved it, else on for an answer table.
+bool deliverBookletDefault(AnswerFormat f, Map settings) {
+  if (!deliverBookletOffered(f)) return false;
+  final saved = settings['answer_booklet'];
+  return saved is bool ? saved : f == AnswerFormat.table;
+}
+
+/// How the question paper is drawn: beside a booklet it carries no answer room; an answer table without a booklet is
+/// printed at the paper's end; otherwise today's paper.
+({PaperPart part, AnswerTablePlace table}) deliverPaperLayout(AnswerFormat f, {required bool booklet}) {
+  if (booklet && deliverBookletOffered(f)) return (part: PaperPart.questions, table: AnswerTablePlace.none);
+  if (f == AnswerFormat.table) return (part: PaperPart.full, table: AnswerTablePlace.end);
+  return (part: PaperPart.full, table: AnswerTablePlace.none);
+}
+
+/// A copy's QR payloads split between its question paper (first) and its booklet (next): one print-plan copy holds both.
+(List<String>, List<String>) splitBookletQr(List<String> pages, int paperPages, int bookletPages) {
+  final a = paperPages.clamp(0, pages.length);
+  final b = (a + bookletPages).clamp(a, pages.length);
+  return (pages.sublist(0, a), pages.sublist(a, b));
+}
+
+/// One kind of printed document.
+enum PrintDoc { questionPaper, booklet, bubbleSheet }
+
+String printDocLabel(PrintDoc d) => switch (d) {
+      PrintDoc.questionPaper => t('ورقة الأسئلة', 'Question paper'),
+      PrintDoc.booklet => t('دفتر الإجابة', 'Answer booklet'),
+      PrintDoc.bubbleSheet => t('ورقة التظليل', 'Bubble sheet'),
+    };
+
+/// One line of "What will be printed".
+class PrintSummaryLine {
+  const PrintSummaryLine(this.doc, this.count, {this.separate = false});
+  final PrintDoc doc;
+  final int count;
+
+  /// Printed from its own button (the bubble sheets), not in the file Print makes.
+  final bool separate;
+}
+
+/// "What will be printed" before Print: each document with its count, and per what.
+class DeliverPrintSummary {
+  const DeliverPrintSummary({required this.lines, required this.per, this.together = false});
+  final List<PrintSummaryLine> lines;
+
+  /// Per named student, per version, or blank sets, in words.
+  final String per;
+
+  /// The question paper and its booklet come one after the other in the same file.
+  final bool together;
+
+  int get inFile => lines.where((l) => !l.separate).fold(0, (s, l) => s + l.count);
+}
+
+/// What one press of Print makes for [scope]: [students] named copies, each of [versions] once (1 = the exam's own
+/// order) or [blank] blank sets; the booklet beside each paper when [booklet]; bubble sheets counted for a bubble exam.
+DeliverPrintSummary deliverPrintSummary({required DeliverScope scope, required AnswerFormat format, required bool booklet,
+    required int students, required int versions, required int blank}) {
+  final copies = switch (scope) {
+    DeliverScope.students => students,
+    DeliverScope.versions => versions < 1 ? 1 : versions,
+    DeliverScope.blank => blank,
+  };
+  final withBooklet = booklet && deliverBookletOffered(format);
+  final per = switch (scope) {
+    DeliverScope.students => t('نسخة باسم كل طالب', 'One set per named student'),
+    DeliverScope.versions => versions > 1 ? t('نسخة من كل نموذج للتصوير', 'One set per version, to photocopy') : t('نسخة واحدة للتصوير', 'One master set, to photocopy'),
+    DeliverScope.blank => t('نسخ فارغة بلا أسماء', 'Blank sets, no names'),
+  };
+  return DeliverPrintSummary(
+    lines: [
+      PrintSummaryLine(PrintDoc.questionPaper, copies),
+      if (withBooklet) PrintSummaryLine(PrintDoc.booklet, copies),
+      if (format == AnswerFormat.bubble) PrintSummaryLine(PrintDoc.bubbleSheet, copies, separate: true),
+    ],
+    per: per,
+    together: withBooklet,
+  );
+}
 
 /// One identifier printed on each copy.
 class PrintedIdSpec {

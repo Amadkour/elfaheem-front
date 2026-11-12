@@ -26,7 +26,8 @@ AnswerFormat? answerFormatOf(Map settings) {
   for (final f in AnswerFormat.values) {
     if (answerFormatKey(f) == raw) return f;
   }
-  // older exams: what they hold
+  // older exams: what they hold (a bubble run is a bubble exam)
+  if (settings['bubble_run'] != null) return AnswerFormat.bubble;
   final format = '${settings['paper_format'] ?? ''}';
   if (settings['omr_template_id'] != null || format == 'bubble' || format == 'both') return AnswerFormat.bubble;
   if (settings['answer_booklet'] == true) return AnswerFormat.table;

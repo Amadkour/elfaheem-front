@@ -46,17 +46,18 @@ class ExamPaperCopy extends ExamPaperDoc {
             institution: d.institution, course: d.course, title: d.title, dateText: d.dateText, durationText: d.durationText, total: d.total, sections: d.sections,
             instructions: d.instructions, rtl: d.rtl, logo: d.logo, accentHex: d.accentHex, showPoints: d.showPoints, seatNumber: d.seatNumber, answerKey: d.answerKey,
             version: d.version, studentName: d.studentName, qrPages: d.qrPages, qrSlots: d.qrSlots, answerTable: d.answerTable, keySummary: d.keySummary, design: d.design,
-            cover: d.cover, assets: d.assets, seat: d.seat);
+            cover: d.cover, assets: d.assets, seat: d.seat, part: d.part);
 
   final List<PaperPrintedId> printedIds;
 
   @override
   ExamPaperDoc copyWith({List<PaperSection>? sections, String? version, String? studentName, List<String>? qrPages, int? qrSlots, AnswerTablePlace? answerTable, bool? answerKey,
-          List<PaperKeyLine>? keySummary, String? seat, ExamCover? cover, bool dropCover = false, LayoutDocument? design, bool dropDesign = false, Map<String, Uint8List>? assets}) =>
+          List<PaperKeyLine>? keySummary, String? seat, ExamCover? cover, bool dropCover = false, LayoutDocument? design, bool dropDesign = false, Map<String, Uint8List>? assets,
+          PaperPart? part}) =>
       ExamPaperCopy.of(
           super.copyWith(
               sections: sections, version: version, studentName: studentName, qrPages: qrPages, qrSlots: qrSlots, answerTable: answerTable, answerKey: answerKey,
-              keySummary: keySummary, seat: seat, cover: cover, dropCover: dropCover, design: design, dropDesign: dropDesign, assets: assets),
+              keySummary: keySummary, seat: seat, cover: cover, dropCover: dropCover, design: design, dropDesign: dropDesign, assets: assets, part: part),
           printedIds);
 
   /// Adds what a design can print: `identifiers` (every one with its label) and `identifier_1` … `identifier_4` (the values).

@@ -15,6 +15,7 @@ import '../../../../admin/admin_common.dart' show asDouble, asInt, asMap, asMapL
 import '../../exam_authoring.dart';
 import '../../exam_engine_api.dart';
 import '../../exam_insights.dart';
+import 'key_fix.dart';
 import '../../exam_quick.dart' show ResultRow;
 import '../../paper/review/omr_review.dart';
 
@@ -134,6 +135,7 @@ class ResultsBoard {
     this.isPaper = false,
     this.hubServer = true,
     this.hardest = const [],
+    this.keyChecks = const [],
     this.omr,
     this.questionCount = 0,
     this.passingPercent = 50,
@@ -158,6 +160,9 @@ class ResultsBoard {
   final bool hubServer;
   final ResultStats stats;
   final List<HardQuestion> hardest;
+
+  /// Choice / true-false questions the item analysis flagged: their key may be wrong (D-664).
+  final List<KeyFixCandidate> keyChecks;
 
   /// The per-question detail of a scanned exam, when there is one.
   final OmrResults? omr;
@@ -269,6 +274,7 @@ class ResultsBoard {
       hubServer: hubServer,
       stats: ResultStats(entries, openScanItems: o?.openReviewItems ?? 0, inProgress: rows.where((r) => r.state == 'in_progress').length),
       hardest: hardestQuestions(view, o, analytics == null ? null : ExamAnalytics.fromJson(analytics)),
+      keyChecks: keyFixCandidates(view, analytics == null ? null : ExamAnalytics.fromJson(analytics)),
       omr: o,
       questionCount: view.questionCount,
       passingPercent: d.passingPercent,

@@ -34,6 +34,8 @@ import '../hub_degrees_import_sheet.dart' show openHubDegreesImport;
 import 'exam_result_data.dart';
 import 'exam_result_sheets.dart';
 import 'exam_result_widgets.dart';
+import 'key_fix.dart' show KeyFixCandidate;
+import 'key_fix_sheet.dart';
 
 Future<void> openExamGetResult(BuildContext context, {required int examId, required String title, int? courseId}) async {
   await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamGetResultScreen(examId: examId, title: title, courseId: courseId)));
@@ -198,6 +200,10 @@ class _ExamGetResultScreenState extends State<ExamGetResultScreen> {
     });
   }
 
+  Future<void> _fixKey(KeyFixCandidate q) async {
+    if (await openKeyFix(context, examId: widget.examId, question: q) && mounted) await _load(silent: true);
+  }
+
   void _showAllQuestions() {
     final o = _board?.omr;
     if (o == null) return;
@@ -252,6 +258,7 @@ class _ExamGetResultScreenState extends State<ExamGetResultScreen> {
         onAllQuestions: b.omr == null || b.omr!.questions.isEmpty ? null : _showAllQuestions,
         onAttempts: () => _push(ExamResultsScreen(examId: widget.examId, examTitle: widget.title, courseId: b.courseId)),
         onGradeLog: () => _push(ExamGradeLogScreen(examId: widget.examId, examTitle: widget.title)),
+        onFixKey: _fixKey,
       );
 
   Widget _waiting() {
@@ -310,7 +317,9 @@ class ResultBoardCallbacks {
     this.onAllQuestions,
     this.onAttempts,
     this.onGradeLog,
+    this.onFixKey,
   });
+  final ValueChanged<KeyFixCandidate>? onFixKey;
   final VoidCallback? onScans, onAnswers, onPublish, onDataLab, onExport, onStudio, onCorrect, onImport, onAllQuestions, onAttempts, onGradeLog;
   final ValueChanged<bool>? onStudents, onParents;
   final ValueChanged<ResultEntry>? onOpenAttempt;
@@ -373,6 +382,10 @@ class ResultBoardView extends StatelessWidget {
       ],
       if (b.hardest.isNotEmpty) ...[
         ResultHardestCard(questions: b.hardest, onAll: cb.onAllQuestions),
+        gap,
+      ],
+      if (b.keyChecks.isNotEmpty) ...[
+        ResultKeyCheckCard(questions: b.keyChecks, onFix: cb.onFixKey),
         gap,
       ],
     ];
