@@ -4110,3 +4110,37 @@ recommendation" clears the choice. "Re-run the benchmark" confirms, starts C2 an
 on the hub's new `model_benchmark` live event (a 4 s poll only while the stream is down, 30 s while it is up), then
 reads the results again; no timer of its own. The NLI judge switch (A7) sits on the same tab (an `AppSwitchTile`,
 shown only when the hub sends `judge`).
+## D-686 — Open answers: four kinds, the model answer the only input, the derived key shown (2026-11-12)
+
+An open answer is a number (`numeric`, unchanged), one word, a short answer or a long answer (`answer.kind` word |
+short | long on `short_answer` / `essay`, contract A1). In the quick builder and the wizard's questions step the card
+offers the four kinds as chips (a number turns the question into a `numeric` engine draft and back, keeping the prompt
+and the marks); the classic editor offers word / short / long. The ONLY required input is the model answer: after a
+pause in typing (700 ms) `POST /questions/derive-key` (contract A2) previews what the server derived, drawn as quiet
+chips marked "auto" or "yours" (`DerivedKeyStrip`: other accepted wordings, keywords for a word / short answer, points
+with their shares for a long one). One "Advanced" sheet edits keywords, points with weights, and exact vs meaning; a
+number's margin and units sit in the same place. A field left as derived stays automatic (no override is saved), and
+"Back to automatic" removes one. Exact vs meaning is saved as `answer.match_by = "exact"`: contract A has no field for
+it yet, so the engine stores it untouched and pack A owes reading it (said in the report). The preview hides itself
+on the kill switch `exam.auto_grade` (403) or an engine without the route, never an error the teacher must handle.
+Old questions carry none of the new fields and save exactly as before (the overrides only write what is set). Pure
+part `exam_open_key.dart`, drawn in `exam_open_key_widgets.dart`; tests `test/org/exam_open_key_test.dart`.
+
+## D-687 — The paper exam's answer sheets in the wizard: bubble and NB2, personal or generic (2026-11-12)
+
+The wizard asks each sheet question only when it applies. Multiple choice and true / false go to the answer table or
+the bubble sheet; on the bubble sheet step the teacher first says Print them here or I already have the sheets (the
+sheet types and Upload a custom layout stay the existing picker). With the NB2 sheet on (`exam.answer_sheet`), written
+questions (number, completion, short, long) no longer block a bubble exam: they go on the NB2 written-answer sheet. A
+new step, Answer sheets, appears only when NextBrain prints a sheet (bubble sheets printed here, or an NB2 sheet for
+an answer-table / bubble exam with written questions): personal (default with a course) or generic (default without).
+Students follows only when needed: with a course, the number on the sheet (academic ID, the existing identifier plan
+step, or the system number, which needs no setup); with no course and personal sheets, a CSV / Excel upload
+(`POST /exams/{id}/people/file`, contract B2) that must hold at least one student before Continue. No written
+questions → no answer-sheet question; sheets the teacher already has, or their own sheet type → no copies question.
+The choice is saved as `settings.sheet_plan` and remembered per teacher on the device (print / have, copies, ID
+source). Deliver reads the plan: a "Written answer sheets" card downloads the NB2 PDF (`POST /exams/{id}/sheets`,
+`layout: NB2`), and the bubble print card is hidden when the teacher has the sheets. Scan uploads show contract B3's
+quality refusals (`sheet_marks_missing` with how many corners were seen, `page_blurry`, `not_this_exam`) as file-level
+failures under "Retake these pages", one plain message per page, apart from the other failures (Retry does not help a
+blurred photo). Tests `test/org/answer_sheet_plan_test.dart`.

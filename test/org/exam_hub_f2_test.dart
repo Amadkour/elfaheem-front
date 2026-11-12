@@ -156,7 +156,7 @@ void main() {
       expect(p.publish, PublishKind.paper);
       expect(p.exam.mode, QuickMode.offline);
       expect(createSteps(p, whereNeeded: true, omrOn: true, identifiersOn: true),
-          [CreateStep.where, CreateStep.answer, CreateStep.questions, CreateStep.template, CreateStep.publish, CreateStep.identify]);
+          [CreateStep.where, CreateStep.answer, CreateStep.questions, CreateStep.template, CreateStep.publish, CreateStep.sheets, CreateStep.identify]);
     });
 
     test('the answer format decides the kind: online, paper, table, bubble', () {
@@ -173,11 +173,11 @@ void main() {
       p.setAnswer(AnswerFormat.bubble);
       expect((p.isPaper, p.isBubble), (true, true));
       expect(p.settingsJson['answer_format'], 'bubble');
-      expect(createSteps(p, whereNeeded: false, omrOn: true, identifiersOn: false), [CreateStep.answer, CreateStep.questions, CreateStep.template, CreateStep.publish]);
+      expect(createSteps(p, whereNeeded: false, omrOn: true, identifiersOn: false), [CreateStep.answer, CreateStep.questions, CreateStep.template, CreateStep.publish, CreateStep.sheets]);
     });
 
-    test('a table takes essay questions; a bubble sheet does not', () {
-      final p = _plan(answer: AnswerFormat.table);
+    test('a table takes essay questions; a bubble sheet does not (without the NB2 sheet, D-687)', () {
+      final p = _plan(answer: AnswerFormat.table)..answerSheetOn = false;
       p.exam.questions.add(QuickQuestion.essay()..prompt = 'why');
       expect(bubbleCheckOf(p).blocks, isFalse);
       p.setAnswer(AnswerFormat.bubble);
@@ -252,8 +252,8 @@ void main() {
   });
 
   group('bubble checks', () {
-    test('questions a bubble cannot hold block the step', () {
-      final p = _plan(bubble: true);
+    test('questions a bubble cannot hold block the step (without the NB2 sheet, D-687)', () {
+      final p = _plan(bubble: true)..answerSheetOn = false;
       p.exam.questions.add(QuickQuestion.essay()..prompt = 'why');
       expect(bubbleCheckOf(p).notHeld.length, 1);
       expect(createStepReady(CreateStep.questions, p), isFalse);

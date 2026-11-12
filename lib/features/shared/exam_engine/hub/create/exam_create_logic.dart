@@ -3,9 +3,10 @@
 //
 // Order (D-661): Where (a course, an organization or personal) → Answers (how students answer: online, on the paper, an
 // answer table or a bubble sheet) → Questions (automatic, manual, a file or Google Forms) → Template (bubble only) →
-// Settings (timing, or how the papers are printed) → Students (the identifier plan, where a paper is matched to a
-// student). The answer format comes first because it decides which questions are possible: a bubble sheet holds only
-// multiple choice and true / false.
+// Settings (timing, or how the papers are printed) → Answer sheets (D-687: personal or generic, only when NextBrain prints
+// a bubble sheet or an NB2 written-answer sheet) → Students (the identifier plan, where a paper is matched to a student;
+// with no course, the uploaded list). The answer format comes first because it decides which questions are possible: a
+// bubble sheet holds only multiple choice and true / false (written questions then go on the NB2 sheet).
 //
 // Unit-tested in test/org/exam_hub_f2_test.dart.
 library;
@@ -19,11 +20,14 @@ import '../../exam_quick.dart';
 import '../../paper/exam_setup.dart' show ObjectiveQuestion, OmrTemplateItem;
 import '../../paper/omr_counts.dart' show omrMinutesText;
 import 'answer_format.dart';
+import 'answer_sheet_plan.dart';
 
 export 'answer_format.dart';
+export 'answer_sheet_plan.dart';
 
 /// `publish` is the Settings step: the publishing itself is the wizard's last press.
-enum CreateStep { where, answer, questions, template, publish, identify }
+/// `sheets` is the answer sheets (D-687): personal or generic, for the bubble sheet and the NB2 written-answer sheet.
+enum CreateStep { where, answer, questions, template, publish, sheets, identify }
 
 enum CreateType { normal, bubble }
 
@@ -34,6 +38,10 @@ enum PaperPlan { versions, personal }
 
 /// The question types a bubble can hold, in the order of the "add a question" row.
 const kBubbleQuestionTypes = <String>['mcq_single', 'true_false'];
+
+/// Added beside them in a bubble exam while the NB2 sheet is on: they go on the written-answer sheet (a number is a
+/// kind of open answer, picked on the card).
+const kWrittenQuestionTypes = <String>['short_answer', 'essay'];
 
 /// How the printed versions are told apart. QR is what the scanner reads; the printed code is for people. Not "bubble":
 /// not every sheet has a version row to shade.
@@ -70,6 +78,16 @@ class ExamCreatePlan {
   bool shuffleQuestions = true;
   bool shuffleOptions = true;
 
+  // the answer sheets (D-687)
+  BubbleSource bubbleSource = BubbleSource.print;
+  /// Null = the default: personal with a course, generic without.
+  SheetCopies? copies;
+  IdSource idSource = IdSource.academic;
+  /// The NB2 sheet is on offer (`exam.answer_sheet`); the wizard sets it from the kill switch.
+  bool answerSheetOn = true;
+  /// Students on the uploaded list (an exam with no course).
+  int peopleCount = 0;
+
   // questions already on the server (a Google Forms import): counted, never touched by the wizard
   int importedQuestions = 0;
   double importedPoints = 0;
@@ -79,6 +97,40 @@ class ExamCreatePlan {
   bool get hasCourse => exam.courseId != null;
   bool get isPaper => publish == PublishKind.paper;
   bool get isElectronic => publish == PublishKind.electronic;
+
+  /// Questions that go on the NB2 written-answer sheet.
+  int get writtenQuestionCount => exam.isFile ? 0 : exam.questions.where((q) => answerSheetCanHold(q.type)).length;
+
+  /// Questions that go on the bubble sheet.
+  int get bubbleQuestionCount => exam.isFile ? 0 : exam.questions.where((q) => bubbleCanHold(q.type)).length + importedQuestions - importedNotBubble;
+
+  /// The written answers go on an NB2 sheet: a paper exam answered on a table or a bubble sheet, with written questions.
+  bool get wantsAnswerSheet =>
+      answerSheetOn && isPaper && !exam.isFile && (answer == AnswerFormat.table || answer == AnswerFormat.bubble) && writtenQuestionCount > 0;
+
+  /// NextBrain prints the bubble sheets (a sheet it can print, and the teacher does not have them already).
+  bool get printsBubbleSheets => isBubble && bubbleSource == BubbleSource.print && !ownSheet;
+
+  /// Personal or generic is asked only when NextBrain prints a sheet.
+  bool get asksCopies => isPaper && (printsBubbleSheets || wantsAnswerSheet);
+
+  SheetCopies get effectiveCopies => copies ?? (hasCourse ? SheetCopies.personal : SheetCopies.generic);
+
+  bool get personalSheets => asksCopies && effectiveCopies == SheetCopies.personal;
+
+  /// Personal sheets of an exam with no course: the students come from an uploaded list.
+  bool get needsPeopleFile => personalSheets && !hasCourse;
+
+  /// `settings.sheet_plan`, null when no sheet is printed or read.
+  SheetPlan? get sheetPlan => !isPaper || !(isBubble || wantsAnswerSheet)
+      ? null
+      : SheetPlan(
+          bubble: isBubble ? bubbleSource : null,
+          answerSheet: wantsAnswerSheet,
+          copies: asksCopies ? effectiveCopies : SheetCopies.generic,
+          fromFile: !hasCourse,
+          idSource: idSource,
+        );
 
   /// Moves the plan to another place, every answer kept (a question belongs to the exam, not to the course yet).
   void setPlace(NewExamPlace p) {
@@ -144,6 +196,7 @@ class ExamCreatePlan {
         if (answer != null) 'answer_format': answerFormatKey(answer!),
         if (isPaper) 'answer_booklet': answerBooklet,
         if (isPaper) 'paper_plan': paperPlanJson,
+        if (sheetPlan != null) 'sheet_plan': sheetPlan!.toJson(),
       };
 
   /// What is left to print, and how the Deliver step reads it (`settings.paper_plan`).
@@ -168,9 +221,18 @@ class ExamCreatePlan {
 
 // ── the steps ───────────────────────────────────────────────────────────────────────────────────────────────────
 
-/// The students step: where a paper must be matched to a student and the course knows its students.
-bool needsIdentifierStep(ExamCreatePlan p, {required bool identifiersOn}) =>
-    identifiersOn && p.isPaper && p.hasCourse && (p.paperPlan == PaperPlan.personal || p.isBubble);
+/// The students step: where a paper must be matched to a student and the course knows its students, or where personal
+/// sheets of an exam with no course need the uploaded list (D-687).
+bool needsIdentifierStep(ExamCreatePlan p, {required bool identifiersOn}) {
+  if (!p.isPaper) return false;
+  if (p.needsPeopleFile) return true;
+  return identifiersOn && p.hasCourse && (p.paperPlan == PaperPlan.personal || p.isBubble || p.personalSheets);
+}
+
+/// The course's identifier plan (IdentifierPlanStep) is needed: the printed paper or the bubble sheet is matched on it,
+/// or the personal sheets carry the academic ID. Sheets on the system number alone need nothing set up.
+bool needsIdentifierPlan(ExamCreatePlan p) =>
+    p.hasCourse && (p.paperPlan == PaperPlan.personal || p.isBubble || (p.personalSheets && p.idSource == IdSource.academic));
 
 List<CreateStep> createSteps(ExamCreatePlan p, {required bool whereNeeded, required bool omrOn, required bool identifiersOn}) => [
       if (whereNeeded) CreateStep.where,
@@ -178,6 +240,7 @@ List<CreateStep> createSteps(ExamCreatePlan p, {required bool whereNeeded, requi
       CreateStep.questions,
       if (omrOn && p.isBubble) CreateStep.template,
       CreateStep.publish,
+      if (p.asksCopies) CreateStep.sheets,
       if (needsIdentifierStep(p, identifiersOn: identifiersOn)) CreateStep.identify,
     ];
 
@@ -187,6 +250,7 @@ String createStepLabel(CreateStep s) => switch (s) {
       CreateStep.template => t('ورقة التظليل', 'Bubble sheet'),
       CreateStep.questions => t('الأسئلة', 'Questions'),
       CreateStep.publish => t('الإعدادات', 'Settings'),
+      CreateStep.sheets => t('أوراق الإجابة', 'Answer sheets'),
       CreateStep.identify => t('الطلاب', 'Students'),
     };
 
@@ -216,6 +280,7 @@ String? createStepValue(CreateStep s, ExamCreatePlan p) => switch (s) {
       CreateStep.template => p.template?.title,
       CreateStep.questions => _questionsValue(p),
       CreateStep.publish => _publishValue(p),
+      CreateStep.sheets => p.asksCopies ? sheetCopiesLabel(p.effectiveCopies) : null,
       CreateStep.identify => null,
     };
 
@@ -270,9 +335,10 @@ BubbleCheck bubbleCheckOf(ExamCreatePlan p) {
   final cap = tpl != null && tpl.questions > 0 ? tpl.questions : null;
   final bubbles = tpl?.options;
   return BubbleCheck(
-    notHeld: [for (final q in p.exam.questions) if (!bubbleCanHold(q.type)) q],
+    // with the NB2 sheet on, written questions go there (D-687); only what neither sheet holds stands in the way
+    notHeld: [for (final q in p.exam.questions) if (!bubbleCanHold(q.type) && !(p.answerSheetOn && answerSheetCanHold(q.type))) q],
     importedNotHeld: p.importedNotBubble,
-    over: cap != null && p.questionCount > cap ? p.questionCount - cap : 0,
+    over: cap != null && p.bubbleQuestionCount > cap ? p.bubbleQuestionCount - cap : 0,
     choicesOver: bubbles == null ? 0 : p.exam.questions.where((q) => q.options.where((o) => o.text.trim().isNotEmpty).length > bubbles).length,
     capacity: cap,
   );
@@ -327,7 +393,10 @@ bool createStepReady(CreateStep s, ExamCreatePlan p, {bool identifierValid = fal
       return errors.isEmpty && perQ.isEmpty && !bubbleCheckOf(p).blocks;
     case CreateStep.publish:
       return p.publish != null && publishStepErrors(p).isEmpty;
+    case CreateStep.sheets:
+      return true;
     case CreateStep.identify:
-      return identifierValid;
+      if (p.needsPeopleFile) return p.peopleCount > 0;
+      return !needsIdentifierPlan(p) || identifierValid;
   }
 }

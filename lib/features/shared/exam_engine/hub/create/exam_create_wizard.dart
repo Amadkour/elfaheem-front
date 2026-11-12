@@ -43,6 +43,7 @@ import '../../paper/exam_setup_wizard.dart' show TemplateStepBody;
 import '../../paper/bubble/bubble_import_screen.dart' show openBubbleSheetFinder;
 import '../deliver/exam_deliver_screen.dart' show openExamDeliver;
 import '../deliver/identifier_plan_step.dart' show IdentifierPlanStep;
+import 'answer_sheet_widgets.dart';
 import 'exam_create_logic.dart';
 import 'exam_create_parts.dart';
 import 'exam_create_prefs.dart';
@@ -109,6 +110,7 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
   ExamCreatePrefs? _prefs;
   AnswerFormat? _lastAnswer;
   int? _lastTemplate;
+  SheetCopies? _lastCopies;
   CreateStep? _furthest;
   bool _busy = false;
   String? _error;
@@ -134,6 +136,7 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
   bool get _omrOn => !AppConfig.disableList.contains(kExamOmrFeatureKey);
   bool get _identifiersOn => !AppConfig.disableList.contains(kExamIdentifiersFeatureKey);
   bool get _canGenerate => !AppConfig.disableList.contains(kExamAutoCreateKey);
+  bool get _answerSheetOn => !AppConfig.disableList.contains(kExamAnswerSheetFeatureKey);
 
   List<CreateStep> get _steps => createSteps(_plan, whereNeeded: _whereNeeded, omrOn: _omrOn, identifiersOn: _identifiersOn);
 
@@ -163,6 +166,7 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
       _loadError = null;
     });
     final fixedCourse = widget.courseId;
+    _plan.answerSheetOn = _answerSheetOn;
     try {
       if (widget.initialPlan != null && widget.placesLoader == null) {
         _places = const [];
@@ -222,6 +226,11 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
     setState(() {
       _lastAnswer = last;
       _lastTemplate = got.templateId;
+      _lastCopies = got.copies;
+      // the answer sheets as last time, while nothing was chosen here (D-687)
+      if (got.bubble != null) _plan.bubbleSource = got.bubble!;
+      if (got.idSource != null) _plan.idSource = got.idSource!;
+      if (_plan.copies == null && got.copies != null) _plan.copies = got.copies;
       // only while the teacher has not answered yet
       if (_plan.answer == null && last != null && answerFormatsFor(omrOn: _omrOn).contains(last)) _plan.setAnswer(last);
     });
@@ -325,7 +334,13 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
       _busy = false;
       _published = true;
     });
-    unawaited(_prefs?.save(answer: _plan.answer, templateId: _plan.isBubble ? _plan.template?.id : null));
+    unawaited(_prefs?.save(
+      answer: _plan.answer,
+      templateId: _plan.isBubble ? _plan.template?.id : null,
+      bubble: _plan.isBubble ? _plan.bubbleSource : null,
+      copies: _plan.asksCopies ? _plan.effectiveCopies : null,
+      idSource: _plan.personalSheets && _plan.hasCourse ? _plan.idSource : null,
+    ));
     if (_plan.isPaper) {
       final course = _plan.exam.courseId == null ? '' : (_plan.place?.name ?? '');   // a place without a course is named for the organization
       await openExamDeliver(context, examId: _sync.examId!, title: _plan.exam.title.trim(), courseId: _plan.exam.courseId, course: course);
@@ -517,7 +532,10 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
     }
   }
 
-  void _removeNotHeld() => setState(() => _plan.exam.questions.removeWhere((x) => !bubbleCanHold(x.type)));
+  void _removeNotHeld() => setState(() {
+        final out = bubbleCheckOf(_plan).notHeld.toSet();
+        _plan.exam.questions.removeWhere(out.contains);
+      });
 
   bool _reviewing(QuickQuestion x) => _review.supported && _review.isGenerated(x) && !AppConfig.disableList.contains(kRagLearningFeatureKey);
 
@@ -653,6 +671,9 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
         CreateStep.template => (t('اختر ورقة التظليل', 'Choose the bubble sheet'), t('اخترنا لك الأنسب، ويمكنك تغييرها', 'We picked the closest fit; you can change it')),
         CreateStep.questions => (t('الأسئلة', 'The questions'), null),
         CreateStep.publish => _plan.isElectronic ? (t('متى وكيف يفتح؟', 'When and how does it open?'), null) : (t('الطباعة', 'Printing'), null),
+        CreateStep.sheets => (t('أوراق الإجابة', 'Answer sheets'), t('ما يُطبع ليجيب عليه الطلاب', 'What is printed for the students to answer on')),
+        CreateStep.identify when _plan.needsPeopleFile =>
+          (t('من هم الطلاب؟', 'Who are the students?'), t('تُطبع الأوراق الشخصية من القائمة التي ترفعها', 'The personal sheets are printed from the list you upload')),
         CreateStep.identify => (t('كيف نتعرف على كل طالب؟', 'How do we identify each student?'), t('تُطابق كل ورقة بصاحبها من خلال هذه القيمة', 'Each paper is matched to its student by this value')),
       };
 
@@ -660,7 +681,8 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
         CreateStep.where => t('اختر المكان للمتابعة', 'Choose a place to continue'),
         CreateStep.answer => t('اختر طريقة الإجابة للمتابعة', 'Choose how students answer to continue'),
         CreateStep.template => t('اختر ورقة معتمدة للمتابعة', 'Choose an approved sheet to continue'),
-        CreateStep.questions || CreateStep.publish => null,
+        CreateStep.questions || CreateStep.publish || CreateStep.sheets => null,
+        CreateStep.identify when _plan.needsPeopleFile => t('ارفع قائمة الطلاب للمتابعة', 'Upload the student list to continue'),
         CreateStep.identify => t('أكمل تحديد الطلاب للمتابعة', 'Finish identifying the students to continue'),
       };
 
@@ -670,19 +692,51 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
         CreateStep.template => _templateBody(),
         CreateStep.questions => _questionsBody(),
         CreateStep.publish => _publishBody(),
-        CreateStep.identify => IdentifierPlanStep(
-            examId: _sync.examId!,
-            courseId: _plan.exam.courseId,
-            // may be reported while the step is still building
-            onValid: (v) => WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted && v != _identifierValid) setState(() => _identifierValid = v);
-            }),
+        CreateStep.sheets => CreateSheetsBody(
+            printsBubble: _plan.printsBubbleSheets,
+            answerSheet: _plan.wantsAnswerSheet,
+            writtenCount: _plan.writtenQuestionCount,
+            copies: _plan.effectiveCopies,
+            hasCourse: _plan.hasCourse,
+            lastUsed: _lastCopies,
+            onCopies: (v) => setState(() => _plan.copies = v),
           ),
+        CreateStep.identify => _identifyBody(),
       };
+
+  /// The students: the uploaded list of an exam with no course, else what the personal sheets carry and the course's
+  /// identifier plan (D-687; asked only when it applies).
+  Widget _identifyBody() {
+    if (_plan.needsPeopleFile) {
+      return PeopleFileStep(
+        examId: _sync.examId!,
+        onCount: (n) {
+          if (mounted && n != _plan.peopleCount) setState(() => _plan.peopleCount = n);
+        },
+      );
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (_plan.personalSheets) ...[
+        CreateIdSourceRow(value: _plan.idSource, onPick: (v) => setState(() => _plan.idSource = v)),
+        const SizedBox(height: AppSpace.md),
+      ],
+      if (needsIdentifierPlan(_plan))
+        IdentifierPlanStep(
+          examId: _sync.examId!,
+          courseId: _plan.exam.courseId,
+          // may be reported while the step is still building
+          onValid: (v) => WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && v != _identifierValid) setState(() => _identifierValid = v);
+          }),
+        ),
+    ]);
+  }
 
   Widget _templateBody() {
     final check = bubbleCheckOf(_plan);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      CreateBubbleSourceBody(value: _plan.bubbleSource, onPick: (v) => setState(() => _plan.bubbleSource = v)),
+      const SizedBox(height: AppSpace.md),
       TemplateStepBody(
         templates: _templates,
         error: _templatesError,
@@ -727,6 +781,15 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
       AppField(key: const ValueKey('create.title'), controller: _title, label: t('اسم الاختبار', 'Exam name'), onChanged: (v) => setState(() => q.title = v)),
       const SizedBox(height: AppSpace.sm),
       if (bubble) ...[const CreateBubbleRules(), const SizedBox(height: AppSpace.sm)],
+      if (bubble && _plan.answerSheetOn) ...[
+        AppBanner(
+          key: const ValueKey('create.bubble.written'),
+          icon: Icons.edit_note_rounded,
+          text: t('الأسئلة الكتابية (رقم، كلمة، إجابة قصيرة أو طويلة) تُطبع في ورقة إجابة منفصلة يقرؤها الماسح.',
+              'Written questions (a number, a word, a short or long answer) go on a separate answer sheet the scanner reads.'),
+        ),
+        const SizedBox(height: AppSpace.sm),
+      ],
       if (_plan.answerBooklet) ...[const CreateTableRules(), const SizedBox(height: AppSpace.sm)],
       if (check.blocks) ...[
         CreateBubbleProblems(check: check, onRemove: _removeNotHeld, onNormal: _usePaper, onEditor: _openEditor),
@@ -771,6 +834,8 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
                 key: ObjectKey(q.questions[i]),
                 index: i,
                 question: q.questions[i],
+                orgId: q.orgId,
+                courseId: q.courseId,
                 errors: perQ[i] ?? const [],
                 onChanged: () => setState(() {}),
                 onRemove: _reviewing(q.questions[i]) ? () => _reject(q.questions[i]) : () => setState(() => q.questions.removeAt(i)),
@@ -781,7 +846,7 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
           AppEmpty(icon: Icons.post_add_rounded, title: t('أضف أول سؤال', 'Add the first question'), message: t('اختر نوع السؤال من الأسفل', 'Pick a question type below')),
         const SizedBox(height: AppSpace.xxs),
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-          for (final ty in bubble ? kBubbleQuestionTypes : quickQuestionTypes)
+          for (final ty in bubble ? [...kBubbleQuestionTypes, if (_plan.answerSheetOn) ...kWrittenQuestionTypes] : quickQuestionTypes)
             AppPill(key: ValueKey('create.add.$ty'), icon: quickTypeIcon(ty), label: quickTypeLabel(ty), onTap: () => setState(() => q.questions.add(QuickQuestion.ofType(ty)))),
         ]),
       ],

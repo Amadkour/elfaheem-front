@@ -22,14 +22,6 @@ import 'api_call_scan.dart';
 const knownMissing = <String, String>{
   // fallback for an older backend: tried only after GET /api/v1/my-enrolled-courses answers 404
   'GET /api/v1/my-enrollments': 'legacy fallback route (student_analytics_api.dart fetchMyEnrollments)',
-  // auto-grade back pending merge (packs A and C, D-675 / D-676 / D-683..D-685): the lead removes these after regenerating
-  'DELETE /api/v1/exam/questions/{}/answer-memory/{}': 'auto-grade back pending merge',
-  'GET /api/v1/exam/questions/{}/answer-memory': 'auto-grade back pending merge',
-  'GET /api/v1/models/benchmarks': 'auto-grade back pending merge',
-  'GET /api/v1/models/benchmarks/runs/{}': 'auto-grade back pending merge',
-  'POST /api/v1/models/benchmarks/run': 'auto-grade back pending merge',
-  'PUT /api/v1/models/benchmarks/roles/{}/choice': 'auto-grade back pending merge',
-  'PUT /api/v1/models/roles/nli/judge': 'auto-grade back pending merge',
 };
 
 void main() {

@@ -29,6 +29,8 @@ import 'exam_gen_api.dart' show genMetaOf;
 import 'exam_generate.dart' show ExamGenReview, GenMark, deleteGenItem, regenerateGenItem, sendGenFeedback;
 import 'exam_generate_sheet.dart' show GenRejectSheet, GenReviewBar, QuickGenerateCard, openExamGenerator;
 import 'exam_gen_api.dart' show kExamAutoCreateKey;
+import 'exam_open_key.dart';
+import 'exam_open_key_widgets.dart';
 import 'exam_paper_sheet.dart' show openExamPaper;
 import 'exam_quick.dart';
 import 'exam_results_screen.dart';
@@ -562,6 +564,8 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
                             key: ObjectKey(q.questions[i]),
                             index: i,
                             question: q.questions[i],
+                            orgId: q.orgId,
+                            courseId: q.courseId,
                             errors: perQ[i] ?? const [],
                             onChanged: () => setState(() {}),
                             onRemove: _reviewing(q.questions[i]) ? () => _reject(q.questions[i]) : () => setState(() => q.questions.removeAt(i)),
@@ -667,9 +671,16 @@ class _QuickFilePanelState extends State<QuickFilePanel> {
 
 /// One question of the quick builder; edits [question] in place and calls [onChanged] (under the layout harness).
 class QuickQuestionCard extends StatefulWidget {
-  const QuickQuestionCard({super.key, required this.index, required this.question, this.errors = const [], required this.onChanged, required this.onRemove});
+  const QuickQuestionCard(
+      {super.key, required this.index, required this.question, this.errors = const [], required this.onChanged, required this.onRemove, this.orgId, this.courseId, this.deriveApi});
   final int index;
   final QuickQuestion question;
+
+  /// Where the exam goes: the derived-key preview is asked with the teacher's rights there.
+  final int? orgId, courseId;
+
+  /// Tests pass a fake.
+  final DeriveKeyApi? deriveApi;
   final List<String> errors;
   final VoidCallback onChanged;
   final VoidCallback onRemove;
@@ -686,6 +697,7 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
   late final _prompt = TextEditingController(text: q.prompt);
   late final _points = TextEditingController(text: fmtPoints(q.points));
   late final _key = TextEditingController(text: q.keyText);
+  DeriveKeyPreview? _preview;
   late final Map<int, TextEditingController> _opts = {for (final o in q.options) o.uid: TextEditingController(text: o.text)};
 
   final Map<String, TextEditingController> _more = {};
@@ -726,7 +738,7 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
           Text('${widget.index + 1}', style: AppType.headline(context).copyWith(height: 1, fontFeatures: const [FontFeature.liningFigures()])),
           const SizedBox(width: AppSpace.sm),
           Expanded(
-              child: Text(quickTypeLabel(q.type),
+              child: Text(q.isOpenKind ? t('إجابة مفتوحة', 'Open answer') : quickTypeLabel(q.type),
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600))),
           SizedBox(
             width: _pointsWidth,
@@ -763,6 +775,7 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
           'fill_blank' => _blanks(context),
           'matching' => _pairs(context),
           'mcq_single' => _options(context),
+          'numeric' => _numeric(context),
           _ => _essay(context),
         },
         _difficulty(context),
@@ -925,8 +938,68 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
     ];
   }
 
-  List<Widget> _essay(BuildContext context) {
+  void _pickKind(OpenKind k) {
+    setState(() => q.setOpenKind(k));
+    widget.onChanged();
+  }
+
+  Future<void> _advanced() async {
+    final x = await showOpenKeyAdvanced(context, kind: q.openKind, extras: q.extras, preview: _preview);
+    if (x == null || !mounted) return;
+    setState(() => q.extras = x);
+    widget.onChanged();
+  }
+
+  Future<void> _numericAdvanced() async {
+    final done = await showNumericAdvanced(context, q.engine!);
+    if (done != true || !mounted) return;
+    setState(() {});
+    widget.onChanged();
+  }
+
+  /// A number: the right value; the margin and units under Advanced (D-686).
+  List<Widget> _numeric(BuildContext context) {
+    final d = q.engine!;
+    final tol = parseNum(d.numTolerance);
+    final notes = [
+      if (tol != null && tol > 0) d.toleranceKind == 'pct' ? t('هامش ±${fmtPoints(tol)}٪', 'Margin ±${fmtPoints(tol)}%') : t('هامش ±${fmtPoints(tol)}', 'Margin ±${fmtPoints(tol)}'),
+      if (d.units.isNotEmpty) t('الوحدات: ${d.units.map((u) => u.name).join('، ')}', 'Units: ${d.units.map((u) => u.name).join(', ')}'),
+    ];
     return [
+      OpenKindChips(value: OpenKind.numeric, onPick: _pickKind),
+      AppSpace.gapXs,
+      Padding(
+        padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
+        child: TextField(
+          key: const ValueKey('open.number'),
+          controller: _ctl('num', d.numValue),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+          decoration: InputDecoration(isDense: true, labelText: t('الرقم الصحيح', 'The right number')),
+          onChanged: (v) {
+            d.numValue = v;
+            widget.onChanged();
+          },
+        ),
+      ),
+      if (notes.isNotEmpty) Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text(notes.join(' · '), style: AppType.meta(context))),
+      Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: TextButton.icon(
+          key: const ValueKey('open.advanced'),
+          onPressed: _numericAdvanced,
+          icon: const Icon(Icons.tune_outlined, size: AppIconSize.sm),
+          label: Text(t('متقدم', 'Advanced')),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _essay(BuildContext context) {
+    final kind = q.openKind;
+    final byModel = q.keyBy == EssayKey.model;
+    return [
+      OpenKindChips(value: kind, auto: q.extras.kind == null && q.type == 'short_answer', onPick: _pickKind),
+      AppSpace.gapXs,
       Padding(
         padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
         child: AppSwitchTile(
@@ -941,35 +1014,54 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
         ),
       ),
       if (q.autoGrade) ...[
-        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-          for (final k in EssayKey.values)
-            AppChoiceChip(
-              label: essayKeyLabel(k),
-              selected: q.keyBy == k,
-              onTap: () {
-                setState(() => q.keyBy = k);
-                widget.onChanged();
-              },
-            ),
-        ]),
-        AppSpace.gapXs,
+        // a generated question may come graded by key points or words: kept as it came, one tap back to a model answer
+        if (!byModel)
+          Padding(
+            padding: const EdgeInsetsDirectional.only(bottom: AppSpace.xxs, end: AppSpace.xs),
+            child: Wrap(spacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              Text(essayKeyLabel(q.keyBy), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600)),
+              TextButton(
+                onPressed: () {
+                  setState(() => q.keyBy = EssayKey.model);
+                  widget.onChanged();
+                },
+                child: Text(t('استخدم إجابة نموذجية', 'Use a model answer instead')),
+              ),
+            ]),
+          ),
         Padding(
           padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
           child: TextField(
+            key: const ValueKey('open.model'),
             controller: _key,
-            minLines: q.keyBy == EssayKey.model ? 3 : 2,
+            minLines: kind == OpenKind.word ? 1 : (byModel ? 3 : 2),
             maxLines: 8,
-            decoration: InputDecoration(hintText: essayKeyHint(q.keyBy)),
+            decoration: InputDecoration(
+                labelText: byModel ? t('الإجابة النموذجية', 'Model answer') : null, hintText: byModel ? openModelHint(kind) : essayKeyHint(q.keyBy)),
             onChanged: (v) {
-              q.keyText = v;
+              setState(() => q.keyText = v);
               widget.onChanged();
             },
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.only(top: AppSpace.xxs),
-          child: Text(essayKeyHint(q.keyBy), style: AppType.meta(context)),
-        ),
+        if (byModel)
+          OpenKeyAutoPanel(
+            type: q.type,
+            prompt: q.prompt,
+            answer: q.toDraft().answer(),
+            kind: kind,
+            orgId: widget.orgId,
+            courseId: widget.courseId,
+            api: widget.deriveApi,
+            overridden: q.extras.hasOverrides,
+            onAdvanced: _advanced,
+            onPreview: (p) => _preview = p,
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpace.xxs),
+            child: Text(essayKeyHint(q.keyBy), style: AppType.meta(context)),
+          ),
       ],
     ];
   }

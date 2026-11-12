@@ -260,11 +260,18 @@ class ScanFailure {
   final String reason;
   final String? code;
   final int status;
+
+  /// The photo itself must be taken again (an NB2 page that failed the quality check, D-687).
+  bool get retake => kScanRetakeCodes.contains(code);
 }
+
+/// An NB2 page the server refused before storing it (contract B3): retake this page.
+const kScanRetakeCodes = {'sheet_marks_missing', 'page_blurry', 'not_this_exam'};
 
 /// The server refused ONE file of the part (the part is sent again file by file so the others go through).
 bool scanFileLevelFailure(EngineResult r) =>
     r.status == 413 ||
+    kScanRetakeCodes.contains(r.code) ||
     const {'unsupported_file', 'bad_pdf', 'bad_image', 'image_too_large', 'too_many_pages', 'page_too_large', 'file_too_large', 'upload_too_large', 'too_many_files'}
         .contains(r.code);
 

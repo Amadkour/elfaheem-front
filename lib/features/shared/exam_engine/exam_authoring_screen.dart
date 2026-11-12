@@ -24,6 +24,8 @@ import 'exam_authoring.dart';
 import 'exam_forms_import.dart';
 import 'exam_grading_widgets.dart' show ResultsViewField;
 import 'exam_media.dart';
+import 'exam_open_key.dart';
+import 'exam_open_key_widgets.dart';
 import 'exam_paper_sheet.dart' show openExamPaper;
 import 'offline/offline_exam_teacher.dart';
 import 'exam_page_width.dart';
@@ -774,8 +776,11 @@ class _SectionFormState extends State<SectionForm> with _Controllers {
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 class QuestionEditorForm extends StatefulWidget {
-  const QuestionEditorForm({super.key, required this.draft, required this.onSave, this.scrollable = true, this.orgId, this.courseId, this.mediaApi});
+  const QuestionEditorForm({super.key, required this.draft, required this.onSave, this.scrollable = true, this.orgId, this.courseId, this.mediaApi, this.deriveApi});
   final int? courseId;
+
+  /// The derived-key preview (tests pass a fake).
+  final DeriveKeyApi? deriveApi;
   final QuestionDraft draft;
 
   /// Bank space of the question image upload (null = the personal bank) and the API (tests inject a fake).
@@ -797,6 +802,11 @@ class _QuestionEditorFormState extends State<QuestionEditorForm> with _Controlle
   List<String> _codes = const [];
   String? _error;
   bool _busy = false;
+
+  // the open answer's key (D-686): the overrides live in the draft's answer key, the preview beside it
+  DeriveKeyPreview? _preview;
+  OpenKeyExtras get _extras => OpenKeyExtras.fromAnswer(d.extraAnswer);
+  OpenKind get _openKind => openKindShown(d.type, teacher: _extras.kind, model: d.model, rubricCriteria: d.rubric.length);
 
   Future<void> _save() async {
     final codes = d.validate();
@@ -1056,7 +1066,35 @@ class _QuestionEditorFormState extends State<QuestionEditorForm> with _Controlle
               child: AppBanner(icon: Icons.upload_file_rounded, text: t('يرفع الطالب ملفاً؛ يُصحَّح يدوياً بالمعايير أدناه', 'Students upload a file; it is marked by hand with the criteria below')),
             ),
           AppSectionTitle(t('مفتاح التصحيح', 'Marking key'), subtitle: t('إجابة نموذجية أو معايير — أو كلاهما', 'A model answer or criteria — or both')),
-          AppField(controller: ctl('model', d.model), label: t('الإجابة النموذجية', 'Model answer'), maxLines: 4, onChanged: (v) => d.model = v),
+          if (d.type != 'file_upload') ...[
+            OpenKindChips(
+                kinds: kTextKinds,
+                value: _openKind,
+                auto: _extras.kind == null && d.type == 'short_answer',
+                onPick: (k) => setState(() => (_extras..kind = k).writeTo(d.extraAnswer))),
+            const SizedBox(height: AppSpace.sm),
+          ],
+          AppField(controller: ctl('model', d.model), label: t('الإجابة النموذجية', 'Model answer'), maxLines: 4, onChanged: (v) => setState(() => d.model = v)),
+          if (d.type != 'file_upload' && d.extraAnswer['auto_grade'] != false)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.sm),
+              child: OpenKeyAutoPanel(
+                type: d.type,
+                prompt: d.prompt,
+                answer: d.answer(),
+                kind: _openKind,
+                orgId: widget.orgId,
+                courseId: widget.courseId,
+                api: widget.deriveApi,
+                overridden: _extras.hasOverrides,
+                onPreview: (p) => _preview = p,
+                onAdvanced: () async {
+                  final x = await showOpenKeyAdvanced(context, kind: _openKind, extras: _extras, preview: _preview);
+                  if (x == null || !mounted) return;
+                  setState(() => x.writeTo(d.extraAnswer));
+                },
+              ),
+            ),
           AppField(controller: ctl('alts', d.alternatives), label: t('صيغ مقبولة أخرى (سطر لكل صيغة)', 'Other accepted wordings (one per line)'), maxLines: 3,
               onChanged: (v) => d.alternatives = v),
           AppSectionTitle(t('معايير التصحيح', 'Rubric criteria'),

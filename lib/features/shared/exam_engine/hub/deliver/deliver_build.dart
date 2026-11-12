@@ -27,6 +27,7 @@ import '../../exam_versions.dart';
 import '../../paper/exam_setup.dart';
 import '../../paper/omr_counts.dart' show omrMinutesText;
 import '../create/answer_format.dart';
+import '../create/answer_sheet_plan.dart' show SheetPlan;
 import 'deliver_logic.dart';
 import 'paper_page_replay.dart';
 
@@ -38,7 +39,7 @@ String get sampleStudentName => t('اسم الطالب', 'Student name');
 /// Everything delivery needs about one exam.
 class DeliverSource {
   DeliverSource({required this.view, required this.base, required this.tpl, required this.versions, required this.regular, required this.bold,
-      required this.delivery, required this.bubble, required this.printed, this.format = AnswerFormat.onPaper, this.bookletDefault = false, this.design, this.cover, this.designVersion = 0, this.identifier, this.orgId, this.hasCourse = false, this.plan});
+      required this.delivery, required this.bubble, required this.printed, this.format = AnswerFormat.onPaper, this.bookletDefault = false, this.design, this.cover, this.designVersion = 0, this.identifier, this.orgId, this.hasCourse = false, this.plan, this.sheetPlan});
   final ExamView view;
 
   /// The exam's paper with the design and every picture applied, in the exam's own order.
@@ -52,6 +53,9 @@ class DeliverSource {
 
   /// What the wizard planned (`settings.paper_plan`); null on an exam made any other way.
   final DeliverPlan? plan;
+
+  /// The answer sheets the wizard planned (`settings.sheet_plan`, D-687); null on an exam made any other way.
+  final SheetPlan? sheetPlan;
 
   /// The exam uses bubble answer sheets.
   final bool bubble;
@@ -155,6 +159,7 @@ Future<DeliverLoad> loadDeliverSource(int examId, {required String accentFallbac
     bold: fonts[1],
     delivery: setup?.delivery ?? 'online',
     plan: DeliverPlan.ofSettings(r.map['settings']),
+    sheetPlan: SheetPlan.ofSettings(r.map['settings']),
     bubble: setup?.isBubble ?? false,
     printed: results[1].ok ? printedIdsOfSetup(results[1].map) : const [],
     format: format,
