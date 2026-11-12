@@ -210,7 +210,7 @@ class ExamCreateSync {
       _markersSet = false;
     }
     final made = await _versionsApi.generate(
-        examId!, versionBody(count: n, shuffleQuestions: p.shuffleQuestions && !p.isBubble, shuffleOptions: p.shuffleOptions && p.shuffleOptionsAllowed));
+        examId!, versionBody(count: n, shuffleQuestions: p.shuffleQuestions && p.shuffleQuestionsAllowed, shuffleOptions: p.shuffleOptions && p.shuffleOptionsAllowed));
     if (!made.ok) return versionsErrorText(made);
     _versionsMade = n;
     if (n > 1) {

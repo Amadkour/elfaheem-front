@@ -810,20 +810,30 @@ class CreateVersionsPanel extends StatelessWidget {
           SizedBox(width: AppIconSize.xl, child: Text('$n', key: const ValueKey('create.versions.count'), textAlign: TextAlign.center, style: AppType.figure(context))),
           IconButton(key: const ValueKey('create.versions.more'), tooltip: t('أكثر', 'More'), onPressed: n < 10 ? () => onVersions(n + 1) : null, icon: const Icon(Icons.add_circle_outline_rounded)),
         ]),
-        if (n > 1) ...[
+        if (n > 1 && !p.shuffleAllowed)
+          // choice questions answered in the answer sheet's boxes follow the exam's own order: nothing to shuffle
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpace.xxs),
+            child: Text(
+              t('لا خلط هنا: مربعات الاختيار في ورقة الإجابة تتبع ترتيب الأسئلة والاختيارات الأصلي، فالنماذج تختلف في رمزها فقط',
+                  'No shuffling here: the answer sheet\'s choice boxes follow the exam\'s own question and option order, so the versions differ only by their code'),
+              key: const ValueKey('create.versions.noshuffle'),
+              style: AppType.meta(context),
+            ),
+          ),
+        if (n > 1 && p.shuffleAllowed) ...[
           AppSwitchTile(
             title: t('اخلط ترتيب الأسئلة', 'Shuffle the questions'),
             subtitle: p.isBubble ? versionsBubbleText : null,
-            value: p.shuffleQuestions && !p.isBubble,
+            value: p.shuffleQuestions && p.shuffleQuestionsAllowed,
             dense: true,
-            onChanged: p.isBubble ? null : onShuffleQuestions,
+            onChanged: p.shuffleQuestionsAllowed ? onShuffleQuestions : null,
           ),
           AppSwitchTile(
             title: t('اخلط ترتيب الاختيارات', 'Shuffle the choices'),
-            subtitle: p.shuffleOptionsAllowed ? null : t('مربعات الاختيار في ورقة الإجابة تتبع ترتيب الاختيارات', 'The choice boxes on the answer sheet follow the option order'),
-            value: p.shuffleOptions && p.shuffleOptionsAllowed,
+            value: p.shuffleOptions,
             dense: true,
-            onChanged: p.shuffleOptionsAllowed ? onShuffleOptions : null,
+            onChanged: onShuffleOptions,
           ),
           if (versionsWouldMatch(p))
             Padding(

@@ -261,13 +261,19 @@ class ExamCreatePlan {
   /// An uploaded file prints as it is, and an own sheet carries no version mark: one version in both cases.
   bool get versionsAllowed => !exam.isFile && !ownSheet;
 
-  /// Multiple choice or true / false answered on the NB2 sheet gets a row of choice boxes in the exam's own option order,
-  /// so the versions may not shuffle the options (contract §4, 409 `versions_shuffle_options`).
-  bool get shuffleOptionsAllowed {
+  /// Multiple choice or true / false answered on the NB2 sheet gets a row of choice boxes in the exam's own question and
+  /// option order, so a version that shuffles either would credit the marks to the wrong question or option: neither is
+  /// offered nor sent then (contract §4, 409 `versions_shuffle_options`).
+  bool get shuffleAllowed {
     final l = layout;
     if (!wantsAnswerSheet || l == null) return true;
     return !exam.questions.any((q) => bubbleCanHold(q.type) && !l.bubbleTypes.contains(q.type));
   }
+
+  bool get shuffleOptionsAllowed => shuffleAllowed;
+
+  /// A bubble sheet numbers its rows in the exam's order too.
+  bool get shuffleQuestionsAllowed => !isBubble && shuffleAllowed;
 
   /// A copy named for each student: something NextBrain prints must carry the name (the question paper, or the bubble
   /// sheet beside an uploaded file). The students come from the course, or from a list without one.
@@ -492,7 +498,7 @@ List<String> publishStepErrors(ExamCreatePlan p) {
 /// Versions that would all come out the same: nothing to shuffle was switched on, or nothing can be shuffled.
 bool versionsWouldMatch(ExamCreatePlan p) {
   if (p.effectiveVersions < 2) return false;
-  final canQuestions = !p.isBubble && p.shuffleQuestions && p.questionCount > 1;
+  final canQuestions = p.shuffleQuestionsAllowed && p.shuffleQuestions && p.questionCount > 1;
   final canOptions = p.shuffleOptions && p.shuffleOptionsAllowed && p.exam.questions.any((q) => q.type == 'mcq_single');
   return !canQuestions && !canOptions && p.importedQuestions == 0;
 }

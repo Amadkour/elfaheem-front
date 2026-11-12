@@ -387,8 +387,11 @@ void main() {
     });
 
     test('finish: versions before their marks, then publish; a retry publishes once', () async {
+      // answered in the booklet: with NB2 choice boxes nothing is shuffled (the next test)
+      final p = _plan()
+        ..answerSheetOn = false
+        ..versions = 3;
       final (sync, a, s, v) = _server();
-      final p = _plan()..versions = 3;
       a.failPublish = EngineResult.fail(500, null, 'x');
       expect(await sync.finish(p), isNotNull);
       a.failPublish = null;
@@ -402,6 +405,14 @@ void main() {
       expect(v.bodies.last['shuffle_questions'], isTrue);
       expect(await sync.finish(p), isNull);
       expect(a.calls.where((c) => c == 'lifecycle:publish').length, 2);   // the failed try + the good one, never a third
+    });
+
+    test('choice questions in the NB2 boxes: the versions shuffle neither questions nor options', () async {
+      final (sync, _, _, v) = _server();
+      final p = _plan()..versions = 3;
+      expect((p.shuffleAllowed, p.shuffleQuestions, p.shuffleOptions), (false, true, true));
+      expect(await sync.finish(p), isNull);
+      expect((v.bodies.single['shuffle_questions'], v.bodies.single['shuffle_options']), (false, false));
     });
 
     test('a bubble exam never asks to shuffle the question order', () async {

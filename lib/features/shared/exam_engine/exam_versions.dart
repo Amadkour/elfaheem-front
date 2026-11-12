@@ -109,6 +109,10 @@ String versionWarningText(String code) => switch (code) {
 String versionsErrorText(EngineResult r) => switch (r.code) {
       'versions_stale' => versionsStaleText,
       'question_shuffle_needs_paper_answers' => versionsBubbleText,
+      // D-697: choice questions answered in the NB2 sheet's boxes keep the exam's order
+      'versions_shuffle_options' || 'versions_shuffle_questions' || 'versions_shuffle_choice_rows' => t(
+          'لا يمكن خلط النماذج: أسئلة الاختيار تُجاب في مربعات ورقة الإجابة بالترتيب الأصلي. أنشئ النماذج دون خلط',
+          'The versions cannot be shuffled: choice questions are answered in the boxes of the answer sheet, in the original order. Make the versions without shuffling'),
       _ => authoringError(r),
     };
 

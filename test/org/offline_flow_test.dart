@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_quick.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/exam_versions.dart' show versionsErrorText;
 import 'package:flutter_education_app/features/shared/exam_engine/hub/create/attributes_step.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/create/exam_create_logic.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/create/exam_create_parts.dart';
@@ -133,6 +134,18 @@ void main() {
       expect((two.bubbleQuestionCount, three.bubbleQuestionCount), (2, 3));
       expect(two.shuffleOptionsAllowed, isFalse, reason: 'the true / false is a row of choice boxes on NB2');
       expect(three.shuffleOptionsAllowed, isTrue);
+    });
+
+    test('shuffled versions only when no choice question is answered in the NB2 boxes', () {
+      final one = _paper(PaperLayout.allInPaper)..versions = 3;
+      expect((one.shuffleAllowed, one.shuffleQuestionsAllowed, one.shuffleOptionsAllowed), (false, false, false));
+      final booklet = _paper(PaperLayout.allInPaper)..answerSheetOn = false;
+      expect((booklet.shuffleQuestionsAllowed, booklet.shuffleOptionsAllowed), (true, true));
+      final three = _paper(PaperLayout.bubbleObjective);
+      expect((three.shuffleQuestionsAllowed, three.shuffleOptionsAllowed), (false, true), reason: 'a bubble sheet keeps the question order');
+      final four = _paper(PaperLayout.questionsOnly);
+      expect((four.shuffleQuestionsAllowed, four.shuffleOptionsAllowed), (true, true));
+      expect(versionsErrorText(EngineResult.fail(409, 'versions_shuffle_options', 'x')), contains('cannot be shuffled'));
     });
   });
 
@@ -317,6 +330,14 @@ void main() {
                   lastUsed: SheetCopies.generic,
                   onCopies: (_) {},
                   versions: CreateVersionsPanel(plan: _paper(PaperLayout.allInPaper)..versions = 3, onVersions: (_) {}, onShuffleQuestions: (_) {}, onShuffleOptions: (_) {}),
+                ),
+                CreateVersionsPanel(
+                  plan: _paper(PaperLayout.allInPaper)
+                    ..answerSheetOn = false
+                    ..versions = 3,
+                  onVersions: (_) {},
+                  onShuffleQuestions: (_) {},
+                  onShuffleOptions: (_) {},
                 ),
               ]),
             )));
