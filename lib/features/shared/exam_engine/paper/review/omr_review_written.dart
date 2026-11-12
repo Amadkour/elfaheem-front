@@ -17,6 +17,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 
 import '../../../../admin/admin_common.dart' show t;
+import '../../exam_autograde_widgets.dart' show AutoAnswerText, AutoPointsList, AutoTierLine;
 import 'omr_review.dart';
 
 /// The text direction of an answer: its language when the server says, else what the letters look like.
@@ -100,7 +101,18 @@ class OmrWrittenReading extends StatelessWidget {
         children.add(const SizedBox(height: AppSpace.sm));
       }
     } else {
-      children.add(OmrAnswerText(text: item.writtenText, lang: item.lang));
+      final auto = item.pending ? null : item.auto;
+      if (auto != null && auto.points.isNotEmpty) {
+        // a long answer: the sentence of every point it covers is highlighted (D-688)
+        children.add(Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+          decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.chip), border: Border.all(color: c.divider)),
+          child: AutoAnswerText(text: item.writtenText, auto: auto, lang: item.lang),
+        ));
+      } else {
+        children.add(OmrAnswerText(text: item.writtenText, lang: item.lang));
+      }
       final conf = item.readConfidence;
       if (conf != null) {
         children
@@ -197,6 +209,7 @@ class _ShortSuggestion extends StatelessWidget {
     final kws = item.keywords;
     final missing = item.missingKeywords;
     final model = item.question?.modelAnswer;
+    final auto = item.pending ? null : item.auto;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (item.pending)
         Row(children: [
@@ -213,6 +226,14 @@ class _ShortSuggestion extends StatelessWidget {
           key: const ValueKey('omr.w.suggested'),
           style: appText(16, w: FontWeight.w800, c: c.textDark),
         ),
+      if (auto != null) ...[
+        const SizedBox(height: AppSpace.xs),
+        AutoTierLine(auto: auto),
+        if (auto.points.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.xs),
+          AutoPointsList(auto: auto),
+        ],
+      ],
       if (!item.pending && (bandText.isNotEmpty || sim != null)) ...[
         const SizedBox(height: AppSpace.xxs),
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [

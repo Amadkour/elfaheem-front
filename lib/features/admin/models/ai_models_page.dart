@@ -23,11 +23,13 @@ import '../../../core/models_hub/models_hub_api.dart';
 import '../../../design/app_kit.dart';
 import '../../../design/app_notice.dart';
 import '../../../design/app_tokens.dart';
+import '../../../config/app_config.dart';
 import '../../../utils/live_events.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../auth/auth_provider.dart';
 import '../admin_common.dart' show t;
+import 'ai_models_bench.dart';
 import 'ai_models_sheets.dart';
 import 'ai_models_view.dart';
 import 'models_hub_text.dart';
@@ -87,6 +89,15 @@ class AiModelsPageState extends State<AiModelsPage> {
   StreamSubscription<HubDownload>? _ended;
   bool _prompting = false;
 
+  // Benchmarks tab (contract C, D-689): loaded when it opens; a live run is followed through EventOrPoll on the
+  // hub's `model_benchmark` event (the timer only while the stream is down).
+  HubBenchmarks? _bench;
+  String? _benchError;
+  final _benchBusy = <String>{};
+  bool _benchStarting = false;
+  bool _judgeBusy = false;
+  EventOrPoll? _benchWatch;
+
   ModelsHubApi get _api => widget.api;
   ModelDownloads get _dl => widget.downloads ?? ModelDownloads.instance;
 
@@ -105,6 +116,7 @@ class AiModelsPageState extends State<AiModelsPage> {
     _dl.removeListener(_onDownloads);
     _ended?.cancel();
     _poller?.dispose();
+    _benchWatch?.dispose();
     super.dispose();
   }
 
@@ -147,6 +159,7 @@ class AiModelsPageState extends State<AiModelsPage> {
         _error = null;
       });
       if (_tab == 1) unawaited(_loadAudit());
+      if (_tab == 2) unawaited(_loadBench());
       if (_moving != _fast) _restartPoller(fast: _moving);
       _maybePrompt();
       _checkAwaiting();
@@ -162,6 +175,145 @@ class AiModelsPageState extends State<AiModelsPage> {
       if (mounted) setState(() => _audit = a);
     } catch (e) {
       if (mounted) showAppNotice(HubFailure.from(e).message, error: true);
+    }
+  }
+
+  bool get _benchOn => !AppConfig.disableList.contains(kModelsBenchFeatureKey);
+
+  Future<void> _loadBench() async {
+    try {
+      final b = await _api.benchmarks();
+      if (!mounted) return;
+      setState(() {
+        _bench = b;
+        _benchError = null;
+      });
+      _followRun(b.run);
+    } catch (e) {
+      if (mounted) setState(() => _benchError = HubFailure.from(e).message);
+    }
+  }
+
+  /// Follows a live run until it ends (then the results are read again); nothing to follow otherwise.
+  void _followRun(HubBenchRun? run) {
+    if (run == null || !run.live) {
+      _benchWatch?.dispose();
+      _benchWatch = null;
+      return;
+    }
+    if (_benchWatch != null) return;
+    _benchWatch = EventOrPoll(
+      poll: () => _pollRun(run.id),
+      every: const Duration(seconds: 4),
+      fallbackEvery: const Duration(seconds: 30),
+      names: const {LiveEvents.modelBenchmark},
+      stream: widget.stream,
+    )..start();
+  }
+
+  Future<void> _pollRun(int id) async {
+    try {
+      final r = await _api.benchmarkRun(id);
+      if (!mounted || r == null) return;
+      final b = _bench;
+      setState(() => _bench = HubBenchmarks(roles: b?.roles ?? const [], runners: b?.runners ?? const [], run: r));
+      if (!r.live) {
+        _benchWatch?.dispose();
+        _benchWatch = null;
+        await _loadBench();
+      }
+    } catch (_) {
+      // the next event or poll tries again
+    }
+  }
+
+  Future<void> _runBench() async {
+    final ok = await appConfirm(context,
+        confirmLabel: t('ابدأ القياس', 'Start'),
+        message: t('قياس كل نموذج منزّل لكل دور على هذا الخادم؟ يعمل في الخلفية ولا يغيّر أي نموذج مُفعّل.',
+            'Benchmark every downloaded model of every role on this server? It runs in the background and changes no active model.'));
+    if (!ok || !mounted) return;
+    setState(() => _benchStarting = true);
+    try {
+      final run = await _api.runBenchmarks();
+      if (!mounted) return;
+      final b = _bench;
+      setState(() => _bench = HubBenchmarks(roles: b?.roles ?? const [], runners: b?.runners ?? const [], run: run));
+      _followRun(run);
+    } catch (e) {
+      final f = HubFailure.from(e);
+      showAppNotice(f.message, error: true);
+      if (f.code == 'benchmark_running') unawaited(_loadBench());
+    } finally {
+      if (mounted) setState(() => _benchStarting = false);
+    }
+  }
+
+  String _benchName(HubBenchResult x) =>
+      x.modelId == null ? hubRefLabel(x.name.isEmpty ? x.ref : x.name) : _modelName(_ov?.model(x.modelId), x.name.isEmpty ? x.ref : x.name);
+
+  /// "Use this model" (C4): confirm, then the choice; its activation is the page's own (checks → test → confirm).
+  Future<void> _choose(HubBenchRole r, HubBenchResult x) async {
+    final id = x.modelId;
+    if (id == null) return;
+    final name = _benchName(x);
+    final ok = await appConfirm(context,
+        confirmLabel: t('استخدمه', 'Use it'),
+        message: t('استخدام $name لدور ${hubRoleName(r.role)} بدلاً من التوصية؟ يُنزَّل إن لزم ويُختبر، ثم تؤكد التبديل.',
+            'Use $name for ${hubRoleName(r.role)} instead of the recommendation? It is downloaded if needed and tested, then you confirm the switch.'));
+    if (!ok || !mounted) return;
+    await _sendChoice(r, id, name);
+  }
+
+  Future<void> _followDefault(HubBenchRole r) async {
+    final ok = await appConfirm(context,
+        confirmLabel: t('العودة إلى التوصية', 'Follow the recommendation'),
+        message: t('إلغاء اختيارك لدور ${hubRoleName(r.role)} ليتبع النموذج الموصى به؟', 'Clear your choice for ${hubRoleName(r.role)} so it follows the recommended model?'));
+    if (!ok || !mounted) return;
+    await _sendChoice(r, null, t('النموذج الموصى به', 'The recommended model'));
+  }
+
+  Future<void> _sendChoice(HubBenchRole r, int? id, String name) async {
+    setState(() => _benchBusy.add(r.role));
+    try {
+      final reply = await _api.chooseModel(r.role, id);
+      final step = reply.activation;
+      final target = step.pending?.modelId ?? id ?? reply.effectiveId;
+      switch (step.stage) {
+        case 'active':
+          showAppNotice(t('$name يخدم الآن دور ${hubRoleName(r.role)}', '$name now serves ${hubRoleName(r.role)}'));
+        case 'downloading':
+          if (target != null) _requested.add(target);
+          showAppNotice(t('يُنزَّل $name أولاً ثم يُختبر.', 'Downloading $name first, then it is tested.'));
+          await _dl.refresh();
+        default:
+          // testing / ready_to_confirm: the page's own confirm prompt opens when the test passes (_maybePrompt)
+          if (target != null) {
+            _requested.add(target);
+            _prompted.removeWhere((k) => k.startsWith('$target:'));
+          }
+      }
+      await _load(silent: true);
+      await _loadBench();
+    } catch (e) {
+      showAppNotice(HubFailure.from(e).message, error: true);
+    } finally {
+      if (mounted) setState(() => _benchBusy.remove(r.role));
+    }
+  }
+
+  Future<void> _setJudge(bool on) async {
+    setState(() => _judgeBusy = true);
+    try {
+      final now = await _api.setJudge(on);
+      showAppNotice(now == 'off'
+          ? t('أُوقف حَكَم الاستنتاج: الإجابات التي تحتاجه تذهب إلى المعلّم خلال دقيقة.', 'The inference judge is off: answers that need it go to the teacher within a minute.')
+          : t('حَكَم الاستنتاج يعمل', 'The inference judge is on'));
+      await _load(silent: true);
+    } catch (e) {
+      showAppNotice(HubFailure.from(e).message, error: true);
+    } finally {
+      if (mounted) setState(() => _judgeBusy = false);
     }
   }
 
@@ -565,12 +717,44 @@ class AiModelsPageState extends State<AiModelsPage> {
                         _loadAudit();
                       },
                     ),
+                    if (_benchOn)
+                      AppChoiceChip(
+                        key: const ValueKey('tab_benchmarks'),
+                        label: t('القياس', 'Benchmarks'),
+                        icon: Icons.speed_rounded,
+                        selected: _tab == 2,
+                        onTap: () {
+                          setState(() => _tab = 2);
+                          _loadBench();
+                        },
+                      ),
                   ]),
                   const SizedBox(height: AppSpace.md),
                   if (_error != null && ov == null)
                     AppEmpty(icon: Icons.cloud_off_rounded, title: _error!, actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load)
                   else if (ov == null)
                     const AppListSkeleton(items: 5, withAvatar: false, padding: EdgeInsets.zero)
+                  else if (_tab == 2 && _benchOn)
+                    (_bench == null
+                        ? (_benchError != null
+                            ? AppEmpty(icon: Icons.cloud_off_rounded, title: _benchError!, actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _loadBench)
+                            : const AppListSkeleton(items: 4, withAvatar: false, padding: EdgeInsets.zero))
+                        : HubBenchView(
+                            data: _bench!,
+                            judge: ov.role('nli')?.judge,
+                            names: {
+                              for (final r in _bench!.roles)
+                                for (final x in r.results)
+                                  if (x.modelId != null) x.modelId!: _benchName(x),
+                            },
+                            running: _benchStarting,
+                            busy: _benchBusy,
+                            judgeBusy: _judgeBusy,
+                            onRun: _runBench,
+                            onChoose: _choose,
+                            onFollowDefault: _followDefault,
+                            onJudge: _setJudge,
+                          ))
                   else if (_tab == 0)
                     AiModelsView(overview: ov, downloads: downloads, alerts: _alerts, system: _sys, busy: _busy, actions: actions)
                   else ...[

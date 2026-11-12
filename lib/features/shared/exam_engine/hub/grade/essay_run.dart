@@ -13,6 +13,7 @@ import 'package:flutter_education_app/utils/live_events.dart';
 
 import '../../../../admin/admin_common.dart' show asInt, asMap, t;
 import '../../exam_engine_api.dart' show EngineResult, engineCall;
+import '../../exam_autograde.dart' show AutoGrade;
 import '../../paper/review/omr_review.dart' show OmrReviewApi, kOmrReviewEventKind;
 
 /// The Super Admin's switch of the whole path (the engine answers 403 `feature_disabled` too).
@@ -224,6 +225,7 @@ class EssaySuggestion {
     this.pending = false,
     this.decidedScore,
     this.decision,
+    this.auto,
   });
   final int itemId;
   final String status;
@@ -234,6 +236,9 @@ class EssaySuggestion {
   final String readText;
   final bool pending;
   final double? decidedScore;
+
+  /// The grading tiers' suggestion (contract A4, D-688); null from an older engine.
+  final AutoGrade? auto;
 
   bool get open => status == 'open';
 
@@ -257,6 +262,7 @@ class EssaySuggestion {
       pending: r['pending'] == true,
       decidedScore: _d(res['score']),
       decision: res['action'] as String?,
+      auto: AutoGrade.fromJson(r['auto']),
     );
   }
 }

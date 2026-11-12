@@ -1,0 +1,30 @@
+{"items": [
+  {"answer_id": 501, "attempt_id": 77, "question_id": 12, "type": "essay", "student_id": 10, "prompt": "Why do we see lightning before we hear thunder?",
+   "points": 4, "review_state": "proposed", "proposed_score": 3, "confidence": 0.72, "final_score": null, "grader_version": "tiers:2026.11.12-1",
+   "answer": {"text": "Both start at the same moment. Light is quicker than sound so it arrives first.", "source": "online"},
+   "key": {"model": "Both start at the same moment, and light travels much faster than sound.", "derived": {"v": 1, "kind": "long"}},
+   "marks": [],
+   "proposal": {"score": 3, "max": 4, "confidence": 0.72, "abstain": false, "criteria": [], "flags": [], "scale": 1.0,
+     "tier": "nli", "kind": "long", "decided": false, "tiers_version": "tiers:2026.11.12-1",
+     "points": [
+       {"idx": 0, "text": "Both start at the same moment", "weight": 1.0, "sentence": "Both start at the same moment", "start": 0, "end": 29, "score": 1.0, "state": "matched"},
+       {"idx": 1, "text": "Light is faster than sound", "weight": 2.0, "sentence": "Light is quicker than sound", "start": 31, "end": 58, "score": 1.0, "state": "matched"},
+       {"idx": 2, "text": "Sound needs a few seconds to cover a kilometre", "weight": 1.0, "sentence": null, "start": null, "end": null, "score": 0.0, "state": "missing"},
+       {"idx": 3, "text": "Thunder comes first", "weight": 1.0, "sentence": "it arrives first", "start": 62, "end": 78, "score": 0.0, "state": "contradicted"}
+     ]}},
+  {"answer_id": 502, "attempt_id": 78, "question_id": 13, "type": "short_answer", "student_id": 11, "prompt": "Write the year.",
+   "points": 1, "review_state": "proposed", "proposed_score": 1, "confidence": 0.9, "final_score": null,
+   "answer": {"text": "1250", "source": "handwriting", "layout": "NB2", "scan_page_id": 812, "ocr_confidence": 0.0,
+     "nb2": {"unit": "chars", "read": "1750", "engine": "nb-chars/1",
+       "chars": [{"ch": "1", "conf": 0.998, "ok": true}, {"ch": "2", "conf": 0.41, "alt": "7", "alt_conf": 0.38, "ok": false}, {"ch": "5", "conf": 0.99, "ok": true}, {"ch": "0", "conf": 0.97, "ok": true}],
+       "low_chars": [1], "near_miss": {"from": "1750", "to": "1250", "target": "model", "edits": 1, "boxes": [1], "applied": true},
+       "crop_key": "omr/41/812/w13.png", "cells": 6, "confidence": 0.61, "reasons": ["low_confidence"]}},
+   "key": {"model": "1250"}, "marks": [],
+   "proposal": {"score": 1, "max": 1, "confidence": 0.9, "abstain": false, "criteria": [], "flags": ["ocr_low_confidence"],
+     "tier": "memory", "kind": "word", "decided": false, "keywords": {"found": ["1250"], "missing": []},
+     "memory": {"id": 41, "verdict": "right", "fraction": 1.0, "decisions": 3}}},
+  {"answer_id": 503, "attempt_id": 79, "question_id": 14, "type": "short_answer", "student_id": 12, "prompt": "Old proposal",
+   "points": 2, "review_state": "proposed", "proposed_score": 1, "confidence": 0.5,
+   "answer": {"text": "something", "source": "online"}, "key": {"model": "x"},
+   "proposal": {"score": 1, "max": 2, "confidence": 0.5, "abstain": true, "criteria": [], "flags": []}}
+], "total": 3, "counts": {"proposed": 3}, "accept_threshold": 0.95, "policy": {}}

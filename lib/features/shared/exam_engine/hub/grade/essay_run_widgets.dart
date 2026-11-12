@@ -15,6 +15,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../../../admin/admin_common.dart' show t;
+import '../../exam_autograde_widgets.dart' show AutoAnswerText, AutoPointsList, AutoTierLine;
 import 'essay_run.dart';
 
 /// The tallest an answer's photo is drawn in its card (the full page opens on tap).
@@ -227,12 +228,16 @@ class EssayAnswerCard extends StatelessWidget {
     this.onAccept,
     this.onEdit,
     this.onOpenPage,
+    this.onMemory,
   });
   final EssayAnswer answer;
   final EssayQuestion? question;
   final Uint8List? crop;
   final bool cropLoading, busy;
   final VoidCallback? onAccept, onEdit, onOpenPage;
+
+  /// The question's answer memory (D-688), offered when the tiers proposed the mark.
+  final VoidCallback? onMemory;
 
   @override
   Widget build(BuildContext context) {
@@ -268,7 +273,10 @@ class EssayAnswerCard extends StatelessWidget {
           const SizedBox(height: AppSpace.sm),
           Text(t('ما قرأناه', 'What we read'), style: AppType.label(context)),
           const SizedBox(height: AppSpace.xxs),
-          Text(read, textDirection: _dirOf(read), style: AppType.body(context)),
+          if (s?.auto != null && s!.auto!.points.isNotEmpty && !s.pending)
+            AutoAnswerText(text: read, auto: s.auto!)
+          else
+            Text(read, textDirection: _dirOf(read), style: AppType.body(context)),
         ],
         if (s != null) ...[
           const SizedBox(height: AppSpace.sm),
@@ -291,6 +299,8 @@ class EssayAnswerCard extends StatelessWidget {
             if (a.state == EssayAnswerState.review)
               AppButton.secondary(label: t('تعديل الدرجة', 'Edit the mark'), icon: Icons.edit_rounded, onPressed: busy ? null : onEdit),
             if (onOpenPage != null) AppButton.ghost(label: t('الصفحة كاملة', 'Full page'), icon: Icons.open_in_full_rounded, onPressed: onOpenPage),
+            if (onMemory != null)
+              AppButton.ghost(key: const ValueKey('essay.memory'), label: t('ذاكرة الإجابات', 'Answer memory'), icon: Icons.history_rounded, onPressed: onMemory),
           ]),
         ],
       ]),
@@ -349,6 +359,7 @@ class _Suggestion extends StatelessWidget {
       'zero' || 'empty' => c.danger,
       _ => c.warning,
     };
+    final auto = s.pending ? null : s.auto;
     return Container(
       padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(AppRadius.control)),
@@ -361,6 +372,15 @@ class _Suggestion extends StatelessWidget {
               style: AppType.bodyStrong(context)),
           AppBadgePill(essayBandText(s.band), color: bandColor),
         ]),
+        if (auto != null) ...[
+          const SizedBox(height: AppSpace.xs),
+          AutoTierLine(auto: auto),
+          if (auto.points.isNotEmpty) ...[
+            const SizedBox(height: AppSpace.xs),
+            AutoPointsList(auto: auto),
+          ],
+        ],
+        if (auto == null || auto.points.isEmpty)
         for (final p in s.rubric) ...[
           const SizedBox(height: AppSpace.xs),
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [

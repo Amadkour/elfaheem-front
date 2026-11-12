@@ -1,0 +1,64 @@
+{
+  "roles": [
+    {
+      "role": "nli", "metric": "entail_contradict_acc",
+      "metric_label": {"en": "Entail / contradict accuracy", "ar": "دقة الاستنتاج / التناقض"},
+      "higher_is_better": true, "dataset": "grading-nli-v1", "provisional": true,
+      "active_id": 7, "active": "mDeBERTa-v3-base-xnli-multilingual-nli-2mil7@int8-0864ced",
+      "choice": null,
+      "default": {"model_id": 7, "ref": "mDeBERTa-v3-base-xnli-multilingual-nli-2mil7@int8-0864ced", "rule": "best_accuracy_then_latency"},
+      "effective_id": 7,
+      "results": [
+        {"id": 31, "model_id": 7, "ref": "mDeBERTa-v3-base-xnli-multilingual-nli-2mil7@int8-0864ced", "name": "mDeBERTa-v3-base-xnli-multilingual-nli-2mil7", "role": "nli",
+         "metric": "entail_contradict_acc", "accuracy": 91.4, "latency_avg_ms": 38.2, "latency_p95_ms": 61.0, "peak_ram_mb": 612, "size_bytes": 338679132,
+         "dataset": "grading-nli-v1", "n": 188, "provisional": true, "detail": {"per_lang": {"ar": 90.1, "en": 92.6}},
+         "source": "run", "at": "2026-11-12T09:58:11", "by": 1, "license": "MIT", "downloaded": true,
+         "is_default": true, "is_choice": false, "is_active": true, "selectable": true, "reason": null},
+        {"id": 32, "model_id": 9, "ref": "xlm-roberta-large-xnli@fp32-1a2b3c4", "name": "xlm-roberta-large-xnli", "role": "nli",
+         "metric": "entail_contradict_acc", "accuracy": 89.0, "latency_avg_ms": 212.5, "latency_p95_ms": 1340.0, "peak_ram_mb": 2210, "size_bytes": 2240000000,
+         "dataset": "grading-nli-v1", "n": 188, "provisional": true, "detail": {},
+         "source": "seed", "at": "2026-11-10T08:00:00", "by": null, "license": "MIT", "downloaded": false,
+         "is_default": false, "is_choice": false, "is_active": false, "selectable": true, "reason": null}
+      ]
+    },
+    {
+      "role": "embedding", "metric": "spearman_x100",
+      "metric_label": {"en": "Agreement with raters (Spearman x100)", "ar": "الاتفاق مع المصححين (سبيرمان × 100)"},
+      "higher_is_better": true, "dataset": "grading-gold-v1", "provisional": true,
+      "active_id": 3, "active": "multilingual-e5-small@int8-aa11bb2",
+      "choice": {"model_id": 3, "by": 1, "at": "2026-11-12T10:00:00"},
+      "default": {"model_id": 3, "ref": "multilingual-e5-small@int8-aa11bb2", "rule": "best_accuracy_then_latency"},
+      "effective_id": 3,
+      "results": [
+        {"id": 40, "model_id": 3, "ref": "multilingual-e5-small@int8-aa11bb2", "name": "multilingual-e5-small", "role": "embedding",
+         "metric": "spearman_x100", "accuracy": 71.2, "latency_avg_ms": 6.4, "latency_p95_ms": 9.8, "peak_ram_mb": 180, "size_bytes": 118000000,
+         "dataset": "grading-gold-v1", "n": 420, "provisional": true, "detail": {"fitted": {"threshold": 0.62}},
+         "source": "run", "at": "2026-11-12T09:50:00", "by": 1, "license": "MIT", "downloaded": true,
+         "is_default": true, "is_choice": true, "is_active": true, "selectable": true, "reason": null},
+        {"id": 41, "model_id": null, "ref": "Arabic-Triplet-Matryoshka-V2", "name": "Arabic-Triplet-Matryoshka-V2", "role": "embedding",
+         "metric": "spearman_x100", "accuracy": 74.0, "latency_avg_ms": 22.0, "latency_p95_ms": 35.0, "peak_ram_mb": 900, "size_bytes": 540000000,
+         "dataset": "grading-gold-v1", "n": 420, "provisional": true, "detail": {},
+         "source": "seed", "at": "2026-11-10T08:00:00", "by": null, "license": "Apache-2.0", "downloaded": false,
+         "is_default": false, "is_choice": false, "is_active": false, "selectable": false,
+         "reason": {"code": "embedding_dim_unsupported", "en": "The RAG index stores 384-d vectors; this model gives 768.", "ar": "فهرس البحث يخزّن متجهات بطول 384، وهذا النموذج يعطي 768."}},
+        {"id": 42, "model_id": 3, "ref": "multilingual-e5-small@int8-aa11bb2", "name": "multilingual-e5-small", "role": "embedding",
+         "metric": "spearman_x100", "accuracy": 64.0, "latency_avg_ms": 7.0, "latency_p95_ms": 11.0, "peak_ram_mb": 180, "size_bytes": 118000000,
+         "dataset": "grading-gold-ar-v1", "n": 120, "provisional": true, "detail": {},
+         "source": "run", "at": "2026-11-12T09:51:00", "by": 1, "license": "MIT", "downloaded": true,
+         "is_default": false, "is_choice": false, "is_active": true, "selectable": true, "reason": null}
+      ]
+    },
+    {
+      "role": "digits", "metric": "accuracy",
+      "metric_label": {"en": "Digit accuracy", "ar": "دقة الأرقام"},
+      "higher_is_better": true, "dataset": "digits-samples-v1", "provisional": true,
+      "active_id": null, "active": null, "choice": null, "default": null, "effective_id": null, "results": []
+    }
+  ],
+  "runners": [
+    {"role": "nli", "dataset": "grading-nli-v1", "available": true, "reason": null},
+    {"role": "digits", "dataset": "digits-samples-v1", "available": false, "reason": {"code": "no_runner", "en": "No runner for this role yet.", "ar": "لا يوجد مُقيِّم لهذا الدور بعد."}}
+  ],
+  "run": {"id": 4, "status": "running", "roles": ["nli", "embedding"], "model_ids": [7, 9, 3], "done": 1, "total": 3,
+          "current": "xlm-roberta-large-xnli@fp32-1a2b3c4", "errors": [], "started_by": 1, "created_at": "2026-11-12T10:05:00", "finished_at": null}
+}
