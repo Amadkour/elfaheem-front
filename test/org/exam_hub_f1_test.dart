@@ -11,6 +11,7 @@ import 'package:flutter_education_app/design/app_kit.dart' show AppButton;
 import 'package:flutter_education_app/features/shared/exam_engine/exam_all.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart' show EngineResult;
 import 'package:flutter_education_app/features/shared/exam_engine/hub/exam_hub_screen.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/hub/grade/grade_papers_sheet.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/hub_degrees_import.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/hub_degrees_import_sheet.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/hub_entry.dart';
@@ -241,6 +242,18 @@ void main() {
     expect(save().onPressed, isNotNull);
   });
 
+  group('action row and Grade papers', () {
+    test('kill switches hide each kind, and the action with none left', () {
+      expect(hubGradeKinds(), [GradeKind.bubble, GradeKind.essay]);
+      expect(hubQuickActions(), HubQuickAction.values);
+      AppConfig.disableList = ['exam.auto_correct'];
+      expect(hubGradeKinds(), [GradeKind.essay]);
+      AppConfig.disableList = ['exam.bubble', 'exam.essay_run'];
+      expect(hubGradeKinds(), isEmpty);
+      expect(hubQuickActions(), [HubQuickAction.newExam, HubQuickAction.previous, HubQuickAction.results]);
+    });
+  });
+
   group('degrees import', () {
     test('preview parsing', () {
       final p = DegreesPreview.fromJson({
@@ -327,6 +340,16 @@ void main() {
             onDegreeColumn: (_) {},
             onSave: () {},
           )));
+    });
+    testWidgets('the action row and Grade papers', (t) async {
+      await expectNoLayoutErrors(t, () => HubActionRow(actions: HubQuickAction.values, onTap: (_) {}));
+      const courses = [
+        (courseId: 1, orgId: 4 as int?, name: 'Biology for the second year of the secondary school, group A'),
+        (courseId: 2, orgId: null as int?, name: 'Chemistry'),
+      ];
+      await expectNoLayoutErrors(t, () => SingleChildScrollView(child: GradePapersBody(courses: courses, kinds: GradeKind.values, orgNames: const {4: 'A school with a long name'}, onPick: (_, _) {})));
+      await expectNoLayoutErrors(t, () => SingleChildScrollView(child: GradePapersBody(courses: courses, kinds: GradeKind.values, initial: courses.first, orgNames: const {4: 'A school with a long name'}, onPick: (_, _) {})));
+      await expectNoLayoutErrors(t, () => SingleChildScrollView(child: GradePapersBody(courses: const [], kinds: GradeKind.values, onPick: (_, _) {})));
     });
     testWidgets('the whole screen', (t) => expectNoLayoutErrors(t, () => ExamHubScreen(loader: () async => _data()), scaffold: false));
   });

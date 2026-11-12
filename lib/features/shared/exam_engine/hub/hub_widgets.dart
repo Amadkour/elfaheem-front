@@ -4,6 +4,7 @@
 //   HubAttentionStrip    the desk: what needs the teacher now, one sky block of counts, each a way into the filtered
 //                        list (the screen's one memorable element; its lead count rolls in)
 //   HubSegmented         the Correction / Results switch (the kit's pill tabs)
+//   HubActionRow         New exam · Grade papers · Previous exams · Results, above the tabs (D-660)
 //   HubExamCard          an exam on a phone     the kit's AppDataTable + HubExamDetail   the same exams on a wide window
 //   HubExamDetail        the selected exam: a block in the colour of where it stands, its figures, every action
 //   HubNotEndedBody · HubNoDegreesBody          the two "before you go on" sheets
@@ -1134,5 +1135,91 @@ class ExamHubBody extends StatelessWidget {
         ]),
       );
     });
+  }
+}
+
+// ═══════════════════════════════════════ the action row (D-660) ════════════════════════════════════════════════════
+
+IconData hubQuickIcon(HubQuickAction a) => switch (a) {
+      HubQuickAction.newExam => Icons.add_rounded,
+      HubQuickAction.grade => Icons.document_scanner_outlined,
+      HubQuickAction.previous => Icons.history_rounded,
+      HubQuickAction.results => Icons.insights_rounded,
+    };
+
+/// The hub's ways in, above the tabs: one row on a wide window, two by two on a phone. New exam is the filled one.
+class HubActionRow extends StatelessWidget {
+  const HubActionRow({super.key, required this.actions, required this.onTap});
+  final List<HubQuickAction> actions;
+  final ValueChanged<HubQuickAction> onTap;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
+        final tiles = [
+          for (final a in actions) _QuickTile(key: ValueKey(a == HubQuickAction.newExam ? 'exam.hub.new' : 'exam.hub.quick.${a.name}'), action: a, onTap: () => onTap(a)),
+        ];
+        final cols = box.maxWidth >= 560 ? tiles.length : 2;
+        return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (var r = 0; r < tiles.length; r += cols) ...[
+            if (r > 0) AppSpace.gapXs,
+            IntrinsicHeight(
+              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                for (var k = 0; k < cols; k++) ...[
+                  if (k > 0) AppSpace.gapXs,
+                  Expanded(child: r + k < tiles.length ? tiles[r + k] : const SizedBox.shrink()),
+                ],
+              ]),
+            ),
+          ],
+        ]);
+      });
+}
+
+class _QuickTile extends StatelessWidget {
+  const _QuickTile({super.key, required this.action, required this.onTap});
+  final HubQuickAction action;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final lead = action == HubQuickAction.newExam;
+    final fill = lead ? c.primary : c.cardBg;
+    final ink = lead ? appInkOnFill(context, c.primary) : c.textDark;
+    final well = lead ? ink.withValues(alpha: .16) : appTintOn(context, c.primary);
+    final mark = lead ? ink : appInkOn(context, c.primary, well);
+    return AppPressScale(
+      child: Material(
+        color: fill,
+        shape: RoundedRectangleBorder(
+          borderRadius: AppRadius.cardAll,
+          side: lead ? BorderSide.none : BorderSide(color: c.divider, width: AppBorder.hairline),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppTouch.min),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+              child: Row(children: [
+                Container(
+                  width: AppIconSize.xl,
+                  height: AppIconSize.xl,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: well, borderRadius: AppRadius.chipAll),
+                  child: Icon(hubQuickIcon(action), size: AppIconSize.md, color: mark),
+                ),
+                AppSpace.gapXs,
+                Expanded(
+                  child: Text(hubQuickLabel(action),
+                      maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: ink, fontWeight: FontWeight.w600)),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

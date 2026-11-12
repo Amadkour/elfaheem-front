@@ -1,9 +1,11 @@
 // The "New exam" wizard of the Exam Hub, pure part: what the teacher has chosen so far, which steps that means, what
 // each step says in the summary, and the problems stated before they bite. No widget and no call lives here.
 //
-// Order: Where (a course, an organization or personal) → Type (bubble sheet or normal) → Template (bubble only) →
-// Questions (automatic, manual, a file or Google Forms) → Publish (electronic or paper) → Students (the identifier
-// plan, where a paper is matched to a student).
+// Order (D-661): Where (a course, an organization or personal) → Answers (how students answer: online, on the paper, an
+// answer table or a bubble sheet) → Questions (automatic, manual, a file or Google Forms) → Template (bubble only) →
+// Settings (timing, or how the papers are printed) → Students (the identifier plan, where a paper is matched to a
+// student). The answer format comes first because it decides which questions are possible: a bubble sheet holds only
+// multiple choice and true / false.
 //
 // Unit-tested in test/org/exam_hub_f2_test.dart.
 library;
@@ -16,8 +18,12 @@ import '../../exam_authoring.dart' show fmtPoints;
 import '../../exam_quick.dart';
 import '../../paper/exam_setup.dart' show ObjectiveQuestion, OmrTemplateItem;
 import '../../paper/omr_counts.dart' show omrMinutesText;
+import 'answer_format.dart';
 
-enum CreateStep { where, type, template, questions, publish, identify }
+export 'answer_format.dart';
+
+/// `publish` is the Settings step: the publishing itself is the wizard's last press.
+enum CreateStep { where, answer, questions, template, publish, identify }
 
 enum CreateType { normal, bubble }
 
@@ -54,6 +60,8 @@ class ExamCreatePlan {
 
   NewExamPlace? place;
   QuickExam exam;
+  /// How students answer; [type] and [publish] follow it.
+  AnswerFormat? answer;
   CreateType? type;
   OmrTemplateItem? template;
   PublishKind? publish;
@@ -96,16 +104,16 @@ class ExamCreatePlan {
     normalize();
   }
 
-  void setType(CreateType v) {
-    type = v;
-    if (v == CreateType.bubble) publish = PublishKind.paper;
+  /// online → electronic · on the paper / a table → paper · a bubble sheet → paper on a bubble sheet.
+  void setAnswer(AnswerFormat v) {
+    answer = v;
+    type = v == AnswerFormat.bubble ? CreateType.bubble : CreateType.normal;
+    publish = v == AnswerFormat.online ? PublishKind.electronic : PublishKind.paper;
     normalize();
   }
 
-  void setPublish(PublishKind v) {
-    publish = v;
-    normalize();
-  }
+  /// The students answer in a separate booklet / table (`settings.answer_booklet`).
+  bool get answerBooklet => answer == AnswerFormat.table;
 
   /// Keeps the choices consistent after any change, and the exam's own mode in step with them.
   void normalize() {
@@ -130,6 +138,13 @@ class ExamCreatePlan {
 
   /// Something the teacher would lose by leaving.
   bool get hasContent => exam.questions.isNotEmpty || exam.hasFile || importedQuestions > 0;
+
+  /// What the wizard writes into `settings`: the answer format always, the booklet and the print plan on paper.
+  Map<String, dynamic> get settingsJson => {
+        if (answer != null) 'answer_format': answerFormatKey(answer!),
+        if (isPaper) 'answer_booklet': answerBooklet,
+        if (isPaper) 'paper_plan': paperPlanJson,
+      };
 
   /// What is left to print, and how the Deliver step reads it (`settings.paper_plan`).
   Map<String, dynamic> get paperPlanJson => {
@@ -159,28 +174,45 @@ bool needsIdentifierStep(ExamCreatePlan p, {required bool identifiersOn}) =>
 
 List<CreateStep> createSteps(ExamCreatePlan p, {required bool whereNeeded, required bool omrOn, required bool identifiersOn}) => [
       if (whereNeeded) CreateStep.where,
-      if (omrOn) CreateStep.type,
-      if (omrOn && p.isBubble) CreateStep.template,
+      CreateStep.answer,
       CreateStep.questions,
+      if (omrOn && p.isBubble) CreateStep.template,
       CreateStep.publish,
       if (needsIdentifierStep(p, identifiersOn: identifiersOn)) CreateStep.identify,
     ];
 
 String createStepLabel(CreateStep s) => switch (s) {
       CreateStep.where => t('المكان', 'Where'),
-      CreateStep.type => t('النوع', 'Type'),
+      CreateStep.answer => t('الإجابة', 'Answers'),
       CreateStep.template => t('ورقة التظليل', 'Bubble sheet'),
       CreateStep.questions => t('الأسئلة', 'Questions'),
-      CreateStep.publish => t('النشر', 'Publish'),
+      CreateStep.publish => t('الإعدادات', 'Settings'),
       CreateStep.identify => t('الطلاب', 'Students'),
     };
 
-String createTypeLabel(CreateType v) => v == CreateType.bubble ? t('ورقة تظليل', 'Bubble sheet') : t('عادي', 'Normal');
+/// The answer formats the teacher can pick: the bubble sheet only while paper exams with OMR are on.
+List<AnswerFormat> answerFormatsFor({required bool omrOn}) => [for (final f in AnswerFormat.values) if (omrOn || f != AnswerFormat.bubble) f];
+
+String answerFormatLabel(AnswerFormat f) => switch (f) {
+      AnswerFormat.online => t('على التطبيق', 'Online'),
+      AnswerFormat.onPaper => t('على ورقة الأسئلة', 'On the paper'),
+      AnswerFormat.table => t('جدول إجابة', 'Answer table'),
+      AnswerFormat.bubble => t('ورقة تظليل', 'Bubble sheet'),
+    };
+
+/// One line under each choice: what it means for the students and for the marking.
+String answerFormatHint(AnswerFormat f) => switch (f) {
+      AnswerFormat.online => t('يجيب الطلاب على التطبيق، والتصحيح تلقائي', 'Students answer in the app; marking is automatic'),
+      AnswerFormat.onPaper => t('تُطبع الأسئلة ويكتب الطالب إجابته عليها', 'The questions are printed and students write on them'),
+      AnswerFormat.table => t('ورقة أسئلة وجدول إجابة منفصل، والمقالي في كراسة الإجابة', 'A question paper and a separate answer table; essays go in the booklet'),
+      AnswerFormat.bubble => t('يظلل الطالب إجابته وتُصحَّح بالمسح. اختيار من متعدد وصح / خطأ فقط',
+          'Students shade their answers, marked by scanning. Multiple choice and true / false only'),
+    };
 
 /// One line for the summary rail / the chips; null = nothing chosen yet.
 String? createStepValue(CreateStep s, ExamCreatePlan p) => switch (s) {
       CreateStep.where => p.place?.name,
-      CreateStep.type => p.type == null ? null : createTypeLabel(p.type!),
+      CreateStep.answer => p.answer == null ? null : answerFormatLabel(p.answer!),
       CreateStep.template => p.template?.title,
       CreateStep.questions => _questionsValue(p),
       CreateStep.publish => _publishValue(p),
@@ -285,10 +317,11 @@ bool createStepReady(CreateStep s, ExamCreatePlan p, {bool identifierValid = fal
   switch (s) {
     case CreateStep.where:
       return p.place != null;
-    case CreateStep.type:
-      return p.type != null;
+    case CreateStep.answer:
+      return p.answer != null;
     case CreateStep.template:
-      return p.template != null;
+      // the sheet comes after the questions: it must hold them
+      return p.template != null && !bubbleCheckOf(p).blocks;
     case CreateStep.questions:
       final (errors, perQ) = questionStepErrors(p);
       return errors.isEmpty && perQ.isEmpty && !bubbleCheckOf(p).blocks;

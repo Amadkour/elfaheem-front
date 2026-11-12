@@ -1,4 +1,6 @@
-// "New exam" in the Exam Hub: ONE wizard, Where → Type → Bubble sheet → Questions → Publish → Students, with the choices
+// "New exam" in the Exam Hub: ONE wizard, Where → Answers → Questions → Bubble sheet → Settings → Students (D-661: how
+// students answer comes first, so no question is written that the sheet cannot hold; the last answer format and bubble
+// sheet are preselected, `exam_create_prefs.dart`), with the choices
 // so far always in view and editable (a rail on a wide window, chips on a phone). What is pure is in exam_create_logic,
 // the server's one draft in exam_create_sync, the drawn parts in exam_create_parts.
 //
@@ -18,7 +20,9 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../../../admin/admin_common.dart' show asMapList, t;
@@ -41,6 +45,7 @@ import '../deliver/exam_deliver_screen.dart' show openExamDeliver;
 import '../deliver/identifier_plan_step.dart' show IdentifierPlanStep;
 import 'exam_create_logic.dart';
 import 'exam_create_parts.dart';
+import 'exam_create_prefs.dart';
 import 'exam_create_sync.dart';
 
 /// Opens the wizard. [courseId] / [orgId] fix or narrow where the exam goes.
@@ -98,7 +103,12 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
   List<NewExamPlace>? _places;
   Map<int, String> _orgNames = const {};
   bool _whereNeeded = true;
-  CreateStep _step = CreateStep.type;
+  CreateStep _step = CreateStep.answer;
+
+  // remembered from this teacher's previous exam (D-661)
+  ExamCreatePrefs? _prefs;
+  AnswerFormat? _lastAnswer;
+  int? _lastTemplate;
   CreateStep? _furthest;
   bool _busy = false;
   String? _error;
@@ -130,7 +140,6 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
   @override
   void initState() {
     super.initState();
-    if (!_omrOn) _plan.type = CreateType.normal;
     _load();
   }
 
@@ -187,6 +196,7 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
       _whereNeeded = false;
     }
     if (!mounted) return;
+    unawaited(_remember());   // never holds the first step back: a slow store only means nothing is preselected
     final steps = _steps;
     final initial = widget.initialStep;
     setState(() {
@@ -197,14 +207,33 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
     _enter(_step);
   }
 
+  /// The last answer format and bubble sheet of this teacher: the format is preselected when still on offer.
+  Future<void> _remember() async {
+    int uid = 0;
+    try {
+      uid = context.read<MyAuthProvider>().currentUser?.id ?? 0;
+    } catch (_) {
+      // no auth in scope (tests, renders): remembered on the device alone
+    }
+    final prefs = _prefs = ExamCreatePrefs(uid);
+    final got = await prefs.load();
+    if (!mounted) return;
+    final last = got.answer;
+    setState(() {
+      _lastAnswer = last;
+      _lastTemplate = got.templateId;
+      // only while the teacher has not answered yet
+      if (_plan.answer == null && last != null && answerFormatsFor(omrOn: _omrOn).contains(last)) _plan.setAnswer(last);
+    });
+  }
+
   void _enter(CreateStep s) {
     if (s == CreateStep.template && _templates == null) _loadTemplates();
-    if (s == CreateStep.publish) {
-      _loadSessions();
-      _plan.publish ??= PublishKind.electronic;
-      _plan.normalize();
-    }
+    if (s == CreateStep.publish) _loadSessions();
   }
+
+  /// Every other answer is kept: a sheet chosen earlier stays chosen if the teacher comes back to the bubble sheet.
+  void _pickAnswer(AnswerFormat v) => setState(() => _plan.setAnswer(v));
 
   Future<void> _loadSessions() async {
     final id = _plan.exam.courseId;
@@ -296,6 +325,7 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
       _busy = false;
       _published = true;
     });
+    unawaited(_prefs?.save(answer: _plan.answer, templateId: _plan.isBubble ? _plan.template?.id : null));
     if (_plan.isPaper) {
       final course = _plan.exam.courseId == null ? '' : (_plan.place?.name ?? '');   // a place without a course is named for the organization
       await openExamDeliver(context, examId: _sync.examId!, title: _plan.exam.title.trim(), courseId: _plan.exam.courseId, course: course);
@@ -376,7 +406,9 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
       _justSent = made?.status == 'pending_approval';
       final tid = _plan.template?.id;
       final keep = usable.where((x) => x.id == tid).firstOrNull;
-      _plan.template = made != null && made.published ? made : (keep ?? recommendedTemplate(usable, _plan.questionCount));
+      // then the sheet of the previous bubble exam, if it still holds these questions
+      final last = usable.where((x) => x.id == _lastTemplate && (x.questions <= 0 || x.questions >= _plan.questionCount)).firstOrNull;
+      _plan.template = made != null && made.published ? made : (keep ?? last ?? recommendedTemplate(usable, _plan.questionCount));
       _plan.normalize();
     });
   }
@@ -391,9 +423,10 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
     await _loadTemplates();
   }
 
-  void _useNormal() {
-    setState(() => _plan.setType(CreateType.normal));
-    if (_step == CreateStep.template) _go(CreateStep.questions);
+  /// Out of the bubble sheet: the students answer on the paper, every question type allowed.
+  void _usePaper() {
+    setState(() => _plan.setAnswer(AnswerFormat.onPaper));
+    if (_step == CreateStep.template) _go(CreateStep.publish);
   }
 
   // ── questions ──
@@ -616,16 +649,16 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
 
   (String, String?) _texts() => switch (_step) {
         CreateStep.where => (t('لأي مقرر هذا الاختبار؟', 'Where does this exam belong?'), t('يحدد المكان طلاب الاختبار', 'The place decides who the students are')),
-        CreateStep.type => (t('ما نوع الاختبار؟', 'What kind of exam is it?'), null),
+        CreateStep.answer => (t('كيف سيجيب الطلاب؟', 'How will students answer?'), t('يحدد ذلك أنواع الأسئلة الممكنة', 'This decides which questions are possible')),
         CreateStep.template => (t('اختر ورقة التظليل', 'Choose the bubble sheet'), t('اخترنا لك الأنسب، ويمكنك تغييرها', 'We picked the closest fit; you can change it')),
         CreateStep.questions => (t('الأسئلة', 'The questions'), null),
-        CreateStep.publish => (t('كيف ستنشره؟', 'How will you publish it?'), null),
+        CreateStep.publish => _plan.isElectronic ? (t('متى وكيف يفتح؟', 'When and how does it open?'), null) : (t('الطباعة', 'Printing'), null),
         CreateStep.identify => (t('كيف نتعرف على كل طالب؟', 'How do we identify each student?'), t('تُطابق كل ورقة بصاحبها من خلال هذه القيمة', 'Each paper is matched to its student by this value')),
       };
 
   String? _hint() => switch (_step) {
         CreateStep.where => t('اختر المكان للمتابعة', 'Choose a place to continue'),
-        CreateStep.type => t('اختر نوع الاختبار للمتابعة', 'Choose a kind to continue'),
+        CreateStep.answer => t('اختر طريقة الإجابة للمتابعة', 'Choose how students answer to continue'),
         CreateStep.template => t('اختر ورقة معتمدة للمتابعة', 'Choose an approved sheet to continue'),
         CreateStep.questions || CreateStep.publish => null,
         CreateStep.identify => t('أكمل تحديد الطلاب للمتابعة', 'Finish identifying the students to continue'),
@@ -633,7 +666,7 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
 
   Widget _body() => switch (_step) {
         CreateStep.where => CreateWhereBody(places: _places, selected: _plan.place, orgNames: _orgNames, onPick: (p) => setState(() => _plan.setPlace(p))),
-        CreateStep.type => CreateTypeBody(value: _plan.type, onPick: (v) => setState(() => _plan.setType(v))),
+        CreateStep.answer => CreateAnswerBody(formats: answerFormatsFor(omrOn: _omrOn), value: _plan.answer, lastUsed: _lastAnswer, onPick: _pickAnswer),
         CreateStep.template => _templateBody(),
         CreateStep.questions => _questionsBody(),
         CreateStep.publish => _publishBody(),
@@ -661,7 +694,7 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
         onRetry: _loadTemplates,
         onLearn: null,
         onOwnSheet: _ownSheet,
-        onPaperOnly: _useNormal,
+        onPaperOnly: _usePaper,
       ),
       // what is waiting comes after what can be used now
       if (_pending.isNotEmpty || _justSent) ...[
@@ -680,6 +713,7 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
     if (!_started) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (bubble) ...[const CreateBubbleRules(), const SizedBox(height: AppSpace.md)],
+        if (_plan.answerBooklet) ...[const CreateTableRules(), const SizedBox(height: AppSpace.md)],
         CreateQuestionWayBody(onPick: _way, hasCourse: _plan.hasCourse, canGenerate: _canGenerate, canImportForms: quickFormsAvailable, bubble: bubble),
       ]);
     }
@@ -693,8 +727,9 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
       AppField(key: const ValueKey('create.title'), controller: _title, label: t('اسم الاختبار', 'Exam name'), onChanged: (v) => setState(() => q.title = v)),
       const SizedBox(height: AppSpace.sm),
       if (bubble) ...[const CreateBubbleRules(), const SizedBox(height: AppSpace.sm)],
+      if (_plan.answerBooklet) ...[const CreateTableRules(), const SizedBox(height: AppSpace.sm)],
       if (check.blocks) ...[
-        CreateBubbleProblems(check: check, onRemove: _removeNotHeld, onNormal: _useNormal, onEditor: _openEditor),
+        CreateBubbleProblems(check: check, onRemove: _removeNotHeld, onNormal: _usePaper, onEditor: _openEditor),
         const SizedBox(height: AppSpace.xs),
       ],
       if (!bubble) ...[
@@ -767,7 +802,6 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       CreatePublishBody(
         plan: _plan,
-        onKind: (v) => setState(() => _plan.setPublish(v)),
         onPaperPlan: (v) => setState(() {
           _plan.paperPlan = v;
           _plan.normalize();

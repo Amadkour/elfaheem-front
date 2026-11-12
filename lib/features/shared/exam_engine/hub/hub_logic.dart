@@ -321,3 +321,51 @@ String hubNotEndedText(AllExam e) => e.endsAt != null
         'It ends ${AppTime.dateTime(e.endsAt!)}. You can wait until everyone has handed in, or start now if you collected the papers early.')
     : t('ليس له موعد انتهاء، ويبقى مفتوحاً حتى تغلقه. يمكنك البدء الآن إن كنت جمعت الأوراق.',
         'It has no end time and stays open until you close it. You can start now if you have collected the papers.');
+
+// ── the action row and Grade papers (D-660) ────────────────────────────────────────────────────────────────────────
+
+/// The hub's four ways in, above the tabs.
+enum HubQuickAction { newExam, grade, previous, results }
+
+/// How the papers being graded were answered.
+enum GradeKind { bubble, essay }
+
+/// Bubble runs (`exam.bubble`, and automatic correction behind it) and written-paper runs (`exam.essay_run`).
+const kHubBubbleKey = 'exam.bubble';
+const kHubAutoCorrectKey = 'exam.auto_correct';
+const kHubEssayRunKey = 'exam.essay_run';
+
+/// What Grade papers offers under the platform's switches; empty = the action is hidden.
+List<GradeKind> hubGradeKinds() => [
+      if (!_off(kHubBubbleKey) && !_off(kHubAutoCorrectKey)) GradeKind.bubble,
+      if (!_off(kHubEssayRunKey)) GradeKind.essay,
+    ];
+
+/// The action row, Grade papers only while it has something to offer.
+List<HubQuickAction> hubQuickActions() => [
+      HubQuickAction.newExam,
+      if (hubGradeKinds().isNotEmpty) HubQuickAction.grade,
+      HubQuickAction.previous,
+      HubQuickAction.results,
+    ];
+
+String hubQuickLabel(HubQuickAction a) => switch (a) {
+      HubQuickAction.newExam => t('اختبار جديد', 'New exam'),
+      HubQuickAction.grade => t('تصحيح أوراق', 'Grade papers'),
+      HubQuickAction.previous => t('الاختبارات السابقة', 'Previous exams'),
+      HubQuickAction.results => t('النتائج', 'Results'),
+    };
+
+/// The courses papers can be graded in: a run belongs to a course (its students, its results).
+List<NewExamPlace> hubGradePlaces(AllExamsData d) => [for (final p in newExamPlaces(d)) if (p.courseId != null) p];
+
+String gradeKindLabel(GradeKind k) => switch (k) {
+      GradeKind.bubble => t('أوراق تظليل', 'Bubble sheets'),
+      GradeKind.essay => t('أوراق مكتوبة', 'Written papers'),
+    };
+
+String gradeKindHint(GradeKind k) => switch (k) {
+      GradeKind.bubble => t('صوّر الأوراق المظللة أو امسحها، وتُصحَّح على مفتاح الإجابة', 'Photograph or scan the shaded sheets; they are marked against the answer key'),
+      GradeKind.essay => t('صوّر الإجابات المكتوبة، وتُقترح الدرجات من نموذج الإجابة لتراجعها',
+          'Photograph the written answers; marks are suggested from the model answer for you to review'),
+    };

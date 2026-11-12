@@ -63,7 +63,8 @@ class ExamCreateSync {
 
   Future<String?> _exam(ExamCreatePlan p) async {
     final body = p.exam.toExamDraft().toBody();
-    final planned = {...asMap(body['settings']), if (p.isPaper) 'paper_plan': p.paperPlanJson};
+    // the answer format and the booklet travel with the print plan (D-661)
+    final planned = {...asMap(body['settings']), ...p.settingsJson};
     body['settings'] = planned;
     final sent = jsonEncode(body);
     if (sent == _examSent) return null;

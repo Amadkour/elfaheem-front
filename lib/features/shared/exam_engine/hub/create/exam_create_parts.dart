@@ -423,35 +423,55 @@ class _CreateWhereBodyState extends State<CreateWhereBody> {
   }
 }
 
-// ═══════════════════════════════════════ type ══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════ answers ═══════════════════════════════════════════════════════════════
 
-class CreateTypeBody extends StatelessWidget {
-  const CreateTypeBody({super.key, required this.value, required this.onPick});
-  final CreateType? value;
-  final ValueChanged<CreateType> onPick;
+IconData answerFormatIcon(AnswerFormat f) => switch (f) {
+      AnswerFormat.online => Icons.devices_rounded,
+      AnswerFormat.onPaper => Icons.description_outlined,
+      AnswerFormat.table => Icons.table_chart_outlined,
+      AnswerFormat.bubble => Icons.grid_on_rounded,
+    };
+
+/// "How will students answer?": one card per format, the last one used marked (D-661).
+class CreateAnswerBody extends StatelessWidget {
+  const CreateAnswerBody({super.key, required this.formats, required this.value, required this.onPick, this.lastUsed});
+  final List<AnswerFormat> formats;
+  final AnswerFormat? value;
+  final ValueChanged<AnswerFormat> onPick;
+
+  /// The format of this teacher's previous exam: preselected, and said so while it is the one chosen.
+  final AnswerFormat? lastUsed;
 
   @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        SetupChoiceTile(
-          key: const ValueKey('create.type.normal'),
-          icon: Icons.quiz_outlined,
-          title: t('اختبار عادي', 'Normal exam'),
-          subtitle: t('كل أنواع الأسئلة، على التطبيق أو على الورق', 'Every question type, in the app or on paper'),
-          selected: value == CreateType.normal,
-          badge: const CreateRecommended(),
-          onTap: () => onPick(CreateType.normal),
-        ),
-        _gap,
-        SetupChoiceTile(
-          key: const ValueKey('create.type.bubble'),
-          icon: Icons.grid_on_rounded,
-          title: t('ورقة تظليل', 'Bubble sheet'),
-          subtitle: t('يظلل الطالب إجابته على الورق وتُصحَّح الأوراق بالمسح. اختيار من متعدد وصح / خطأ فقط',
-              'Students shade their answers on paper and the sheets are marked by scanning. Multiple choice and true / false only'),
-          selected: value == CreateType.bubble,
-          onTap: () => onPick(CreateType.bubble),
-        ),
+        for (var i = 0; i < formats.length; i++) ...[
+          if (i > 0) _gap,
+          SetupChoiceTile(
+            key: ValueKey('create.answer.${answerFormatKey(formats[i])}'),
+            icon: answerFormatIcon(formats[i]),
+            title: answerFormatLabel(formats[i]),
+            subtitle: answerFormatHint(formats[i]),
+            selected: value == formats[i],
+            badge: formats[i] == lastUsed
+                ? AppBadgePill(t('آخر اختيار', 'Last used'), color: context.colors.primary)
+                : (lastUsed == null && formats[i] == AnswerFormat.online ? const CreateRecommended() : null),
+            onTap: () => onPick(formats[i]),
+          ),
+        ],
       ]);
+}
+
+/// What an answer table changes for the questions, said once above them.
+class CreateTableRules extends StatelessWidget {
+  const CreateTableRules({super.key});
+
+  @override
+  Widget build(BuildContext context) => AppBanner(
+        key: const ValueKey('create.table.rules'),
+        icon: Icons.table_chart_outlined,
+        text: t('الأسئلة الموضوعية تُجاب في جدول الإجابة، والمقالية في كراسة الإجابة.',
+            'Objective questions are answered in the answer table; essay questions in the answer booklet.'),
+      );
 }
 
 // ═══════════════════════════════════════ sheet notes ═══════════════════════════════════════════════════════════
@@ -609,7 +629,7 @@ class CreateBubbleProblems extends StatelessWidget {
   /// Takes the questions a bubble cannot hold out of the exam.
   final VoidCallback? onRemove;
 
-  /// Makes this a normal exam instead.
+  /// Makes the students answer on the paper instead (any question type).
   final VoidCallback? onNormal;
 
   /// Opens the full editor (for imported questions).
@@ -634,7 +654,7 @@ class CreateBubbleProblems extends StatelessWidget {
             'A bubble sheet cannot hold ${questionsCountText(n)}: essay, short answer, complete or matching.'),
         actions: [
           if (onRemove != null) AppButton.ghost(key: const ValueKey('create.bubble.remove'), size: AppButtonSize.sm, onPressed: onRemove, label: t('احذفها', 'Remove them')),
-          if (onNormal != null) AppButton.ghost(key: const ValueKey('create.bubble.normal'), size: AppButtonSize.sm, onPressed: onNormal, label: t('اجعله اختبارًا عاديًا', 'Make it a normal exam')),
+          if (onNormal != null) AppButton.ghost(key: const ValueKey('create.bubble.normal'), size: AppButtonSize.sm, onPressed: onNormal, label: t('اجعل الإجابة على ورقة الأسئلة', 'Answer on the paper instead')),
         ],
       ));
     }
@@ -644,7 +664,7 @@ class CreateBubbleProblems extends StatelessWidget {
             '${questionsCountText(check.importedNotHeld)} of the imported ones do not fit a bubble sheet. Remove them in the full editor.'),
         actions: [
           if (onEditor != null) AppButton.ghost(size: AppButtonSize.sm, onPressed: onEditor, label: t('المحرر الكامل', 'Full editor')),
-          if (onNormal != null) AppButton.ghost(size: AppButtonSize.sm, onPressed: onNormal, label: t('اجعله اختبارًا عاديًا', 'Make it a normal exam')),
+          if (onNormal != null) AppButton.ghost(size: AppButtonSize.sm, onPressed: onNormal, label: t('اجعل الإجابة على ورقة الأسئلة', 'Answer on the paper instead')),
         ],
       ));
     }
@@ -685,7 +705,6 @@ class CreatePublishBody extends StatelessWidget {
   const CreatePublishBody({
     super.key,
     required this.plan,
-    required this.onKind,
     required this.onPaperPlan,
     required this.onVersions,
     required this.onShuffleQuestions,
@@ -693,7 +712,6 @@ class CreatePublishBody extends StatelessWidget {
     required this.electronicDetail,
   });
   final ExamCreatePlan plan;
-  final ValueChanged<PublishKind> onKind;
   final ValueChanged<PaperPlan> onPaperPlan;
   final ValueChanged<int> onVersions;
   final ValueChanged<bool> onShuffleQuestions, onShuffleOptions;
@@ -706,31 +724,9 @@ class CreatePublishBody extends StatelessWidget {
     final c = context.colors;
     final p = plan;
     final noStudents = !p.hasCourse && p.exam.orgId == null;
+    // the kind was chosen in the Answers step: here only what follows from it
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      if (p.isBubble)
-        AppBanner(icon: Icons.print_outlined, text: t('ورقة التظليل تُطبع، فهذا الاختبار ورقي.', 'A bubble sheet is printed, so this exam is on paper.'))
-      else ...[
-        SetupChoiceTile(
-          key: const ValueKey('create.publish.electronic'),
-          icon: Icons.devices_rounded,
-          title: t('إلكتروني', 'Electronic'),
-          subtitle: t('يجيب الطلاب على التطبيق، والتصحيح تلقائي', 'Students answer in the app, marking is automatic'),
-          selected: p.isElectronic,
-          badge: const CreateRecommended(),
-          onTap: () => onKind(PublishKind.electronic),
-        ),
-        _gap,
-        SetupChoiceTile(
-          key: const ValueKey('create.publish.paper'),
-          icon: Icons.print_outlined,
-          title: t('ورقي', 'Paper'),
-          subtitle: t('تطبع الأوراق للقاعة أو ترسلها', 'You print the papers for the room, or send them'),
-          selected: p.isPaper,
-          onTap: () => onKind(PublishKind.paper),
-        ),
-      ],
       if (p.isElectronic) ...[
-        const SizedBox(height: AppSpace.md),
         AppBanner(
           key: const ValueKey('create.audience'),
           icon: noStudents ? Icons.warning_amber_rounded : Icons.groups_outlined,
@@ -746,7 +742,6 @@ class CreatePublishBody extends StatelessWidget {
         electronicDetail,
       ],
       if (p.isPaper) ...[
-        const SizedBox(height: AppSpace.lg),
         Text(t('كيف تُطبع الأوراق؟', 'How is it printed?'), style: AppType.section(context)),
         _gap,
         SetupChoiceTile(

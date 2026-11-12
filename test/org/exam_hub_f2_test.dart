@@ -12,6 +12,7 @@ import 'package:flutter_education_app/features/shared/exam_engine/hub/create/exa
 import 'package:flutter_education_app/features/shared/exam_engine/hub/create/exam_create_wizard.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../ui/layout_harness.dart';
 
@@ -134,14 +135,13 @@ class _Versions extends ExamVersionsApi {
   return (ExamCreateSync(api: a, setup: s, versions: v), a, s, v);
 }
 
-ExamCreatePlan _plan({bool bubble = false, PublishKind publish = PublishKind.paper}) {
+ExamCreatePlan _plan({bool bubble = false, AnswerFormat answer = AnswerFormat.onPaper}) {
   final p = ExamCreatePlan(place: _course, title: 'Exam');
   if (bubble) {
-    p.setType(CreateType.bubble);
+    p.setAnswer(AnswerFormat.bubble);
     p.template = _sheet40;
   } else {
-    p.setType(CreateType.normal);
-    p.setPublish(publish);
+    p.setAnswer(answer);
   }
   p.exam.questions.addAll([_mcq('one'), _mcq('two')]);
   return p;
@@ -156,7 +156,54 @@ void main() {
       expect(p.publish, PublishKind.paper);
       expect(p.exam.mode, QuickMode.offline);
       expect(createSteps(p, whereNeeded: true, omrOn: true, identifiersOn: true),
-          [CreateStep.where, CreateStep.type, CreateStep.template, CreateStep.questions, CreateStep.publish, CreateStep.identify]);
+          [CreateStep.where, CreateStep.answer, CreateStep.questions, CreateStep.template, CreateStep.publish, CreateStep.identify]);
+    });
+
+    test('the answer format decides the kind: online, paper, table, bubble', () {
+      final p = ExamCreatePlan(place: _course, title: 'Exam');
+      expect(createStepReady(CreateStep.answer, p), isFalse);
+      p.setAnswer(AnswerFormat.online);
+      expect((p.isElectronic, p.isBubble, p.exam.mode), (true, false, QuickMode.online));
+      expect(p.settingsJson, {'answer_format': 'online'});
+      p.setAnswer(AnswerFormat.table);
+      expect((p.isPaper, p.isBubble, p.answerBooklet), (true, false, true));
+      expect(p.settingsJson['answer_booklet'], isTrue);
+      p.setAnswer(AnswerFormat.onPaper);
+      expect(p.settingsJson['answer_booklet'], isFalse);
+      p.setAnswer(AnswerFormat.bubble);
+      expect((p.isPaper, p.isBubble), (true, true));
+      expect(p.settingsJson['answer_format'], 'bubble');
+      expect(createSteps(p, whereNeeded: false, omrOn: true, identifiersOn: false), [CreateStep.answer, CreateStep.questions, CreateStep.template, CreateStep.publish]);
+    });
+
+    test('a table takes essay questions; a bubble sheet does not', () {
+      final p = _plan(answer: AnswerFormat.table);
+      p.exam.questions.add(QuickQuestion.essay()..prompt = 'why');
+      expect(bubbleCheckOf(p).blocks, isFalse);
+      p.setAnswer(AnswerFormat.bubble);
+      expect(bubbleCheckOf(p).notHeld.length, 1);
+    });
+
+    test('the sheet comes after the questions and must hold them', () {
+      final p = _plan(bubble: true)..template = const OmrTemplateItem(id: 9, version: 1, name: 'x', questions: 1);
+      expect(createStepReady(CreateStep.template, p), isFalse);
+      p.template = _sheet40;
+      expect(createStepReady(CreateStep.template, p), isTrue);
+    });
+
+    test('no bubble format while OMR is off', () {
+      expect(answerFormatsFor(omrOn: false), [AnswerFormat.online, AnswerFormat.onPaper, AnswerFormat.table]);
+      expect(answerFormatsFor(omrOn: true).length, 4);
+    });
+
+    test('older exams: the answer format from what they hold', () {
+      expect(answerFormatOf({'answer_format': 'table'}), AnswerFormat.table);
+      expect(answerFormatOf({'paper_plan': {'mode': 'versions'}}), AnswerFormat.onPaper);
+      expect(answerFormatOf({'omr_template_id': 3, 'paper_plan': {}}), AnswerFormat.bubble);
+      expect(answerFormatOf({'paper_format': 'both'}), AnswerFormat.bubble);
+      expect(answerFormatOf({'delivery': 'online'}), AnswerFormat.online);
+      expect(answerFormatOf({}), isNull);
+      expect([for (final f in AnswerFormat.values) answerFormatKey(f)], ['online', 'on_paper', 'table', 'bubble']);
     });
 
     test('kill switches drop their steps', () {
@@ -199,7 +246,7 @@ void main() {
       expect(b['omr_template_id'], 1);
       expect(b['omr_template_version'], 2);
       expect(b['form_markers'], isEmpty);
-      expect(_plan(publish: PublishKind.electronic).setupBody, {'delivery': 'online'});
+      expect(_plan(answer: AnswerFormat.online).setupBody, {'delivery': 'online'});
       expect(_plan().setupBody!['paper_format'], 'paper');
     });
   });
@@ -288,14 +335,23 @@ void main() {
       await sync.ensure(p);
       expect((a.lastUpdate!['settings'] as Map)['print_identifiers'], isNotNull);
       expect((a.lastUpdate!['settings'] as Map)['paper_plan'], {'mode': 'versions', 'versions': 1});
+      expect((a.lastUpdate!['settings'] as Map)['answer_format'], 'on_paper');
+      expect((a.lastUpdate!['settings'] as Map)['answer_booklet'], isFalse);
+    });
+
+    test('the first save carries the answer format and the booklet', () async {
+      final (sync, a, _, _) = _server();
+      await sync.ensure(_plan(answer: AnswerFormat.table));
+      expect(a.settingsOnServer['answer_format'], 'table');
+      expect(a.settingsOnServer['answer_booklet'], isTrue);
     });
 
     test('switching to paper moves the section to paper', () async {
       final (sync, a, _, _) = _server();
-      final p = _plan(publish: PublishKind.electronic);
+      final p = _plan(answer: AnswerFormat.online);
       await sync.ensure(p);
       expect(a.calls, contains('addSection:online'));
-      p.setPublish(PublishKind.paper);
+      p.setAnswer(AnswerFormat.onPaper);
       await sync.ensure(p);
       expect(a.calls, contains('updateSection:paper'));
     });
@@ -352,9 +408,9 @@ void main() {
           stepKey: 'x',
           items: [
             item('Where', 'A very long course name that keeps going and going for a while', CreateItemState.done),
-            item('Type', 'Bubble sheet', CreateItemState.done),
+            item('Answers', 'Bubble sheet', CreateItemState.done),
             item('Questions', null, CreateItemState.current),
-            item('Publish', null, CreateItemState.todo),
+            item('Settings', null, CreateItemState.todo),
           ],
           index: 2,
           stepLabel: 'Questions',
@@ -371,8 +427,8 @@ void main() {
           estimate: const [('Questions', '12'), ('Total marks', '40')],
         );
 
-    testWidgets('shell + type + question ways', (t) async {
-      await expectNoLayoutErrors(t, () => shell(CreateTypeBody(value: CreateType.bubble, onPick: (_) {})));
+    testWidgets('shell + answers + question ways', (t) async {
+      await expectNoLayoutErrors(t, () => shell(CreateAnswerBody(formats: AnswerFormat.values, value: AnswerFormat.bubble, lastUsed: AnswerFormat.table, onPick: (_) {})));
       await expectNoLayoutErrors(t, () => shell(CreateQuestionWayBody(onPick: (_) {}, hasCourse: false, canGenerate: true, canImportForms: true, bubble: true)));
     });
 
@@ -381,8 +437,8 @@ void main() {
     });
 
     testWidgets('publish, every branch', (t) async {
-      await expectNoLayoutErrors(t, () => shell(CreatePublishBody(plan: _plan(bubble: true)..versions = 3, onKind: (_) {}, onPaperPlan: (_) {}, onVersions: (_) {}, onShuffleQuestions: (_) {}, onShuffleOptions: (_) {}, electronicDetail: const SizedBox())));
-      await expectNoLayoutErrors(t, () => shell(CreatePublishBody(plan: _plan(publish: PublishKind.electronic)..setPlace(_personal), onKind: (_) {}, onPaperPlan: (_) {}, onVersions: (_) {}, onShuffleQuestions: (_) {}, onShuffleOptions: (_) {}, electronicDetail: const SizedBox())));
+      await expectNoLayoutErrors(t, () => shell(CreatePublishBody(plan: _plan(bubble: true)..versions = 3, onPaperPlan: (_) {}, onVersions: (_) {}, onShuffleQuestions: (_) {}, onShuffleOptions: (_) {}, electronicDetail: const SizedBox())));
+      await expectNoLayoutErrors(t, () => shell(CreatePublishBody(plan: _plan(answer: AnswerFormat.online)..setPlace(_personal), onPaperPlan: (_) {}, onVersions: (_) {}, onShuffleQuestions: (_) {}, onShuffleOptions: (_) {}, electronicDetail: const SizedBox())));
     });
 
     testWidgets('sheet notes, problems, leaving, done', (t) async {
@@ -395,6 +451,19 @@ void main() {
             CreateLeaveBody(hasDraft: true, canSave: true, onPick: (_) {}, onStay: () {}),
           ])));
       await expectNoLayoutErrors(t, () => CreateDoneBody(title: 'A long exam title', place: 'Biology', lines: const [('Questions', '12'), ('Opens', 'Now')], onDone: () {}, onOpen: () {}, onFollow: () {}, onShare: () {}));
+    });
+
+    testWidgets('the wizard opens on the answer step with the last format preselected', (t) async {
+      SharedPreferences.setMockInitialValues({'exam_create.answer.0': 'table'});
+      final (sync, _, _, _) = _server();
+      final p = ExamCreatePlan(place: _course, title: 'Exam');
+      await t.pumpWidget(layoutHost(ExamCreateWizard(sync: sync, initialPlan: p), scaffold: false, scale: 1));
+      await t.pump(const Duration(milliseconds: 300));
+      expect(find.byKey(const ValueKey('create.answer.table')), findsOneWidget);
+      expect(p.answer, AnswerFormat.table);
+      expect(p.answerBooklet, isTrue);
+      await t.pumpWidget(const SizedBox());
+      await t.pump(const Duration(seconds: 1));
     });
 
     testWidgets('the wizard walks from the questions to the publish step and back, answers kept', (t) async {

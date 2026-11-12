@@ -5,6 +5,7 @@
 //   Results & Correction   Correction: each exam flagged Corrected / In progress / Not corrected / Not ended yet
 //                          Results: each exam flagged has degrees or not, with exam revision
 //   the smart header       what needs the teacher now, every line a way into the filtered list
+//   the action row         New exam · Grade papers (`grade/grade_papers_sheet.dart`) · Previous exams · Results (D-660)
 //
 // One list call for all of it; on return from any flow the list is read again. Decisions: `hub_logic.dart`, drawing:
 // `hub_widgets.dart`. The flows themselves live under `hub/create`, `hub/deliver`, `hub/correct`, `hub/result`,
@@ -29,6 +30,7 @@ import '../exam_results_screen.dart';
 import 'correct/exam_correct_flow.dart' show openExamCorrection;
 import 'create/exam_create_wizard.dart' show openExamCreateWizard;
 import 'deliver/exam_deliver_screen.dart' show openExamDeliver;
+import 'grade/grade_papers_sheet.dart' show openGradePapers;
 import 'hub_degrees_import_sheet.dart' show openHubDegreesImport;
 import 'hub_entry.dart';
 import 'hub_logic.dart';
@@ -112,6 +114,30 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
     return _flow(() => openExamCreateWizard(context, orgId: org, courseId: course));
   }
 
+  void _quick(HubQuickAction a) {
+    switch (a) {
+      case HubQuickAction.newExam:
+        _newExam();
+      case HubQuickAction.grade:
+        final d = _data;
+        final course = _filter.courseId == null || _filter.courseId == AllExamsFilter.noCourse ? null : _filter.courseId;
+        _flow(() => openGradePapers(context, courses: d == null ? const [] : hubGradePlaces(d), orgNames: staffOrgs(), initialCourseId: course));
+      case HubQuickAction.previous:
+        // the exams that already ran, in the Creation list (its search finds one by name)
+        setState(() {
+          _tab = 0;
+          _selected = null;
+          _filter = _filter.copyWith(status: 'closed');
+        });
+      case HubQuickAction.results:
+        setState(() {
+          _tab = 1;
+          _segment = HubSurface.results;
+          _selected = null;
+        });
+    }
+  }
+
   void _attention(HubAttentionKind k) {
     _search.clear();
     setState(() {
@@ -136,8 +162,6 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
       }
     });
   }
-
-  HubSurface get _surface => _tab == 0 ? HubSurface.creation : _segment;
 
   Future<void> _publish(AllExam e) async {
     if (e.questionCount == 0) {
@@ -226,7 +250,6 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
     final c = context.colors;
     final d = _data;
     final nav = Navigator.of(context);
-    final creating = _surface == HubSurface.creation;
     final header = AppPageHeader(
       title: t('الاختبارات', 'Exams'),
       subtitle: _subtitle,
@@ -234,14 +257,17 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
       onBack: nav.canPop() ? () => nav.maybePop() : null,
       onRefresh: _load,
       updatedAt: _updated,
-      primaryAction: creating
-          ? AppButton.primary(key: const ValueKey('exam.hub.new'), label: t('اختبار جديد', 'New exam'), icon: Icons.add_rounded, onPressed: _newExam)
-          : null,
-      search: AppSearchField(
-        controller: _search,
-        hint: t('ابحث باسم الاختبار أو المقرر', 'Search by exam or course name'),
-        onChanged: (v) => setState(() => _filter = _filter.copyWith(query: v)),
-      ),
+      // New exam lives in the action row, on both tabs (D-660)
+      // the search, then the action row: both sit above the tabs (the underline tabs must stay the header's `bottom`)
+      search: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        AppSearchField(
+          controller: _search,
+          hint: t('ابحث باسم الاختبار أو المقرر', 'Search by exam or course name'),
+          onChanged: (v) => setState(() => _filter = _filter.copyWith(query: v)),
+        ),
+        AppSpace.gapSm,
+        HubActionRow(actions: hubQuickActions(), onTap: _quick),
+      ]),
       bottom: AppUnderlineTabs(
         expand: true,
         items: [
