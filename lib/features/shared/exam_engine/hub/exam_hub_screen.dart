@@ -33,6 +33,7 @@ import 'create/exam_create_wizard.dart' show openExamCreateWizard;
 import 'deliver/exam_deliver_screen.dart' show openExamDeliver;
 import 'grade/grade_papers_sheet.dart' show openGradePapers;
 import 'hub_degrees_import_sheet.dart' show openHubDegreesImport;
+import 'hub_duplicate.dart';
 import 'hub_entry.dart';
 import 'hub_logic.dart';
 import 'hub_widgets.dart';
@@ -235,7 +236,25 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
         if (await openHubDegreesImport(context, examId: e.id, title: e.displayTitle)) _load();
       case HubAction.revision:
         await _flow(() => openExamRevision(context, examId: e.id, courseId: e.courseId, orgId: e.orgId, title: e.displayTitle));
+      case HubAction.duplicate:
+        await _duplicate(e);
     }
+  }
+
+  /// A new draft with the same questions (D-665), opened in the editor like any draft; the list shows it on return.
+  Future<void> _duplicate(AllExam e) async {
+    setState(() => _busy.add(e.id));
+    final r = await ExamDuplicateApi().duplicate(e.id);
+    if (!mounted) return;
+    setState(() => _busy.remove(e.id));
+    final id = duplicatedExamId(r);
+    if (id == null) {
+      showAppNotice(r.ok ? t('تعذر فتح النسخة', 'The copy could not be opened') : duplicateErrorText(r), error: true);
+      if (r.ok) _load();
+      return;
+    }
+    showAppNotice(t('أُنشئت نسخة مسودة من «${e.displayTitle}»', 'A draft copy of "${e.displayTitle}" is ready'));
+    await _flow(() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamEditorScreen(examId: id, courseId: e.courseId, orgId: e.orgId))));
   }
 
   String? get _subtitle {

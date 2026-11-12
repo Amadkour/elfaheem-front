@@ -157,8 +157,13 @@ String gradeLogValueText(dynamic v) {
   return s.isEmpty ? '—' : s;
 }
 
-/// `regrade` is written by the system itself (actor 0): show it as such.
-String gradeLogReasonText(String reason) => reason == 'regrade' ? t('إعادة تصحيح آلية بعد تغيير المفتاح', 'Automatic regrade after the key changed') : reason;
+/// `regrade` is written by the system itself (actor 0): show it as such. `key fix: question N (…)` is the mark a fixed key
+/// moved (D-666).
+String gradeLogReasonText(String reason) {
+  if (reason == 'regrade') return t('إعادة تصحيح آلية بعد تغيير المفتاح', 'Automatic regrade after the key changed');
+  if (reason.startsWith('key fix')) return t('أعيد التصحيح بعد تصحيح مفتاح السؤال', 'Marked again after the key was fixed');
+  return reason;
+}
 
 class GradeLogEntry {
   GradeLogEntry({required this.id, this.at, this.actorId, this.actorName, required this.entity, this.entityId, this.attemptId,

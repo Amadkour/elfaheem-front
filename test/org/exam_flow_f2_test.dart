@@ -240,13 +240,11 @@ void main() {
       expect(keyFixCandidates(view, null), isEmpty);
     });
 
-    test('the bank body keeps everything but the new correct answer', () {
+    test('the key-fix body is the picked answers as a list (D-666)', () {
       final c = keyFixCandidates(view, analytics);
-      final body = keyFixBody(c.first, {'b'});
-      expect(body['answer'], {'correct': 'b'});
-      expect((body['body'] as Map)['options'], hasLength(3));
-      expect(body.containsKey('points'), isFalse);
-      expect(keyFixBody(c[1], {'true'})['answer'], {'correct': true});
+      expect(keyFixRequest(c.first, {'b'}), {'correct': ['b']});
+      expect(keyFixRequest(c.first, {'b'}, reason: '  negative  '), {'correct': ['b'], 'reason': 'negative'});
+      expect(keyFixRequest(c[1], {'true'}), {'correct': [true]});
       expect(keyFixAnswerOf('mcq_multi', {'a', 'c'}), ['a', 'c']);
     });
 
@@ -258,14 +256,18 @@ void main() {
       expect(keyFixReady(c, {'b'}), isTrue);
     });
 
-    test('waiting answers and the texts', () {
-      expect(keyFixWaiting({'items': [{'review_state': 'queued'}, {'review_state': 'proposed'}, {'review_state': 'queued'}]}), 2);
-      expect(keyFixWaiting({}), 0);
-      expect(keyFixQueuedText(1), 'Marking 1 attempt again');
-      expect(keyFixQueuedText(4), 'Marking 4 attempts again');
+    test('the outcome and the texts say marks move', () {
+      final o = KeyFixOutcome.fromJson({'answers_changed': 5, 'attempts_changed': 4, 'manual_kept': 1, 'waiting': 0, 'results_published': true});
+      expect((o.answersChanged, o.attemptsChanged, o.manualKept, o.resultsPublished), (5, 4, 1, true));
+      expect(keyFixOutcomeText(o),
+          'The key is saved and 4 results changed. 1 mark you gave by hand is kept. The results are published: students see the new marks now.');
+      expect(keyFixOutcomeText(const KeyFixOutcome()), 'The key is saved. No mark changed: no answer is affected by it.');
+      expect(keyFixOutcomeText(const KeyFixOutcome(attemptsChanged: 1, waiting: 2)), contains('2 answers waiting'));
+      expect(keyFixConfirmText, contains('final marks included'));
+      expect(keyFixConfirmText, isNot(contains('do not change')));
       AppConfig.lang = 'ar';
-      expect(keyFixQueuedText(2), 'يُعاد تصحيح محاولتين');
-      expect(keyFixNothingText, contains('حُفظ المفتاح'));
+      expect(keyFixOutcomeText(const KeyFixOutcome(attemptsChanged: 2)), 'حُفظ المفتاح وتغيرت نتيجتا طالبين.');
+      expect(keyFixConfirmText, contains('الدرجات المعتمدة'));
     });
   });
 
@@ -286,8 +288,6 @@ void main() {
       'key check card': () => SingleChildScrollView(child: ResultKeyCheckCard(questions: candidates, onFix: (_) {})),
       'fix-key sheet': () => SingleChildScrollView(child: KeyFixSheet(question: candidates.first)),
       'fix-key sheet (true / false)': () => SingleChildScrollView(child: KeyFixSheet(question: candidates[1])),
-      'progress': () => KeyFixProgressView(attempts: 28, waiting: 9, onBackground: () {}),
-      'progress (starting)': () => const KeyFixProgressView(attempts: 1),
     };
     for (final e in map.entries) {
       testWidgets(e.key, (tester) async => expectNoLayoutErrors(tester, e.value));

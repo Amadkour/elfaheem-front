@@ -9,6 +9,7 @@ import 'package:flutter_education_app/core/plural.dart';
 
 import '../../../admin/admin_common.dart' show t;
 import '../exam_all.dart';
+import 'hub_duplicate.dart' show hubCanDuplicate;
 
 /// The hub's three lists: tab Creation, and the two sides of tab Results & Correction.
 enum HubSurface { creation, correction, results }
@@ -20,7 +21,7 @@ enum HubCorrection { notCorrected, inProgress, notEnded, corrected }
 enum HubResultsFilter { hasDegrees, noDegrees, unpublished }
 
 /// Everything a person can do to an exam from the hub.
-enum HubAction { edit, deliver, results, publish, paper, correct, getResult, addDegrees, importDegrees, revision }
+enum HubAction { edit, deliver, results, publish, paper, correct, getResult, addDegrees, importDegrees, revision, duplicate }
 
 /// Kill switches the hub respects on its own buttons (the servers refuse them too).
 const kHubImportKey = 'exam.results.import';
@@ -231,6 +232,7 @@ List<HubAction> hubMoreActions(AllExam e, HubSurface s) {
         if (!e.draft && main != HubAction.results) HubAction.results,
         if (e.draft) HubAction.publish,
         if (e.type != AllExamType.file) HubAction.paper,
+        if (hubCanDuplicate(e)) HubAction.duplicate,
       ];
     case HubSurface.correction:
       return [
@@ -267,6 +269,7 @@ String hubActionLabel(HubAction a) => switch (a) {
       HubAction.addDegrees => t('إضافة الدرجات', 'Add degrees'),
       HubAction.importDegrees => t('استيراد من Excel', 'Import from Excel'),
       HubAction.revision => t('مراجعة الاختبار', 'Exam revision'),
+      HubAction.duplicate => t('نسخ الاختبار', 'Duplicate'),
     };
 
 // ─────────────────────────────── texts ───────────────────────────────

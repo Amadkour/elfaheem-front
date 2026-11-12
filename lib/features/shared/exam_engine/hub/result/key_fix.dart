@@ -1,18 +1,18 @@
-// Fix the key from the item analysis (D-664): a choice or true / false question the analysis flagged (too hard, weak or
-// negative discrimination, a suspect key) can get its correct answer changed from the results, then this question's
-// answers are re-marked. The key is saved through the question bank's edit (`PUT /questions/{id}`, a new version) and the
-// re-marking is the engine's own `POST /exams/{id}/regrade {question_id}`; the grade log already records what it moves.
-// Limit (D-664): the engine re-marks only undecided answers, with the exam's PINNED question version, so no mark moves to
-// the new key until the server gains a key-fix route; the texts never promise more than that.
-// The screens are key_fix_sheet.dart (the sheet, the confirm and the progress) and the results' "Check these keys" card.
+// Fix the key from the item analysis (D-664, D-666): a choice or true / false question the analysis flagged (too hard, weak
+// or negative discrimination, a suspect key) can get its correct answer changed from the results. One call does it all,
+// `POST /exams/{id}/questions/{qid}/key {correct, reason?}` (back D-653): the fix is stored on THIS exam (the question bank
+// keeps its key), every answer to the question is marked again at once (final ones too), the totals move, a mark the
+// teacher gave by hand is kept, and the grade log records the key change and every moved mark. When the results are
+// published, students see the new marks straight away. Synchronous: no job to follow.
+// The screens are key_fix_sheet.dart (the sheet and the confirm) and the results' "Check these keys" card.
 //
-// Pure (unit-tested): kKeyFixFlags · keyFixable · keyFixCandidates · keyFixBody · keyFixAnswerOf · the texts.
+// Pure (unit-tested): kKeyFixFlags · keyFixable · keyFixCandidates · keyFixRequest · keyFixAnswerOf · KeyFixOutcome · the texts.
 library;
 
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/plural.dart';
 
-import '../../../../admin/admin_common.dart' show asMap, t;
+import '../../../../admin/admin_common.dart' show asInt, asMap, t;
 import '../../exam_authoring.dart' show ExamView, authoringError;
 import '../../exam_engine_api.dart' show EngineResult, engineCall;
 import '../../exam_insights.dart' show ExamAnalytics, ItemStat, OptionStat, itemFlagText;
@@ -114,57 +114,76 @@ Object keyFixAnswerOf(String type, Set<String> picked) => switch (type) {
       _ => picked.first,
     };
 
-/// The `PUT /questions/{id}` body: the same body and key with the new correct answer (points, tags and difficulty unsent,
-/// so the bank keeps them).
-Map<String, dynamic> keyFixBody(KeyFixCandidate c, Set<String> picked) => {
-      'body': c.body,
-      'answer': {...c.answer, 'correct': keyFixAnswerOf(c.type, picked)},
-    };
+/// The key-fix body: the picked answers as a list (`[true]` / `[false]` for a true / false question).
+Map<String, dynamic> keyFixRequest(KeyFixCandidate c, Set<String> picked, {String? reason}) {
+  final a = keyFixAnswerOf(c.type, picked);
+  return {
+    'correct': a is List ? a : [a],
+    if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+  };
+}
 
 /// A pick the sheet may save: not empty, one answer for a single choice / true-false, and not the key it already has.
 bool keyFixReady(KeyFixCandidate c, Set<String> picked) =>
     picked.isNotEmpty && (c.multi || picked.length == 1) && !(picked.length == c.correct.length && picked.containsAll(c.correct));
 
 String get keyFixConfirmText => t(
-    'تُحفظ الإجابة الصحيحة كنسخة جديدة من السؤال في بنك الأسئلة، ثم تُصحَّح من جديد إجابات هذا السؤال التي ما زالت بانتظار قرار. الدرجات المعتمدة لا تتغير، فهذا الاختبار يحتفظ بنسخة السؤال التي نُشر بها. كل تغيير يُسجَّل في سجل الدرجات.',
-    'The correct answer is saved as a new version of the question in the bank, then this question\'s answers still waiting for a decision are marked again. Final marks do not change: this exam keeps the question version it was published with. Every change is written to the grade log.');
+    'تتغير الإجابة الصحيحة في هذا الاختبار وحده، ويبقى السؤال في بنك الأسئلة كما هو. تُصحَّح الآن كل إجابات هذا السؤال من جديد، ومنها الدرجات المعتمدة، فتتغير المجاميع. الدرجة التي وضعتها بنفسك لإجابة ما تبقى كما هي. إن كانت النتائج منشورة يرى الطلاب الدرجات الجديدة فورًا. كل تغيير يُسجَّل في سجل الدرجات.',
+    'The correct answer changes for this exam only; the question bank keeps its own. Every answer to this question is marked again now, final marks included, so totals change. A mark you gave by hand stays as it is. If the results are published, students see the new marks at once. Every change is written to the grade log.');
 
-/// After the regrade call: how many attempts went back to the grader.
-String keyFixQueuedText(int attempts) => countText(attempts,
-    ar1: 'يُعاد تصحيح محاولة واحدة', ar2: 'يُعاد تصحيح محاولتين', arFew: 'يُعاد تصحيح {n} محاولات', arMany: 'يُعاد تصحيح {n} محاولة',
-    en1: 'Marking 1 attempt again', en: 'Marking {n} attempts again');
+/// What the key fix did (the route's reply).
+class KeyFixOutcome {
+  const KeyFixOutcome({this.answersChanged = 0, this.attemptsChanged = 0, this.manualKept = 0, this.waiting = 0, this.resultsPublished = false});
 
-/// Nothing went back to the grader: every answer to this question is already final.
-String get keyFixNothingText => t(
-    'حُفظ المفتاح في بنك الأسئلة. لا توجد إجابة لهذا السؤال بانتظار قرار، فلم تتغير أي درجة. لإزالة أثر السؤال من الدرجات استخدم "إلغاء هذا السؤال" في تحليل الأسئلة.',
-    'The key is saved in the question bank. No answer to this question was waiting for a decision, so no mark changed. To take the question out of the marks, use "Cancel this question" in the item analysis.');
+  factory KeyFixOutcome.fromJson(Map<String, dynamic> j) => KeyFixOutcome(
+        answersChanged: asInt(j['answers_changed']),
+        attemptsChanged: asInt(j['attempts_changed']),
+        manualKept: asInt(j['manual_kept']),
+        waiting: asInt(j['waiting']),
+        resultsPublished: j['results_published'] == true,
+      );
 
-String keyFixDoneText(int attempts) => countText(attempts,
-    ar1: 'انتهى تصحيح محاولة واحدة من جديد', ar2: 'انتهى تصحيح محاولتين من جديد', arFew: 'انتهى تصحيح {n} محاولات من جديد',
-    arMany: 'انتهى تصحيح {n} محاولة من جديد', en1: '1 attempt is marked again', en: '{n} attempts are marked again');
+  final int answersChanged, attemptsChanged, manualKept, waiting;
+  final bool resultsPublished;
+}
+
+/// The notice after a fix: how many results moved, then what was kept or is still open, then who sees it.
+String keyFixOutcomeText(KeyFixOutcome o) {
+  final parts = <String>[
+    o.attemptsChanged == 0
+        ? t('حُفظ المفتاح. لم تتغير أي درجة: لا توجد إجابة تتأثر به.', 'The key is saved. No mark changed: no answer is affected by it.')
+        : countText(o.attemptsChanged,
+            ar1: 'حُفظ المفتاح وتغيرت نتيجة طالب واحد', ar2: 'حُفظ المفتاح وتغيرت نتيجتا طالبين', arFew: 'حُفظ المفتاح وتغيرت نتائج {n} طلاب',
+            arMany: 'حُفظ المفتاح وتغيرت نتائج {n} طالبًا', en1: 'The key is saved and 1 result changed', en: 'The key is saved and {n} results changed'),
+    if (o.manualKept > 0)
+      countText(o.manualKept,
+          ar1: 'بقيت درجة واحدة وضعتها بنفسك', ar2: 'بقيت درجتان وضعتهما بنفسك', arFew: 'بقيت {n} درجات وضعتها بنفسك', arMany: 'بقيت {n} درجة وضعتها بنفسك',
+          en1: '1 mark you gave by hand is kept', en: '{n} marks you gave by hand are kept'),
+    if (o.waiting > 0)
+      countText(o.waiting,
+          ar1: 'وإجابة واحدة بانتظار قرارك تُصحَّح بالمفتاح الجديد', ar2: 'وإجابتان بانتظار قرارك تُصحَّحان بالمفتاح الجديد',
+          arFew: 'و{n} إجابات بانتظار قرارك تُصحَّح بالمفتاح الجديد', arMany: 'و{n} إجابة بانتظار قرارك تُصحَّح بالمفتاح الجديد',
+          en1: '1 answer waiting for your decision uses the new key', en: '{n} answers waiting for your decision use the new key'),
+    if (o.resultsPublished && o.attemptsChanged > 0) t('النتائج منشورة: يرى الطلاب الدرجات الجديدة الآن.', 'The results are published: students see the new marks now.'),
+  ];
+  return [for (final p in parts) p.endsWith('.') ? p : '$p.'].join(' ');
+}
 
 /// The server's refusal in words (its own text when the code is not one we know).
-String keyFixErrorText(EngineResult r) => r.code == 'feature_disabled'
-    ? t('إعادة التصحيح الآلي متوقفة على المنصة. حُفظ المفتاح فقط.', 'Automatic marking is switched off on the platform. Only the key was saved.')
-    : authoringError(r);
+String keyFixErrorText(EngineResult r) => switch (r.code) {
+      'key_unchanged' => t('هذه هي الإجابة الصحيحة الحالية.', 'That is already the correct answer.'),
+      'question_voided' => t('السؤال ملغى. استعده أولًا لتغيير مفتاحه.', 'The question is cancelled. Restore it first to change its key.'),
+      'form_keys_own' => t('مفاتيح نماذج هذا الاختبار أدخلتها بنفسك: صحّح المفتاح في إعداد ورقة التظليل.',
+          'This exam has answer keys you typed per paper version: fix the key in the bubble sheet setup.'),
+      _ => authoringError(r),
+    };
 
 class KeyFixApi {
   KeyFixApi([ApiClient? api]) : _api = api ?? ApiClient();
   final ApiClient _api;
   static const _b = '/api/v1/exam';
 
-  Future<EngineResult> saveKey(int questionId, Map<String, dynamic> body) => engineCall(() => _api.put('$_b/questions/$questionId', body: body));
-
-  /// `{attempts}`: how many attempts went back to the grader.
-  Future<EngineResult> regrade(int examId, int questionId) => engineCall(() => _api.post('$_b/exams/$examId/regrade', body: {'question_id': questionId}));
-
-  /// The open review rows of one question (`queued` = still waiting for the grader).
-  Future<EngineResult> openAnswers(int examId, int questionId) =>
-      engineCall(() => _api.get('$_b/exams/$examId/review', queryParams: {'state': 'open', 'question_id': questionId, 'limit': 100}));
-}
-
-/// How many of [review]'s rows still wait for the grader.
-int keyFixWaiting(Map<String, dynamic> review) {
-  final items = (review['items'] as List?) ?? const [];
-  return items.where((x) => x is Map && x['review_state'] == 'queued').length;
+  /// Saves the fixed key on this exam and marks every answer again (one synchronous call, D-666).
+  Future<EngineResult> fixKey(int examId, int questionId, Map<String, dynamic> body) =>
+      engineCall(() => _api.post('$_b/exams/$examId/questions/$questionId/key', body: body));
 }

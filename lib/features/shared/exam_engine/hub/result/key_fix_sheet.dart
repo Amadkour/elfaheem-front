@@ -1,85 +1,32 @@
-// Fix the key (D-664): the results' "Check these keys" card, the sheet that picks the right answer (with what the class
-// and the top group chose), the confirm (it changes marks) and the re-marking progress, which follows `job_updated`
-// through JobWatch with a slow poll of the question's open answers as the fallback. Pure part: key_fix.dart.
-// Plain-value widgets (the layout harness pumps them): ResultKeyCheckCard · KeyFixSheet · KeyFixProgressView.
+// Fix the key (D-664, D-666): the results' "Check these keys" card, the sheet that picks the right answer (with what the
+// class and the top group chose) and the confirm (it changes marks). The fix is one synchronous call that marks every
+// answer again (key_fix.dart), so the flow ends with a notice saying what moved. Pure part: key_fix.dart.
+// Plain-value widgets (the layout harness pumps them): ResultKeyCheckCard · KeyFixSheet.
 library;
-
-import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/core/live/event_wait.dart';
-import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
-import '../../../../admin/admin_common.dart' show asInt, t;
+import '../../../../admin/admin_common.dart' show t;
 import '../../exam_insights.dart' show itemFlagText;
 import 'key_fix.dart';
 
-/// The whole flow for one question: pick → confirm → save the key → regrade → follow it. True when the key was saved.
+/// The whole flow for one question: pick → confirm → fix (every answer is marked again in the same call). True when the
+/// key was saved, so the caller reloads its marks.
 Future<bool> openKeyFix(BuildContext context, {required int examId, required KeyFixCandidate question, KeyFixApi? api}) async {
   final a = api ?? KeyFixApi();
   final picked = await showAppSheet<Set<String>>(context, (_) => KeyFixSheet(question: question));
   if (picked == null || !context.mounted) return false;
   final ok = await appConfirm(context, danger: true, message: keyFixConfirmText, confirmLabel: t('حفظ وإعادة التصحيح', 'Save and mark again'));
   if (!ok || !context.mounted) return false;
-  final saved = await a.saveKey(question.questionId, keyFixBody(question, picked));
-  if (!saved.ok) {
-    showAppNotice(keyFixErrorText(saved), error: true);
+  final r = await a.fixKey(examId, question.questionId, keyFixRequest(question, picked, reason: '${t('تحليل الأسئلة', 'Item analysis')}: ${question.reason}'));
+  if (!r.ok) {
+    showAppNotice(keyFixErrorText(r), error: true);
     return false;
   }
-  final rg = await a.regrade(examId, question.questionId);
-  if (!rg.ok) {
-    showAppNotice('${t('حُفظ المفتاح، ولم تبدأ إعادة التصحيح:', 'The key is saved, but marking again did not start:')} ${keyFixErrorText(rg)}', error: true);
-    return true;
-  }
-  final attempts = asInt(rg.map['attempts']);
-  if (attempts == 0) {
-    showAppNotice(keyFixNothingText);
-    return true;
-  }
-  if (!context.mounted) return true;
-  final finished = await _follow(context, a, examId, question.questionId, attempts);
-  showAppNotice(finished ? keyFixDoneText(attempts) : t('يستمر التصحيح في الخلفية، وتظهر الدرجات الجديدة عند انتهائه.', 'Marking carries on in the background; the new marks appear when it ends.'));
+  showAppNotice(keyFixOutcomeText(KeyFixOutcome.fromJson(r.map)));
   return true;
-}
-
-/// Shows the progress until no answer of the question waits for the grader (or the teacher leaves it running).
-Future<bool> _follow(BuildContext context, KeyFixApi api, int examId, int questionId, int attempts) async {
-  final progress = ValueNotifier<int?>(null);
-  var stop = false, finished = false;
-  final watch = JobWatch();
-  final closed = Completer<void>();
-  unawaited(showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => ValueListenableBuilder<int?>(
-      valueListenable: progress,
-      builder: (_, waiting, _) => KeyFixProgressView(attempts: attempts, waiting: waiting, onBackground: () {
-        stop = true;
-        Navigator.of(context, rootNavigator: true).pop();
-      }),
-    ),
-  ).whenComplete(closed.complete));
-  try {
-    for (var i = 0; i < 40 && !stop; i++) {
-      final r = await api.openAnswers(examId, questionId);
-      if (r.ok) {
-        final left = keyFixWaiting(r.map);
-        progress.value = left;
-        if (left == 0) {
-          finished = true;
-          break;
-        }
-      }
-      await watch.next(const Duration(seconds: 3), fallbackEvery: const Duration(seconds: 6));
-    }
-  } finally {
-    watch.dispose();
-    if (!stop && context.mounted) Navigator.of(context, rootNavigator: true).pop();
-    await closed.future;
-  }
-  return finished;
 }
 
 /// "Check these keys": the questions the analysis flagged, each with Fix the key.
@@ -202,46 +149,5 @@ class _KeyFixSheetState extends State<KeyFixSheet> {
         onPressed: keyFixReady(q, _picked) ? () => Navigator.of(context).pop(_picked) : null,
       ),
     ]);
-  }
-}
-
-/// The re-marking under way: how many answers still wait ([waiting] null = not read yet).
-class KeyFixProgressView extends StatelessWidget {
-  const KeyFixProgressView({super.key, required this.attempts, this.waiting, this.onBackground});
-  final int attempts;
-  final int? waiting;
-  final VoidCallback? onBackground;
-
-  @override
-  Widget build(BuildContext context) {
-    final w = waiting;
-    return PopScope(
-      canPop: false,
-      child: Dialog(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: AppWidth.form.max),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpace.lg),
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text(keyFixQueuedText(attempts), style: AppType.section(context)),
-              const SizedBox(height: AppSpace.sm),
-              AppProgressBar(value: w == null || attempts <= 0 ? null : ((attempts - w).clamp(0, attempts) / attempts) * 100, height: AppSpace.xs),
-              const SizedBox(height: AppSpace.xs),
-              Text(
-                  w == null
-                      ? t('يبدأ المصحح الآلي ...', 'The grader is starting ...')
-                      : countText(w, ar1: 'إجابة واحدة بانتظار المصحح', ar2: 'إجابتان بانتظار المصحح', arFew: '{n} إجابات بانتظار المصحح', arMany: '{n} إجابة بانتظار المصحح',
-                          en1: '1 answer waiting for the grader', en: '{n} answers waiting for the grader'),
-                  style: AppType.meta(context)),
-              const SizedBox(height: AppSpace.xs),
-              Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: TextButton(key: const ValueKey('keyfix.background'), onPressed: onBackground, child: Text(t('متابعة في الخلفية', 'Keep it running'))),
-              ),
-            ]),
-          ),
-        ),
-      ),
-    );
   }
 }

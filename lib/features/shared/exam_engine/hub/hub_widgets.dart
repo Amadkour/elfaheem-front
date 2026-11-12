@@ -50,6 +50,7 @@ IconData hubActionIcon(HubAction a) => switch (a) {
       HubAction.addDegrees => Icons.playlist_add_rounded,
       HubAction.importDegrees => Icons.upload_file_rounded,
       HubAction.revision => Icons.compare_arrows_rounded,
+      HubAction.duplicate => Icons.content_copy_rounded,
     };
 
 AppTone hubCorrectionTone(HubCorrection c) => switch (c) {
