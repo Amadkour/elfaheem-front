@@ -134,6 +134,7 @@ class OmrFixCallbacks {
     this.onSetScore,
     this.onFixText,
     this.onReplacePage,
+    this.onNewStudent,
   });
 
   final ValueChanged<List<String>>? onChoose;
@@ -156,6 +157,9 @@ class OmrFixCallbacks {
   /// Image quality: a clearer image of the page, through the same replace flow as the batch page (the page's open
   /// items close as "replaced" once the gate accepts it).
   final VoidCallback? onReplacePage;
+
+  /// D-672, a correction with no course: the paper's student is a new one, typed (name, ID; either may be empty).
+  final void Function(String name, String code)? onNewStudent;
 }
 
 /// One review item: the crop next to the system's reading, why it is here, and its one-click fix.
@@ -544,6 +548,8 @@ class _OmrIdentifierFixState extends State<OmrIdentifierFix> {
   late final _value = TextEditingController(text: widget.item.readValue);
   final _query = TextEditingController();
   final _typedId = TextEditingController();
+  final _newName = TextEditingController();
+  final _newCode = TextEditingController();
   List<OmrStudent>? _hits;
   bool _searching = false;
   bool _noSearch = false;
@@ -602,6 +608,8 @@ class _OmrIdentifierFixState extends State<OmrIdentifierFix> {
     _value.dispose();
     _query.dispose();
     _typedId.dispose();
+    _newName.dispose();
+    _newCode.dispose();
     super.dispose();
   }
 
@@ -706,6 +714,38 @@ class _OmrIdentifierFixState extends State<OmrIdentifierFix> {
           if (_hits!.isEmpty) Text(t('لا يوجد طالب بهذا الاسم', 'No student matches'), style: appText(13, c: c.textMedium)),
           for (final s in _hits!.take(8)) _StudentRow(student: s, onTap: () => f.onAssign!(s)),
         ],
+        const SizedBox(height: AppSpace.sm),
+      ],
+      if (it.can('assign') && f.onNewStudent != null) ...[
+        Text(t('أو طالب جديد', 'Or a new student'), key: const ValueKey('omr.id.newTitle'), style: section),
+        const SizedBox(height: AppSpace.xs),
+        TextField(
+          key: const ValueKey('omr.id.newName'),
+          controller: _newName,
+          textInputAction: TextInputAction.next,
+          decoration: InputDecoration(hintText: t('اسم الطالب', "The student's name")),
+        ),
+        const SizedBox(height: AppSpace.xs),
+        Row(children: [
+          Expanded(
+            child: TextField(
+              key: const ValueKey('omr.id.newCode'),
+              controller: _newCode,
+              textDirection: TextDirection.ltr,
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9٠-٩A-Za-z\-]')), LengthLimitingTextInputFormatter(40)],
+              decoration: InputDecoration(hintText: t('رقمه (اختياري)', 'ID (optional)')),
+            ),
+          ),
+          const SizedBox(width: AppSpace.xs),
+          OutlinedButton(
+            key: const ValueKey('omr.id.newAdd'),
+            onPressed: () {
+              final n = _newName.text.trim(), c = _newCode.text.trim();
+              if (n.isNotEmpty || c.isNotEmpty) f.onNewStudent!(n, c);
+            },
+            child: Text(t('إضافة', 'Add')),
+          ),
+        ]),
         const SizedBox(height: AppSpace.sm),
       ],
     ];

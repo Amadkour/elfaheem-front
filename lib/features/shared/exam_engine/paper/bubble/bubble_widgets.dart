@@ -10,6 +10,7 @@ import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../../../admin/admin_common.dart' show t;
+import '../exam_setup_wizard.dart' show SetupChoiceTile;
 import 'bubble_flow.dart';
 import 'bubble_sheet_view.dart';
 
@@ -604,4 +605,207 @@ class BubbleKeyReadBanner extends StatelessWidget {
       ]),
     );
   }
+}
+
+
+/// Where a paper's student comes from (D-672): one tile per source, the chosen one marked.
+class BubbleIdSourceChoice extends StatelessWidget {
+  const BubbleIdSourceChoice({super.key, required this.selected, required this.onPick, this.sources = BubbleIdSource.values});
+  final BubbleIdSource selected;
+  final ValueChanged<BubbleIdSource> onPick;
+  final List<BubbleIdSource> sources;
+
+  static IconData icon(BubbleIdSource s) => switch (s) {
+        BubbleIdSource.bubble => Icons.grid_on_rounded,
+        BubbleIdSource.image => Icons.draw_rounded,
+        BubbleIdSource.fileName => Icons.drive_file_rename_outline_rounded,
+        BubbleIdSource.manual => Icons.how_to_reg_rounded,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      for (var i = 0; i < sources.length; i++) ...[
+        if (i > 0) const SizedBox(height: AppSpace.xs),
+        SetupChoiceTile(
+          key: ValueKey('bubble.idsrc.${sources[i].name}'),
+          icon: icon(sources[i]),
+          title: bubbleIdSourceLabel(sources[i]),
+          subtitle: bubbleIdSourceHint(sources[i]),
+          selected: sources[i] == selected,
+          onTap: () => onPick(sources[i]),
+        ),
+      ],
+    ]);
+  }
+}
+
+/// The students of a correction with no course (D-672): how many, the first names, paste a list / edit.
+class BubbleStudentsCard extends StatelessWidget {
+  const BubbleStudentsCard({super.key, required this.students, this.onPaste, this.onEdit});
+  final BubbleStudents students;
+  final VoidCallback? onPaste, onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final n = students.people.length;
+    final count = countText(n, ar1: 'طالب واحد', ar2: 'طالبان', arFew: '$n طلاب', arMany: '$n طالبًا', en1: '1 student', en: '$n students');
+    final names = students.people.take(4).map((p) => p.label).where((x) => x.isNotEmpty).join(t('، ', ', '));
+    return AppCard(
+      padding: AppSpace.card,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Icon(Icons.groups_2_rounded, color: c.primary),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(child: Text(t('طلاب هذا التصحيح', 'Students of this correction'), style: AppType.section(context))),
+        ]),
+        const SizedBox(height: AppSpace.xs),
+        Text(
+          n == 0
+              ? t('بلا مقرر: يُضاف كل طالب من ورقته، أو الصق قائمة الطلاب الآن.', "No course: each student is added from their paper, or paste the class list now.")
+              : '$count${names.isEmpty ? '' : ' · $names${n > 4 ? '…' : ''}'}',
+          style: AppType.meta(context).copyWith(color: c.textMedium),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: AppSpace.sm),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+          if (onPaste != null) AppButton.secondary(key: const ValueKey('bubble.people.paste'), label: t('لصق قائمة الطلاب', 'Paste the class list'), icon: Icons.content_paste_rounded, onPressed: onPaste),
+          if (onEdit != null && n > 0) AppButton.ghost(key: const ValueKey('bubble.people.edit'), label: t('تعديل الأسماء', 'Edit names'), icon: Icons.edit_rounded, onPressed: onEdit),
+        ]),
+      ]),
+    );
+  }
+}
+
+/// Where the student's ID comes from, on the correction's page; [boxSet]: the name area is marked (written source).
+class BubbleIdSourceCard extends StatelessWidget {
+  const BubbleIdSourceCard({super.key, required this.source, this.boxSet = false, this.onChange, this.onMarkBox});
+  final BubbleIdSource source;
+  final bool boxSet;
+  final VoidCallback? onChange, onMarkBox;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final needsBox = source == BubbleIdSource.image && !boxSet;
+    return AppCard(
+      padding: AppSpace.card,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Icon(BubbleIdSourceChoice.icon(source), color: needsBox ? c.warning : c.primary),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(t('رقم الطالب', "The student's ID"), style: AppType.meta(context).copyWith(color: c.textMedium)),
+              Text(bubbleIdSourceLabel(source), style: AppType.bodyStrong(context)),
+            ]),
+          ),
+          if (onChange != null) AppButton.ghost(key: const ValueKey('bubble.idsrc.change'), size: AppButtonSize.sm, label: t('تغيير', 'Change'), onPressed: onChange),
+        ]),
+        if (source == BubbleIdSource.image && onMarkBox != null) ...[
+          const SizedBox(height: AppSpace.xs),
+          Text(
+            needsBox ? t('حدّد على الورقة مكان الاسم أو الرقم المكتوب.', 'Mark on the sheet where the name or ID is written.') : t('مكان الاسم محدد.', 'The name area is marked.'),
+            style: AppType.meta(context).copyWith(color: needsBox ? c.warning : c.textMedium),
+          ),
+          const SizedBox(height: AppSpace.xs),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: AppButton.secondary(key: const ValueKey('bubble.idsrc.box'), label: needsBox ? t('تحديد مكان الاسم', 'Mark the name area') : t('تعديل المكان', 'Change the area'), icon: Icons.crop_free_rounded, onPressed: onMarkBox),
+          ),
+        ],
+      ]),
+    );
+  }
+}
+
+/// Drag a box over the sheet where the name / ID is written. [onDone] gets [x, y, w, h] as shares of the picture.
+class BubbleBoxPicker extends StatefulWidget {
+  const BubbleBoxPicker({super.key, required this.image, this.initial, required this.onDone});
+  final Uint8List image;
+  final List<double>? initial;
+  final ValueChanged<List<double>> onDone;
+
+  @override
+  State<BubbleBoxPicker> createState() => _BubbleBoxPickerState();
+}
+
+class _BubbleBoxPickerState extends State<BubbleBoxPicker> {
+  Rect? _box;            // shares of the picture
+  Offset? _start;
+
+  @override
+  void initState() {
+    super.initState();
+    final b = widget.initial;
+    if (b != null) _box = Rect.fromLTWH(b[0], b[1], b[2], b[3]);
+  }
+
+  Offset _share(Offset p, Size s) => Offset((p.dx / s.width).clamp(0.0, 1.0), (p.dy / s.height).clamp(0.0, 1.0));
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final box = _box;
+    final ok = box != null && box.width >= 0.02 && box.height >= 0.01;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text(t('اسحب مستطيلًا حول مكان الاسم أو الرقم المكتوب', 'Drag a box around where the name or ID is written'), style: AppType.body(context)),
+      const SizedBox(height: AppSpace.sm),
+      LayoutBuilder(builder: (context, cons) {
+        return Image.memory(widget.image, fit: BoxFit.fitWidth, width: cons.maxWidth, frameBuilder: (context, child, frame, _) {
+          return LayoutBuilder(builder: (context, inner) {
+            return GestureDetector(
+              key: const ValueKey('bubble.box.area'),
+              onPanStart: (d) {
+                final size = context.size ?? Size(cons.maxWidth, cons.maxWidth);
+                _start = _share(d.localPosition, size);
+                setState(() => _box = Rect.fromPoints(_start!, _start!));
+              },
+              onPanUpdate: (d) {
+                final size = context.size ?? Size(cons.maxWidth, cons.maxWidth);
+                if (_start != null) setState(() => _box = Rect.fromPoints(_start!, _share(d.localPosition, size)));
+              },
+              child: Stack(children: [
+                child,
+                if (box != null)
+                  Positioned.fill(
+                    child: LayoutBuilder(builder: (context, s) {
+                      return CustomPaint(painter: _BoxPainter(Rect.fromLTWH(box.left * s.maxWidth, box.top * s.maxHeight, box.width * s.maxWidth, box.height * s.maxHeight), c.primary));
+                    }),
+                  ),
+              ]),
+            );
+          });
+        });
+      }),
+      const SizedBox(height: AppSpace.md),
+      AppButton.primary(
+        key: const ValueKey('bubble.box.save'),
+        label: t('حفظ المكان', 'Save the area'),
+        icon: Icons.check_rounded,
+        expand: true,
+        onPressed: ok ? () => widget.onDone([box.left, box.top, box.width, box.height]) : null,
+      ),
+    ]);
+  }
+}
+
+class _BoxPainter extends CustomPainter {
+  _BoxPainter(this.rect, this.color);
+  final Rect rect;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(rect, Paint()..color = color.withValues(alpha: 0.15));
+    canvas.drawRect(rect, Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2);
+  }
+
+  @override
+  bool shouldRepaint(_BoxPainter old) => old.rect != rect || old.color != color;
 }

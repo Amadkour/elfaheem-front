@@ -7,9 +7,12 @@ library;
 
 import 'dart:typed_data';
 
+import 'package:file_saver/file_saver.dart';
 import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart' show ApiException;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -17,6 +20,8 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../../../admin/admin_common.dart' show asMap, t;
 import '../exam_setup.dart' show OmrTemplateItem;
+import '../../exam_engine_api.dart' show EngineResult;
+import '../review/omr_review.dart' show OmrResults, OmrReviewApi, omrResultsExport;
 import '../scan/omr_routes.dart' show openOmrReview, openOmrResults;
 import '../scan/omr_scan_section.dart';
 import '../scan/omr_scan.dart' show OmrScanApi;
@@ -25,10 +30,10 @@ import 'bubble_flow.dart';
 import 'bubble_import_screen.dart';
 import 'bubble_widgets.dart';
 
-/// "Correct bubble sheets" for a course.
+/// "Correct bubble sheets" for a course, or ([courseId] null, D-672) for students in no course.
 class BubbleHomeScreen extends StatefulWidget {
-  const BubbleHomeScreen({super.key, required this.courseId, required this.courseTitle, this.orgId, this.api, this.picker});
-  final int courseId;
+  const BubbleHomeScreen({super.key, this.courseId, required this.courseTitle, this.orgId, this.api, this.picker});
+  final int? courseId;
   final String courseTitle;
   final int? orgId;
   final BubbleApi? api;
@@ -84,6 +89,7 @@ class _BubbleHomeScreenState extends State<BubbleHomeScreen> {
   Future<void> _fromKey() async {
     final title = TextEditingController(text: t('تصحيح ${widget.courseTitle}', 'Correct ${widget.courseTitle}'));
     final phone = !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+    var source = widget.courseId == null ? BubbleIdSource.fileName : BubbleIdSource.bubble;
     final camera = await showAppSheet<bool>(context, (ctx) => AppSheetContent(title: t('ابدأ من الإجابة النموذجية', 'Start from the model answer'), children: [
           Text(
             t('ظلّل الإجابات الصحيحة على نسخة من ورقة الطلاب نفسها، ثم صوّرها أو ارفعها صورةً أو PDF. نتعرّف على الورقة وعدد الأسئلة ومفتاح الإجابة تلقائيًا.',
@@ -92,6 +98,16 @@ class _BubbleHomeScreenState extends State<BubbleHomeScreen> {
           ),
           const SizedBox(height: AppSpace.md),
           AppField(controller: title, label: t('اسم التصحيح', 'Name of this correction')),
+          const SizedBox(height: AppSpace.md),
+          StatefulBuilder(
+            builder: (context, set) => AppDropdown<BubbleIdSource>(
+              key: const ValueKey('bubble.fromKey.idsrc'),
+              value: source,
+              decoration: InputDecoration(labelText: t('رقم الطالب يُؤخذ', "The student's ID comes")),
+              items: [for (final x in BubbleIdSource.values) DropdownMenuItem(value: x, child: Text(bubbleIdSourceLabel(x), overflow: TextOverflow.ellipsis))],
+              onChanged: (v) => set(() => source = v ?? source),
+            ),
+          ),
           const SizedBox(height: AppSpace.md),
           if (phone) ...[
             AppButton.primary(label: t('تصوير الإجابة النموذجية', 'Photograph the model answer'), icon: Icons.photo_camera_rounded, expand: true, onPressed: () => Navigator.pop(ctx, true)),
@@ -105,7 +121,7 @@ class _BubbleHomeScreenState extends State<BubbleHomeScreen> {
     if (f == null || !mounted) return;
     setState(() => _busy = true);
     final name = title.text.trim().isEmpty ? t('تصحيح ${widget.courseTitle}', 'Correct ${widget.courseTitle}') : title.text.trim();
-    final r = await _api.createRunFromKey(courseId: widget.courseId, title: name, file: f);
+    final r = await _api.createRunFromKey(courseId: widget.courseId, title: name, file: f, idSource: source);
     if (!mounted) return;
     setState(() => _busy = false);
     if (!r.ok) {
@@ -130,7 +146,8 @@ class _BubbleHomeScreenState extends State<BubbleHomeScreen> {
         ]));
     if (ok != true || !mounted) return;
     setState(() => _busy = true);
-    final r = await _api.createRun(courseId: widget.courseId, templateId: item.id, title: title.text.trim().isEmpty ? item.name : title.text.trim(), questions: int.tryParse(count.text.trim()));
+    final r = await _api.createRun(courseId: widget.courseId, templateId: item.id, title: title.text.trim().isEmpty ? item.name : title.text.trim(),
+        questions: int.tryParse(count.text.trim()), idSource: widget.courseId == null ? BubbleIdSource.fileName : null);
     if (!mounted) return;
     setState(() => _busy = false);
     if (!r.ok) {
@@ -282,6 +299,7 @@ class _BubbleRunScreenState extends State<BubbleRunScreen> {
   late final BubbleApi _api = widget.api ?? BubbleApi();
   BubbleRun? _run;
   String? _error;
+  bool _downloading = false;
 
   @override
   void initState() {
@@ -301,6 +319,158 @@ class _BubbleRunScreenState extends State<BubbleRunScreen> {
         _error = bubbleErrorText(r);
       }
     });
+  }
+
+  Future<void> _apply(EngineResult r) async {
+    if (!mounted) return;
+    if (!r.ok) {
+      appToast(bubbleErrorText(r), error: true);
+      return;
+    }
+    setState(() => _run = BubbleRun.fromJson(r.map));
+  }
+
+  /// Where the student's ID comes from (D-672); the written source asks for the name area right away.
+  Future<void> _changeSource() async {
+    final run = _run;
+    if (run == null) return;
+    final pick = await showAppSheet<BubbleIdSource>(context, (ctx) => AppSheetContent(title: t('من أين يُؤخذ رقم الطالب؟', "Where does the student's ID come from?"), children: [
+          BubbleIdSourceChoice(selected: run.students.idSource, onPick: (x) => Navigator.pop(ctx, x)),
+        ]));
+    if (pick == null || !mounted || pick == run.students.idSource) return;
+    await _apply(await _api.putIdentity(run.id, pick));
+    if (pick == BubbleIdSource.image && mounted && _run?.idBox == null) await _markBox();
+  }
+
+  Future<void> _markBox() async {
+    final run = _run;
+    final tid = run?.templateId;
+    if (run == null || tid == null) return;
+    Uint8List? img;
+    try {
+      img = await _api.templateImage(tid);
+    } catch (_) {
+      img = null;
+    }
+    if (!mounted) return;
+    if (img == null) {
+      appToast(t('تعذر تحميل صورة الورقة', "Couldn't load the sheet's picture"), error: true);
+      return;
+    }
+    final image = img;
+    final box = await showAppSheet<List<double>>(context, (ctx) => AppSheetContent(title: t('مكان الاسم على الورقة', 'Where the name is on the sheet'), children: [
+          BubbleBoxPicker(image: image, initial: run.idBox, onDone: (b) => Navigator.pop(ctx, b)),
+        ]));
+    if (box == null || !mounted) return;
+    await _apply(await _api.putIdentity(run.id, BubbleIdSource.image, box: box));
+  }
+
+  Future<void> _pasteList() async {
+    final run = _run;
+    if (run == null) return;
+    final text = TextEditingController();
+    final ok = await showAppSheet<bool>(context, (ctx) => AppSheetContent(title: t('قائمة الطلاب', 'The class list'), children: [
+          Text(t('طالب في كل سطر: الرقم والاسم بأي ترتيب، مثل «2041 علي حسن». يمكنك النسخ من Excel.', 'One student per line: the ID and the name in any order, like "2041 Ali Hassan". You can copy from Excel.'),
+              style: AppType.body(context)),
+          const SizedBox(height: AppSpace.sm),
+          AppField(controller: text, label: t('الطلاب', 'Students'), maxLines: 8),
+          const SizedBox(height: AppSpace.md),
+          AppButton.primary(label: t('إضافة', 'Add'), icon: Icons.group_add_rounded, expand: true, onPressed: () => Navigator.pop(ctx, true)),
+        ]));
+    final items = parseClassList(text.text);
+    text.dispose();
+    if (ok != true || items.isEmpty || !mounted) return;
+    final r = await _api.addPeople(run.id, items);
+    await _apply(r);
+    if (r.ok) {
+      final a = asMap(r.map['people_added']);
+      appToast(t('أُضيف ${a['added'] ?? 0} وحُدّث ${a['updated'] ?? 0}', 'Added ${a['added'] ?? 0}, updated ${a['updated'] ?? 0}'));
+    }
+  }
+
+  Future<void> _editPeople() async {
+    final run = _run;
+    if (run == null) return;
+    final who = await showAppSheet<BubblePerson>(context, (ctx) => AppSheetContent(title: t('طلاب هذا التصحيح', 'Students of this correction'), children: [
+          for (final p in run.students.people)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(p.name ?? '—', maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: p.code == null ? null : Text(p.code!, textDirection: TextDirection.ltr),
+              trailing: const Icon(Icons.edit_rounded),
+              onTap: () => Navigator.pop(ctx, p),
+            ),
+        ]));
+    if (who == null || !mounted) return;
+    final name = TextEditingController(text: who.name ?? '');
+    final code = TextEditingController(text: who.code ?? '');
+    final ok = await showAppSheet<bool>(context, (ctx) => AppSheetContent(title: t('تعديل الطالب', 'Edit the student'), children: [
+          AppField(controller: name, label: t('الاسم', 'Name')),
+          const SizedBox(height: AppSpace.sm),
+          AppField(controller: code, label: t('الرقم', 'ID')),
+          const SizedBox(height: AppSpace.md),
+          AppButton.primary(label: t('حفظ', 'Save'), icon: Icons.check_rounded, expand: true, onPressed: () => Navigator.pop(ctx, true)),
+        ]));
+    final n = name.text.trim(), c = code.text.trim();
+    name.dispose();
+    code.dispose();
+    if (ok != true || !mounted) return;
+    await _apply(await _api.putPerson(run.id, who.id, name: n, code: c));
+  }
+
+  Future<void> _exportResults() async {
+    final run = _run;
+    if (run == null) return;
+    final r = await OmrReviewApi().results(run.id);
+    if (!mounted) return;
+    if (!r.ok) {
+      appToast(bubbleErrorText(r), error: true);
+      return;
+    }
+    final res = OmrResults.fromJson(r.map);
+    showAppExportSheet(context, bilingualExport(() => omrResultsExport(res)));
+  }
+
+  /// Every graded student's corrected sheet: a ZIP of images, or one PDF.
+  Future<void> _corrected() async {
+    final run = _run;
+    if (run == null) return;
+    final fmt = await showAppSheet<String>(context, (ctx) => AppSheetContent(title: t('الأوراق المصححة', 'Corrected sheets'), children: [
+          Text(t('ورقة كل طالب: الصحيحة بالأخضر، والخاطئة بالأحمر، والمتروكة بالبرتقالي، مع الاسم والدرجة.', "Each student's sheet: right in green, wrong in red, left blank in orange, with the name and score."),
+              style: AppType.body(context)),
+          const SizedBox(height: AppSpace.md),
+          AppButton.primary(key: const ValueKey('bubble.corrected.zip'), label: t('صورة لكل طالب (ZIP)', 'An image per student (ZIP)'), icon: Icons.folder_zip_rounded, expand: true, onPressed: () => Navigator.pop(ctx, 'zip')),
+          const SizedBox(height: AppSpace.sm),
+          AppButton.secondary(key: const ValueKey('bubble.corrected.pdf'), label: t('ملف PDF واحد', 'One PDF'), icon: Icons.picture_as_pdf_rounded, expand: true, onPressed: () => Navigator.pop(ctx, 'pdf')),
+        ]));
+    if (fmt == null || !mounted) return;
+    setState(() => _downloading = true);
+    Uint8List? bytes;
+    String? error;
+    try {
+      bytes = await _api.corrected(run.id, fmt);
+    } catch (e) {
+      error = ApiException.from(e).message;
+    }
+    if (!mounted) return;
+    setState(() => _downloading = false);
+    if (bytes == null) {
+      appToast(error ?? t('تعذر التنزيل', 'Download failed'), error: true);
+      return;
+    }
+    final name = '${run.title} - ${t('مصحح', 'corrected')}';
+    final phone = !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+    final mime = fmt == 'zip' ? 'application/zip' : 'application/pdf';
+    try {
+      if (phone) {
+        await SharePlus.instance.share(ShareParams(files: [XFile.fromData(bytes, mimeType: mime, name: '$name.$fmt')], fileNameOverrides: ['$name.$fmt']));
+      } else {
+        await FileSaver.instance.saveFile(name: name, bytes: bytes, fileExtension: fmt, mimeType: fmt == 'zip' ? MimeType.zip : MimeType.pdf);
+        appToast(t('حُفظ الملف', 'File saved'));
+      }
+    } catch (_) {
+      appToast(t('تعذر حفظ الملف', "Couldn't save the file"), error: true);
+    }
   }
 
   Future<void> _openKey() async {
@@ -329,6 +499,12 @@ class _BubbleRunScreenState extends State<BubbleRunScreen> {
                 BubbleKeyReadBanner(read: widget.keyRead!, onCheck: _openKey),
                 const SizedBox(height: AppSpace.md),
               ],
+              BubbleIdSourceCard(source: run.students.idSource, boxSet: run.idBox != null, onChange: _changeSource, onMarkBox: run.templateId == null ? null : _markBox),
+              const SizedBox(height: AppSpace.md),
+              if (run.students.open) ...[
+                BubbleStudentsCard(students: run.students, onPaste: _pasteList, onEdit: _editPeople),
+                const SizedBox(height: AppSpace.md),
+              ],
               AppCard(
                 padding: AppSpace.card,
                 child: Row(children: [
@@ -345,7 +521,24 @@ class _BubbleRunScreenState extends State<BubbleRunScreen> {
               if (run.hasKey) ...[
                 OmrScanSection(examId: run.id, examTitle: run.title, ownSheet: run.ownSheet, api: OmrScanApi(), onChanged: _load),
                 const SizedBox(height: AppSpace.md),
-                ParentComponent(
+                AppActionCard(
+                  key: const ValueKey('bubble.export'),
+                  icon: Icons.ios_share_rounded,
+                  title: t('تصدير النتائج', 'Export the results'),
+                  subtitle: t('Excel أو PDF أو Word: الطالب والدرجة والصحيحة والمُجابة', 'Excel, PDF or Word: student, score, right and answered'),
+                  onTap: _exportResults,
+                ),
+                const SizedBox(height: AppSpace.sm),
+                AppActionCard(
+                  key: const ValueKey('bubble.corrected'),
+                  icon: Icons.fact_check_rounded,
+                  title: t('الأوراق المصححة', 'Corrected sheets'),
+                  subtitle: t('ورقة كل طالب مصححة مع درجته: صور أو PDF', "Each student's corrected sheet with the score: images or PDF"),
+                  trailing: _downloading ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)) : null,
+                  onTap: _downloading ? null : _corrected,
+                ),
+                const SizedBox(height: AppSpace.sm),
+                if (run.courseId != null) ParentComponent(
                   featureKey: kBubbleDataLabFeature,
                   child: AppActionCard(
                     icon: Icons.table_chart_rounded,

@@ -130,9 +130,12 @@ class OmrStudent {
 
 /// `GET …/omr/students`: the exam's audience matching a search (a part of the name, or 3+ characters of the ID).
 class OmrAudience {
-  const OmrAudience({this.items = const [], this.total = 0, this.source, this.labelEn, this.labelAr, this.reason});
+  const OmrAudience({this.items = const [], this.total = 0, this.source, this.labelEn, this.labelAr, this.reason, this.open = false});
   final List<OmrStudent> items;
   final int total;
+
+  /// D-672: a correction with no course; its students are its own, and a new one may be typed in review.
+  final bool open;
 
   /// Why the list is empty when the server says so (`no_course`: the exam is linked to no course).
   final String? reason;
@@ -144,6 +147,7 @@ class OmrAudience {
   factory OmrAudience.fromJson(Map<String, dynamic> m) {
     final l = asMap(m['label']);
     return OmrAudience(
+      open: m['open'] == true,
       items: [for (final x in asMapList(m['items'])) ?OmrStudent.fromJson(x)],
       total: asInt(m['total']),
       source: m['source']?.toString(),
@@ -808,10 +812,22 @@ class OmrResolveReply {
 
 /// The body of a decision (only the keys the action takes).
 Map<String, dynamic> omrResolveBody(String action,
-        {int? studentId, String? value, String? form, List<String>? options, double? score, String? text, List<String>? texts, String? reason}) =>
+        {int? studentId,
+        String? value,
+        String? form,
+        List<String>? options,
+        double? score,
+        String? text,
+        List<String>? texts,
+        String? reason,
+        String? name,
+        String? code}) =>
     {
       'action': action,
       'student_id': ?studentId,
+      // D-672: a new student of a correction with no course (assign without an id)
+      if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+      if (code != null && code.trim().isNotEmpty) 'code': code.trim(),
       'value': ?value,
       'form': ?form,
       'options': ?options,
@@ -1253,6 +1269,9 @@ String omrCodeText(String code) => switch (code) {
       'identifier_no_match' => t('لا يوجد طالب بهذا الرقم', 'No student has this ID'),
       'identifier_duplicate' => t('أكثر من طالب لديهم هذا الرقم', 'More than one student has this ID'),
       'identifier_unclear' => t('تعذّرت قراءة رقم الطالب بثقة', 'The student ID could not be read with confidence'),
+      'identifier_choose' => t('اختر صاحب هذه الورقة', 'Choose whose paper this is'),
+      'identifier_file_name' => t('اسم الملف لا يدل على طالب', 'The file name does not name a student'),
+      'identifier_write_in' => t('اكتب الاسم أو الرقم المكتوب على الورقة', 'Type the name or ID written on the paper'),
       'identifier_blank' => t('رقم الطالب فارغ', 'The student ID is empty'),
       'identifier_missing' => t('هذه الورقة لا تحمل رقم طالب', 'This sheet carries no student ID'),
       'identifier_not_set' => t('لم يُحدَّد معرّف الطالب للاختبار: اختر الطالب', 'The exam has no student identifier: choose the student'),

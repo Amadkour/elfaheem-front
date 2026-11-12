@@ -352,11 +352,20 @@ class BubbleRun {
     required this.pages,
     required this.openItems,
     required this.learned,
+    this.templateId,
+    this.students = const BubbleStudents(),
+    this.idBox,
   });
 
   final int id;
   final String title;
-  final int? courseId, orgId;
+  final int? courseId, orgId, templateId;
+
+  /// D-672: who the students are (a course's, or the correction's own) and where their ID comes from.
+  final BubbleStudents students;
+
+  /// Where the name / ID is written on the sheet ([x, y, w, h] shares), for the "written on the paper" source.
+  final List<double>? idBox;
   final String sheetName;
   final bool ownSheet;
   final List<BubbleKeyQuestion> questions;
@@ -380,6 +389,9 @@ class BubbleRun {
       hasKey: j['has_key'] == true,
       pages: asInt(j['pages']),
       openItems: asInt(j['open_items']),
+      templateId: s['template_id'] is int ? s['template_id'] as int : null,
+      students: BubbleStudents.fromJson(asMap(j['students'])),
+      idBox: j['id_box'] is List && (j['id_box'] as List).length == 4 ? [for (final v in j['id_box'] as List) (v as num).toDouble()] : null,
     );
   }
 }
@@ -463,6 +475,83 @@ class BubbleKeyCheck {
         state: '${j['state'] ?? ''}',
         letters: [for (final x in (j['letters'] is List ? j['letters'] as List : const [])) '$x'],
       );
+}
+
+/// Where a paper's student comes from (D-672).
+enum BubbleIdSource { bubble, image, fileName, manual }
+
+extension BubbleIdSourceWire on BubbleIdSource {
+  String get wire => this == BubbleIdSource.fileName ? 'file_name' : name;
+  static BubbleIdSource parse(Object? v) => switch ('$v') {
+        'image' => BubbleIdSource.image,
+        'file_name' => BubbleIdSource.fileName,
+        'manual' => BubbleIdSource.manual,
+        _ => BubbleIdSource.bubble,
+      };
+}
+
+String bubbleIdSourceLabel(BubbleIdSource s) => switch (s) {
+      BubbleIdSource.bubble => t('من الرقم المظلل على الورقة', 'From the shaded ID on the sheet'),
+      BubbleIdSource.image => t('من الاسم أو الرقم المكتوب على الورقة', 'From the name or ID written on the paper'),
+      BubbleIdSource.fileName => t('من اسم الملف', 'From the file name'),
+      BubbleIdSource.manual => t('أختاره بنفسي لكل ورقة', 'I choose it for each paper'),
+    };
+
+String bubbleIdSourceHint(BubbleIdSource s) => switch (s) {
+      BubbleIdSource.bubble => t('للأوراق التي فيها خانات رقم الطالب', 'For sheets with student-ID bubbles'),
+      BubbleIdSource.image => t('حدّد مكان الاسم مرة واحدة، ثم اقرأه واكتبه لكل ورقة', 'Mark where the name is once, then read and type it for each paper'),
+      BubbleIdSource.fileName => t('سمِّ الصور مثل «2041 أحمد علي.jpg»', 'Name the images like "2041 Ahmed Ali.jpg"'),
+      BubbleIdSource.manual => t('كل ورقة تنتظرك في المراجعة', 'Every paper waits for you in review'),
+    };
+
+class BubblePerson {
+  const BubblePerson({required this.id, this.name, this.code, this.source});
+  final int id;
+  final String? name, code, source;
+
+  String get label => (name ?? '').isNotEmpty ? name! : (code ?? '');
+
+  factory BubblePerson.fromJson(Map<String, dynamic> j) => BubblePerson(
+        id: asInt(j['id']),
+        name: j['name'] is String ? j['name'] as String : null,
+        code: j['code'] == null ? null : '${j['code']}',
+        source: j['source'] is String ? j['source'] as String : null,
+      );
+}
+
+class BubbleStudents {
+  const BubbleStudents({this.open = false, this.idSource = BubbleIdSource.bubble, this.people = const []});
+
+  /// No course: the students are the correction's own (results exported, never published).
+  final bool open;
+  final BubbleIdSource idSource;
+  final List<BubblePerson> people;
+
+  factory BubbleStudents.fromJson(Map<String, dynamic> j) => BubbleStudents(
+        open: j['open'] == true,
+        idSource: BubbleIdSourceWire.parse(j['id_source']),
+        people: [for (final x in (j['people'] is List ? j['people'] as List : const [])) if (x is Map<String, dynamic>) BubblePerson.fromJson(x)],
+      );
+}
+
+/// A pasted class list: one student per line, the ID and the name in any order, split by a tab, a comma, a semicolon
+/// or spaces ("2041 Ali Hassan", "Ali Hassan, 2041", "سارة نبيل	2042"); a line with no digits is a name alone.
+List<Map<String, String>> parseClassList(String text) {
+  final out = <Map<String, String>>[];
+  const ar = '٠١٢٣٤٥٦٧٨٩';
+  for (final raw in text.split(RegExp(r'\r?\n'))) {
+    var line = raw.trim();
+    if (line.isEmpty) continue;
+    for (var i = 0; i < 10; i++) {
+      line = line.replaceAll(ar[i], '$i');
+    }
+    final m = RegExp(r'\d{2,}').firstMatch(line);
+    final code = m?.group(0) ?? '';
+    final name = (m == null ? line : line.replaceFirst(m.group(0)!, ' ')).replaceAll(RegExp(r'[\t,;|]+'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (code.isEmpty && name.isEmpty) continue;
+    out.add({'code': code, 'name': name});
+  }
+  return out;
 }
 
 class LabColumn {
@@ -593,11 +682,33 @@ class BubbleApi {
     }
   }
 
-  Future<EngineResult> createRun({required int courseId, required int templateId, required String title, int? questions}) =>
-      engineCall(() => _api.post('$_b/bubble/runs', body: {'course_id': courseId, 'template_id': templateId, 'title': title, 'questions': ?questions}));
+  Future<EngineResult> createRun({int? courseId, required int templateId, required String title, int? questions, BubbleIdSource? idSource}) =>
+      engineCall(() => _api.post('$_b/bubble/runs', body: {
+            'course_id': ?courseId,
+            'template_id': templateId,
+            'title': title,
+            'questions': ?questions,
+            if (idSource != null) 'id_source': idSource.wire,
+          }));
   /// A correction from the model answer alone: the sheet, the number of questions and the key are read off it (D-671).
-  Future<EngineResult> createRunFromKey({required int courseId, required String title, required (String, Uint8List) file}) =>
-      engineCall(() => _api.postFiles('$_b/bubble/runs/from-key', files: [file], field: 'image', fields: {'course_id': courseId, 'title': title}));
+  Future<EngineResult> createRunFromKey({int? courseId, required String title, required (String, Uint8List) file, BubbleIdSource? idSource}) =>
+      engineCall(() => _api.postFiles('$_b/bubble/runs/from-key', files: [file], field: 'image', fields: {
+            'course_id': ?courseId,
+            'title': title,
+            if (idSource != null) 'id_source': idSource.wire,
+          }));
+
+  /// D-672: where the student's ID comes from; [box] where the name is written, for [BubbleIdSource.image].
+  Future<EngineResult> putIdentity(int id, BubbleIdSource source, {List<double>? box}) =>
+      engineCall(() => _api.put('$_b/bubble/runs/$id/identity', body: {'id_source': source.wire, 'box': ?box}));
+  Future<EngineResult> addPeople(int id, List<Map<String, String>> items) => engineCall(() => _api.post('$_b/bubble/runs/$id/people', body: {'items': items}));
+  Future<EngineResult> putPerson(int id, int personId, {String? name, String? code}) =>
+      engineCall(() => _api.put('$_b/bubble/runs/$id/people/$personId', body: {'name': ?name, 'code': ?code}));
+
+  /// Every graded student's corrected sheet: `zip` (a JPEG each) or `pdf` (one file).
+  Future<Uint8List> corrected(int id, String format) => _api.getBytes('$_b/bubble/runs/$id/corrected', queryParams: {'format': format});
+  Future<Uint8List> templateImage(int templateId) => _api.getBytes('$_b/omr/auto-templates/$templateId/image');
+
   Future<EngineResult> run(int id) => engineCall(() => _api.get('$_b/bubble/runs/$id'));
   Future<EngineResult> putKey(int id, {required List<BubbleKeyForm> forms, Map<int, double>? points, Map<int, bool>? allModes}) =>
       engineCall(() => _api.put('$_b/bubble/runs/$id/key', body: {

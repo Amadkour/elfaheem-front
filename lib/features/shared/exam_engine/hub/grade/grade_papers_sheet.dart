@@ -1,5 +1,6 @@
 // Grade papers (D-660): the Exam Hub's way to grade a pile of papers without opening an exam first. One sheet: the
-// course (a run belongs to a course: its students, its results), then how the papers were answered:
+// course (a run belongs to a course: its students, its results) - or, for bubble sheets, students in no course
+// (D-672: the correction's own students) - then how the papers were answered:
 //
 //   Bubble sheets    the bubble run (`deferredBubbleHome`), kill switches `exam.bubble` + `exam.auto_correct`
 //   Written papers   the essay run (`openEssayRun`, D-662), kill switch `exam.essay_run`
@@ -37,12 +38,12 @@ Future<void> openGradePapers(BuildContext context, {required List<NewExamPlace> 
           ]));
   if (pick == null || !context.mounted) return;
   final (place, kind) = pick;
-  final id = place.courseId!;
   switch (kind) {
     case GradeKind.bubble:
-      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => deferredBubbleHome(courseId: id, courseTitle: place.name, orgId: place.orgId)));
+      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => deferredBubbleHome(courseId: place.courseId, courseTitle: place.name, orgId: place.orgId)));
     case GradeKind.essay:
-      await openEssayRun(context, courseId: id, courseTitle: place.name, orgId: place.orgId);
+      final id = place.courseId;
+      if (id != null) await openEssayRun(context, courseId: id, courseTitle: place.name, orgId: place.orgId);
   }
 }
 
@@ -64,13 +65,34 @@ class GradePapersBody extends StatefulWidget {
   State<GradePapersBody> createState() => _GradePapersBodyState();
 }
 
+/// Students in no course (D-672): bubble sheets only, the correction keeps its own students.
+NewExamPlace gradeNoCoursePlace() => (courseId: null, orgId: null, name: t('طلاب بلا مقرر', 'Students in no course'));
+
 class _GradePapersBodyState extends State<GradePapersBody> {
   late NewExamPlace? _course = widget.initial;
+
+  bool get _noCourseOffered => widget.kinds.contains(GradeKind.bubble);
+
+  Widget _noCourseTile() => SetupChoiceTile(
+        key: const ValueKey('grade.noCourse'),
+        icon: Icons.groups_2_rounded,
+        title: t('طلاب بلا مقرر', 'Students in no course'),
+        subtitle: t('أوراق تظليل لطلاب غير مسجلين: من مركز أو مدرسة أخرى', 'Bubble sheets of students who are not enrolled: another centre or school'),
+        selected: false,
+        onTap: () => setState(() => _course = gradeNoCoursePlace()),
+      );
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    if (widget.courses.isEmpty) {
+    if (widget.courses.isEmpty && _course == null && _noCourseOffered) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(t('لا مقررات بعد', 'No courses yet'), style: AppType.section(context)),
+        AppSpace.gapSm,
+        _noCourseTile(),
+      ]);
+    }
+    if (widget.courses.isEmpty && _course == null) {
       return AppEmpty(
         icon: Icons.menu_book_outlined,
         title: t('لا مقررات بعد', 'No courses yet'),
@@ -84,33 +106,35 @@ class _GradePapersBodyState extends State<GradePapersBody> {
         Text(t('أي مقرر؟', 'Which course?'), style: AppType.section(context)),
         AppSpace.gapSm,
         CreateWhereBody(places: widget.courses, selected: null, orgNames: widget.orgNames, onPick: (p) => setState(() => _course = p)),
+        if (_noCourseOffered) ...[AppSpace.gapSm, _noCourseTile()],
       ]);
     }
+    final kinds = course.courseId == null ? [for (final k in widget.kinds) if (k == GradeKind.bubble) k] : widget.kinds;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       SetupChoiceTile(
         key: const ValueKey('grade.course'),
-        icon: Icons.menu_book_rounded,
+        icon: course.courseId == null ? Icons.groups_2_rounded : Icons.menu_book_rounded,
         title: course.name,
         subtitle: course.orgId == null ? null : widget.orgNames[course.orgId],
         selected: true,
         onTap: null,
-        trailing: widget.courses.length > 1
+        trailing: widget.courses.length > 1 || (course.courseId == null && widget.courses.isNotEmpty) || (widget.courses.isNotEmpty && _noCourseOffered)
             ? AppButton.ghost(key: const ValueKey('grade.change'), size: AppButtonSize.sm, label: t('تغيير', 'Change'), onPressed: () => setState(() => _course = null))
             : null,
       ),
       AppSpace.gapLg,
       Text(t('ماذا تصحّح؟', 'What are you grading?'), style: AppType.section(context)),
       AppSpace.gapSm,
-      for (var i = 0; i < widget.kinds.length; i++) ...[
+      for (var i = 0; i < kinds.length; i++) ...[
         if (i > 0) AppSpace.gapSm,
         SetupChoiceTile(
-          key: ValueKey('grade.kind.${widget.kinds[i].name}'),
-          icon: gradeKindIcon(widget.kinds[i]),
-          title: gradeKindLabel(widget.kinds[i]),
-          subtitle: gradeKindHint(widget.kinds[i]),
+          key: ValueKey('grade.kind.${kinds[i].name}'),
+          icon: gradeKindIcon(kinds[i]),
+          title: gradeKindLabel(kinds[i]),
+          subtitle: gradeKindHint(kinds[i]),
           selected: false,
           trailing: Icon(Icons.chevron_right_rounded, color: c.textMedium),
-          onTap: () => widget.onPick(course, widget.kinds[i]),
+          onTap: () => widget.onPick(course, kinds[i]),
         ),
       ],
     ]);

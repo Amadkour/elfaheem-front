@@ -4069,3 +4069,16 @@ typing the key stays as the second path. Answered / right per student were alrea
 Kill switch `exam.bubble.from_key`. Why: the owner's sheets (bubbles in a ruled table) could not be taught at all,
 and asking for a template before a teacher can correct anything was the wrong first step.
 
+## D-672 — Bubble corrections for students in no course; the student's ID source; export + corrected sheets (2026-11-12)
+
+Grade papers offers "Students in no course" next to the courses (bubble sheets only; written papers still need a
+course), also when the teacher has no course at all. The start from the model answer asks where the student's ID
+comes from (file name by default with no course, the shaded ID with a course). A correction's page shows that source
+(`BubbleIdSourceCard`, Change; "written on the paper" asks for the name area at once: `BubbleBoxPicker`, a box dragged
+on the sheet's picture), the students of a correction with no course (`BubbleStudentsCard`: paste the class list,
+`parseClassList` takes the ID and the name in any order; edit a name / ID), Export the results (the Export Studio's
+grades table, Excel / PDF / Word) and Corrected sheets (ZIP of images or one PDF, shared on a phone, saved elsewhere).
+Data Lab is hidden with no course. Review offers "Or a new student" (name, ID) on a correction with no course, known
+from the student search reply's `open`, asked once and only when an ID item is shown (no extra request otherwise).
+Server side: back D-672.
+

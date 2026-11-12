@@ -378,7 +378,7 @@ Widget deferredTeacherExamHub({
             courseId: courseId, courseTitle: courseTitle, initialSessionId: initialSessionId, openCreateOnStart: openCreateOnStart, orgId: orgId));
 
 /// Correct bubble sheets for a course (D-340): any sheet, a whole class, the marks where they belong.
-Widget deferredBubbleHome({required int courseId, required String courseTitle, int? orgId}) => DeferredPage(
+Widget deferredBubbleHome({int? courseId, required String courseTitle, int? orgId}) => DeferredPage(
     id: 'bubble_home', load: bubble_home.loadLibrary, builder: (_) => bubble_home.BubbleHomeScreen(courseId: courseId, courseTitle: courseTitle, orgId: orgId));
 
 /// "All exams" (D-300): every exam the person manages, across courses and organizations.

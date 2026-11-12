@@ -248,6 +248,17 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
   }
 
   /// The exam's audience (`GET …/omr/students?q=`); null = no search here (403 / not routed): type the number.
+  bool _openRun = false, _openAsked = false;
+
+  /// D-672: a correction with no course takes new students in review. Asked once, when an ID item is first shown.
+  void _askOpen() {
+    if (_openAsked) return;
+    _openAsked = true;
+    _api.audience(_examId, '').then((r) {
+      if (mounted && r.ok && OmrAudience.fromJson(r.map).open) setState(() => _openRun = true);
+    });
+  }
+
   Future<List<OmrStudent>?> _search(String q) async {
     final r = await _api.audience(_examId, q);
     if (!r.ok) return r.status == 403 || r.status == 404 || r.unavailable ? null : const [];
@@ -649,6 +660,7 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
     final items = list.items;
     final i = items.indexWhere((x) => x.id == it.id);
     final position = i < 0 ? null : t('${i + 1} من ${items.length}', '${i + 1} of ${items.length}');
+    if (it.kind == 'identifier' && !_openAsked) WidgetsBinding.instance.addPostFrameCallback((_) => _askOpen());
     children.add(OmrReviewItemCard(
       item: it,
       crop: _crops[it.id],
@@ -672,6 +684,7 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
         onSetScore: _setScore,
         onFixText: _fixText,
         onReplacePage: _replacePage,
+        onNewStudent: _openRun ? (name, code) => _resolve(omrResolveBody('assign', name: name, code: code)) : null,
       ),
     ));
     children.add(const SizedBox(height: AppSpace.sm));
