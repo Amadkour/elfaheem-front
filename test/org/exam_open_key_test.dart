@@ -1,5 +1,8 @@
 // Open-ended answers (D-686): the key's kinds, the teacher's overrides, the derived-key preview (contract A1 / A2), the
 // debounced call, the three editors' parts under the layout harness.
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart';
@@ -142,6 +145,17 @@ void main() {
   });
 
   group('the preview', () {
+    test('parses the REAL derive-key reply (fixtures/payloads/autograde/derive_key.json)', () {
+      final j = jsonDecode(File('test/fixtures/payloads/autograde/derive_key.json').readAsStringSync()) as Map;
+      final p = DeriveKeyPreview.fromJson(Map<String, dynamic>.from(j['payload'] as Map));
+      expect(p.kind, OpenKind.short);
+      expect(p.kindSource, 'inferred');
+      expect([for (final k in p.keywords) k.term], containsAll(['faster', 'light', 'sound']));
+      expect(p.points.single.text, 'Because light travels much faster than sound');
+      expect(p.otherWordings, isNotEmpty);
+      expect(p.keywordsAreTeachers, isFalse);
+    });
+
     test('parses contract A2: the effective key, string keywords included', () {
       final p = DeriveKeyPreview.fromJson(Map<String, dynamic>.from(_preview));
       expect(p.kind, OpenKind.short);

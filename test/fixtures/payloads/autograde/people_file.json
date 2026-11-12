@@ -1,0 +1,26 @@
+{
+ "_source": {
+  "route": "POST /api/v1/exam/exams/2/people/file",
+  "uid": 10
+ },
+ "payload": {
+  "added": 2,
+  "updated": 0,
+  "total": 2,
+  "skipped": [],
+  "people": [
+   {
+    "id": -1,
+    "name": "طالبة أولى",
+    "code": "2041",
+    "source": "list"
+   },
+   {
+    "id": -2,
+    "name": "Student Two",
+    "code": "2042",
+    "source": "list"
+   }
+  ]
+ }
+}

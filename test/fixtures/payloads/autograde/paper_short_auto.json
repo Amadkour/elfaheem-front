@@ -1,8 +1,0 @@
-{"kind": "short_answer", "status": "suggestion", "final": false, "needs_review": true, "max": 3, "suggested_score": 2, "band": "partial",
- "similarity": 0.71, "reading": {"text": "Plants make food from light. They give oxygen.", "confidence": 0.88}, "text": "Plants make food from light. They give oxygen.",
- "keywords": [], "reasons": ["tier_nli"], "points": 3, "pending": false, "corrected": false, "lang": "en",
- "auto": {"tier": "nli", "kind": "long", "decided": true, "score": 2, "points": [
-   {"idx": 0, "text": "Plants make their own food", "weight": 1, "sentence": "Plants make food from light", "start": 0, "end": 27, "score": 1, "state": "matched"},
-   {"idx": 1, "text": "They release oxygen", "weight": 1, "sentence": "They give oxygen", "start": 29, "end": 45, "score": 0.5, "state": "partial"},
-   {"idx": 2, "text": "They take in carbon dioxide", "weight": 1, "sentence": null, "score": 0, "state": "missing"}
- ]}}

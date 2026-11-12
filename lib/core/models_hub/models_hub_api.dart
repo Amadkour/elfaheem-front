@@ -792,7 +792,9 @@ class HubFailure {
 class HubBenchReason {
   const HubBenchReason(this.code, this.en, this.ar);
 
+  /// A map {code, en, ar} (results), or plain text (a runner that is not available says why in one sentence).
   static HubBenchReason? fromJson(Object? v) {
+    if (v is String && v.trim().isNotEmpty) return HubBenchReason('', v.trim(), v.trim());
     if (v is! Map) return null;
     final j = Map<String, dynamic>.from(v);
     final code = _str(j['code']) ?? '';

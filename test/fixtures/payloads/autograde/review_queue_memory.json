@@ -1,0 +1,133 @@
+{
+ "_source": {
+  "route": "GET /api/v1/exam/exams/2/review?state=all",
+  "uid": 10
+ },
+ "payload": {
+  "items": [
+   {
+    "answer_id": 7,
+    "attempt_id": 3,
+    "question_id": 2,
+    "type": "short_answer",
+    "student_id": 15,
+    "student_code": null,
+    "prompt": "What happens to the volume of a gas when heated?",
+    "answer": {
+     "text": "The volume of the gas DECREASES!"
+    },
+    "points": 2.0,
+    "key": {
+     "model": "The volume of the gas increases.",
+     "kind": "short",
+     "derived": {
+      "v": 1,
+      "kind": "short",
+      "kind_source": "teacher",
+      "alternatives": [
+       "the volume of the gas increases",
+       "the volume of the gas increas",
+       "volume gas increas"
+      ],
+      "keywords": [
+       {
+        "term": "increases",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "gas",
+        "weight": 0.5,
+        "synonyms": []
+       },
+       {
+        "term": "volume",
+        "weight": 0.5,
+        "synonyms": []
+       }
+      ],
+      "points": [
+       {
+        "text": "The volume of the gas increases",
+        "weight": 1.0
+       }
+      ],
+      "points_source": "model",
+      "keywords_source": "model",
+      "model_hash": "23d88771bb6d6df6"
+     }
+    },
+    "review_state": "auto_accepted",
+    "proposal": {
+     "score": 0.0,
+     "max": 2.0,
+     "confidence": 0.99,
+     "abstain": false,
+     "criteria": [
+      {
+       "id": "c1",
+       "criterion": "The volume of the gas increases.",
+       "points": 2.0,
+       "score": 0.0,
+       "fraction": 0.0,
+       "evidence": {
+        "text": "The volume of the gas DECREASES!",
+        "start": 0,
+        "end": 32
+       },
+       "keywords_found": [
+        "gas",
+        "volume"
+       ],
+       "flags": [
+        "memory_exact"
+       ],
+       "justification": "Does not match the model answer"
+      }
+     ],
+     "flags": [
+      "memory_exact"
+     ],
+     "grader_version": "emb:hash-test@0|cal:test-1|tiers:test-1",
+     "tier": "memory",
+     "kind": "short",
+     "decided": true,
+     "tiers_version": "tiers:test-1",
+     "keywords": {
+      "found": [
+       "gas",
+       "volume"
+      ],
+      "missing": [
+       "increases"
+      ]
+     },
+     "memory": {
+      "id": 1,
+      "verdict": "wrong",
+      "fraction": 0.0,
+      "decisions": 1
+     },
+     "scale": 1.0
+    },
+    "proposed_score": 0.0,
+    "confidence": 0.99,
+    "final_score": 0.0,
+    "grader_version": "emb:hash-test@0|cal:test-1|tiers:test-1",
+    "marks": []
+   }
+  ],
+  "total": 1,
+  "counts": {
+   "auto_accepted": 1
+  },
+  "policy": {
+   "auto_accept": true,
+   "accept_threshold": null,
+   "double_marking": false,
+   "moderation_tolerance": null,
+   "show_feedback": false
+  },
+  "accept_threshold": 1.01
+ }
+}

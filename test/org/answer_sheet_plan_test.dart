@@ -1,5 +1,7 @@
 // The paper exam's answer sheets (D-687): which wizard steps apply, what the plan saves, the NB2 / people payloads
 // (contract B1 / B2), the scan quality rejections (B3), and the drawn parts under the layout harness.
+import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -146,6 +148,14 @@ void main() {
           {'layout': 'NB2', 'copies': 'personal', 'students': 'course', 'id_source': 'academic', 'student_ids': [12, 15]});
       expect(answerSheetsBody(const SheetPlan(answerSheet: true, copies: SheetCopies.personal, fromFile: true), lang: 'ar'),
           {'layout': 'NB2', 'copies': 'personal', 'students': 'file', 'lang': 'ar'});
+    });
+
+    test('the REAL people list reply (fixtures/payloads/autograde/people_file.json)', () {
+      final j = jsonDecode(File('test/fixtures/payloads/autograde/people_file.json').readAsStringSync()) as Map;
+      final u = PeopleUpload.fromJson(Map<String, dynamic>.from(j['payload'] as Map));
+      expect((u.added, u.updated, u.total), (2, 0, 2));
+      expect(u.skipped, isEmpty);
+      expect(u.names, hasLength(2));
     });
 
     test('the people list answer and its refusals (contract B2)', () {
