@@ -239,12 +239,12 @@ class _IdentifierPlanStepState extends State<IdentifierPlanStep> {
     if (!r.ok) return _notice(deliverErrorText(r), error: true);
     final current = IdCoverage.fromJson(r.map);
     if (current.masked) return _notice(t('قيم هذا المعرّف لا تُعدَّل من هنا.', 'The values of this identifier cannot be edited here.'), error: true);
-    final saved = await showAppSheet<bool>(context, (ctx) => _RosterSheet(examId: widget.examId, option: o, api: _api, rows: current.items));
+    final saved = await showAppSheet<bool>(context, (ctx) => IdentifierRosterSheet(examId: widget.examId, option: o, api: _api, rows: current.items));
     if (saved == true && mounted) await _refreshOne(o.choice);
   }
 
   Future<void> _openImport(IdentifierOption o) async {
-    final done = await showAppSheet<bool>(context, (ctx) => _ImportSheet(examId: widget.examId, option: o, api: _api));
+    final done = await showAppSheet<bool>(context, (ctx) => IdentifierImportSheet(examId: widget.examId, option: o, api: _api));
     if (done == true && mounted) await _refreshOne(o.choice);
   }
 
@@ -595,18 +595,18 @@ class RosterGrid extends StatelessWidget {
   }
 }
 
-class _RosterSheet extends StatefulWidget {
-  const _RosterSheet({required this.examId, required this.option, required this.api, required this.rows});
+class IdentifierRosterSheet extends StatefulWidget {
+  const IdentifierRosterSheet({super.key, required this.examId, required this.option, required this.api, required this.rows});
   final int examId;
   final IdentifierOption option;
   final ExamDeliverApi api;
   final List<IdValueRow> rows;
 
   @override
-  State<_RosterSheet> createState() => _RosterSheetState();
+  State<IdentifierRosterSheet> createState() => _IdentifierRosterSheetState();
 }
 
-class _RosterSheetState extends State<_RosterSheet> {
+class _IdentifierRosterSheetState extends State<IdentifierRosterSheet> {
   late final _controllers = [for (final r in widget.rows) TextEditingController(text: r.value)];
   bool _busy = false;
 
@@ -690,17 +690,17 @@ class ImportPreviewCard extends StatelessWidget {
   }
 }
 
-class _ImportSheet extends StatefulWidget {
-  const _ImportSheet({required this.examId, required this.option, required this.api});
+class IdentifierImportSheet extends StatefulWidget {
+  const IdentifierImportSheet({super.key, required this.examId, required this.option, required this.api});
   final int examId;
   final IdentifierOption option;
   final ExamDeliverApi api;
 
   @override
-  State<_ImportSheet> createState() => _ImportSheetState();
+  State<IdentifierImportSheet> createState() => _IdentifierImportSheetState();
 }
 
-class _ImportSheetState extends State<_ImportSheet> {
+class _IdentifierImportSheetState extends State<IdentifierImportSheet> {
   IdImportPreview? _preview;
   String? _busy;
 

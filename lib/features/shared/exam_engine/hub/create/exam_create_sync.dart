@@ -18,6 +18,7 @@ import '../../exam_quick.dart';
 import '../../exam_versions.dart' show ExamVersionsApi, versionBody, versionsErrorText;
 import '../../paper/exam_setup.dart' show ExamSetupApi, ObjectiveQuestion, setupErrorText;
 import 'exam_create_logic.dart';
+import 'offline_plan_api.dart';
 
 class _Placed {
   _Placed(this.fingerprint, this.questionId, this.placementId);
@@ -29,16 +30,19 @@ class _Placed {
 typedef ImportedCount = ({int questions, double points, int notBubble});
 
 class ExamCreateSync {
-  ExamCreateSync({ExamAuthoringApi? api, ExamSetupApi? setup, ExamVersionsApi? versions, Future<EngineResult> Function(int)? deleter})
+  ExamCreateSync({ExamAuthoringApi? api, ExamSetupApi? setup, ExamVersionsApi? versions, OfflinePlanApi? plans, Future<EngineResult> Function(int)? deleter})
       : api = api ?? ExamAuthoringApi(),
         _setupApi = setup ?? ExamSetupApi(),
         _versionsApi = versions ?? ExamVersionsApi(),
+        _plansApi = plans ?? OfflinePlanApi(),
         _deleter = deleter;
 
   final ExamAuthoringApi api;
   final ExamSetupApi _setupApi;
   final ExamVersionsApi _versionsApi;
+  final OfflinePlanApi _plansApi;
   final Future<EngineResult> Function(int)? _deleter;
+  String? _planSent;
 
   int? examId;
   int? _sectionId;
@@ -171,6 +175,8 @@ class ExamCreateSync {
     final e = await ensure(p);
     if (e != null) return e;
     if (p.isPaper) {
+      final plan = await _offlinePlan(p);
+      if (plan != null) return plan;
       final v = await _versions(p);
       if (v != null) return v;
     }
@@ -178,6 +184,20 @@ class ExamCreateSync {
     final r = await api.lifecycle(examId!, ExamAction.publish);
     if (!r.ok) return authoringError(r);
     published = true;
+    return null;
+  }
+
+  /// The paper plan through `PUT /exams/{id}/offline-plan` (contract §2): the server checks it (the bubble form, the
+  /// students' source, the attributes) and stores it normalised. An older server without the route keeps the plan the
+  /// exam's settings already carry.
+  Future<String?> _offlinePlan(ExamCreatePlan p) async {
+    final plan = p.offlinePlan;
+    if (plan == null) return null;
+    final sent = jsonEncode(plan.toJson());
+    if (sent == _planSent) return null;
+    final r = await _plansApi.putPlan(examId!, plan);
+    if (!r.ok && !r.unavailable) return offlinePlanErrorText(r);
+    _planSent = sent;
     return null;
   }
 
@@ -190,7 +210,7 @@ class ExamCreateSync {
       _markersSet = false;
     }
     final made = await _versionsApi.generate(
-        examId!, versionBody(count: n, shuffleQuestions: p.shuffleQuestions && !p.isBubble, shuffleOptions: p.shuffleOptions));
+        examId!, versionBody(count: n, shuffleQuestions: p.shuffleQuestions && !p.isBubble, shuffleOptions: p.shuffleOptions && p.shuffleOptionsAllowed));
     if (!made.ok) return versionsErrorText(made);
     _versionsMade = n;
     if (n > 1) {
@@ -233,7 +253,7 @@ class ExamCreateSync {
     _placed.clear();
     examId = null;
     _sectionId = null;
-    _examSent = _sectionSent = _setupSent = _fileSent = null;
+    _examSent = _sectionSent = _setupSent = _fileSent = _planSent = null;
     return null;
   }
 }

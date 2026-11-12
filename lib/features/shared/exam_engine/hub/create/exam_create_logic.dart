@@ -1,14 +1,16 @@
 // The "New exam" wizard of the Exam Hub, pure part: what the teacher has chosen so far, which steps that means, what
 // each step says in the summary, and the problems stated before they bite. No widget and no call lives here.
 //
-// Order (D-661): Where (a course, an organization or personal) → Answers (how students answer: online, on the paper, an
-// answer table or a bubble sheet) → Questions (automatic, manual, a file or Google Forms) → Template (bubble only) →
-// Settings (timing, or how the papers are printed) → Answer sheets (D-687: personal or generic, only when NextBrain prints
-// a bubble sheet or an NB2 written-answer sheet) → Students (the identifier plan, where a paper is matched to a student;
-// with no course, the uploaded list). The answer format comes first because it decides which questions are possible: a
-// bubble sheet holds only multiple choice and true / false (written questions then go on the NB2 sheet).
+// Online (D-661, unchanged): Where (a course, an organization or personal) → How (online) → Questions → Settings.
 //
-// Unit-tested in test/org/exam_hub_f2_test.dart.
+// On paper (D-697, the owner's flow): Where → How (on paper) → Questions (any type: the layout follows them) → Answer
+// sheet (the four layouts of offline_flow.dart, the best fit preselected) → Bubble form (layouts 2 / 3 only: a ready
+// sheet, an example sheet imported, or a new one designed) → Copies (one generic copy, or one per student) → Students
+// (per student and no course only: an Excel / CSV list; a course's roster is automatic) → Attributes (what each copy
+// carries, per student; generic bubble copies of a course say what the students shade) → Paper design → Review and
+// create. A step that does not apply is not in the list at all.
+//
+// Unit-tested in test/org/exam_hub_f2_test.dart and test/org/offline_flow_test.dart.
 library;
 
 import '../../../../admin/admin_common.dart' show t;
@@ -17,30 +19,32 @@ import 'package:flutter_education_app/core/plural.dart';
 import '../../exam_all.dart' show NewExamPlace;
 import '../../exam_authoring.dart' show fmtPoints;
 import '../../exam_quick.dart';
-import '../../paper/exam_setup.dart' show ObjectiveQuestion, OmrTemplateItem;
+import '../../paper/exam_setup.dart' show OmrTemplateItem;
 import '../../paper/omr_counts.dart' show omrMinutesText;
 import 'answer_format.dart';
 import 'answer_sheet_plan.dart';
+import 'offline_flow.dart';
 
 export 'answer_format.dart';
 export 'answer_sheet_plan.dart';
+export 'offline_flow.dart';
 
-/// `publish` is the Settings step: the publishing itself is the wizard's last press.
-/// `sheets` is the answer sheets (D-687): personal or generic, for the bubble sheet and the NB2 written-answer sheet.
-enum CreateStep { where, answer, questions, template, publish, sheets, identify }
+/// `answer` is "How": online or on paper. `publish` is the online exam's Settings; `review` is the paper exam's last step
+/// (its own settings, the versions, live in Copies). `sheets` is Copies, `identify` the student list of an exam with no
+/// course.
+enum CreateStep { where, answer, questions, layout, template, publish, sheets, identify, attributes, design, review }
 
 enum CreateType { normal, bubble }
 
 enum PublishKind { electronic, paper }
 
-/// One printed exam per version, or a paper named for each student.
+/// One printed exam per version, or a paper named for each student (follows Copies).
 enum PaperPlan { versions, personal }
 
 /// The question types a bubble can hold, in the order of the "add a question" row.
 const kBubbleQuestionTypes = <String>['mcq_single', 'true_false'];
 
-/// Added beside them in a bubble exam while the NB2 sheet is on: they go on the written-answer sheet (a number is a
-/// kind of open answer, picked on the card).
+/// The written types (they go in the question paper).
 const kWrittenQuestionTypes = <String>['short_answer', 'essay'];
 
 /// How the printed versions are told apart. QR is what the scanner reads; the printed code is for people. Not "bubble":
@@ -58,8 +62,8 @@ String marksCountText(double v) => v == v.roundToDouble()
     ? countText(v.toInt(), ar1: 'درجة واحدة', ar2: 'درجتان', arFew: '{n} درجات', arMany: '{n} درجة', en1: '1 mark', en: '{n} marks')
     : t('${fmtPoints(v)} درجة', '${fmtPoints(v)} marks');
 
-/// A question a bubble sheet can carry.
-bool bubbleCanHold(String type) => ObjectiveQuestion.types.contains(type);
+/// A question a bubble sheet can carry (in some layout).
+bool bubbleCanHold(String type) => const {...kMcqTypes, 'true_false'}.contains(type);
 
 class ExamCreatePlan {
   ExamCreatePlan({NewExamPlace? place, String? title})
@@ -68,8 +72,12 @@ class ExamCreatePlan {
 
   NewExamPlace? place;
   QuickExam exam;
-  /// How students answer; [type] and [publish] follow it.
+
+  /// How students answer: online, or a paper format that follows [layout]; [type] and [publish] follow it.
   AnswerFormat? answer;
+
+  /// The paper's answer-sheet layout (D-697); null until the Answer sheet step, and on an online exam.
+  PaperLayout? layout;
   CreateType? type;
   OmrTemplateItem? template;
   PublishKind? publish;
@@ -78,15 +86,29 @@ class ExamCreatePlan {
   bool shuffleQuestions = true;
   bool shuffleOptions = true;
 
-  // the answer sheets (D-687)
+  // the answer sheets (D-687, kept by D-697)
   BubbleSource bubbleSource = BubbleSource.print;
-  /// Null = the default: personal with a course, generic without.
+
+  /// Null = the default: per student with a course, generic without.
   SheetCopies? copies;
   IdSource idSource = IdSource.academic;
-  /// The NB2 sheet is on offer (`exam.answer_sheet`); the wizard sets it from the kill switch.
+
+  /// The answer-sheet step and the NB2 sheet are on offer (`exam.answer_sheet`, contract: the switch hides the whole
+  /// step); the wizard sets it from the kill switch. Off: the best-fit layout, its paper part answered in the booklet.
   bool answerSheetOn = true;
+
+  /// Where the bubble form came from (contract §1 `bubble.source`).
+  BubbleFormSource bubbleForm = BubbleFormSource.template;
+
   /// Students on the uploaded list (an exam with no course).
   int peopleCount = 0;
+
+  /// What each copy carries, in the printed order (the Attributes step, `sheet_plan.attributes`); empty = the server's
+  /// default (the name and the exam identifier).
+  List<({String key, String label})> attributes = const [];
+
+  /// A paper design was saved for this exam (the Paper design step).
+  bool designed = false;
 
   // questions already on the server (a Google Forms import): counted, never touched by the wizard
   int importedQuestions = 0;
@@ -98,39 +120,66 @@ class ExamCreatePlan {
   bool get isPaper => publish == PublishKind.paper;
   bool get isElectronic => publish == PublishKind.electronic;
 
-  /// Questions that go on the NB2 written-answer sheet.
+  /// What the questions are made of, for the Answer sheet step.
+  QuestionMix get mix => QuestionMix.of([for (final q in exam.questions) q.type],
+      isFile: exam.isFile, importedObjective: importedQuestions - importedNotBubble, importedOther: importedNotBubble);
+
+  /// Questions that are written (they go in the paper).
   int get writtenQuestionCount => exam.isFile ? 0 : exam.questions.where((q) => answerSheetCanHold(q.type)).length;
 
-  /// Questions that go on the bubble sheet.
-  int get bubbleQuestionCount => exam.isFile ? 0 : exam.questions.where((q) => bubbleCanHold(q.type)).length + importedQuestions - importedNotBubble;
+  /// Questions that go on the bubble sheet in this layout.
+  int get bubbleQuestionCount {
+    if (exam.isFile || !isBubble) return 0;
+    final types = (layout ?? PaperLayout.bubbleObjective).bubbleTypes;
+    return exam.questions.where((q) => types.contains(q.type)).length + importedQuestions - importedNotBubble;
+  }
 
-  /// The written answers go on an NB2 sheet: a paper exam answered on a table or a bubble sheet, with written questions.
-  bool get wantsAnswerSheet =>
-      answerSheetOn && isPaper && !exam.isFile && (answer == AnswerFormat.table || answer == AnswerFormat.bubble) && writtenQuestionCount > 0;
+  /// The paper part is answered on the machine-read NB2 sheet (contract default), or in the booklet: an exam made as a
+  /// D-661 answer table, or while `exam.answer_sheet` is off.
+  WrittenSheet get writtenSheet => answerSheetOn && answer != AnswerFormat.table ? WrittenSheet.nb2 : WrittenSheet.booklet;
+
+  /// The NB2 sheet is printed for the paper part (layouts 1 to 3, written questions or objective ones routed to it).
+  bool get wantsAnswerSheet {
+    final l = layout;
+    if (!isPaper || l == null || l == PaperLayout.questionsOnly || exam.isFile || writtenSheet != WrittenSheet.nb2) return false;
+    return exam.questions.any((q) => answerSheetCanHold(q.type) || (bubbleCanHold(q.type) && !l.bubbleTypes.contains(q.type)));
+  }
 
   /// NextBrain prints the bubble sheets (a sheet it can print, and the teacher does not have them already).
   bool get printsBubbleSheets => isBubble && bubbleSource == BubbleSource.print && !ownSheet;
 
-  /// Personal or generic is asked only when NextBrain prints a sheet.
-  bool get asksCopies => isPaper && (printsBubbleSheets || wantsAnswerSheet);
+  /// Every paper exam chooses its copies (D-697).
+  bool get asksCopies => isPaper;
 
-  SheetCopies get effectiveCopies => copies ?? (hasCourse ? SheetCopies.personal : SheetCopies.generic);
+  SheetCopies get effectiveCopies {
+    final c = copies ?? (hasCourse ? SheetCopies.personal : SheetCopies.generic);
+    return c == SheetCopies.personal && !personalAllowed ? SheetCopies.generic : c;
+  }
 
   bool get personalSheets => asksCopies && effectiveCopies == SheetCopies.personal;
 
-  /// Personal sheets of an exam with no course: the students come from an uploaded list.
+  /// Per-student copies of an exam with no course: the students come from an uploaded list.
   bool get needsPeopleFile => personalSheets && !hasCourse;
 
-  /// `settings.sheet_plan`, null when no sheet is printed or read.
-  SheetPlan? get sheetPlan => !isPaper || !(isBubble || wantsAnswerSheet)
-      ? null
-      : SheetPlan(
-          bubble: isBubble ? bubbleSource : null,
-          answerSheet: wantsAnswerSheet,
-          copies: asksCopies ? effectiveCopies : SheetCopies.generic,
-          fromFile: !hasCourse,
-          idSource: idSource,
-        );
+  /// `settings.sheet_plan` v2 (contract §1): what is printed and for whom; null on an online exam or before a layout.
+  OfflinePlan? get offlinePlan {
+    final l = layout;
+    if (!isPaper || l == null) return null;
+    return OfflinePlan(
+      layout: l,
+      writtenSheet: writtenSheet,
+      bubbleSource: l.usesBubble ? bubbleForm : null,
+      bubbleIds: [if (l.usesBubble && template != null) template!.id],
+      bubblePrint: bubbleSource == BubbleSource.print,
+      copies: effectiveCopies,
+      fromFile: !hasCourse,
+      attributes: [for (final a in attributes) a.key],
+      idSource: idSource,
+    );
+  }
+
+  /// The plan in the v1 terms Deliver prints with (read back from v2 the same way).
+  SheetPlan? get sheetPlan => offlinePlan == null ? null : SheetPlan.ofSettings({'sheet_plan': offlinePlan!.toJson()});
 
   /// Moves the plan to another place, every answer kept (a question belongs to the exam, not to the course yet).
   void setPlace(NewExamPlace p) {
@@ -153,23 +202,55 @@ class ExamCreatePlan {
       ..passingPercent = o.passingPercent
       ..passcode = o.passcode;
     exam.questions.addAll(o.questions);
+    attributes = const [];   // another place has other students
     normalize();
   }
 
-  /// online → electronic · on the paper / a table → paper · a bubble sheet → paper on a bubble sheet.
+  /// "How": online, or on paper (the layout comes after the questions).
+  void setOffline(bool offline) {
+    if (!offline) return setAnswer(AnswerFormat.online);
+    publish = PublishKind.paper;
+    answer = layout?.answerFormat ?? AnswerFormat.onPaper;
+    type = layout?.usesBubble == true ? CreateType.bubble : CreateType.normal;
+    normalize();
+  }
+
+  /// The answer-sheet layout; answer format and kind follow it.
+  void setLayout(PaperLayout l) {
+    layout = l;
+    publish = PublishKind.paper;
+    answer = l.answerFormat;
+    type = l.usesBubble ? CreateType.bubble : CreateType.normal;
+    normalize();
+  }
+
+  /// An answer format as D-661 knew it (old prefs, tests): online stays online; a bubble sheet is layout 3; on the paper
+  /// or an answer table is layout 1 (the table keeps its booklet).
   void setAnswer(AnswerFormat v) {
     answer = v;
     type = v == AnswerFormat.bubble ? CreateType.bubble : CreateType.normal;
     publish = v == AnswerFormat.online ? PublishKind.electronic : PublishKind.paper;
+    layout = switch (v) {
+      AnswerFormat.online => layout,   // kept for the way back to paper; no plan is written while online
+      AnswerFormat.bubble => PaperLayout.bubbleObjective,
+      _ => layout?.usesBubble == false ? layout : PaperLayout.allInPaper,
+    };
     normalize();
   }
 
-  /// The students answer in a separate booklet / table (`settings.answer_booklet`).
+  /// One copy per student (named) or generic copies; the print plan follows.
+  void setCopies(SheetCopies v) {
+    copies = v;
+    normalize();
+  }
+
+  /// The students answer in a separate booklet / table (`settings.answer_booklet`; only an exam made as a D-661 table).
   bool get answerBooklet => answer == AnswerFormat.table;
 
   /// Keeps the choices consistent after any change, and the exam's own mode in step with them.
   void normalize() {
     exam.mode = isBubble || isPaper ? QuickMode.offline : (isElectronic ? QuickMode.online : exam.mode);
+    if (isPaper) paperPlan = effectiveCopies == SheetCopies.personal && !exam.isFile ? PaperPlan.personal : PaperPlan.versions;
     if (paperPlan == PaperPlan.personal && !personalAllowed) paperPlan = PaperPlan.versions;
     if (!versionsAllowed) versions = 1;
   }
@@ -180,8 +261,17 @@ class ExamCreatePlan {
   /// An uploaded file prints as it is, and an own sheet carries no version mark: one version in both cases.
   bool get versionsAllowed => !exam.isFile && !ownSheet;
 
-  /// A paper named for each student: needs the course's students, and a paper NextBrain prints.
-  bool get personalAllowed => hasCourse && !exam.isFile && !ownSheet;
+  /// Multiple choice or true / false answered on the NB2 sheet gets a row of choice boxes in the exam's own option order,
+  /// so the versions may not shuffle the options (contract §4, 409 `versions_shuffle_options`).
+  bool get shuffleOptionsAllowed {
+    final l = layout;
+    if (!wantsAnswerSheet || l == null) return true;
+    return !exam.questions.any((q) => bubbleCanHold(q.type) && !l.bubbleTypes.contains(q.type));
+  }
+
+  /// A copy named for each student: something NextBrain prints must carry the name (the question paper, or the bubble
+  /// sheet beside an uploaded file). The students come from the course, or from a list without one.
+  bool get personalAllowed => (!exam.isFile && !ownSheet) || (exam.isFile && printsBubbleSheets);
 
   int get effectiveVersions => isPaper && paperPlan == PaperPlan.versions && versionsAllowed ? versions : 1;
 
@@ -191,12 +281,13 @@ class ExamCreatePlan {
   /// Something the teacher would lose by leaving.
   bool get hasContent => exam.questions.isNotEmpty || exam.hasFile || importedQuestions > 0;
 
-  /// What the wizard writes into `settings`: the answer format always, the booklet and the print plan on paper.
+  /// What the wizard writes into `settings`: the answer format always; on paper the booklet, the print plan and the
+  /// sheet plan v2 (contract §1; `PUT /exams/{id}/offline-plan` checks it again on Finish).
   Map<String, dynamic> get settingsJson => {
         if (answer != null) 'answer_format': answerFormatKey(answer!),
         if (isPaper) 'answer_booklet': answerBooklet,
         if (isPaper) 'paper_plan': paperPlanJson,
-        if (sheetPlan != null) 'sheet_plan': sheetPlan!.toJson(),
+        if (offlinePlan != null) 'sheet_plan': offlinePlan!.toJson(),
       };
 
   /// What is left to print, and how the Deliver step reads it (`settings.paper_plan`).
@@ -221,45 +312,65 @@ class ExamCreatePlan {
 
 // ── the steps ───────────────────────────────────────────────────────────────────────────────────────────────────
 
-/// The students step: where a paper must be matched to a student and the course knows its students, or where personal
-/// sheets of an exam with no course need the uploaded list (D-687).
-bool needsIdentifierStep(ExamCreatePlan p, {required bool identifiersOn}) {
-  if (!p.isPaper) return false;
-  if (p.needsPeopleFile) return true;
-  return identifiersOn && p.hasCourse && (p.paperPlan == PaperPlan.personal || p.isBubble || p.personalSheets);
-}
+/// The student list step: per-student copies of an exam with no course (a course's roster is automatic).
+bool needsIdentifierStep(ExamCreatePlan p, {required bool identifiersOn}) => p.isPaper && p.needsPeopleFile;
 
-/// The course's identifier plan (IdentifierPlanStep) is needed: the printed paper or the bubble sheet is matched on it,
-/// or the personal sheets carry the academic ID. Sheets on the system number alone need nothing set up.
-bool needsIdentifierPlan(ExamCreatePlan p) =>
-    p.hasCourse && (p.paperPlan == PaperPlan.personal || p.isBubble || (p.personalSheets && p.idSource == IdSource.academic));
+/// The Attributes step: what each copy carries (contract §4: a named copy its values, a generic copy a labelled write-in
+/// line for each). A generic copy of an exam with no course has nothing to choose from but the name, so it has no step.
+bool needsAttributesStep(ExamCreatePlan p, {required bool identifiersOn}) => p.isPaper && identifiersOn && (p.personalSheets || p.hasCourse);
+
+/// Generic copies of a course are matched on what the students write in the ID boxes: the Attributes step says which
+/// (the exam identifier or the platform number).
+bool asksIdSource(ExamCreatePlan p) => p.isPaper && p.hasCourse && !p.personalSheets && p.layout != PaperLayout.questionsOnly;
+
+/// The Paper design step: a paper NextBrain draws (an uploaded file prints as it is).
+bool needsDesignStep(ExamCreatePlan p) => p.isPaper && !p.exam.isFile;
+
+/// The Answer sheet step: a paper exam, while `exam.answer_sheet` is on (off, the best fit is taken without asking).
+bool needsLayoutStep(ExamCreatePlan p) => p.isPaper && p.answerSheetOn;
 
 List<CreateStep> createSteps(ExamCreatePlan p, {required bool whereNeeded, required bool omrOn, required bool identifiersOn}) => [
       if (whereNeeded) CreateStep.where,
       CreateStep.answer,
       CreateStep.questions,
-      if (omrOn && p.isBubble) CreateStep.template,
-      CreateStep.publish,
-      if (p.asksCopies) CreateStep.sheets,
-      if (needsIdentifierStep(p, identifiersOn: identifiersOn)) CreateStep.identify,
+      if (!p.isPaper) CreateStep.publish,
+      if (p.isPaper) ...[
+        if (needsLayoutStep(p)) CreateStep.layout,
+        if (omrOn && p.isBubble) CreateStep.template,
+        CreateStep.sheets,
+        if (needsIdentifierStep(p, identifiersOn: identifiersOn)) CreateStep.identify,
+        if (needsAttributesStep(p, identifiersOn: identifiersOn)) CreateStep.attributes,
+        if (needsDesignStep(p)) CreateStep.design,
+        CreateStep.review,
+      ],
     ];
 
 String createStepLabel(CreateStep s) => switch (s) {
       CreateStep.where => t('المكان', 'Where'),
-      CreateStep.answer => t('الإجابة', 'Answers'),
-      CreateStep.template => t('ورقة التظليل', 'Bubble sheet'),
+      CreateStep.answer => t('طريقة الاختبار', 'How'),
       CreateStep.questions => t('الأسئلة', 'Questions'),
+      CreateStep.layout => t('ورقة الإجابة', 'Answer sheet'),
+      CreateStep.template => t('نموذج التظليل', 'Bubble form'),
       CreateStep.publish => t('الإعدادات', 'Settings'),
-      CreateStep.sheets => t('أوراق الإجابة', 'Answer sheets'),
+      CreateStep.sheets => t('النسخ', 'Copies'),
       CreateStep.identify => t('الطلاب', 'Students'),
+      CreateStep.attributes => t('بيانات الطالب', 'Attributes'),
+      CreateStep.design => t('تصميم الورقة', 'Paper design'),
+      CreateStep.review => t('المراجعة', 'Review'),
     };
 
-/// The answer formats the teacher can pick: the bubble sheet only while paper exams with OMR are on.
+/// The two ways an exam is taken, the first step after Where.
+const kCreateModes = <AnswerFormat>[AnswerFormat.online, AnswerFormat.onPaper];
+
+/// Kept for the callers of D-661: every format the teacher can pick (the bubble sheet only while OMR is on).
 List<AnswerFormat> answerFormatsFor({required bool omrOn}) => [for (final f in AnswerFormat.values) if (omrOn || f != AnswerFormat.bubble) f];
+
+/// The mode an answer format belongs to: online, or on paper.
+AnswerFormat createModeOf(AnswerFormat f) => f == AnswerFormat.online ? AnswerFormat.online : AnswerFormat.onPaper;
 
 String answerFormatLabel(AnswerFormat f) => switch (f) {
       AnswerFormat.online => t('على التطبيق', 'Online'),
-      AnswerFormat.onPaper => t('على ورقة الأسئلة', 'On the paper'),
+      AnswerFormat.onPaper => t('ورقي', 'On paper'),
       AnswerFormat.table => t('جدول إجابة', 'Answer table'),
       AnswerFormat.bubble => t('ورقة تظليل', 'Bubble sheet'),
     };
@@ -267,22 +378,30 @@ String answerFormatLabel(AnswerFormat f) => switch (f) {
 /// One line under each choice: what it means for the students and for the marking.
 String answerFormatHint(AnswerFormat f) => switch (f) {
       AnswerFormat.online => t('يجيب الطلاب على التطبيق، والتصحيح تلقائي', 'Students answer in the app; marking is automatic'),
-      AnswerFormat.onPaper => t('تُطبع الأسئلة ويكتب الطالب إجابته عليها', 'The questions are printed and students write on them'),
+      AnswerFormat.onPaper => t('يُطبع الاختبار ويُجاب عليه ورقيًا. تختار ورقة الإجابة بعد كتابة الأسئلة',
+          'The exam is printed and answered on paper. You choose the answer sheet after writing the questions'),
       AnswerFormat.table => t('ورقة أسئلة وجدول إجابة منفصل، والمقالي في كراسة الإجابة', 'A question paper and a separate answer table; essays go in the booklet'),
-      AnswerFormat.bubble => t('يظلل الطالب إجابته وتُصحَّح بالمسح. اختيار من متعدد وصح / خطأ فقط',
-          'Students shade their answers, marked by scanning. Multiple choice and true / false only'),
+      AnswerFormat.bubble => t('يظلل الطالب إجابته وتُصحَّح بالمسح', 'Students shade their answers, marked by scanning'),
     };
 
 /// One line for the summary rail / the chips; null = nothing chosen yet.
 String? createStepValue(CreateStep s, ExamCreatePlan p) => switch (s) {
       CreateStep.where => p.place?.name,
-      CreateStep.answer => p.answer == null ? null : answerFormatLabel(p.answer!),
-      CreateStep.template => p.template?.title,
+      CreateStep.answer => p.answer == null ? null : answerFormatLabel(createModeOf(p.answer!)),
       CreateStep.questions => _questionsValue(p),
+      CreateStep.layout => p.layout == null ? null : paperLayoutShort(p.layout!),
+      CreateStep.template => p.template?.title,
       CreateStep.publish => _publishValue(p),
-      CreateStep.sheets => p.asksCopies ? sheetCopiesLabel(p.effectiveCopies) : null,
-      CreateStep.identify => null,
+      CreateStep.sheets => p.asksCopies ? _copiesValue(p) : null,
+      CreateStep.identify => p.peopleCount > 0 ? studentsCountText(p.peopleCount) : null,
+      CreateStep.attributes => p.attributes.isEmpty ? null : p.attributes.map((a) => a.label).join(t('، ', ', ')),
+      CreateStep.design => p.designed ? t('تصميم محفوظ', 'Design saved') : null,
+      CreateStep.review => null,
     };
+
+String _copiesValue(ExamCreatePlan p) => p.effectiveCopies == SheetCopies.personal
+    ? sheetCopiesLabel(SheetCopies.personal)
+    : '${sheetCopiesLabel(SheetCopies.generic)} · ${versionsCountText(p.effectiveVersions)}';
 
 String? _questionsValue(ExamCreatePlan p) {
   if (p.exam.isFile) return p.exam.hasFile ? '${t('ملف', 'File')} · ${marksCountText(p.exam.filePoints)}' : null;
@@ -311,7 +430,8 @@ List<(String, String)> createEstimate(ExamCreatePlan p) => [
 class BubbleCheck {
   const BubbleCheck({this.notHeld = const [], this.importedNotHeld = 0, this.over = 0, this.choicesOver = 0, this.capacity});
 
-  /// Questions a bubble cannot hold (in the builder).
+  /// Questions neither the bubble sheet nor the paper can hold. Empty in the paper flow (D-697): what the sheet does not
+  /// hold is answered in the question paper.
   final List<QuickQuestion> notHeld;
 
   /// The same, among those imported to the server.
@@ -334,12 +454,10 @@ BubbleCheck bubbleCheckOf(ExamCreatePlan p) {
   final tpl = p.template;
   final cap = tpl != null && tpl.questions > 0 ? tpl.questions : null;
   final bubbles = tpl?.options;
+  final types = (p.layout ?? PaperLayout.bubbleObjective).bubbleTypes;
   return BubbleCheck(
-    // with the NB2 sheet on, written questions go there (D-687); only what neither sheet holds stands in the way
-    notHeld: [for (final q in p.exam.questions) if (!bubbleCanHold(q.type) && !(p.answerSheetOn && answerSheetCanHold(q.type))) q],
-    importedNotHeld: p.importedNotBubble,
     over: cap != null && p.bubbleQuestionCount > cap ? p.bubbleQuestionCount - cap : 0,
-    choicesOver: bubbles == null ? 0 : p.exam.questions.where((q) => q.options.where((o) => o.text.trim().isNotEmpty).length > bubbles).length,
+    choicesOver: bubbles == null ? 0 : p.exam.questions.where((q) => types.contains(q.type) && q.options.where((o) => o.text.trim().isNotEmpty).length > bubbles).length,
     capacity: cap,
   );
 }
@@ -375,28 +493,37 @@ List<String> publishStepErrors(ExamCreatePlan p) {
 bool versionsWouldMatch(ExamCreatePlan p) {
   if (p.effectiveVersions < 2) return false;
   final canQuestions = !p.isBubble && p.shuffleQuestions && p.questionCount > 1;
-  final canOptions = p.shuffleOptions && p.exam.questions.any((q) => q.type == 'mcq_single');
+  final canOptions = p.shuffleOptions && p.shuffleOptionsAllowed && p.exam.questions.any((q) => q.type == 'mcq_single');
   return !canQuestions && !canOptions && p.importedQuestions == 0;
 }
 
-bool createStepReady(CreateStep s, ExamCreatePlan p, {bool identifierValid = false}) {
+/// [identifierValid]: kept for the callers; nothing in the paper flow waits on it any more.
+bool createStepReady(CreateStep s, ExamCreatePlan p, {bool identifierValid = false, bool omrOn = true}) {
   switch (s) {
     case CreateStep.where:
       return p.place != null;
     case CreateStep.answer:
       return p.answer != null;
+    case CreateStep.questions:
+      final (errors, perQ) = questionStepErrors(p);
+      // a bubble exam made the D-661 way (its sheet chosen first) is still checked against it
+      return errors.isEmpty && perQ.isEmpty && (p.layout != null || !bubbleCheckOf(p).blocks);
+    case CreateStep.layout:
+      final l = p.layout;
+      return l != null && paperLayoutAvailable(l, p.mix, omrOn: omrOn);
     case CreateStep.template:
       // the sheet comes after the questions: it must hold them
       return p.template != null && !bubbleCheckOf(p).blocks;
-    case CreateStep.questions:
-      final (errors, perQ) = questionStepErrors(p);
-      return errors.isEmpty && perQ.isEmpty && !bubbleCheckOf(p).blocks;
     case CreateStep.publish:
       return p.publish != null && publishStepErrors(p).isEmpty;
     case CreateStep.sheets:
       return true;
     case CreateStep.identify:
-      if (p.needsPeopleFile) return p.peopleCount > 0;
-      return !needsIdentifierPlan(p) || identifierValid;
+      return p.peopleCount > 0;
+    case CreateStep.attributes:
+      return true;
+    case CreateStep.design:
+    case CreateStep.review:
+      return true;
   }
 }

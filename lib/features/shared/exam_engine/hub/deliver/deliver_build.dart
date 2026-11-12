@@ -28,6 +28,7 @@ import '../../paper/exam_setup.dart';
 import '../../paper/omr_counts.dart' show omrMinutesText;
 import '../create/answer_format.dart';
 import '../create/answer_sheet_plan.dart' show SheetPlan;
+import '../create/offline_flow.dart' show OfflinePlan, PaperLayout;
 import 'deliver_logic.dart';
 import 'paper_page_replay.dart';
 
@@ -39,7 +40,7 @@ String get sampleStudentName => t('اسم الطالب', 'Student name');
 /// Everything delivery needs about one exam.
 class DeliverSource {
   DeliverSource({required this.view, required this.base, required this.tpl, required this.versions, required this.regular, required this.bold,
-      required this.delivery, required this.bubble, required this.printed, this.format = AnswerFormat.onPaper, this.bookletDefault = false, this.design, this.cover, this.designVersion = 0, this.identifier, this.orgId, this.hasCourse = false, this.plan, this.sheetPlan});
+      required this.delivery, required this.bubble, required this.printed, this.format = AnswerFormat.onPaper, this.bookletDefault = false, this.design, this.cover, this.designVersion = 0, this.identifier, this.orgId, this.hasCourse = false, this.plan, this.sheetPlan, this.layout});
   final ExamView view;
 
   /// The exam's paper with the design and every picture applied, in the exam's own order.
@@ -56,6 +57,12 @@ class DeliverSource {
 
   /// The answer sheets the wizard planned (`settings.sheet_plan`, D-687); null on an exam made any other way.
   final SheetPlan? sheetPlan;
+
+  /// The paper's answer layout (`sheet_plan` v2, or what an older exam reads as, D-697); null on an online exam.
+  final PaperLayout? layout;
+
+  /// Layout 4: the question paper alone, with no answer area anywhere (contract §4).
+  bool get questionsOnly => isPaper && layout == PaperLayout.questionsOnly;
 
   /// The exam uses bubble answer sheets.
   final bool bubble;
@@ -75,10 +82,11 @@ class DeliverSource {
   List<PaperPrintedId> get blankLabels => [for (final p in printed) p.blank];
 
   /// An answer booklet can go with this paper (D-663).
-  bool get bookletOffered => isPaper && deliverBookletOffered(format);
+  bool get bookletOffered => isPaper && !questionsOnly && deliverBookletOffered(format);
 
   /// [d] as the question paper: without answer room beside a booklet, with the answer table at the end for a table exam.
   ExamPaperDoc paperOf(ExamPaperDoc d, {required bool booklet}) {
+    if (questionsOnly) return d.copyWith(part: PaperPart.questions, answerTable: AnswerTablePlace.none);
     final l = deliverPaperLayout(isPaper ? format : AnswerFormat.online, booklet: booklet && bookletOffered);
     return d.copyWith(part: l.part, answerTable: l.table);
   }
@@ -160,6 +168,7 @@ Future<DeliverLoad> loadDeliverSource(int examId, {required String accentFallbac
     delivery: setup?.delivery ?? 'online',
     plan: DeliverPlan.ofSettings(r.map['settings']),
     sheetPlan: SheetPlan.ofSettings(r.map['settings']),
+    layout: OfflinePlan.ofSettings(settings)?.layout,
     bubble: setup?.isBubble ?? false,
     printed: results[1].ok ? printedIdsOfSetup(results[1].map) : const [],
     format: format,

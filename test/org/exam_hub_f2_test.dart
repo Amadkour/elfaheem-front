@@ -10,6 +10,7 @@ import 'package:flutter_education_app/features/shared/exam_engine/hub/create/exa
 import 'package:flutter_education_app/features/shared/exam_engine/hub/create/exam_create_parts.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/create/exam_create_sync.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/create/exam_create_wizard.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/hub/create/offline_plan_api.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -128,13 +129,27 @@ class _Versions extends ExamVersionsApi {
   }
 }
 
+/// `PUT /exams/{id}/offline-plan` (contract §2), logged as `plan`.
+class _Plans extends OfflinePlanApi {
+  _Plans(this.log);
+  final List<String> log;
+  final bodies = <Map<String, dynamic>>[];
+  @override
+  Future<EngineResult> putPlan(int examId, OfflinePlan plan) async {
+    bodies.add(plan.toJson());
+    log.add('plan');
+    return EngineResult.ok({});
+  }
+}
+
 (ExamCreateSync, _Authoring, _Setup, _Versions) _server() {
   final a = _Authoring();
   final s = _Setup(a.calls);
   final v = _Versions(a.calls);
-  return (ExamCreateSync(api: a, setup: s, versions: v), a, s, v);
+  return (ExamCreateSync(api: a, setup: s, versions: v, plans: _Plans(a.calls)), a, s, v);
 }
 
+/// A paper plan prints generic copies here (D-697: a course's default is one copy per student, which has no versions).
 ExamCreatePlan _plan({bool bubble = false, AnswerFormat answer = AnswerFormat.onPaper}) {
   final p = ExamCreatePlan(place: _course, title: 'Exam');
   if (bubble) {
@@ -143,6 +158,7 @@ ExamCreatePlan _plan({bool bubble = false, AnswerFormat answer = AnswerFormat.on
   } else {
     p.setAnswer(answer);
   }
+  if (p.isPaper) p.setCopies(SheetCopies.generic);
   p.exam.questions.addAll([_mcq('one'), _mcq('two')]);
   return p;
 }
@@ -151,12 +167,16 @@ void main() {
   setUp(() => AppConfig.lang = 'en');
 
   group('the plan', () {
+    // D-697: the paper steps after the questions are the answer sheet, the bubble form, the copies, the attributes, the
+    // paper design and the review (Settings is the online exam's only)
     test('a bubble exam is a paper exam and gets the template step', () {
       final p = _plan(bubble: true);
       expect(p.publish, PublishKind.paper);
       expect(p.exam.mode, QuickMode.offline);
-      expect(createSteps(p, whereNeeded: true, omrOn: true, identifiersOn: true),
-          [CreateStep.where, CreateStep.answer, CreateStep.questions, CreateStep.template, CreateStep.publish, CreateStep.sheets, CreateStep.identify]);
+      expect(createSteps(p, whereNeeded: true, omrOn: true, identifiersOn: true), [
+        CreateStep.where, CreateStep.answer, CreateStep.questions, CreateStep.layout, CreateStep.template, CreateStep.sheets, //
+        CreateStep.attributes, CreateStep.design, CreateStep.review,
+      ]);
     });
 
     test('the answer format decides the kind: online, paper, table, bubble', () {
@@ -173,15 +193,17 @@ void main() {
       p.setAnswer(AnswerFormat.bubble);
       expect((p.isPaper, p.isBubble), (true, true));
       expect(p.settingsJson['answer_format'], 'bubble');
-      expect(createSteps(p, whereNeeded: false, omrOn: true, identifiersOn: false), [CreateStep.answer, CreateStep.questions, CreateStep.template, CreateStep.publish, CreateStep.sheets]);
+      expect(createSteps(p, whereNeeded: false, omrOn: true, identifiersOn: false),
+          [CreateStep.answer, CreateStep.questions, CreateStep.layout, CreateStep.template, CreateStep.sheets, CreateStep.design, CreateStep.review]);
     });
 
-    test('a table takes essay questions; a bubble sheet does not (without the NB2 sheet, D-687)', () {
+    test('a table and a bubble sheet both take essay questions: what the sheet does not hold goes on the paper (D-697)', () {
       final p = _plan(answer: AnswerFormat.table)..answerSheetOn = false;
       p.exam.questions.add(QuickQuestion.essay()..prompt = 'why');
       expect(bubbleCheckOf(p).blocks, isFalse);
       p.setAnswer(AnswerFormat.bubble);
-      expect(bubbleCheckOf(p).notHeld.length, 1);
+      expect(bubbleCheckOf(p).notHeld, isEmpty);
+      expect(bubbleCheckOf(p).blocks, isFalse);
     });
 
     test('the sheet comes after the questions and must hold them', () {
@@ -194,6 +216,7 @@ void main() {
     test('no bubble format while OMR is off', () {
       expect(answerFormatsFor(omrOn: false), [AnswerFormat.online, AnswerFormat.onPaper, AnswerFormat.table]);
       expect(answerFormatsFor(omrOn: true).length, 4);
+      expect(kCreateModes, [AnswerFormat.online, AnswerFormat.onPaper]);
     });
 
     test('older exams: the answer format from what they hold', () {
@@ -209,15 +232,17 @@ void main() {
     test('kill switches drop their steps', () {
       final p = _plan(bubble: true);
       expect(createSteps(p, whereNeeded: false, omrOn: false, identifiersOn: false).contains(CreateStep.template), isFalse);
-      expect(createSteps(p, whereNeeded: false, omrOn: false, identifiersOn: false).contains(CreateStep.identify), isFalse);
+      expect(createSteps(p, whereNeeded: false, omrOn: false, identifiersOn: false).contains(CreateStep.attributes), isFalse);
+      expect(createSteps(p..answerSheetOn = false, whereNeeded: false, omrOn: true, identifiersOn: true).contains(CreateStep.layout), isFalse);
     });
 
-    test('a personal paper needs a course, and a printed sheet', () {
-      final p = _plan()..paperPlan = PaperPlan.personal;
-      expect(needsIdentifierStep(p, identifiersOn: true), isTrue);
+    test('per-student copies: the course roster, or an uploaded list without a course; never on an own sheet', () {
+      final p = _plan()..setCopies(SheetCopies.personal);
+      expect(p.paperPlan, PaperPlan.personal);
+      expect(needsIdentifierStep(p, identifiersOn: true), isFalse, reason: 'a course\'s roster is automatic');
       p.setPlace(_personal);
-      expect(p.paperPlan, PaperPlan.versions);
-      expect(needsIdentifierStep(p, identifiersOn: true), isFalse);
+      expect(p.paperPlan, PaperPlan.personal);
+      expect(needsIdentifierStep(p, identifiersOn: true), isTrue, reason: 'no course: the uploaded list');
       final own = _plan(bubble: true)..template = _own;
       expect(own.personalAllowed, isFalse);
       expect(own.versionsAllowed, isFalse);
@@ -252,11 +277,12 @@ void main() {
   });
 
   group('bubble checks', () {
-    test('questions a bubble cannot hold block the step (without the NB2 sheet, D-687)', () {
+    // D-697 changed these two: a question the bubble sheet does not hold is answered on the paper, so nothing blocks
+    test('questions a bubble cannot hold go on the paper, even without the NB2 sheet', () {
       final p = _plan(bubble: true)..answerSheetOn = false;
       p.exam.questions.add(QuickQuestion.essay()..prompt = 'why');
-      expect(bubbleCheckOf(p).notHeld.length, 1);
-      expect(createStepReady(CreateStep.questions, p), isFalse);
+      expect(bubbleCheckOf(p).notHeld, isEmpty);
+      expect(bubbleCheckOf(p).blocks, isFalse);
     });
 
     test('more questions than rows, more choices than bubbles', () {
@@ -267,9 +293,9 @@ void main() {
       expect(c.choicesOver, 1);
     });
 
-    test('imported questions a bubble cannot hold block too', () {
+    test('imported questions a bubble cannot hold do not block either', () {
       final p = _plan(bubble: true)..importedNotBubble = 2;
-      expect(bubbleCheckOf(p).blocks, isTrue);
+      expect(bubbleCheckOf(p).blocks, isFalse);
     });
 
     test('the recommended sheet is the smallest that fits', () {
@@ -280,13 +306,17 @@ void main() {
     });
 
     test('versions that cannot differ are called out', () {
+      // in the booklet; on NB2 the objective questions routed to the paper get choice boxes, which cannot be shuffled
       final p = _plan()
+        ..answerSheetOn = false
         ..versions = 3
         ..shuffleQuestions = false
         ..shuffleOptions = false;
       expect(versionsWouldMatch(p), isTrue);
       p.shuffleOptions = true;
       expect(versionsWouldMatch(p), isFalse);
+      p.answerSheetOn = true;
+      expect((p.shuffleOptionsAllowed, versionsWouldMatch(p)), (false, true));
     });
   });
 
@@ -366,6 +396,7 @@ void main() {
       final vi = a.calls.indexOf('versions:3');
       expect(vi, greaterThan(-1));
       expect(a.calls.indexOf('setup', vi), greaterThan(vi));
+      expect(a.calls.indexOf('plan'), inInclusiveRange(0, vi), reason: 'the paper plan is checked by the server before the versions');
       expect(a.calls.where((c) => c == 'createQuestion').length, 2);
       expect(s.bodies.last['form_markers'], kVersionMarkers);
       expect(v.bodies.last['shuffle_questions'], isTrue);
@@ -453,15 +484,16 @@ void main() {
       await expectNoLayoutErrors(t, () => CreateDoneBody(title: 'A long exam title', place: 'Biology', lines: const [('Questions', '12'), ('Opens', 'Now')], onDone: () {}, onOpen: () {}, onFollow: () {}, onShare: () {}));
     });
 
-    testWidgets('the wizard opens on the answer step with the last format preselected', (t) async {
+    // D-697: the first step is online or on paper; a remembered answer table means on paper, its layout chosen later
+    testWidgets('the wizard opens on the How step with the last way preselected', (t) async {
       SharedPreferences.setMockInitialValues({'exam_create.answer.0': 'table'});
       final (sync, _, _, _) = _server();
       final p = ExamCreatePlan(place: _course, title: 'Exam');
       await t.pumpWidget(layoutHost(ExamCreateWizard(sync: sync, initialPlan: p), scaffold: false, scale: 1));
       await t.pump(const Duration(milliseconds: 300));
-      expect(find.byKey(const ValueKey('create.answer.table')), findsOneWidget);
-      expect(p.answer, AnswerFormat.table);
-      expect(p.answerBooklet, isTrue);
+      expect(find.byKey(const ValueKey('create.answer.on_paper')), findsOneWidget);
+      expect((p.isPaper, p.layout), (true, null));
+      expect(p.answerBooklet, isFalse);
       await t.pumpWidget(const SizedBox());
       await t.pump(const Duration(seconds: 1));
     });

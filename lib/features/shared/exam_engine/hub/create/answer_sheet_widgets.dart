@@ -1,8 +1,8 @@
-// The paper exam's answer sheets, drawn (D-687): print or already have the bubble sheets, personal or generic sheets,
-// academic ID or system number, the student list of an exam with no course, and Deliver's NB2 print card. Each choice
-// has a default and is asked only when it applies (exam_create_logic.dart decides).
+// The paper exam's answer sheets, drawn (D-687, folded into the D-697 flow): print or already have the bubble sheets,
+// academic ID or system number, the student list of an exam with no course, and Deliver's NB2 print card. One copy or
+// one per student is CreateCopiesBody (offline_steps.dart).
 //
-// Plain-value widgets (the layout harness pumps them): CreateBubbleSourceBody · CreateSheetsBody · CreateIdSourceRow ·
+// Plain-value widgets (the layout harness pumps them): CreateBubbleSourceBody · CreateIdSourceRow ·
 // PeopleFileBody · AnswerSheetPrintCard. PeopleFileStep owns the upload.
 library;
 
@@ -12,7 +12,6 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../../../admin/admin_common.dart' show t;
-import '../../paper/exam_setup_wizard.dart' show SetupChoiceTile;
 import 'answer_sheet_plan.dart';
 
 const _gap = SizedBox(height: AppSpace.xs);
@@ -38,78 +37,6 @@ class CreateBubbleSourceBody extends StatelessWidget {
         const SizedBox(height: AppSpace.xxs),
         Text(bubbleSourceHint(value), style: AppType.meta(context)),
       ]);
-}
-
-/// What will be printed for the students to answer on, then who the sheets are for.
-class CreateSheetsBody extends StatelessWidget {
-  const CreateSheetsBody({
-    super.key,
-    required this.printsBubble,
-    required this.answerSheet,
-    required this.writtenCount,
-    required this.copies,
-    required this.hasCourse,
-    required this.onCopies,
-    this.lastUsed,
-  });
-
-  /// NextBrain prints the bubble sheets.
-  final bool printsBubble;
-
-  /// The NB2 sheet for the written answers.
-  final bool answerSheet;
-  final int writtenCount;
-  final SheetCopies copies;
-  final bool hasCourse;
-  final ValueChanged<SheetCopies> onCopies;
-
-  /// This teacher's previous choice, said while it is the one chosen.
-  final SheetCopies? lastUsed;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    Widget line(IconData icon, String title, String sub) => Padding(
-          padding: const EdgeInsets.only(bottom: AppSpace.xs),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(icon, size: AppIconSize.md, color: appInk(context, c.primary)),
-            const SizedBox(width: AppSpace.sm),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
-                Text(sub, style: AppType.meta(context)),
-              ]),
-            ),
-          ]),
-        );
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      AppCard(
-        key: const ValueKey('create.sheets.what'),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          if (printsBubble)
-            line(Icons.grid_on_rounded, t('ورقة التظليل', 'Bubble sheet'), t('للاختيار من متعدد وصح / خطأ', 'For multiple choice and true / false')),
-          if (answerSheet)
-            line(Icons.edit_note_rounded, t('ورقة الإجابة الكتابية', 'Written answer sheet'),
-                '${writtenQuestionsText(writtenCount)}${t(' في مربعات وأسطر ثابتة يقرؤها الماسح', ' in fixed boxes and lines the scanner reads')}'),
-        ]),
-      ),
-      const SizedBox(height: AppSpace.md),
-      Text(t('لمن تُطبع الأوراق؟', 'Who are the sheets for?'), style: AppType.section(context)),
-      _gap,
-      for (final v in SheetCopies.values) ...[
-        SetupChoiceTile(
-          key: ValueKey('create.sheets.${sheetCopiesKey(v)}'),
-          icon: v == SheetCopies.personal ? Icons.badge_outlined : Icons.copy_all_rounded,
-          title: sheetCopiesLabel(v),
-          subtitle: sheetCopiesHint(v, hasCourse: hasCourse),
-          selected: copies == v,
-          badge: v == lastUsed ? AppBadgePill(t('آخر اختيار', 'Last used'), color: c.primary) : null,
-          onTap: () => onCopies(v),
-        ),
-        _gap,
-      ],
-    ]);
-  }
 }
 
 /// What a personal sheet carries, above the identifier plan.
