@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../../../admin/admin_common.dart' show t;
@@ -564,3 +565,43 @@ class BubbleActions extends StatelessWidget {
   Widget build(BuildContext context) => Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: children);
 }
 
+
+/// What the model answer gave (D-671): the questions found and keyed, and the rows to check before correcting.
+/// Plain values in, so the layout harness can pump it.
+class BubbleKeyReadBanner extends StatelessWidget {
+  const BubbleKeyReadBanner({super.key, required this.read, this.onCheck});
+  final BubbleKeyRead read;
+  final VoidCallback? onCheck;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final n = read.questions;
+    final found = countText(n, ar1: 'سؤال واحد', ar2: 'سؤالين', arFew: '$n أسئلة', arMany: '$n سؤالًا', en1: '1 question', en: '$n questions');
+    final printed = read.printed > n ? t(' (من ${read.printed} في الورقة)', ' (of ${read.printed} on the sheet)') : '';
+    final ok = read.check.isEmpty;
+    final nums = read.check.take(12).map((x) => '${x.n}').join(t('، ', ', '));
+    final more = read.check.length > 12 ? ' …' : '';
+    return AppCard(
+      padding: AppSpace.card,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Icon(ok ? Icons.check_circle_rounded : Icons.rule_rounded, color: ok ? c.success : c.warning),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(child: Text(t('قرأنا الإجابة النموذجية: $found$printed', 'Model answer read: $found$printed'), style: AppType.bodyStrong(context))),
+        ]),
+        const SizedBox(height: AppSpace.xs),
+        Text(
+          ok
+              ? t('مفتاح الإجابة جاهز لكل الأسئلة. ارفع أوراق الطلاب الآن.', 'The key is ready for every question. Upload the students\' sheets now.')
+              : t('هذه الأسئلة غير واضحة في الإجابة النموذجية، أدخل مفتاحها: $nums$more', 'These questions are not clear on the model answer, enter their key: $nums$more'),
+          style: AppType.meta(context).copyWith(color: ok ? c.textLight : c.warning),
+        ),
+        if (!ok && onCheck != null) ...[
+          const SizedBox(height: AppSpace.sm),
+          Align(alignment: AlignmentDirectional.centerStart, child: AppButton.secondary(label: t('مراجعة المفتاح', 'Check the key'), icon: Icons.key_rounded, onPressed: onCheck)),
+        ],
+      ]),
+    );
+  }
+}

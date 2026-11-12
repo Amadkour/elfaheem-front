@@ -1718,6 +1718,7 @@
   "POST /api/v1/exam/attempts/{aid:int}/unlock",
   "POST /api/v1/exam/attempts/{aid:int}/void",
   "POST /api/v1/exam/bubble/runs",
+  "POST /api/v1/exam/bubble/runs/from-key",
   "POST /api/v1/exam/bubble/runs/{exam_id:int}/datalab/apply",
   "POST /api/v1/exam/bubble/runs/{exam_id:int}/datalab/preview",
   "POST /api/v1/exam/bubble/runs/{exam_id:int}/key/sheet",

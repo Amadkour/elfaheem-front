@@ -1,4 +1,5 @@
-// A bubble-sheet correction, from the choice of sheet to the marks (D-341 – D-343): pick a sheet, enter the key (a grid,
+// A bubble-sheet correction, from the choice of sheet to the marks (D-341 – D-343): start from the model answer alone
+// (D-671: the sheet, the number of questions and the key are read off it) or pick a sheet and enter the key (a grid,
 // or a marked sheet read back to you), then correct and review with the existing paper-exam sections
 // (`OmrScanSection`, live progress with `EventOrPoll`), and send the marks to Data Lab with a before / after preview.
 // The engine decides every mark; a wrong automatic mark is worse than asking.
@@ -6,6 +7,7 @@ library;
 
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -78,6 +80,44 @@ class _BubbleHomeScreenState extends State<BubbleHomeScreen> {
     }
   }
 
+  /// The model answer alone: photographed or uploaded, it gives the sheet, the number of questions and the key.
+  Future<void> _fromKey() async {
+    final title = TextEditingController(text: t('تصحيح ${widget.courseTitle}', 'Correct ${widget.courseTitle}'));
+    final phone = !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+    final camera = await showAppSheet<bool>(context, (ctx) => AppSheetContent(title: t('ابدأ من الإجابة النموذجية', 'Start from the model answer'), children: [
+          Text(
+            t('ظلّل الإجابات الصحيحة على نسخة من ورقة الطلاب نفسها، ثم صوّرها أو ارفعها صورةً أو PDF. نتعرّف على الورقة وعدد الأسئلة ومفتاح الإجابة تلقائيًا.',
+                'Shade the right answers on a copy of the students\' own sheet, then photograph it or upload it as an image or a PDF. We find the sheet, the number of questions and the key for you.'),
+            style: AppType.body(context),
+          ),
+          const SizedBox(height: AppSpace.md),
+          AppField(controller: title, label: t('اسم التصحيح', 'Name of this correction')),
+          const SizedBox(height: AppSpace.md),
+          if (phone) ...[
+            AppButton.primary(label: t('تصوير الإجابة النموذجية', 'Photograph the model answer'), icon: Icons.photo_camera_rounded, expand: true, onPressed: () => Navigator.pop(ctx, true)),
+            const SizedBox(height: AppSpace.sm),
+            AppButton.secondary(label: t('اختيار ملف (صورة أو PDF)', 'Choose a file (image or PDF)'), icon: Icons.upload_file_rounded, expand: true, onPressed: () => Navigator.pop(ctx, false)),
+          ] else
+            AppButton.primary(label: t('اختيار ملف (صورة أو PDF)', 'Choose a file (image or PDF)'), icon: Icons.upload_file_rounded, expand: true, onPressed: () => Navigator.pop(ctx, false)),
+        ]));
+    if (camera == null || !mounted) return;
+    final f = await (widget.picker ?? defaultOwnSheetPicker)(camera: camera);
+    if (f == null || !mounted) return;
+    setState(() => _busy = true);
+    final name = title.text.trim().isEmpty ? t('تصحيح ${widget.courseTitle}', 'Correct ${widget.courseTitle}') : title.text.trim();
+    final r = await _api.createRunFromKey(courseId: widget.courseId, title: name, file: f);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (!r.ok) {
+      appToast(bubbleErrorText(r), error: true);
+      return;
+    }
+    final run = BubbleRun.fromJson(r.map);
+    final read = BubbleKeyRead.fromJson(asMap(r.map['key_read']));
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => BubbleRunScreen(examId: run.id, initial: run, keyRead: read, api: widget.api, picker: widget.picker)));
+    if (mounted) await _load();
+  }
+
   Future<void> _startRun(OmrTemplateItem item) async {
     final title = TextEditingController(text: t('تصحيح ${item.name}', 'Correct ${item.name}'));
     final count = TextEditingController(text: '${item.questions}');
@@ -125,6 +165,20 @@ class _BubbleHomeScreenState extends State<BubbleHomeScreen> {
                   subtitle: t('استخدم أي ورقة، ثم صحّح فصلًا كاملًا من الصور أو الملفات.', 'Use any sheet, then correct a whole class from photos or files.'),
                 ),
                 const SizedBox(height: AppSpace.md),
+                ParentComponent(
+                  featureKey: kBubbleFromKeyFeature,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                    child: AppActionCard(
+                      icon: Icons.auto_awesome_rounded,
+                      color: c.primary,
+                      title: t('ابدأ من الإجابة النموذجية', 'Start from the model answer'),
+                      subtitle: t('بلا اختيار ورقة ولا كتابة مفتاح: نتعرّف على الورقة وعدد الأسئلة والمفتاح', 'No sheet to pick, no key to type: we find the sheet, the questions and the key'),
+                      trailing: _busy ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)) : null,
+                      onTap: _busy ? null : _fromKey,
+                    ),
+                  ),
+                ),
                 ParentComponent(
                   featureKey: kBubbleTeachFeature,
                   child: AppActionCard(
@@ -211,9 +265,12 @@ class _SheetGrid extends StatelessWidget {
 
 /// One correction: the key, then correct and review, then where the marks go.
 class BubbleRunScreen extends StatefulWidget {
-  const BubbleRunScreen({super.key, required this.examId, this.initial, this.api, this.picker});
+  const BubbleRunScreen({super.key, required this.examId, this.initial, this.keyRead, this.api, this.picker});
   final int examId;
   final BubbleRun? initial;
+
+  /// Set when the correction was just started from the model answer: what was read off it.
+  final BubbleKeyRead? keyRead;
   final BubbleApi? api;
   final OwnSheetPicker? picker;
 
@@ -268,6 +325,10 @@ class _BubbleRunScreenState extends State<BubbleRunScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               AppHero(icon: Icons.fact_check_rounded, title: run.title, subtitle: run.sheetName),
               const SizedBox(height: AppSpace.md),
+              if (widget.keyRead != null) ...[
+                BubbleKeyReadBanner(read: widget.keyRead!, onCheck: _openKey),
+                const SizedBox(height: AppSpace.md),
+              ],
               AppCard(
                 padding: AppSpace.card,
                 child: Row(children: [

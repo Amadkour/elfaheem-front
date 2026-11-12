@@ -4058,3 +4058,14 @@ Arabic handwriting is always for the teacher to confirm. Tests: `test/org/essay_
 **Context.** D-664 saved a new bank version and asked for a regrade; the exam kept its pinned version, so no mark moved.
 
 **Decision.** `KeyFixApi.fixKey` is one synchronous call, `POST /exams/{id}/questions/{qid}/key {correct: [...], reason}` (back D-653): the fix is stored on THIS exam (`settings.key_overrides`; the bank question keeps its key), every answer to the question is marked again at once (final marks too), totals move, a mark the teacher gave by hand is kept (`manual_kept`), the grade log records the key change and each moved mark, and published results show the new marks straight away. The progress dialog and the polling are gone (`KeyFixProgressView`, `keyFixWaiting`, the queued / done texts); the flow ends with a notice built from the reply (`keyFixOutcomeText`: results changed, hand marks kept, answers still waiting, "students see the new marks now" when published). The confirm says marks change, final ones included. The reason sent is "Item analysis: <flag>"; the grade log shows the moved marks as "Marked again after the key was fixed".
+
+## D-671 — Bubble correction from the model answer (2026-11-12)
+
+Grade papers › Bubble sheets opens with "Start from the model answer": the teacher photographs or uploads the marked
+model answer (image or PDF) and `POST /bubble/runs/from-key` (back D-670 / D-671) finds the sheet, the number of
+questions and the key; the run opens with `BubbleKeyReadBanner` saying what was read ("100 questions, of 150 on the
+sheet") and listing the rows the model answer did not show clearly, with Check the key. Picking a saved sheet and
+typing the key stays as the second path. Answered / right per student were already in the results (`answered`).
+Kill switch `exam.bubble.from_key`. Why: the owner's sheets (bubbles in a ruled table) could not be taught at all,
+and asking for a template before a teacher can correct anything was the wrong first step.
+

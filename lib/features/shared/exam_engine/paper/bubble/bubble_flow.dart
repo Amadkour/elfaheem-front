@@ -16,6 +16,7 @@ const kBubbleFeature = 'exam.bubble';
 const kBubbleTeachFeature = 'exam.bubble.teach';
 const kBubbleKeySheetFeature = 'exam.bubble.key_sheet';
 const kBubbleDataLabFeature = 'exam.bubble.datalab';
+const kBubbleFromKeyFeature = 'exam.bubble.from_key';
 
 /// The wizard's pictures, in their required order.
 enum BubbleStep { question, identifier, empty, filled }
@@ -434,6 +435,36 @@ class BubbleKeyProposal {
 
 // ── Data Lab ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
+/// What the model answer gave when a correction starts from it (D-671): how many questions it marks, how many the sheet
+/// prints, how many got a key, and the rows the teacher should check (two marks, a faint one, none).
+class BubbleKeyRead {
+  BubbleKeyRead({required this.questions, required this.printed, required this.keyed, required this.check});
+
+  final int questions, printed, keyed;
+  final List<BubbleKeyCheck> check;
+
+  factory BubbleKeyRead.fromJson(Map<String, dynamic> j) => BubbleKeyRead(
+        questions: asInt(j['questions']),
+        printed: asInt(j['printed']),
+        keyed: asInt(j['keyed']),
+        check: [for (final x in (j['check'] is List ? j['check'] as List : const [])) if (x is Map<String, dynamic>) BubbleKeyCheck.fromJson(x)],
+      );
+}
+
+class BubbleKeyCheck {
+  BubbleKeyCheck({required this.n, required this.state, required this.letters});
+
+  final int n;
+  final String state;
+  final List<String> letters;
+
+  factory BubbleKeyCheck.fromJson(Map<String, dynamic> j) => BubbleKeyCheck(
+        n: asInt(j['n']),
+        state: '${j['state'] ?? ''}',
+        letters: [for (final x in (j['letters'] is List ? j['letters'] as List : const [])) '$x'],
+      );
+}
+
 class LabColumn {
   const LabColumn({required this.key, required this.label, this.maxValue, this.locked = false});
   final String key, label;
@@ -564,6 +595,9 @@ class BubbleApi {
 
   Future<EngineResult> createRun({required int courseId, required int templateId, required String title, int? questions}) =>
       engineCall(() => _api.post('$_b/bubble/runs', body: {'course_id': courseId, 'template_id': templateId, 'title': title, 'questions': ?questions}));
+  /// A correction from the model answer alone: the sheet, the number of questions and the key are read off it (D-671).
+  Future<EngineResult> createRunFromKey({required int courseId, required String title, required (String, Uint8List) file}) =>
+      engineCall(() => _api.postFiles('$_b/bubble/runs/from-key', files: [file], field: 'image', fields: {'course_id': courseId, 'title': title}));
   Future<EngineResult> run(int id) => engineCall(() => _api.get('$_b/bubble/runs/$id'));
   Future<EngineResult> putKey(int id, {required List<BubbleKeyForm> forms, Map<int, double>? points, Map<int, bool>? allModes}) =>
       engineCall(() => _api.put('$_b/bubble/runs/$id/key', body: {

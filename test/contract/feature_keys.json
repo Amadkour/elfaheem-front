@@ -155,6 +155,7 @@
  "exam.auto_create",
  "exam.bubble",
  "exam.bubble.datalab",
+ "exam.bubble.from_key",
  "exam.bubble.key_sheet",
  "exam.bubble.teach",
  "exam.deliver_email",
