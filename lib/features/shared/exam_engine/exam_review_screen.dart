@@ -4,6 +4,8 @@
 // Students are named (the exam's audience, `GET …/omr/students`, then the course roster for anyone not listed), never
 // "#10"; answers read from a paper exam's scans (bubble marks, handwriting) lead to the OMR review page, where each
 // one is shown next to its crop.
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -16,6 +18,8 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
 import 'exam_review.dart';
+import 'exam_autograde_widgets.dart';
+import 'exam_engine_api.dart' show EngineResult;
 import 'exam_grade_log_screen.dart' show ExamGradeLogScreen;
 import 'exam_authoring.dart' show ExamAuthoringApi, ExamView, authoringError, examStatusLabel;
 import 'exam_authoring_screen.dart' show ExamEditorScreen, QuestionBankScreen;
@@ -99,7 +103,7 @@ String reviewStudentText(ReviewItem item, Map<int, String> names) {
 /// Plain-values card of one answer to review (under the layout harness).
 class ReviewAnswerCard extends StatelessWidget {
   const ReviewAnswerCard({super.key, required this.item, required this.threshold, this.studentName, this.onAccept, this.onEdit, this.onScan, this.onSheet,
-      this.busy = false});
+      this.busy = false, this.crop, this.onMemory});
   final ReviewItem item;
   final double threshold;
 
@@ -111,10 +115,18 @@ class ReviewAnswerCard extends StatelessWidget {
   final VoidCallback? onSheet;
   final bool busy;
 
+  /// The answer's crop from the scanned page (D-688), drawn above the recognised text; null for a typed answer.
+  final Widget? crop;
+
+  /// The question's answer memory (what the grader reuses from earlier marks).
+  final VoidCallback? onMemory;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final spans = [for (final cr in item.criteria) if (cr.evidence != null && (cr.fraction ?? 0) >= .3) cr.evidence!];
+    final auto = item.auto;
+    final pointsShown = auto != null && auto.points.isNotEmpty;
     return AppCard(
       margin: const EdgeInsets.only(bottom: 12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -128,16 +140,22 @@ class ReviewAnswerCard extends StatelessWidget {
         const SizedBox(height: 10),
         AutoDirText(item.prompt, style: appText(14.5, w: FontWeight.w700, c: c.textDark)),
         const SizedBox(height: 8),
+        if (crop != null) ...[crop!, const SizedBox(height: 8)],
+        if (item.nb2 != null && item.nb2!.chars.isNotEmpty) ...[Nb2CharsView(reading: item.nb2!), const SizedBox(height: 8)],
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.divider)),
-          child: EvidenceText(text: item.answerText, spans: spans),
+          child: pointsShown ? AutoAnswerText(text: item.answerText, auto: auto) : EvidenceText(text: item.answerText, spans: spans),
         ),
         if (item.flags.isNotEmpty) ...[
           const SizedBox(height: 8),
           Wrap(spacing: 6, runSpacing: 6, children: [for (final f in item.flags) AppBadgePill(flagText(f), color: c.danger, icon: Icons.flag_outlined)]),
         ],
-        if (item.criteria.isNotEmpty) ...[
+        if (auto != null) ...[
+          const SizedBox(height: 10),
+          AutoGradePanel(auto: auto),
+        ],
+        if (item.criteria.isNotEmpty && !pointsShown) ...[
           const SizedBox(height: 10),
           for (final cr in item.criteria) _CriterionRow(cr: cr),
         ],
@@ -166,6 +184,12 @@ class ReviewAnswerCard extends StatelessWidget {
                 onPressed: onSheet,
                 icon: const Icon(Icons.crop_rounded, size: 18),
                 label: Text(t('راجعها على صورة الورقة', 'Review it on the paper image'))),
+          if (onMemory != null && auto != null)
+            TextButton.icon(
+                key: ValueKey('review.memory.${item.answerId}'),
+                onPressed: onMemory,
+                icon: const Icon(Icons.history_rounded, size: 18),
+                label: Text(t('ذاكرة الإجابات', 'Answer memory'))),
         ]),
       ]),
     );
@@ -414,6 +438,42 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
 
   bool get _omrReview => OmrRoutes.review != null;
 
+  /// Scanned pages already fetched (image + regions), one request per page however many answers it holds.
+  final Map<int, Future<(Uint8List?, ScanPageInfo?)>> _pages = {};
+
+  Future<(Uint8List?, ScanPageInfo?)> _page(int id) => _pages.putIfAbsent(id, () async {
+        final f = await Future.wait<Object?>([_api.scanImage(id), _api.scan(id)]);
+        final info = f[1] as EngineResult;
+        return (f[0] as Uint8List?, info.ok ? ScanPageInfo.fromJson(info.map) : null);
+      });
+
+  /// The answer's crop on its scanned page (the region of its question; the whole page when none is listed).
+  Widget? _crop(ReviewItem it) {
+    final pid = it.scanPageId;
+    if (pid == null || !(it.fromScan || it.fromPaperReader)) return null;
+    return FutureBuilder<(Uint8List?, ScanPageInfo?)>(
+      future: _page(pid),
+      builder: (_, s) {
+        final regions = s.data?.$2?.regions ?? const <OcrRegion>[];
+        final box = regions.where((r) => r.questionId == it.questionId).map((r) => r.box).firstOrNull;
+        return ScanCropView(bytes: s.data?.$1, box: box, loading: s.connectionState != ConnectionState.done, onTap: () => _scans(pageId: pid));
+      },
+    );
+  }
+
+  /// Answer memory of the questions on this page of the queue (the tapped one first).
+  void _memory([ReviewItem? it]) {
+    final qs = <int, String>{
+      if (it != null) it.questionId: it.prompt,
+      for (final x in _queue?.items ?? const <ReviewItem>[]) if (x.auto != null || x.type == 'short_answer' || x.type == 'essay') x.questionId: x.prompt,
+    };
+    if (qs.isEmpty) {
+      appToast(t('لا أسئلة مفتوحة الإجابة هنا', 'No open-answer questions here'));
+      return;
+    }
+    showAppSheet<void>(context, (_) => AnswerMemorySheet(questions: qs, initial: it?.questionId));
+  }
+
   /// The OMR review page, on [it]'s own item when given (the answer the teacher clicked, not the queue's first).
   Future<void> _openSheetReview([ReviewItem? it]) async {
     await openOmrReview(context, widget.examId,
@@ -512,6 +572,8 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
                 _policy();
               case 'offline':
                 Navigator.of(context).push(MaterialPageRoute(builder: (_) => OfflineExamPanel(examId: widget.examId, title: widget.examTitle))).then((_) => _load());
+              case 'memory':
+                _memory();
             }
           },
           itemBuilder: (_) => [
@@ -520,6 +582,7 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
               _menuItem('camera', Icons.fact_check_outlined, t('مراجعة الدرجات بالكاميرا', 'Grade review by camera'), key: const ValueKey('review.gradeReview')),
             _menuItem('policy', Icons.tune_rounded, t('سياسة التصحيح', 'Grading policy')),
             _menuItem('offline', Icons.offline_pin_rounded, t('الاختبار دون اتصال', 'Offline sitting')),
+            _menuItem('memory', Icons.psychology_alt_outlined, t('ذاكرة الإجابات', 'Answer memory'), key: const ValueKey('review.memoryMenu')),
           ],
         ),
       ]),
@@ -561,7 +624,8 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
               ReviewAnswerCard(item: it, threshold: q.threshold, studentName: reviewStudentText(it, _names), busy: _busy.contains(it.answerId),
                   onAccept: () => _accept(it), onEdit: () => _edit(it),
                   onScan: it.scanPageId == null ? null : () => _scans(pageId: it.scanPageId),
-                  onSheet: _omrReview && it.fromPaperReader ? () => _openSheetReview(it) : null),
+                  onSheet: _omrReview && it.fromPaperReader ? () => _openSheetReview(it) : null,
+                  crop: _crop(it), onMemory: () => _memory(it)),
         ])),
       ),
     );

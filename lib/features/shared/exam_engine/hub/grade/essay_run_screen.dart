@@ -23,6 +23,7 @@ import '../../paper/scan/scan_files.dart' show ScanPrepareError;
 import '../../paper/scan/scan_prepare.dart' show kScanPhotoMaxSide, prepareScanFile;
 import '../../paper/scan/scan_sources.dart' show ScanSource, scanPrepareErrorText, showScanSourceSheet;
 import '../result/exam_get_result_screen.dart' show openExamGetResult;
+import '../../exam_autograde_widgets.dart' show AnswerMemorySheet;
 import 'essay_run.dart';
 import 'essay_run_widgets.dart';
 
@@ -508,6 +509,7 @@ class _EssayStudentScreenState extends State<EssayStudentScreen> {
                     onAccept: a.suggestion == null ? null : () => _accept(a.suggestion!),
                     onEdit: a.suggestion == null ? null : () => _edit(a.suggestion!, run.question(a.n)?.points ?? 0),
                     onOpenPage: a.suggestion == null || st.attemptId == null ? null : () => _openPage(st, a),
+                    onMemory: a.suggestion?.auto == null ? null : () => showAppSheet<void>(context, (_) => AnswerMemorySheet(questions: {a.questionId: run.question(a.n)?.prompt ?? ''})),
                   ),
                 ),
             ]),

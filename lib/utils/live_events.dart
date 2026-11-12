@@ -121,6 +121,10 @@ class LiveEvents {
   static const modelChanged = 'model_changed';
   static const modelAlert = 'model_alert';
 
+  /// A benchmark run moved (contract C2, D-683): `{run_id, status, done, total, current}`. The AI Models page's
+  /// Benchmarks tab follows it (EventOrPoll), never a timer of its own.
+  static const modelBenchmark = 'model_benchmark';
+
   /// App releases (D-143, docs/release/APP_RELEASES.md). `app_release_updated` (super admins, stream only): a release
   /// moved — `{id, platform, status, progress, current}`. `app_release_live` (every open stream, not replayed): a web
   /// build went live, also after a rollback — `{platform, version, build_number, policy, must}`. App versions follows
@@ -170,6 +174,7 @@ class LiveEvents {
     modelDownload,
     modelChanged,
     modelAlert,
+    modelBenchmark,
     appReleaseUpdated,
     appReleaseLive,
     examNotice,

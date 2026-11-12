@@ -37,6 +37,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_table_export.dart';
 
 import '../../../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
+import '../../exam_autograde.dart' show AutoGrade;
 import '../../exam_engine_api.dart';
 import '../omr_counts.dart' show omrFilePlace;
 
@@ -677,6 +678,10 @@ class OmrReviewItem {
   }
 
   List<String> get reasons => _strs(reading['reasons']);
+
+  /// The grading tiers' suggestion of a short answer (contract A4, D-688): the tier, the points with the matched
+  /// sentence of each, the remembered decision. Null from an older engine. Never final on paper.
+  AutoGrade? get auto => AutoGrade.fromJson(reading['auto']);
 
   /// The reader's confidence of a short answer; null for typed text.
   double? get readConfidence => _dbl(asMap(reading['reading'])['confidence']);

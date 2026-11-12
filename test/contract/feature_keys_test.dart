@@ -16,6 +16,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const notInCatalog = <String, String>{
+  'models.benchmarks': 'auto-grade back pending merge',
 };
 
 final _patterns = [

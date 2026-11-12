@@ -7,6 +7,7 @@ import 'dart:typed_data';
 import 'package:flutter_education_app/core/api_client.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
+import 'exam_autograde.dart';
 import 'exam_engine_api.dart';
 
 double? _d(dynamic v) => v == null ? null : (v is num ? v.toDouble() : double.tryParse('$v'));
@@ -61,7 +62,7 @@ class ReviewItem {
       required this.prompt, required this.answerText, required this.source, this.scanPageId, this.ocrConfidence, required this.points,
       required this.scale, required this.reviewState, this.proposedScore, this.confidence, required this.abstain, this.finalScore,
       this.criteria = const [], this.rubric = const [], this.modelAnswer = '', this.flags = const [], this.marks = const [], this.graderVersion,
-      this.studentId});
+      this.studentId, this.auto, this.nb2, this.questionKind = ''});
   final int answerId, attemptId, questionId;
 
   /// null under anonymous marking ([studentLabel] is then the pseudonym `S-…`).
@@ -79,6 +80,13 @@ class ReviewItem {
   final List<String> flags;
   final List<ReviewMark> marks;
   final String? graderVersion;
+
+  /// The grading tiers' proposal (contract A3; null from an older engine) and an NB2 character-box reading (B).
+  final AutoGrade? auto;
+  final Nb2Chars? nb2;
+
+  /// word | short | long from the question's key (empty when the key does not say).
+  final String questionKind;
 
   bool get isOpen => const {'needs_review', 'queued', 'proposed', 'second_pending', 'moderation'}.contains(reviewState);
   bool get hasProposal => proposedScore != null;
@@ -106,7 +114,8 @@ class ReviewItem {
       criteria: [for (final c in asMapList(prop['criteria'])) ReviewCriterion.fromJson(c)], rubric: rubric,
       modelAnswer: '${key['model'] ?? ''}', flags: [for (final f in (prop['flags'] as List? ?? const [])) '$f'],
       marks: [for (final m in asMapList(j['marks'])) ReviewMark('${m['role']}', _d(m['score']) ?? 0, asInt(m['reviewer_id']), m['accepted_proposal'] == true)],
-      graderVersion: j['grader_version']?.toString(), studentId: sid == null ? null : asInt(sid));
+      graderVersion: j['grader_version']?.toString(), studentId: sid == null ? null : asInt(sid),
+      auto: AutoGrade.fromJson(prop), nb2: Nb2Chars.fromJson(ans['nb2']), questionKind: '${asMap(key['derived'])['kind'] ?? key['kind'] ?? ''}');
   }
 }
 

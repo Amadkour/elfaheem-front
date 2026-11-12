@@ -18,6 +18,10 @@
 //   POST   /api/v1/models/roles/{role}/rollback | cancel
 //   PUT    /api/v1/models/roles/{role}/fallback {model_id | null} · limits {threads?, ram_mb?, …}
 //   POST   /api/v1/models/roles/embedding/reindex
+//   PUT    /api/v1/models/roles/nli/judge {on}           the open-answer grader's NLI judge (D-675)
+//   GET    /api/v1/models/benchmarks?role=               results per role, the choice, the default (D-683..D-685)
+//   POST   /api/v1/models/benchmarks/run {roles?, model_ids?} · GET …/benchmarks/runs/{id}
+//   PUT    /api/v1/models/benchmarks/roles/{role}/choice {model_id | null, confirm?, reindex?}
 //
 // The parsers are checked against replies recorded from the hub's own e2e run (test/fixtures/payloads/models_hub/).
 library;
@@ -455,6 +459,7 @@ class HubRole {
     this.sharedFrom,
     this.sharedActive,
     this.effective,
+    this.judge,
   });
 
   factory HubRole.fromJson(Map<String, dynamic> j) => HubRole(
@@ -475,6 +480,8 @@ class HubRole {
         sharedFrom: _str(j['shared_from']),
         sharedActive: _str(j['shared_active']),
         effective: _str(j['effective']),
+        // additive (D-675, the nli row only): "on" | "off"; null on an older hub and on every other role
+        judge: _str(j['judge']),
       );
 
   final String role;
@@ -507,6 +514,12 @@ class HubRole {
 
   /// The ref of [sharedFrom]'s active model, and the ref the role actually runs on now (null = none).
   final String? sharedActive, effective;
+
+  /// The NLI judge of the open-answer grader (contract A7): "on" | "off"; null when the hub does not say.
+  final String? judge;
+
+  /// The judge is asked unless the hub says it is off.
+  bool get judgeOn => judge != 'off';
 
   bool get hasMode => mode != null;
 
@@ -773,6 +786,266 @@ class HubFailure {
   String toString() => 'HubFailure($status $code: $messageEn)';
 }
 
+// ── benchmarks per role and the Super Admin's choice (contract C, D-683..D-685; front D-689) ────────────────────
+
+/// Why a benchmark row cannot be chosen (`reason: {code, en, ar}`).
+class HubBenchReason {
+  const HubBenchReason(this.code, this.en, this.ar);
+
+  static HubBenchReason? fromJson(Object? v) {
+    if (v is! Map) return null;
+    final j = Map<String, dynamic>.from(v);
+    final code = _str(j['code']) ?? '';
+    return HubBenchReason(code, _str(j['en']) ?? code, _str(j['ar']) ?? _str(j['en']) ?? code);
+  }
+
+  final String code, en, ar;
+  String get text => AppConfig.lang == 'ar' ? ar : en;
+}
+
+/// One model's latest result for a role (`roles[].results[]`).
+class HubBenchResult {
+  const HubBenchResult({
+    required this.id,
+    this.modelId,
+    this.ref = '',
+    this.name = '',
+    this.role = '',
+    this.metric = '',
+    this.accuracy,
+    this.latencyAvgMs,
+    this.latencyP95Ms,
+    this.peakRamMb,
+    this.sizeBytes = 0,
+    this.dataset = '',
+    this.n = 0,
+    this.provisional = false,
+    this.detail = const {},
+    this.source = 'run',
+    this.at,
+    this.by,
+    this.license,
+    this.downloaded = false,
+    this.isDefault = false,
+    this.isChoice = false,
+    this.isActive = false,
+    this.selectable = true,
+    this.reason,
+  });
+
+  factory HubBenchResult.fromJson(Map<String, dynamic> j) => HubBenchResult(
+        id: _int(j['id']),
+        modelId: _intOrNull(j['model_id']),
+        ref: _str(j['ref']) ?? '',
+        name: _str(j['name']) ?? _str(j['ref']) ?? '',
+        role: _str(j['role']) ?? '',
+        metric: _str(j['metric']) ?? '',
+        accuracy: _dbl(j['accuracy']),
+        latencyAvgMs: _dbl(j['latency_avg_ms']),
+        latencyP95Ms: _dbl(j['latency_p95_ms']),
+        peakRamMb: _intOrNull(j['peak_ram_mb']),
+        sizeBytes: _int(j['size_bytes']),
+        dataset: _str(j['dataset']) ?? '',
+        n: _int(j['n']),
+        provisional: j['provisional'] == true,
+        detail: _map(j['detail']),
+        source: _str(j['source']) ?? 'run',
+        at: hubTime(j['at']),
+        by: _intOrNull(j['by']),
+        license: _str(j['license']),
+        downloaded: j['downloaded'] == true,
+        isDefault: j['is_default'] == true,
+        isChoice: j['is_choice'] == true,
+        isActive: j['is_active'] == true,
+        selectable: j['selectable'] != false,
+        reason: HubBenchReason.fromJson(j['reason']),
+      );
+
+  final int id;
+  final int? modelId;
+  final String ref, name, role, metric, dataset, source;
+
+  /// On the metric's own scale (percent, or Spearman × 100); null = not measured.
+  final double? accuracy, latencyAvgMs, latencyP95Ms;
+  final int? peakRamMb, by;
+  final int sizeBytes, n;
+  final bool provisional, downloaded, isDefault, isChoice, isActive, selectable;
+  final Map<String, dynamic> detail;
+  final DateTime? at;
+  final String? license;
+  final HubBenchReason? reason;
+
+  /// Seeded from the shipped results file, not measured on this server.
+  bool get seeded => source == 'seed';
+}
+
+/// One benchmarked role (`roles[]`).
+class HubBenchRole {
+  const HubBenchRole({
+    required this.role,
+    this.metric = '',
+    this.metricEn = '',
+    this.metricAr = '',
+    this.higherIsBetter = true,
+    this.dataset = '',
+    this.provisional = false,
+    this.activeId,
+    this.active,
+    this.choiceId,
+    this.choiceAt,
+    this.defaultId,
+    this.defaultRule,
+    this.effectiveId,
+    this.results = const [],
+  });
+
+  factory HubBenchRole.fromJson(Map<String, dynamic> j) {
+    final label = _map(j['metric_label']);
+    final choice = j['choice'] is Map ? _map(j['choice']) : null;
+    final def = j['default'] is Map ? _map(j['default']) : null;
+    return HubBenchRole(
+      role: _str(j['role']) ?? '',
+      metric: _str(j['metric']) ?? '',
+      metricEn: _str(label['en']) ?? _str(j['metric']) ?? '',
+      metricAr: _str(label['ar']) ?? _str(label['en']) ?? _str(j['metric']) ?? '',
+      higherIsBetter: j['higher_is_better'] != false,
+      dataset: _str(j['dataset']) ?? '',
+      provisional: j['provisional'] == true,
+      activeId: _intOrNull(j['active_id']),
+      active: _str(j['active']),
+      choiceId: choice == null ? null : _intOrNull(choice['model_id']),
+      choiceAt: choice == null ? null : hubTime(choice['at']),
+      defaultId: def == null ? null : _intOrNull(def['model_id']),
+      defaultRule: def == null ? null : _str(def['rule']),
+      effectiveId: _intOrNull(j['effective_id']),
+      results: [for (final r in _maps(j['results'])) HubBenchResult.fromJson(r)],
+    );
+  }
+
+  final String role, metric, metricEn, metricAr, dataset;
+  final bool higherIsBetter, provisional;
+  final int? activeId, choiceId, defaultId, effectiveId;
+  final String? active, defaultRule;
+  final DateTime? choiceAt;
+  final List<HubBenchResult> results;
+
+  String get metricLabel => AppConfig.lang == 'ar' ? metricAr : metricEn;
+
+  /// The Super Admin picked a model by hand (else the role follows the recommendation).
+  bool get hasChoice => choiceId != null;
+
+  /// The rows of the headline dataset (the ones the recommendation is drawn from).
+  List<HubBenchResult> get headline => [for (final r in results) if (dataset.isEmpty || r.dataset == dataset) r];
+
+  /// Extra runners of the same role (e.g. character boxes), listed after the headline rows.
+  List<HubBenchResult> get extra => [for (final r in results) if (dataset.isNotEmpty && r.dataset != dataset) r];
+}
+
+/// A runner the hub has for a role (`runners[]`).
+class HubBenchRunner {
+  const HubBenchRunner(this.role, this.dataset, this.available, this.reason);
+  final String role, dataset;
+  final bool available;
+  final HubBenchReason? reason;
+}
+
+/// A benchmark run (C3): queued → running → done | failed.
+class HubBenchRun {
+  const HubBenchRun({
+    required this.id,
+    required this.status,
+    this.roles = const [],
+    this.modelIds = const [],
+    this.done = 0,
+    this.total = 0,
+    this.current,
+    this.errors = const [],
+    this.createdAt,
+    this.finishedAt,
+  });
+
+  static HubBenchRun? fromJson(Object? v) {
+    if (v is! Map) return null;
+    final j = Map<String, dynamic>.from(v);
+    if (j['id'] == null) return null;
+    return HubBenchRun(
+      id: _int(j['id']),
+      status: _str(j['status']) ?? 'queued',
+      roles: [for (final r in (j['roles'] is List ? j['roles'] as List : const [])) '$r'],
+      modelIds: [for (final m in (j['model_ids'] is List ? j['model_ids'] as List : const [])) _int(m)],
+      done: _int(j['done']),
+      total: _int(j['total']),
+      current: _str(j['current']),
+      errors: _maps(j['errors']),
+      createdAt: hubTime(j['created_at']),
+      finishedAt: hubTime(j['finished_at']),
+    );
+  }
+
+  final int id, done, total;
+  final String status;
+  final List<String> roles;
+  final List<int> modelIds;
+  final String? current;
+  final List<Map<String, dynamic>> errors;
+  final DateTime? createdAt, finishedAt;
+
+  bool get live => status == 'queued' || status == 'running';
+
+  /// 0 … 1 (null before the hub knows the total).
+  double? get fraction => total <= 0 ? null : (done / total).clamp(0.0, 1.0);
+}
+
+/// `GET /api/v1/models/benchmarks`.
+class HubBenchmarks {
+  const HubBenchmarks({this.roles = const [], this.runners = const [], this.run});
+
+  factory HubBenchmarks.fromJson(Object? v) {
+    final j = _map(v);
+    return HubBenchmarks(
+      roles: [for (final r in _maps(j['roles'])) HubBenchRole.fromJson(r)],
+      runners: [
+        for (final r in _maps(j['runners']))
+          HubBenchRunner(_str(r['role']) ?? '', _str(r['dataset']) ?? '', r['available'] == true, HubBenchReason.fromJson(r['reason'])),
+      ],
+      run: HubBenchRun.fromJson(j['run']),
+    );
+  }
+
+  final List<HubBenchRole> roles;
+  final List<HubBenchRunner> runners;
+
+  /// The latest run (null: never run).
+  final HubBenchRun? run;
+
+  HubBenchRole? role(String role) {
+    for (final r in roles) {
+      if (r.role == role) return r;
+    }
+    return null;
+  }
+}
+
+/// The reply of `PUT /benchmarks/roles/{role}/choice` (C4): the choice and the activation step it started.
+class HubBenchChoice {
+  const HubBenchChoice({required this.role, this.choiceId, this.effectiveId, this.activation = const HubStep()});
+
+  factory HubBenchChoice.fromJson(Object? v) {
+    final j = _map(v);
+    final choice = j['choice'] is Map ? _map(j['choice']) : null;
+    return HubBenchChoice(
+      role: _str(j['role']) ?? '',
+      choiceId: choice == null ? null : _intOrNull(choice['model_id']),
+      effectiveId: _intOrNull(j['effective_id']),
+      activation: HubStep.fromJson(j['activation']),
+    );
+  }
+
+  final String role;
+  final int? choiceId, effectiveId;
+  final HubStep activation;
+}
+
 /// The calls. Every method throws what [ApiClient] throws (read it with [HubFailure.from]).
 class ModelsHubApi {
   const ModelsHubApi();
@@ -831,4 +1104,21 @@ class ModelsHubApi {
   Future<void> setGradingMode(String mode) async => _api.put('$base/roles/exam_grading/mode', body: {'mode': mode});
 
   Future<HubStep> reindexEmbedding() async => HubStep.fromJson(await _api.post('$base/roles/embedding/reindex'));
+
+  // ── benchmarks (contract C) and the NLI judge (contract A7) ──
+
+  Future<HubBenchmarks> benchmarks({String? role}) async => HubBenchmarks.fromJson(await _api.get('$base/benchmarks', queryParams: {'role': ?role}));
+
+  /// 202 with the run; 409 `benchmark_running` while one is queued or running, 422 `nothing_to_run`.
+  Future<HubBenchRun?> runBenchmarks({List<String>? roles, List<int>? modelIds}) async =>
+      HubBenchRun.fromJson(await _api.post('$base/benchmarks/run', body: {'roles': ?roles, 'model_ids': ?modelIds}));
+
+  Future<HubBenchRun?> benchmarkRun(int id) async => HubBenchRun.fromJson(await _api.get('$base/benchmarks/runs/$id'));
+
+  /// [modelId] null = follow the recommendation again. Starts the page's activation of the chosen model (C4).
+  Future<HubBenchChoice> chooseModel(String role, int? modelId, {bool confirm = false, String? reindex}) async => HubBenchChoice.fromJson(
+      await _api.put('$base/benchmarks/roles/$role/choice', body: {'model_id': modelId, 'confirm': confirm, 'reindex': ?reindex}));
+
+  /// The NLI judge of the open-answer grader on / off (A7) → the hub's new state ("on" | "off").
+  Future<String> setJudge(bool on) async => _str(_map(await _api.put('$base/roles/nli/judge', body: {'on': on}))['judge']) ?? (on ? 'on' : 'off');
 }

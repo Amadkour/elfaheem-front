@@ -4082,3 +4082,31 @@ Data Lab is hidden with no course. Review offers "Or a new student" (name, ID) o
 from the student search reply's `open`, asked once and only when an ID item is shown (no extra request otherwise).
 Server side: back D-672.
 
+
+## D-688 — Auto-grade in the review screens: the tier, the points, the crop, answer memory (2026-11-12)
+
+The online review card, the paper short answer and the essay run card read the grading tiers' proposal (contract A3 /
+A4: `auto_feedback`, `reading.auto`) through one pure model, `AutoGrade` (`exam_autograde.dart`), and draw it with
+one widget set (`exam_autograde_widgets.dart`): the tier that decided ("Decided by: Exact match / Your earlier decision
+/ Inference judge …", the success role when settled, the warning role when it is the teacher's call); a long answer's
+text with the sentence of each covered point highlighted in the success role (a contradicted one struck through in the
+danger role), then "Points covered" and "Points missing" (warning role) under it; word / short answers keep their
+keyword chips. An NB2 answer (contract B) shows its character boxes, the doubtful ones framed in the warning role with
+the reader's runner-up, and a near-miss correction in words. A scanned answer shows its crop (the page image cut to the
+question's region, one fetch per page). Accept / Edit stay the one-tap actions. Answer memory (A5) is unobtrusive: a
+text link on a card the tiers proposed, and "Answer memory" in the review's More menu (a sheet: the question, its
+remembered decisions, Forget with a confirm); the essay run card has the same link. An older engine (no `tier`) draws
+exactly as before. Why: the teacher sees why a mark was proposed and fixes only what the tiers could not settle.
+
+## D-689 — AI Models: a Benchmarks tab, the choice per role, the judge switch (2026-11-12)
+
+The AI Models page gains a third chip, Benchmarks (kill switch `models.benchmarks`, with `models.admin`), not a new
+page. Per benchmarked role (contract C1): the metric, PROVISIONAL, Follows the recommendation / Chosen by you, the
+active model, the recommendation rule, and the results — accuracy, average and p95 latency per answer, peak RAM,
+size, badges Recommended / Your choice / Active / Shipped result / Not downloaded, a row that cannot be chosen says
+why — as a table at 900 px and wider, cards below. "Use this model" confirms, then `PUT …/choice` (C4); the activation
+it starts is the page's own (download, health test, the existing confirm prompt via `_requested`). "Follow the
+recommendation" clears the choice. "Re-run the benchmark" confirms, starts C2 and follows the run with `EventOrPoll`
+on the hub's new `model_benchmark` live event (a 4 s poll only while the stream is down, 30 s while it is up), then
+reads the results again; no timer of its own. The NLI judge switch (A7) sits on the same tab (an `AppSwitchTile`,
+shown only when the hub sends `judge`).
