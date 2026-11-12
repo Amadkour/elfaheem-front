@@ -41,6 +41,7 @@ class ExamGrading {
     this.degreesSource,
     this.resultsPublished = false,
     this.dataLabColumn,
+    this.run,
   });
 
   factory ExamGrading.fromJson(Map<String, dynamic> m) => ExamGrading(
@@ -54,6 +55,7 @@ class ExamGrading {
         degreesSource: m['degrees_source']?.toString(),
         resultsPublished: m['results_published'] == true,
         dataLabColumn: m['data_lab_column']?.toString(),
+        run: m['run']?.toString(),
       );
 
   final bool ended;
@@ -66,6 +68,9 @@ class ExamGrading {
   /// exam · import · null
   final String? degreesSource;
   final String? dataLabColumn;
+
+  /// essay · bubble · null: made by Grade papers (D-662) or a bubble run (D-340), not by the wizard.
+  final String? run;
 }
 
 /// One exam of the list (an item of GET /exams/mine or GET /exams).

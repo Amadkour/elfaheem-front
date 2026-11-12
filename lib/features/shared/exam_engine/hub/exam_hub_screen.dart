@@ -28,6 +28,7 @@ import '../exam_authoring_screen.dart' show ExamEditorScreen;
 import '../exam_paper_sheet.dart' show openExamPaper;
 import '../exam_results_screen.dart';
 import 'correct/exam_correct_flow.dart' show openExamCorrection;
+import 'grade/essay_run_screen.dart' show openEssayRunScreen;
 import 'create/exam_create_wizard.dart' show openExamCreateWizard;
 import 'deliver/exam_deliver_screen.dart' show openExamDeliver;
 import 'grade/grade_papers_sheet.dart' show openGradePapers;
@@ -190,6 +191,8 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
               ]));
       if (anyway != true || !mounted) return;
     }
+    // a written-papers run has its own screen (D-662); everything else decides its route in the correction flow
+    if (e.grading?.run == 'essay') return _flow(() => openEssayRunScreen(context, examId: e.id));
     await _flow(() => openExamCorrection(context, examId: e.id, title: e.displayTitle, courseId: e.courseId));
   }
 
