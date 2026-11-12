@@ -755,7 +755,7 @@ class CreatePublishBody extends StatelessWidget {
         ),
         if (p.paperPlan == PaperPlan.versions) ...[
           const SizedBox(height: AppSpace.xs),
-          _VersionsPanel(plan: p, onVersions: onVersions, onShuffleQuestions: onShuffleQuestions, onShuffleOptions: onShuffleOptions),
+          CreateVersionsPanel(plan: p, onVersions: onVersions, onShuffleQuestions: onShuffleQuestions, onShuffleOptions: onShuffleOptions),
         ],
         _gap,
         _Muted(
@@ -782,8 +782,8 @@ class CreatePublishBody extends StatelessWidget {
   }
 }
 
-class _VersionsPanel extends StatelessWidget {
-  const _VersionsPanel({required this.plan, required this.onVersions, required this.onShuffleQuestions, required this.onShuffleOptions});
+class CreateVersionsPanel extends StatelessWidget {
+  const CreateVersionsPanel({super.key, required this.plan, required this.onVersions, required this.onShuffleQuestions, required this.onShuffleOptions});
   final ExamCreatePlan plan;
   final ValueChanged<int> onVersions;
   final ValueChanged<bool> onShuffleQuestions, onShuffleOptions;
@@ -818,7 +818,13 @@ class _VersionsPanel extends StatelessWidget {
             dense: true,
             onChanged: p.isBubble ? null : onShuffleQuestions,
           ),
-          AppSwitchTile(title: t('اخلط ترتيب الاختيارات', 'Shuffle the choices'), value: p.shuffleOptions, dense: true, onChanged: onShuffleOptions),
+          AppSwitchTile(
+            title: t('اخلط ترتيب الاختيارات', 'Shuffle the choices'),
+            subtitle: p.shuffleOptionsAllowed ? null : t('مربعات الاختيار في ورقة الإجابة تتبع ترتيب الاختيارات', 'The choice boxes on the answer sheet follow the option order'),
+            value: p.shuffleOptions && p.shuffleOptionsAllowed,
+            dense: true,
+            onChanged: p.shuffleOptionsAllowed ? onShuffleOptions : null,
+          ),
           if (versionsWouldMatch(p))
             Padding(
               padding: const EdgeInsets.only(top: AppSpace.xs),

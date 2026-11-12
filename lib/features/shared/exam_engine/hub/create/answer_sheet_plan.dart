@@ -98,6 +98,17 @@ class SheetPlan {
   static SheetPlan? ofSettings(Object? settings) {
     final p = asMap(asMap(settings)['sheet_plan']);
     if (p.isEmpty) return null;
+    if (p['answer_layout'] != null) {
+      // v2 (D-697, back contract OFFLINE_FLOW_CONTRACT.md §1): read in the v1 terms Deliver prints with
+      final b = asMap(p['bubble']);
+      return SheetPlan(
+        bubble: b.isEmpty ? null : (b['print'] == false ? BubbleSource.have : BubbleSource.print),
+        answerSheet: '${p['answer_layout']}' != 'questions_only' && '${p['written_sheet'] ?? 'NB2'}' == 'NB2',
+        copies: '${p['copies'] ?? ''}' == 'per_student' ? SheetCopies.personal : SheetCopies.generic,
+        fromFile: '${asMap(p['students'])['source'] ?? ''}' == 'file',
+        idSource: idSourceOf(p['id_source']) ?? IdSource.academic,
+      );
+    }
     return SheetPlan(
       bubble: bubbleSourceOf(p['bubble']),
       answerSheet: '${p['answer_sheet'] ?? ''}' == 'NB2',
@@ -132,12 +143,15 @@ typedef PeopleSkip = ({int row, String code});
 
 /// The answer of `POST /exams/{id}/people/file` (and the people of `GET /exams/{id}/people`).
 class PeopleUpload {
-  const PeopleUpload({this.added = 0, this.updated = 0, this.total = 0, this.skipped = const [], this.names = const []});
+  const PeopleUpload({this.added = 0, this.updated = 0, this.total = 0, this.skipped = const [], this.names = const [], this.columns = const []});
   final int added, updated, total;
   final List<PeopleSkip> skipped;
 
   /// The first names on the list, for a glance.
   final List<String> names;
+
+  /// Every other column of the list, as attributes (`file:<slug>`, contract §3): (key, label).
+  final List<(String, String)> columns;
 
   static PeopleUpload fromJson(Map<String, dynamic> j) {
     final people = asMapList(j['people']);
@@ -147,6 +161,7 @@ class PeopleUpload {
       total: asInt(j['total'], people.length),
       skipped: [for (final s in asMapList(j['skipped'])) (row: asInt(s['row']), code: '${s['code'] ?? ''}')],
       names: [for (final p in people.take(5)) '${p['name'] ?? ''}'.trim()].where((x) => x.isNotEmpty).toList(),
+      columns: [for (final c in asMapList(j['columns'])) ('${c['key'] ?? ''}', '${c['label'] ?? ''}')],
     );
   }
 }

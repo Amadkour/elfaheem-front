@@ -1,5 +1,5 @@
-// The paper exam's answer sheets (D-687): which wizard steps apply, what the plan saves, the NB2 / people payloads
-// (contract B1 / B2), the scan quality rejections (B3), and the drawn parts under the layout harness.
+// The paper exam's answer sheets (D-687, folded into D-697): which wizard steps apply, what the plan saves (v2 and the
+// old v1), the NB2 / people payloads (contract B1 / B2), the scan quality rejections (B3), and the drawn parts.
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -45,6 +45,8 @@ List<CreateStep> _steps(ExamCreatePlan p) => createSteps(p, whereNeeded: false, 
 void main() {
   setUp(() => AppConfig.lang = 'en');
 
+  // D-697 replaced F1's rules here: every paper exam chooses its copies, the written answers go on the NB2 sheet in
+  // layouts 1 to 3 (no question blocks a bubble exam any more), and a course's students need no step of their own.
   group('which steps apply', () {
     test('online: no sheets, no students', () {
       final p = _plan(AnswerFormat.online, written: true);
@@ -53,85 +55,85 @@ void main() {
       expect(p.settingsJson.containsKey('sheet_plan'), isFalse);
     });
 
-    test('an answer table without written questions: nothing to print beyond the paper', () {
-      final p = _plan(AnswerFormat.table);
+    test('an answer table reads as layout 1, its paper part in the booklet', () {
+      final p = _plan(AnswerFormat.table, written: true);
+      expect(p.layout, PaperLayout.allInPaper);
+      expect(p.writtenSheet, WrittenSheet.booklet);
       expect(p.wantsAnswerSheet, isFalse);
-      expect(_steps(p), isNot(contains(CreateStep.sheets)));
-      expect(_steps(p), isNot(contains(CreateStep.identify)));
+      expect(_steps(p), contains(CreateStep.sheets));
     });
 
-    test('an answer table with written questions: the NB2 sheet, personal by default with a course', () {
-      final p = _plan(AnswerFormat.table, written: true);
+    test('on paper with written questions: the NB2 sheet holds them, per student by default with a course', () {
+      final p = _plan(AnswerFormat.onPaper, written: true);
       expect(p.writtenQuestionCount, 1);
       expect(p.wantsAnswerSheet, isTrue);
       expect(p.effectiveCopies, SheetCopies.personal);
-      expect(_steps(p), [CreateStep.answer, CreateStep.questions, CreateStep.publish, CreateStep.sheets, CreateStep.identify]);
-      // generic copies: no student matching to set up
-      p.copies = SheetCopies.generic;
-      expect(_steps(p), isNot(contains(CreateStep.identify)));
+      expect(_steps(p), [CreateStep.answer, CreateStep.questions, CreateStep.layout, CreateStep.sheets, CreateStep.attributes, CreateStep.design, CreateStep.review]);
     });
 
-    test('answers on the question paper never ask for an answer sheet', () {
-      expect(_steps(_plan(AnswerFormat.onPaper, written: true)), isNot(contains(CreateStep.sheets)));
-    });
-
-    test('the kill switch hides the NB2 sheet', () {
-      final p = _plan(AnswerFormat.table, written: true)..answerSheetOn = false;
+    test('the kill switch hides the NB2 sheet and the answer-sheet step', () {
+      final p = _plan(AnswerFormat.onPaper, written: true)..answerSheetOn = false;
       expect(p.wantsAnswerSheet, isFalse);
-      expect(_steps(p), isNot(contains(CreateStep.sheets)));
+      expect(_steps(p), isNot(contains(CreateStep.layout)));
     });
 
-    test('bubble: printed here asks the copies; sheets the teacher has, or an own sheet, do not', () {
+    test('bubble: the copies are always asked, whoever prints the sheets', () {
       final p = _plan(AnswerFormat.bubble);
       expect(_steps(p), contains(CreateStep.sheets));
       p.bubbleSource = BubbleSource.have;
       expect(p.printsBubbleSheets, isFalse);
-      expect(_steps(p), isNot(contains(CreateStep.sheets)));
-      expect(_steps(p), contains(CreateStep.identify), reason: 'a bubble exam with a course still matches papers to students');
+      expect(_steps(p), contains(CreateStep.sheets));
       p
         ..bubbleSource = BubbleSource.print
         ..template = _own;
       expect(p.printsBubbleSheets, isFalse);
-      expect(_steps(p), isNot(contains(CreateStep.sheets)));
+      expect(p.versionsAllowed, isFalse);
     });
 
-    test('bubble with written questions: they go on the NB2 sheet instead of blocking', () {
+    test('bubble with written questions: they are answered on the paper, nothing blocks', () {
       final p = _plan(AnswerFormat.bubble, written: true);
       expect(bubbleCheckOf(p).blocks, isFalse);
       expect(p.bubbleQuestionCount, 1);
       expect(p.wantsAnswerSheet, isTrue);
       p.answerSheetOn = false;
-      expect(bubbleCheckOf(p).blocks, isTrue);
+      expect(bubbleCheckOf(p).blocks, isFalse);
     });
 
-    test('no course: generic by default; personal needs the uploaded list before Continue', () {
-      final p = _plan(AnswerFormat.table, course: false, written: true);
+    test('no course: generic by default; per student needs the uploaded list before Continue', () {
+      final p = _plan(AnswerFormat.onPaper, course: false, written: true);
       expect(p.effectiveCopies, SheetCopies.generic);
       expect(_steps(p), isNot(contains(CreateStep.identify)));
-      p.copies = SheetCopies.personal;
+      p.setCopies(SheetCopies.personal);
       expect(p.needsPeopleFile, isTrue);
-      expect(_steps(p).last, CreateStep.identify);
+      expect(_steps(p), containsAllInOrder([CreateStep.sheets, CreateStep.identify, CreateStep.attributes]));
       expect(createStepReady(CreateStep.identify, p), isFalse);
       p.peopleCount = 30;
       expect(createStepReady(CreateStep.identify, p), isTrue);
     });
 
-    test('the system number needs no identifier plan; the academic ID does', () {
-      final p = _plan(AnswerFormat.table, written: true)..idSource = IdSource.system;
-      expect(needsIdentifierPlan(p), isFalse);
-      expect(createStepReady(CreateStep.identify, p), isTrue);
-      p.idSource = IdSource.academic;
-      expect(needsIdentifierPlan(p), isTrue);
-      expect(createStepReady(CreateStep.identify, p), isFalse);
-      expect(createStepReady(CreateStep.identify, p, identifierValid: true), isTrue);
+    test('generic copies of a course ask what the ID boxes are matched on', () {
+      final p = _plan(AnswerFormat.bubble)..setCopies(SheetCopies.generic);
+      expect(asksIdSource(p), isTrue);
+      p.setCopies(SheetCopies.personal);
+      expect(asksIdSource(p), isFalse);
+      expect(asksIdSource(_plan(AnswerFormat.bubble, course: false)), isFalse);
     });
   });
 
   group('the saved plan', () {
-    test('settings.sheet_plan round-trips', () {
+    test('settings.sheet_plan is v2 and reads back in the terms Deliver prints with', () {
       final p = _plan(AnswerFormat.bubble, written: true)..idSource = IdSource.system;
       final json = p.settingsJson['sheet_plan'] as Map<String, dynamic>;
-      expect(json, {'bubble': 'print', 'answer_sheet': 'NB2', 'copies': 'personal', 'students': 'course', 'id_source': 'system'});
+      expect(json, {
+        'v': 2,
+        'answer_layout': 'paper_plus_bubble_objective',
+        'written_sheet': 'NB2',
+        'bubble': {'source': 'template', 'ids': [1], 'print': true},
+        'copies': 'per_student',
+        'students': {'source': 'course'},
+        'id_source': 'system',
+        'paper_design': null,
+      });
       final back = SheetPlan.ofSettings({'sheet_plan': json})!;
       expect(back.bubble, BubbleSource.print);
       expect(back.answerSheet, isTrue);
@@ -139,6 +141,13 @@ void main() {
       expect(back.fromFile, isFalse);
       expect(back.idSource, IdSource.system);
       expect(SheetPlan.ofSettings({'paper_plan': {}}), isNull);
+    });
+
+    test('an F1 (v1) plan still reads as it did', () {
+      final back = SheetPlan.ofSettings({
+        'sheet_plan': {'bubble': 'have', 'answer_sheet': 'NB2', 'copies': 'personal', 'students': 'file'},
+      })!;
+      expect((back.bubble, back.answerSheet, back.personal, back.fromFile), (BubbleSource.have, true, true, true));
     });
 
     test('the NB2 request (contract B1)', () {
@@ -218,12 +227,6 @@ void main() {
 
   group('layout', () {
     testWidgets('bubble source', (t) async => expectNoLayoutErrors(t, () => SingleChildScrollView(child: CreateBubbleSourceBody(value: BubbleSource.have, onPick: (_) {}))));
-
-    testWidgets('sheets step', (t) async => expectNoLayoutErrors(
-        t,
-        () => SingleChildScrollView(
-            child: CreateSheetsBody(
-                printsBubble: true, answerSheet: true, writtenCount: 12, copies: SheetCopies.personal, hasCourse: false, lastUsed: SheetCopies.personal, onCopies: (_) {}))));
 
     testWidgets('ID source', (t) async => expectNoLayoutErrors(t, () => SingleChildScrollView(child: CreateIdSourceRow(value: IdSource.system, onPick: (_) {}))));
 

@@ -4144,3 +4144,45 @@ source). Deliver reads the plan: a "Written answer sheets" card downloads the NB
 quality refusals (`sheet_marks_missing` with how many corners were seen, `page_blurry`, `not_this_exam`) as file-level
 failures under "Retake these pages", one plain message per page, apart from the other failures (Retry does not help a
 blurred photo). Tests `test/org/answer_sheet_plan_test.dart`.
+
+## D-697 — The paper exam's wizard follows the owner's order: questions first, then the answer sheet (2026-11-12)
+
+On paper the wizard is now Where → How (online / on paper) → Questions → Answer sheet → Bubble form → Copies →
+Students → Attributes → Paper design → Review; online is unchanged (How → Questions → Settings). The answer format no
+longer comes before the questions: any question type can be written, and the Answer sheet step offers the four layouts
+of `offline_flow.dart` (1 everything in the paper, 2 a bubble sheet for multiple choice, 3 for multiple choice and
+true / false, 4 questions only) as large cards with a drawn schematic, the best fit for the question mix preselected
+(nothing or under 3 objective questions, or an uploaded file → 1; multiple choice and true / false → 3; multiple choice
+alone → 2). A layout that makes no sense for the mix stays, greyed, with the reason; with OMR off the bubble layouts are
+hidden. What the bubble sheet does not hold is answered in the paper, so no question blocks a bubble exam any more.
+F1's Answer sheets / Students steps (D-687) fold in: Copies is asked of every paper exam (per student is the default
+with a course; it is refused only when nothing NextBrain prints can carry a name), Students is only the uploaded list of
+an exam with no course (a course's roster is automatic), and the identifier plan step is gone from the wizard (generic
+copies of a course pick academic ID / system number on the Attributes step, the matching identifier is one tap away in
+its sheet). Steps that do not apply are not in the list; `exam.answer_sheet` off skips the Answer sheet step and takes
+the best fit with the booklet. Back / forward keep every choice (the layout follows the questions until the teacher
+picks one), and the device remembers the layout, copies and attributes. Tests `test/org/offline_flow_test.dart`.
+
+## D-698 — The plan is saved as the back's sheet_plan v2; older exams read into it (2026-11-12)
+
+The wizard writes `settings.sheet_plan` v2 (back contract `OFFLINE_FLOW_CONTRACT.md` §1: `answer_layout`,
+`written_sheet` NB2 by default, `bubble {source template | imported | designed, ids, print}`, `copies one |
+per_student`, `students.source`, ordered `attributes`, `id_source`) inside the exam's settings with the draft, and on
+Finish also `PUT /exams/{id}/offline-plan`, so the server checks and normalises it before the versions are made (an
+older server without the route keeps the settings copy). `answer_format` is still written (bubble for 2 / 3, on_paper
+for 1 / 4) for older readers. `OfflinePlan.ofSettings` reads v2, F1's v1 and plan-less exams as the contract's table
+says, and `SheetPlan.ofSettings` reads v2 back into the terms Deliver prints NB2 with, so old exams open unchanged.
+Deliver prints layout 4 with no answer area and no booklet. Objective questions routed to NB2 get choice boxes in the
+exam's option order, so the versions panel switches "shuffle the choices" off there (409 `versions_shuffle_options`).
+
+## D-699 — Attributes are chips with coverage, ordered, with custom ones made in place (2026-11-12)
+
+The Attributes step reads `GET /exams/{id}/attributes` (contract §3): every attribute (name, system number, academic
+and national ID, section, registry fields, Data Lab columns, the uploaded list's columns, the exam's custom ones) as a
+chip with "28/30 have it"; the chosen ones are a drag-to-reorder list (the name is fixed first, at most 12) above a
+live header of the sample student as it will print. "+ Custom attribute" asks the label in Arabic and English and
+where the values come from: typed per student (`PUT …/attributes/{key}`), a column of the uploaded student list
+(`from`), or an Excel / CSV file and its column (`POST …/attributes/{key}/file`). The chosen keys are the plan's
+`attributes`; the step starts on the plan's keys, else this teacher's last ones that the exam has, else the server's
+selection. The Paper design step opens the existing design engine (D-196) with those attributes in the sample header
+and saves the exam's design on the draft.
