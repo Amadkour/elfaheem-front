@@ -195,6 +195,10 @@ class Nb2Chars {
       for (final (i, c) in asMapList(j['chars']).indexed)
         Nb2Char('${c['ch'] ?? ''}', _d(c['conf']), alt: c['alt']?.toString(), low: low.contains(i) || c['ok'] == false),
     ];
+    // the server lists every box of the row; the unused ones after the answer are empty (`ch: ""`): not drawn
+    while (chars.isNotEmpty && chars.last.ch.isEmpty && !chars.last.low) {
+      chars.removeLast();
+    }
     final nm = j['near_miss'] is Map ? asMap(j['near_miss']) : null;
     return Nb2Chars(
       unit: '${j['unit'] ?? 'chars'}',

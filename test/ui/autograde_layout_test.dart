@@ -1,7 +1,8 @@
 // No overflow on any screen size (layout_harness: 320×640 and 1400×900, ar / en, text ×1.3) for the auto-grade
-// widgets of D-688 / D-689, fed with the contract payloads (test/fixtures/payloads/autograde/): the online review
-// card with highlighted points, NB2 boxes and a crop; the paper short answer and the essay run card with the tiers'
-// suggestion; the answer memory list; the AI Models page's Benchmarks tab (cards on a phone, the table on desktop).
+// widgets of D-688 / D-689, fed with REAL server payloads (test/fixtures/payloads/autograde/, written by the back's
+// tests/contract/dump_autograde_payloads.py): the online review card with a long answer's points, NB2 boxes and a
+// crop; the paper short answer and the essay run card with the tiers' suggestion; the answer memory list; the AI
+// Models page's Benchmarks tab (cards on a phone, the table on desktop).
 import 'dart:convert';
 import 'dart:io';
 
@@ -20,16 +21,38 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';
 
-Map<String, dynamic> fx(String name) =>
-    Map<String, dynamic>.from(jsonDecode(File('test/fixtures/payloads/autograde/$name.json').readAsStringSync()) as Map);
+/// The recorded reply (`payload`) of a fixture written by the back's dump.
+Map<String, dynamic> fx(String name) {
+  final j = jsonDecode(File('test/fixtures/payloads/autograde/$name.json').readAsStringSync()) as Map;
+  return Map<String, dynamic>.from((j['payload'] ?? j) as Map);
+}
 
 Widget _scroll(Widget child) => SingleChildScrollView(padding: const EdgeInsets.all(12), child: child);
 
+/// The real NB2 word answer of review_queue_nb2 with its second box made doubtful: the recorded run read every box
+/// with confidence (`low_chars: []`), but the server sends `low_chars` + `ok: false` for a doubtful box (contract B).
+Map<String, dynamic> _doubtfulNb2(Map<String, dynamic> item) {
+  final ans = Map<String, dynamic>.from(item['answer'] as Map);
+  final nb2 = Map<String, dynamic>.from(ans['nb2'] as Map);
+  final chars = [for (final c in nb2['chars'] as List) Map<String, dynamic>.from(c as Map)];
+  chars[1] = {...chars[1], 'conf': 0.41, 'ok': false};
+  return {...item, 'answer': {...ans, 'ocr_confidence': 0.0, 'nb2': {...nb2, 'chars': chars, 'low_chars': [1]}}};
+}
+
 void main() {
-  testWidgets('online review cards: long answer points, NB2 boxes, crop, older proposal', (tester) async {
+  testWidgets('online review cards: long answer points, NB2 boxes, memory, crop', (tester) async {
     final q = ReviewQueue.fromJson(fx('review_queue'));
+    final nb2 = fx('review_queue_nb2');
+    final nbItems = [for (final i in nb2['items'] as List) Map<String, dynamic>.from(i as Map)];
+    final word = nbItems.firstWhere((i) => ((i['answer'] as Map)['nb2'] as Map?)?['unit'] == 'chars');
+    final items = [
+      ...q.items,
+      ...ReviewQueue.fromJson(nb2).items,
+      ...ReviewQueue.fromJson(fx('review_queue_memory')).items,
+      ReviewItem.fromJson(_doubtfulNb2(word)),
+    ];
     await expectNoLayoutErrors(tester, () => _scroll(Column(children: [
-          for (final it in q.items)
+          for (final it in items)
             ReviewAnswerCard(
               item: it,
               threshold: q.threshold,
@@ -45,6 +68,7 @@ void main() {
         ])), act: (t) async {
       expect(find.byKey(const ValueKey('auto.missing')), findsWidgets);
       expect(find.byKey(const ValueKey('auto.nb2.1.low')), findsWidgets);
+      expect(find.byKey(const ValueKey('auto.nb2.4')), findsNothing, reason: 'the unused empty boxes are not drawn');
     });
   });
 
@@ -58,30 +82,35 @@ void main() {
   });
 
   testWidgets('paper short answer and essay answer with the tiers', (tester) async {
-    final reading = fx('paper_short_auto');
-    final item = OmrReviewItem.fromJson({'id': 9, 'kind': 'short_answer', 'code': 'short_answer', 'status': 'open', 'reading': reading});
-    final essay = EssayAnswer.fromJson({'n': 1, 'question_id': 4, 'state': 'review', 'page_id': 3, 'item': {'id': 5, 'status': 'open', 'reading': reading}});
+    final long = OmrReviewItem.fromJson(fx('paper_item_long'));
+    final exact = OmrReviewItem.fromJson(fx('paper_item_exact'));
+    EssayAnswer essay(String name) => EssayAnswer.fromJson({'n': 1, 'question_id': 4, 'state': 'review', 'page_id': 3, 'item': fx(name)});
     await expectNoLayoutErrors(tester, () => _scroll(Column(children: [
-          OmrWrittenReading(item: item),
-          EssayAnswerCard(answer: essay, question: null, onAccept: () {}, onEdit: () {}, onOpenPage: () {}, onMemory: () {}),
-        ])));
+          OmrWrittenReading(item: long),
+          OmrWrittenReading(item: exact),
+          EssayAnswerCard(answer: essay('paper_item_long'), question: null, onAccept: () {}, onEdit: () {}, onOpenPage: () {}, onMemory: () {}),
+          EssayAnswerCard(answer: essay('paper_item_exact'), question: null, onAccept: () {}, onEdit: () {}, onMemory: () {}),
+        ])), act: (t) async => expect(find.byKey(const ValueKey('auto.missing')), findsWidgets));
   });
 
   testWidgets('answer memory list', (tester) async {
-    final items = answerMemoryOf(fx('bench_misc')['answer_memory'] as Map<String, dynamic>);
+    final items = answerMemoryOf(fx('answer_memory'));
     await expectNoLayoutErrors(tester, () => _scroll(Column(children: [
-          AnswerMemoryList(items: items, busy: {42}, onForget: (_) {}),
+          AnswerMemoryList(items: items, busy: {items.first.id}, onForget: (_) {}),
+          AnswerMemoryList(items: items, onForget: (_) {}),
           const AnswerMemoryList(items: []),
         ])));
   });
 
   testWidgets('benchmarks tab: run strip, judge, roles (cards on a phone, the table on desktop)', (tester) async {
     final b = HubBenchmarks.fromJson(fx('benchmarks'));
-    final done = HubBenchmarks(roles: b.roles, runners: b.runners, run: HubBenchRun.fromJson(fx('bench_misc')['run_done']));
+    final done = HubBenchmarks(roles: b.roles, runners: b.runners, run: HubBenchRun.fromJson(fx('bench_run_done')));
+    final started = HubBenchmarks(roles: b.roles, runners: b.runners, run: HubBenchRun.fromJson(fx('bench_run_started')));
     await expectNoLayoutErrors(tester, () => _scroll(Column(children: [
           HubBenchView(data: b, judge: 'on', busy: const {'nli'}, onRun: () {}, onChoose: (_, _) {}, onFollowDefault: (_) {}, onJudge: (_) {}),
           HubBenchView(data: done, judge: 'off', running: true, onRun: () {}, onChoose: (_, _) {}),
+          HubBenchView(data: started, onRun: () {}),
           const HubBenchView(data: HubBenchmarks()),
-        ])), act: (t) async => expect(find.byKey(const ValueKey('bench_choose_nli_9')), findsWidgets));
+        ])), act: (t) async => expect(find.byKey(const ValueKey('bench_choose_nli_7')), findsWidgets));
   });
 }
