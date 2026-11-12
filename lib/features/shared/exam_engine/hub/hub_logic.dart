@@ -544,10 +544,6 @@ List<GradeKind> hubGradeKinds() => [
       if (!_off(kHubEssayRunKey)) GradeKind.essay,
     ];
 
-/// Grade paper sheets as a labelled button in the header only while the list holds paper exams (D-700); otherwise it
-/// stays one quiet icon there (a run can start from a course's papers without an exam, D-662).
-bool hubGradeProminent(AllExamsData? d) => d != null && d.exams.any((e) => e.type == AllExamType.paper && e.status != 'archived');
-
 /// The courses papers can be graded in: a run belongs to a course (its students, its results).
 List<NewExamPlace> hubGradePlaces(AllExamsData d) => [for (final p in newExamPlaces(d)) if (p.courseId != null) p];
 

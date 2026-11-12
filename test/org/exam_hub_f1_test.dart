@@ -320,11 +320,6 @@ void main() {
       AppConfig.disableList = ['exam.bubble', 'exam.essay_run'];
       expect(hubGradeKinds(), isEmpty);
     });
-    test('a labelled header button only while paper exams exist', () {
-      expect(hubGradeProminent(_data()), isTrue);
-      expect(hubGradeProminent(AllExamsData(exams: [_e(1)])), isFalse);
-      expect(hubGradeProminent(null), isFalse);
-    });
   });
 
   group('degrees import', () {

@@ -3,7 +3,7 @@
 //
 // Made plain for a teacher who is not technical (D-700 – D-703), top to bottom:
 //   the header           "Exams", ONE primary New exam; Grade paper sheets (a labelled button while paper exams exist,
-//                        an icon otherwise) and the grade review without an exam as quiet header actions
+//                        quieter otherwise) and Review grades (without an exam) as labelled header actions
 //   Needs you now        a card per thing owed (to grade, grading to finish, results to publish, drafts), only above 0;
 //                        a card for one exam opens it straight away, for several it narrows the list to them
 //   the list             three stage tabs (Drafts / Running / Finished), search, course, one Filter; every exam with
@@ -292,14 +292,12 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
   List<Widget> _headerActions() {
     final grade = hubGradeKinds().isEmpty
         ? null
-        : hubGradeProminent(_data)
-            ? AppButton.ghost(
-                key: const ValueKey('exam.hub.quick.grade'), label: t('تصحيح أوراق', 'Grade paper sheets'), icon: Icons.document_scanner_outlined, onPressed: _gradePapers)
-            : AppIconButton(key: const ValueKey('exam.hub.quick.grade'), icon: Icons.document_scanner_outlined, tooltip: t('تصحيح أوراق', 'Grade paper sheets'), onPressed: _gradePapers);
+        : AppButton.ghost(key: const ValueKey('exam.hub.quick.grade'), label: t('تصحيح أوراق', 'Grade paper sheets'), icon: Icons.document_scanner_outlined, onPressed: _gradePapers);
     return [
       if (!AppConfig.disableList.contains(kHubRevisionKey))
-        AppIconButton(
+        AppButton.ghost(
             key: const ValueKey('exam.hub.start_revision'),
+            label: t('مراجعة الدرجات', 'Review grades'),
             icon: Icons.compare_arrows_rounded,
             tooltip: t('مراجعة درجات دون اختيار اختبار', 'Review grades without choosing an exam'),
             onPressed: () => _flow(() => openExamRevision(context, orgId: widget.orgId))),
