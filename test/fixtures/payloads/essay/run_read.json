@@ -1,0 +1,440 @@
+{
+ "id": 1,
+ "title": "Biology essays",
+ "course_id": 100,
+ "org_id": 1,
+ "questions": [
+  {
+   "n": 1,
+   "question_id": 1,
+   "prompt": "Question 1",
+   "points": 5.0,
+   "model_answer": "Plants make glucose and oxygen from light",
+   "rubric": [],
+   "keywords": [
+    "glucose",
+    "oxygen"
+   ]
+  },
+  {
+   "n": 2,
+   "question_id": 2,
+   "prompt": "السؤال 2",
+   "points": 4.0,
+   "model_answer": null,
+   "rubric": [
+    {
+     "criterion": "يذكر أن الماء يتبخر",
+     "points": 2.0,
+     "model": "الماء يتبخر بالحرارة"
+    },
+    {
+     "criterion": "يذكر التكاثف",
+     "points": 2.0
+    }
+   ],
+   "keywords": []
+  }
+ ],
+ "max_score": 9.0,
+ "students": [
+  {
+   "student_id": 11,
+   "name": "Student 11",
+   "attempt_id": 1,
+   "state": "submitted",
+   "score": null,
+   "max_score": 9.0,
+   "percentage": null,
+   "open": 2,
+   "waiting": 0,
+   "answers": [
+    {
+     "n": 1,
+     "question_id": 1,
+     "state": "review",
+     "page_id": 1,
+     "final_score": null,
+     "text": "Plants make glucose and oxygen",
+     "quality_warnings": [
+      "too_bright",
+      "low_contrast"
+     ],
+     "item": {
+      "id": 1,
+      "scan_page_id": 1,
+      "attempt_id": 1,
+      "question_id": 1,
+      "kind": "short_answer",
+      "code": "short_answer",
+      "reading": {
+       "kind": "short_answer",
+       "status": "suggestion",
+       "final": false,
+       "needs_review": true,
+       "max": 5.0,
+       "thresholds": {
+        "low": 0.45,
+        "high": 0.8
+       },
+       "keyword_weight": 0.3,
+       "reading": {
+        "text": "Plants make glucose and oxygen",
+        "confidence": 0.9,
+        "engine": "scripted",
+        "review": false
+       },
+       "crop": {
+        "page_id": 1,
+        "box": [
+         0.0,
+         0.0,
+         1.0,
+         1.0
+        ],
+        "has_crop": true
+       },
+       "reasons": [],
+       "keywords": [
+        {
+         "term": "glucose",
+         "weight": 1.0,
+         "found": "glucose",
+         "how": "exact"
+        },
+        {
+         "term": "oxygen",
+         "weight": 1.0,
+         "found": "oxygen",
+         "how": "exact"
+        }
+       ],
+       "coverage": 1.0,
+       "raw_cosine": 0.97,
+       "similarity": 0.829,
+       "closeness": 0.88,
+       "suggested_score": 5.0,
+       "band": "full",
+       "version": "paper-sim:multilingual-e5-small@fp32-761b726|scale:2026-11-02-gold120",
+       "text": "Plants make glucose and oxygen",
+       "corrected": false,
+       "lang": "en",
+       "points": 5.0,
+       "pending": false,
+       "en": "Short answer: confirm or set the score",
+       "ar": "إجابة قصيرة: أكّد الدرجة أو عدّلها"
+      },
+      "status": "open",
+      "resolution": {},
+      "resolved_by": null,
+      "resolved_at": null,
+      "created_at": "2026-11-12T04:27:34.617015",
+      "actions": [
+       "accept",
+       "set_score",
+       "fix_text"
+      ],
+      "has_crop": true,
+      "en": "Short answer: confirm or set the score",
+      "ar": "إجابة قصيرة: أكّد الدرجة أو عدّلها",
+      "crop_url": "/api/v1/exam/omr/images/crop/1?exp=1794458255&sig=13a63972b688174c645a7df420faf47e"
+     }
+    },
+    {
+     "n": 2,
+     "question_id": 2,
+     "state": "review",
+     "page_id": 2,
+     "final_score": null,
+     "text": "الماء يتبخر ثم يتكاثف",
+     "quality_warnings": [
+      "too_bright",
+      "low_contrast"
+     ],
+     "item": {
+      "id": 2,
+      "scan_page_id": 2,
+      "attempt_id": 1,
+      "question_id": 2,
+      "kind": "short_answer",
+      "code": "short_answer",
+      "reading": {
+       "kind": "short_answer",
+       "status": "suggestion",
+       "final": false,
+       "needs_review": true,
+       "max": 4.0,
+       "thresholds": {
+        "low": 0.45,
+        "high": 0.8
+       },
+       "keyword_weight": 0.0,
+       "reading": {
+        "text": "الماء يتبخر ثم يتكاثف",
+        "confidence": 0.9,
+        "engine": "scripted",
+        "review": true
+       },
+       "crop": {
+        "page_id": 2,
+        "box": [
+         0.0,
+         0.0,
+         1.0,
+         1.0
+        ],
+        "has_crop": true
+       },
+       "reasons": [
+        "reading_uncertain",
+        "rubric"
+       ],
+       "keywords": [],
+       "coverage": null,
+       "raw_cosine": 0.5,
+       "similarity": 0.0,
+       "closeness": 0.0,
+       "suggested_score": 2.0,
+       "band": "partial",
+       "version": "paper-sim:multilingual-e5-small@fp32-761b726|scale:2026-11-02-gold120",
+       "rubric": [
+        {
+         "index": 0,
+         "criterion": "يذكر أن الماء يتبخر",
+         "points": 2.0,
+         "similarity": 0.829,
+         "suggested_score": 2.0,
+         "band": "full"
+        },
+        {
+         "index": 1,
+         "criterion": "يذكر التكاثف",
+         "points": 2.0,
+         "similarity": 0.0,
+         "suggested_score": 0.0,
+         "band": "zero"
+        }
+       ],
+       "text": "الماء يتبخر ثم يتكاثف",
+       "corrected": false,
+       "lang": "ar",
+       "points": 4.0,
+       "pending": false,
+       "en": "Short answer: confirm or set the score",
+       "ar": "إجابة قصيرة: أكّد الدرجة أو عدّلها"
+      },
+      "status": "open",
+      "resolution": {},
+      "resolved_by": null,
+      "resolved_at": null,
+      "created_at": "2026-11-12T04:27:34.971119",
+      "actions": [
+       "accept",
+       "set_score",
+       "fix_text"
+      ],
+      "has_crop": true,
+      "en": "Short answer: confirm or set the score",
+      "ar": "إجابة قصيرة: أكّد الدرجة أو عدّلها",
+      "crop_url": "/api/v1/exam/omr/images/crop/2?exp=1794458255&sig=e450d572f43df6f3788d04bfc9545fff"
+     }
+    }
+   ]
+  },
+  {
+   "student_id": 12,
+   "name": "Student 12",
+   "attempt_id": 2,
+   "state": "submitted",
+   "score": null,
+   "max_score": 9.0,
+   "percentage": null,
+   "open": 2,
+   "waiting": 0,
+   "answers": [
+    {
+     "n": 1,
+     "question_id": 1,
+     "state": "review",
+     "page_id": 3,
+     "final_score": null,
+     "text": "Plants need water",
+     "quality_warnings": [
+      "blurred",
+      "too_bright",
+      "low_contrast"
+     ],
+     "item": {
+      "id": 3,
+      "scan_page_id": 3,
+      "attempt_id": 2,
+      "question_id": 1,
+      "kind": "short_answer",
+      "code": "short_answer",
+      "reading": {
+       "kind": "short_answer",
+       "status": "suggestion",
+       "final": false,
+       "needs_review": true,
+       "max": 5.0,
+       "thresholds": {
+        "low": 0.45,
+        "high": 0.8
+       },
+       "keyword_weight": 0.3,
+       "reading": {
+        "text": "Plants need water",
+        "confidence": 0.9,
+        "engine": "scripted",
+        "review": false
+       },
+       "crop": {
+        "page_id": 3,
+        "box": [
+         0.0,
+         0.0,
+         1.0,
+         1.0
+        ],
+        "has_crop": true
+       },
+       "reasons": [],
+       "keywords": [
+        {
+         "term": "glucose",
+         "weight": 1.0,
+         "found": null,
+         "how": null
+        },
+        {
+         "term": "oxygen",
+         "weight": 1.0,
+         "found": null,
+         "how": null
+        }
+       ],
+       "coverage": 0.0,
+       "raw_cosine": 0.8,
+       "similarity": 0.0,
+       "closeness": 0.0,
+       "suggested_score": 0.0,
+       "band": "zero",
+       "version": "paper-sim:multilingual-e5-small@fp32-761b726|scale:2026-11-02-gold120",
+       "missing_keywords": [
+        "glucose",
+        "oxygen"
+       ],
+       "text": "Plants need water",
+       "corrected": false,
+       "lang": "en",
+       "points": 5.0,
+       "pending": false,
+       "en": "Short answer: confirm or set the score",
+       "ar": "إجابة قصيرة: أكّد الدرجة أو عدّلها"
+      },
+      "status": "open",
+      "resolution": {},
+      "resolved_by": null,
+      "resolved_at": null,
+      "created_at": "2026-11-12T04:27:35.146715",
+      "actions": [
+       "accept",
+       "set_score",
+       "fix_text"
+      ],
+      "has_crop": true,
+      "en": "Short answer: confirm or set the score",
+      "ar": "إجابة قصيرة: أكّد الدرجة أو عدّلها",
+      "crop_url": "/api/v1/exam/omr/images/crop/3?exp=1794458255&sig=fded8a33665486bb20837c84c1ebdd36"
+     }
+    },
+    {
+     "n": 2,
+     "question_id": 2,
+     "state": "review",
+     "page_id": 4,
+     "final_score": null,
+     "text": "",
+     "quality_warnings": [
+      "blurred",
+      "too_dark",
+      "low_contrast"
+     ],
+     "item": {
+      "id": 4,
+      "scan_page_id": 4,
+      "attempt_id": 2,
+      "question_id": 2,
+      "kind": "short_answer",
+      "code": "short_answer",
+      "reading": {
+       "kind": "short_answer",
+       "status": "suggestion",
+       "final": false,
+       "needs_review": true,
+       "max": 4.0,
+       "thresholds": {
+        "low": 0.45,
+        "high": 0.8
+       },
+       "keyword_weight": 0.0,
+       "reading": {
+        "text": "",
+        "confidence": 0.9,
+        "engine": "scripted",
+        "review": false
+       },
+       "crop": {
+        "page_id": 4,
+        "box": [
+         0.0,
+         0.0,
+         1.0,
+         1.0
+        ],
+        "has_crop": true
+       },
+       "reasons": [
+        "empty"
+       ],
+       "suggested_score": 0.0,
+       "band": "empty",
+       "similarity": null,
+       "coverage": null,
+       "keywords": [],
+       "text": "",
+       "corrected": false,
+       "lang": "ar",
+       "points": 4.0,
+       "pending": false,
+       "en": "Short answer: confirm or set the score",
+       "ar": "إجابة قصيرة: أكّد الدرجة أو عدّلها"
+      },
+      "status": "open",
+      "resolution": {},
+      "resolved_by": null,
+      "resolved_at": null,
+      "created_at": "2026-11-12T04:27:35.300959",
+      "actions": [
+       "accept",
+       "set_score",
+       "fix_text"
+      ],
+      "has_crop": true,
+      "en": "Short answer: confirm or set the score",
+      "ar": "إجابة قصيرة: أكّد الدرجة أو عدّلها",
+      "crop_url": "/api/v1/exam/omr/images/crop/4?exp=1794458255&sig=679879970da5674ea2be11acb31096d0"
+     }
+    }
+   ]
+  }
+ ],
+ "counts": {
+  "students": 2,
+  "pages": 4,
+  "waiting": 0,
+  "open": 4,
+  "done": 0
+ },
+ "published_at": null
+}

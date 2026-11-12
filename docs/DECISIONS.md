@@ -4007,3 +4007,26 @@ On desktop and rail the sidebar and the top bar are ONE `AppMeshSurface(seed: 3)
 **Decision.** One step right after Where, "How will students answer?": Online · On the paper · Answer table · Bubble sheet (`hub/create/answer_format.dart`). Online is electronic; the others are paper, and the bubble sheet is paper on a bubble sheet. Then Questions (a bubble sheet takes multiple choice and true / false only, `bubbleCanHold`; a table takes essays too, answered in the booklet), the bubble sheet (now after the questions, so the recommended sheet fits them and a too-small one blocks), Settings (timing, or the print plan) and Students. `settings.answer_format` and `settings.answer_booklet` (true for a table) are saved with `paper_plan` in the same one-draft sync; older exams derive the format (`answerFormatOf`). The last format and bubble sheet are remembered per user on the device and preselected.
 
 **Consequences.** The answer format comes first because it decides which questions are possible: knowing it before the first question prevents invalid ones instead of reporting them afterwards. Going Back keeps every answer and the one server draft.
+
+## D-662 - Grade written papers without creating an exam first (2026-11-12)
+
+**Context.** Exam flow v2: a teacher with a pile of written answers wants a suggested mark per answer without building
+an exam in the app. The Hub's Grade papers chooser opens `openEssayRun(context, courseId:, courseTitle:, orgId:)`.
+
+**Decision.** `hub/grade/` is the essay path over the engine's essay run (back D-651: a hidden paper exam, like a bubble
+run): `essay_run.dart` (pure: drafts, paste-many parser, the run as sent, check order, codes in words, calls),
+`essay_run_widgets.dart` (plain values), `essay_run_screen.dart`. 1) Setup: questions with a mark and a model answer,
+or rubric criteria whose marks make the question's (one by one or "Paste several questions": numbered lines, mark in
+brackets, `Answer:` lines, `-` criteria). 2) The run: a student from the course roster (`OmrAudiencePicker`), the pages
+from the existing scan source sheet (`showScanSourceSheet` + `prepareScanFile`; the phone's camera through
+image_picker), a page → question sheet when the count does not match (PDFs go in page order: the app cannot count
+their pages), live progress through EventOrPoll on `job_updated {kind: essay_run | omr_review}`. 3) One student: each
+answer's photo, what was read, the suggestion with its evidence (band, keywords found / missing, one line per rubric
+criterion, why it is doubtful, the photo's quality warnings), Accept in one tap or set the mark; doubtful readings
+first; "Full page" opens the existing review page on that answer (`openOmrReview` focus, fix the text there).
+4) Results and export: `openExamGetResult`. Every decision is the existing review item's resolve.
+
+**Consequences.** Kill switch `exam.essay_run` (BasePage key; the engine also needs `exam.auto_correct` to accept
+papers). A mark decided here is changed later from the results / review screens (a resolved item is not reopened).
+Arabic handwriting is always for the teacher to confirm. Tests: `test/org/essay_run_test.dart` (fixtures
+`test/fixtures/payloads/essay/`, recorded by the back e2e with ESSAY_DUMP), `test/ui/essay_run_layout_test.dart`.
