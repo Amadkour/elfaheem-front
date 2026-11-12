@@ -5,6 +5,8 @@
 //   (package:pdf shapes Arabic with the fonts' presentation-form glyphs: only Amiri, Bahij and Plex have all of them.)
 //   Minimal — IBM Plex Sans Arabic, black and white, thin rules (ink saving).
 // Pages: a running header after page 1, "Page x of y" and "Please turn over" in the footer, "End of the exam" at the end.
+// The answer booklet (D-663) is the same writer with part = booklet: same header, box and footer, then the booklet's
+// table and written blocks (exam_paper_booklet.dart); part = questions drops the answer room from the question paper.
 // pw.Table ignores the text direction, so table columns are reversed by hand for Arabic (as the table export does).
 library;
 
@@ -15,6 +17,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../../../design/export/table_export_model.dart' show onColorHex, shadeHex, tintHex;
 import 'exam_paper.dart';
+import 'exam_paper_booklet.dart';
 import 'exam_paper_bands.dart';
 
 PdfColor _pc(String hex) => PdfColor.fromInt(0xFF000000 | int.parse(hex, radix: 16));
@@ -69,7 +72,7 @@ Future<PaperPdfResult> examPaperPdfMany(List<ExamPaperDoc> docs, PaperTemplate t
   final total = docs.length * 3;
   for (var i = 0; i < docs.length; i++) {
     final d = docs[i];
-    final key = '${d.version}|${d.printedIds.length}|${d.qrPages.length}|${d.qrSlots}|${d.cover != null}';
+    final key = '${d.version}|${d.printedIds.length}|${d.qrPages.length}|${d.qrSlots}|${d.cover != null}|${d.part.name}';
     counts.add(known[key] ??= _addPaper(pw.Document(theme: theme), d, tpl, null, -1, null));
     if (control != null && (i + 1) % 8 == 0) await control.tick(i + 1, total);
   }
@@ -144,6 +147,8 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTota
   final offset = doc.document.pdfPageList.pages.length;
   final style = PaperStyle.of(tpl);
   final w = PaperWords(d.rtl);
+  final bw = BookletWords(d.rtl);
+  final booklet = d.part == PaperPart.booklet, questionsOnly = d.part == PaperPart.questions;
   final accentHex = style.color ? d.accentHex : '1F2933';
   final accent = _pc(accentHex), accentDark = _pc(shadeHex(accentHex, .25)), tint = _pc(style.color ? tintHex(accentHex, .08) : 'F4F5F7');
   final ink = _pc('1F2933'), muted = _pc('6B7280'), line = _pc('B9C1CA'), faint = _pc('D7DDE3');
@@ -214,6 +219,7 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTota
         pw.Container(height: .6, color: accent),
         pw.SizedBox(height: 8),
         txt(d.title, size: 17, bold: true, color: accentDark, align: pw.TextAlign.center),
+        if (booklet) pw.Padding(padding: const pw.EdgeInsets.only(top: 3), child: txt(bw.title, size: 13, bold: true, color: accent)),
         if (d.answerKey) pw.Padding(padding: const pw.EdgeInsets.only(top: 3), child: txt(w.answerKey, size: 11, bold: true, color: PdfColors.red800)),
       ]);
     }
@@ -234,6 +240,7 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTota
               child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
                 if (d.institution.isNotEmpty) txt(d.institution, size: 10.5, color: on),
                 txt(d.title, size: 18, bold: true, color: on),
+                if (booklet) txt(bw.title, size: 12, bold: true, color: on),
                 if (d.answerKey) txt(w.answerKey, size: 10.5, bold: true, color: on),
               ]),
             ),
@@ -261,6 +268,7 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTota
           child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
             if (d.institution.isNotEmpty) txt(d.institution, size: 10.5, color: muted),
             txt(d.title, size: 16, bold: true),
+            if (booklet) txt(bw.title, size: 12, bold: true),
             if (d.answerKey) txt(w.answerKey, size: 10.5, bold: true),
           ]),
         ),
@@ -487,8 +495,8 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTota
       );
 
   // ── the answer table: question numbers x the letters to circle (choice questions)
-  pw.Widget answerTable() {
-    final rows = answerTableRows(answerTableEntries(d));
+  pw.Widget answerTable([List<AnswerTableEntry>? entries, String? title]) {
+    final rows = answerTableRows(entries ?? answerTableEntries(d));
     if (rows.isEmpty) return pw.SizedBox();
     pw.Widget entry(AnswerTableEntry e) => pw.Expanded(
           child: pw.Padding(
@@ -511,7 +519,7 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTota
       padding: const pw.EdgeInsets.all(6),
       decoration: pw.BoxDecoration(border: pw.Border.all(color: classic ? accent : line, width: .7), borderRadius: pw.BorderRadius.circular(4)),
       child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
-        txt(w.answerTableTitle, size: 10.5, bold: true, color: accentDark),
+        txt(title ?? w.answerTableTitle, size: 10.5, bold: true, color: accentDark),
         pw.SizedBox(height: 4),
         for (final r in rows)
           pw.Row(children: [for (var i = 0; i < 3; i++) i < r.length ? entry(r[i]) : pw.Expanded(child: pw.SizedBox())]),
@@ -530,17 +538,84 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTota
         ]),
       );
 
-  final tableOn = d.answerTable != AnswerTablePlace.none && answerTableEntries(d).isNotEmpty;
+  final indent = pw.EdgeInsets.only(left: d.rtl ? 0 : 30, right: d.rtl ? 30 : 0);
+
+  // ── the answer booklet (D-663): the objective questions in one table, then a numbered block per written question
+  pw.Widget slot(BookletBlock b, int i) {
+    final key = d.answerKey && i < b.keySlots.length ? b.keySlots[i] : '';
+    final blank = b.type == 'fill_blank';
+    return pw.Row(mainAxisSize: pw.MainAxisSize.min, children: [
+      txt('(${i + 1})', size: 10, bold: true),
+      pw.SizedBox(width: 4),
+      pw.Container(
+        width: blank ? 150 : 40, height: 18, alignment: pw.Alignment.center,
+        decoration: blank
+            ? pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: line, width: .7)))
+            : pw.BoxDecoration(border: pw.Border.all(color: ink, width: .7), borderRadius: pw.BorderRadius.circular(3)),
+        child: key.isEmpty ? null : txt(key, size: 9.5, bold: true, color: PdfColors.red900, maxLines: 1),
+      ),
+    ]);
+  }
+
+  List<pw.Widget> bookletContent() {
+    final plan = bookletPlanOf(d);
+    final out = <pw.Widget>[
+      pw.Container(
+        width: double.infinity,
+        padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: pw.BoxDecoration(color: tint, borderRadius: pw.BorderRadius.circular(6)),
+        child: txt(bw.note, size: 10.2, bold: true, color: accentDark),
+      ),
+    ];
+    if (plan.table.isNotEmpty) out.addAll([pw.SizedBox(height: 10), answerTable(plan.table, bw.tableTitle)]);
+    if (plan.blocks.isNotEmpty) out.addAll([pw.SizedBox(height: 14), txt(bw.written, size: 12.5, bold: true, color: accentDark)]);
+    int? lastSection;
+    for (final b in plan.blocks) {
+      final heading = d.sections.length > 1 && b.sectionIndex != lastSection;
+      lastSection = b.sectionIndex;
+      final hint = bw.slotHint(b.type);
+      // the block's title travels with its first lines; the ruled lines follow one by one so a long essay may turn the page
+      out.add(pw.Inseparable(child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
+        if (heading)
+          pw.Padding(padding: const pw.EdgeInsets.only(top: 8), child: txt(b.sectionTitle.isEmpty ? w.sectionN(b.sectionIndex) : b.sectionTitle, size: 11, bold: true, color: muted)),
+        pw.SizedBox(height: 9),
+        pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.center, children: [
+          numberBadge(b.number),
+          pw.SizedBox(width: 8),
+          pw.Expanded(child: txt(bw.answerTo(b.number), bold: true, size: 11)),
+          if (d.showPoints) ...[pw.SizedBox(width: 6), pointsPill(b.points)],
+        ]),
+        if (hint.isNotEmpty) pw.Padding(padding: indent.copyWith(top: 3), child: txt(hint, size: 9.5, color: muted)),
+        if (b.slots > 0)
+          pw.Padding(
+            padding: indent.copyWith(top: 6, bottom: 4),
+            child: pw.Wrap(spacing: 16, runSpacing: 9, children: [for (var i = 0; i < b.slots; i++) slot(b, i)]),
+          ),
+        if (d.answerKey && b.slots == 0) pw.Padding(padding: indent, child: keyBox(b.answerText)),
+        if (!d.answerKey && b.lines > 0) pw.Padding(padding: indent, child: answerLine()),
+      ])));
+      if (!d.answerKey) {
+        for (var i = 1; i < b.lines; i++) {
+          out.add(pw.Padding(padding: indent, child: answerLine()));
+        }
+      }
+    }
+    return out;
+  }
+
+  final tableOn = !questionsOnly && !booklet && d.answerTable != AnswerTablePlace.none && answerTableEntries(d).isNotEmpty;
   final content = <pw.Widget>[
     pw.SizedBox(height: 10),
     if (!d.answerKey && !ownStudentBox) ...[studentBox(), pw.SizedBox(height: 9)],
-    if (!ownInstructions) instructions(),
-    if (!d.answerKey && !tplIsMinimal(tpl)) ...[pw.SizedBox(height: 9), marksTable()],
+    if (!ownInstructions && !booklet) instructions(),
+    if (questionsOnly && !d.answerKey) ...[pw.SizedBox(height: 7), txt(bw.answerInBooklet, size: 10.5, bold: true, color: accentDark)],
+    if (!d.answerKey && !tplIsMinimal(tpl) && !questionsOnly) ...[pw.SizedBox(height: 9), marksTable()],
     if (d.answerKey && d.keySummary.isNotEmpty) ...[pw.SizedBox(height: 9), keySummary()],
     if (tableOn && d.answerTable == AnswerTablePlace.start) ...[pw.SizedBox(height: 9), answerTable()],
     pw.SizedBox(height: 12),
   ];
-  for (var si = 0; si < d.sections.length; si++) {
+  if (booklet) content.addAll(bookletContent());
+  for (var si = 0; !booklet && si < d.sections.length; si++) {
     final s = d.sections[si];
     // the part's heading travels with its first question, so it never ends a page alone
     final heading = <pw.Widget>[];
@@ -577,7 +652,7 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTota
         ),
       ])));
       // ruled lines one by one, so a long essay may continue on the next page
-      if (!d.answerKey) {
+      if (!d.answerKey && !questionsOnly) {
         for (var i = 0; i < q.lines; i++) {
           content.add(pw.Padding(padding: pw.EdgeInsets.only(left: d.rtl ? 0 : 30, right: d.rtl ? 30 : 0), child: answerLine()));
         }
@@ -589,7 +664,7 @@ int _addPaper(pw.Document doc, ExamPaperDoc d, PaperTemplate tpl, int? knownTota
     padding: const pw.EdgeInsets.only(top: 22),
     child: pw.Row(children: [
       pw.Expanded(child: pw.Container(height: .6, color: faint)),
-      pw.Padding(padding: const pw.EdgeInsets.symmetric(horizontal: 10), child: txt(w.end, size: 10.5, bold: true, color: accentDark)),
+      pw.Padding(padding: const pw.EdgeInsets.symmetric(horizontal: 10), child: txt(booklet ? bw.end : w.end, size: 10.5, bold: true, color: accentDark)),
       pw.Expanded(child: pw.Container(height: .6, color: faint)),
     ]),
   ));

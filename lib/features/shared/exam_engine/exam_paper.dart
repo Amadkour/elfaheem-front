@@ -27,6 +27,10 @@ enum PaperTemplate { auto, classic, modern, minimal, custom }
 /// Where the "answer on the paper" table of the choice questions goes (none = circles in the questions only).
 enum AnswerTablePlace { none, start, end }
 
+/// Which document a writer draws from the paper (D-663): the question paper with room to answer (today's paper), the
+/// question paper that goes with an answer booklet (no answer lines, no table, "answer in the booklet"), or the booklet.
+enum PaperPart { full, questions, booklet }
+
 /// One line of the key summary printed on a version's answer key (`GET …/answer-key` `display`).
 class PaperKeyLine {
   const PaperKeyLine(this.n, this.display);
@@ -172,7 +176,10 @@ class ExamPaperDoc {
       required this.total, required this.sections, required this.instructions, required this.rtl, this.logo, this.accentHex = '0F7B5F',
       this.showPoints = true, this.seatNumber = true, this.answerKey = false, this.version, this.studentName = '', this.qrPages = const [],
       this.qrSlots = 0, this.answerTable = AnswerTablePlace.none, this.keySummary = const [], this.design, this.cover,
-      this.assets = const {}, this.seat = ''});
+      this.assets = const {}, this.seat = '', this.part = PaperPart.full});
+
+  /// Which document this is: the paper, the paper beside a booklet, or the answer booklet (exam_paper_booklet.dart).
+  final PaperPart part;
 
   /// The engine design of the paper (purpose exam_paper): its header / footer bands and page background replace the
   /// built-in ones (exam_paper_bands.dart). Null = today's Classic / Modern / Minimal, unchanged.
@@ -209,7 +216,7 @@ class ExamPaperDoc {
 
   ExamPaperDoc copyWith({List<PaperSection>? sections, String? version, String? studentName, List<String>? qrPages, int? qrSlots,
           AnswerTablePlace? answerTable, bool? answerKey, List<PaperKeyLine>? keySummary, String? seat,
-          ExamCover? cover, bool dropCover = false, LayoutDocument? design, bool dropDesign = false, Map<String, Uint8List>? assets}) =>
+          ExamCover? cover, bool dropCover = false, LayoutDocument? design, bool dropDesign = false, Map<String, Uint8List>? assets, PaperPart? part}) =>
       ExamPaperDoc(
         institution: institution, course: course, title: title, dateText: dateText, durationText: durationText, total: total,
         sections: sections ?? this.sections, instructions: instructions, rtl: rtl, logo: logo, accentHex: accentHex, showPoints: showPoints,
@@ -218,6 +225,7 @@ class ExamPaperDoc {
         keySummary: keySummary ?? this.keySummary, design: dropDesign ? null : (design ?? this.design),
         cover: dropCover ? null : (cover ?? this.cover), assets: assets ?? this.assets,
         seat: seat ?? this.seat,
+        part: part ?? this.part,
       );
 
   /// Every value a design's `{{…}}` can name for one copy ([copy] = the per-student paper, default this one): the Word

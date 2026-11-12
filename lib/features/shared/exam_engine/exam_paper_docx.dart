@@ -15,6 +15,7 @@ import 'package:archive/archive.dart';
 import '../../../design/export/table_export_model.dart' show onColorHex, shadeHex, tintHex, xmlEsc;
 import '../../org/org_reports/report_render.dart' show docxPicture, imageSize;
 import 'exam_paper.dart';
+import 'exam_paper_booklet.dart';
 import 'exam_paper_bands.dart';
 import 'exam_paper_pdf.dart' show PaperBuildControl, fmtTotal;
 import 'exam_qr_png.dart';
@@ -309,7 +310,7 @@ String _questionsXml(ExamPaperDoc d, _W w, {required String accent, required Str
         default:
           if (d.answerKey) out.write(key(q.answerText));
       }
-      if (!d.answerKey) {
+      if (!d.answerKey && d.part != PaperPart.questions) {
         for (var i = 0; i < q.lines; i++) {
           out.write(w.para('', ind: 560, exactLine: 440, border: lineBorder));
         }
@@ -332,9 +333,10 @@ String _tagsXml(ExamPaperDoc d, _W w, String accentDark) =>
     (d.version == null ? '' : w.run('   ·   ${PaperWords(d.rtl).version(d.version!)}', bold: true, color: accentDark, size: 9.5));
 
 /// The "answer on the paper" table: one row per choice question, one column per letter (circles to mark; the key fills them).
-String _answerTableXml(ExamPaperDoc d, _W w, PaperWords words, {required String accent, required String accentDark, required String rule}) {
-  if (d.answerTable == AnswerTablePlace.none) return '';
-  final entries = answerTableEntries(d);
+String _answerTableXml(ExamPaperDoc d, _W w, PaperWords words,
+    {required String accent, required String accentDark, required String rule, List<AnswerTableEntry>? only, String? title}) {
+  if (d.answerTable == AnswerTablePlace.none && only == null) return '';
+  final entries = only ?? answerTableEntries(d);
   if (entries.isEmpty) return '';
   final cols = entries.fold(0, (m, e) => e.letters.length > m ? e.letters.length : m);
   final first = 900;
@@ -348,9 +350,60 @@ String _answerTableXml(ExamPaperDoc d, _W w, PaperWords words, {required String 
         for (var i = 0; i < cols; i++) c(i < e.letters.length ? (d.answerKey && e.correct.contains(i) ? '●' : '○') : '', width: each),
       ]),
   ];
-  return w.para(w.run(words.answerTableTitle, bold: true, color: accentDark, size: 11), before: 120, after: 60, keepNext: true) +
+  return w.para(w.run(title ?? words.answerTableTitle, bold: true, color: accentDark, size: 11), before: 120, after: 60, keepNext: true) +
       w.table([first, for (var i = 0; i < cols; i++) each], rows, border: rule, pad: 30) +
       w.para('', after: 120);
+}
+
+/// The answer booklet's body (D-663): the note, the objective table, then a numbered block per written question (ruled
+/// lines or numbered slots); [cuts] marks where a page may break.
+String _bookletXml(ExamPaperDoc d, _W w, {required String accent, required String accentDark, required String rule, List<int>? cuts}) {
+  final words = PaperWords(d.rtl), bw = BookletWords(d.rtl);
+  final plan = bookletPlanOf(d);
+  final out = StringBuffer();
+  final lineBorder = '<w:pBdr><w:bottom w:val="dotted" w:sz="6" w:space="1" w:color="B9C1CA"/></w:pBdr>';
+  out.write(w.para(w.run(bw.note, bold: true, color: accentDark, size: 10.5), after: 120));
+  if (plan.table.isNotEmpty) out.write(_answerTableXml(d, w, words, accent: accent, accentDark: accentDark, rule: rule, only: plan.table, title: bw.tableTitle));
+  if (plan.blocks.isNotEmpty) out.write(w.para(w.run(bw.written, bold: true, color: accentDark, size: 12.5), before: 200, after: 60, keepNext: true));
+  int? lastSection;
+  for (final b in plan.blocks) {
+    cuts?.add(out.length);
+    if (d.sections.length > 1 && b.sectionIndex != lastSection) {
+      out.write(w.para(w.run(b.sectionTitle.isEmpty ? words.sectionN(b.sectionIndex) : b.sectionTitle, bold: true, color: '6B7280', size: 11), before: 160, keepNext: true));
+    }
+    lastSection = b.sectionIndex;
+    out.write(w.para(
+        w.run('${b.number}.  ', bold: true, color: accent, size: 12) +
+            w.run(bw.answerTo(b.number), bold: true) +
+            (d.showPoints ? w.run('   (${words.pts(b.points)})', color: '6B7280', size: 9.5) : ''),
+        before: 200,
+        after: 40,
+        keepNext: true));
+    final hint = bw.slotHint(b.type);
+    if (hint.isNotEmpty) out.write(w.para(w.run(hint, color: '6B7280', size: 9.5), ind: 560, keepNext: b.slots > 0));
+    if (b.slots > 0) {
+      final blank = b.type == 'fill_blank';
+      final runs = StringBuffer();
+      for (var i = 0; i < b.slots; i++) {
+        final key = d.answerKey && i < b.keySlots.length ? b.keySlots[i] : '';
+        runs.write(w.run('(${i + 1}) ', bold: true, size: 11));
+        runs.write(key.isEmpty
+            ? w.run(blank ? '____________________' : '[       ]', size: 11)
+            : w.run(blank ? key : '[ $key ]', bold: true, color: '9B1C1C', size: 11));
+        runs.write(w.run('       '));
+      }
+      out.write(w.para(runs.toString(), ind: 560, before: 60, after: 60, exactLine: blank ? 480 : null));
+    } else if (d.answerKey) {
+      out.write(w.para(w.run(b.answerText.isEmpty ? '—' : b.answerText, color: '9B1C1C', size: 10.5, italic: true), ind: 560, before: 60, after: 60));
+    }
+    if (!d.answerKey) {
+      for (var i = 0; i < b.lines; i++) {
+        out.write(w.para('', ind: 560, exactLine: 440, border: lineBorder));
+      }
+    }
+  }
+  out.write(w.para(w.run('—  ${bw.end}  —', bold: true, color: accentDark, size: 11), jc: 'center', before: 400));
+  return out.toString();
 }
 
 /// The cover section of [d]: one paragraph holding the cover's anchored items, closed by the section break that gives it its own
@@ -397,6 +450,8 @@ Map<String, List<int>> _docxParts(ExamPaperDoc d, PaperTemplate tpl) {
   final headerPush = headerBand == null ? 0 : math.max(0, 420 + paperTwips(headerBand.heightMm) + 60 - 900);
   final footerPush = footerBand == null ? 0 : paperTwips(footerBand.heightMm);
   final words = PaperWords(d.rtl);
+  final bw = BookletWords(d.rtl);
+  final booklet = d.part == PaperPart.booklet, questionsOnly = d.part == PaperPart.questions;
   final media = <String, Uint8List>{};
   final w = _W(d.rtl, style.wordFont, style.wordFontCs, media: media);
   final accent = style.color ? d.accentHex : '1F2933', accentDark = shadeHex(accent, .25), tint = style.color ? tintHex(accent, .08) : 'F4F5F7';
@@ -461,6 +516,7 @@ Map<String, List<int>> _docxParts(ExamPaperDoc d, PaperTemplate tpl) {
         after: 120));
   }
   if (d.version != null) body.write(w.para(w.run(words.version(d.version!), bold: true, color: accentDark, size: 12), jc: classic ? 'center' : 'start', after: 80));
+  if (booklet) body.write(w.para(w.run(bw.title, bold: true, color: accent, size: 14), jc: classic ? 'center' : 'start', after: 80));
   if (d.answerKey) body.write(w.para(w.run(words.answerKey, bold: true, color: '9B1C1C', size: 12), jc: classic ? 'center' : 'start', after: 160));
   if (d.answerKey && d.keySummary.isNotEmpty) {
     body.write(w.para(w.run('${words.keySummaryTitle}: ', bold: true, color: '9B1C1C', size: 10.5) +
@@ -479,7 +535,7 @@ Map<String, List<int>> _docxParts(ExamPaperDoc d, PaperTemplate tpl) {
   }
 
   // ── instructions
-  if (d.instructions.isNotEmpty && !ownInstructions) {
+  if (d.instructions.isNotEmpty && !ownInstructions && !booklet) {
     final inner = w.para(w.run(words.instructions, bold: true, color: accentDark, size: 11), after: 40) +
         [for (var i = 0; i < d.instructions.length; i++) w.para(w.run('${i + 1}. ${d.instructions[i]}', size: 10.2), after: 20)].join();
     body.write(w.table([_usable], [w.row([w.cell(inner, width: _usable, fill: modern ? tint : null)])], border: modern ? null : rule, pad: 100));
@@ -487,7 +543,8 @@ Map<String, List<int>> _docxParts(ExamPaperDoc d, PaperTemplate tpl) {
   }
 
   // ── examiner's marks
-  if (!d.answerKey && tpl != PaperTemplate.minimal) {
+  if (questionsOnly && !d.answerKey) body.write(w.para(w.run(bw.answerInBooklet, bold: true, color: accentDark, size: 11), after: 160));
+  if (!d.answerKey && tpl != PaperTemplate.minimal && !questionsOnly) {
     final cols = <(String, double)>[];
     if (d.sections.length > 1) {
       for (var i = 0; i < d.sections.length; i++) {
@@ -512,10 +569,12 @@ Map<String, List<int>> _docxParts(ExamPaperDoc d, PaperTemplate tpl) {
         before: 80, after: 200));
   }
 
-  final tableXml = _answerTableXml(d, w, words, accent: accent, accentDark: accentDark, rule: rule);
+  final tableXml = booklet || questionsOnly ? '' : _answerTableXml(d, w, words, accent: accent, accentDark: accentDark, rule: rule);
   if (d.answerTable == AnswerTablePlace.start) body.write(tableXml);
   final cuts = <int>[];
-  final questions = _questionsXml(d, w, accent: accent, accentDark: accentDark, cuts: cuts);
+  final questions = booklet
+      ? _bookletXml(d, w, accent: accent, accentDark: accentDark, rule: rule, cuts: cuts)
+      : _questionsXml(d, w, accent: accent, accentDark: accentDark, cuts: cuts);
 
   // Pages. A per-student copy has a different QR payload on every page and Word cannot put different content in a header /
   // footer by page number, so the copy is written as ONE SECTION PER PLANNED PAGE (a next-page section break between them),

@@ -8,11 +8,14 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asInt, t;
+import 'exam_authoring.dart' show ExamAuthoringApi, ExamView, authoringError;
 import 'exam_grading.dart';
 import 'exam_grading_widgets.dart';
 import 'exam_insights.dart';
 import 'exam_page_width.dart';
 import 'exam_review.dart' show scoreError;
+import 'hub/result/key_fix.dart' show kKeyFixFlags, keyFixCandidates, keyFixable;
+import 'hub/result/key_fix_sheet.dart' show openKeyFix;
 
 String _n(double? v) => v == null ? '—' : (v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2));
 
@@ -295,8 +298,11 @@ class ScoreHistogram extends StatelessWidget {
 }
 
 class ExamAnalyticsBody extends StatelessWidget {
-  const ExamAnalyticsBody({super.key, required this.data, this.onVoid, this.onRestore});
+  const ExamAnalyticsBody({super.key, required this.data, this.onVoid, this.onRestore, this.onFixKey});
   final ExamAnalytics data;
+
+  /// Fix the key of a flagged choice / true-false question (D-664; null = not offered).
+  final void Function(ItemStat item)? onFixKey;
 
   /// Cancel / restore a question (null = not offered, e.g. a view-only caller).
   final void Function(ItemStat item)? onVoid;
@@ -352,10 +358,15 @@ class ExamAnalyticsBody extends StatelessWidget {
                   if (onRestore != null) TextButton.icon(key: ValueKey('item.restore.${it.questionId}'), onPressed: () => onRestore!(it), icon: const Icon(Icons.undo_rounded, size: 16), label: Text(t('أعد السؤال', 'Restore'))),
                 ]),
               )
-            else if (onVoid != null)
+            else if (onVoid != null || onFixKey != null)
               Align(
                 alignment: AlignmentDirectional.centerEnd,
-                child: TextButton.icon(key: ValueKey('item.void.${it.questionId}'), onPressed: () => onVoid!(it), icon: const Icon(Icons.block_rounded, size: 16), label: Text(t('إلغاء هذا السؤال', 'Cancel this question'))),
+                child: Wrap(spacing: 4, children: [
+                  if (onFixKey != null && keyFixable(it.type) && it.flags.any(kKeyFixFlags.contains))
+                    TextButton.icon(key: ValueKey('item.fixkey.${it.questionId}'), onPressed: () => onFixKey!(it), icon: const Icon(Icons.key_rounded, size: 16), label: Text(t('تصحيح المفتاح', 'Fix the key'))),
+                  if (onVoid != null)
+                    TextButton.icon(key: ValueKey('item.void.${it.questionId}'), onPressed: () => onVoid!(it), icon: const Icon(Icons.block_rounded, size: 16), label: Text(t('إلغاء هذا السؤال', 'Cancel this question'))),
+                ]),
               ),
           ]),
         ),
@@ -448,6 +459,16 @@ class _ExamAnalyticsScreenState extends State<ExamAnalyticsScreen> {
     if (mounted) _refresh();
   }
 
+  /// Fix the key (D-664): the exam view gives the question's body and key; then the analytics are recomputed.
+  Future<void> _fixKey(ItemStat it) async {
+    final r = await ExamAuthoringApi().exam(widget.examId);
+    if (!mounted) return;
+    if (!r.ok) return appToast(authoringError(r), error: true);
+    final found = keyFixCandidates(ExamView.fromJson(r.map), _data).where((q) => q.questionId == it.questionId);
+    if (found.isEmpty) return;
+    if (await openKeyFix(context, examId: widget.examId, question: found.first) && mounted) _refresh();
+  }
+
   Future<void> _refresh() async {
     setState(() => _busy = true);
     final r = await _api.refreshAnalytics(widget.examId);
@@ -494,7 +515,8 @@ class _ExamAnalyticsScreenState extends State<ExamAnalyticsScreen> {
             ExamAnalyticsBody(
                 data: d,
                 onVoid: (it) => _busy ? null : _void(it, restore: false),
-                onRestore: (it) => _busy ? null : _void(it, restore: true)),
+                onRestore: (it) => _busy ? null : _void(it, restore: true),
+                onFixKey: (it) => _busy ? null : _fixKey(it)),
         ])),
       ),
     );
