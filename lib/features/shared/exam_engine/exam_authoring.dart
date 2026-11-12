@@ -592,7 +592,7 @@ class ExamDraft {
   /// null = leave the passcode as it is; '' = remove it; text = the new one.
   String? passcode;
   String resultsPolicy = 'when_published';
-  bool highStakes = true;
+  bool highStakes = false;   // a new exam is a normal class exam; the teacher marks finals "approve every grade" (owner 2026-11-13)
   bool anonymousGrading = false;
   Set<String> platforms = {'web', 'mobile'};
   double passingPercent = 50;

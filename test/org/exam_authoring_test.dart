@@ -222,7 +222,7 @@ void main() {
       expect(parseEngineUtc(null), isNull);
       expect(engineIso(DateTime.utc(2026, 1, 1, 8)), '2026-01-01T08:00:00.000Z');
       final fresh = ExamDraft();
-      expect((fresh.highStakes, fresh.resultsPolicy, fresh.maxAttempts), (true, 'when_published', 1));
+      expect((fresh.highStakes, fresh.resultsPolicy, fresh.maxAttempts), (false, 'when_published', 1));   // a new exam is a normal class exam (owner 2026-11-13)
     });
 
     test('create body carries the space and the passcode', () {
