@@ -1,5 +1,5 @@
-// The Exam Hub's list side (D-350): the `grading` flags, what a tap does, the smart header, the degrees import's
-// parsing, and every presentational piece under the layout harness.
+// The Exam Hub (D-350, made plain by D-700 – D-703): the `grading` flags, the stages, the one sentence and next step
+// of each exam, the detail steps, Needs you now, the degrees import's parsing, and every piece under the layout harness.
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -36,21 +36,23 @@ Map<String, dynamic> _g({bool ended = true, String state = 'waiting', int papers
       'data_lab_column': null,
     };
 
-AllExam _e(int id, {String status = 'closed', Map<String, dynamic>? g, int? course = 10, String title = 'Exam', Map<String, dynamic>? settings, String? policy, String? ends}) => AllExam({
+AllExam _e(int id, {String status = 'closed', Map<String, dynamic>? g, int? course = 10, String title = 'Exam', Map<String, dynamic>? settings, String? policy, String? starts, String? ends, int q = 12}) => AllExam({
       'id': id,
       'title': '$title $id',
       'status': status,
       'course_id': course,
       'org_id': null,
       'settings': settings,
+      'starts_at': starts,
       'ends_at': ends,
-      'question_count': 12,
+      'question_count': q,
       'attempts': {'total': 30},
       'results_policy': policy,
       'grading': ?g,
     });
 
 const _paper = {'mode': 'offline'};
+final _now = DateTime.utc(2026, 11, 13, 8);
 
 AllExamsData _data() => AllExamsData(exams: [
       _e(1, status: 'draft', g: _g(state: 'not_applicable', ended: false)),
@@ -107,24 +109,40 @@ void main() {
     });
   });
 
-  group('lists', () {
-    test('correction leaves drafts and the archive out, waiting first', () {
-      final ids = [for (final e in hubCorrectionList(_data())) e.id];
-      expect(ids, isNot(contains(1)));
-      expect(ids, isNot(contains(8)));
-      expect(ids.first, 2);
-      expect(ids.last, anyOf(4, 7));
-      expect([for (final e in hubCorrectionList(_data(), only: HubCorrection.inProgress)) e.id], [3]);
+  group('stages (D-700)', () {
+    List<int> ids(HubStage s, {AllExamsFilter f = const AllExamsFilter(), HubAttentionKind? focus}) => [for (final e in hubStageList(_data(), s, f: f, focus: focus, now: _now)) e.id];
+    test('drafts, running (published, not ended), finished (closed, ended, archived)', () {
+      expect(ids(HubStage.drafts), [1]);
+      expect(ids(HubStage.running), [5]);
+      expect(ids(HubStage.finished)..sort(), [2, 3, 4, 6, 7, 8]);
+      expect(hubStageOf(_e(9, status: 'published', g: _g(ended: true))), HubStage.finished, reason: 'its window is over');
     });
-    test('results chips', () {
-      List<int> ids(HubResultsFilter? f) => [for (final e in hubResultsList(_data(), only: f)) e.id]..sort();
-      expect(ids(HubResultsFilter.hasDegrees), [3, 4, 7]);
-      expect(ids(HubResultsFilter.noDegrees), [2, 5, 6]);
-      expect(ids(HubResultsFilter.unpublished), [3, 4]);
+    test('without grading the end time decides', () {
+      expect(hubStageOf(_e(9, status: 'published', ends: '2026-11-01T10:00:00'), now: _now), HubStage.finished);
+      expect(hubStageOf(_e(9, status: 'published', ends: '2026-12-01T10:00:00'), now: _now), HubStage.running);
+      expect(hubStageOf(_e(9, status: 'published'), now: _now), HubStage.running);
     });
-    test('search reaches the course name', () {
-      expect(hubCorrectionList(_data(), query: 'mathematics second').length, 5);
-      expect(hubCorrectionList(_data(), query: 'zzz'), isEmpty);
+    test('finished: what waits first, the archive last', () {
+      final f = ids(HubStage.finished);
+      expect(f.first, 2);
+      expect(f[1], 3);
+      expect(f.last, 8);
+    });
+    test('search reaches the course name; course and type narrow', () {
+      expect(ids(HubStage.finished, f: const AllExamsFilter(query: 'mathematics second')).length, 5);
+      expect(ids(HubStage.finished, f: const AllExamsFilter(query: 'zzz')), isEmpty);
+      expect(ids(HubStage.finished, f: const AllExamsFilter(courseId: AllExamsFilter.noCourse)), [7]);
+      expect(ids(HubStage.finished, f: const AllExamsFilter(type: AllExamType.paper))..sort(), [2, 3]);
+    });
+    test('an attention card lists its exams whatever their stage', () {
+      expect(ids(HubStage.drafts, focus: HubAttentionKind.unpublished), [3, 4]);
+      expect(ids(HubStage.running, focus: HubAttentionKind.drafts), [1]);
+    });
+    test('the hub opens where students sit exams, else the first stage with any', () {
+      expect(hubInitialStage(_data(), now: _now), HubStage.running);
+      expect(hubInitialStage(AllExamsData(exams: [_e(1, status: 'draft'), _e(2)]), now: _now), HubStage.drafts);
+      expect(hubInitialStage(AllExamsData(exams: [_e(2)]), now: _now), HubStage.finished);
+      expect(hubStageCounts(_data(), now: _now), {HubStage.drafts: 1, HubStage.running: 1, HubStage.finished: 6});
     });
     test('an organization scope keeps only its exams', () {
       final d = AllExamsData(exams: [AllExam({'id': 1, 'org_id': 5}), AllExam({'id': 2, 'org_id': 6})]);
@@ -133,51 +151,103 @@ void main() {
     });
   });
 
-  group('smart header', () {
+  group('needs you now', () {
     test('counts, most urgent first', () {
       final a = hubAttention(_data());
       expect([for (final x in a) x.kind], [HubAttentionKind.toCorrect, HubAttentionKind.inCorrection, HubAttentionKind.unpublished, HubAttentionKind.drafts]);
       expect(a.first.count, 1);
-      expect(hubAttentionText(const HubAttention(HubAttentionKind.toCorrect, 3)), '3 exams waiting to be corrected');
+      expect(hubAttentionText(const HubAttention(HubAttentionKind.toCorrect, 3)), '3 exams have answers waiting for your grading');
+      expect(hubAttentionText(const HubAttention(HubAttentionKind.drafts, 7)), '7 drafts are not finished');
       AppConfig.lang = 'ar';
-      expect(hubAttentionText(const HubAttention(HubAttentionKind.unpublished, 2)), 'نتيجتان لم تُنشرا');
+      expect(hubAttentionText(const HubAttention(HubAttentionKind.unpublished, 2)), 'اختباران صُحّحا ولم يرَ الطلاب نتيجتهما بعد');
     });
-    test('a server without grading shows none', () {
-      expect(hubAttention(AllExamsData(exams: [_e(1), _e(2, status: 'draft')])), isEmpty);
+    test('a server without grading still shows the drafts', () {
+      expect([for (final x in hubAttention(AllExamsData(exams: [_e(1), _e(2, status: 'draft')]))) x.kind], [HubAttentionKind.drafts]);
+      expect(hubAttention(AllExamsData(exams: [_e(1)])), isEmpty);
       expect(hubHasFlags(AllExamsData(exams: [_e(1)])), isFalse);
     });
   });
 
-  group('what a tap does', () {
-    test('creation', () {
-      expect(hubMainAction(_e(1, status: 'draft'), HubSurface.creation), HubAction.edit);
-      expect(hubMainAction(_e(1, status: 'published'), HubSurface.creation), HubAction.deliver);
-      expect(hubMainAction(_e(1, status: 'closed'), HubSurface.creation), HubAction.results);
-      expect(hubMoreActions(_e(1, status: 'draft'), HubSurface.creation), containsAll([HubAction.publish, HubAction.paper]));
-      expect(hubMoreActions(_e(1, status: 'published'), HubSurface.creation), containsAll([HubAction.edit, HubAction.results, HubAction.paper]));
-      expect(hubMoreActions(_e(1, status: 'closed', settings: {'paper_file': {'name': 'a.pdf'}}), HubSurface.creation), isNot(contains(HubAction.paper)));
+  group('one sentence, one next step, the rest in the menu (D-701)', () {
+    test('drafts: no date, the questions, what is next', () {
+      final d = _e(1, status: 'draft', starts: '2020-01-01T00:00:00');
+      expect(hubStatusText(d, now: _now), 'Draft: 12 questions, not sent to students yet');
+      expect(hubStatusText(_e(1, status: 'draft', settings: _paper), now: _now), 'Draft: 12 questions, not ready to print yet');
+      expect(hubStatusText(_e(1, status: 'draft', q: 0), now: _now), 'Draft: no questions yet');
+      expect(hubNextStep(d), HubAction.publish);
+      expect(hubNextLabel(d), 'Send to students');
+      expect(hubNextStep(_e(1, status: 'draft', q: 0)), HubAction.edit);
+      expect(hubNextLabel(_e(1, status: 'draft', q: 0)), 'Continue editing');
     });
-    test('correction and results', () {
-      expect(hubMainAction(_e(1, g: _g(state: 'corrected', degrees: true)), HubSurface.correction), HubAction.getResult);
-      expect(hubMainAction(_e(1, g: _g()), HubSurface.correction), HubAction.correct);
-      expect(hubMainAction(_e(1, status: 'published', g: _g(ended: false)), HubSurface.correction), HubAction.correct);
-      expect(hubMainAction(_e(1), HubSurface.correction), HubAction.correct, reason: 'no flags: straight to the flow');
-      expect(hubMainAction(_e(1, g: _g(degrees: true)), HubSurface.results), HubAction.getResult);
-      expect(hubMainAction(_e(1, g: _g()), HubSurface.results), HubAction.addDegrees);
-      expect(hubMainAction(_e(1), HubSurface.results), HubAction.getResult);
+    test('running: open until, scheduled, how many answered', () {
+      final open = _e(9, status: 'published', ends: '2026-11-20T10:00:00', g: _g(ended: false, submitted: 12));
+      expect(hubStatusText(open, now: _now), startsWith('Open until 20 Nov'));
+      expect(hubStatusText(open, now: _now), endsWith('12 students answered'));
+      expect(hubNextStep(open, now: _now), HubAction.results);
+      expect(hubNextStep(_e(9, status: 'published', settings: _paper, g: _g(ended: false)), now: _now), HubAction.deliver);
+      final later = _e(9, status: 'published', starts: '2026-11-18T09:00:00', g: _g(ended: false));
+      expect(hubStatusText(later, now: _now), startsWith('Scheduled: opens 18 Nov'));
+      expect(hubNextStep(later, now: _now), HubAction.edit);
+      expect(hubCurrentStep(later, now: _now), HubStep.send);
+      expect(hubCurrentStep(open, now: _now), HubStep.grade);
+    });
+    test('finished: what waits, the button that deals with it', () {
+      final d = _data();
+      AllExam x(int id) => d.exams.firstWhere((e) => e.id == id);
+      expect(hubStatusText(x(2), now: _now), 'Finished: 3 papers wait for grading');
+      expect(hubNextLabel(x(2), now: _now), 'Grade');
+      expect(hubStatusText(x(3), now: _now), 'Grading under way: 5 answers wait for grading');
+      expect(hubNextLabel(x(3), now: _now), 'Continue grading');
+      expect(hubStatusText(x(4), now: _now), 'Graded: results not published to students yet');
+      expect(hubNextLabel(x(4), now: _now), 'Publish results');
+      expect(hubNextStep(x(7), now: _now), HubAction.getResult);
+      expect(hubNextLabel(x(7), now: _now), 'See results');
+      expect(hubStatusText(x(6), now: _now), 'Finished: nobody answered');
+      expect(hubNextStep(x(6), now: _now), HubAction.results);
+      expect(hubNextStep(_e(9)), HubAction.results, reason: 'no flags: the results screen');
+      expect(hubStatusText(x(8), now: _now), startsWith('Archived'));
+    });
+    test('the menu never repeats the next step, and keeps what the older tabs offered', () {
+      for (final e in _data().exams) {
+        expect(hubMenuActions(e, now: _now), isNot(contains(hubNextStep(e, now: _now))), reason: 'exam ${e.id}');
+      }
+      expect(hubMenuActions(_e(1, status: 'draft')), containsAll([HubAction.edit, HubAction.paper, HubAction.duplicate]));
+      expect(hubMenuActions(_e(1, g: _g(degrees: true))), containsAll([HubAction.edit, HubAction.results, HubAction.correct, HubAction.importDegrees, HubAction.revision]));
+      expect(hubMenuActions(_e(1, status: 'closed', settings: {'paper_file': {'name': 'a.pdf'}})), isNot(contains(HubAction.paper)));
+      expect(hubMenuActions(_e(1, status: 'published', settings: _paper, g: _g(ended: false, papers: 2, state: 'in_progress'))), contains(HubAction.deliver));
     });
     test('revision needs a course, and its switch on; Excel too', () {
-      expect(hubMoreActions(_e(1, g: _g(degrees: true)), HubSurface.results), contains(HubAction.revision));
-      expect(hubMoreActions(_e(1, g: _g(degrees: true), course: null), HubSurface.results), isNot(contains(HubAction.revision)));
+      expect(hubMenuActions(_e(1, g: _g(degrees: true))), contains(HubAction.revision));
+      expect(hubMenuActions(_e(1, g: _g(degrees: true), course: null)), isNot(contains(HubAction.revision)));
       expect(hubCanImport(_e(1, course: null)), isFalse);
       AppConfig.disableList = ['exam.grade_review', 'exam.results.import'];
-      expect(hubMoreActions(_e(1, g: _g(degrees: true)), HubSurface.results), isNot(contains(HubAction.revision)));
+      expect(hubMenuActions(_e(1, g: _g(degrees: true))), isNot(contains(HubAction.revision)));
       expect(hubCanImport(_e(1)), isFalse);
     });
     test('Excel is the suggestion only while there is nothing to correct', () {
       expect(hubImportRecommended(_e(1, g: _g())), isTrue);
       expect(hubImportRecommended(_e(1, g: _g(papers: 4))), isFalse);
       expect(hubImportRecommended(_e(1, g: _g(), course: null)), isFalse);
+    });
+    test('Arabic', () {
+      AppConfig.lang = 'ar';
+      expect(hubStatusText(_e(1, status: 'draft'), now: _now), 'مسودة: 12 سؤالاً، لم تُرسل للطلاب بعد');
+      expect(hubNextLabel(_e(1, status: 'draft')), 'أرسل للطلاب');
+    });
+  });
+
+  group('the detail steps (D-702)', () {
+    test('done up to where the exam is, then the current one, then what is ahead', () {
+      final d = _data();
+      AllExam x(int id) => d.exams.firstWhere((e) => e.id == id);
+      List<HubStepState> states(AllExam e) => [for (final s in HubStep.values) hubStepState(e, s, now: _now)];
+      expect(states(x(1)), [HubStepState.done, HubStepState.current, HubStepState.upcoming, HubStepState.upcoming]);
+      expect(states(_e(1, status: 'draft', q: 0)), [HubStepState.current, HubStepState.upcoming, HubStepState.upcoming, HubStepState.upcoming]);
+      expect(states(x(3)), [HubStepState.done, HubStepState.done, HubStepState.current, HubStepState.upcoming]);
+      expect(states(x(4)), [HubStepState.done, HubStepState.done, HubStepState.done, HubStepState.current]);
+      expect(states(x(7)), [for (final _ in HubStep.values) HubStepState.done]);
+      expect(hubStepNote(x(3), HubStep.grade, now: _now), '5 answers wait for grading');
+      expect(hubStepNote(x(5), HubStep.grade, now: _now), 'After the exam ends');
     });
   });
 
@@ -242,15 +312,18 @@ void main() {
     expect(save().onPressed, isNotNull);
   });
 
-  group('action row and Grade papers', () {
+  group('Grade paper sheets', () {
     test('kill switches hide each kind, and the action with none left', () {
       expect(hubGradeKinds(), [GradeKind.bubble, GradeKind.essay]);
-      expect(hubQuickActions(), HubQuickAction.values);
       AppConfig.disableList = ['exam.auto_correct'];
       expect(hubGradeKinds(), [GradeKind.essay]);
       AppConfig.disableList = ['exam.bubble', 'exam.essay_run'];
       expect(hubGradeKinds(), isEmpty);
-      expect(hubQuickActions(), [HubQuickAction.newExam, HubQuickAction.previous, HubQuickAction.results]);
+    });
+    test('a labelled header button only while paper exams exist', () {
+      expect(hubGradeProminent(_data()), isTrue);
+      expect(hubGradeProminent(AllExamsData(exams: [_e(1)])), isFalse);
+      expect(hubGradeProminent(null), isFalse);
     });
   });
 
@@ -286,30 +359,47 @@ void main() {
   });
 
   group('layout', () {
-    ExamHubBody body({required int tab, HubSurface segment = HubSurface.correction, AllExamsData? d}) => ExamHubBody(
+    ExamHubBody body({HubStage stage = HubStage.running, HubAttentionKind? focus, AllExamsData? d, AllExamsFilter f = const AllExamsFilter()}) => ExamHubBody(
           data: d,
-          tab: tab,
-          segment: segment,
-          filter: const AllExamsFilter(),
+          stage: stage,
+          focus: focus,
+          filter: f,
+          now: _now,
+          onStage: (_) {},
           onFilter: (_) {},
-          onSegment: (_) {},
-          onCorrectionFilter: (_) {},
-          onResultsFilter: (_) {},
           onAttention: (_) {},
+          onClearFocus: () {},
           onAction: (_, _) {},
           onRetry: () {},
           onNew: () {},
-          onStartRevision: () {},
           onRefresh: () async {},
+          onSelect: (_) {},
+          onOpen: (_) {},
         );
-    testWidgets('creation', (t) => expectNoLayoutErrors(t, () => body(tab: 0, d: _data())));
-    testWidgets('correction', (t) => expectNoLayoutErrors(t, () => body(tab: 1, d: _data())));
-    testWidgets('results', (t) => expectNoLayoutErrors(t, () => body(tab: 1, segment: HubSurface.results, d: _data())));
+    testWidgets('each stage', (t) async {
+      for (final s in HubStage.values) {
+        await expectNoLayoutErrors(t, () => body(stage: s, d: _data()));
+      }
+    });
+    testWidgets('a card list, a narrowed one, a type filter', (t) async {
+      await expectNoLayoutErrors(t, () => body(focus: HubAttentionKind.unpublished, d: _data()));
+      await expectNoLayoutErrors(t, () => body(d: _data(), f: const AllExamsFilter(query: 'zzz', type: AllExamType.file)));
+    });
     testWidgets('loading, empty, no flags', (t) async {
-      await expectNoLayoutErrors(t, () => body(tab: 0));
-      await expectNoLayoutErrors(t, () => body(tab: 1, d: const AllExamsData(exams: [])));
-      await expectNoLayoutErrors(t, () => body(tab: 1, d: AllExamsData(exams: [_e(1), _e(2, status: 'published')])));
-      await expectNoLayoutErrors(t, () => body(tab: 1, segment: HubSurface.results, d: AllExamsData(exams: [_e(1)])));
+      await expectNoLayoutErrors(t, () => body());
+      await expectNoLayoutErrors(t, () => body(d: const AllExamsData(exams: [])));
+      await expectNoLayoutErrors(t, () => body(stage: HubStage.finished, d: AllExamsData(exams: [_e(1), _e(2, status: 'published')])));
+      await expectNoLayoutErrors(t, () => body(stage: HubStage.drafts, d: AllExamsData(exams: [_e(1)])));
+    });
+    testWidgets('the pieces', (t) async {
+      final d = _data();
+      await expectNoLayoutErrors(t, () => SingleChildScrollView(child: HubAttentionCards(items: hubAttention(d), active: HubAttentionKind.drafts, onTap: (_) {})));
+      for (final e in d.exams) {
+        await expectNoLayoutErrors(t, () => SingleChildScrollView(child: HubExamTile(exam: e, course: d.courseName(e), now: _now, onAction: (_) {})));
+        await expectNoLayoutErrors(t, () => SingleChildScrollView(child: HubExamDetail(exam: e, course: d.courseName(e), now: _now, onAction: (_) {})));
+      }
+      await expectNoLayoutErrors(t, () => SingleChildScrollView(child: HubExamTile(exam: d.exams.first, busy: true, selected: true, now: _now, onAction: (_) {})));
+      await expectNoLayoutErrors(t, () => SingleChildScrollView(child: HubFilterBody(type: AllExamType.paper, onType: (_) {}, onDone: () {})));
     });
     testWidgets('sheets', (t) async {
       // the bodies sit in AppSheetContent, which scrolls them
@@ -341,8 +431,7 @@ void main() {
             onSave: () {},
           )));
     });
-    testWidgets('the action row and Grade papers', (t) async {
-      await expectNoLayoutErrors(t, () => HubActionRow(actions: HubQuickAction.values, onTap: (_) {}));
+    testWidgets('Grade papers', (t) async {
       const courses = [
         (courseId: 1, orgId: 4 as int?, name: 'Biology for the second year of the secondary school, group A'),
         (courseId: 2, orgId: null as int?, name: 'Chemistry'),
@@ -351,7 +440,13 @@ void main() {
       await expectNoLayoutErrors(t, () => SingleChildScrollView(child: GradePapersBody(courses: courses, kinds: GradeKind.values, initial: courses.first, orgNames: const {4: 'A school with a long name'}, onPick: (_, _) {})));
       await expectNoLayoutErrors(t, () => SingleChildScrollView(child: GradePapersBody(courses: const [], kinds: GradeKind.values, onPick: (_, _) {})));
     });
-    testWidgets('the whole screen', (t) => expectNoLayoutErrors(t, () => ExamHubScreen(loader: () async => _data()), scaffold: false));
+    testWidgets('the whole screen', (t) => expectNoLayoutErrors(t, () => ExamHubScreen(now: _now, loader: () async => _data()), scaffold: false));
+    testWidgets('the exam page of a phone', (t) async {
+      final d = _data();
+      for (final e in [d.exams[1], d.exams[2], d.exams[4]]) {
+        await expectNoLayoutErrors(t, () => HubExamPage(examId: e.id, changes: ValueNotifier(0), exam: () => e, course: () => d.courseName(e), org: () => null, busy: () => false, now: _now, onAction: (_, _, _) {}), scaffold: false);
+      }
+    });
   });
 }
 

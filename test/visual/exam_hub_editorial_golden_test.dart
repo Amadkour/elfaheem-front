@@ -1,5 +1,5 @@
-// VISUAL review renders (not a CI suite): the Exam Hub (D-356) in the Warm Editorial theme — Creation, Correction and
-// Results, plus the two "before you go on" sheets — at 390x844 and 1440x900, ar / en, light / dark, into
+// VISUAL review renders (not a CI suite): the Exam Hub (D-356) in the Warm Editorial theme — the hub page, its flows,
+// plus the "before you go on" sheets — at 390x844 and 1440x900, ar / en, light / dark, into
 // test/visual/goldens/exam_hub_*.png. Compared by eye.
 //
 //   flutter test test/visual/exam_hub_editorial_golden_test.dart --update-goldens [--plain-name creation]
@@ -199,11 +199,8 @@ void main() {
     AppConfig.disableList = [];
   });
 
-  testWidgets('creation', (t0) => _render(t0, 'creation', () => ExamHubScreen(loader: () async => _data())));
-  testWidgets('correction', (t0) => _render(t0, 'correction', () => ExamHubScreen(initialTab: 1, loader: () async => _data())));
-  testWidgets('results', (t0) => _render(t0, 'results', () => ExamHubScreen(initialTab: 1, loader: () async => _data()),
-      act: (t) => _tapText(t, AppConfig.lang == 'ar' ? 'النتائج' : 'Results')));
-  testWidgets('empty', (t0) => _render(t0, 'empty', () => ExamHubScreen(loader: () async => const AllExamsData(exams: []))));
+  // the hub page itself (D-700 – D-703) renders in exam_hub_simple_golden_test.dart, every stage and the exam page
+  testWidgets('hub', (t0) => _render(t0, 'hub', () => ExamHubScreen(loader: () async => _data())));
   resultScenes();
   marksScenes();
   correctScenes();
@@ -214,15 +211,6 @@ void main() {
             title: AppConfig.lang == 'ar' ? 'لا درجات لهذا الاختبار بعد' : 'This exam has no degrees yet',
             child: HubNoDegreesBody(canImport: true, importRecommended: true, noCourse: false, onImport: () {}, onCorrect: () {}),
           ))));
-}
-
-Future<void> _tapText(WidgetTester t, String text) async {
-  final f = find.descendant(of: find.byKey(const ValueKey('exam.hub.segments')), matching: find.text(text));
-  if (f.evaluate().isEmpty) return;
-  await t.tap(f.first, warnIfMissed: false);
-  for (var i = 0; i < 10; i++) {
-    await t.pump(const Duration(milliseconds: 100));
-  }
 }
 
 ResultsBoard _board({bool partial = true}) {

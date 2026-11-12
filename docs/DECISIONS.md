@@ -4186,3 +4186,39 @@ where the values come from: typed per student (`PUT …/attributes/{key}`), a co
 `attributes`; the step starts on the plan's keys, else this teacher's last ones that the exam has, else the server's
 selection. The Paper design step opens the existing design engine (D-196) with those attributes in the sample header
 and saves the exam's design on the draft.
+
+## D-700 — The Exam Hub is one list in three plain stages, under one primary action · 2026-11-13 · accepted
+
+**Context.** The owner's screenshot of the hub showed five competing ways to move around it: four action cards (New exam, Grade papers, Previous exams, Results), two tabs (Creation / Results & Correction), a status strip, status pills (All, Draft, Published, Closed, Archived) and type chips beside a course dropdown. "Results" appeared three times and "Previous exams" repeated the status pills. A teacher who is not technical could not tell where to start.
+
+**Decision.** The header holds the title and ONE primary button, New exam. Grade paper sheets (D-660) is a labelled header action only while the list holds paper exams (`hubGradeProminent`), otherwise a quiet icon there: a run can still start from a course's papers without an exam (D-662), so it is never removed. The grade review without an exam (the old Results tab's "New revision") is a header icon under `exam.grade_review`. Below it, ONE list with three stage tabs (`HubStage`): **Drafts** (status draft), **Running** (published and not ended, scheduled included) and **Finished** (closed, archived, and published with its window over). The tab counts, search, course and one Filter button (how students sit it, shown as a removable chip once chosen) sit above it. The Creation / Results & Correction tabs, the four action cards and the status pills are gone; every place they reached is still one tap away (the Needs you now cards of D-703, each exam's next step and ⋯ menu of D-701, the header).
+
+**Why it differs from the brief.** (1) A published exam whose window has ended goes to Finished, not Running: nobody can sit it any more, and what it asks for is grading. (2) The archive is the end of Finished rather than its own place: the teacher's word for both is "over". (3) The hub opens on Running when anything is running, else Drafts, else Finished (`hubInitialStage`): the first screen is the one with something to do. `initialTab: 1` (where the old Results & Correction tab led) opens Finished.
+
+**Consequences.** No API change: the stages, counts and sentences come from the same `loadAllExams` list. `HubSurface`, `HubActionRow`, `HubQuickAction`, the correction / results lists and their chips are removed from `hub_logic.dart` / `hub_widgets.dart`; `test/org/exam_hub_f1_test.dart` tests the stages instead.
+
+## D-701 — Every exam reads as one sentence with ONE next step · 2026-11-13 · accepted
+
+**Context.** A row showed an icon nobody explained, a title, a status dot and a technical date ("starts 1 Jan 2020 2:00 AM" on drafts, a placeholder the server stores); two exams of the same name could not be told apart, and the side panel stacked five equal buttons.
+
+**Decision.** Each exam shows its name, then "course · type in words" (Online / On paper / Exam file, the icon kept beside it; "No course" when there is none), then ONE plain sentence with a coloured dot (`hubStatusText`): "Draft: 17 questions, not sent to students yet", "Open until 20 Nov, 12:00 PM, 12 students answered", "Scheduled: opens 18 Nov, 11:00 AM", "Finished: 30 papers wait for grading", "Grading under way: 4 answers wait for grading", "Graded: results not published to students yet", "Finished: students can see the results". Drafts never show a date. The one next step (`hubNextStep` / `hubNextLabel`) is the row's only button: Continue editing (no questions) · Send to students / Publish to print (a draft with questions) · Check questions (online, scheduled) · Follow answers (online, open) · Print (paper or file, published) · Grade / Continue grading · Publish results · See results. Everything else is in the ⋯ menu (`hubMenuActions`): edit questions, print and send papers, printable paper, answers and attempts, grade, results, add grades, import grades from Excel, grade review, duplicate; the menu never repeats the next step.
+
+**Why it differs from the brief.** "12 of 30 students answered" needs the class size, which the list does not carry; the sentence says "12 students answered" instead (no back-end work, as asked). The list has no archive action in the engine API, so the menu offers none rather than adding a route.
+
+**Consequences.** One `HubExamTile` draws an exam on every width: the button sits at the end from 560 px, under the sentence below it. Wide windows show the exams as quiet rows in one card (no table header, hairline dividers); phones as one card each.
+
+## D-702 — The selected exam is a four-step tracker · 2026-11-13 · accepted
+
+**Context.** The detail panel listed the exam's figures and five equal buttons without saying what to do next.
+
+**Decision.** `HubExamDetail` shows the exam's course · type, its name, its sentence, then four steps (`HubStep`): 1 Questions · 2 Send to students / Print and hand out · 3 Grading · 4 Results. Each step is done (a filled check), current (the brand ring) or still ahead (a quiet number), with one short note ("25 questions", "Open until 15 Nov", "4 answers wait for grading", "After the exam ends", "Students can see them"). The current step is the step of the next action (`hubCurrentStep`); an online exam already sent stays on step 2 while scheduled and waits on step 3 once open. The current step carries the ONE primary button; every other action is a quiet ghost link under "Other actions". Wide windows (from 1040 px) show it beside the list; on a phone a tap opens it as its own page (`HubExamPage`), which reads the hub's list through a listenable so a flow started there shows its result there.
+
+**Consequences.** `_flow` reloads once the page the flow started from is back on top (the hub, or the exam's page): `HubBackOn`.
+
+## D-703 — "Needs you now" cards replace the status strip · 2026-11-13 · accepted
+
+**Context.** The sky status strip showed bare counts ("Not graded 3") whose meaning and way in were not obvious.
+
+**Decision.** One card per thing the teacher owes, only when its count is above 0, most urgent first, each a sentence and one action: "1 exam has answers waiting for your grading → Grade now", "The grading of 1 exam is not finished → Continue grading", "2 exams are graded; students cannot see the results yet → Publish results", "3 drafts are not finished → Continue" (`hubAttentionText` / `hubAttentionAction`, `countText` in both languages). A card for ONE exam opens that exam's step straight away; for several it narrows the list to them across stages ("Showing: Results not published · Show all" stands in for the tabs, the card is outlined). On a phone the cards are lines of one card, so the list still shows under them. The drafts card needs no `grading` and so shows on an older server too; nothing is drawn when nothing is owed.
+
+**Why it differs from the brief.** The brief's "1 paper batch is being read…" has no count in the list (a batch's reading state lives in the scan screens); the in-progress grading card covers exams whose papers are being worked on instead.

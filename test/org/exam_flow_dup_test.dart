@@ -29,11 +29,12 @@ void main() {
     expect(hubCanDuplicate(_e(1, run: 'bubble')), isFalse);
   });
 
-  test('the Creation menu offers Duplicate, the other lists do not', () {
-    expect(hubMoreActions(_e(1), HubSurface.creation), contains(HubAction.duplicate));
-    expect(hubMoreActions(_e(1, status: 'draft'), HubSurface.creation), contains(HubAction.duplicate));
-    expect(hubMoreActions(_e(1, run: 'essay'), HubSurface.creation), isNot(contains(HubAction.duplicate)));
-    expect(hubMoreActions(_e(1, status: 'closed'), HubSurface.results), isNot(contains(HubAction.duplicate)));
+  test('the ⋯ menu of every exam offers Duplicate, except a grading run and the archive (D-701)', () {
+    expect(hubMenuActions(_e(1)), contains(HubAction.duplicate));
+    expect(hubMenuActions(_e(1, status: 'draft')), contains(HubAction.duplicate));
+    expect(hubMenuActions(_e(1, status: 'closed')), contains(HubAction.duplicate));
+    expect(hubMenuActions(_e(1, run: 'essay')), isNot(contains(HubAction.duplicate)));
+    expect(hubMenuActions(_e(1, status: 'archived')), isNot(contains(HubAction.duplicate)));
     expect(hubActionLabel(HubAction.duplicate), 'Duplicate');
     AppConfig.lang = 'ar';
     expect(hubActionLabel(HubAction.duplicate), 'نسخ الاختبار');
