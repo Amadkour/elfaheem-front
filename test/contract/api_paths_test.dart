@@ -23,12 +23,6 @@ const knownMissing = <String, String>{
   // fallback for an older backend: tried only after GET /api/v1/my-enrolled-courses answers 404
   'GET /api/v1/my-enrollments': 'legacy fallback route (student_analytics_api.dart fetchMyEnrollments)',
   // the paper exam flow (D-697 over the back's OFFLINE_FLOW_CONTRACT.md §2 / §3, branch of/b)
-  'PUT /api/v1/exam/exams/{}/offline-plan': 'offline-flow back pending merge',
-  'GET /api/v1/exam/exams/{}/attributes': 'offline-flow back pending merge',
-  'POST /api/v1/exam/exams/{}/attributes': 'offline-flow back pending merge',
-  'PUT /api/v1/exam/exams/{}/attributes/{}': 'offline-flow back pending merge',
-  'POST /api/v1/exam/exams/{}/attributes/{}/file': 'offline-flow back pending merge',
-  'GET /api/v1/exam/exams/{}/attributes/{}/values': 'offline-flow back pending merge',
 };
 
 void main() {
