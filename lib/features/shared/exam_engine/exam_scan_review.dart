@@ -459,6 +459,18 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
           AppSectionTitle(t('الصفحات الممسوحة', 'Scanned pages')),
           if (pages == null) const AppListSkeleton(items: 4),
           if (pages != null && pages.isEmpty) AppEmpty(icon: Icons.document_scanner_outlined, title: t('لا توجد أوراق ممسوحة بعد', 'No scanned pages yet')),
+          if (pages != null && pages.any((p) => p.retakeWarnings.isNotEmpty)) ...[
+            ScanFileList(
+              key: const ValueKey('scan.pages.retake'),
+              title: t('أعد تصوير هذه الصفحات', 'Retake these pages'),
+              rows: [
+                for (final p in pages)
+                  if (p.retakeWarnings.isNotEmpty) (p.fileName ?? '#${p.id}', p.retakeWarnings.map(qualityWarningText).join(t('، ', '; '))),
+              ],
+              color: appInkOn(context, c.warning, c.cardBg),
+            ),
+            const SizedBox(height: 10),
+          ],
           for (final p in pages ?? const <ScanPageInfo>[])
             AppCard(
               margin: const EdgeInsets.only(bottom: 10),

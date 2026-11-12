@@ -254,6 +254,9 @@ class ScanPageInfo {
 
   bool get unmatched => status == 'unmatched';
 
+  /// The warnings that ask for this page to be photographed again.
+  List<String> get retakeWarnings => [for (final w in warnings) if (kRetakeWarnings.contains(w)) w];
+
   factory ScanPageInfo.fromJson(Map<String, dynamic> j) {
     final ocr = j['ocr'] is Map ? asMap(j['ocr']) : <String, dynamic>{};
     final regions = asMapList(ocr['regions']).isNotEmpty ? asMapList(ocr['regions']) : asMapList(j['regions']);
@@ -262,7 +265,7 @@ class ScanPageInfo {
       attemptId: j['attempt_id'] == null ? null : asInt(j['attempt_id']), fileName: j['file_name']?.toString(),
       regions: [for (final r in regions) OcrRegion.fromJson(r)],
       corrected: {for (final e in asMap(j['corrected']).entries) e.key: '${e.value}'},
-      warnings: [for (final w in (j['quality_warnings'] as List? ?? const [])) '$w'],
+      warnings: [for (final w in (j['quality_warnings'] is List ? j['quality_warnings'] as List : const [])) if (w != null && '$w'.isNotEmpty) '$w'],
     );
   }
 }
@@ -276,12 +279,20 @@ String scanStatusText(String s) => switch (s) {
       _ => s,
     };
 
+/// Page warnings that need a new photo (NB1 from a phone, D-690..D-693): they head the "Retake these pages" list.
+const kRetakeWarnings = {'sheet_marks_missing', 'cut_left', 'cut_right', 'cut_top', 'cut_bottom'};
+
 String qualityWarningText(String w) => switch (w) {
       'blurred' => t('الصورة مهتزة', 'The photo is blurred'),
       'too_dark' => t('الصورة مظلمة', 'The photo is too dark'),
       'too_bright' => t('الصورة شديدة الإضاءة', 'The photo is too bright'),
       'low_contrast' => t('التباين ضعيف', 'Low contrast'),
       'too_small' => t('الصورة صغيرة', 'The image is too small'),
+      'sheet_marks_missing' => t('أعد التصوير: لم تظهر مربعات الأركان وإطار الورقة', 'Retake: the corner squares and the sheet frame were not found'),
+      'cut_left' => t('أعد التصوير: الجانب الأيسر من الورقة خارج الصورة', 'Retake: the left side of the sheet is outside the photo'),
+      'cut_right' => t('أعد التصوير: الجانب الأيمن من الورقة خارج الصورة', 'Retake: the right side of the sheet is outside the photo'),
+      'cut_top' => t('أعد التصوير: أعلى الورقة خارج الصورة', 'Retake: the top of the sheet is outside the photo'),
+      'cut_bottom' => t('أعد التصوير: أسفل الورقة خارج الصورة', 'Retake: the bottom of the sheet is outside the photo'),
       _ => w,
     };
 

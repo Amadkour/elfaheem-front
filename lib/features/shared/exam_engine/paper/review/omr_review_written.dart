@@ -91,12 +91,18 @@ class OmrWrittenReading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final children = <Widget>[];
+    final children = <Widget>[
+      // a new photo is needed: what was read is shown, never a mark to accept
+      if (item.retake) ...[
+        AppBanner(key: const ValueKey('omr.w.retake'), icon: Icons.photo_camera_outlined, color: c.warning, text: omrCodeText(item.code)),
+        const SizedBox(height: AppSpace.sm),
+      ],
+    ];
     if (item.kind == 'completion') {
       final blanks = item.blanks;
       final many = blanks.length > 1;
-      if (blanks.isEmpty) children.add(OmrAnswerText(text: item.writtenText, lang: item.lang));
-      for (final b in blanks) {
+      if (blanks.isEmpty || item.retake) children.add(OmrAnswerText(text: item.writtenText, lang: item.lang));
+      for (final b in item.retake ? const <OmrBlank>[] : blanks) {
         children.add(_BlankRow(blank: b, many: many, max: item.maxPoints / (blanks.isEmpty ? 1 : blanks.length), lang: item.lang));
         children.add(const SizedBox(height: AppSpace.sm));
       }
@@ -120,7 +126,7 @@ class OmrWrittenReading extends StatelessWidget {
           ..add(Text(omrConfidenceText(conf), style: appText(12.5, c: c.textMedium)));
       }
       children.add(const SizedBox(height: AppSpace.sm));
-      children.add(_ShortSuggestion(item: item));
+      if (!item.retake) children.add(_ShortSuggestion(item: item));
     }
     if (item.corrected) {
       children.add(Padding(

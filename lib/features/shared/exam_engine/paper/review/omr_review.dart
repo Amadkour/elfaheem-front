@@ -647,7 +647,11 @@ class OmrReviewItem {
   }
 
   /// The suggested score (null = no suggestion: the teacher sets the score).
-  double? get suggestedScore => _dbl(reading['suggested_score']);
+  double? get suggestedScore => retake ? null : _dbl(reading['suggested_score']);
+
+  /// The photo must be taken again (NB1 from a phone, D-690..D-693): the page was not located, or the answer box runs out
+  /// of the photo. Such an item never carries a suggested mark.
+  bool get retake => reading['retake'] == true || kOmrRetakeCodes.contains(code);
 
   /// The question's points on this paper.
   double get maxPoints => _dbl(reading['max']) ?? _dbl(reading['points']) ?? question?.points ?? 0;
@@ -1270,7 +1274,12 @@ String omrMarkerText(String marker) => switch (marker) {
     };
 
 /// The server's review codes (omr_common.REVIEW_TEXT) — used only when an item carries no sentence of its own.
+/// Written review items that ask for a new photo rather than a mark.
+const kOmrRetakeCodes = {'page_not_located', 'box_outside_photo'};
+
 String omrCodeText(String code) => switch (code) {
+      'page_not_located' => t('أعد التصوير: لم نجد الورقة في الصورة', 'Retake: the sheet could not be found in the photo'),
+      'box_outside_photo' => t('أعد التصوير: مربع الإجابة خارج الصورة جزئيًا', 'Retake: the answer box is partly outside the photo'),
       'identifier_no_match' => t('لا يوجد طالب بهذا الرقم', 'No student has this ID'),
       'identifier_duplicate' => t('أكثر من طالب لديهم هذا الرقم', 'More than one student has this ID'),
       'identifier_unclear' => t('تعذّرت قراءة رقم الطالب بثقة', 'The student ID could not be read with confidence'),

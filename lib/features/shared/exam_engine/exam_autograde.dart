@@ -114,6 +114,7 @@ class AutoGrade {
 /// The tier that decided, in words.
 String autoTierText(String tier) => switch (tier) {
       'empty' => t('إجابة فارغة', 'Empty answer'),
+      'key_verified' => t('الخط المكتوب طابق المفتاح', 'Handwriting matched the key'),
       'memory' => t('قرار سابق لك', 'Your earlier decision'),
       'exact' => t('مطابقة تامة', 'Exact match'),
       'fuzzy' => t('مطابقة مع خطأ إملائي', 'Match with a spelling slip'),
@@ -133,6 +134,7 @@ String autoTierHint(AutoGrade a) => switch (a.tier) {
       'embedding' => t('معناها قريب من الإجابة النموذجية', 'Its meaning is close to the model answer'),
       'nli' => t('النقاط حُسمت بالاستنتاج من النموذج', 'The points were settled by inference from the model answer'),
       'review' => t('لم تحسمها المراحل الآلية: الدرجة اقتراح فقط', 'The automatic steps did not settle it: the mark is only a suggestion'),
+      'key_verified' => t('صورة الإجابة تدعم إجابة المفتاح، فحُسمت دون مراجعة', 'The answer image supports the key, so it was settled without review'),
       _ => '',
     };
 
