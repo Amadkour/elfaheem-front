@@ -416,10 +416,14 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   Color get _lightInk => _model?.textLight ?? AppTheme.textLight;
 
-  /// Peach: learning / progress blocks (`accent`).
+  /// Peach: learning / progress blocks (`accent`). Dark mode (D-863) is a quiet rosewood (about #352723 for the
+  /// production blush): the hue of the light block at a lower saturation than [darkBlock]'s 0.3, which turned a
+  /// warm accent1 into a rust / caramel slab.
   Color get blockPeach {
     final light = blockSurface(accent, _lightInk);
-    return isDark ? darkBlock(light) : light;
+    if (!isDark) return light;
+    final h = HSLColor.fromColor(light);
+    return HSLColor.fromAHSL(1, h.hue, math.min(h.saturation, 0.2), 0.17).toColor();
   }
 
   /// Sage (the `sky` tone's new colour, D-630): schedule / information / calm empty blocks (`accent3`). Dark mode
@@ -597,8 +601,8 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   // ── Brand gradients (D-136) ────────────────────────────────────────────
   // Derived from the primary family the server already sends (primary_light → primary → primary_dark), never from
-  // the server's `gradient_primary`: that one is built from the two ACCENT colours and painted every "brand" tab,
-  // pill and hero gold / olive (M22). The optional `primary_gradient_start` / `primary_gradient_end` keys replace
+  // the server's `gradient_primary`: that one was built from the two ACCENT colours and painted every "brand" tab,
+  // pill and hero gold / olive (M22; primary_dark → primary since D-864, kept for old apps). The optional `primary_gradient_start` / `primary_gradient_end` keys replace
   // the outer stops when a theme sends them. Every stop keeps the on-hero ink (button labels, hero titles) at WCAG AA
   // (4.5:1): the light stop moves toward primary_light only as far as that holds, so the light end is a sheen, not a
   // pale corner under white text. 135° (top-start → bottom-end), mirrored in Arabic. Flat [primary] stays THE colour

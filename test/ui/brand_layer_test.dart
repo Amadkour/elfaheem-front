@@ -1,7 +1,7 @@
-// D-649 / D-650: the brand gradient layer (the green sidebar under its cream wash, the primary → cream button, the
+// D-649 / D-650: the brand gradient layer (the green sidebar deepening toward its foot, the primary → lifted-green button (D-863), the
 // gold highlight CTA, the forest → emerald hero) is derived from the server's theme roles, and every ink reaches WCAG
 // AA where it actually sits, in both modes — for the built-in palette, the production palette and an awkward palette
-// (a pale primary_light, a dark text-safe gold). The button's cream end is placed past the label, so the label is
+// (a pale primary_light, a dark text-safe gold). The button's lighter end is placed past the label, so the label is
 // checked along its real span in real buttons (short and long labels, full width, Arabic and English).
 import 'dart:convert';
 import 'dart:io';
@@ -50,7 +50,11 @@ void main() {
         // the green part
         expect(BrandLayer.sideStops, [0, 0.6, 1]);
         expect(l.sidebar[0], l.sidebar[1], reason: 'solid green to 60 %');
-        if (!dark) expect(l.sidebar.last, t.accent.withValues(alpha: 1), reason: 'the cream end is accent1');
+        // D-863: the foot is a deeper shade of the same green, never accent1
+        expect(l.sidebar.last, isNot(t.accent.withValues(alpha: 1)), reason: 'no cream end');
+        expect((HSLColor.fromColor(l.sidebar.last).hue - HSLColor.fromColor(l.sidebar.first).hue).abs(), lessThan(1),
+            reason: 'one green');
+        expect(relativeLuminance(l.sidebar.last), lessThan(relativeLuminance(l.sidebar.first)), reason: 'deeper');
         final side = l.sideSurfaces;
         aa(l.sideInk, [...side, for (final s in side) over(l.sideActiveFill, s)], 'sidebar ink');
         aa(l.sideMuted, side, 'section label');
@@ -69,7 +73,7 @@ void main() {
           aa(k.activeInk, k.activeSurfaces, 'open item at $y');
           aa(k.indicator, k.activeSurfaces, 'bar at $y', min: 3);
           if (y <= 0.6 * 860) expect(k.onCream, isFalse, reason: 'the green part keeps the on-hero ink at $y');
-          if (y >= 0.9 * 860) expect(k.onCream, isTrue, reason: 'the cream part takes the dark ink at $y');
+          expect(k.onCream, isFalse, reason: 'the all-green panel keeps the on-hero ink at $y (D-863)');
         }
         // the open tab's ink stays the cream (accent1) itself
         expect(l.sideActiveInk, t.accent.withValues(alpha: 1));
@@ -82,8 +86,9 @@ void main() {
           aa(l.buttonInk, BrandLayer.gradientSamples(g[0], g[1], 9), 'white under the label');
         }
         expect(HSLColor.fromColor(l.button.first).hue, inInclusiveRange(140, 180), reason: 'the green stop');
-        if (!dark) expect(l.button.last, t.accent.withValues(alpha: 1), reason: 'the cream stop is accent1');
-        expect(relativeLuminance(l.button.last), greaterThan(0.5), reason: 'the end is a light cream');
+        // D-863: the end is a lift of the same green (no cream)
+        expect(l.button.last, isNot(t.accent.withValues(alpha: 1)), reason: 'no cream stop');
+        expect(HSLColor.fromColor(l.button.last).hue, inInclusiveRange(140, 180), reason: 'the end stays green');
 
         // the gold CTA: a DARK ink (white on gold fails)
         aa(l.goldInk, [...l.gold, ...l.goldHover, ...l.goldPressed], 'gold label');

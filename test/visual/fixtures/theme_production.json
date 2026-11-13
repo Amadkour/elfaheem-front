@@ -7,10 +7,10 @@
  "charcoal_light": "#46544D",
  "charcoal_dark": "#151F1A",
  "success": "#43B85A",
- "danger": "#E5484D",
+ "danger": "#E0245E",
  "warning": "#F2A93B",
  "purple": "#7C6CE0",
- "accent2": "#C98A3D",
+ "accent2": "#D46A4C",
  "background": "#F1F4F0",
  "surface_card": "#FFFFFF",
  "card_bg": "#FFFFFF",
@@ -32,41 +32,41 @@
  "primary": "#0F7B5F",
  "primary_dark": "#0A5642",
  "primary_light": "#34A883",
- "light_primary": "#1F0F7B5F",
- "accent": "#F3E6C4",
- "primary_tint": "#1F0F7B5F",
+ "light_primary": "#0F0F7B5F",
+ "accent": "#FBE2D3",
+ "primary_tint": "#0F0F7B5F",
  "primary_tint_dark": "#330F7B5F",
  "primary_shadow_color": "#4C0F7B5F",
  "primary_shadow_color_dark": "#260F7B5F",
  "gradient_primary": [
-  "#F3E6C4",
-  "#C98A3D"
+  "#0A5642",
+  "#0F7B5F"
  ],
  "primary_slider_gradient": [
   "#0F7B5F",
-  "#F3E6C4"
+  "#34A883"
  ],
  "gradient_accent": [
-  "#0F7B5F",
-  "#F3E6C4"
+  "#D46A4C",
+  "#E39E8B"
  ],
  "gradient_accent2": [
   "#0F7B5F",
-  "#C98A3D"
+  "#D46A4C"
  ],
  "gradient_slider": [
   "#0F7B5F",
   "#0F7B5F",
-  "#F3E6C4"
+  "#0A5642"
  ],
  "gradient_light_slide_bar": [
   "#0F7B5F",
-  "#F3E6C4",
+  "#0A5642",
   "#0F7B5F"
  ],
  "gradient_dark_slide_bar": [
   "#0F7B5F",
-  "#F3E6C4",
+  "#0A5642",
   "#0F7B5F"
  ],
  "gradient_background": [
@@ -102,7 +102,7 @@
   "#26332D",
   "#46544D"
  ],
- "platform": "android",
+ "platform": "web",
  "is_active": true,
- "updated_at": "2026-10-10T11:52:44.886067+00:00"
+ "updated_at": "2026-11-13T15:33:10.466436+00:00"
 }

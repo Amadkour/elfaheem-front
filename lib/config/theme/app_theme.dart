@@ -125,7 +125,7 @@ class AppTheme {
     colors: [charcoal, charcoalLight, charcoal],
   );
   static const LinearGradient accentGradient = LinearGradient(
-    colors: [accent2, Color(0xFFF6E7C4)],
+    colors: [accent2, Color(0xFFE39E8B)],   // terracotta → a lighter terracotta (D-864; was a cream)
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

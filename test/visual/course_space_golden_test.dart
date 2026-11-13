@@ -62,10 +62,19 @@ Future<void> _loadFonts() async {
 }
 
 final _shot = GlobalKey();
+
+/// `VISUAL_THEME=production` paints with the production theme (test/visual/fixtures/theme_production.json) instead
+/// of the built-in palette; the files then end in `_prod`.
+final _prodTheme = Platform.environment['VISUAL_THEME'] == 'production';
+String get _prodTag => _prodTheme ? '_prod' : '';
 String tr(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
 Widget _host(Widget child, {required bool dark}) {
   final theme = ThemeConfigProvider(api: ApiClient());
+  if (_prodTheme) {
+    theme.debugUseColors(
+        jsonDecode(File('test/visual/fixtures/theme_production.json').readAsStringSync()) as Map<String, dynamic>);
+  }
   final rtl = AppConfig.lang == 'ar';
   return ThemeConfigScope(
     provider: theme,
@@ -118,7 +127,7 @@ Future<void> _render(WidgetTester tester, String name, Widget Function() build) 
           expect(tester.takeException(), isNull);
           await expectLater(
             find.byKey(_shot),
-            matchesGoldenFile('goldens/${name}_${size.width.toInt()}_${lang}_${dark ? 'dark' : 'light'}.png'),
+            matchesGoldenFile('goldens/${name}_${size.width.toInt()}_${lang}_${dark ? 'dark' : 'light'}$_prodTag.png'),
           );
         }
       }

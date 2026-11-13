@@ -190,6 +190,10 @@ class AppGradientText extends StatelessWidget {
 //     once into an image per (colour, mode, pixel ratio) and repeated by an image shader.
 // D-650 round 3: the sidebar / rail / auth panel are the 60 / 40 gradient top → bottom ([AppBrandPanel],
 // [BrandLayer.sideAt]); the doodle tile is 384 px of 256 glyphs (24 px grid, 10-20 px) at [AppBrandLayer.doodleAlpha].
+// D-863: no fill fades into accent1 any more (the production cream #F3E6C4 read as an old caramel at the end of every
+// button and down the sidebar). The button runs primary → a lift toward primary_light (dark mode: primary_light →
+// a step toward primary), the sidebar primary → a deeper shade of itself: one green each, the label's ink on every
+// stop. accent1 stays the open tab's ink and the plate behind dark ink on a light panel spot ([BrandLayer.cream]).
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// The resolved colours of the brand layer for one theme and mode. Read it through [AppBrandLayer.of]; widgets use
@@ -227,11 +231,12 @@ class BrandLayer {
     required this.textMedium,
     required this.primary,
     required this.primaryDark,
+    required this.cream,
   });
 
   /// The sidebar / rail / auth panel's three stops, top → bottom at [sideStops] (D-650 r3): the green (primary,
-  /// darkened only as far as the inks need), held solid to 60 %, then the blend to the cream end (accent1; in dark
-  /// mode a sand eased toward the card).
+  /// darkened only as far as the inks need), held solid to 60 %, then the blend to a deeper shade of that green
+  /// (D-863; it ran into accent1 before).
   final List<Color> sidebar;
 
   /// Where [sidebar]'s stops sit: the 60 / 40 rule.
@@ -298,6 +303,9 @@ class BrandLayer {
   final bool dark;
   final Color textDark, textMedium, primary, primaryDark;
 
+  /// accent1 (opaque): the open tab's ink on the green and the plate behind dark ink where a panel turns light.
+  final Color cream;
+
   /// The contrast every sidebar ink keeps: AA plus a small margin.
   static const double _sideMin = 4.6;
 
@@ -350,7 +358,8 @@ class BrandLayer {
     for (var round = 0; round < 200 && !greenReads(s0); round++) {
       s0 = _l(s0, 0.97);
     }
-    final sideEnd = dark ? Color.lerp(cream, c.cardBg, 0.3)! : cream;
+    // D-863: the green deepens toward the foot instead of fading into accent1 (darker only helps the light inks)
+    final sideEnd = _l(s0, dark ? 0.8 : 0.74);
     final sidebar = [s0, s0, sideEnd];
     final surfaces = [s0];
     final spots = [s0];
@@ -364,7 +373,9 @@ class BrandLayer {
     // just past the label, AppBrandFill — then the blend to cream. Dark mode starts from primary_light and ends on a
     // cream eased a little toward it ──
     final bStart = under(dark ? c.primaryLight : c.primary, _buttonMin);
-    final bEnd = dark ? Color.lerp(cream, bStart, 0.14)! : cream;
+    // D-863: the end is a lift of the same green (primary_light in light mode, a step back toward primary in dark),
+    // never accent1: one confident green, the label's ink still placed on the first two stops only
+    final bEnd = dark ? Color.lerp(bStart, c.primary, 0.45)! : Color.lerp(bStart, c.primaryLight, 0.55)!;
     final button = [bStart, bStart, bEnd];
     final buttonHover = [for (final s in button) c.heroEnd(s, 0.08)];
     final buttonPressed = [for (final s in button) c.heroEnd(s, 0.18)];
@@ -433,6 +444,7 @@ class BrandLayer {
       textMedium: c.textMedium,
       primary: c.primary,
       primaryDark: c.primaryDark,
+      cream: cream,
     );
   }
 
@@ -454,7 +466,7 @@ abstract final class AppBrandLayer {
         colors: s,
       );
 
-  /// The sidebar / rail / auth panel (D-650 r3): the green held to 60 %, then the blend to the cream, top → bottom
+  /// The sidebar / rail / auth panel (D-650 r3, D-863): the green held to 60 %, then a deeper green, top → bottom
   /// (the content of a tall card sits on the green; what sits lower picks its ink through [AppBrandInk]).
   static LinearGradient sidebar(BuildContext context) => LinearGradient(
         begin: Alignment.topCenter,
@@ -554,7 +566,7 @@ abstract final class AppBrandLayer {
     }
 
     var out = dark(under, null);
-    final cream = l.sidebar.last;
+    final cream = l.cream;
     for (var a = 0.2; out == null && a <= 1.0; a += 0.1) {
       final plate = cream.withValues(alpha: math.min(a, 1.0));
       out = dark(over(plate, under), plate);
@@ -563,7 +575,7 @@ abstract final class AppBrandLayer {
   }
 
   /// The brand gradient as a plain [LinearGradient], for a fill that carries NO text (the avatar's ring): solid
-  /// primary to 60 %, the cream at the end. A fill with a label is [buttonFill].
+  /// primary to 60 %, a lift of the same green at the end (D-863). A fill with a label is [buttonFill].
   static LinearGradient button(BuildContext context, {bool hover = false, bool pressed = false}) {
     final l = of(context);
     return LinearGradient(
@@ -574,8 +586,8 @@ abstract final class AppBrandLayer {
     );
   }
 
-  /// The primary button / the selected tab, pill or chip as a [Decoration] (D-650 r2): green under the label, cream
-  /// past it toward the end edge. Say where the label is: [span] (its measured width, from an [AppBrandLabel] around
+  /// The primary button / the selected tab, pill or chip as a [Decoration] (D-650 r2): green under the label, a
+  /// lifted green past it toward the end edge (D-863). Say where the label is: [span] (its measured width, from an [AppBrandLabel] around
   /// it), [content] (a fixed centred width, an icon's), or [pad] (the box hugs its label inside this padding).
   static AppBrandFill buttonFill(
     BuildContext context, {
