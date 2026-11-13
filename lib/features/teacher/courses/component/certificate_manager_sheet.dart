@@ -372,7 +372,7 @@ class _TemplatePane extends StatelessWidget {
               child: isLoading
                   ? const Center(child: AppLoadingIndicator())
                   : templateUrl != null
-                  ? Image.network(templateUrl!, fit: BoxFit.cover)
+                  ? Image.network(templateUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => Center(child: Icon(Icons.image_not_supported_outlined, color: context.colors.textLight)))
                   : Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,

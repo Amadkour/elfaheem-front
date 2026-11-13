@@ -1250,7 +1250,9 @@ class _EditCertificateTemplateCardState
                               ? Stack(
                                   fit: StackFit.expand,
                                   children: [
-                                    Image.network(_templateUrl!, fit: BoxFit.cover, excludeFromSemantics: true),
+                                    Image.network(_templateUrl!, fit: BoxFit.cover, excludeFromSemantics: true,
+                                        // a dead link shows the calm well, not Flutter's broken-image glyph
+                                        errorBuilder: (_, _, _) => Center(child: Icon(Icons.image_not_supported_outlined, color: context.colors.textLight))),
                                     // the corner that reads first in either direction (was a fixed right: in RTL too)
                                     PositionedDirectional(
                                       bottom: AppSpace.xs,
