@@ -130,8 +130,8 @@ class _ProfileBody extends StatelessWidget {
   }
 }
 
-/// The hero block (D-622): the person's one tinted surface — sky for a teacher (instructors wear sky), peach for
-/// anyone else — with the editorial name, the @username, the identity chips on paper and the teacher's figures,
+/// The hero block (D-622, D-713): the person's one tinted surface — the identity tone (a soft primary gradient) for
+/// everyone — with the editorial name, the @username, the identity chips on paper and the teacher's figures,
 /// which count up once (the reader hears the final value). A masthead row from [_wideFrom], a centred stack below.
 class _ProfileHero extends StatelessWidget {
   const _ProfileHero({required this.profile});
@@ -145,14 +145,13 @@ class _ProfileHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = profile;
     return RepaintBoundary(
       child: AppTilt(
         radius: AppRadius.block,
         maxTilt: 2.5,
         glare: true,
         child: AppBlock(
-          tone: p.isTeacher ? AppBlockTone.sky : AppBlockTone.peach,
+          tone: AppBlockTone.identity,
           hero: true,
           child: LayoutBuilder(builder: (context, box) => _body(context, box.maxWidth >= _wideFrom)),
         ),

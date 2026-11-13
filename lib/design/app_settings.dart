@@ -8,11 +8,16 @@
 //   AppSettingsGroup(title:, icon:, children:, danger:)
 //       an editorial group heading (the section face in ink, an optional quiet glyph) over a paper card of rows
 //       (the white card, one soft shadow, hairline dividers, D-632); `danger` tints the card for sign-out.
+//   AppSettingsGroup(title:, icon:, accent: c.purple, subtitle:, children:)
+//       a SECTION card (D-714): the heading moves inside the card under a tinted icon chip in [accent], and every row
+//       without a colour of its own wears the accent too (AppSettingsAccent). The profile page's sections.
+//   AppSettingsRule(child:)
+//       the hairline above a row, drawn only when the row has a height (a kill-switched row leaves no stray line).
 //   AppSettingsTile(icon:, label:, subtitle:, color:, trailing:, onTap:, badge:, featureKey:, keywords:)
 //       one 48 px (or taller) row: a faint icon well in the row's colour, label, optional subtitle, a count pill, a
 //       trailing widget or the direction-aware chevron. `featureKey` hides it with the kill switch (ParentComponent).
 //   AppSettingsHeader(name:, role:, email:, username:, imageUrl:, onEdit:)
-//       the profile hero: the page's one tinted block (peach) over plain values (kill switch `profile.header`;
+//       the profile hero: the page's one tinted block (identity, a soft primary gradient, D-713) over plain values (kill switch `profile.header`;
 //       `appRoleLabel` names the role).
 //   AppSettingsSearchable
 //       implement it on a custom row (CalendarEntryTile does) so the search can see it; a row that is not
@@ -57,6 +62,66 @@ String appRoleLabel(String role) =>
     role;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Section accent (D-714)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// The colour of the section around a row: an [AppSettingsGroup] with an `accent` provides it, and every
+/// [AppSettingsTile] inside that has no colour of its own (none, or the plain primary) wears it. Wrap a ready-made
+/// group in one to give it a section colour.
+class AppSettingsAccent extends InheritedWidget {
+  const AppSettingsAccent({super.key, required this.color, required super.child});
+
+  final Color color;
+
+  static Color? of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<AppSettingsAccent>()?.color;
+
+  @override
+  bool updateShouldNotify(AppSettingsAccent old) => old.color != color;
+}
+
+/// The hairline above a settings row, from where the row's text starts. Painted, not laid out: a row that draws
+/// nothing (a kill switch, a role that does not get it) leaves no line behind.
+class AppSettingsRule extends StatelessWidget {
+  const AppSettingsRule({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+        foregroundPainter: _RulePainter(
+          color: context.colors.divider,
+          start: AppSettingsTile.textStart,
+          end: AppSpace.md,
+          rtl: Directionality.of(context) == TextDirection.rtl,
+        ),
+        child: child,
+      );
+}
+
+class _RulePainter extends CustomPainter {
+  _RulePainter({required this.color, required this.start, required this.end, required this.rtl});
+
+  final Color color;
+  final double start, end;
+  final bool rtl;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.height < 1 || size.width <= start + end) return;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = AppBorder.hairline;
+    const y = AppBorder.hairline / 2;
+    final a = rtl ? end : start;
+    final b = rtl ? size.width - start : size.width - end;
+    canvas.drawLine(Offset(a, y), Offset(b, y), paint);
+  }
+
+  @override
+  bool shouldRepaint(_RulePainter old) => old.color != color || old.start != start || old.end != end || old.rtl != rtl;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Tile
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -78,7 +143,8 @@ class AppSettingsTile extends StatelessWidget implements AppSettingsSearchable {
   final String label;
   final String? subtitle;
 
-  /// Icon colour; the well is this colour at a faint tint. Default: primary.
+  /// Icon colour; the well is this colour at a faint tint. Default: the section's accent ([AppSettingsAccent]), else
+  /// primary. A row that passes the plain primary also takes the section's accent.
   final Color? color;
   final Widget? trailing;
   final VoidCallback? onTap;
@@ -104,7 +170,9 @@ class AppSettingsTile extends StatelessWidget implements AppSettingsSearchable {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final col = color ?? c.primary;
+    final section = AppSettingsAccent.of(context);
+    final own = color == null || color == c.primary ? null : color;
+    final col = own ?? section ?? c.primary;
     final n = badge ?? 0;
     final sub = subtitle;
     final row = InkWell(
@@ -123,7 +191,7 @@ class AppSettingsTile extends StatelessWidget implements AppSettingsSearchable {
               ),
               // the glyph darkened (lifted in dark mode) until it reads on the card; a brand row (no colour of its
               // own) wears the gradient glyph on its well (D-650 r3)
-              child: color == null
+              child: own == null && section == null
                   ? AppGradientIcon(icon, size: AppIconSize.md, on: [Color.alphaBlend(col.withValues(alpha: c.isDark ? 0.18 : 0.10), c.cardBg)])
                   : Icon(icon, size: AppIconSize.md, color: c.blockAccentInk(col, c.cardBg)),
             ),
@@ -180,6 +248,7 @@ class AppSettingsGroup extends StatelessWidget {
     this.subtitle,
     this.danger = false,
     this.spaceAbove = true,
+    this.accent,
   });
 
   final String title;
@@ -193,27 +262,31 @@ class AppSettingsGroup extends StatelessWidget {
   /// The editorial 32 above the heading; false for a group that starts its surface.
   final bool spaceAbove;
 
+  /// A section card (D-714): the heading sits inside the card under a tinted icon chip in this colour, and the rows
+  /// without a colour of their own wear it. Null: the editorial heading above a plain card.
+  final Color? accent;
+
   AppSettingsGroup copyWith({List<Widget>? children}) => AppSettingsGroup(
-      key: key, title: title, subtitle: subtitle, icon: icon, danger: danger, spaceAbove: spaceAbove, children: children ?? this.children);
+      key: key,
+      title: title,
+      subtitle: subtitle,
+      icon: icon,
+      danger: danger,
+      spaceAbove: spaceAbove,
+      accent: accent,
+      children: children ?? this.children);
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final sub = subtitle;
     final headInk = danger ? c.blockAccentInk(c.danger, c.background) : c.textDark;
-    final rows = <Widget>[];
-    for (var i = 0; i < children.length; i++) {
-      rows.add(children[i]);
-      if (i < children.length - 1) {
-        rows.add(Divider(
-          height: AppBorder.hairline,
-          thickness: AppBorder.hairline,
-          color: c.divider,
-          indent: AppSettingsTile.textStart,
-          endIndent: AppSpace.md,
-        ));
-      }
-    }
+    // the hairline between rows is painted on the row below, so a row that draws nothing leaves no line
+    final rows = <Widget>[
+      for (var i = 0; i < children.length; i++) i == 0 ? children[i] : AppSettingsRule(child: children[i]),
+    ];
+    final tone = accent;
+    if (tone != null && !danger) return _section(context, tone, rows);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Padding(
         padding: EdgeInsetsDirectional.fromSTEB(AppSpace.xxs, spaceAbove ? AppSpace.sectionHead.top : 0, AppSpace.xxs, AppSpace.sectionHead.bottom),
@@ -259,6 +332,66 @@ class AppSettingsGroup extends StatelessWidget {
   }
 
   static Widget _lifted(bool danger, Widget card) => danger ? card : AppLift(child: card);
+
+  /// The section card (D-714): a tinted icon chip, the title and the subtitle inside the card, then the rows.
+  Widget _section(BuildContext context, Color tone, List<Widget> rows) {
+    final c = context.colors;
+    final ink = c.blockAccentInk(tone, c.cardBg);
+    final dir = Directionality.of(context);
+    final sub = subtitle;
+    final head = Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xs),
+      child: Row(children: [
+        Container(
+          width: AppSettingsTile.well,
+          height: AppSettingsTile.well,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: AlignmentDirectional.topStart.resolve(dir),
+              end: AlignmentDirectional.bottomEnd.resolve(dir),
+              colors: [tone.withValues(alpha: c.isDark ? 0.34 : 0.20), tone.withValues(alpha: c.isDark ? 0.18 : 0.08)],
+            ),
+            borderRadius: AppRadius.chipAll,
+          ),
+          child: Icon(icon ?? Icons.circle_outlined, size: AppIconSize.md, color: ink),
+        ),
+        const SizedBox(width: AppSpace.sm),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Semantics(
+              header: true,
+              child: Text(title,
+                  maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.textDark)),
+            ),
+            if (sub != null && sub.isNotEmpty) ...[
+              const SizedBox(height: AppSpace.xxs / 2),
+              Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+            ],
+          ]),
+        ),
+      ]),
+    );
+    return Padding(
+      padding: EdgeInsets.only(top: spaceAbove ? AppSpace.lg : 0),
+      child: AppSettingsAccent(
+        color: tone,
+        child: AppLift(
+          child: Material(
+            color: c.cardBg,
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: AppShadow.cardEdge(context)),
+            clipBehavior: Clip.antiAlias,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              // a thin band of the section colour along the top edge: the card reads as one subject at a glance
+              Container(height: AppSpace.xxs, color: tone.withValues(alpha: c.isDark ? 0.55 : 0.45)),
+              head,
+              Padding(padding: const EdgeInsets.only(bottom: AppSpace.xxs), child: Column(children: rows)),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -292,7 +425,7 @@ class AppSettingsHeader extends StatelessWidget {
   Widget build(BuildContext context) => ParentComponent(
         featureKey: 'profile.header',
         child: AppBlock(
-          tone: AppBlockTone.peach,
+          tone: AppBlockTone.identity,
           hero: true,
           child: Builder(builder: _body),
         ),

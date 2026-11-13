@@ -203,7 +203,7 @@ class _WideLayout extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HERO  (the page's one block: sky, the instructors' tone)
+// HERO  (the page's one block: identity, a soft primary gradient, D-713)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// The teacher's hero block (D-622): the avatar on a paper ring, the name in the editorial face with the verified
@@ -229,7 +229,7 @@ class _InstructorHero extends StatelessWidget {
         maxTilt: 2.5,
         glare: true,
         child: AppBlock(
-          tone: AppBlockTone.sky,
+          tone: AppBlockTone.identity,
           hero: true,
           child: Builder(builder: (context) {
             final b = AppBlock.colorsOf(context);

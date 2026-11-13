@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/profile/components/setting_group.dart';
 import 'package:flutter_education_app/features/shared/profile/components/setting_title.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_hero.dart';
+import 'package:flutter_education_app/features/shared/profile/profile_screen.dart' show profileSectionColumns;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';
@@ -30,6 +31,42 @@ void main() {
         onEdit: () => edits++,
       )),
     );
+  });
+
+  testWidgets('figures and both actions (D-713)', (tester) async {
+    var shares = 0;
+    await expectNoLayoutErrors(
+      tester,
+      () => page(ProfileHero(
+        name: _longName,
+        role: 'teacher',
+        email: 'abdulrahman.mohammed.alsharif@a-very-long-school-domain.example.test',
+        username: 'abdulrahman',
+        onEdit: () {},
+        onShare: () => shares++,
+        stats: const [
+          ProfileHeroStat(icon: Icons.menu_book_rounded, value: '128', label: 'Courses and learning paths'),
+          ProfileHeroStat(icon: Icons.groups_rounded, value: '1250000', label: 'Students'),
+          ProfileHeroStat(icon: Icons.star_rounded, value: '4.9', label: 'Rating'),
+          ProfileHeroStat(icon: Icons.star_rounded, value: '9', label: 'A fourth figure is never drawn'),
+        ],
+      )),
+      act: (t) async {
+        expect(find.text('A fourth figure is never drawn'), findsNothing);
+        await t.tap(find.byIcon(Icons.ios_share_rounded));
+      },
+    );
+    expect(shares, greaterThan(0));
+  });
+
+  test('profile sections split into two columns of about the same height', () {
+    expect(profileSectionColumns([6, 4, 2, 4, 6, 7, 2], 1), [
+      [0, 1, 2, 3, 4, 5, 6],
+    ]);
+    final cols = profileSectionColumns([6, 4, 2, 4, 6, 7, 2], 2);
+    expect(cols.expand((c) => c).toList()..sort(), [0, 1, 2, 3, 4, 5, 6]);
+    double h(List<int> c) => c.fold(0.0, (a, i) => a + 1.5 + [6, 4, 2, 4, 6, 7, 2][i]);
+    expect((h(cols[0]) - h(cols[1])).abs(), lessThanOrEqualTo(8.5), reason: 'never more than one section apart');
   });
 
   testWidgets('no picture, no username, no edit', (tester) async {

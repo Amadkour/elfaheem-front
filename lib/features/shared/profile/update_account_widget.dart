@@ -516,7 +516,7 @@ class _MobileHero extends StatelessWidget {
     // the page's one tinted block (D-613): on a phone it sits under the status bar with the page gutter, beside the
     // form on a wide page
     final hero = AppBlock(
-      tone: AppBlockTone.peach,
+      tone: AppBlockTone.identity,
       hero: true,
       child: Builder(builder: (context) {
         final b = AppBlock.colorsOf(context);

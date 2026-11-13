@@ -91,6 +91,18 @@ Future<void> shareProfileLink(BuildContext context, {required String username, r
   await showAppShareSheet(context, url: profileUrl(username), title: name, subtitle: '@$username', kind: kind, icon: icon);
 }
 
+/// The signed-in user's @username when their profile has a public page to share (a teacher with a confirmed
+/// username, `auth.username` and the public link switched on); null otherwise. Watches the signed-in user.
+String? myShareableUsername(BuildContext context) {
+  final u = context.watch<MyAuthProvider>().currentUser;
+  final name = u?.username;
+  if (u == null || u.role != 'teacher' || name == null || name.isEmpty || !u.usernameConfirmed) return null;
+  if (AppConfig.disableList.contains(kUsernameFeatureKey) || AppConfig.disableList.contains(kPublicLinkFeatureKey)) {
+    return null;
+  }
+  return name;
+}
+
 /// "Share my profile link" in the teacher's Profile (D-074). Nothing for other roles, without a username, or while
 /// the username is still the auto-filled, unconfirmed one (it has no public page).
 class ShareMyProfileTile extends StatelessWidget {
@@ -98,12 +110,9 @@ class ShareMyProfileTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final u = context.watch<MyAuthProvider>().currentUser;
-    final name = u?.username;
-    if (u == null || u.role != 'teacher' || name == null || name.isEmpty || !u.usernameConfirmed) {
-      return const SizedBox.shrink();
-    }
-    if (AppConfig.disableList.contains(kUsernameFeatureKey)) return const SizedBox.shrink();
+    final name = myShareableUsername(context);
+    final u = context.read<MyAuthProvider>().currentUser;
+    if (u == null || name == null) return const SizedBox.shrink();
     return ParentComponent(
       featureKey: kPublicLinkFeatureKey,
       child: AppSettingsTile(
