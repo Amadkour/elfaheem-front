@@ -279,8 +279,11 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
     }
     final local = await StudioLocalStore.read(_storeKind, _item.id);
     if (!mounted) return;
-    final (doc, fromDevice) = studioPickProject(server: server, local: local, serverFailed: failed);
-    _rev = studioDocRev(server);
+    // unsent work here that another device has saved past: the person chooses below (D-831); mine shows meanwhile
+    final conflict = studioProjectConflict(server: server, local: local, serverFailed: failed);
+    final (doc, fromDevice) = conflict ? (local!.doc, true) : studioPickProject(server: server, local: local, serverFailed: failed);
+    // offline, the server's revision is unknown: the device copy's base is the last one seen (D-832)
+    _rev = failed || conflict ? (local?.base ?? 0) : studioDocRev(server);
     final h = doc == null ? null : StudioHistory.fromJson(doc, duration: _srcDur);
     setState(() {
       _projectReady = true;
@@ -291,6 +294,11 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
         _saveState = fromDevice ? StudioSaveState.local : StudioSaveState.saved;
       }
     });
+    if (conflict) {
+      if (h != null && h.steps.length >= 2) _fetchImages();
+      await _resolve(server, studioDocRev(server));
+      return;
+    }
     if (h == null || h.steps.length < 2) return;
     _fetchImages();
     if (fromDevice && !failed) _scheduleSave(); // send what the server never got
@@ -605,6 +613,9 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
     });
   }
 
+  /// The next save overwrites without a base: only after the person said so, when the other copy's revision is unknown.
+  bool _overwrite = false;
+
   Future<void> _saveOnce() async {
     final base = _rev;
     final doc = _doc(base + 1);
@@ -612,7 +623,8 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
     await StudioLocalStore.write(_storeKind, _item.id, doc, dirty: true, base: base);
     if (mounted) setState(() => _saveState = StudioSaveState.saving);
     try {
-      await _src.saveProject(_item.id, doc, base: base);
+      await _src.saveProject(_item.id, doc, base: _overwrite ? null : base);
+      _overwrite = false;
       _rev = doc == null ? 0 : base + 1;
       await StudioLocalStore.write(_storeKind, _item.id, null, dirty: false, base: 0);
       if (mounted) setState(() => _saveState = doc == null ? StudioSaveState.idle : StudioSaveState.saved);
@@ -634,17 +646,40 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
 
   /// The server holds a newer copy (another tab or device): keep mine or take theirs, never overwrite in silence.
   Future<void> _conflict(ApiException e) async {
-    final detail = e.body is Map && (e.body as Map)['detail'] is Map ? Map<String, dynamic>.from((e.body as Map)['detail'] as Map) : const <String, dynamic>{};
-    final theirs = detail['doc'] is Map ? Map<String, dynamic>.from(detail['doc'] as Map) : null;
-    final theirRev = studioDocRev(theirs);
+    final c = studioConflictOf(e.body); // a Map or a JSON string (D-832)
+    await _resolve(c.doc, c.rev);
+  }
+
+  /// Keep mine or open theirs ([theirs] at revision [theirRev]; null rev: the other copy could not be read). Nothing is
+  /// overwritten without a yes, and an unreadable answer never sets the revision (that looped a 409 on every save).
+  Future<void> _resolve(Map<String, dynamic>? theirs, int? theirRev) async {
+    _saveTimer?.cancel();
     final h = theirs == null ? null : StudioHistory.fromJson(theirs, duration: _srcDur);
-    final keepMine = h == null ||
-        await appConfirm(context,
-            message: t('عُدّل هذا المشروع في نافذة أو جهاز آخر (${h.steps.length - 1} خطوة). احتفظ بنسختك هنا، أو افتح النسخة الأخرى؟',
-                'This project was changed in another window or device (${h.steps.length - 1} steps). Keep your version here, or open the other one?'),
-            confirmLabel: t('احتفظ بنسختي', 'Keep mine'));
+    if (h == null) {
+      final overwrite = await appConfirm(context,
+          message: t('عُدّل هذا المشروع في نافذة أو جهاز آخر ولا يمكن فتح تلك النسخة هنا. أتستبدلها بنسختك؟',
+              'This project was changed in another window or device, and that version cannot be opened here. Replace it with yours?'),
+          danger: true,
+          confirmLabel: t('استبدلها بنسختي', 'Replace with mine'));
+      if (!mounted) return;
+      if (!overwrite) {
+        setState(() => _saveState = StudioSaveState.failed); // mine stays on this device, unsent, until the next change
+        return;
+      }
+      if (theirRev != null) {
+        _rev = theirRev;
+      } else {
+        _overwrite = true;
+      }
+      _scheduleSave();
+      return;
+    }
+    final keepMine = await appConfirm(context,
+        message: t('عُدّل هذا المشروع في نافذة أو جهاز آخر (${h.steps.length - 1} خطوة). احتفظ بنسختك هنا، أو افتح النسخة الأخرى؟',
+            'This project was changed in another window or device (${h.steps.length - 1} steps). Keep your version here, or open the other one?'),
+        confirmLabel: t('احتفظ بنسختي', 'Keep mine'));
     if (!mounted) return;
-    _rev = theirRev;
+    _rev = theirRev ?? studioDocRev(theirs);
     if (keepMine) {
       _scheduleSave(); // over theirs, now knowingly
       return;

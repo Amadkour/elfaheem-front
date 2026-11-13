@@ -181,5 +181,24 @@ void main() {
       expect(studioPickProject().$1, isNull);
       expect(studioDocRev({'rev': '7'}), 7);
     });
+
+    test('unsent work here that another device saved past is a choice, not a silent server win (D-831)', () {
+      final mine = StudioLocalCopy(doc: const {'rev': 5, 'v': 1}, dirty: true, base: 4);
+      expect(studioProjectConflict(server: {'rev': 9}, local: mine), isTrue);
+      expect(studioProjectConflict(server: {'rev': 4}, local: mine), isFalse, reason: 'the server did not move: mine opens');
+      expect(studioProjectConflict(server: {'rev': 9}, local: mine, serverFailed: true), isFalse);
+      expect(studioProjectConflict(server: {'rev': 9}, local: const StudioLocalCopy(doc: {'rev': 5}, dirty: false, base: 4)), isFalse);
+      expect(studioProjectConflict(server: null, local: mine), isFalse);
+    });
+
+    test('a 409 body is read as a Map or a JSON string; an unreadable one gives no revision (D-832)', () {
+      final asMap = studioConflictOf({'detail': {'code': 'project_conflict', 'doc': {'rev': 9, 'v': 1}}});
+      expect((asMap.rev, asMap.doc?['v']), (9, 1));
+      final asString = studioConflictOf('{"detail":{"code":"project_conflict","doc":{"rev":9,"v":1}}}');
+      expect(asString.rev, 9, reason: 'ApiException.body can be the raw JSON text');
+      final broken = studioConflictOf('<html>gateway</html>');
+      expect((broken.doc, broken.rev), (null, null), reason: 'never 0: that re-sent base 0 and looped a 409');
+      expect(studioConflictOf({'detail': {'code': 'project_conflict'}}).rev, isNull);
+    });
   });
 }

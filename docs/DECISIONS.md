@@ -4600,3 +4600,15 @@ A saved job used to take the whole inspector and turn every tool off until "Edit
 ## D-829 — Desktop keys of the redesigned Studio · 2026-11-13 · accepted
 
 Space · J / K / L · ← / → (Shift: a second) · I / O · S split · Delete · Alt+← / → move the selected part · Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y · Ctrl+S save now · Ctrl+E Export · Home / End · + / − · Esc closes the panel, then clears the selection. They work with any tool open (S and Delete needed the Edit tool before) and while an export runs; never while typing or with the Export panel open. The list is at the foot of the inspector.
+
+## D-830 — A clear never deletes a newer project (server) · 2026-11-13 · accepted
+
+An undo back to the original sends `doc: null`; `put_project` deleted the row before the revision check, so a tab that undid everything removed another device's newer save. The `base` check now runs first for every PUT, a clear included (409 `project_conflict` with the stored doc). `tests/org_v2/studio_project_rev_check.py`.
+
+## D-831 — Offline work that another device saved past opens a choice · 2026-11-13 · accepted
+
+A dirty device copy whose server copy has a higher `rev` than its `base` opened the server's and overwrote the local work. `studioProjectConflict` detects it; the Studio shows the device copy and asks Keep mine / Open the other, as on a 409 (one `_resolve`).
+
+## D-832 — Reading a 409 safely · 2026-11-13 · accepted
+
+The 409 body may be JSON text: `studioConflictOf` reads it through `ApiException.asMap`. When the other copy cannot be read, its revision is unknown (never 0, which looped a 409 on every save) and nothing is overwritten without a yes ("Replace with mine" saves once without `base`; No keeps mine unsent on the device). An offline open takes the device copy's `base` as the revision.

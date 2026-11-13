@@ -6,11 +6,13 @@
 //   The device copy   every save is written here FIRST (SharedPreferences, ≤ 512 KB like the server's), marked
 //                     `dirty` until the server has it. A lost connection, a closed tab or a crash keeps the work; the
 //                     next open sends it.
-//   studioPickProject which copy opens the Studio (pure, test/org/studio_project_test.dart).
+//   studioPickProject which copy opens the Studio; studioProjectConflict when the person must choose (D-831);
+//   studioConflictOf what a 409 carries (D-832). Pure: test/org/studio_project_test.dart.
 library;
 
 import 'dart:convert';
 
+import 'package:flutter_education_app/core/api_client.dart' show ApiException;
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// The device copy of one project.
@@ -38,6 +40,20 @@ int studioDocRev(Map<String, dynamic>? doc) {
   if (local != null && local.dirty && (serverFailed || server == null || studioDocRev(server) <= local.base)) return (local.doc, true);
   if (serverFailed && local != null) return (local.doc, true);
   return (server, false);
+}
+
+/// Unsent device work that the server has moved past (edited offline here, saved on another device since): neither copy
+/// may simply win — the person chooses, as on a 409 (D-831).
+bool studioProjectConflict({Map<String, dynamic>? server, StudioLocalCopy? local, bool serverFailed = false}) =>
+    !serverFailed && server != null && local != null && local.dirty && studioDocRev(server) > local.base;
+
+/// What a 409 project_conflict carries: the stored doc and its revision (null rev: the answer could not be read —
+/// the caller must not guess a revision from it, D-832). [body] may be a Map or a JSON string.
+({Map<String, dynamic>? doc, int? rev}) studioConflictOf(dynamic body) {
+  final m = ApiException.asMap(body);
+  final d = m == null ? null : (m['detail'] is Map ? m['detail'] as Map : m);
+  final doc = d != null && d['doc'] is Map ? Map<String, dynamic>.from(d['doc'] as Map) : null;
+  return (doc: doc, rev: doc == null ? null : studioDocRev(doc));
 }
 
 abstract final class StudioLocalStore {
