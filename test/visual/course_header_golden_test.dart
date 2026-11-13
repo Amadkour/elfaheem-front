@@ -234,7 +234,7 @@ Widget _page(_Role role) => Builder(
                 : CourseSpaceBadge(label: tr('منشور', 'Published'), icon: Icons.public_rounded),
           CourseSpaceBadge(label: tr('دروس مسجّلة', 'Recorded lessons'), icon: Icons.play_circle_outline_rounded),
         ],
-        teacherName: teacher ? null : tr('د. سارة الحسيني', 'Dr. Sara El-Husseini'),
+        teacherName: tr('د. سارة الحسيني', 'Dr. Sara El-Husseini'),
         onTeacher: teacher ? null : () {},
         stats: stats,
         progress: role == _Role.enrolled ? 0.38 : null,

@@ -97,93 +97,50 @@ class CourseSpaceHero extends StatelessWidget {
 
   CourseSpaceCta? get _cta => showCta && data.cta != null && !data.cta!.isEmpty ? data.cta : null;
 
-  /// Phone: the cover full bleed with the chrome on it as glass, the block overlapping its foot by [AppSpace.xl]
-  /// (a caption card on a magazine cover); without a cover, the chrome on the canvas and the block under it. The
-  /// picture is shown whole (contained over a blurred copy of itself) in the part the block does not cover.
+  /// Phone / tablet (D-944): the chrome on the canvas, then ONE block — the cover framed whole at 16:9 at its top
+  /// (nothing ever sits on the picture), the text, the stats, the progress and the call to action under it.
   Widget _narrow(BuildContext context, double w) {
     final top = MediaQuery.paddingOf(context).top;
-    final block = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: kCourseGutter),
-      child: AppBlock(
-        tone: data.tone,
-        hero: true,
-        wash: true,
-        padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.lg),
-        child: _HeroInfo(data: data, cta: _cta, wide: false, statsInline: true),
-      ),
-    );
-    if (!_hasCover) {
-      return Padding(
-        padding: EdgeInsets.only(top: top),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: kCourseGutter, vertical: AppSpace.xs),
-              child: _bar(onCover: false),
-            ),
-            const SizedBox(height: AppSpace.xxs),
-            block,
-          ],
-        ),
-      );
-    }
-    // the picture's own 16:9 plus the strip the block overlaps, so a 16:9 cover fills the width uncut
-    final coverH = (w * 9 / 16).clamp(180.0, 340.0) + AppSpace.xl + top;
-    final c = context.colors;
-    return Stack(
-      children: [
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          height: coverH,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              background ??
-                  CourseCover(
-                    imageUrl: data.imageUrl,
-                    image: data.coverImage,
-                    parallax: true,
-                    inset: EdgeInsets.only(top: top, bottom: AppSpace.xl),
-                  ),
-              // a soft shade under the status bar and the chrome only: the glass buttons read on a light picture
-              IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      stops: const [0, 0.4],
-                      colors: [c.heroShade.withValues(alpha: 0.38), c.heroShade.withValues(alpha: 0)],
+    return Padding(
+      padding: EdgeInsets.only(top: top),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: kCourseGutter, vertical: AppSpace.xs),
+            child: _bar(onCover: false),
+          ),
+          const SizedBox(height: AppSpace.xxs),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: kCourseGutter),
+            child: AppBlock(
+              tone: data.tone,
+              hero: true,
+              wash: true,
+              padding: EdgeInsets.zero,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_hasCover)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(AppSpace.xs, AppSpace.xs, AppSpace.xs, 0),
+                      child: _CoverFrame(
+                        tilt: false,
+                        child: background ?? CourseCover(imageUrl: data.imageUrl, image: data.coverImage),
+                      ),
                     ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(AppSpace.lg, _hasCover ? AppSpace.md : AppSpace.lg, AppSpace.lg, AppSpace.lg),
+                    child: _HeroInfo(data: data, cta: _cta, wide: false, statsInline: true),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
-        ),
-        Positioned(
-          top: top + AppSpace.xxs,
-          left: AppSpace.xs,
-          right: AppSpace.xs,
-          child: _bar(onCover: true),
-        ),
-        Padding(
-          padding: EdgeInsets.only(top: coverH - AppSpace.xl),
-          child: DecoratedBox(
-            // the block floats over the picture: the one place this page lifts something
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppRadius.block),
-              boxShadow: AppElevation.of(context, 2),
             ),
-            position: DecorationPosition.background,
-            child: block,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -191,7 +148,7 @@ class CourseSpaceHero extends StatelessWidget {
   /// the cover framed at 16:9 beside it, then a hairline and the stats across the block's width.
   Widget _wide(BuildContext context, double w) {
     final side = _hasCover && w >= 720;
-    final coverW = (w * 0.36).clamp(260.0, 400.0);
+    final coverW = (w * 0.38).clamp(280.0, 520.0);
     final frame = !_hasCover
         ? null
         : _CoverFrame(child: background ?? CourseCover(imageUrl: data.imageUrl, image: data.coverImage));
@@ -242,16 +199,18 @@ class CourseSpaceHero extends StatelessWidget {
 /// The desktop cover: 16:9, the card radius, a hairline frame and a soft lift, the picture whole (CourseCover); a
 /// reel keeps its own controls and shows its play mark until it plays (CourseReelPlayer).
 class _CoverFrame extends StatelessWidget {
-  const _CoverFrame({required this.child});
+  const _CoverFrame({required this.child, this.tilt = true});
 
   final Widget child;
+  final bool tilt;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final radius = BorderRadius.circular(AppRadius.card);
-    return AppTilt.subtle(
-      radius: AppRadius.card,
+    final framed = MediaQuery.removePadding(
+      context: context,
+      removeTop: true,
       child: DecoratedBox(
         decoration: BoxDecoration(borderRadius: radius, boxShadow: AppElevation.of(context, 1)),
         child: ClipRRect(
@@ -270,6 +229,7 @@ class _CoverFrame extends StatelessWidget {
         ),
       ),
     );
+    return tilt ? AppTilt.subtle(radius: AppRadius.card, child: framed) : framed;
   }
 }
 
@@ -884,17 +844,17 @@ class _TeacherChip extends StatelessWidget {
   }
 }
 
-/// The hero's stats (D-940): a grid of equal cells — an icon in a small paper well, the value (a tabular figure that
-/// counts up once) over its label. No dividers, no underline: a cell with an action is a paper chip with a chevron.
-/// Desktop: one row across the block (each cell at most [_kStatMax]); phone: as many columns as fit (2 – 3).
+/// The hero's stats (D-940, D-945): equal tiles in balanced rows — one row across a wide block, 2 (or 3 when they
+/// divide evenly) per row on a phone, the last row's tiles sharing its width. A tile: the icon in a paper well, the
+/// value in the page-title type, the label as a caption; a tile with an action wears a hairline and a chevron.
 class _StatsGrid extends StatelessWidget {
   const _StatsGrid({required this.stats, required this.wide});
 
   final List<CourseSpaceStat> stats;
   final bool wide;
 
-  static const double _kStatMin = 92;
-  static const double _kStatMax = 220;
+  /// The narrowest a tile gets before the row breaks.
+  static const double _kTileMin = 150;
 
   @override
   Widget build(BuildContext context) {
@@ -907,16 +867,33 @@ class _StatsGrid extends StatelessWidget {
       builder: (context, box) {
         const gap = AppSpace.xs;
         final w = box.maxWidth;
+        final n = shown.length;
         final scale = MediaQuery.textScalerOf(context).scale(1);
-        var cols = (w / (_kStatMin * scale)).floor().clamp(1, shown.length);
-        // four in three columns leaves one alone: two by two reads calmer
-        if (shown.length == 4 && cols == 3) cols = 2;
-        final cell = ((w - gap * (cols - 1)) / cols).clamp(0.0, wide ? _kStatMax : double.infinity);
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: [for (final s in shown) SizedBox(width: cell, child: _StatCell(stat: s))],
-        );
+        int cols;
+        if (w / n >= _kTileMin * scale) {
+          cols = n;
+        } else if (n % 3 == 0 && w / 3 >= (_kTileMin - AppSpace.xl) * scale) {
+          cols = 3;
+        } else {
+          cols = w >= (_kTileMin - AppSpace.xl) * 2 * scale ? 2 : 1;
+        }
+        final rows = <Widget>[];
+        for (var i = 0; i < n; i += cols) {
+          final part = shown.sublist(i, (i + cols).clamp(0, n));
+          if (rows.isNotEmpty) rows.add(const SizedBox(height: gap));
+          rows.add(IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final (j, st) in part.indexed) ...[
+                  if (j > 0) const SizedBox(width: gap),
+                  Expanded(child: _StatCell(stat: st)),
+                ],
+              ],
+            ),
+          ));
+        }
+        return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: rows);
       },
     );
   }
@@ -927,32 +904,25 @@ class _StatCell extends StatelessWidget {
 
   final CourseSpaceStat stat;
 
-  /// Below this width a cell drops its icon well: the icon sits small before the value, the label gets the width.
-  static const double _kCompact = 128;
-
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final b = AppBlock.colorsOf(context);
     final tappable = stat.onTap != null;
-    final iconInk = stat.tone == null ? b.muted : ensureContrast(stat.tone!, [c.cardBg], min: 3);
-    final value = AppCountUp(
-      stat.value,
-      memoryKey: 'course_hero.${stat.label}',
-      style: AppType.figure(context).copyWith(color: b.ink, height: 1.2),
-    );
-    final label = Text(
-      stat.label,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: AppType.meta(context).copyWith(color: tappable ? b.ink : b.muted),
-    );
-    final chevron = Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: b.muted);
-    final cell = LayoutBuilder(
-      builder: (context, box) {
-        if (box.maxWidth < _kCompact) {
-          return Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs, AppSpace.xs, AppSpace.xxs, AppSpace.xs),
+    final iconInk = stat.tone == null ? b.ink : ensureContrast(stat.tone!, [c.cardBg], min: 3);
+    final radius = BorderRadius.circular(AppRadius.control);
+    final cell = Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.xs, AppSpace.sm),
+      child: Row(
+        children: [
+          Container(
+            width: AppSpace.xl + AppSpace.xxs,
+            height: AppSpace.xl + AppSpace.xxs,
+            decoration: BoxDecoration(color: b.surface, borderRadius: BorderRadius.circular(AppRadius.chip)),
+            child: Icon(stat.icon, size: AppIconSize.md, color: iconInk),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -960,67 +930,46 @@ class _StatCell extends StatelessWidget {
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: AlignmentDirectional.centerStart,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(stat.icon, size: AppIconSize.xs, color: iconInk),
-                      const SizedBox(width: AppSpace.xxs + 1),
-                      value,
-                    ],
+                  child: AppCountUp(
+                    stat.value,
+                    memoryKey: 'course_hero.${stat.label}',
+                    // the figure role (sans, tabular): editorial serif digits and currency read poorly in Arabic
+                    style: AppType.figureLarge(context).copyWith(color: b.ink),
                   ),
                 ),
-                Row(
-                  children: [
-                    Flexible(child: label),
-                    if (tappable) chevron,
-                  ],
+                const SizedBox(height: AppSpace.xxs / 2),
+                Text(
+                  stat.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.meta(context).copyWith(color: tappable ? b.ink : b.muted),
                 ),
               ],
             ),
-          );
-        }
-        return Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs, AppSpace.xs, AppSpace.xxs, AppSpace.xs),
-          child: Row(
-            children: [
-              Container(
-                width: AppSpace.xl,
-                height: AppSpace.xl,
-                decoration: BoxDecoration(color: c.cardBg.withValues(alpha: tappable ? 1 : 0.72), shape: BoxShape.circle),
-                child: Icon(stat.icon, size: AppIconSize.sm, color: iconInk),
-              ),
-              const SizedBox(width: AppSpace.xs),
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.centerStart, child: value),
-                    label,
-                  ],
-                ),
-              ),
-              if (tappable) chevron,
-            ],
           ),
-        );
-      },
+          if (tappable) Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: b.muted),
+        ],
+      ),
     );
-    if (!tappable) return Semantics(label: '${stat.value} ${stat.label}', excludeSemantics: true, child: cell);
-    final radius = BorderRadius.circular(AppRadius.control);
+    final tile = Material(
+      color: c.cardBg.withValues(alpha: c.isDark ? 0.55 : 0.78),
+      shape: RoundedRectangleBorder(
+        borderRadius: radius,
+        side: BorderSide(color: tappable ? c.primary.withValues(alpha: 0.35) : c.cardEdge, width: AppBorder.hairline),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: tappable
+          ? InkWell(
+              onTap: stat.onTap,
+              child: ConstrainedBox(constraints: const BoxConstraints(minHeight: AppTouch.min), child: cell),
+            )
+          : cell,
+    );
     return Semantics(
-      button: true,
+      button: tappable,
       label: '${stat.value} ${stat.label}',
       excludeSemantics: true,
-      child: Material(
-        color: c.cardBg.withValues(alpha: 0.72),
-        shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: c.cardEdge, width: AppBorder.hairline)),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: stat.onTap,
-          child: ConstrainedBox(constraints: const BoxConstraints(minHeight: AppTouch.min), child: cell),
-        ),
-      ),
+      child: tile,
     );
   }
 }
@@ -1891,6 +1840,69 @@ class CourseActionList extends StatelessWidget {
           ),
           for (final a in shown) _ActionRow(action: a, onTap: a.onTap),
         ],
+      ),
+    );
+  }
+}
+
+/// Desktop (D-944): the course's shortcuts as ONE slim row of paper pills under the hero (icon · label · badge), so
+/// no side column is kept just for them. Wraps when they do not fit.
+class CourseActionRow extends StatelessWidget {
+  const CourseActionRow({super.key, required this.actions, this.title});
+
+  final List<CourseSpaceAction> actions;
+
+  /// The row's name for screen readers ("Course shortcuts").
+  final String? title;
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = _visibleActions(actions);
+    if (shown.isEmpty) return const SizedBox.shrink();
+    return Semantics(
+      container: true,
+      label: title ?? _t('اختصارات الكورس', 'Course shortcuts'),
+      child: Wrap(
+        spacing: AppSpace.xs,
+        runSpacing: AppSpace.xs,
+        children: [for (final a in shown) _keyed(a.featureKey, _ActionPill(action: a))],
+      ),
+    );
+  }
+}
+
+class _ActionPill extends StatelessWidget {
+  const _ActionPill({required this.action});
+
+  final CourseSpaceAction action;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final radius = BorderRadius.circular(AppRadius.pill);
+    return Tooltip(
+      message: action.caption ?? action.label,
+      child: Material(
+        color: c.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: c.cardEdge, width: AppBorder.hairline)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: action.onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppTouch.min),
+            child: Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xxs, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _ActionIcon(icon: action.icon, tone: action.color ?? c.primary, badge: action.badge, size: AppSpace.xl + AppSpace.xxs),
+                  const SizedBox(width: AppSpace.xs),
+                  Text(action.label, maxLines: 1, style: AppType.row(context)),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

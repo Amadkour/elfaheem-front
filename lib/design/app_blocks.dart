@@ -276,7 +276,7 @@ class AppBlock extends StatelessWidget {
     if (washed) {
       final c = context.colors;
       final dir = Directionality.maybeOf(context) ?? TextDirection.ltr;
-      final end = Color.lerp(colors.surface, c.cardBg, c.isDark ? 0.35 : 0.55)!;
+      final end = Color.lerp(colors.surface, c.cardBg, c.isDark ? 0.3 : 0.4)!;
       final glow = c.accent2.withValues(alpha: c.isDark ? 0.10 : 0.08);
       body = Ink(
         decoration: BoxDecoration(
@@ -314,7 +314,9 @@ class AppBlock extends StatelessWidget {
         color: forest || identity || washed ? Colors.transparent : colors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: radius,
-          side: colors.border == null ? BorderSide.none : BorderSide(color: colors.border!, width: AppBorder.hairline),
+          side: colors.border == null && !washed
+              ? BorderSide.none
+              : BorderSide(color: colors.border ?? context.colors.cardEdge, width: AppBorder.hairline),
         ),
         clipBehavior: Clip.antiAlias,
         child: body,

@@ -7,10 +7,11 @@
 //   phone / tablet (< 1000)   hero (the cover full bleed, the hero block overlapping its foot) → spotlight cards →
 //                             quick actions strip → PINNED tab bar → the active tab → footer, with an optional sticky
 //                             bottom bar (price + enroll).
-//   desktop (≥ 1000)          main column: hero (chrome on the canvas, ONE block: the text and the call to action
-//                             with the cover framed at 16:9 beside them, the stats under a hairline) → pinned tab
-//                             bar → the active tab → footer;
-//                             side column (sticky, own scroll): aside card → spotlight cards → quick actions list.
+//   desktop (≥ 1000)          ONE scroll (D-944): the hero across the FULL width (chrome pinned above it; ONE block:
+//                             the text and the call to action with the cover framed at 16:9 beside them, the stats
+//                             as a balanced row under a hairline) → the spotlight cards → the shortcuts as one slim
+//                             row → then two columns: pinned tab bar + the active tab + footer, and beside them the
+//                             aside card (only when there is one: no empty side column).
 //
 // Warm Editorial (D-610 – D-629): the hero block is the page's one memorable thing — the title in the editorial
 // serif, the figures that count up once and the emerald progress that fills; the spotlight cards rise in after it
@@ -384,9 +385,8 @@ class CourseSpace extends StatelessWidget {
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, box) {
       final w = box.maxWidth.isFinite ? box.maxWidth : MediaQuery.sizeOf(context).width;
-      final side = aside != null || spotlight.isNotEmpty || actions.isNotEmpty;
       if (w < wideAt) return _narrow(context, w);
-      return side ? _wide(context, w - kCourseAsideW) : _single(context, w);
+      return _wide(context, w);
     },
   );
 
@@ -417,51 +417,52 @@ class CourseSpace extends StatelessWidget {
     ],
   );
 
-  /// Desktop with nothing for the side column: one column, the hero as a rounded card.
-  Widget _single(BuildContext context, double w) => _withBar(_scroll(context, [
-    SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(kCourseGutter, AppSpace.xs, kCourseGutter, AppSpace.xs),
-        child: _heroWidget(rounded: true),
-      ),
-    ),
-    ..._tabSlivers(context, w),
-  ]));
-
-  Widget _wide(BuildContext context, double w) => _withBar(Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Expanded(
-        child: _scroll(context, [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(kCourseGutter, AppSpace.xs, AppSpace.xs, AppSpace.xs),
-              child: _heroWidget(rounded: true),
-            ),
-          ),
-          ..._tabSlivers(context, w),
-        ]),
-      ),
-      SizedBox(
-        width: kCourseAsideW,
-        child: SingleChildScrollView(
-          // level with the hero block (the bar is pinned above both columns)
-          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs, AppSpace.xs, kCourseGutter, kCourseGutter),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (aside != null) ...[aside!, const SizedBox(height: AppSpace.sm)],
-              if (spotlight.isNotEmpty) ...[
-                CourseSpotlightStack(children: _revealed(spotlight)),
-                const SizedBox(height: AppSpace.sm),
-              ],
-              if (actions.isNotEmpty) CourseActionList(actions: actions, title: actionsTitle),
-            ],
-          ),
+  /// Desktop (D-944): the hero, the spotlight cards and the shortcuts across the full width, then the tabs — with the
+  /// aside card beside them when the page has one (SliverCrossAxisGroup: one scroll, the tab bar still pinned).
+  Widget _wide(BuildContext context, double w) {
+    final side = aside != null;
+    return _withBar(_scroll(context, [
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(kCourseGutter, AppSpace.xs, kCourseGutter, 0),
+          child: _heroWidget(rounded: true),
         ),
       ),
-    ],
-  ));
+      if (spotlight.isNotEmpty)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(kCourseGutter, AppSpace.md, kCourseGutter, 0),
+            child: CourseSpotlightStack(children: _revealed(spotlight)),
+          ),
+        ),
+      if (actions.isNotEmpty)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(kCourseGutter, AppSpace.md, kCourseGutter, 0),
+            child: CourseActionRow(actions: actions, title: actionsTitle),
+          ),
+        ),
+      const SliverToBoxAdapter(child: SizedBox(height: AppSpace.sm)),
+      if (!side)
+        ..._tabSlivers(context, w)
+      else
+        SliverCrossAxisGroup(
+          slivers: [
+            SliverCrossAxisExpanded(
+              flex: 1,
+              sliver: SliverMainAxisGroup(slivers: _tabSlivers(context, w - kCourseAsideW)),
+            ),
+            SliverConstrainedCrossAxis(
+              maxExtent: kCourseAsideW,
+              sliver: SliverPadding(
+                padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs, AppSpace.xs, kCourseGutter, kCourseGutter),
+                sliver: SliverToBoxAdapter(child: aside),
+              ),
+            ),
+          ],
+        ),
+    ]));
+  }
 }
 
 class _TabBarDelegate extends SliverPersistentHeaderDelegate {

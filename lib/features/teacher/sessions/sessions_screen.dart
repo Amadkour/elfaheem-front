@@ -27,6 +27,7 @@ import 'package:flutter_education_app/features/shared/help/help_info_button.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
 import 'package:provider/provider.dart';
+import '../../auth/auth_provider.dart' show MyAuthProvider;
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
@@ -261,6 +262,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
     final hasReel = reel != null && reel.isNotEmpty && !AppConfig.disableList.contains('course_hero.reel');
     final live = course.type == 'live';
     final rate = course.rateSummary;
+    final me = context.read<MyAuthProvider>().currentUser;
     final hub = _hub;
     // Edit: the server's course_settings once the profile is known; the course's own teacher before that
     final canEdit = hub.profile?.caps.courseSettings ?? true;
@@ -274,6 +276,9 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
       category: course.category == null ? null : (ar ? course.category!.nameAr : course.category!.nameEn),
       isPrivate: course.isPrivate,
       privateLabel: 'course_hero_private'.tr,
+      // the teacher sees the course as students do: their own name and picture under the title (D-945)
+      teacherName: me?.name,
+      teacherImageUrl: me?.imageUrl,
       badges: [
         course.isPublished
             ? CourseSpaceBadge(label: _t('منشور', 'Published'), icon: Icons.public_rounded)
