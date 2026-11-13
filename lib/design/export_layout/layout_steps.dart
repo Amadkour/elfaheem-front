@@ -499,30 +499,7 @@ class LayoutFieldsEditor extends StatelessWidget {
     final picked = table ? [for (final col in d.table.columns) col.field.field] : [for (final b in d.list.fields) b.field];
     final order = [...picked, for (final x in f.allFields) if (!picked.contains(x.key)) x.key];
 
-    void rebalance() {
-      final cols = d.table.columns;
-      final sum = cols.fold<double>(0, (a, c) => a + c.width);
-      if (sum <= 0) return;
-      final k = d.page.contentWidth / sum;
-      for (final col in cols) {
-        col.width = mm(col.width * k);
-      }
-    }
-
-    void toggle(String key, bool on) {
-      final field = f.fieldOf(key)!;
-      if (table) {
-        if (on) {
-          d.table.columns.add(LayoutColumn(field: field.bind(lang: f.lang), width: d.page.contentWidth / (d.table.columns.length + 1), align: field.numeric ? 'end' : 'start', style: LayoutStyle(size: 9)));
-        } else {
-          d.table.columns.removeWhere((x) => x.field.field == key);
-        }
-        rebalance();
-      } else {
-        on ? d.list.fields.add(field.bind()) : d.list.fields.removeWhere((x) => x.field == key);
-      }
-      f.changed();
-    }
+    void toggle(String key, bool on) => f.toggleField(key, on, allLanguages: false);
 
     void reorder(int from, int to) {
       if (from >= picked.length) return;

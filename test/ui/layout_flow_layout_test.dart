@@ -6,7 +6,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/export_layout/layout_logic.dart';
 import 'package:flutter_education_app/design/export_layout/layout_model.dart';
+import 'package:flutter_education_app/design/export_layout/layout_flow_controller.dart';
 import 'package:flutter_education_app/design/export_layout/layout_page.dart';
+import 'package:flutter_education_app/design/export_layout/layout_start.dart';
 import 'package:flutter_education_app/design/studio/studio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -46,6 +48,22 @@ void main() {
   for (var step = 0; step < 4; step++) {
     testWidgets('table design, step ${step + 1}', (tester) async {
       await expectNoLayoutErrors(tester, () => ExportLayoutPage(export: layoutTestExport(), liveStream: kNoStream, saveFile: (_, _, _) async {}, initialStep: step), frames: 8);
+    });
+  }
+
+  // D-920: the start screen's summary, quick fields and every state of the run card (long file name, Arabic + English,
+  // the done card with the size and "Download again", the failure with "Try again")
+  for (final phase in [LayoutRunPhase.idle, LayoutRunPhase.running, LayoutRunPhase.done, LayoutRunPhase.failed, LayoutRunPhase.cancelled]) {
+    testWidgets('start screen: summary, quick fields, run card ${phase.name}', (tester) async {
+      await expectNoLayoutErrors(tester, () {
+        final f = LayoutFlowController(export: layoutTestExport())
+          ..setLanguages(const ['ar', 'en'])
+          ..phase = phase
+          ..savedName = 'كشف درجات طلاب الفصل الدراسي الأول للعام الجامعي_2026-11-14.pdf'
+          ..savedBytes = 1834567
+          ..runError = phase == LayoutRunPhase.failed ? 'Creating the file took too long: use fewer rows or a simpler design' : null;
+        return LayoutStartStep(flow: f);
+      });
     });
   }
 

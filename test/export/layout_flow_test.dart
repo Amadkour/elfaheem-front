@@ -414,8 +414,10 @@ void main() {
 
   testWidgets('quick path: a server starter and "Export now" run without opening the designer or asking for a preview', (tester) async {
     server.starters = [layoutTestStarter()];
-    await open(tester);
+    // a phone: no live preview pane on the start screen (a wide window shows one, see the next test)
+    await open(tester, size: const Size(390, 844));
     expect(server.posted['starters']!.single, {'purpose': 'export'});
+    await tester.scrollUntilVisible(find.byKey(const ValueKey('layout-starter-list2col')), 300, scrollable: find.byType(Scrollable).first);
     expect(find.byKey(const ValueKey('layout-starter-list2col')), findsOneWidget);
     expect(find.text('Two-column list'), findsOneWidget);
     await _tap(tester, find.byKey(const ValueKey('layout-starter-list2col')));
@@ -426,6 +428,28 @@ void main() {
     expect(design['mode'], 'list');
     expect((design['list'] as Map)['columns'], 2);
     expect(server.posted['preview'], isNull, reason: 'the quick path never renders a preview');
+    await close(tester);
+  });
+
+  testWidgets('start screen (D-920): the summary, the fields ticked for every language, the live preview on a wide window', (tester) async {
+    await open(tester);
+    final flow = flowOf(tester);
+    expect(find.byKey(const ValueKey('layout-summary')), findsOneWidget);
+    expect(find.textContaining('120 rows'), findsWidgets);
+    expect(find.byKey(const ValueKey('layout-preview-pane')), findsOneWidget, reason: 'the first page is drawn next to the choices');
+    await _until(tester, () => server.posted['preview'] != null, step: const Duration(milliseconds: 200));
+    expect(find.byKey(const ValueKey('layout-quick-fields')), findsOneWidget);
+    final before = flow.pickedFields;
+    final off = before.last;
+    await _tap(tester, find.byKey(ValueKey('layout-quick-field-$off')));
+    expect(flow.pickedFields, isNot(contains(off)));
+    await _tap(tester, find.byKey(const ValueKey('layout-lang-both')));
+    await _tap(tester, find.byKey(ValueKey('layout-quick-field-$off')));
+    for (final l in flow.doc.languages) {
+      final d = flow.doc.designs[l]!;
+      final keys = d.mode == 'table' ? [for (final c in d.table.columns) c.field.field] : [for (final b in d.list.fields) b.field];
+      expect(keys, contains(off), reason: 'the field is back in the $l design');
+    }
     await close(tester);
   });
 
@@ -581,7 +605,8 @@ void main() {
 
   testWidgets('while the rows are sent the run panel says how many; the progress shows rows done / in all', (tester) async {
     server.runSteps = 4;
-    await open(tester);
+    // a phone: no live preview has sent the rows already
+    await open(tester, size: const Size(390, 844));
     final flow = flowOf(tester);
     unawaited(flow.startRun());
     await tester.pump();

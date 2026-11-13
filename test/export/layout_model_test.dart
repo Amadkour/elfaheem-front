@@ -3,9 +3,13 @@
 import 'dart:convert';
 
 import 'package:flutter_education_app/design/export/table_export_model.dart';
+import 'package:flutter_education_app/design/export_layout/layout_flow_controller.dart';
 import 'package:flutter_education_app/design/export_layout/layout_logic.dart';
 import 'package:flutter_education_app/design/export_layout/layout_model.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'layout_fake.dart' show layoutTestExport;
 
 const _fields = [
   LayoutField(key: 'name', labelAr: 'الاسم', labelEn: 'Name'),
@@ -236,6 +240,49 @@ void main() {
         d.header.elements.add(LayoutElement(id: 'img$i', kind: 'image', value: 'asset$i', x: 0, y: 0, w: 1, h: 1));
       }
       expect(layoutLocalIssues(d, 'pdf').map((i) => i.code), ['assets_capped'], reason: 'at most 10 distinct images per document');
+    });
+  });
+
+  group('Export Studio v2 (D-920, D-921)', () {
+    const status = LayoutField(key: 'status', labelAr: 'الحالة', labelEn: 'Status', type: 'status', statusLabels: {
+      'ar': {'active': 'نشط', 'dropped': 'منسحب'},
+      'en': {'active': 'Active', 'dropped': 'Dropped'},
+    });
+    const any = LayoutField(key: 'kind', labelAr: 'النوع', labelEn: 'Kind', type: 'status', statusLabels: {'any': {'l': 'Lecture'}});
+    const plain = LayoutField(key: 'name', labelAr: 'الاسم', labelEn: 'Name');
+
+    test('value labels: per language, a single set for both, plain fields left out', () {
+      final v = layoutValueLabels([status, any, plain]);
+      expect(v.keys, ['status', 'kind']);
+      expect(v['status']!['ar'], {'active': 'نشط', 'dropped': 'منسحب'});
+      expect(v['status']!['en']!['dropped'], 'Dropped');
+      expect(v['kind'], {'ar': {'l': 'Lecture'}, 'en': {'l': 'Lecture'}});
+    });
+
+    test('a dataset run sends the value labels; the start screen ticks a field in every language', () async {
+      SharedPreferences.setMockInitialValues({});
+      final f = LayoutFlowController(export: layoutTestExport(dataset: 'course.students'), fieldsOverride: const [plain, status, LayoutField(key: 'score', labelAr: 'الدرجة', labelEn: 'Score', type: 'number')]);
+      expect(await f.ensureSource(), isNull);
+      final sent = f.doc.toJson();
+      expect((sent['value_labels'] as Map)['status'], {'ar': {'active': 'نشط', 'dropped': 'منسحب'}, 'en': {'active': 'Active', 'dropped': 'Dropped'}});
+      f.setLanguages(const ['ar', 'en']);
+      f.toggleField('score', false);
+      for (final l in ['ar', 'en']) {
+        expect([for (final c in f.doc.designs[l]!.table.columns) c.field.field], isNot(contains('score')), reason: l);
+      }
+      f.toggleField('score', true);
+      for (final l in ['ar', 'en']) {
+        final cols = f.doc.designs[l]!.table.columns;
+        expect([for (final c in cols) c.field.field], contains('score'), reason: l);
+        final sum = cols.fold<double>(0, (a, c) => a + c.width);
+        expect(sum, closeTo(f.doc.designs[l]!.page.contentWidth, 0.5), reason: 'the columns fill the width again ($l)');
+      }
+      // a table keeps at least one column
+      for (final k in [...f.pickedFields]) {
+        f.toggleField(k, false);
+      }
+      expect(f.pickedFields, hasLength(1));
+      f.dispose();
     });
   });
 }

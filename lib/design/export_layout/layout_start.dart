@@ -11,11 +11,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../../features/admin/admin_common.dart' show t;
+import '../app_contrast.dart';
 import '../app_kit.dart';
 import '../app_notice.dart';
 import '../app_tokens.dart';
-import '../export/export_studio_model.dart' show exportLtr;
-import '../export_hub/export_flow_parts.dart' show ExportFormatCard;
+import '../../core/plural.dart';
+import '../export/export_studio_model.dart' show exportLtr, exportSizeLabel;
+import '../export_hub/export_flow_parts.dart' show ExportFormatCard, exportFormatIconOf;
 import '../studio/studio.dart' show kStudioPaper;
 import 'layout_flow_controller.dart';
 import 'layout_steps.dart' show LayoutCardGrid, LayoutChoiceCard, LayoutSection;
@@ -171,8 +173,11 @@ class LayoutStartStep extends StatelessWidget {
     final gallery = flow.gallery;
     final selected = flow.selectedGalleryId;
     return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
-      // the export in progress is the first thing on the screen: it must never hide below the gallery
-      if (flow.phase != LayoutRunPhase.idle) LayoutRunPanel(key: const ValueKey('layout-start-run'), flow: flow),
+      // the export in progress (or its result) is the first thing on the screen: it must never hide below the gallery
+      if (flow.phase != LayoutRunPhase.idle)
+        LayoutRunPanel(key: const ValueKey('layout-start-run'), flow: flow)
+      else
+        LayoutExportSummary(key: const ValueKey('layout-summary'), flow: flow),
       LayoutSection(title: t('صيغة الملف', 'File format'), children: [
         LayoutCardGrid(min: 104, children: [
           for (final f in formats)
@@ -191,6 +196,7 @@ class LayoutStartStep extends StatelessWidget {
           ]),
         ],
       ),
+      if (flow.quickFields) LayoutQuickFields(key: const ValueKey('layout-quick-fields'), flow: flow),
       LayoutSection(
         key: const ValueKey('layout-gallery'),
         title: t('اختر تصميمًا', 'Pick a design'),
@@ -220,6 +226,66 @@ class LayoutStartStep extends StatelessWidget {
         ],
       ),
     ]);
+  }
+}
+
+/// What will be exported, at a glance (the top of the start screen while nothing runs): the format's badge, the
+/// file's name and "8 rows · 4 fields · Arabic".
+class LayoutExportSummary extends StatelessWidget {
+  const LayoutExportSummary({super.key, required this.flow});
+  final LayoutFlowController flow;
+
+  @override
+  Widget build(BuildContext context) {
+    final f = flow;
+    final format = AppExportFormat.values.firstWhere((x) => x.ext == f.doc.format, orElse: () => AppExportFormat.pdf);
+    final langs = f.doc.languages;
+    final rows = f.export.rows.length;
+    final picked = f.pickedFields.length;
+    final meta = [
+      if (rows > 0) countText(rows, ar1: 'صف واحد', ar2: 'صفان', arFew: '$rows صفوف', arMany: '${layoutCount(rows)} صفًا', en1: '1 row', en: '${layoutCount(rows)} rows'),
+      if (picked > 0) countText(picked, ar1: 'حقل واحد', ar2: 'حقلان', arFew: '$picked حقول', arMany: '$picked حقلًا', en1: '1 field', en: '$picked fields'),
+      langs.length > 1 ? t('العربية والإنجليزية', 'Arabic and English') : (langs.first == 'ar' ? t('العربية', 'Arabic') : t('الإنجليزية', 'English')),
+    ].join(' · ');
+    return LayoutStatusCard(
+      tone: ExportFormatCard.tone(format),
+      icon: exportFormatIconOf(format),
+      title: exportLtr(f.fileName),
+      titleKey: const ValueKey('layout-summary-name'),
+      message: meta,
+    );
+  }
+}
+
+/// The fields of a table / list design, ticked on the start screen (every language at once). The designer keeps the
+/// order, widths and alignment; here it is only what goes in the file.
+class LayoutQuickFields extends StatelessWidget {
+  const LayoutQuickFields({super.key, required this.flow});
+  final LayoutFlowController flow;
+
+  @override
+  Widget build(BuildContext context) {
+    final f = flow;
+    final c = context.colors;
+    final picked = f.pickedFields;
+    final all = f.allFields;
+    return LayoutSection(
+      title: t('الحقول', 'Fields'),
+      subtitle: t('ما يظهر في الملف. الترتيب والعرض من «تخصيص التصميم».', 'What goes in the file. Order and widths are in "Customize design".'),
+      trailing: Text('${picked.length} / ${all.length}', style: appText(12.5, w: FontWeight.w600, c: c.textMedium)),
+      children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+          for (final x in all)
+            FilterChip(
+              key: ValueKey('layout-quick-field-${x.key}'),
+              label: Text(x.label(f.lang), maxLines: 1, overflow: TextOverflow.ellipsis),
+              selected: picked.contains(x.key),
+              showCheckmark: true,
+              onSelected: (on) => f.toggleField(x.key, on),
+            ),
+        ]),
+      ],
+    );
   }
 }
 
@@ -253,8 +319,55 @@ String layoutCount(int n) {
   return b.toString();
 }
 
+/// A status card: a tinted badge, a title, a line under it, and actions (the summary, the run's progress and
+/// result share it so every state looks the same).
+class LayoutStatusCard extends StatelessWidget {
+  const LayoutStatusCard({super.key, required this.tone, required this.icon, required this.title, this.titleKey, this.message, this.messageKey, this.busy = false, this.children = const []});
+  final Color tone;
+  final IconData icon;
+  final String title;
+  final Key? titleKey, messageKey;
+  final String? message;
+  final bool busy;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ink = ensureContrast(tone, [c.cardBg, Color.alphaBlend(tone.withValues(alpha: .14), c.cardBg)]);
+    return AppCard(
+      margin: const EdgeInsets.only(bottom: AppSpace.md),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Container(
+            width: AppTouch.min,
+            height: AppTouch.min,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: tone.withValues(alpha: .14), borderRadius: AppRadius.chipAll),
+            child: busy
+                ? SizedBox(width: AppIconSize.md, height: AppIconSize.md, child: CircularProgressIndicator(strokeWidth: 2.4, color: ink))
+                : Icon(icon, color: ink, size: AppIconSize.lg),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, key: titleKey, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w700, c: c.textDark)),
+              if (message != null && message!.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(message!, key: messageKey, style: appText(12.5, c: c.textMedium)),
+              ],
+            ]),
+          ),
+        ]),
+        ...children,
+      ]),
+    );
+  }
+}
+
 /// The export in progress (or finished): what is happening, rows done / in all and the percentage, cancel, and a
-/// reminder that leaving the page lets the export finish in the background.
+/// reminder that leaving the page lets the export finish in the background; when it is done the file's name and
+/// size with "Download again"; when it failed or was stopped the reason with "Try again".
 class LayoutRunPanel extends StatelessWidget {
   const LayoutRunPanel({super.key, required this.flow});
   final LayoutFlowController flow;
@@ -275,38 +388,73 @@ class LayoutRunPanel extends StatelessWidget {
       LayoutRunPhase.preparing => f.uploading ? '${t('يرسل', 'Sending')} ${layoutCount(f.uploadCount)} ${t('صف إلى الخادم…', 'rows to the server…')}$upPct' : t('يجهّز التصدير…', 'Preparing the export…'),
       LayoutRunPhase.running => '${t('يُنشئ الملف', 'Creating the file')} · $rowsText$pct%',
       LayoutRunPhase.downloading => t('يُنزّل الملف…', 'Downloading the file…'),
-      LayoutRunPhase.done => '${t('تم الحفظ', 'Saved')}: ${exportLtr(f.savedName ?? '')}',
+      LayoutRunPhase.done => '${t('تم الحفظ', 'Saved')}: ${exportLtr(f.savedName ?? '')}${f.savedBytes == null ? '' : ' · ${exportLtr(exportSizeLabel(f.savedBytes!))}'}',
       LayoutRunPhase.failed => f.runError ?? '',
       LayoutRunPhase.cancelled => t('أُلغي التصدير', 'The export was cancelled'),
       LayoutRunPhase.idle => '${exportLtr(f.fileName)} · ${layoutCount(f.export.rows.length)} ${t('صف', 'rows')}',
     };
-    return LayoutSection(title: t('التصدير', 'Export'), children: [
-      Text(status, key: const ValueKey('layout-run-status'), style: appText(13, w: FontWeight.w500, c: phase == LayoutRunPhase.failed ? c.danger : c.textDark)),
-      if (f.busy) ...[
-        const SizedBox(height: AppSpace.sm),
-        ClipRRect(
-          borderRadius: AppRadius.chipAll,
-          child: LinearProgressIndicator(
-              value: phase == LayoutRunPhase.running ? pct / 100 : up, minHeight: 6, backgroundColor: c.divider, color: c.primary),
-        ),
-        const SizedBox(height: AppSpace.xs),
-        Text(
-          t('يمكنك مغادرة الصفحة: يستمر التصدير ويُحفظ الملف عند اكتماله.', 'You can leave this page: the export keeps going and the file is saved when it is ready.'),
-          key: const ValueKey('layout-run-hint'),
-          style: appText(12, c: c.textMedium),
-        ),
-        const SizedBox(height: AppSpace.sm),
-        OutlinedButton.icon(
-          key: const ValueKey('layout-run-cancel'),
-          onPressed: f.cancelRun,
-          icon: const Icon(Icons.close_rounded),
-          label: Text(t('إلغاء التصدير', 'Cancel the export')),
-          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(AppTouch.min)),
-        ),
-      ] else if (phase == LayoutRunPhase.done) ...[
-        const SizedBox(height: AppSpace.xs),
-        TextButton.icon(onPressed: f.downloadAgain, icon: const Icon(Icons.download_rounded), label: Text(t('تنزيل الملف مجددًا', 'Download the file again'))),
+    final (tone, icon, title) = switch (phase) {
+      LayoutRunPhase.done => (c.success, Icons.check_circle_rounded, t('ملفك جاهز', 'Your file is ready')),
+      LayoutRunPhase.failed => (c.danger, Icons.error_outline_rounded, t('تعذّر التصدير', 'The export did not finish')),
+      LayoutRunPhase.cancelled => (c.textMedium, Icons.block_rounded, t('توقّف التصدير', 'Export stopped')),
+      _ => (c.primary, Icons.hourglass_top_rounded, t('يُجهّز ملفك', 'Making your file')),
+    };
+    const minBtn = Size(AppTouch.min, AppTouch.min);
+    return LayoutStatusCard(
+      tone: tone,
+      icon: icon,
+      busy: f.busy,
+      title: title,
+      message: status,
+      messageKey: const ValueKey('layout-run-status'),
+      children: [
+        if (f.busy) ...[
+          const SizedBox(height: AppSpace.sm),
+          ClipRRect(
+            borderRadius: AppRadius.chipAll,
+            child: LinearProgressIndicator(
+                value: phase == LayoutRunPhase.running ? pct / 100 : up, minHeight: 6, backgroundColor: c.divider, color: c.primary),
+          ),
+          const SizedBox(height: AppSpace.xs),
+          Text(
+            t('يمكنك مغادرة الصفحة: يستمر التصدير ويُحفظ الملف عند اكتماله.', 'You can leave this page: the export keeps going and the file is saved when it is ready.'),
+            key: const ValueKey('layout-run-hint'),
+            style: appText(12, c: c.textMedium),
+          ),
+          const SizedBox(height: AppSpace.sm),
+          OutlinedButton.icon(
+            key: const ValueKey('layout-run-cancel'),
+            onPressed: f.cancelRun,
+            icon: const Icon(Icons.close_rounded),
+            label: Text(t('إلغاء التصدير', 'Cancel the export')),
+            style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(AppTouch.min)),
+          ),
+        ] else if (phase == LayoutRunPhase.done) ...[
+          const SizedBox(height: AppSpace.sm),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: FilledButton.tonalIcon(
+              key: const ValueKey('layout-run-again'),
+              onPressed: f.downloadAgain,
+              icon: const Icon(Icons.download_rounded),
+              label: Text(t('تنزيل الملف مجددًا', 'Download the file again')),
+              style: FilledButton.styleFrom(minimumSize: minBtn),
+            ),
+          ),
+        ] else if (phase == LayoutRunPhase.failed || phase == LayoutRunPhase.cancelled) ...[
+          const SizedBox(height: AppSpace.sm),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: FilledButton.tonalIcon(
+              key: const ValueKey('layout-run-retry'),
+              onPressed: () => f.startRun(),
+              icon: const Icon(Icons.refresh_rounded),
+              label: Text(phase == LayoutRunPhase.failed ? t('حاول مجددًا', 'Try again') : t('صدّر مجددًا', 'Export again')),
+              style: FilledButton.styleFrom(minimumSize: minBtn),
+            ),
+          ),
+        ],
       ],
-    ]);
+    );
   }
 }

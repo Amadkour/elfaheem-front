@@ -314,7 +314,9 @@ void main() {
       final s = exportLtr('الطلاب_2026-10-31.xlsx');
       expect(s.codeUnitAt(0), 0x2066);
       expect(s.codeUnitAt(s.length - 1), 0x2069);
-      expect(s.substring(1, s.length - 1), 'الطلاب_2026-10-31.xlsx');
+      expect(s.substring(1, s.length - 1).replaceAll(String.fromCharCode(0x2066), '').replaceAll(String.fromCharCode(0x2069), ''), 'الطلاب_2026-10-31.xlsx');
+      // the date is an isolate of its own: after Arabic letters its digits would otherwise read right to left
+      expect(s, contains('${String.fromCharCode(0x2066)}2026-10-31${String.fromCharCode(0x2069)}'));
     });
 
     test('Excel: group headings, subtotal and totals rows as numbers, label overrides, rule styles', () {

@@ -459,8 +459,13 @@ String exportPageKey(String id) {
 }
 
 /// [s] as a left-to-right isolate (LRI … PDI): a file name or "24 KB" keeps its order inside Arabic text
-/// ("الطلاب_2026-10-31.xlsx", not "xlsx.31-10-2026_الطلاب"; "5 KB", not "KB 5").
-String exportLtr(String s) => '${String.fromCharCode(0x2066)}$s${String.fromCharCode(0x2069)}';
+/// ("الطلاب_2026-10-31.xlsx", not "xlsx.31-10-2026_الطلاب"; "5 KB", not "KB 5"). Each run of digits is an isolate of
+/// its own too: digits right after Arabic letters are Arabic numbers to the bidi algorithm, and a date such as
+/// 2026-10-31 after "الطلاب_" read 31-10-2026 even inside the outer isolate (D-920).
+String exportLtr(String s) {
+  final lri = String.fromCharCode(0x2066), pdi = String.fromCharCode(0x2069);
+  return '$lri${s.replaceAllMapped(RegExp(r'[0-9](?:[0-9.:/-]*[0-9])?'), (m) => '$lri${m[0]}$pdi')}$pdi';
+}
 
 /// "24 KB" / "1.2 MB" for a byte count.
 String exportSizeLabel(int bytes) {

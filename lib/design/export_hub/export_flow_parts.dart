@@ -262,7 +262,8 @@ class _ExportFieldPickerState extends State<ExportFieldPicker> {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       Wrap(crossAxisAlignment: WrapCrossAlignment.center, alignment: WrapAlignment.spaceBetween, runSpacing: AppSpace.xxs, children: [
         Row(mainAxisSize: MainAxisSize.min, children: [
-          Text(xs('exs_fields_n', 'Fields', 'الحقول'), style: AppType.section(context)),
+          // the editorial section face is wide at text ×1.3: the title gives way, never the count
+          Flexible(child: Text(xs('exs_fields_n', 'Fields', 'الحقول'), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context))),
           const SizedBox(width: AppSpace.xs),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 2),

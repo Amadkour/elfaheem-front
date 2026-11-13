@@ -280,6 +280,42 @@ class LayoutFlowController extends ChangeNotifier {
     changed();
   }
 
+  /// The fields the current design prints, in order (table columns or list fields; empty for cards / pages).
+  List<String> get pickedFields => switch (design.mode) {
+        'table' => [for (final c in design.table.columns) c.field.field],
+        'list' => [for (final b in design.list.fields) b.field],
+        _ => const [],
+      };
+
+  /// True when the fields can be ticked on the start screen (a table or a list; cards are arranged in the designer).
+  bool get quickFields => design.mode == 'table' || design.mode == 'list';
+
+  /// Adds or removes field [key] in the table / list of every language's design ([allLanguages], the start screen) or
+  /// of the current one (the designer's field editor). A table re-shares its width so the columns keep filling it.
+  void toggleField(String key, bool on, {bool allLanguages = true}) {
+    final field = fieldOf(key);
+    if (field == null) return;
+    for (final l in allLanguages ? doc.languages : [lang]) {
+      final d = doc.designs[l];
+      if (d == null) continue;
+      if (d.mode == 'table') {
+        final has = d.table.columns.any((x) => x.field.field == key);
+        if (on && !has) {
+          d.table.columns.add(LayoutColumn(field: field.bind(lang: l), width: d.page.contentWidth / (d.table.columns.length + 1), align: field.numeric ? 'end' : 'start', style: LayoutStyle(size: 9)));
+        } else if (!on && has) {
+          if (d.table.columns.length <= 1) continue; // a table keeps one column
+          d.table.columns.removeWhere((x) => x.field.field == key);
+        }
+        layoutRebalanceColumns(d);
+      } else if (d.mode == 'list') {
+        final has = d.list.fields.any((x) => x.field == key);
+        if (on && !has) d.list.fields.add(field.bind());
+        if (!on && has && d.list.fields.length > 1) d.list.fields.removeWhere((x) => x.field == key);
+      }
+    }
+    changed();
+  }
+
   void setTab(String l) {
     if (!doc.languages.contains(l) || l == lang) return;
     lang = l;
@@ -696,7 +732,9 @@ class LayoutFlowController extends ChangeNotifier {
       _dirty = true;
     }
     _notify();
-    await Future.wait([loadTemplates(applyLast: !restoredDraft && !_explicitInitial), loadFonts(), loadStarters()]);
+    // every first request at once (they do not depend on each other): the start screen is ready one round trip later
+    final columns = loadDatasetFields();
+    await Future.wait([loadTemplates(applyLast: !restoredDraft && !_explicitInitial), loadFonts(), loadStarters(), columns]);
     if (!restoredDraft && templateId == null && !_explicitInitial) {
       final last = _usable((await _read(_lastDocKey))?['doc']);
       if (last != null && !_dirty) {
@@ -709,7 +747,6 @@ class LayoutFlowController extends ChangeNotifier {
         _notify();
       }
     }
-    await loadDatasetFields();
   }
 
   // ── templates ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -831,6 +868,13 @@ class LayoutFlowController extends ChangeNotifier {
     final ds = export.serverDataset;
     if (ds != null && ds.isNotEmpty) {
       doc.source = {'dataset': ds, 'params': {...?export.serverParams}};
+      // the server prints a status code in the file's language with the table's own labels (D-921)
+      final labels = layoutValueLabels(fields);
+      if (labels.isEmpty) {
+        doc.extra.remove('value_labels');
+      } else {
+        doc.extra['value_labels'] = labels;
+      }
       return null;
     }
     final l = valueLang;
@@ -966,6 +1010,9 @@ class LayoutFlowController extends ChangeNotifier {
   LayoutRunPhase phase = LayoutRunPhase.idle;
   LayoutRun? run;
   String? runError, savedName;
+
+  /// The saved file's size in bytes (the done card shows it).
+  int? savedBytes;
   LayoutRunWatch? _watch;
 
   /// The person left the page while the file was being made and chose to let it finish: the controller outlives the
@@ -1003,6 +1050,7 @@ class LayoutFlowController extends ChangeNotifier {
     phase = LayoutRunPhase.preparing;
     run = null;
     runError = null;
+    savedBytes = null;
     _notify();
     final err = await ensureSource();
     if (err != null) return _fail(err);
@@ -1054,6 +1102,7 @@ class LayoutFlowController extends ChangeNotifier {
       return _fail(AppConfig.lang == 'ar' ? 'تعذّر حفظ الملف' : 'Could not save the file');
     }
     savedName = name;
+    savedBytes = b.data!.length;
     phase = LayoutRunPhase.done;
     _notify();
     if (templateId != null) api.markUsed(templateId!);
