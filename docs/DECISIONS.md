@@ -4644,3 +4644,23 @@ The page (`lib/features/teacher/sessions/students/`) leads with four figures for
 
 The bell on an at-risk card nudges that student in one tap; a long press starts a selection (the check leads each card, a bottom bar says how many and nudges them); Nudge all is the card on top. No checkbox column on every card while not selecting: the page stays calm for reading.
 `appToneGlyph` (`lib/design/app_badges.dart`): an `AppStatusBadge` of tone danger wears `error_outline` and one of tone gold the trophy when the caller gives no icon (the glyph wins over `dot`); `appColorGlyph` does the same for the chips that take a raw colour (`StatusChip` in `admin_common.dart`, `OrgPill`) when that colour is the theme's danger or accent2 (ink or base). Callers that pass their own icon (a flame for a streak, a close for a delete) keep it. Comparison render: `documents/media/accent2_terracotta.png` (local, gitignored).
+
+## D-880 — Remove a picture next to changing it, at once, after a confirm · 2026-11-13 · accepted
+
+The course cover, the profile picture (account page, super admin's profile) and the course reel can be removed, not only replaced. `EditableImage` takes `onRemove` + `removeMessage`: its picture sheet (`ImageSourceSheet`) offers Gallery, Camera and, while a picture is shown, "Remove picture"; an `appConfirm` names what goes and what shows instead, then the stored picture is deleted on the server at once and `showAppNotice` says so (an unsaved pick is only dropped). At once rather than on Save, because "Remove" with a confirm reads as done; the form's other fields still wait for Save. The account is saved through `MyAuthProvider.saveUserLocally`, so headers, chat and the public profile show the initial straight away; the course list takes the answer through `onCourseUpdated` and the course page re-reads itself when the form closes. The organization logo uses its own picker and is not part of this; nor is the super admin's course side sheet.
+
+## D-881 — A stored file is deleted only when no row still names it · 2026-11-13 · accepted
+
+`../back/services/media_cleanup.py` (`still_used`, `delete_if_unused`) checks course covers and reels, account pictures and session materials before deleting a removed or REPLACED cover, reel or profile picture; a storage error never fails the request (the row is cleared either way). The course trash keeps its own check.
+
+## D-882 — `DELETE /courses/{id}/image`, the same permission as the upload · 2026-11-13 · accepted
+
+Clears `image_url` (harmless twice), answers the course; cards draw `CourseCoverArt`, the course page's hero `CourseCover`'s plate. The upload route now authorizes BEFORE touching storage: it used to delete the old cover before checking that the caller may edit the course.
+
+## D-883 — `DELETE /auth/me/image` for the signed-in account · 2026-11-13 · accepted
+
+Clears the account's own picture (no one else's: there is no id in the path), harmless twice, answers the account. Every avatar already falls back to the initial on a null / empty url (`AppAvatar`, `ChatAvatar`, `EditableImage(name:)`).
+
+## D-884 — The edit form shows the stored reel, so it can be removed · 2026-11-13 · accepted
+
+The course form built its `CourseReelController` with no url, so an existing reel was never shown in Edit and could only be overwritten. It now reads `reel_url` of `GET /courses/{id}` (`loadExisting`), and with the course id Remove deletes it at once (`removeNow`, `DELETE /courses/{id}/reel`); a course being created has no id and keeps the old mark-for-save. Without a reel the course page shows the cover and no preview (`showReel` / `hasReel` already require a url).

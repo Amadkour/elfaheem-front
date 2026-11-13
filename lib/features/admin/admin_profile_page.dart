@@ -27,6 +27,7 @@ import 'package:flutter_education_app/design/app_badges.dart';
 import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppCard, AppListSkeleton;
+import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_states.dart' show AppErrorState, appErrorMessage;
 import 'package:flutter_education_app/design/app_tokens.dart';
 
@@ -281,6 +282,20 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
             imageUrl: p.imageUrl,
             size: 104,
             isCircle: true,
+            name: name, // no photo: the initial, as every other avatar
+            onRemove: () async {
+              // Remove picture (D-880): a stored one is deleted at once, the account saved for every avatar
+              final auth = context.read<MyAuthProvider>();
+              try {
+                final updated = await p.removeImage();
+                if (updated != null) await auth.saveUserLocally(updated);
+                showAppNotice('avatar_removed'.tr);
+              } catch (e) {
+                showAppNotice(ApiException.from(e).message, error: true);
+              }
+              if (mounted) setState(() {});
+            },
+            removeMessage: 'avatar_remove_confirm'.tr,
           ),
           const SizedBox(height: AppSpace.sm),
           Text(

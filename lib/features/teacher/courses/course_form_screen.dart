@@ -100,6 +100,11 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   XFile? _logoFile;
   Uint8List? _logoBytes;
 
+  /// The stored cover was removed on this visit (D-880): the form shows the default cover from now on.
+  bool _coverRemoved = false;
+
+  String? get _coverUrl => _coverRemoved ? null : widget.course?.imageUrl;
+
   // Optional course reel (عرض أولي) — shown instead of the course image on
   // the course profile when set. Uploads itself directly (see
   // CourseReelController); the form only calls commit() once the course id
@@ -146,7 +151,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     super.initState();
     final c = widget.course;
     _isPrivate = widget.course?.isPrivate ?? false;
-    _reelCtrl = CourseReelController();
+    _reelCtrl = CourseReelController(courseId: c?.id);
+    if (c != null) _reelCtrl.loadExisting(); // the stored reel, so it can be watched, replaced or removed
 
     _titleArCtrl = TextEditingController(
       text: (c?.titleAr ??c?.titleEn)??'',
@@ -389,6 +395,28 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     }
   }
 
+  // ── Remove the cover (D-880) ────────────────────────────────────────────────
+
+  /// After EditableImage's confirm: drops an unsaved pick and, when editing a course with a stored cover, deletes it
+  /// at once; the course list takes the answer, the form and every card show the default cover.
+  Future<void> _removeCover() async {
+    final stored = (_coverUrl ?? '').isNotEmpty;
+    setState(() {
+      _logoFile = null;
+      _logoBytes = null;
+    });
+    if (!stored || widget.course == null) return;
+    final list = context.read<TeacherCoursesProvider>();
+    try {
+      final updated = await context.read<CourseFormProvider>().removeImage(widget.course!.id);
+      list.onCourseUpdated(updated);
+      if (mounted) setState(() => _coverRemoved = true);
+      showAppNotice('cover_removed'.tr);
+    } catch (e) {
+      showAppNotice(ApiException.from(e).message, error: true);
+    }
+  }
+
   // ── Edit-mode status toggle (publish / unpublish) ──────────────────────────
 
   Future<void> _toggleStatus({
@@ -506,8 +534,9 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                     children: [
                       _CoverPicker(
                         logoBytes: _logoBytes,
-                        imageUrl: widget.course?.imageUrl,
+                        imageUrl: _coverUrl,
                         logoFile: _logoFile,
+                        onRemove: _removeCover,
                         onChange: (XFile file) async {
                           _logoBytes = await file.readAsBytes();
                           setState(() {
@@ -906,7 +935,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                 controller: _reelCtrl,
                                 posterUrl: _logoBytes != null
                                     ? null
-                                    : widget.course?.imageUrl,
+                                    : _coverUrl,
                               ),
                               const SizedBox(height: AppSpace.md),
                               // Certificate template: the create-mode "optional
@@ -1003,12 +1032,14 @@ class _CoverPicker extends StatelessWidget {
   final XFile? logoFile;
   final String? imageUrl;
   final Future<void> Function(XFile file) onChange;
+  final Future<void> Function()? onRemove;
 
   const _CoverPicker({
     required this.logoBytes,
     required this.imageUrl,
     this.logoFile,
     required this.onChange,
+    this.onRemove,
   });
 
   @override
@@ -1021,6 +1052,8 @@ class _CoverPicker extends StatelessWidget {
         imageByte: logoBytes,
         imageFile: logoFile,
         size: context.height / 6,
+        onRemove: onRemove,
+        removeMessage: 'cover_remove_confirm'.tr,
       ),
     ),
   );

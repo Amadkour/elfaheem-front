@@ -1,7 +1,7 @@
 // ── Image picking ──────────────────────────────────────────────────────────
 import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppSheetContent, AppSpace, AppRadius, AppBorder, AppIconSize, AppElevation, AppType, AppBlockColors, AppBlockTone;
+import 'package:flutter_education_app/design/app_kit.dart' show appConfirm, AppSheetContent, AppSpace, AppRadius, AppBorder, AppIconSize, AppElevation, AppType, AppBlockColors, AppBlockTone;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -17,7 +17,8 @@ class EditableImage extends StatelessWidget {
       required this.onChange,
       this.imageUrl,
       this.imageByte,
-      this.imageFile, required this.size, this.isCircle=false, this.name});
+      this.imageFile, required this.size, this.isCircle=false, this.name,
+      this.onRemove, this.removeMessage});
 
   final Future<void> Function(XFile file) onChange;
   final String? imageUrl;
@@ -29,6 +30,15 @@ class EditableImage extends StatelessWidget {
   /// The person's name for an avatar without a photo: its first letter, like every other avatar of the app
   /// (N10), with the camera badge to add one. Null keeps the "add a picture" placeholder (covers, logos).
   final String? name;
+
+  /// Shows "Remove picture" under the two sources while a picture is shown (D-880). Called after an `appConfirm`
+  /// that reads [removeMessage]; the caller deletes it (or drops an unsaved pick) and shows the fallback.
+  final Future<void> Function()? onRemove;
+
+  /// What the confirm says will be removed (and what shows instead); a generic sentence when null.
+  final String? removeMessage;
+
+  bool get _hasPicture => imageByte != null || (imageUrl ?? '').isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +74,7 @@ class EditableImage extends StatelessWidget {
             ),
           ),
         ),
-        if (imageByte != null || (imageUrl ?? '').isNotEmpty || name != null)
+        if (_hasPicture || name != null)
           Positioned(
             bottom: isCircle?0 :0,
             left:isCircle? (size/1.7): - 10,
@@ -139,11 +149,22 @@ class EditableImage extends StatelessWidget {
       );
 
   Future<void> _pickImage(BuildContext context,Future<void> Function(XFile file) onChange) async {
-    final source = await showAppSideSheet<ImageSource>(context, builder: (_) => _ImageSourceSheet());
-    if (source == null) return;
+    final canRemove = onRemove != null && _hasPicture;
+    final choice = await showAppSideSheet<ImageSheetChoice>(context,
+        builder: (_) => ImageSourceSheet(canRemove: canRemove));
+    if (choice == null || !context.mounted) return;
+    if (choice == ImageSheetChoice.remove) {
+      final ar = AppConfig.lang == 'ar';
+      final ok = await appConfirm(context,
+          message: removeMessage ?? (ar ? 'إزالة هذه الصورة؟' : 'Remove this picture?'),
+          danger: true,
+          confirmLabel: ar ? 'إزالة' : 'Remove');
+      if (ok && context.mounted) await onRemove!();
+      return;
+    }
 
     final xFile = await ImagePicker().pickImage(
-      source: source,
+      source: choice == ImageSheetChoice.camera ? ImageSource.camera : ImageSource.gallery,
       maxWidth: 2400,          // the cropper decides the final size
       maxHeight: 2400,
       imageQuality: 92,
@@ -163,25 +184,42 @@ class EditableImage extends StatelessWidget {
 // Image source bottom sheet
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _ImageSourceSheet extends StatelessWidget {
+/// What the picture sheet answered: a source for a new picture, or remove the current one (D-880).
+enum ImageSheetChoice { gallery, camera, remove }
+
+/// The sheet behind every picture picker: Gallery, Camera and, while a picture is shown, Remove (public so a layout
+/// test can pump it).
+class ImageSourceSheet extends StatelessWidget {
+  const ImageSourceSheet({super.key, this.canRemove = false});
+
+  final bool canRemove;
+
   @override
   Widget build(BuildContext context) {
     final ar = AppConfig.lang == 'ar';
     return AppSheetContent(
-      title: ar ? 'اختر مصدر الصورة' : 'Choose an image source',
+      title: ar ? 'صورة' : 'Picture',
       children: [
         _SheetTile(
           icon: Icons.photo_library_rounded,
           label: ar ? 'من المعرض' : 'From the gallery',
           color: context.colors.primary,
-          onTap: () => Navigator.pop(context, ImageSource.gallery),
+          onTap: () => Navigator.pop(context, ImageSheetChoice.gallery),
         ),
         _SheetTile(
           icon: Icons.camera_alt_rounded,
           label: ar ? 'الكاميرا' : 'Camera',
           color: context.colors.success,
-          onTap: () => Navigator.pop(context, ImageSource.camera),
+          onTap: () => Navigator.pop(context, ImageSheetChoice.camera),
         ),
+        if (canRemove)
+          _SheetTile(
+            key: const ValueKey('image_remove'),
+            icon: Icons.delete_outline_rounded,
+            label: ar ? 'إزالة الصورة' : 'Remove picture',
+            color: context.colors.danger,
+            onTap: () => Navigator.pop(context, ImageSheetChoice.remove),
+          ),
       ],
     );
   }
@@ -194,7 +232,8 @@ class _SheetTile extends StatelessWidget {
   final VoidCallback onTap;
 
   const _SheetTile(
-      {required this.icon,
+      {super.key,
+      required this.icon,
       required this.label,
       required this.color,
       required this.onTap});

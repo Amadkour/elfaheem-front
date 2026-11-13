@@ -646,6 +646,13 @@ class CourseFormProvider extends BaseProvider {
     return null;
   }
 
+  /// Removes the course cover at once (D-880, `DELETE /courses/{id}/image`, harmless twice): the answer is the
+  /// course with no `image_url`, for the list and the page to show the default cover. Throws [ApiException].
+  Future<TeacherCourse> removeImage(int courseId) async {
+    final r = await _api.delete('/api/v1/courses/$courseId/image');
+    return TeacherCourse.fromJson(r as Map<String, dynamic>);
+  }
+
   Future<TeacherCourse?> _uploadImage(
       XFile logoFile, {
         required int courseId,
