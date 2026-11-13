@@ -23,7 +23,22 @@ const openStatuses = ['open', 'in_review', 'pending_approval', 'in_council', 'po
 const decidableStatuses = ['open', 'in_review', 'pending_approval'];
 const priorities = ['low', 'medium', 'high', 'urgent'];
 const routeActions = ['info', 'review', 'approval', 'vote'];
-const routeAnswers = ['noted', 'reviewed', 'approved', 'rejected', 'voted'];
+const routeAnswers = ['noted', 'reviewed', 'approved', 'rejected', 'voted', 'abstained', 'executed'];
+
+/// Forwarding an APPROVED item (D-890): where it goes, what the person must do, and the answers each action takes
+/// (mirrors `FORWARD_ANSWERS` on the server).
+const forwardKinds = ['council', 'external', 'user'];
+const forwardActions = ['info', 'review', 'approval', 'vote', 'execute'];
+const forwardAnswers = {
+  'info': ['noted'],
+  'review': ['reviewed'],
+  'approval': ['approved', 'rejected'],
+  'vote': ['approved', 'rejected', 'abstained'],
+  'execute': ['executed'],
+};
+
+/// Where an outside request received by a department goes on its own (D-891).
+const externalRoutings = ['department_council', 'faculty_council'];
 const delegationModes = ['global', 'scoped'];
 const councilLevels = ['department', 'faculty'];
 const tieRules = ['reject', 'chair', 'postpone'];
@@ -80,8 +95,31 @@ String routeActionLabel(String v) =>
       'review': t('للمراجعة', 'For review'),
       'approval': t('للاعتماد', 'For approval'),
       'vote': t('للتصويت', 'For voting'),
+      'execute': t('للتنفيذ', 'For execution'),
     }[v] ??
     v;
+
+String forwardActionLabel(String v) =>
+    {
+      'info': t('للعلم فقط', 'For information only'),
+      'review': t('مراجعة وتعليق', 'Review and comment'),
+      'approval': t('اعتماد', 'Approve'),
+      'vote': t('تصويت', 'Vote'),
+      'execute': t('تنفيذ', 'Execute'),
+    }[v] ??
+    v;
+
+String forwardKindLabel(String v) =>
+    {
+      'council': t('إلى مجلس أعلى', 'To a higher council'),
+      'external': t('إلى جهة خارجية', 'To an outside party'),
+      'user': t('إلى شخص', 'To a person'),
+    }[v] ??
+    v;
+
+String externalRoutingLabel(String v) => v == 'faculty_council'
+    ? t('مباشرة إلى مجلس الكلية', 'Straight to the faculty council')
+    : t('إلى مجلس القسم (أو مجلس الكلية إن لم يكن للقسم مجلس)', "To the department council (the faculty council when it has none)");
 
 String routeAnswerLabel(String v) =>
     {
@@ -90,6 +128,8 @@ String routeAnswerLabel(String v) =>
       'approved': t('اعتمد', 'Approved'),
       'rejected': t('رفض', 'Rejected'),
       'voted': t('صُوِّت عليه', 'Voted'),
+      'abstained': t('امتنع', 'Abstained'),
+      'executed': t('نُفّذ', 'Executed'),
     }[v] ??
     v;
 
@@ -107,7 +147,7 @@ String eventKindLabel(String v) =>
       'created': t('أُنشئ', 'Created'),
       'updated': t('عُدّل', 'Updated'),
       'routed': t('أُحيل', 'Routed'),
-      'forwarded': t('أُعيد توجيهه', 'Forwarded'),
+      'forwarded': t('أُحيل بعد الاعتماد', 'Forwarded after approval'),
       'escalated': t('صُعّد', 'Escalated'),
       'assigned': t('أُسند', 'Assigned'),
       'decided': t('صدر القرار', 'Decided'),
@@ -219,6 +259,19 @@ Map<String, String> govCodeTexts() => {
       'ids_invalid': t('اختيار المعاملات غير صالح', 'The selection is not valid'),
       'reason_required': t('اكتب سبب الرفض — يصل إلى مقدّم الطلب', 'Write the reason for rejecting — the requester will see it'),
       'chain_invalid': t('خطوات سلسلة الاعتماد غير صالحة', 'The approval chain steps are not valid'),
+      // D-890 – D-893: forwarding after approval · external requests · council votes
+      'not_approved': t('لا يُحال بعد القرار إلا طلب معتمد', 'Only an approved request can be forwarded'),
+      'forward_target_invalid': t('اختر وجهة الإحالة', 'Choose where to forward it'),
+      'forward_actions_invalid': t('اختر الإجراء المطلوب («للعلم فقط» لا يُجمع مع غيره)', 'Choose the required action ("for information only" stands alone)'),
+      'forward_not_higher': t('الإحالة بعد الاعتماد تكون إلى مجلس أعلى', 'An approved request goes up to a higher council'),
+      'external_name_required': t('اكتب اسم الجهة الخارجية', 'Write the name of the outside party'),
+      'external_conflict': t('الطلب الخارجي يُحال تلقائياً إلى المجلس', 'An outside request is routed to its council automatically'),
+      'route_action_required': t('حدد الإجراء الذي ترد عليه', 'Choose which action you are answering'),
+      'route_answer_invalid': t('الرد لا يناسب الإجراء المطلوب', 'The answer does not fit the required action'),
+      'route_answered': t('سبق الرد على هذا الإجراء', 'This action was already answered'),
+      'comment_required': t('المراجعة تحتاج تعليقاً', 'A review needs a comment'),
+      'due_in_past': t('الموعد النهائي يجب أن يكون في المستقبل', 'The deadline must be in the future'),
+      'council_no_members': t('لا أعضاء في المجلس — أضفهم قبل فتح التصويت', 'The council has no members — add them before opening the vote'),
     };
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -451,6 +504,72 @@ class Decision {
   }
 }
 
+/// One answer of the person an approved item was forwarded to (D-890).
+class ForwardResponse {
+  const ForwardResponse({required this.action, required this.answer, this.note, this.by, this.at});
+  final String action, answer;
+  final String? note;
+  final GovUser? by;
+  final DateTime? at;
+
+  factory ForwardResponse.fromJson(Map<String, dynamic> j) => ForwardResponse(
+        action: '${j['action'] ?? ''}',
+        answer: '${j['answer'] ?? ''}',
+        note: j['note'] as String?,
+        by: GovUser.from(j['by']),
+        at: orgParseUtc(j['at']),
+      );
+}
+
+/// The forward block of a route (D-890): a higher council, an outside party or a person with required actions,
+/// the decision it carried and the answers so far.
+class RouteForward {
+  const RouteForward({required this.kind, this.actions = const [], this.openActions = const [], this.external = const {}, this.decision = const {}, this.responses = const []});
+  final String kind; // council | external | user
+  final List<String> actions, openActions;
+  final Map<String, dynamic> external, decision;
+  final List<ForwardResponse> responses;
+
+  String get externalName => [external['name'], external['organization']].where((x) => x != null && '$x'.isNotEmpty).join(' · ');
+
+  /// The answers the person may still give for [action] (empty when it is answered or was not asked).
+  List<String> answersFor(String action) => openActions.contains(action) ? (forwardAnswers[action] ?? const []) : const [];
+
+  static RouteForward? from(dynamic j) {
+    if (j is! Map || j['kind'] == null) return null;
+    final m = asMap(j);
+    return RouteForward(
+      kind: '${m['kind']}',
+      actions: [for (final a in (m['actions'] as List? ?? const [])) '$a'],
+      openActions: [for (final a in (m['open_actions'] as List? ?? const [])) '$a'],
+      external: asMap(m['external']),
+      decision: asMap(m['decision']),
+      responses: [for (final r in asMapList(m['responses'])) ForwardResponse.fromJson(r)],
+    );
+  }
+}
+
+/// The outside party of an external request (D-891); [contact] only reaches the people handling it.
+class ExternalSource {
+  const ExternalSource({required this.name, this.organization, this.reference, this.contact, this.receivedAt});
+  final String name;
+  final String? organization, reference, contact;
+  final DateTime? receivedAt;
+
+  String get label => [name, organization].where((x) => x != null && x.isNotEmpty).join(' · ');
+
+  static ExternalSource? from(dynamic j) {
+    if (j is! Map || j['name'] == null) return null;
+    return ExternalSource(
+      name: '${j['name']}',
+      organization: j['organization'] as String?,
+      reference: j['reference'] as String?,
+      contact: j['contact'] as String?,
+      receivedAt: orgParseUtc(j['received_at']),
+    );
+  }
+}
+
 class WorkRoute {
   const WorkRoute({
     required this.id,
@@ -470,9 +589,13 @@ class WorkRoute {
     this.sessionId,
     this.createdAt,
     this.createdBy,
+    this.forward,
   });
   final int id;
   final int? parentRouteId, sessionId;
+
+  /// Set on a forward of an approved item (D-890).
+  final RouteForward? forward;
   final GovDept? fromDept, toDept;
   final GovUser? fromUser, toUser, answeredBy, createdBy;
   final String action, status;
@@ -480,7 +603,10 @@ class WorkRoute {
   final DateTime? dueAt, answeredAt, createdAt;
 
   bool get pending => status == 'pending';
-  String get targetName => toUser?.name ?? toDept?.name ?? '';
+  String get targetName => toUser?.name ?? toDept?.name ?? forward?.externalName ?? '';
+
+  /// A pending forward to [userId] that still has actions to answer.
+  bool awaits(int? userId) => pending && forward?.kind == 'user' && toUser != null && toUser!.id == userId && forward!.openActions.isNotEmpty;
   String get sourceName => fromUser?.name ?? fromDept?.name ?? '';
 
   factory WorkRoute.fromJson(Map<String, dynamic> j) {
@@ -503,6 +629,7 @@ class WorkRoute {
       sessionId: j['session_id'] == null ? null : asInt(j['session_id']),
       createdAt: orgParseUtc(j['created_at']),
       createdBy: GovUser.from(j['created_by']),
+      forward: RouteForward.from(j['forward']),
     );
   }
 }
@@ -586,6 +713,7 @@ class WorkItem {
     this.beneficiary,
     this.chain,
     this.chainStep,
+    this.externalSource,
     this.raw = const {},
   });
 
@@ -615,12 +743,15 @@ class WorkItem {
   /// The approval chain with every step's who / when / why (detail only, D-141) and the list card's short form.
   final ItemChain? chain;
   final ChainStepBrief? chainStep;
+
+  /// The outside party when the item is an external request (D-891).
+  final ExternalSource? externalSource;
   final Map<String, dynamic> raw;
 
   bool get isOpen => openStatuses.contains(status);
   bool get isDecidable => decidableStatuses.contains(status);
   bool get isDecided => status == 'approved' || status == 'rejected';
-  String get sourceName => anonymous ? t('مجهول', 'Anonymous') : (sourceUser?.name ?? sourceDept?.name ?? '');
+  String get sourceName => anonymous ? t('مجهول', 'Anonymous') : (sourceUser?.name ?? sourceDept?.name ?? externalSource?.label ?? '');
 
   factory WorkItem.fromJson(Map<String, dynamic> j) {
     final src = asMap(j['source']);
@@ -660,6 +791,7 @@ class WorkItem {
       beneficiary: Beneficiary.from(j['beneficiary']),
       chain: ItemChain.from(j['chain']),
       chainStep: ChainStepBrief.from(j['chain_step']),
+      externalSource: ExternalSource.from(j['external_source']),
       raw: j,
     );
   }
@@ -980,6 +1112,7 @@ class CouncilSettings {
     this.cutoffDays = 2,
     this.votingDeadlineHours = 72,
     this.quorumPct = 50,
+    this.majorityPct,
     this.tieRule = 'reject',
     this.abstainCounts = false,
     this.noVoteRule = 'ignore',
@@ -994,6 +1127,9 @@ class CouncilSettings {
   int? chairUserId, sessionDay;
   String sessionTime, tieRule, noVoteRule, holidayRule;
   int cutoffDays, votingDeadlineHours, quorumPct;
+
+  /// D-893: null = simple majority (approve > reject); a number = approve > reject AND approve share ≥ it.
+  int? majorityPct;
   bool abstainCounts, autoAgenda;
   List<String> holidays, autoAgendaTypes;
   List<int> autoAgendaCategoryIds;
@@ -1008,6 +1144,7 @@ class CouncilSettings {
       cutoffDays: asInt(j['cutoff_days'], 2),
       votingDeadlineHours: asInt(j['voting_deadline_hours'], 72),
       quorumPct: asInt(j['quorum_pct'], 50),
+      majorityPct: j['majority_pct'] == null ? null : asInt(j['majority_pct']),
       tieRule: tieRules.contains(j['tie_rule']) ? '${j['tie_rule']}' : 'reject',
       abstainCounts: asBool(j['abstain_counts']),
       noVoteRule: noVoteRules.contains(j['no_vote_rule']) ? '${j['no_vote_rule']}' : 'ignore',
@@ -1028,6 +1165,7 @@ class CouncilSettings {
         'cutoff_days': cutoffDays,
         'voting_deadline_hours': votingDeadlineHours,
         'quorum_pct': quorumPct,
+        'majority_pct': majorityPct,
         'tie_rule': tieRule,
         'abstain_counts': abstainCounts,
         'no_vote_rule': noVoteRule,
@@ -1230,7 +1368,8 @@ class VoteTally {
     String? chairVote,
   }) {
     final voted = approve + reject + abstain;
-    final needed = (eligible * s.quorumPct / 100).ceil();
+    // at least one vote, ever: nobody voting is no quorum, never a decision by default (D-892)
+    final needed = math.max(1, (eligible * s.quorumPct / 100).ceil());
     final quorum = eligible == 0 ? false : voted >= needed;
     var denominator = approve + reject;
     if (s.abstainCounts) denominator += abstain;
@@ -1240,7 +1379,7 @@ class VoteTally {
     if (!quorum) {
       outcome = 'no_quorum';
     } else if (approve > reject) {
-      outcome = 'approved';
+      outcome = s.majorityPct == null || pct >= s.majorityPct! ? 'approved' : 'rejected';
     } else if (reject > approve) {
       outcome = 'rejected';
     } else {
@@ -1319,6 +1458,28 @@ class ExportTemplate {
 const slaHours = {'urgent': 24, 'high': 48, 'medium': 72, 'low': 120};
 
 /// Body of `POST …/items/{id}/route`.
+/// The body of `POST …/items/{id}/forward` (D-890).
+Map<String, dynamic> forwardBody({required String to, int? councilDeptId, int? userId, Map<String, String>? external, List<String> actions = const [], String? note, DateTime? dueAt}) => {
+      'to': to,
+      if (to == 'council' && councilDeptId != null) 'council_dept_id': councilDeptId,
+      if (to == 'user') 'user_id': userId,
+      if (to == 'external') 'external': {for (final e in (external ?? const <String, String>{}).entries) if (e.value.trim().isNotEmpty) e.key: e.value.trim()},
+      if (to == 'user') 'actions': actions,
+      if ((note ?? '').trim().isNotEmpty) 'note': note!.trim(),
+      if (to == 'user' && dueAt != null) 'due_at': orgUtc(dueAt),
+    };
+
+/// The checks the forward sheet runs before sending (the server runs the same, D-890). Null = fine.
+String? forwardProblem({required String to, int? userId, String externalName = '', List<String> actions = const []}) {
+  if (to == 'user') {
+    if (userId == null) return t('اختر الشخص', 'Pick the person');
+    if (actions.isEmpty) return govCodeTexts()['forward_actions_invalid'];
+    if (actions.contains('info') && actions.length > 1) return govCodeTexts()['forward_actions_invalid'];
+  }
+  if (to == 'external' && externalName.trim().length < 2) return govCodeTexts()['external_name_required'];
+  return null;
+}
+
 Map<String, dynamic> routeBody({int? toDeptId, int? toUserId, required String action, String? note, DateTime? dueAt}) => {
       'to_dept_id': ?toDeptId,
       'to_user_id': ?toUserId,

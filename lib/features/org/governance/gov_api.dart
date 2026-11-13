@@ -84,8 +84,11 @@ class GovApi {
   Future<dynamic> decide(int id, {required String outcome, String? note, required int version}) =>
       _api.post('$base/items/$id/decide', body: {'outcome': outcome, 'note': ?note, 'version': version});
 
-  Future<dynamic> answerRoute(int id, int routeId, {required String answer, String? note}) =>
-      _api.post('$base/items/$id/routes/$routeId/answer', body: {'answer': answer, 'note': ?note});
+  Future<dynamic> answerRoute(int id, int routeId, {required String answer, String? note, String? action}) =>
+      _api.post('$base/items/$id/routes/$routeId/answer', body: {'answer': answer, 'note': ?note, 'action': ?action});
+
+  /// D-890: an APPROVED item onward (`forwardBody`); 409 `not_approved` otherwise.
+  Future<dynamic> forward(int id, Map<String, dynamic> body) => _api.post('$base/items/$id/forward', body: body);
 
   Future<dynamic> assign(int id, int? userId) => _api.post('$base/items/$id/assign', body: {'user_id': userId});
 
@@ -266,6 +269,10 @@ class GovApi {
     final m = asMap(await (client ?? ApiClient()).get('$memberBase/attachments/$id', queryParams: {'inline': inline}));
     return '${m['url'] ?? ''}';
   }
+
+  /// D-890: the member an approved item was forwarded to answers one required action.
+  static Future<dynamic> memberAnswerRoute(int id, int routeId, {required String answer, String? note, String? action, ApiClient? client}) =>
+      (client ?? ApiClient()).post('$memberBase/items/$id/routes/$routeId/answer', body: {'answer': answer, 'note': ?note, 'action': ?action});
 
   static Future<dynamic> memberWithdraw(int id, {ApiClient? client}) => (client ?? ApiClient()).post('$memberBase/items/$id/withdraw', body: const {});
 

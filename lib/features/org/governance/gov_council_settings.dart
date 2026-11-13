@@ -186,6 +186,22 @@ class _GovCouncilSettingsFormState extends State<GovCouncilSettingsForm> {
                 style: AppType.meta(context).copyWith(color: c.textMedium)),
             const SizedBox(height: AppSpace.sm),
             _Choice(
+              label: t('الأغلبية المطلوبة للموافقة', 'Majority needed to approve'),
+              options: {
+                '': t('أغلبية بسيطة', 'Simple majority'),
+                '60': t('60٪', '60%'),
+                '67': t('الثلثان', 'Two thirds'),
+                '75': t('ثلاثة أرباع', 'Three quarters'),
+              },
+              value: _s.majorityPct == null ? '' : (const ['60', '67', '75'].contains('${_s.majorityPct}') ? '${_s.majorityPct}' : ''),
+              help: _s.majorityPct == null
+                  ? t('يُعتمد البند إذا زاد الموافقون على الرافضين.', 'Approved when approvals outnumber rejections.')
+                  : t('يُعتمد البند إذا زاد الموافقون على الرافضين وبلغت نسبتهم ${_s.majorityPct}٪ على الأقل، وإلا يُرفض.',
+                      'Approved when approvals outnumber rejections AND reach ${_s.majorityPct}%; otherwise rejected.'),
+              onChanged: widget.canEdit ? (v) => _set(() => _s.majorityPct = v.isEmpty ? null : int.parse(v)) : null,
+            ),
+            const SizedBox(height: AppSpace.sm),
+            _Choice(
               label: t('عند التعادل', 'On a tie'),
               options: {for (final r in tieRules) r: tieRuleLabel(r)},
               value: _s.tieRule,
