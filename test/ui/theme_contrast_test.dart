@@ -3,9 +3,12 @@
 import 'package:flutter/painting.dart';
 import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_model.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_contrast.dart';
 import 'package:flutter_education_app/features/admin/admin_theme_page.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 const _oldTextLight = Color(0xFF8A8EA8);
 const _oldDarkTextLight = Color(0xFF6B7099);
@@ -154,6 +157,31 @@ void main() {
       }
       for (final block in [AppTheme.accent, AppTheme.accent3]) {
         expect(contrastRatio(AppTheme.textLight, block), greaterThanOrEqualTo(4.5), reason: _hex(block));
+      }
+    });
+  });
+
+  group('status inks and edges (D-740, D-741)', () {
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    test('every status ink reads on the page, surface and card of both modes; fills keep the server tone', () {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      final t = ThemeConfigProvider(api: ApiClient());
+      for (final dark in [false, true]) {
+        t.isDark = dark;
+        final surfaces = [t.background, t.surface, t.cardBg];
+        final inks = {'success': t.success, 'danger': t.danger, 'gold': t.accent2, 'purple': t.purple};
+        for (final e in inks.entries) {
+          expect(minContrast(e.value, surfaces), greaterThanOrEqualTo(4.5), reason: '${e.key} ${dark ? 'dark' : 'light'}');
+        }
+        expect(minContrast(t.warning, surfaces), greaterThanOrEqualTo(dark ? 4.5 : 3), reason: 'warning');
+        expect(t.dangerBase, AppTheme.danger);
+        expect(t.successBase, AppTheme.success);
+        // white on the solid danger fill stays AA in both modes
+        expect(contrastRatio(t.onHero, t.dangerBase), greaterThanOrEqualTo(4.5));
+        // a field well's edge shows on the card; a control's outline reaches 3:1
+        expect(contrastRatio(t.fieldEdge, t.cardBg), greaterThan(1.5));
+        expect(minContrast(t.controlEdge, [t.cardBg, t.background]), greaterThanOrEqualTo(3));
       }
     });
   });

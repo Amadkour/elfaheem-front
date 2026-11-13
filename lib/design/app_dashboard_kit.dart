@@ -741,7 +741,7 @@ class AppShortcutTile extends StatelessWidget {
                     constraints: const BoxConstraints(minWidth: AppIconSize.md, minHeight: AppIconSize.md),
                     padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs + 2),
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                    decoration: BoxDecoration(color: c.dangerBase, borderRadius: BorderRadius.circular(AppRadius.pill)),
                     child: Text(badge > 99 ? '99+' : '$badge',
                         maxLines: 1, style: _tabular(AppType.overline(context).copyWith(color: c.onHero, height: 1.1, letterSpacing: 0))),
                   ),

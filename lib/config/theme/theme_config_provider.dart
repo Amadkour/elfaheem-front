@@ -237,6 +237,16 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
   Color get divider => _contrast(
       isDark ? (_model?.darkDivider ?? AppTheme.darkDivider) : (_model?.divider ?? AppTheme.divider), textMedium, 0.35);
 
+  /// The resting edge of a field well (D-741): the hairline [divider] is 1.2:1 on a white card and the well's own
+  /// fill barely steps off it, so a form on a card read as floating labels. A third of the way from the divider to
+  /// the caption ink (about 1.8:1 on paper, light mode; a quarter in dark mode, where the well's raised tone already
+  /// separates it) outlines the well without boxing the form in. Focus is the 2 px primary ring as before.
+  Color get fieldEdge => Color.lerp(divider, textLight, isDark ? 0.25 : 0.3)!;
+
+  /// The edge of a small control whose outline IS its shape (an unchecked checkbox, an off switch, a radio): 3:1 on
+  /// the card and the page (WCAG 1.4.11).
+  Color get controlEdge => ensureContrast(Color.lerp(divider, textLight, 0.45)!, [cardBg, background], min: 3);
+
   /// "High contrast" (Display & reading settings): muted ink and dividers are pulled toward the main ink.
   Color _contrast(Color c, Color toward, double t) => _hc ? Color.lerp(c, toward, t)! : c;
 
@@ -272,15 +282,37 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   Color get accent => _model?.accent ?? AppTheme.accent;
 
-  Color get accent2 => _model?.accent2 ?? AppTheme.accent2;
+  /// Gold (streaks, achievements, top marks) as INK: see [_semantic] (D-740).
+  Color get accent2 => _semantic(accent2Base, kWcagAaText);
 
-  Color get success => _model?.success ?? AppTheme.success;
+  /// The status colours as INK (text, icons, outlines, tints) on this mode's page / surface / card (D-740): the
+  /// server tone when it already reads at AA there; otherwise the same hue with its lightness moved until it does —
+  /// a hair darker in light mode (gold and success sat at 4.4:1 on the tinted canvas), clearly lighter in dark mode
+  /// (the raw tones were 2.6 – 3.4:1 on a dark card, so an error message or a red icon all but vanished). Warning is
+  /// an icon / fill tone in light mode (3:1); dark mode lifts it to AA like the rest.
+  Color get success => _semantic(successBase, kWcagAaText);
 
-  Color get danger => _model?.danger ?? AppTheme.danger;
+  Color get danger => _semantic(dangerBase, kWcagAaText);
 
-  Color get warning => _model?.warning ?? AppTheme.warning;
+  Color get warning => _semantic(warningBase, isDark ? kWcagAaText : 3);
 
-  Color get purple => _model?.purple ?? AppTheme.purple;
+  Color get purple => _semantic(purpleBase, kWcagAaText);
+
+  /// The server's own tones, unadjusted: for a SOLID fill under white ink (a danger button, a count bubble), where
+  /// the lifted dark-mode ink would be too light for white text. Text and icons use [success] / [danger] / ….
+  Color get successBase => _model?.success ?? AppTheme.success;
+  Color get dangerBase => _model?.danger ?? AppTheme.danger;
+  Color get warningBase => _model?.warning ?? AppTheme.warning;
+  Color get purpleBase => _model?.purple ?? AppTheme.purple;
+  Color get accent2Base => _model?.accent2 ?? AppTheme.accent2;
+
+  final Map<int, Color> _semanticCache = {};
+
+  Color _semantic(Color raw, double min) {
+    final surfaces = [background, surface, cardBg];
+    final key = Object.hash(raw, min, surfaces[0], surfaces[1], surfaces[2]);
+    return _semanticCache[key] ??= ensureContrast(raw, surfaces, min: min);
+  }
 
   /// Secondary copy (subtitles, hints, unselected labels): WCAG AA on this mode's surfaces.
   Color get secondText => _contrast(
@@ -909,6 +941,9 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     // (4.5:1) on all of them, hue kept. A primary that already passes (the light theme) is unchanged. Fills keep
     // the raw primary (white ink on it).
     final pText = ensureContrast(p, [bg, card, surface, input]);
+    // D-741: a field well's resting edge and a small control's outline (see [fieldEdge] / [controlEdge])
+    final fieldEdge = Color.lerp(divider, faint, dark ? 0.25 : 0.3)!;
+    final controlEdge = ensureContrast(Color.lerp(divider, faint, 0.45)!, [card, bg], min: 3);
     // The same for a selected chip's label and check: it sits on the 14 % primary tint.
     final chipTint = p.withValues(alpha: 0.14);
     final pOnChip = ensureContrast(p, [for (final s in [bg, card, surface, input]) Color.alphaBlend(chipTint, s)]);
@@ -961,7 +996,7 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       surfaceContainerHigh: Color.lerp(mid, highest, 0.5)!,
       surfaceContainerHighest: highest,
       surfaceTint: Colors.transparent, // tone comes from the palette, never from an elevation tint
-      outline: Color.lerp(divider, faint, 0.45)!,
+      outline: controlEdge,
       outlineVariant: divider,
       shadow: shadow,
       scrim: m?.charcoalDark ?? AppTheme.charcoalDark,
@@ -1167,8 +1202,8 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
         prefixIconColor: muted,
         suffixIconColor: muted,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: ob(divider),
-        enabledBorder: ob(divider),
+        border: ob(fieldEdge),
+        enabledBorder: ob(fieldEdge),
         disabledBorder: ob(divider.withValues(alpha: 0.6)),
         focusedBorder: ob(pText, 2),
         errorBorder: ob(scheme.error),

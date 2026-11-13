@@ -306,7 +306,7 @@ class BrandLayer {
   /// The layer for [c]'s palette and mode (cached per palette).
   static BrandLayer of(ThemeConfigProvider c) {
     final key = Object.hashAll([
-      c.primary, c.primaryDark, c.primaryLight, c.accent, c.accent2, c.onHero, c.heroInk, c.heroInkMuted,
+      c.primary, c.primaryDark, c.primaryLight, c.accent, c.accent2Base, c.onHero, c.heroInk, c.heroInkMuted,
       c.heroInkFaint, c.blockForest, c.textDark, c.isDark, c.heroGlass, c.cardBg, c.shadowTone,
     ]);
     final hit = _cache[key];
@@ -374,8 +374,8 @@ class BrandLayer {
     // ── gold: accent2 → accent2 lightened, a deep forest ink (white on gold fails) ──
     final goldInkBase = _l(c.primaryDark, dark ? 0.42 : 0.5);
     Color overInk(Color bg) => ensureContrast(bg, [goldInkBase], min: 4.8);
-    final gStart = overInk(dark ? c.heroEnd(c.accent2, 0.06) : c.accent2);
-    final gEnd = overInk(Color.lerp(c.accent2, c.accent, dark ? 0.3 : 0.45)!);
+    final gStart = overInk(dark ? c.heroEnd(c.accent2Base, 0.06) : c.accent2Base);
+    final gEnd = overInk(Color.lerp(c.accent2Base, c.accent, dark ? 0.3 : 0.45)!);
     final gold = [gStart, gEnd];
     final goldHover = [for (final s in gold) overInk(c.heroEnd(s, 0.05))];
     final goldPressed = [for (final s in gold) overInk(c.heroEnd(s, 0.12))];
@@ -609,7 +609,7 @@ abstract final class AppBrandLayer {
   /// there). Each stop is moved until EVERY point of the gradient keeps 3:1 (non-text) on every surface.
   static List<Color> iconStops(BuildContext context, List<Color> surfaces) {
     final c = context.colors;
-    final key = Object.hashAll([c.primary, c.primaryLight, c.accent2, c.accent, ...surfaces]);
+    final key = Object.hashAll([c.primary, c.primaryLight, c.accent2Base, c.accent, ...surfaces]);
     final hit = _iconCache[key];
     if (hit != null) return hit;
     if (_iconCache.length > 64) _iconCache.clear();
@@ -617,7 +617,7 @@ abstract final class AppBrandLayer {
     final avg = surfaces.map(relativeLuminance).reduce((a, b) => a + b) / surfaces.length;
     final onDark = avg < midL;
     final from = onDark ? c.primaryLight : c.primary;
-    final to = onDark ? c.accent : Color.lerp(c.accent, c.accent2, 0.5)!;
+    final to = onDark ? c.accent : Color.lerp(c.accent, c.accent2Base, 0.5)!;
     var stops = <Color>[];
     for (var min = 3.0; min <= 4.5; min += 0.25) {
       stops = [ensureContrast(from, surfaces, min: min), ensureContrast(to, surfaces, min: min)];

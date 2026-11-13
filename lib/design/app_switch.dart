@@ -70,7 +70,7 @@ class _AppSwitchState extends State<AppSwitch> {
     final start = rtl ? Alignment.centerRight : Alignment.centerLeft;
     final offTrack = widget.inactiveColor?.withValues(alpha: 0.55) ?? c.divider;
     // the off track needs an edge of its own on a paper card (the warm hairline is close to the card tone)
-    final offEdge = widget.inactiveColor ?? Color.lerp(c.divider, c.textLight, 0.35)!;
+    final offEdge = widget.inactiveColor ?? c.controlEdge;
     final knob = c.onHero;
     final track = AnimatedContainer(
       duration: motion.base,

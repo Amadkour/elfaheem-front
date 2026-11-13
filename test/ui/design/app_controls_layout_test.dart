@@ -140,8 +140,9 @@ void main() {
   testWidgets('the primary button is the brand gradient on a soft shadow; disabled it is a flat well', (tester) async {
     await tester.pumpWidget(layoutHost(Center(child: AppButton.primary(label: 'Save', onPressed: () {}))));
     final boxes = tester.widgetList<AnimatedContainer>(find.descendant(of: find.byType(AppButton), matching: find.byType(AnimatedContainer)));
-    final deco = boxes.first.decoration as BoxDecoration;
-    expect(deco.gradient, isNotNull);
+    // D-650 r3: the brand fill is an AppBrandFill (primary held past the label, then the cream end)
+    final deco = boxes.first.decoration as AppBrandFill;
+    expect(deco.colors, isNotEmpty);
     expect(deco.boxShadow, isNotEmpty);
     await tester.pumpWidget(layoutHost(const Center(child: AppButton.primary(label: 'Save', onPressed: null))));
     final off = tester.widgetList<AnimatedContainer>(find.descendant(of: find.byType(AppButton), matching: find.byType(AnimatedContainer))).first.decoration as BoxDecoration;

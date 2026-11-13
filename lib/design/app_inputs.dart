@@ -107,8 +107,8 @@ InputDecoration appFieldDecoration(
     // 48 high with a 15 px line at rest (a dense well is 40)
     contentPadding: EdgeInsetsDirectional.symmetric(
         horizontal: AppSpace.md, vertical: dense ? AppSpace.xs + 1 : AppSpace.sm + 1),
-    border: border(c.divider),
-    enabledBorder: border(c.divider),
+    border: border(c.fieldEdge),
+    enabledBorder: border(c.fieldEdge),
     disabledBorder: border(c.divider.withValues(alpha: 0.6)),
     focusedBorder: border(focus, AppBorder.focus),
     errorBorder: border(c.danger),

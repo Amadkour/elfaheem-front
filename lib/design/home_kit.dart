@@ -1109,7 +1109,7 @@ class HomeShortcuts extends StatelessWidget {
                   child: Column(children: [
                     Badge(
                       isLabelVisible: s.badge > 0,
-                      backgroundColor: c.danger,
+                      backgroundColor: c.dangerBase,
                       label: Text(s.badge > 99 ? '99+' : '${s.badge}', style: appText(10, w: FontWeight.w600, c: c.onHero)),
                       child: Container(
                         width: 52,

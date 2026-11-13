@@ -188,7 +188,7 @@ class _CountPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final (Color fill, Color ink) = switch (tone) {
-      ShellBadgeTone.attention => (c.danger, c.onHero),
+      ShellBadgeTone.attention => (c.dangerBase, c.onHero),
       ShellBadgeTone.reward => (c.blockGold, c.blockAccentInk(c.accent2, c.blockGold)),
     };
     return Container(

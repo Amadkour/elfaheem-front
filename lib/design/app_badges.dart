@@ -41,6 +41,20 @@ Color appToneColor(BuildContext context, AppTone tone) {
   };
 }
 
+/// The colour of a SOLID [tone] fill under a label (a count bubble): the server's own status tones
+/// (`successBase` …), so a dark-mode bubble keeps the same deep red and white figure as in light mode, where
+/// [appToneColor] gives the dark-mode INK, lifted for text and icons (D-740).
+Color appToneFill(BuildContext context, AppTone tone) {
+  final c = context.colors;
+  return switch (tone) {
+    AppTone.success => c.successBase,
+    AppTone.warning => c.warningBase,
+    AppTone.danger => c.dangerBase,
+    AppTone.gold => c.accent2Base,
+    _ => appToneColor(context, tone),
+  };
+}
+
 /// The opaque tint of [tone] laid over [surface] (the card surface by default): a translucent wash would change
 /// with whatever sits under it, an opaque one keeps the same ink contrast on a card, the canvas or a block.
 Color appTintOn(BuildContext context, Color tone, {Color? surface}) {
@@ -180,7 +194,7 @@ class AppCountBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final hidden = count <= 0 && !showZero;
     final c = context.colors;
-    final fill = appToneColor(context, tone);
+    final fill = appToneFill(context, tone);
     final bubble = hidden
         ? const SizedBox.shrink()
         : Semantics(

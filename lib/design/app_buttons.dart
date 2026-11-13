@@ -281,7 +281,7 @@ class _AppButtonState extends State<AppButton> {
           fill = lit ? c.dangerTint : c.cardBg;
           border = Border.all(color: appInk(context, c.danger), width: AppBorder.strong);
         } else {
-          fill = down ? Color.lerp(c.danger, c.textDark, 0.22) : _hover && _enabled ? Color.lerp(c.danger, c.textDark, 0.1) : c.danger;
+          fill = down ? Color.lerp(c.dangerBase, c.textDark, 0.22) : _hover && _enabled ? Color.lerp(c.dangerBase, c.textDark, 0.1) : c.dangerBase;
         }
       case AppButtonVariant.secondary:
         fill = down ? Color.lerp(c.cardBg, c.textDark, 0.08) : lit ? Color.lerp(c.cardBg, c.textDark, 0.04) : c.cardBg;

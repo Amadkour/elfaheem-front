@@ -211,7 +211,7 @@ class AppSettingsTile extends StatelessWidget implements AppSettingsSearchable {
                 constraints: const BoxConstraints(minWidth: AppIconSize.md, minHeight: AppIconSize.md),
                 padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs + 2),
                 alignment: Alignment.center,
-                decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                decoration: BoxDecoration(color: c.dangerBase, borderRadius: BorderRadius.circular(AppRadius.pill)),
                 child: Text(n > 99 ? '99+' : '$n',
                     maxLines: 1, style: AppType.overline(context).copyWith(color: c.onHero, height: 1.2, letterSpacing: 0)),
               ),

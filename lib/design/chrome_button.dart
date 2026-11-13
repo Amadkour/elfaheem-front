@@ -239,7 +239,7 @@ class ChromeIconButton extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: c.danger,
+                    color: c.dangerBase,
                     borderRadius: BorderRadius.circular(AppRadius.pill),
                     // a count on the shell's paper bar rings itself with the paper, elsewhere with what is under it
                     border: Border.all(color: ChromeGhost.of(context) && !onBar ? c.cardBg : ChromePlate.badgeRing(context, onHero: onBar), width: AppBorder.strong),
