@@ -301,6 +301,10 @@ class MeHome {
   /// invites them to); null otherwise or from an older server.
   String? get journeyHint => journey == null && raw['journey_hint'] is String ? raw['journey_hint'] as String : null;
 
+  /// Students: show the dismissible "Complete your study profile" card (D-793: personal scope, the super admin's
+  /// switch on, stage / grade or a required field missing, not dismissed in 30 days); false from an older server.
+  bool get studyPrompt => raw['study_prompt'] == true;
+
   /// Composed from today's separate calls (older server).
   final bool legacy;
   final Map<String, dynamic> raw;
@@ -714,7 +718,7 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   static MeHome _withoutSide(Map<String, dynamic> raw) =>
-      MeHome.fromJson({...raw, 'courses_progress': const [], 'journey': null, 'journey_hint': null});
+      MeHome.fromJson({...raw, 'courses_progress': const [], 'journey': null, 'journey_hint': null, 'study_prompt': false});
 
   /// The app mode / organization changed: the side's blocks of a home cached for the other side (its courses,
   /// the journey card) are dropped at once — never the other side's courses on screen — and the new side's home is

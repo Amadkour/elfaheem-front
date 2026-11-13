@@ -5,6 +5,8 @@
 // (admin_student_manage.dart, AdminTeacherManage), on every host of the panel.
 library;
 
+import 'package:flutter_education_app/features/shared/study_profile/study_profile_model.dart' show StudyProfile;
+import 'admin_study_profile_settings_page.dart' show StudyProfileSection;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_number_field.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -736,6 +738,9 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                   ],
                 ),
               ),
+              // a student's study data (D-795): stage / grade / track, school, governorate, parent phone
+              if (d!.j['study_profile'] is Map)
+                StudyProfileSection(profile: StudyProfile.fromJson(asMap(d!.j['study_profile']))),
               if (d!.j['teacher_profile'] is Map)
                 Section(
                   title: 'admin_teacher_profile'.tr,

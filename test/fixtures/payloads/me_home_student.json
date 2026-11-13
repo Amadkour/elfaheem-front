@@ -165,6 +165,7 @@
      "track": "lecture"
     }
    }
-  ]
+  ],
+  "study_prompt": false
  }
 }

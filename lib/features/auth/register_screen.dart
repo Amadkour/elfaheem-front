@@ -30,6 +30,8 @@ import 'google_auth_flow.dart';
 import 'verify_way.dart';
 import 'username.dart';
 import 'username_field.dart';
+import '../shared/study_profile/study_profile_model.dart';
+import '../shared/study_profile/study_profile_pages.dart' show StudyProfileStepPage;
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
@@ -81,6 +83,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   /// The verification way the student picked (null = the first one the admin allows).
   VerifyWay? _pickedWay;
 
+  /// The study step's values (D-790), kept when the student goes back to the form; and the submit's busy state the
+  /// step page shows.
+  StudyProfile _study = StudyProfile.empty;
+  final _busy = ValueNotifier<bool>(false);
+
   DateTime selectedDate = DateTime.now().subtract(
     const Duration(days: 360 * 20),
   );
@@ -110,6 +117,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _confirmedPasswordController.dispose();
     _dobController.dispose();
     _usernameController.dispose();
+    _busy.dispose();
     super.dispose();
   }
 
@@ -197,6 +205,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       return;
     }
+    // A new student answers ONE short study step first (stage + grade, D-790), unless the super admin switched it off
+    // or the kill switch hides it; its button creates the account.
+    final studyStep = authProvider.selectedRole!['text'] == 'student' &&
+        authProvider.studySettings.signupStep &&
+        !AppConfig.disableList.contains(kStudyProfileFeatureKey);
+    if (studyStep) {
+      await Navigator.of(context).push(MaterialPageRoute(
+        settings: const RouteSettings(name: '/register/study'),
+        builder: (_) => StudyProfileStepPage(
+          initial: _study,
+          settings: authProvider.studySettings,
+          busy: _busy,
+          onChanged: (v) => _study = v,
+          onSubmit: (v) => _submit(authProvider, pickedWay, study: v),
+        ),
+      ));
+      return;
+    }
+    await _submit(authProvider, pickedWay);
+  }
+
+  Future<void> _submit(MyAuthProvider authProvider, VerifyWay? pickedWay, {StudyProfile? study}) async {
+    _busy.value = true;
     final success = await authProvider.register(
       gmail: _emailController.text.trim(),
       phone: _phoneController.text.trim(),
@@ -205,7 +236,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       name: _fullNameController.text.trim(),
       way: pickedWay?.name,
       username: _usernameOn ? _usernameController.text : null,
+      studyProfile: study?.toJson(withDob: false),
     );
+    _busy.value = false;
     if (!mounted) return;
     // taken / reserved / invalid at submit: the field shows why, with the server's suggestions
     if (!success && authProvider.usernameError != null) {

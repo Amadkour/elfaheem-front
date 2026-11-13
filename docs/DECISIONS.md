@@ -4386,3 +4386,30 @@ and saves the exam's design on the draft.
 ## D-781 — `feature_disabled` worded per AI feature · 2026-11-13 · accepted
 
 **Decision.** The services keep answering 403 `feature_disabled` {feature} (a new `ai_feature_off` code was rejected: every gate and app text already speaks it). `featureDisabledText(feature)` in `lib/core/api_error_text.dart` words the AI keys by name (grading off: "the written answers are kept for you to mark by hand"; bubble correction off: "nothing was deleted"), used by `apiErrorText`, by `orgErrorText` when the server names the feature (an unnamed one keeps its screen's text), and by the assistant (`ragChatResultText` / `ragCodeText`: a new question refused while the assistant is off). Entry points were already hidden by the same keys (`ParentComponent(featureKey:)`). Tests: `test/ui/admin_ai_controls_test.dart` (parsing, texts in both languages, the card in the layout harness).
+## D-790 — A personal student's study data: own table, never registrar data · 2026-11-13 · accepted
+
+**Decision.** Stage, grade, track, school, governorate / city and a parent's phone live in `student_study_profiles` (back migration 0077, back D-790); the date of birth stays `users.dob`. Organization students keep their registrar data: nothing is copied either way, the home card shows only in the personal scope and org accounts never see it. Code: `lib/features/shared/study_profile/` (model + calls, the one form, the pages).
+
+## D-791 — What is asked, for an Arabic-first Egypt / MENA platform · 2026-11-13 · accepted
+
+**Decision.** Stage (primary · preparatory · secondary · university · graduate · other) + grade as chips (6 / 3 / 3 / 7, none for graduate / other), the secondary track from grade 2 (science / math / literary), school or university, governorate (Egypt's 27 + "outside Egypt" with a free city), date of birth, parent phone. Only stage + grade are always required. National ID, gender and the parent's name were left out (sensitive, or covered by parent linking).
+
+## D-792 — ONE short sign-up step that creates the account · 2026-11-13 · accepted
+
+**Decision.** A new student who taps "Create my account" gets one extra page (`StudyProfileStepPage`): stage and grade chips, the optional fields folded under "Add school and governorate" unless the super admin required one; its button sends `study_profile` inside `/auth/register` (checked before the account exists). Going back keeps the values. Other roles, the switch off, the kill switch or an older server (no `study_profile` in the policy) go straight to verification as before.
+
+## D-793 — "Complete your study profile" is a dismissible home card, never a wall · 2026-11-13 · accepted
+
+**Decision.** The student home draws `StudyPromptCard` under the courses / journey while `/me/home` says `study_prompt` (no request of its own); "Not now" hides it at once and for 30 days on the server, "Complete now" opens the study page and reloads the home. Everything is editable later from Profile › Account & security › Study details (`StudyProfilePage`, a whole-object PUT).
+
+## D-794 — The super admin decides the step, the card and the required fields · 2026-11-13 · accepted
+
+**Decision.** Admin › Services › People › Student study details (`AdminStudyProfileSettingsPage`, super admin only): the sign-up step on / off, the home card on / off, and which optional fields are required (chips). Kill switch `profile.study` hides every surface (step, row, card, page).
+
+## D-795 — Teachers and admins see it in the student's detail · 2026-11-13 · accepted
+
+**Decision.** The connected student detail (D-290) shows the grade line as a pill and the school / governorate in the meta lines (`header.study`, teachers and admins); the admin users page's detail adds a Study block with the parent phone.
+
+## D-796 — Not used for recommendations yet · 2026-11-13 · accepted
+
+**Decision.** Courses have no grade (their `level` is beginner / intermediate / advanced), so matching by grade needs a course field and a teacher editor first: the data is stored and shown, filtering comes later. Tests: `test/ui/study_profile_test.dart` (model, chips, layout harness, the home card), back `tests/org_v2/e2e_study_profile.py`.

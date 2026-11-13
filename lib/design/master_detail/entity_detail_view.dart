@@ -13,6 +13,7 @@
 // keeps that student as its context.
 library;
 
+import 'package:flutter_education_app/features/shared/study_profile/study_profile_model.dart' show StudyProfile;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -481,6 +482,12 @@ class EntityHeader extends StatelessWidget {
           }
           if (s.text('email') != null) meta.add(s.text('email')!);
           if (s.text('phone') != null) meta.add(s.text('phone')!);
+          // stage / grade / track and school (D-795): who the teacher is teaching
+          final study = StudyProfile.fromJson(entityMap(s.header['study']));
+          if (study.summary.isNotEmpty) {
+            pills.add(AppStatusBadge(label: study.summary, tone: AppTone.info, icon: Icons.school_rounded, dense: true));
+          }
+          if (study.place.isNotEmpty) meta.add(study.place);
           for (final o in s.organizations) {
             if (o.name.isNotEmpty) {
               pills.add(AppStatusBadge(label: o.name, tone: AppTone.neutral, icon: Icons.apartment_rounded, dense: true));

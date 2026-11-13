@@ -53,6 +53,7 @@ import 'privacy_export.dart' show DataExportPage, dataExportEntryLabel;
 import 'profile_provider.dart' show ProfileProvider;
 import 'profile_hero.dart';
 import 'update_account_widget.dart';
+import '../study_profile/study_profile_pages.dart' show StudyProfilePage, StudyProfileTile;
 import '../../../utils/helpers.dart';
 import '../../auth/reauth_sheet.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
@@ -256,6 +257,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
         label: 'update_account'.tr,
         onTap: editAccount,
       ),
+      // a student's stage / grade / school (D-790, kill switch profile.study)
+      if (student) StudyProfileTile(onOpen: () => _push(const StudyProfilePage())),
       AppSettingsTile(
         featureKey: 'profile.change_password',
         icon: Icons.lock_reset_rounded,

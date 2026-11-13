@@ -1,5 +1,6 @@
 library;
 
+import 'package:flutter_education_app/features/shared/study_profile/study_profile_model.dart' show StudySettings;
 import 'package:flutter_education_app/features/shared/chat/chat_store.dart' show ChatHub;
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_access.dart';
@@ -245,6 +246,10 @@ class MyAuthProvider extends BaseProvider {
   /// server = false, so it is never sent an identifier it cannot resolve (D-071).
   bool usernameLogin = false;
 
+  /// The super admin's study-data settings (`study_profile` of the policy, D-794): the sign-up's study step for a
+  /// new student, the required fields. An older server = off (no step).
+  StudySettings studySettings = StudySettings.off;
+
   /// The sign-in / reset forms say "or username": the policy allows it and the kill switch is on.
   bool get loginAllowsUsername =>
       usernameLogin && !AppConfig.disableList.contains(kUsernameFeatureKey);
@@ -305,6 +310,7 @@ class MyAuthProvider extends BaseProvider {
                 _ => ['email'],
               };
         usernameLogin = r['username_login'] == true;
+        studySettings = StudySettings.fromJson(r['study_profile']);
         policyLoaded = true;
         notifyListeners();
       }
@@ -501,6 +507,7 @@ class MyAuthProvider extends BaseProvider {
     String? dob,
     String? way,
     String? username,
+    Map<String, dynamic>? studyProfile,
   }) async {
     isLoadingRegistration = true;
     usernameError = null;
@@ -520,6 +527,7 @@ class MyAuthProvider extends BaseProvider {
             'dob': ?dob,
             'way': ?way,
             if (handle.isNotEmpty) 'username': handle,
+            'study_profile': ?studyProfile, // the student's study step (D-790)
           },
           auth: false,
         );
