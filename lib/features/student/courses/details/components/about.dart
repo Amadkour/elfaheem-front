@@ -11,7 +11,7 @@ import 'package:provider/provider.dart';
 import '../../../../../config/app_config.dart';
 import '../../../../../utils/widget/rating_widget.dart';
 import '../../../../shared/course/course_space/course_space.dart';
-import '../../../../shared/profile/course_instractor_profile.dart';
+import '../../../../shared/public_profile/public_profile_page.dart' show openPersonProfile;
 import '../../../../teacher/home/teacher_models.dart';
 import '../course_detail_provider.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -33,10 +33,7 @@ class AboutTab extends StatelessWidget {
       category: (ar ? c.category?.nameAr : c.category?.nameEn) ?? '',
       onTeacher: c.teacher == null
           ? null
-          : () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => InstructorProfileScreen(teacher: c.teacher!)),
-            ),
+          : () => openPersonProfile(context, c.teacher!), // the one profile page when public (D-853)
       rating: RatingWidget(type: RateType.course, sourceId: c.id, canEdit: c.isEnrolled),
       myCertificates: provider.myCertificates,
       schedules: c.schedules,

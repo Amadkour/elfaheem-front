@@ -844,12 +844,12 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
       return _fade(GuestRecordPage(token: shared.token!, kind: GuestMediaKind.video), settings);
     }
     if (shared != null) return _fade(ShareLinkPage(link: shared), settings);
-    // /@ahmed — a profile link (D-074): the same flow as a course link (signed out → login, then the profile)
+    // /@ahmed — a profile link (D-074): signed out, the public page itself, read-only, with no sign-in and no
+    // authenticated call (D-854); signed in, the same page (the owner's view for one's own name)
     final profile = DeepLinkService.parseProfile(settings.name);
     if (profile != null) {
       if (!context.read<MyAuthProvider>().isAuthenticated) {
-        DeepLinkService.instance.setPendingProfile(profile);
-        return _fade(const LoginScreen(), const RouteSettings(name: '/login'));
+        return _fade(PublicProfileScreen(username: profile.username), settings);
       }
       return _fade(_Guard(child: PublicProfileScreen(username: profile.username)), settings);
     }

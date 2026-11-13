@@ -4514,3 +4514,50 @@ app without "Display over other apps" does not see (nor record) other people's v
 ## D-844 — After the video or the meeting: a soft "create an account / sign in" card · 2026-11-13 · accepted
 
 **Decision.** `GuestLinkCta` (`lib/features/shared/guest/guest_link_cta.dart`): under the guest player for a signed-out guest, and on the meeting's guest page once the guest is back from the room. It pushes `/register` or `/login` on top (Back returns to the video); the page works the same without it. A meeting still asks a guest only for a display name, and keeps its PIN, lobby and host approval.
+## D-850 — ONE profile page per person: the owner, a visitor and a guest see the same page · 2026-11-13 · accepted
+
+**Decision.** `PublicProfileView` is THE profile page. A visitor opens it with `PublicProfileScreen(username)` (the
+public `GET /public/u/{name}`), the owner with `MyProfileScreen` (`GET /me/public-profile`: the page exactly as
+visitors see it, built even while private) under `ProfileOwnerPanel`: public on / off, the sections shown, Edit
+profile, Share, Account & settings and, for teachers, Documents & credentials (the older instructor screen, kept).
+Opening one's own `/@name` signed in shows the owner view. The Account page's "Teacher profile" row became
+"My profile" for teachers and students (`profile.my_profile`; teachers keep `profile.teacher_profile` on it too).
+Settings live in `public_profile_settings` (migration 0078; no row = the role's defaults).
+**Rejected.** A separate "edit profile" page next to the public page (two pages drift); deleting the instructor screen
+(its documents section has no public equivalent yet).
+
+## D-851 — Who sees what: teachers public by default, students private and opt-in · 2026-11-13 · accepted
+
+Teacher sections `bio · stats · courses · growth · reviews` (all on, public: the D-074 behaviour). Student sections
+`bio · learning · completed_courses` (all off, private). E-mail, phone, parent data, school, grade, study profile,
+marks and other students' names are never a choice. A private profile is the same 404 `user_not_found` as an
+unknown name, also for the link preview and the `/s/teacher` share card.
+
+## D-852 — A teacher's figures are server aggregates, cached, never names · 2026-11-13 · accepted
+
+`services/public_profile_service.py` computes over the teacher's personal, not-trashed courses: students taught,
+active learners (30 days), published courses, lessons, video hours (fallback `total_hours`), rating / ratings /
+reviews (course + teacher rates), completion rate (only from 5 enrollments), certificates, live sessions held,
+median direct-chat reply time (only from 3 replies), top 3 public courses by students, 12 months of new students;
+cached 10 minutes per process. `is_new` (younger than 60 days or no student) makes the page say "New"; a zero or
+unknown figure is left out, never drawn as 0. Kill switch `profile.public_stats` (web) drops stats and growth.
+
+## D-853 — A course's instructor opens their one page · 2026-11-13 · accepted
+
+`openPersonProfile` opens `/@username` when the course's teacher block carries a confirmed username
+(`TeacherProfileData.username`, already sent by `PublicTeacherResponse`), and falls back to the instructor screen when
+there is none or the page is private (404).
+
+## D-854 — A guest opens `/@name` directly; `/app/@name` is a profile link too · 2026-11-13 · accepted
+
+Signed out, `_router` returns `PublicProfileScreen` with no guard and no login detour (D-074's "login first" is
+retired); the page only calls the public route with `auth: false`. A course card opens the public course preview
+(`/c/<id>`), and a soft join card offers "Create a free account" / "Sign in", returning to the profile afterwards
+(the pending profile link). `profileLinkFrom` also accepts the web base path (`/app/@name`). The share link stays
+`https://nextbrain.site/@name` (nginx redirects to `/app/@name`, D-270).
+
+## D-855 — Link previews carry the selling figures · 2026-11-13 · accepted
+
+`/share/og/u/{name}` describes a teacher as "courses · students · ★ rating" (only the sections the teacher shows) and
+a student as "Learning on NextBrain". Still not wired in nginx: bots get the SPA until the owner routes them (see
+FLUTTER_API_CHANGES).
