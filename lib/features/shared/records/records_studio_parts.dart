@@ -117,6 +117,9 @@ enum StudioTool {
   /// The edit tools share one project and one render; the output tools make something else of it.
   bool get isEditing => index <= StudioTool.history.index;
 
+  /// On the rail / in the tools: Quality and "Two files" are choices of the Export panel now (D-827).
+  bool get inRail => this != StudioTool.quality && this != StudioTool.split;
+
   /// What the Save of this tool sends (cover saves at once; merge has its own call).
   RecordOp? get op => switch (this) {
         StudioTool.edit || StudioTool.text || StudioTool.image || StudioTool.history || StudioTool.quality => RecordOp.project,
@@ -178,8 +181,13 @@ const studioPreviewSpeeds = <double>[1, 1.25, 1.5, 2, 0.75];
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Where the autosave stands.
-enum StudioSaveState { idle, saving, saved, failed }
+/// Where the autosave stands ([local]: the server could not be reached; the work is kept on this device and sent
+/// when it can be, D-826).
+enum StudioSaveState { idle, saving, saved, local, failed }
 
+/// The Studio's top bar (D-820): back · the name with where the autosave stands · Undo · Redo (always in view) · ⋯
+/// (canvas, download the original) · Export, the one primary button. While an export runs the button shows its
+/// percent and opens the export panel again.
 class StudioTopBar extends StatelessWidget implements PreferredSizeWidget {
   const StudioTopBar({
     super.key,
@@ -190,6 +198,13 @@ class StudioTopBar extends StatelessWidget implements PreferredSizeWidget {
     this.onCanvas,
     this.onDownload,
     this.downloading,
+    this.canUndo = false,
+    this.canRedo = false,
+    this.onUndo,
+    this.onRedo,
+    this.onExport,
+    this.exporting,
+    this.exportDone = false,
   });
 
   final String title;
@@ -205,20 +220,132 @@ class StudioTopBar extends StatelessWidget implements PreferredSizeWidget {
 
   /// A download in progress (0–1; null: none).
   final double? downloading;
+  final bool canUndo;
+  final bool canRedo;
+  final VoidCallback? onUndo;
+  final VoidCallback? onRedo;
+
+  /// Opens the export panel (null: nothing to export yet).
+  final VoidCallback? onExport;
+
+  /// An export running: its percent 0–100 (-1: started, no percent yet; null: none).
+  final int? exporting;
+
+  /// The last export is ready (the button says so until the panel is opened).
+  final bool exportDone;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
+  static (IconData, String, Color) saveLook(StudioSaveState s, StudioBay bay) => switch (s) {
+        StudioSaveState.saving => (Icons.cloud_sync_outlined, t('يحفظ…', 'Saving…'), bay.muted),
+        StudioSaveState.saved => (Icons.cloud_done_outlined, t('محفوظ', 'Saved'), bay.muted),
+        StudioSaveState.local => (Icons.phone_android_rounded, t('محفوظ على هذا الجهاز', 'Kept on this device'), bay.c.warning),
+        StudioSaveState.failed => (Icons.cloud_off_outlined, t('لم يُحفظ — سيُعاد', 'Not saved — retrying'), bay.cut),
+        StudioSaveState.idle => (Icons.cloud_outlined, t('لا تغييرات بعد', 'No changes yet'), bay.faint),
+      };
+
   @override
   Widget build(BuildContext context) {
     final bay = StudioBay.of(context);
-    final wide = MediaQuery.sizeOf(context).width >= 720;
-    final (IconData saveIcon, String saveText, Color saveTone) = switch (saveState) {
-      StudioSaveState.saving => (Icons.cloud_sync_outlined, t('يحفظ…', 'Saving…'), bay.muted),
-      StudioSaveState.saved => (Icons.cloud_done_outlined, t('حُفظ العمل', 'Work saved'), bay.muted),
-      StudioSaveState.failed => (Icons.cloud_off_outlined, t('لم يُحفظ — سيُعاد', 'Not saved — retrying'), bay.cut),
-      StudioSaveState.idle => (Icons.cloud_outlined, '', bay.faint),
-    };
+    final width = MediaQuery.sizeOf(context).width;
+    final wide = width >= 720;
+    // the narrowest phones: the Export button keeps its icon (or its percent while running), the words go to the tooltip
+    final compact = width < 380;
+    final (saveIcon, saveText, saveTone) = saveLook(saveState, bay);
+    Widget iconBtn(String key, IconData icon, String tip, VoidCallback? onTap) => IconButton(
+          key: ValueKey(key),
+          tooltip: tip,
+          constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+          onPressed: onTap,
+          icon: Icon(icon, color: onTap == null ? bay.faint : bay.ink),
+        );
+    final running = exporting != null;
+    final exportLabel = running
+        ? (exporting! >= 0 ? '${exporting!}%' : t('يصدّر…', 'Exporting…'))
+        : exportDone
+            ? t('جاهز', 'Ready')
+            : t('تصدير', 'Export');
+    final export = Padding(
+      padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs),
+      child: Tooltip(
+        message: t('تصدير الفيديو (Ctrl+E)', 'Export the video (Ctrl+E)'),
+        child: Semantics(
+          button: true,
+          label: running ? t('التصدير جارٍ $exportLabel', 'Export running $exportLabel') : exportLabel,
+          excludeSemantics: true,
+          child: Material(
+            key: const ValueKey('studio.export'),
+            color: onExport == null ? bay.raised : (exportDone && !running ? bay.c.success : bay.accent),
+            borderRadius: AppRadius.chipAll,
+            child: InkWell(
+              borderRadius: AppRadius.chipAll,
+              onTap: onExport,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 40, minWidth: AppTouch.min),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: wide ? AppSpace.md : (compact ? AppSpace.xs : AppSpace.sm)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    if (running && compact)
+                      const SizedBox.shrink()
+                    else if (running)
+                      SizedBox(
+                        width: AppIconSize.sm,
+                        height: AppIconSize.sm,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2.2, value: exporting! > 0 ? exporting! / 100 : null, color: bay.deck, backgroundColor: bay.deck.withValues(alpha: 0.25)),
+                      )
+                    else
+                      Icon(exportDone ? Icons.check_circle_rounded : Icons.ios_share_rounded, size: AppIconSize.sm, color: onExport == null ? bay.faint : bay.deck),
+                    if (!compact || running) ...[
+                    if (!compact) const SizedBox(width: AppSpace.xxs + 2),
+                    Text(exportLabel,
+                        maxLines: 1,
+                        textScaler: TextScaler.linear(math.min(1.15, MediaQuery.textScalerOf(context).scale(1))),
+                        style: _tabular(appText(14, w: FontWeight.w700, c: onExport == null ? bay.faint : bay.deck))),
+                    ],
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    final more = PopupMenuButton<String>(
+      key: const ValueKey('studio.more'),
+      tooltip: t('المزيد', 'More'),
+      icon: Icon(Icons.more_vert_rounded, color: bay.ink),
+      onSelected: (v) {
+        if (v == 'canvas') onCanvas?.call();
+        if (v == 'download') onDownload?.call();
+      },
+      itemBuilder: (_) => [
+        if (onCanvas != null)
+          PopupMenuItem(
+            value: 'canvas',
+            child: Row(children: [
+              Icon(switch (canvas) {
+                StudioCanvas.dark => Icons.dark_mode_outlined,
+                StudioCanvas.grey => Icons.contrast_rounded,
+                StudioCanvas.light => Icons.light_mode_outlined,
+              }),
+              const SizedBox(width: AppSpace.sm),
+              Flexible(child: Text('${canvas.label} — ${t('غيّر', 'change')}')),
+            ]),
+          ),
+        if (onDownload != null)
+          PopupMenuItem(
+            value: 'download',
+            enabled: downloading == null,
+            child: Row(children: [
+              const Icon(Icons.download_rounded),
+              const SizedBox(width: AppSpace.sm),
+              Flexible(child: Text(downloading == null ? t('تنزيل الأصل', 'Download the original') : t('يُنزّل الأصل…', 'Downloading the original…'))),
+            ]),
+          ),
+      ],
+    );
     return Material(
       color: bay.deck,
       child: Container(
@@ -230,70 +357,44 @@ class StudioTopBar extends StatelessWidget implements PreferredSizeWidget {
           const SizedBox(width: AppSpace.xxs),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-              Text(t('الاستوديو', 'Studio'),
-                  maxLines: 1,
-                  textScaler: TextScaler.noScaling,
-                  style: AppType.overline(context).copyWith(color: bay.accent, letterSpacing: 0)),
               Text(title,
                   key: const ValueKey('studio.title_bar'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textScaler: TextScaler.noScaling,
                   style: AppType.bodyStrong(context).copyWith(color: bay.ink)),
+              Row(key: const ValueKey('studio.autosave'), children: [
+                Icon(saveIcon, size: AppIconSize.xs, color: saveTone),
+                const SizedBox(width: AppSpace.xxs),
+                Flexible(
+                  child: Text(
+                    [saveText, if (wide && width >= 1100) ...[for (final f in facts) '${String.fromCharCode(0x2066)}$f${String.fromCharCode(0x2069)}']].join('  ·  '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textScaler: TextScaler.noScaling,
+                    style: _tabular(AppType.meta(context).copyWith(color: saveTone)),
+                  ),
+                ),
+              ]),
             ]),
           ),
-          if (facts.isNotEmpty && MediaQuery.sizeOf(context).width >= 1100) ...[
-            const SizedBox(width: AppSpace.md),
-            Text(facts.join('  ·  '), textDirection: TextDirection.ltr, maxLines: 1, style: _tabular(AppType.meta(context).copyWith(color: bay.faint))),
-          ],
-          if (saveState != StudioSaveState.idle)
-            Tooltip(
-              message: saveText,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(saveIcon, size: AppIconSize.sm, color: saveTone, key: const ValueKey('studio.autosave')),
-                  if (wide) ...[
-                    const SizedBox(width: AppSpace.xxs),
-                    Text(saveText, maxLines: 1, textScaler: TextScaler.noScaling, style: AppType.meta(context).copyWith(color: saveTone)),
-                  ],
-                ]),
-              ),
-            ),
-          if (onCanvas != null)
-            IconButton(
-              key: const ValueKey('studio.canvas'),
-              tooltip: '${canvas.label} — ${t('غيّر', 'change')}',
-              constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
-              onPressed: onCanvas,
-              icon: Icon(
-                  switch (canvas) {
-                    StudioCanvas.dark => Icons.dark_mode_outlined,
-                    StudioCanvas.grey => Icons.contrast_rounded,
-                    StudioCanvas.light => Icons.light_mode_outlined,
-                  },
-                  color: bay.muted),
-            ),
-          if (onDownload != null)
+          iconBtn('studio.undo', Icons.undo_rounded, t('تراجع (Ctrl+Z)', 'Undo (Ctrl+Z)'), canUndo ? onUndo : null),
+          iconBtn('studio.redo', Icons.redo_rounded, t('إعادة (Ctrl+Shift+Z)', 'Redo (Ctrl+Shift+Z)'), canRedo ? onRedo : null),
+          if (onCanvas != null || onDownload != null)
             downloading != null
                 ? SizedBox(
                     width: AppTouch.min,
                     height: AppTouch.min,
                     child: Center(
                       child: SizedBox(
-                        width: 22,
-                        height: 22,
+                        width: AppIconSize.md,
+                        height: AppIconSize.md,
                         child: CircularProgressIndicator(strokeWidth: 2.4, value: downloading! > 0 ? downloading : null, color: bay.accent),
                       ),
                     ),
                   )
-                : IconButton(
-                    key: const ValueKey('studio.download_original'),
-                    tooltip: t('تنزيل الأصل', 'Download the original'),
-                    constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
-                    onPressed: onDownload,
-                    icon: Icon(Icons.download_rounded, color: bay.ink),
-                  ),
+                : more,
+          export,
         ]),
       ),
     );
@@ -409,10 +510,10 @@ class StudioTransport extends StatelessWidget {
             height: AppTouch.primary,
             child: Center(
               child: Container(
-                width: AppTouch.min,
-                height: AppTouch.min,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(shape: BoxShape.circle, color: enabled ? bay.ink : bay.raised),
-                child: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded, color: enabled ? bay.deck : bay.faint, size: 28),
+                child: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded, color: enabled ? bay.deck : bay.faint, size: AppIconSize.xl),
               ),
             ),
           ),
@@ -620,74 +721,248 @@ class StudioToolRail extends StatelessWidget {
   }
 }
 
-/// The tools on phones: a dark strip at the foot (icon + one word); narrow phones scroll it sideways.
-class StudioToolBar extends StatelessWidget {
-  const StudioToolBar({super.key, required this.tool, this.onTool, this.enabled = true, this.tools = StudioTool.values});
+/// One thing the person can do now (D-824): what the selection allows (split, delete, speed, move, …) or, with
+/// nothing selected, the tools. The page builds ONE list; phones draw it as the bottom bar ([StudioActionBar]),
+/// wide windows as the strip over the timeline ([StudioTimelineBar]).
+class StudioAction {
+  const StudioAction({
+    required this.id,
+    required this.icon,
+    required this.label,
+    this.onTap,
+    this.tip,
+    this.danger = false,
+    this.selected = false,
+    this.timeIcon = false,
+  });
 
-  final StudioTool tool;
-  final ValueChanged<StudioTool>? onTool;
+  final String id;
+  final IconData icon;
+
+  /// The icon points along the timeline (earlier / later, in / out): drawn left to right in Arabic too, like the
+  /// timeline it acts on (D-822), where a language-mirrored arrow would point the wrong way.
+  final bool timeIcon;
+  final String label;
+  final VoidCallback? onTap;
+
+  /// The tooltip (the key, on desktop).
+  final String? tip;
+  final bool danger;
+
+  /// A tool that is open now.
+  final bool selected;
+}
+
+/// What the action bar is about: nothing selected (the tools), a part, a text or picture, a marked period.
+class StudioActionContext {
+  const StudioActionContext({required this.label, this.onClear});
+
+  /// "Part 2 of 4", "Text “…”", "Marked 01:10 – 01:25".
+  final String label;
+
+  /// Clears the selection (the ✕ at the start).
+  final VoidCallback? onClear;
+}
+
+/// Phones: the actions at the foot, icon over one word, sideways when they don't fit; with a selection a small
+/// line above says what is selected and how to let it go.
+class StudioActionBar extends StatelessWidget {
+  const StudioActionBar({super.key, required this.actions, this.context, this.enabled = true});
+
+  final List<StudioAction> actions;
+  final StudioActionContext? context;
   final bool enabled;
-
-  /// The source's tools (a session material has no Cover, D-315).
-  final List<StudioTool> tools;
 
   @override
   Widget build(BuildContext context) {
     final bay = StudioBay.of(context);
     final motion = AppMotion.of(context);
-    Widget cell(StudioTool x) => Semantics(
-          selected: x == tool,
+    final sel = this.context;
+    final scale = math.min(1.1, MediaQuery.textScalerOf(context).scale(1));
+    Widget cell(StudioAction a) {
+      final on = enabled && a.onTap != null;
+      final tone = !on ? bay.faint : (a.danger ? bay.cut : (a.selected ? bay.accent : bay.ink));
+      return Tooltip(
+        message: a.tip ?? a.label,
+        waitDuration: const Duration(milliseconds: 500),
+        child: Semantics(
           button: true,
-          label: x.label,
+          selected: a.selected,
+          enabled: on,
+          label: a.label,
           excludeSemantics: true,
           child: InkWell(
-            key: ValueKey('studio.bar.${x.name}'),
+            key: ValueKey('studio.act.${a.id}'),
             borderRadius: AppRadius.chipAll,
-            onTap: enabled ? () => onTool?.call(x) : null,
+            onTap: on ? a.onTap : null,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: AppTouch.primary),
+              constraints: const BoxConstraints(minHeight: AppTouch.primary, minWidth: 64),
               child: Column(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
                 AnimatedContainer(
                   duration: motion.fast,
                   curve: AppMotion.curve,
                   width: 44,
-                  height: 28,
+                  height: 30,
                   decoration: BoxDecoration(
-                    color: x == tool ? bay.accent.withValues(alpha: 0.20) : null,
-                    borderRadius: BorderRadius.circular(14),
+                    color: a.selected ? bay.accent.withValues(alpha: 0.20) : null,
+                    borderRadius: BorderRadius.circular(15),
                   ),
-                  child: Icon(x.icon, size: AppIconSize.md, color: x == tool ? bay.accent : bay.muted),
+                  child: Directionality(
+                    textDirection: a.timeIcon ? TextDirection.ltr : Directionality.of(context),
+                    child: Icon(a.icon, size: AppIconSize.lg - 2, color: tone),
+                  ),
                 ),
                 const SizedBox(height: 2),
-                Text(x.short,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textScaler: TextScaler.linear(math.min(1.1, MediaQuery.textScalerOf(context).scale(1))),
-                    style: appText(10.5, w: x == tool ? FontWeight.w700 : FontWeight.w500, c: x == tool ? bay.ink : bay.muted)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
+                  child: Text(a.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textScaler: TextScaler.linear(scale),
+                      style: appText(11, w: a.selected ? FontWeight.w700 : FontWeight.w500, c: tone)),
+                ),
               ]),
             ),
           ),
-        );
+        ),
+      );
+    }
+
     return Material(
+      key: const ValueKey('studio.actions'),
       color: bay.deck,
       child: SafeArea(
         top: false,
-        child: Opacity(
-          opacity: enabled ? 1 : 0.5,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs, vertical: AppSpace.xxs),
-            child: LayoutBuilder(builder: (context, box) {
-              if (box.maxWidth / math.max(1, tools.length) >= 50) {
-                return Row(children: [for (final x in tools) Expanded(child: cell(x))]);
-              }
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(children: [for (final x in tools) SizedBox(width: 60, child: cell(x))]),
-              );
-            }),
-          ),
+        child: DecoratedBox(
+          decoration: BoxDecoration(border: Border(top: BorderSide(color: bay.line))),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            if (sel != null)
+              Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xxs, AppSpace.xxs, 0),
+                child: Row(children: [
+                  Expanded(
+                    child: Text(sel.label,
+                        key: const ValueKey('studio.act.context'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textScaler: TextScaler.linear(scale),
+                        style: _tabular(AppType.meta(context).copyWith(color: bay.muted, fontWeight: FontWeight.w600))),
+                  ),
+                  if (sel.onClear != null)
+                    IconButton(
+                      key: const ValueKey('studio.act.clear'),
+                      tooltip: t('إلغاء التحديد (Esc)', 'Clear the selection (Esc)'),
+                      constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+                      onPressed: sel.onClear,
+                      icon: Icon(Icons.close_rounded, size: AppIconSize.md, color: bay.muted),
+                    ),
+                ]),
+              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs, vertical: AppSpace.xxs),
+              child: LayoutBuilder(builder: (context, box) {
+                if (box.maxWidth / math.max(1, actions.length) >= 64) {
+                  return Row(children: [for (final a in actions) Expanded(child: cell(a))]);
+                }
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(children: [for (final a in actions) SizedBox(width: 68, child: cell(a))]),
+                );
+              }),
+            ),
+          ]),
         ),
       ),
+    );
+  }
+}
+
+/// Wide windows: the same actions as a strip of small buttons over the timeline (what the selection allows, with its
+/// key in the tooltip), the selection's words at its start.
+class StudioTimelineBar extends StatelessWidget {
+  const StudioTimelineBar({super.key, required this.actions, this.context, this.enabled = true});
+
+  final List<StudioAction> actions;
+  final StudioActionContext? context;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final bay = StudioBay.of(context);
+    final sel = this.context;
+    Widget btn(StudioAction a) {
+      final on = enabled && a.onTap != null;
+      final tone = !on ? bay.faint : (a.danger ? bay.cut : (a.selected ? bay.accent : bay.ink));
+      return Tooltip(
+        message: a.tip ?? a.label,
+        child: Semantics(
+          button: true,
+          enabled: on,
+          label: a.label,
+          excludeSemantics: true,
+          child: InkWell(
+            key: ValueKey('studio.act.${a.id}'),
+            borderRadius: AppRadius.chipAll,
+            onTap: on ? a.onTap : null,
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 40),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+              decoration: BoxDecoration(
+                color: a.selected ? bay.accent.withValues(alpha: 0.16) : null,
+                borderRadius: AppRadius.chipAll,
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Directionality(
+                  textDirection: a.timeIcon ? TextDirection.ltr : Directionality.of(context),
+                  child: Icon(a.icon, size: AppIconSize.md, color: tone),
+                ),
+                const SizedBox(width: AppSpace.xxs + 2),
+                Text(a.label, maxLines: 1, textScaler: TextScaler.noScaling, style: appText(13, w: FontWeight.w600, c: tone)),
+              ]),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      key: const ValueKey('studio.actions'),
+      height: 44,
+      child: Row(children: [
+        if (sel != null) ...[
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 240),
+            child: Container(
+              key: const ValueKey('studio.act.context'),
+              padding: const EdgeInsetsDirectional.only(start: AppSpace.sm, end: AppSpace.xxs),
+              decoration: BoxDecoration(color: bay.raised, borderRadius: AppRadius.chipAll),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Flexible(
+                  child: Text(sel.label,
+                      maxLines: 1, overflow: TextOverflow.ellipsis, textScaler: TextScaler.noScaling, style: _tabular(appText(12.5, w: FontWeight.w600, c: bay.muted))),
+                ),
+                if (sel.onClear != null)
+                  IconButton(
+                    key: const ValueKey('studio.act.clear'),
+                    tooltip: t('إلغاء التحديد (Esc)', 'Clear the selection (Esc)'),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: sel.onClear,
+                    icon: Icon(Icons.close_rounded, size: AppIconSize.sm, color: bay.muted),
+                  ),
+              ]),
+            ),
+          ),
+          const SizedBox(width: AppSpace.xs),
+        ],
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(children: [
+              for (final a in actions) ...[btn(a), const SizedBox(width: 2)],
+            ]),
+          ),
+        ),
+      ]),
     );
   }
 }
@@ -1100,7 +1375,13 @@ class StudioSaveArea extends StatelessWidget {
     this.onReset,
     this.onSave,
     this.saveLabel,
+    this.showHistory = true,
+    this.saveIcon = Icons.save_alt_rounded,
   });
+
+  /// Undo / Redo / Start over beside the button (off where they live in the top bar).
+  final bool showHistory;
+  final IconData saveIcon;
 
   final VoidCallback? onRedo;
   final bool canRedo;
@@ -1200,6 +1481,7 @@ class _StudioSaveActions extends StatelessWidget {
     final a = area;
     final can = a.canUndo && !a.busy;
     return Row(children: [
+      if (a.showHistory) ...[
       IconButton(
         key: const ValueKey('studio.undo'),
         tooltip: t('تراجع (Ctrl+Z)', 'Undo (Ctrl+Z)'),
@@ -1222,6 +1504,7 @@ class _StudioSaveActions extends StatelessWidget {
         onPressed: can ? a.onReset : null,
       ),
       const SizedBox(width: AppSpace.xs),
+      ],
       Expanded(
         child: AppButton.primary(
           key: const ValueKey('studio.save'),
@@ -1230,7 +1513,7 @@ class _StudioSaveActions extends StatelessWidget {
               : a.replace
                   ? t('حفظ واستبدال', 'Save and replace')
                   : t('حفظ كتسجيل جديد', 'Save as new')),
-          icon: Icons.save_alt_rounded,
+          icon: a.saveIcon,
           busy: a.busy,
           expand: true,
           size: AppButtonSize.lg,
@@ -1247,7 +1530,7 @@ const studioJobStages = <String>['queued', 'downloading', 'processing', 'uploadi
 String studioStageLabel(String stage) => switch (stage) {
       'queued' => t('في الدور', 'Queued'),
       'downloading' => t('جلب', 'Fetch'),
-      'processing' => t('تعديل', 'Edit'),
+      'processing' => t('معالجة', 'Render'),
       'uploading' => t('حفظ', 'Save'),
       _ => stage,
     };
@@ -1275,6 +1558,7 @@ class StudioJobCard extends StatelessWidget {
     this.onContinue,
     this.onAgain,
     this.onLibrary,
+    this.onShare,
     this.actionsFor,
     this.eta = const {},
     this.downloading = const {},
@@ -1290,6 +1574,9 @@ class StudioJobCard extends StatelessWidget {
 
   /// Open its project again (a finished project job).
   final ValueChanged<RecordItem>? onContinue;
+
+  /// Share a finished item (Records: with chosen people or by link, D-312).
+  final ValueChanged<RecordItem>? onShare;
 
   /// A finished item's own buttons next to Play (a material draft: Publish, Discard — D-315).
   final Widget? Function(RecordItem r)? actionsFor;
@@ -1418,6 +1705,8 @@ class StudioJobCard extends StatelessWidget {
                   icon: dl != null ? Icons.downloading_rounded : Icons.download_rounded,
                   label: dl != null ? (dl > 0 ? '${(dl * 100).round()}%' : t('يُنزّل…', 'Downloading…')) : t('تنزيل', 'Download'),
                   onTap: dl != null ? null : () => onDownload!(r)),
+            if (onShare != null)
+              AppPill(key: ValueKey('studio.job.share.${r.id}'), icon: Icons.share_rounded, label: t('مشاركة', 'Share'), onTap: () => onShare!(r)),
             if (onContinue != null && r.hasProject)
               AppPill(key: ValueKey('studio.job.continue.${r.id}'), icon: Icons.edit_note_rounded, label: t('متابعة التعديل', 'Continue editing'),
                   onTap: () => onContinue!(r)),
@@ -1439,7 +1728,7 @@ class StudioJobCard extends StatelessWidget {
         ? (drafts ? t('المسودة جاهزة', 'The draft is ready') : t('جاهز في «التسجيلات»', 'Ready in Records'))
         : failed
             ? (stopped ? t('أوقفت الحفظ', 'You stopped the save') : t('تعذّر إكمال العمل', 'The work could not finish'))
-            : t('يجري الحفظ', 'Saving');
+            : t('يُصنع الملف', 'Making the file');
     final String? sub = done
         ? (drafts ? t('شغّلها ثم انشرها', 'Play it, then publish it') : null)
         : failed
@@ -1607,9 +1896,10 @@ class RecordStudioLayout extends StatelessWidget {
     required this.timeline,
     required this.tool,
     required this.panel,
-    required this.summary,
-    required this.save,
-    this.job,
+    this.actions = const [],
+    this.actionContext,
+    this.panelOpen = false,
+    this.onClosePanel,
     this.onTool,
     this.busy = false,
     this.footer,
@@ -1624,23 +1914,27 @@ class RecordStudioLayout extends StatelessWidget {
   /// The picture's width / height (the stage keeps it).
   final double aspect;
 
-  /// The source's tools (StudioSource.tools).
+  /// The tools of the rail (wide windows).
   final List<StudioTool> tools;
 
-  /// The player (or a still / a placeholder in tests), drawn 16:9 on the stage.
+  /// The player (or a still / a placeholder in tests).
   final Widget preview;
   final Widget transport;
   final Widget timeline;
   final StudioTool tool;
+
+  /// The open tool's controls: the inspector on wide windows; on phones, drawn in place of the timeline while
+  /// [panelOpen] (the picture stays in view to judge a text or a speed).
   final Widget panel;
-  final Widget summary;
 
-  /// The save area (cover: none — it saves at once).
-  final StudioSaveArea? save;
-
-  /// A saved edit's job: replaces the save area.
-  final Widget? job;
+  /// What can be done now (the bottom bar on phones, the strip over the timeline on wide windows).
+  final List<StudioAction> actions;
+  final StudioActionContext? actionContext;
+  final bool panelOpen;
+  final VoidCallback? onClosePanel;
   final ValueChanged<StudioTool>? onTool;
+
+  /// Not ready to edit yet (the video or the saved work is still loading).
   final bool busy;
 
   /// Under the inspector's content (the keyboard hint on the web).
@@ -1649,41 +1943,14 @@ class RecordStudioLayout extends StatelessWidget {
   /// Said on the stage (what is being dragged: "Start 01:23.45").
   final String? stageNote;
 
-  /// The inspector's scrolling content, on phones and wide screens alike. A running or finished job takes it over: the
-  /// tools are off until "Another edit" anyway, and on a phone the job must not wait below the fold.
-  Widget _inspectorBody() => Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-        if (job != null)
-          job!
-        else ...[
-          _InspectorHead(tool: tool),
-          const SizedBox(height: AppSpace.md),
-          panel,
-          const SizedBox(height: AppSpace.md),
-          summary,
-          if (save != null) const SizedBox(height: AppSpace.md),
-          ?save?.form,
-        ],
-        ?footer,
-      ]);
-
-  /// Undo and the primary button, pinned under the inspector (none while a job runs).
-  Widget? _actionBar(BuildContext context, EdgeInsets padding) {
-    final s = save;
-    if (job != null || s == null) return null;
-    return DecoratedBox(
-      decoration: BoxDecoration(border: Border(top: BorderSide(color: context.colors.divider))),
-      child: Padding(padding: padding, child: s.actions),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final bay = StudioBay.of(context);
     return LayoutBuilder(builder: (context, box) {
-      final h = box.maxHeight, w = box.maxWidth;
+      final h = box.maxHeight;
       if (studioIsWide(box.biggest)) {
-        final inspectorW = math.max(300.0, math.min(380.0, w * 0.34));
+        final inspectorW = math.max(300.0, math.min(380.0, box.maxWidth * 0.27));
         return Material(
           color: bay.deck,
           child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -1712,7 +1979,12 @@ class RecordStudioLayout extends StatelessWidget {
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
                       transport,
                       const SizedBox(height: AppSpace.xxs),
-                      timeline,
+                      StudioTimelineBar(actions: actions, context: actionContext, enabled: !busy),
+                      const SizedBox(height: AppSpace.xxs),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(maxHeight: math.max(160, h * 0.42)),
+                        child: SingleChildScrollView(child: timeline),
+                      ),
                     ]),
                   ),
                 ),
@@ -1722,66 +1994,74 @@ class RecordStudioLayout extends StatelessWidget {
               width: inspectorW,
               child: Material(
                 color: c.cardBg,
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      key: const ValueKey('studio.side'),
-                      padding: const EdgeInsets.all(AppSpace.md),
-                      child: _inspectorBody(),
-                    ),
-                  ),
-                  ?_actionBar(context, const EdgeInsets.fromLTRB(AppSpace.xs, AppSpace.sm, AppSpace.md, AppSpace.sm)),
-                ]),
+                child: SingleChildScrollView(
+                  key: const ValueKey('studio.side'),
+                  padding: const EdgeInsets.all(AppSpace.md),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+                    _InspectorHead(tool: tool),
+                    const SizedBox(height: AppSpace.md),
+                    panel,
+                    ?footer,
+                  ]),
+                ),
               ),
             ),
           ]),
         );
       }
-      // Phones: the picture and the timeline stay in view while the inspector scrolls under them. The on-screen
-      // keyboard folds the bay away (Offstage, so the player and the typed name keep their state): the field needs the room.
-      final keyboard = View.of(context).viewInsets.bottom > 0;
-      final stageH = math.min(w / aspect.clamp(0.5, 3.0), h * (h < 600 ? 0.24 : 0.30));
+      // Phones (D-820): the picture on top, the transport, then EITHER the timeline with the action bar OR the open
+      // tool's panel in their place (the picture stays: a text or a speed is judged on it).
+      final stage = ColoredBox(color: bay.canvas(canvas), child: _Stage(preview: preview, note: stageNote, aspect: aspect));
       return Material(
         color: bay.deck,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Visibility(
-            visible: !keyboard,
-            maintainState: true,
-            maintainAnimation: true,
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-              SizedBox(height: stageH, child: ColoredBox(color: bay.canvas(canvas), child: _Stage(preview: preview, note: stageNote, aspect: aspect))),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(AppSpace.xs, AppSpace.xxs, AppSpace.xs, AppSpace.xs),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-                  transport,
-                  timeline,
-                ]),
-              ),
-            ]),
-          ),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: AppRadius.sheetTop,
-              child: Material(
-                color: c.cardBg,
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      key: const ValueKey('studio.scroll'),
-                      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.md),
-                      child: _inspectorBody(),
+          Expanded(flex: panelOpen ? 4 : 1, child: stage),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs), child: transport),
+          if (panelOpen)
+            Expanded(
+              flex: 6,
+              child: ClipRRect(
+                borderRadius: AppRadius.sheetTop,
+                child: Material(
+                  key: const ValueKey('studio.panel'),
+                  color: c.cardBg,
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Padding(
+                      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.xs, AppSpace.xs, 0),
+                      child: Row(children: [
+                        Icon(tool.icon, size: AppIconSize.md, color: c.isDark ? c.textDark : c.primary),
+                        const SizedBox(width: AppSpace.xs),
+                        Expanded(child: Text(tool.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context))),
+                        TextButton.icon(
+                          key: const ValueKey('studio.panel.done'),
+                          onPressed: onClosePanel,
+                          style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min)),
+                          icon: const Icon(Icons.check_rounded, size: AppIconSize.md),
+                          label: Text(t('تم', 'Done')),
+                        ),
+                      ]),
                     ),
-                  ),
-                  ?_actionBar(context, const EdgeInsets.fromLTRB(AppSpace.xxs, AppSpace.xs, AppSpace.md, AppSpace.xs)),
-                ]),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        key: const ValueKey('studio.scroll'),
+                        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.md),
+                        child: panel,
+                      ),
+                    ),
+                  ]),
+                ),
+              ),
+            )
+          else ...[
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: math.max(120, h * 0.36)),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
+                child: timeline,
               ),
             ),
-          ),
-          Visibility(
-            visible: !keyboard,
-            maintainState: true,
-            child: StudioToolBar(tool: tool, onTool: onTool, enabled: !busy, tools: tools),
-          ),
+            StudioActionBar(actions: actions, context: actionContext, enabled: !busy),
+          ],
         ]),
       );
     });
@@ -1817,8 +2097,11 @@ class StudioKeysHint extends StatelessWidget {
         key('I · O', t('علامة البداية / النهاية', 'Mark in / out')),
         key('S', t('تقسيم عند المؤشر', 'Split at the playhead')),
         key('Del', t('حذف المحدد', 'Delete the selection')),
+        key('Alt + ← →', t('نقل الجزء المحدد', 'Move the selected part')),
         key('Ctrl+Z', t('تراجع', 'Undo')),
         key('Ctrl+Shift+Z', t('إعادة', 'Redo')),
+        key('Ctrl+S', t('حفظ الآن', 'Save now')),
+        key('Ctrl+E', t('تصدير', 'Export')),
         key('Ctrl + ${t('العجلة', 'wheel')}', t('تكبير الخط الزمني', 'Zoom the timeline')),
       ]),
     );

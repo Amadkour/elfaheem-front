@@ -1,12 +1,15 @@
-// The Studio (D-312) and sharing a record: the plain-values widgets on every screen size and language (no overflow,
-// text scale 1.3), plus what they say and send — the live summary, Save off for an invalid selection, the timeline's
-// left-to-right time in Arabic, the share sheet's Save rule.
+// The Studio (D-312, redesigned D-820 … D-829) and sharing a record: the plain-values widgets on every screen size and
+// language (no overflow, text scale 1.3), plus what they say and send — the top bar's Undo / Redo / Export, the action
+// bars, the Export panel (Export off while there is a problem), the timeline's left-to-right time in Arabic, its
+// tracks and drag-to-reorder, the share sheet's Save rule.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppButton;
 import 'package:flutter_education_app/features/shared/records/records_api.dart';
 import 'package:flutter_education_app/features/shared/records/records_share_api.dart';
 import 'package:flutter_education_app/features/shared/records/records_share_parts.dart';
 import 'package:flutter_education_app/features/shared/records/records_studio_parts.dart';
+import 'package:flutter_education_app/features/shared/records/studio_export.dart';
 import 'package:flutter_education_app/features/shared/records/studio_panels.dart';
 import 'package:flutter_education_app/features/shared/records/studio_project.dart';
 import 'package:flutter_education_app/features/shared/records/studio_timeline.dart';
@@ -74,56 +77,65 @@ Widget _panel(StudioTool tool, RecordItem item, List<RecordItem> others) {
   }
 }
 
-Widget _studio(StudioTool tool, {bool job = false, double duration = 5400}) {
+List<StudioAction> _acts() => [
+      StudioAction(id: 'split', icon: Icons.content_cut_rounded, label: 'Split', onTap: () {}),
+      StudioAction(id: 'speed', icon: Icons.speed_rounded, label: 'Speed', onTap: () {}),
+      StudioAction(id: 'move_back', icon: Icons.keyboard_double_arrow_left_rounded, label: 'Earlier'),
+      StudioAction(id: 'move_fwd', icon: Icons.keyboard_double_arrow_right_rounded, label: 'Later', onTap: () {}),
+      StudioAction(id: 'delete_clip', icon: Icons.delete_outline_rounded, label: 'Delete', danger: true, onTap: () {}),
+      StudioAction(id: 'history', icon: Icons.history_rounded, label: 'History', onTap: () {}),
+    ];
+
+Widget _studio(StudioTool tool, {bool panelOpen = false, double duration = 5400}) {
   final item = _item(1);
   final others = [_item(2), _item(3, quality: 'audio')];
   final e = duration > 0 ? _edit() : StudioEdit.original(0);
-  return RecordStudioLayout(
-    tool: tool,
-    onTool: (_) {},
-    preview: const SizedBox.expand(),
-    transport: StudioTransport(
-        position: 1200, duration: e.duration, playing: true, previewSpeed: 1.25, zoom: 4, maxZoom: 64, onPlayPause: () {}, onSkip: (_) {}, onPreviewSpeed: () {}, onZoom: (_) {}),
-    timeline: StudioTimelineView(edit: e, position: 1200, sourceDuration: duration, zoom: 4, markIn: 300, markOut: 900, selectedClip: 1, selectedOverlay: 'o1', onScrub: (_) {}),
-    panel: _panel(tool, item, others),
-    summary: StudioSummary(
-      original: duration,
-      result: tool == StudioTool.merge ? [mergedDuration([item, others[1]])] : [e.duration],
+  return Scaffold(
+    appBar: StudioTopBar(
+        title: item.title,
+        facts: item.facts(),
+        saveState: StudioSaveState.local,
+        canUndo: true,
+        onUndo: () {},
+        onRedo: () {},
+        onCanvas: () {},
+        onDownload: () {},
+        onExport: () {},
+        exporting: 42),
+    body: RecordStudioLayout(
+      tool: tool,
+      tools: [for (final x in StudioTool.values) if (x.inRail) x],
+      onTool: (_) {},
+      preview: const SizedBox.expand(),
+      transport: StudioTransport(
+          position: 1200, duration: e.duration, playing: true, previewSpeed: 1.25, zoom: 4, maxZoom: 64, onPlayPause: () {}, onSkip: (_) {}, onPreviewSpeed: () {}, onZoom: (_) {}),
+      timeline: StudioTimelineView(edit: e, position: 1200, sourceDuration: duration, zoom: 4, markIn: 300, markOut: 900, selectedClip: 1, selectedOverlay: 'o1', onScrub: (_) {}, onMoveClip: (_, _) {}),
+      panel: _panel(tool, item, others),
+      actions: _acts(),
+      actionContext: StudioActionContext(label: 'Part 2 of 3 · a rather long part name 10:00.0', onClear: () {}),
+      panelOpen: panelOpen,
+      onClosePanel: () {},
+      footer: const StudioKeysHint(),
     ),
-    save: tool == StudioTool.cover
-        ? null
-        : StudioSaveArea(
-            title: const TextField(decoration: InputDecoration(labelText: 'Name of the new recording')),
-            merge: tool == StudioTool.merge,
-            replace: tool == StudioTool.quality,
-            canSave: true,
-            canUndo: true,
-            canRedo: true,
-            onReplace: (_) {},
-            onUndo: () {},
-            onRedo: () {},
-            onReset: () {},
-            onSave: () {},
-          ),
-    job: job
-        ? StudioJobCard(
-            items: [
-              RecordItem.fromJson({'recording_id': 9, 'kind': 'edit', 'status': 'assembling', 'stage': 'processing', 'progress': 55, 'title': 'A long new title of the edit'})!,
-              RecordItem.fromJson({'recording_id': 10, 'kind': 'edit', 'status': 'failed', 'error': 'cloud_reconnect_required: reconnect the drive', 'title': 'Part 2'})!,
-              RecordItem.fromJson({'recording_id': 11, 'kind': 'edit', 'status': 'failed', 'cancelled': true, 'error': 'stopped', 'title': 'Part 3'})!,
-              RecordItem.fromJson({'recording_id': 12, 'kind': 'edit', 'status': 'done', 'has_project': true, 'can_play': true, 'title': 'Part 4'})!,
-            ],
-            eta: const {9: Duration(minutes: 3)},
-            downloading: const {12: 0.4},
-            onPlay: (_) {},
-            onRetry: (_) {},
-            onCancel: (_) {},
-            onDownload: (_) {},
-            onContinue: (_) {},
-            onAgain: () {},
-            onLibrary: () {})
-        : null,
-    footer: const StudioKeysHint(),
+  );
+}
+
+Widget _export({bool two = false, String? problem}) {
+  final item = _item(1);
+  return SingleChildScrollView(
+    child: StudioExportSettings(
+      item: item,
+      duration: 4200,
+      form: StudioSaveArea(title: const TextField(decoration: InputDecoration(labelText: 'Name of the new recording')), onReplace: (_) {}).form,
+      height: 720,
+      onQuality: (_, _) {},
+      twoFiles: two,
+      halves: (1200, 3000),
+      onTwoFiles: (_) {},
+      result: two ? [1200, 3000] : [4200],
+      problem: problem,
+      onExport: () {},
+    ),
   );
 }
 
@@ -147,27 +159,47 @@ void main() {
         await expectNoLayoutErrors(t, () => _studio(tool));
       });
     }
-    testWidgets('a saved job inline, and a record without a length', (t) async {
-      await expectNoLayoutErrors(t, () => _studio(StudioTool.split, job: true));
+    testWidgets("phones: a tool's panel in place of the timeline; a record without a length", (t) async {
+      await expectNoLayoutErrors(t, () => _studio(StudioTool.text, panelOpen: true));
       await expectNoLayoutErrors(t, () => _studio(StudioTool.edit, duration: 0));
+    });
+    testWidgets('the Export panel: settings, two files, a problem, and the job it follows', (t) async {
+      await expectNoLayoutErrors(t, () => _export());
+      await expectNoLayoutErrors(t, () => _export(two: true, problem: 'Nothing has changed yet'));
+      await expectNoLayoutErrors(
+          t,
+          () => SingleChildScrollView(
+                child: StudioExportJob(
+                  running: false,
+                  card: StudioJobCard(
+                    items: [
+                      RecordItem.fromJson({'recording_id': 9, 'kind': 'edit', 'status': 'assembling', 'stage': 'processing', 'progress': 55, 'title': 'A long new title of the edit'})!,
+                      RecordItem.fromJson({'recording_id': 10, 'kind': 'edit', 'status': 'failed', 'error': 'cloud_reconnect_required: reconnect the drive', 'title': 'Part 2'})!,
+                      RecordItem.fromJson({'recording_id': 11, 'kind': 'edit', 'status': 'failed', 'cancelled': true, 'error': 'stopped', 'title': 'Part 3'})!,
+                      RecordItem.fromJson({'recording_id': 12, 'kind': 'edit', 'status': 'done', 'has_project': true, 'can_play': true, 'title': 'Part 4'})!,
+                    ],
+                    eta: const {9: Duration(minutes: 3)},
+                    downloading: const {12: 0.4},
+                    onPlay: (_) {},
+                    onRetry: (_) {},
+                    onCancel: (_) {},
+                    onDownload: (_) {},
+                    onShare: (_) {},
+                    onContinue: (_) {},
+                    onLibrary: () {},
+                  ),
+                  onKeepEditing: () {},
+                  onExportAgain: () {},
+                ),
+              ));
     });
     testWidgets("the player's caller buttons (Open in Studio · Share)", (t) async {
       final a = VodAction(id: 'studio', icon: Icons.auto_fix_high_rounded, label: 'Open in Studio', onTap: () {});
       await expectNoLayoutErrors(t, () => Row(children: [VodActionButton(action: a, showLabel: true), VodActionButton(action: a)]));
     });
-    testWidgets('the phone tool bar and the top bar alone', (t) async {
-      await expectNoLayoutErrors(t, () => Align(alignment: Alignment.bottomCenter, child: StudioToolBar(tool: StudioTool.merge, onTool: (_) {})));
-      await expectNoLayoutErrors(
-          t,
-          () => Scaffold(
-                appBar: StudioTopBar(
-                    title: 'A recording with a very long name that goes on',
-                    facts: const ['1:30:00', '700 MB'],
-                    saveState: StudioSaveState.saved,
-                    onCanvas: () {},
-                    onDownload: () {}),
-                body: const SizedBox.expand(),
-              ));
+    testWidgets('the action bar and the timeline strip alone', (t) async {
+      await expectNoLayoutErrors(t, () => Align(alignment: Alignment.bottomCenter, child: StudioActionBar(actions: _acts(), context: StudioActionContext(label: 'Text “a very long caption that goes on”', onClear: () {}))));
+      await expectNoLayoutErrors(t, () => Align(alignment: Alignment.topCenter, child: StudioTimelineBar(actions: _acts(), context: const StudioActionContext(label: 'Marked 01:10.0 – 01:25.0'))));
     });
   });
 
@@ -181,18 +213,53 @@ void main() {
       expect(find.textContaining('Nothing has changed'), findsOneWidget);
     });
 
-    testWidgets('Save is off while the edit is invalid; redo sits next to undo', (t) async {
-      var saved = 0, redone = 0;
-      await t.pumpWidget(layoutHost(StudioSaveArea(title: const SizedBox.shrink(), canSave: false, onSave: () => saved++), scale: 1));
-      await t.tap(find.byKey(const ValueKey('studio.save')), warnIfMissed: false);
-      expect(saved, 0);
-      await t.pumpWidget(layoutHost(
-          StudioSaveArea(title: const SizedBox.shrink(), canSave: true, replace: true, canRedo: true, onRedo: () => redone++, onSave: () => saved++),
-          scale: 1));
-      expect(find.text('Save and replace'), findsOneWidget);
-      await t.tap(find.byKey(const ValueKey('studio.save')));
+    testWidgets('the top bar: Undo / Redo always there, Export shows the running percent', (t) async {
+      var undone = 0, redone = 0, exported = 0;
+      Widget bar({bool canUndo = true, bool canRedo = false, int? exporting}) => Scaffold(
+            appBar: StudioTopBar(
+              title: 'A recording',
+              saveState: StudioSaveState.saved,
+              canUndo: canUndo,
+              canRedo: canRedo,
+              onUndo: () => undone++,
+              onRedo: () => redone++,
+              onExport: () => exported++,
+              exporting: exporting,
+            ),
+          );
+      await t.pumpWidget(layoutHost(bar(), scale: 1));
+      await t.tap(find.byKey(const ValueKey('studio.undo')));
+      await t.tap(find.byKey(const ValueKey('studio.redo')), warnIfMissed: false);
+      await t.tap(find.byKey(const ValueKey('studio.export')));
+      expect((undone, redone, exported), (1, 0, 1));
+      expect(find.text('Saved'), findsOneWidget);
+      await t.pumpWidget(layoutHost(bar(canRedo: true, exporting: 37), scale: 1));
       await t.tap(find.byKey(const ValueKey('studio.redo')));
-      expect((saved, redone), (1, 1));
+      expect(redone, 1);
+      expect(find.text('37%'), findsOneWidget);
+    });
+
+    testWidgets('Export is off while there is a problem; two files says so on the button', (t) async {
+      await t.pumpWidget(layoutHost(_export(problem: 'Nothing has changed yet'), scale: 1));
+      expect(find.textContaining('Nothing has changed'), findsOneWidget);
+      final off = t.widget<AppButton>(find.byKey(const ValueKey('studio.export.go')));
+      expect(off.onPressed, isNull);
+      await t.pumpWidget(layoutHost(_export(two: true), scale: 1));
+      expect(find.text('Export two files'), findsOneWidget);
+      expect(find.text('Makes two recordings: 20:00 and 50:00'), findsOneWidget);
+      expect(t.widget<AppButton>(find.byKey(const ValueKey('studio.export.go'))).onPressed, isNotNull);
+    });
+
+    testWidgets('an action without onTap is drawn off and does nothing', (t) async {
+      var cleared = 0;
+      await t.pumpWidget(layoutHost(
+          Align(
+              alignment: Alignment.bottomCenter,
+              child: StudioActionBar(actions: _acts(), context: StudioActionContext(label: 'Part 2', onClear: () => cleared++))),
+          scale: 1));
+      await t.tap(find.byKey(const ValueKey('studio.act.move_back')), warnIfMissed: false);
+      await t.tap(find.byKey(const ValueKey('studio.act.clear')));
+      expect(cleared, 1);
     });
 
     testWidgets('the job card: stages, percent, time left, Stop, Download, Continue', (t) async {
@@ -206,6 +273,7 @@ void main() {
               eta: const {9: Duration(seconds: 150)},
               onCancel: (r) => got.add('cancel ${r.id}'),
               onDownload: (r) => got.add('download ${r.id}'),
+              onShare: (r) => got.add('share ${r.id}'),
               onContinue: (r) => got.add('continue ${r.id}'),
             ),
           ),
@@ -215,8 +283,9 @@ void main() {
       expect(find.textContaining('About 3 min left'), findsOneWidget);
       await t.tap(find.byKey(const ValueKey('studio.job.cancel.9')));
       await t.tap(find.byKey(const ValueKey('studio.job.download.12')));
+      await t.tap(find.byKey(const ValueKey('studio.job.share.12')));
       await t.tap(find.byKey(const ValueKey('studio.job.continue.12')));
-      expect(got, ['cancel 9', 'download 12', 'continue 12']);
+      expect(got, ['cancel 9', 'download 12', 'share 12', 'continue 12']);
     });
 
     testWidgets('time runs left to right in Arabic too: a press near the left scrubs near the start', (t) async {
@@ -238,7 +307,7 @@ void main() {
     });
 
     testWidgets('a clip edge is grabbed where the finger goes down and moves by the distance dragged (no jump)', (t) async {
-      t.view.physicalSize = const Size(1036, 400);
+      t.view.physicalSize = const Size(1128, 400);
       t.view.devicePixelRatio = 1;
       addTearDown(t.view.reset);
       final trims = <(bool, double)>[];
@@ -256,7 +325,7 @@ void main() {
           ),
           scale: 1));
       final box = t.getRect(find.byKey(const ValueKey('studio.timeline')));
-      // 1 px = 1 s: the timeline is 1036 wide with 18 px pads; clip 1 starts at x = 18 + 500
+      // 1 px = 1 s: the tracks are 1036 wide (after the 92 px names) with 18 px pads; clip 1 starts at x = 18 + 500
       final edge = Offset(box.left + 18 + 500 - 6, box.top + StudioLanes.ruler + 30);
       final g = await t.startGesture(edge);
       await g.moveBy(const Offset(10, 0));
@@ -268,7 +337,7 @@ void main() {
     });
 
     testWidgets('an overlay on its lane: a tap selects it, a drag moves it in time', (t) async {
-      t.view.physicalSize = const Size(1036, 400);
+      t.view.physicalSize = const Size(1128, 400);
       t.view.devicePixelRatio = 1;
       addTearDown(t.view.reset);
       String? selected;
@@ -291,6 +360,29 @@ void main() {
       expect(span, isNotNull);
       expect(span!.$1, closeTo(200, 4));
       expect(span!.$2 - span!.$1, closeTo(200, 1));
+    });
+
+    testWidgets('a selected part dragged by its body plays elsewhere; an unselected one only scrubs (D-823)', (t) async {
+      t.view.physicalSize = const Size(1036, 400);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+      (int, int)? moved;
+      final e = StudioEdit.original(1000).split(300).split(600);
+      await t.pumpWidget(layoutHost(
+          StudioTimelineView(edit: e, position: 0, sourceDuration: 1000, selectedClip: 0, onMoveClip: (a, b) => moved = (a, b), onScrub: (_) {}),
+          scale: 1));
+      final box = t.getRect(find.byKey(const ValueKey('studio.timeline')));
+      final pps = (box.width - 2 * StudioLanes.pad) / 1000;
+      final y = box.top + StudioLanes.ruler + StudioLanes.clips / 2;
+      await t.dragFrom(Offset(box.left + StudioLanes.pad + 150 * pps, y), Offset(800 * pps, 0));
+      expect(moved, (0, 2), reason: 'part 1 dragged past the last part’s middle');
+    });
+
+    testWidgets('the tracks are named: Video, Text, Pictures, Audio', (t) async {
+      await t.pumpWidget(layoutHost(SizedBox(width: 900, child: StudioTimelineView(edit: StudioEdit.original(100), position: 0, sourceDuration: 100)), scale: 1));
+      for (final name in ['Video', 'Text', 'Pictures', 'Audio']) {
+        expect(find.text(name), findsOneWidget);
+      }
     });
 
     test('ruler steps keep labels apart; snapping', () {

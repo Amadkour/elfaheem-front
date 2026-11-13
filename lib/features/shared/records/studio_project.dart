@@ -10,7 +10,7 @@
 //   StudioEdit        clips + overlays + the output quality: one value, immutable; every operation returns a new one.
 //   StudioHistory     every step as a snapshot of the edit with what it was in plain words ([studioStepLabel]): undo
 //                     and redo move the head; Restore jumps to any step. A new step after an undo drops the undone
-//                     ones (the page asks first, D-593). Saved as the project doc (autosave) and with each render.
+//                     ones (silently since D-825, with a notice). Saved as the project doc (autosave) and with each render.
 //   studioRenderParams   what POST …/render receives: the clips, the overlays in OUTPUT seconds, the quality.
 //   studioOverlayLook    how an overlay looks at a moment (opacity, offset, scale, typewriter reveal): the preview
 //                        draws it, and services/studio_render.py builds the very same curves into ffmpeg.
@@ -463,18 +463,45 @@ class StudioEdit {
     return copyWith(clips: [...clips]..removeAt(i));
   }
 
-  /// How far clip [i]'s start may go (source seconds): not over the previous clip, not past its own end.
+  /// How far clip [i]'s start may go (source seconds): not over another clip that lies before it in the SOURCE (clips
+  /// may be played in any order, D-823), not past its own end.
   (double, double) startBounds(int i) {
     final c = clips[i];
-    final lo = i > 0 ? clips[i - 1].end : 0.0;
+    var lo = 0.0;
+    for (final (k, o) in clips.indexed) {
+      if (k != i && o.end <= c.start + 1e-6 && o.end > lo) lo = o.end;
+    }
     return (math.min(lo, c.start), math.max(c.start, c.end - studioMinClip));
   }
 
-  /// How far clip [i]'s end may go: not into the next clip, not past the source's [sourceDuration].
+  /// How far clip [i]'s end may go: not into another clip that lies after it in the source, not past the source's
+  /// [sourceDuration].
   (double, double) endBounds(int i, double sourceDuration) {
     final c = clips[i];
-    final hi = i < clips.length - 1 ? clips[i + 1].start : sourceDuration;
+    var hi = sourceDuration;
+    for (final (k, o) in clips.indexed) {
+      if (k != i && o.start >= c.end - 1e-6 && o.start < hi) hi = o.start;
+    }
     return (math.min(c.end, c.start + studioMinClip), math.max(hi, c.end));
+  }
+
+  /// Plays clip [from] at place [to] (0-based, among the clips after it is taken out): drag to reorder (D-823).
+  StudioEdit moveClip(int from, int to) {
+    if (from < 0 || from >= clips.length) return this;
+    final t = to.clamp(0, clips.length - 1);
+    if (t == from) return this;
+    final next = [...clips];
+    final c = next.removeAt(from);
+    next.insert(t, c);
+    return copyWith(clips: next);
+  }
+
+  /// Clips that no longer play in source order (a reordered edit).
+  bool get reordered {
+    for (var i = 1; i < clips.length; i++) {
+      if (clips[i].start < clips[i - 1].start) return true;
+    }
+    return false;
   }
 
   /// Moves clip [i]'s start to the source second [to] (inside [startBounds]).
@@ -576,7 +603,9 @@ enum StudioStepKind {
   overlayAnim,
   overlayRemove,
   quality,
-  reset;
+  reset,
+  moveClip,
+  restore;
 
   static StudioStepKind fromWire(dynamic v) => values.firstWhere((k) => k.name == '$v', orElse: () => StudioStepKind.open);
 
@@ -686,6 +715,8 @@ String studioStepLabel(StudioStep s) {
     StudioStepKind.overlayRemove => t('حذف «$name»', 'Removed “$name”'),
     StudioStepKind.quality => t('الجودة: ${i['label'] ?? ''}', 'Quality: ${i['label'] ?? ''}'),
     StudioStepKind.reset => t('العودة إلى الأصل', 'Back to the original'),
+    StudioStepKind.moveClip => t('نقل جزء إلى الموضع ${i['to'] ?? ''}', 'Moved a part to place ${i['to'] ?? ''}'),
+    StudioStepKind.restore => t('فتح نسخة «$name»', 'Opened the version “$name”'),
   };
 }
 

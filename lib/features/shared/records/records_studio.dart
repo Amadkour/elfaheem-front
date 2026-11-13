@@ -1,22 +1,23 @@
-// lib/features/shared/records/records_studio.dart — the Studio (D-312, premium D-590 … D-597): the editor of one of my
-// records or of a course session's video. Plain-values widgets: records_studio_parts.dart (bay, transport, layout, job
-// card), studio_timeline.dart (the timeline), studio_stage.dart (texts and pictures on the picture), studio_panels.dart
-// (Edit · Text · Picture · History); the pure edit list and its history: studio_project.dart.
+// lib/features/shared/records/records_studio.dart — the Studio (D-312, premium D-590 … D-597, redesigned D-820 … D-829):
+// the editor of one of my records or of a course session's video. Plain-values widgets: records_studio_parts.dart (bay,
+// top bar, transport, action bars, layout, job card), studio_timeline.dart (the multi-track timeline), studio_stage.dart
+// (texts and pictures on the picture), studio_panels.dart (Edit · Text · Picture · History), studio_export.dart (the
+// Export panel); the pure edit list and its history: studio_project.dart; where the work is kept: studio_autosave.dart.
 //
 //   The source is pluggable (studio_source.dart, D-315): a drive recording of Records (default) or a course session's
 //   video material (MaterialStudioSource: no Cover, the job makes a DRAFT, `jobActions` puts Publish on the card).
 //
-//   One project, many steps (D-590): splits, removes, trims, per-part speed, texts and pictures with animations and the
-//   quality are steps of ONE edit list, rendered by ONE job (POST …/render). Every step is in the history with what it
-//   did; undo / redo / restore any step (D-593); the project autosaves to the server (GET|PUT …/project) so closing the
-//   Studio loses nothing, and every rendered draft keeps its history ("Continue editing").
+//   One project, many steps (D-590): splits, removes, trims, moves, per-part speed, texts and pictures with animations
+//   are steps of ONE edit list, rendered by ONE job (POST …/render) from the Export panel, which also holds the quality
+//   and "two files" (D-827). Undo / Redo sit in the top bar; the project autosaves (D-826: the device first, then the
+//   server with a revision; a newer copy elsewhere is never overwritten in silence). Editing never waits for an export
+//   (D-828): the render runs on the server while the person keeps working.
 //   The preview plays THROUGH the edit: removed parts are skipped, each part plays at its speed, and the texts and
 //   pictures animate over it as the file will show them (the text is drawn by the app and sent as a PNG, D-591).
-//   A saved job is followed inline with EventOrPoll: stages, %, time left, Stop (D-594); a finished one plays, downloads
-//   (D-596), publishes (a material) or opens again.
 //   Keys (web / desktop, never while typing): Space play / pause · J −5 s · K pause · L +5 s · ← / → a frame (Shift: a
-//   second) · I / O mark in / out · S split · Delete remove the marked period / the selection · Ctrl+Z undo ·
-//   Ctrl+Shift+Z / Ctrl+Y redo · Home / End · + / − zoom · Esc clear the selection.
+//   second) · I / O mark in / out · S split · Delete remove the marked period / the selection · Alt+← / → move the
+//   selected part · Ctrl+Z undo · Ctrl+Shift+Z / Ctrl+Y redo · Ctrl+S save now · Ctrl+E export · Home / End · + / −
+//   zoom · Esc close the panel / clear the selection.
 library;
 
 import 'dart:async';
@@ -29,6 +30,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart' show ApiException;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
@@ -39,9 +41,12 @@ import 'package:video_player/video_player.dart';
 
 import '../../admin/admin_common.dart' show t;
 import 'records_api.dart';
+import 'records_share.dart' show showRecordShareSheet;
 import 'records_share_api.dart';
 import 'records_studio_parts.dart';
+import 'studio_autosave.dart';
 import 'studio_download_io.dart' if (dart.library.js_interop) 'studio_download_web.dart' as saver;
+import 'studio_export.dart';
 import 'studio_panels.dart';
 import 'studio_project.dart';
 import 'studio_source.dart';
@@ -131,12 +136,33 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
   StudioOverlay? _scaleBase;
   bool _projectLoaded = false;
 
+  /// The saved work has been looked for (editing waits for it: an edit made before would overwrite it, D-826).
+  bool _projectReady = false;
+
+  /// The server's revision of the project this history was made from.
+  int _rev = 0;
+
+  /// Phones: the open tool's panel is shown in place of the timeline (D-820).
+  bool _panelOpen = false;
+
   StudioEdit get _edit => _live ?? _hist.current;
 
   // ── tools ──
   late StudioTool _tool = _tools.first;
   List<int> _mergeIds = const [];
   bool _replace = false;
+
+  // ── export settings (D-827: choices of the export, not steps of the edit) ──
+  int? _exHeight;
+  StudioQualityLevel _exLevel = StudioQualityLevel.balanced;
+  bool _twoFiles = false;
+
+  /// The export panel follows the job: it rebuilds on this.
+  final _sheet = _Tick();
+  bool _sheetOpen = false;
+
+  /// The last export finished and has not been looked at.
+  bool _exportUnseen = false;
   StudioCanvas _canvas = StudioCanvas.dark;
 
   // ── frames ──
@@ -163,13 +189,18 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
 
   bool _titleTouched = false;
   late final TextEditingController _title = TextEditingController(text: _defaultTitle());
+  late final TextEditingController _mergeTitle = TextEditingController(text: defaultEditTitle(widget.item.title, RecordOp.merge));
   final _focus = FocusNode(debugLabel: 'records-studio');
 
-  /// An audio file has no picture to change or put things on.
+  /// An audio file has no picture to change or put things on; Quality and Two files live in the Export panel.
   List<StudioTool> get _tools => [
         for (final x in _src.tools)
-          if (!_item.isAudio || (x != StudioTool.quality && x != StudioTool.text && x != StudioTool.image)) x,
+          if (x.inRail && (!_item.isAudio || (x != StudioTool.text && x != StudioTool.image))) x,
       ];
+
+  bool get _offersQuality => !_item.isAudio && _src.tools.contains(StudioTool.quality);
+  bool get _offersTwoFiles => _src.tools.contains(StudioTool.split);
+  String get _storeKind => _src.jobEventKind;
 
   Object? _popValue() => widget.popResult != null ? widget.popResult!() : List<RecordItem>.of(_made);
 
@@ -177,6 +208,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
   void initState() {
     super.initState();
     _open();
+    _loadProject();
     _loadFrames();
   }
 
@@ -190,6 +222,8 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
     if (_spriteListener != null) _spriteStream?.removeListener(_spriteListener!);
     _sprite?.dispose();
     _title.dispose();
+    _mergeTitle.dispose();
+    _sheet.dispose();
     _focus.dispose();
     super.dispose();
   }
@@ -219,28 +253,62 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
           if (_hist.steps.length == 1) _hist = StudioHistory.start(d);
         }
       });
+      _loadProject(); // a record whose length was unknown until now
     } catch (e) {
       if (mounted) setState(() => _playError = recordsErrorText(e));
+      _loadProject();
     }
-    _loadProject();
   }
 
-  /// The person's saved work on this source (autosave), if it fits the source.
+  /// The person's saved work on this source, if it fits the source: the server's copy, or the device's when it holds
+  /// work the server never got (D-826). Editing waits for this (an edit made first would be saved over it).
   Future<void> _loadProject() async {
-    if (_projectLoaded || _srcDur <= 0) return;
+    if (_projectLoaded) return;
+    if (_srcDur <= 0) {
+      // the length comes with the player; without a player there is nothing to edit
+      if (_playError != null && mounted) setState(() => _projectReady = true);
+      return;
+    }
     _projectLoaded = true;
+    Map<String, dynamic>? server;
+    var failed = false;
     try {
-      final doc = await _src.loadProject(_item.id);
-      if (!mounted || doc == null) return;
-      final h = StudioHistory.fromJson(doc, duration: _srcDur);
-      if (h == null || h.steps.length < 2 || _hist.steps.length > 1) return;
-      setState(() {
+      server = await _src.loadProject(_item.id);
+    } catch (_) {
+      failed = true; // offline, or an older server: the device copy may still have it
+    }
+    final local = await StudioLocalStore.read(_storeKind, _item.id);
+    if (!mounted) return;
+    final (doc, fromDevice) = studioPickProject(server: server, local: local, serverFailed: failed);
+    _rev = studioDocRev(server);
+    final h = doc == null ? null : StudioHistory.fromJson(doc, duration: _srcDur);
+    setState(() {
+      _projectReady = true;
+      if (h != null && h.steps.length >= 2) {
         _hist = h;
-        _saveState = StudioSaveState.saved;
-      });
-      _fetchImages();
-      showAppNotice(t('أكملنا من حيث توقفت — ${h.steps.length - 1} خطوة محفوظة', 'Picked up where you left off — ${h.steps.length - 1} steps kept'));
-    } catch (_) {/* an older server, or nothing saved: start fresh */}
+        _readExport(doc!);
+        _fixSelection();
+        _saveState = fromDevice ? StudioSaveState.local : StudioSaveState.saved;
+      }
+    });
+    if (h == null || h.steps.length < 2) return;
+    _fetchImages();
+    if (fromDevice && !failed) _scheduleSave(); // send what the server never got
+    showAppNotice(t('أكملنا من حيث توقفت — ${h.steps.length - 1} خطوة محفوظة', 'Picked up where you left off — ${h.steps.length - 1} steps kept'));
+  }
+
+  /// The export choices kept with the project (and an older project's Quality step, D-827).
+  void _readExport(Map<String, dynamic> doc) {
+    final x = doc['export'];
+    if (x is Map) {
+      final hh = x['height'];
+      _exHeight = hh is num ? hh.toInt() : null;
+      _exLevel = StudioQualityLevel.values.where((l) => l.wire == '${x['level'] ?? ''}').firstOrNull ?? StudioQualityLevel.balanced;
+      _twoFiles = x['two'] == true;
+    } else {
+      _exHeight = _hist.current.height;
+      _exLevel = _hist.current.level ?? StudioQualityLevel.balanced;
+    }
   }
 
   /// The pictures of the project's image overlays (after a load, an undo across a session).
@@ -454,27 +522,23 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
   // Steps, undo, autosave
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// [next] as a new step. Two or more undone steps are dropped only after a yes.
+  /// [next] as a new step. Undone steps go (D-825: no question in the middle of a drag; a notice says how many, and the
+  /// History panel's restore still reaches every step before them).
   Future<void> _commit(StudioStepKind kind, StudioEdit next, {Map<String, dynamic> info = const {}}) async {
     if (identical(next, _hist.current)) {
       if (_live != null) setState(() => _live = null);
       return;
     }
-    if (_hist.undone >= 2) {
-      final ok = await appConfirm(context,
-          message: t('تراجعت عن ${_hist.undone} خطوات. تعديل جديد يحذفها من السجل. متابعة؟',
-              'You undid ${_hist.undone} steps. A new change drops them from the history. Continue?'),
-          confirmLabel: t('متابعة', 'Continue'));
-      if (!ok || !mounted) {
-        setState(() => _live = null);
-        return;
-      }
-    }
+    final dropped = _hist.undone;
+    final before = _hist;
     setState(() {
       _hist = _hist.commit(kind, next, info: info);
       _live = null;
       _fixSelection();
     });
+    if (dropped >= 2 && !identical(before, _hist)) {
+      showAppNotice(t('حُذفت $dropped خطوات كنت تراجعت عنها', 'The $dropped steps you had undone were dropped'));
+    }
     _scheduleSave();
   }
 
@@ -509,27 +573,104 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
 
   void _scheduleSave() {
     _saveTimer?.cancel();
-    _saveTimer = Timer(const Duration(milliseconds: 1500), _saveNow);
+    if (mounted && _saveState != StudioSaveState.saving) setState(() => _saveState = StudioSaveState.saving);
+    _saveTimer = Timer(const Duration(milliseconds: 1200), _saveNow);
   }
 
-  void _flushSave() {
+  /// Saves at once (Ctrl+S, leaving, before an export).
+  Future<void> _flushSave() async {
     if (_saveTimer?.isActive ?? false) {
       _saveTimer!.cancel();
-      _saveNow();
+      await _saveNow();
+    } else if (_saving != null) {
+      await _saving;
     }
   }
 
-  Future<void> _saveNow() async {
-    final doc = _hist.steps.length <= 1 ? null : _hist.toJson(_srcDur);
+  Future<void>? _saving;
+
+  Map<String, dynamic>? _doc(int rev) => _hist.steps.length <= 1
+      ? null
+      : {
+          ..._hist.toJson(_srcDur),
+          'rev': rev,
+          'export': {'height': _exHeight, 'level': _exLevel.wire, 'two': _twoFiles},
+        };
+
+  Future<void> _saveNow() {
+    final run = _saveOnce();
+    _saving = run;
+    return run.whenComplete(() {
+      if (identical(_saving, run)) _saving = null;
+    });
+  }
+
+  Future<void> _saveOnce() async {
+    final base = _rev;
+    final doc = _doc(base + 1);
+    // the device first: a lost connection or a closed tab keeps the work (D-826)
+    await StudioLocalStore.write(_storeKind, _item.id, doc, dirty: true, base: base);
     if (mounted) setState(() => _saveState = StudioSaveState.saving);
     try {
-      await _src.saveProject(_item.id, doc);
+      await _src.saveProject(_item.id, doc, base: base);
+      _rev = doc == null ? 0 : base + 1;
+      await StudioLocalStore.write(_storeKind, _item.id, null, dirty: false, base: 0);
       if (mounted) setState(() => _saveState = doc == null ? StudioSaveState.idle : StudioSaveState.saved);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      if (e.statusCode == 409 && e.code == 'project_conflict') {
+        await _conflict(e);
+        return;
+      }
+      final offline = e.statusCode == 0 || e.statusCode >= 500;
+      setState(() => _saveState = offline ? StudioSaveState.local : StudioSaveState.failed);
+      _saveTimer = Timer(const Duration(seconds: 12), _saveNow);
     } catch (_) {
       if (!mounted) return;
-      setState(() => _saveState = StudioSaveState.failed);
+      setState(() => _saveState = StudioSaveState.local);
       _saveTimer = Timer(const Duration(seconds: 12), _saveNow);
     }
+  }
+
+  /// The server holds a newer copy (another tab or device): keep mine or take theirs, never overwrite in silence.
+  Future<void> _conflict(ApiException e) async {
+    final detail = e.body is Map && (e.body as Map)['detail'] is Map ? Map<String, dynamic>.from((e.body as Map)['detail'] as Map) : const <String, dynamic>{};
+    final theirs = detail['doc'] is Map ? Map<String, dynamic>.from(detail['doc'] as Map) : null;
+    final theirRev = studioDocRev(theirs);
+    final h = theirs == null ? null : StudioHistory.fromJson(theirs, duration: _srcDur);
+    final keepMine = h == null ||
+        await appConfirm(context,
+            message: t('عُدّل هذا المشروع في نافذة أو جهاز آخر (${h.steps.length - 1} خطوة). احتفظ بنسختك هنا، أو افتح النسخة الأخرى؟',
+                'This project was changed in another window or device (${h.steps.length - 1} steps). Keep your version here, or open the other one?'),
+            confirmLabel: t('احتفظ بنسختي', 'Keep mine'));
+    if (!mounted) return;
+    _rev = theirRev;
+    if (keepMine) {
+      _scheduleSave(); // over theirs, now knowingly
+      return;
+    }
+    setState(() {
+      _hist = h;
+      _live = null;
+      _readExport(theirs!);
+      _fixSelection();
+      _saveState = StudioSaveState.saved;
+    });
+    await StudioLocalStore.write(_storeKind, _item.id, null, dirty: false, base: 0);
+    _fetchImages();
+    _seek(_pos);
+  }
+
+  /// Back: the last change is saved first (a moment at most); what the server could not take stays on the device.
+  Future<void> _leave() async {
+    if ((_saveTimer?.isActive ?? false) || _saving != null) {
+      await _flushSave().timeout(const Duration(seconds: 4), onTimeout: () {});
+    }
+    if (!mounted) return;
+    if (_saveState == StudioSaveState.local || _saveState == StudioSaveState.failed) {
+      showAppNotice(t('حُفظ عملك على هذا الجهاز، ويُرسل عند فتح الاستوديو مرة أخرى', 'Your work is kept on this device and sent the next time you open the Studio'));
+    }
+    Navigator.of(context).pop(_popValue());
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -599,6 +740,16 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
     _commit(StudioStepKind.deleteClip, n, info: {'len': len});
     setState(() => _selClip = null);
     _seek(at);
+  }
+
+  /// Plays the part [from] at place [to] (drag on the timeline, the Move buttons, Alt+← / →; D-823).
+  void _moveClip(int from, int to) {
+    final n = _edit.moveClip(from, to);
+    if (identical(n, _edit)) return;
+    final at = _pos;
+    _commit(StudioStepKind.moveClip, n, info: {'to': to + 1});
+    setState(() => _selClip = to.clamp(0, n.clips.length - 1));
+    _seek(math.min(at, n.duration));
   }
 
   void _speed(double s) {
@@ -805,18 +956,29 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
     setState(() => _selOverlay = copy.id);
   }
 
-  void _setQuality(int? height, StudioQualityLevel level) {
-    final n = _hist.current.copyWith(height: () => height, level: () => height == null && level == StudioQualityLevel.balanced ? null : level);
-    _commit(StudioStepKind.quality, n, info: {'label': [if (height != null) '${height}p' else t('الدقة الأصلية', 'original size'), level.label].join(' · ')});
+  /// The export's quality: a choice of the export, kept with the project, not a step of the edit (D-827).
+  void _setExportQuality(int? height, StudioQualityLevel level) {
+    _update(() {
+      _exHeight = height;
+      _exLevel = level;
+    });
+    _scheduleSave();
+  }
+
+  /// setState that also rebuilds the open Export panel.
+  void _update(VoidCallback fn) {
+    setState(fn);
+    _sheet.ping();
   }
 
   void _toggleMerge(RecordItem r) => setState(() {
         _mergeIds = _mergeIds.contains(r.id) ? [for (final i in _mergeIds) if (i != r.id) i] : [..._mergeIds, r.id];
       });
 
-  void _setTool(StudioTool x) {
+  void _setTool(StudioTool x, {bool open = true}) {
     setState(() {
       _tool = x;
+      if (open && !studioIsWide(MediaQuery.sizeOf(context))) _panelOpen = true;
       if (x != StudioTool.text && x != StudioTool.image) _selOverlay = null;
       if (x == StudioTool.text || x == StudioTool.image) {
         final o = _overlay(_selOverlay);
@@ -833,11 +995,12 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       if (o != null) {
         _tool = o.isText ? StudioTool.text : StudioTool.image;
         _selClip = null;
+        _markIn = _markOut = null;
       }
     });
   }
 
-  String _defaultTitle() => _tool == StudioTool.merge ? defaultEditTitle(_item.title, RecordOp.merge) : '${_item.title} · ${RecordOp.project.madeBy}';
+  String _defaultTitle() => '${_item.title} · ${RecordOp.project.madeBy}'; // Merge names its result in its own panel
 
   void _syncTitle() {
     if (!_titleTouched) _title.text = _defaultTitle();
@@ -852,27 +1015,29 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
         for (final id in _mergeIds) ?widget.others.where((r) => r.id == id).firstOrNull,
       ];
 
-  String? get _problem {
-    if (_tool == StudioTool.merge) {
-      return _mergeIds.isEmpty ? t('اختر تسجيلاً واحداً على الأقل لإضافته', 'Pick at least one recording to add') : null;
-    }
+  /// The edit as the export renders it: the edit list with the export's quality.
+  StudioEdit get _exportEdit => _edit.copyWith(height: () => _offersQuality ? _exHeight : null, level: () => _offersQuality ? _exLevel : null);
+
+  (double, double)? get _halves {
+    final h = studioHalves(_exportEdit, _pos);
+    return h == null ? null : (h.$1.duration, h.$2.duration);
+  }
+
+  /// Why the export cannot be made (null: it can).
+  String? get _exportProblem {
     final e = _edit;
-    if (_tool == StudioTool.split) {
-      return studioHalves(e, _pos) == null ? t('ضع المؤشر داخل الفيديو ليُقسم عنده', 'Put the playhead inside the video to split there') : null;
-    }
+    if (!_ready) return t('ينتظر تحميل الفيديو', 'Waiting for the video');
     if (e.duration < 1) return t('الفيديو الناتج قصير جداً', 'The result is too short');
+    if (_twoFiles && _halves == null) return t('ضع المؤشر داخل الفيديو ليُقسم عنده', 'Put the playhead inside the video to split there');
+    final sameQuality = !_offersQuality || (_exHeight == null && _exLevel == StudioQualityLevel.balanced);
+    if (!_twoFiles && e.isOriginal(_srcDur) && sameQuality) return t('لم تغيّر شيئاً بعد', 'Nothing has changed yet');
     return null;
   }
 
-  /// Nothing to save yet (not a problem to show in red: Save simply waits).
-  bool get _unchanged => _tool != StudioTool.merge && _tool != StudioTool.split && _edit.isOriginal(_srcDur);
-
-  List<double> get _result {
-    if (_tool == StudioTool.cover) return const [];
-    if (_tool == StudioTool.merge) return _mergeIds.isEmpty ? const [] : [mergedDuration(_mergeParts)];
-    if (_tool == StudioTool.split) {
-      final h = studioHalves(_edit, _pos);
-      return h == null ? const [] : [h.$1.duration, h.$2.duration];
+  List<double> get _exportResult {
+    if (_twoFiles) {
+      final h = _halves;
+      return h == null ? const [] : [h.$1, h.$2];
     }
     return [_edit.duration];
   }
@@ -902,16 +1067,15 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
     return (assets, widths);
   }
 
-  Future<void> _save() async {
-    if (_problem != null || _unchanged || _busy) return;
+  /// Renders the project (once, or as two files) with the export's choices. Editing goes on meanwhile (D-828).
+  Future<void> _export() async {
+    if (_exportProblem != null || _busy) return;
     if (_replace &&
         !_src.drafts &&
+        !_twoFiles &&
         !await appConfirm(context,
-            message: _tool == StudioTool.merge
-                ? t('ستُحذف الأصول من القائمة ومن السحابة بعد نجاح الدمج. متابعة؟',
-                    'The originals will be deleted from the list and the drive once merged. Continue?')
-                : t('سيُحذف الأصل من القائمة ومن السحابة بعد نجاح التعديل. متابعة؟',
-                    'The original will be deleted from the list and the drive once the edit is done. Continue?'),
+            message: t('سيُحذف الأصل من القائمة ومن السحابة بعد نجاح التصدير. متابعة؟',
+                'The original will be deleted from the list and the drive once the export is done. Continue?'),
             danger: true,
             confirmLabel: t('متابعة', 'Continue'))) {
       return;
@@ -924,41 +1088,68 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       if (!mounted) return;
     }
     _flushSave();
-    setState(() => _busy = true);
+    _update(() => _busy = true);
     _player?.pause();
     try {
-      final List<RecordItem> made;
-      if (_tool == StudioTool.merge) {
-        made = await _src.merge([_item.id, ..._mergeIds], title: _title.text, deleteSources: _replace && !_src.drafts);
-      } else if (_tool == StudioTool.split) {
-        final halves = studioHalves(_edit, _pos)!;
-        final (assets, widths) = await _prepareAssets(_edit);
+      final e = _exportEdit;
+      final (assets, widths) = await _prepareAssets(e);
+      final doc = _hist.toJson(_srcDur);
+      final List<RecordItem> made = [];
+      if (_twoFiles) {
+        final halves = studioHalves(e, _pos)!;
         final base = _title.text.trim();
-        made = [];
         for (final (i, h) in [halves.$1, halves.$2].indexed) {
-          final p = studioRenderParams(h, assets: assets, textWidths: widths, title: base.isEmpty ? null : '$base · ${i + 1}');
+          final p = studioRenderParams(h, assets: assets, textWidths: widths, history: doc, title: base.isEmpty ? null : '$base · ${i + 1}');
           made.addAll(await _src.render(_item.id, p));
         }
       } else {
-        final e = _edit;
-        final (assets, widths) = await _prepareAssets(e);
-        final doc = _hist.toJson(_srcDur);
         final p = studioRenderParams(e, assets: assets, textWidths: widths, history: doc, title: _title.text);
         if (_replace && !_src.drafts) p['delete_source'] = true;
-        made = await _src.render(_item.id, p);
+        made.addAll(await _src.render(_item.id, p));
       }
       if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _job = made;
-      });
-      _keep(made);
-      _watchJob();
+      _started(made);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _busy = false);
+      _update(() => _busy = false);
       showAppNotice(recordsErrorText(e), error: true);
     }
+  }
+
+  /// Merge (Records' originals, not the project): its own button in the Merge panel; the job shows in the Export panel.
+  Future<void> _merge() async {
+    if (_mergeIds.isEmpty || _busy) return;
+    if (_replace &&
+        !_src.drafts &&
+        !await appConfirm(context,
+            message: t('ستُحذف الأصول من القائمة ومن السحابة بعد نجاح الدمج. متابعة؟', 'The originals will be deleted from the list and the drive once merged. Continue?'),
+            danger: true,
+            confirmLabel: t('متابعة', 'Continue'))) {
+      return;
+    }
+    if (!mounted) return;
+    _update(() => _busy = true);
+    _player?.pause();
+    try {
+      final made = await _src.merge([_item.id, ..._mergeIds], title: _mergeTitle.text, deleteSources: _replace && !_src.drafts);
+      if (!mounted) return;
+      _started(made);
+      if (!_sheetOpen) _openExport();
+    } catch (e) {
+      if (!mounted) return;
+      _update(() => _busy = false);
+      showAppNotice(recordsErrorText(e), error: true);
+    }
+  }
+
+  void _started(List<RecordItem> made) {
+    _update(() {
+      _busy = false;
+      _job = made;
+      _exportUnseen = !_sheetOpen;
+    });
+    _keep(made);
+    _watchJob();
   }
 
   void _keep(List<RecordItem> fresh) {
@@ -1005,8 +1196,16 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
     try {
       final fresh = [for (final r in job) (await _src.get(r.id)) ?? r];
       if (!mounted) return;
-      setState(() => _job = fresh);
+      final wasRunning = job.any((r) => r.inProgress);
+      _update(() {
+        _job = fresh;
+        if (wasRunning && !fresh.any((r) => r.inProgress) && !_sheetOpen) _exportUnseen = true;
+      });
       _keep(fresh);
+      if (wasRunning && !fresh.any((r) => r.inProgress) && !_sheetOpen) {
+        showAppNotice(fresh.every((r) => r.isDone) ? t('التصدير جاهز', 'The export is ready') : t('تعذّر إكمال التصدير', 'The export could not finish'),
+            error: !fresh.every((r) => r.isDone));
+      }
     } catch (_) {/* the next event / poll tries again */}
     _watchJob();
   }
@@ -1016,7 +1215,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       final n = await _src.retry(r.id);
       if (n == null || !mounted) return;
       _samples.remove(r.id);
-      setState(() => _job = [for (final x in _job ?? const <RecordItem>[]) x.id == n.id ? n : x]);
+      _update(() => _job = [for (final x in _job ?? const <RecordItem>[]) x.id == n.id ? n : x]);
       _keep([n]);
       _watchJob();
     } catch (e) {
@@ -1034,13 +1233,14 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
     try {
       final n = await _src.cancel(r.id);
       if (n == null || !mounted) return;
-      setState(() => _job = [for (final x in _job ?? const <RecordItem>[]) x.id == n.id ? n : x]);
+      _update(() => _job = [for (final x in _job ?? const <RecordItem>[]) x.id == n.id ? n : x]);
       _watchJob();
     } catch (e) {
       if (mounted) showAppNotice(recordsErrorText(e), error: true);
     }
   }
 
+  /// Opens what a finished export was made from as a NEW step (D-825: the work since then stays in the history).
   Future<void> _continueJob(RecordItem r) async {
     try {
       final p = await _src.jobProject(r.id);
@@ -1050,16 +1250,13 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
         showAppNotice(t('لا يوجد سجل محفوظ لهذا التعديل', 'This edit has no saved history'), error: true);
         return;
       }
-      _jobWatch?.stop();
-      setState(() {
-        _job = null;
-        _hist = h;
-        _live = null;
-        _tool = StudioTool.edit;
-        _fixSelection();
-      });
+      if (!mounted) return;
+      if (_sheetOpen) Navigator.of(context).maybePop();
+      await _commit(StudioStepKind.restore, h.current, info: {'name': r.title});
+      if (!mounted) return;
+      setState(() => _tool = StudioTool.edit);
       _fetchImages();
-      _scheduleSave();
+      _seek(0);
     } catch (e) {
       if (mounted) showAppNotice(recordsErrorText(e), error: true);
     }
@@ -1069,7 +1266,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
     if (job == null ? _originalDownload != null : _downloads.containsKey(job.id)) return;
     void progress(double v) {
       if (!mounted) return;
-      setState(() {
+      _update(() {
         if (job == null) {
           _originalDownload = v;
         } else {
@@ -1089,7 +1286,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       if (mounted) showAppNotice(recordsErrorText(e), error: true);
     } finally {
       if (mounted) {
-        setState(() {
+        _update(() {
           if (job == null) {
             _originalDownload = null;
           } else {
@@ -1100,14 +1297,118 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
     }
   }
 
+  /// A new export (the last one's result stays in Records / the drafts).
   void _again() {
     _jobWatch?.stop();
-    setState(() {
+    _update(() {
       _job = null;
       _replace = false;
       _titleTouched = false;
       _syncTitle();
     });
+  }
+
+  /// The Export panel: the settings, or the job it follows.
+  Future<void> _openExport() async {
+    if (_sheetOpen) return;
+    final job = _job;
+    if (job != null && !job.any((r) => r.inProgress) && !_exportUnseen) _again(); // the last one was seen: a new export
+    setState(() {
+      _sheetOpen = true;
+      _exportUnseen = false;
+      _panelOpen = false;
+    });
+    _player?.pause();
+    await showAppSheet<void>(
+      context,
+      (ctx) => ListenableBuilder(listenable: _sheet, builder: (ctx, _) => _exportPanel(ctx)),
+    );
+    if (mounted) setState(() => _sheetOpen = false);
+  }
+
+  Widget _exportPanel(BuildContext ctx) {
+    final job = _job;
+    final running = job != null && job.any((r) => r.inProgress);
+    final done = job != null && job.isNotEmpty && job.every((r) => r.isDone);
+    final title = job == null
+        ? t('تصدير', 'Export')
+        : running
+            ? t('يجري التصدير', 'Exporting')
+            : done
+                ? t('جاهز', 'Ready')
+                : t('التصدير', 'The export');
+    return AppSheetContent(
+      title: title,
+      icon: Icons.ios_share_rounded,
+      subtitle: job == null ? _item.title : null,
+      children: [
+        if (job == null)
+          StudioExportSettings(
+            item: _item,
+            duration: _exportEdit.duration,
+            form: StudioSaveArea(
+              title: TextField(
+                key: const ValueKey('studio.title'),
+                controller: _title,
+                maxLength: 120,
+                onChanged: (_) => _titleTouched = true,
+                decoration: InputDecoration(
+                  labelText: _twoFiles
+                      ? t('اسم الملفين (يُضاف 1 و2)', 'Name of the two (1 and 2 are added)')
+                      : _src.drafts
+                          ? t('اسم الفيديو الجديد', 'Name of the new video')
+                          : t('اسم التسجيل الجديد', 'Name of the new recording'),
+                ),
+              ),
+              draft: _src.drafts,
+              replace: _replace && !_twoFiles,
+              busy: _busy,
+              onReplace: _twoFiles ? null : (v) => _update(() => _replace = v),
+            ).form,
+            height: _exHeight,
+            level: _exLevel,
+            onQuality: _offersQuality ? _setExportQuality : null,
+            twoFiles: _twoFiles,
+            halves: _halves,
+            onTwoFiles: _offersTwoFiles
+                ? (v) {
+                    _update(() => _twoFiles = v);
+                    _scheduleSave();
+                  }
+                : null,
+            result: _exportResult,
+            problem: _exportProblem,
+            busy: _busy,
+            draft: _src.drafts,
+            replace: _replace && !_twoFiles,
+            onExport: _export,
+          )
+        else
+          StudioExportJob(
+            running: running,
+            card: StudioJobCard(
+              items: job,
+              eta: {for (final r in job) r.id: _eta(r)},
+              downloading: _downloads,
+              onRetry: _retryJob,
+              onCancel: _cancelJob,
+              onDownload: (r) => _download(job: r),
+              onContinue: _continueJob,
+              onShare: widget.source == null ? (r) => showRecordShareSheet(ctx, r, api: widget.shareApi) : null,
+              onPlay: widget.onPlay == null ? null : (r) => widget.onPlay!(ctx, r),
+              onLibrary: () {
+                Navigator.of(ctx).pop();
+                _leave();
+              },
+              actionsFor: widget.jobActions == null ? null : (r) => widget.jobActions!(ctx, r),
+              drafts: _src.drafts,
+              libraryLabel: widget.libraryLabel,
+            ),
+            onKeepEditing: () => Navigator.of(ctx).pop(),
+            onExportAgain: _again,
+          ),
+      ],
+    );
   }
 
   // ── cover (saved at once) ──
@@ -1153,20 +1454,34 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
   KeyEventResult _key(FocusNode _, KeyEvent e) {
     if (e is! KeyDownEvent && e is! KeyRepeatEvent) return KeyEventResult.ignored;
     final typing = FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<EditableText>() != null;
-    if (typing || _busy || _job != null) return KeyEventResult.ignored;
+    if (typing || _sheetOpen) return KeyEventResult.ignored;
     final k = e.logicalKey;
     final kb = HardwareKeyboard.instance;
     final ctrl = kb.isControlPressed || kb.isMetaPressed;
+    final edit = _projectReady && !_busy;
     if (ctrl && k == LogicalKeyboardKey.keyZ) {
-      kb.isShiftPressed ? _redo() : _undo();
+      if (edit) kb.isShiftPressed ? _redo() : _undo();
       return KeyEventResult.handled;
     }
     if (ctrl && k == LogicalKeyboardKey.keyY) {
-      _redo();
+      if (edit) _redo();
+      return KeyEventResult.handled;
+    }
+    if (ctrl && k == LogicalKeyboardKey.keyS) {
+      _flushSave();
+      return KeyEventResult.handled;
+    }
+    if (ctrl && k == LogicalKeyboardKey.keyE) {
+      _openExport();
       return KeyEventResult.handled;
     }
     if (ctrl) return KeyEventResult.ignored;
     final step = kb.isShiftPressed ? 1.0 : StudioTransport.frame;
+    if (kb.isAltPressed && (k == LogicalKeyboardKey.arrowLeft || k == LogicalKeyboardKey.arrowRight)) {
+      final i = _selClip;
+      if (edit && i != null) _moveClip(i, i + (k == LogicalKeyboardKey.arrowLeft ? -1 : 1));
+      return KeyEventResult.handled;
+    }
     if (k == LogicalKeyboardKey.space) {
       _playPause();
     } else if (k == LogicalKeyboardKey.keyK) {
@@ -1185,13 +1500,13 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       _seek(0);
     } else if (k == LogicalKeyboardKey.end) {
       _seek(_edit.duration);
-    } else if (k == LogicalKeyboardKey.keyI && _tool.isEditing) {
+    } else if (k == LogicalKeyboardKey.keyI && edit) {
       _setMark(true);
-    } else if (k == LogicalKeyboardKey.keyO && _tool.isEditing) {
+    } else if (k == LogicalKeyboardKey.keyO && edit) {
       _setMark(false);
-    } else if (k == LogicalKeyboardKey.keyS && _tool.isEditing) {
+    } else if (k == LogicalKeyboardKey.keyS && edit) {
       _split();
-    } else if ((k == LogicalKeyboardKey.delete || k == LogicalKeyboardKey.backspace) && _tool.isEditing) {
+    } else if ((k == LogicalKeyboardKey.delete || k == LogicalKeyboardKey.backspace) && edit) {
       if (_markIn != null && _markOut != null) {
         _removeMarked();
       } else if (_selOverlay != null) {
@@ -1201,9 +1516,13 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       }
     } else if (k == LogicalKeyboardKey.escape) {
       setState(() {
-        _selClip = null;
-        _selOverlay = null;
-        _markIn = _markOut = null;
+        if (_panelOpen) {
+          _panelOpen = false;
+        } else {
+          _selClip = null;
+          _selOverlay = null;
+          _markIn = _markOut = null;
+        }
       });
     } else if (k == LogicalKeyboardKey.equal || k == LogicalKeyboardKey.numpadAdd) {
       setState(() => _zoom = math.min(_zoom * 2, 4096));
@@ -1213,6 +1532,98 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       return KeyEventResult.ignored;
     }
     return KeyEventResult.handled;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // What can be done now (D-824): one list, a phone's bottom bar or the strip over the timeline
+  // ─────────────────────────────────────────────────────────────────────────
+
+  void _openTool(StudioTool x) => _setTool(x);
+
+  Future<void> _quickText() async {
+    await _addOverlay(StudioOverlayKind.text, StudioPlace.lowerThird);
+    if (mounted) _setTool(StudioTool.text);
+  }
+
+  Future<void> _quickPicture() async {
+    await _addOverlay(StudioOverlayKind.image, StudioPlace.bottomEnd);
+    if (mounted && _selOverlay != null) _setTool(StudioTool.image);
+  }
+
+  (List<StudioAction>, StudioActionContext?) _actions({required bool wide}) {
+    final e = _edit;
+    final split = StudioAction(id: 'split', icon: Icons.content_cut_rounded, label: t('تقسيم', 'Split'), tip: t('تقسيم عند المؤشر (S)', 'Split at the playhead (S)'), onTap: _split);
+    final speed = StudioAction(id: 'speed', icon: Icons.speed_rounded, label: t('السرعة', 'Speed'), onTap: () => _openTool(StudioTool.edit));
+    void clear() => setState(() {
+          _selClip = null;
+          _selOverlay = null;
+          _markIn = _markOut = null;
+        });
+    // a marked period
+    if (_markIn != null && _markOut != null && _markOut! > _markIn!) {
+      final a = _markIn!, b = _markOut!;
+      return (
+        [
+          StudioAction(id: 'remove_marked', icon: Icons.delete_sweep_outlined, label: t('حذف الفترة', 'Remove it'), danger: true, tip: t('حذف الفترة المحددة (Delete)', 'Remove the marked period (Delete)'), onTap: _removeMarked),
+          StudioAction(id: 'keep_marked', icon: Icons.crop_rounded, label: t('الإبقاء عليها', 'Keep only it'), onTap: _keepMarked),
+          speed,
+          StudioAction(id: 'mark_in', icon: Icons.first_page_rounded, timeIcon: true, label: t('البداية هنا', 'In here'), tip: t('بداية الفترة عند المؤشر (I)', 'Mark in at the playhead (I)'), onTap: () => _setMark(true)),
+          StudioAction(id: 'mark_out', icon: Icons.last_page_rounded, timeIcon: true, label: t('النهاية هنا', 'Out here'), tip: t('نهاية الفترة عند المؤشر (O)', 'Mark out at the playhead (O)'), onTap: () => _setMark(false)),
+        ],
+        StudioActionContext(label: t('الفترة ${studioTimecodeShort(a)} – ${studioTimecodeShort(b)}', 'Marked ${studioTimecodeShort(a)} – ${studioTimecodeShort(b)}'), onClear: clear),
+      );
+    }
+    // a text or a picture
+    final o = _overlay(_selOverlay);
+    if (o != null) {
+      return (
+        [
+          StudioAction(id: 'overlay_edit', icon: o.isText ? Icons.edit_rounded : Icons.tune_rounded, label: o.isText ? t('تعديل النص', 'Edit text') : t('الإعدادات', 'Settings'), onTap: () => _openTool(o.isText ? StudioTool.text : StudioTool.image)),
+          StudioAction(id: 'overlay_duplicate', icon: Icons.copy_rounded, label: t('نسخة', 'Duplicate'), onTap: () => _duplicateOverlay(o.id)),
+          split,
+          StudioAction(id: 'overlay_delete', icon: Icons.delete_outline_rounded, label: t('حذف', 'Delete'), danger: true, tip: t('حذف (Delete)', 'Delete (Delete)'), onTap: () => _deleteOverlay(o.id)),
+        ],
+        StudioActionContext(label: o.isText ? t('نص «${o.name}»', 'Text “${o.name}”') : t('صورة', 'Picture'), onClear: clear),
+      );
+    }
+    // a part
+    final i = _selClip;
+    if (i != null && i < e.clips.length) {
+      final c = e.clips[i];
+      return (
+        [
+          split,
+          speed,
+          StudioAction(id: 'move_back', icon: Icons.keyboard_double_arrow_left_rounded, timeIcon: true, label: t('للخلف', 'Earlier'), tip: t('تشغيله قبل الجزء السابق (Alt+←)', 'Play it before the part before (Alt+←)'), onTap: i > 0 ? () => _moveClip(i, i - 1) : null),
+          StudioAction(id: 'move_fwd', icon: Icons.keyboard_double_arrow_right_rounded, timeIcon: true, label: t('للأمام', 'Later'), tip: t('تشغيله بعد الجزء التالي (Alt+→)', 'Play it after the next part (Alt+→)'), onTap: i < e.clips.length - 1 ? () => _moveClip(i, i + 1) : null),
+          StudioAction(id: 'delete_clip', icon: Icons.delete_outline_rounded, label: t('حذف', 'Delete'), danger: true, tip: t('حذف الجزء (Delete)', 'Delete the part (Delete)'), onTap: e.clips.length > 1 ? _deleteClip : null),
+        ],
+        StudioActionContext(
+          label: t('الجزء ${i + 1} من ${e.clips.length} · ${studioTimecodeShort(c.length)}', 'Part ${i + 1} of ${e.clips.length} · ${studioTimecodeShort(c.length)}'),
+          onClear: clear,
+        ),
+      );
+    }
+    // nothing selected: the tools (a wide window has them on the rail, so its strip keeps to the timeline's own)
+    final markIn = StudioAction(id: 'mark_in', icon: Icons.first_page_rounded, timeIcon: true, label: t('بداية', 'Mark in'), tip: t('بداية الفترة عند المؤشر (I)', 'Mark in at the playhead (I)'), onTap: () => _setMark(true));
+    final markOut = StudioAction(id: 'mark_out', icon: Icons.last_page_rounded, timeIcon: true, label: t('نهاية', 'Mark out'), tip: t('نهاية الفترة عند المؤشر (O)', 'Mark out at the playhead (O)'), onTap: () => _setMark(false));
+    if (wide) {
+      return ([split, markIn, markOut], _markIn != null || _markOut != null ? StudioActionContext(label: t('حدّد النهاية', 'Now mark the end'), onClear: clear) : null);
+    }
+    return (
+      [
+        split,
+        if (!_item.isAudio && _tools.contains(StudioTool.text)) StudioAction(id: 'text', icon: Icons.title_rounded, label: t('نص', 'Text'), onTap: _quickText),
+        if (!_item.isAudio && _tools.contains(StudioTool.image)) StudioAction(id: 'image', icon: Icons.add_photo_alternate_outlined, label: t('صورة', 'Picture'), onTap: _quickPicture),
+        speed,
+        markIn,
+        markOut,
+        StudioAction(id: 'history', icon: Icons.history_rounded, label: t('السجل', 'History'), onTap: () => _openTool(StudioTool.history)),
+        if (_tools.contains(StudioTool.merge)) StudioAction(id: 'merge', icon: Icons.merge_rounded, label: StudioTool.merge.short, onTap: () => _openTool(StudioTool.merge)),
+        if (_tools.contains(StudioTool.cover)) StudioAction(id: 'cover', icon: Icons.image_outlined, label: StudioTool.cover.short, onTap: () => _openTool(StudioTool.cover)),
+      ],
+      _markIn != null || _markOut != null ? StudioActionContext(label: t('حدّد النهاية', 'Now mark the end'), onClear: clear) : null,
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1240,7 +1651,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
         ]),
       );
     }
-    final editing = !_busy && _job == null;
+    final editing = !_busy && _projectReady;
     return Stack(fit: StackFit.expand, children: [
       VideoPlayer(p),
       StudioOverlayLayer(
@@ -1248,7 +1659,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
         now: _pos,
         selected: _selOverlay,
         images: _images,
-        editing: editing && (_tool == StudioTool.text || _tool == StudioTool.image || _tool == StudioTool.edit),
+        editing: editing,
         onSelect: _selectOverlay,
         onMove: _overlayMove,
         onMoveEnd: _overlayMoveEnd,
@@ -1318,36 +1729,50 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
           onReset: _reset,
           clock: (at) => AppTime.time(at.toUtc()),
         );
-      case StudioTool.split:
-        final h = studioHalves(e, _pos);
+      case StudioTool.merge:
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-          Directionality(
-            textDirection: TextDirection.ltr,
-            child: Row(children: [
-              Expanded(child: StudioTimeField(label: t('الملف الأول', 'File 1'), value: h?.$1.duration ?? 0, idKey: 'part1')),
-              const SizedBox(width: AppSpace.xs),
-              Expanded(child: StudioTimeField(label: t('الملف الثاني', 'File 2'), value: h?.$2.duration ?? 0, idKey: 'part2')),
-            ]),
+          StudioToolPanel(
+            tool: StudioTool.merge,
+            item: _item,
+            duration: e.duration,
+            merge: studioMergePicks(_item, widget.others, _mergeIds),
+            enabled: !_busy,
+            onToggleMerge: _toggleMerge,
           ),
-          const SizedBox(height: AppSpace.sm),
-          Text(t('حرّك المؤشر إلى حيث تريد القسمة. تشمل الملفّان كل تعديلاتك ونصوصك وصورك.', 'Move the playhead to where it should split. Both files carry all your edits, texts and pictures.'),
-              style: AppType.meta(context).copyWith(color: context.colors.textMedium)),
+          const SizedBox(height: AppSpace.md),
+          if (_mergeIds.isNotEmpty) ...[
+            StudioSummary(original: _srcDur, result: [mergedDuration(_mergeParts)]),
+            const SizedBox(height: AppSpace.md),
+          ],
+          StudioSaveArea(
+            title: TextField(
+              key: const ValueKey('studio.merge.title'),
+              controller: _mergeTitle,
+              maxLength: 120,
+              decoration: InputDecoration(labelText: t('اسم التسجيل المدموج', 'Name of the merged recording')),
+            ),
+            merge: true,
+            draft: _src.drafts,
+            replace: _replace,
+            canSave: _mergeIds.isNotEmpty && _job?.any((r) => r.inProgress) != true,
+            busy: _busy,
+            showHistory: false,
+            saveIcon: Icons.merge_rounded,
+            saveLabel: t('دمج', 'Merge'),
+            onReplace: (v) => setState(() => _replace = v),
+            onSave: _merge,
+          ),
         ]);
       case StudioTool.quality:
+      case StudioTool.split:
       case StudioTool.cover:
-      case StudioTool.merge:
         return StudioToolPanel(
-          tool: _tool,
+          tool: StudioTool.cover,
           item: _item,
           duration: e.duration,
-          height: e.height,
-          level: e.level ?? StudioQualityLevel.balanced,
-          merge: studioMergePicks(_item, widget.others, _mergeIds),
-          enabled: editing,
-          onQuality: _setQuality,
+          enabled: !_busy,
           onPickCover: _pickCover,
           onRemoveCover: () => _coverCall(() => _src.clearCover(_item.id), t('أُزيل الغلاف', 'Cover removed')),
-          onToggleMerge: _toggleMerge,
         );
     }
   }
@@ -1355,11 +1780,20 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     final f = _frames;
-    final editing = !_busy && _job == null;
+    final editing = !_busy && _projectReady;
     final e = _edit;
-    final wide = MediaQuery.sizeOf(context).width;
-    final maxZoom = StudioTimelineView.maxZoom(math.max(320, wide - 520), e.duration);
+    final size = MediaQuery.sizeOf(context);
+    final wide = studioIsWide(size);
+    final maxZoom = StudioTimelineView.maxZoom(math.max(320, size.width - (wide ? 600 : 60)), e.duration);
     if (_zoom > maxZoom) _zoom = maxZoom;
+    final (actions, actionContext) = _actions(wide: wide);
+    final job = _job;
+    final running = job != null && job.any((r) => r.inProgress);
+    int? exporting;
+    if (running) {
+      final ps = [for (final r in job) if (r.inProgress) r.progress ?? -1];
+      exporting = ps.isEmpty ? -1 : ps.reduce(math.min);
+    }
     final layout = RecordStudioLayout(
       busy: !editing,
       tools: _tools,
@@ -1367,6 +1801,10 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       onTool: _setTool,
       canvas: _canvas,
       aspect: _item.isAudio ? 16 / 9 : _aspect,
+      actions: actions,
+      actionContext: actionContext,
+      panelOpen: _panelOpen,
+      onClosePanel: () => setState(() => _panelOpen = false),
       preview: _preview(context),
       transport: StudioTransport(
         position: _pos,
@@ -1399,6 +1837,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
         framesPending: f == null ? !_item.isAudio : f.pending,
         playing: _playing,
         enabled: editing && _ready,
+        overlays: !_item.isAudio,
         onZoom: (z) => setState(() => _zoom = z),
         onScrubStart: _scrubStart,
         onScrub: _scrub,
@@ -1406,14 +1845,17 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
         onSelectClip: (i) => setState(() {
           _selClip = i;
           _selOverlay = null;
-          if (i != null && !_tool.isEditing) _tool = StudioTool.edit;
-          if (i != null && (_tool == StudioTool.text || _tool == StudioTool.image)) _tool = StudioTool.edit;
+          if (i != null) {
+            _markIn = _markOut = null;
+            if (_tool != StudioTool.edit && wide) _tool = StudioTool.edit;
+          }
         }),
         onSelectOverlay: _selectOverlay,
         onTrim: _onTrim,
         onTrimEnd: _onTrimEnd,
         onOverlaySpan: _overlaySpan,
         onOverlaySpanEnd: _overlaySpanEnd,
+        onMoveClip: _moveClip,
         onMarks: (a, b) => setState(() {
           _markIn = a;
           _markOut = b;
@@ -1422,64 +1864,18 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
         }),
       ),
       panel: _panel(context, editing),
-      summary: StudioSummary(
-          original: _srcDur,
-          result: _unchanged ? const [] : _result,
-          problem: _tool == StudioTool.cover || _tool == StudioTool.history ? null : _problem),
-      save: _tool == StudioTool.cover
-          ? null
-          : StudioSaveArea(
-              merge: _tool == StudioTool.merge,
-              draft: _src.drafts,
-              replace: _replace,
-              canSave: _problem == null && !_unchanged && _ready,
-              canUndo: _hist.canUndo,
-              canRedo: _hist.canRedo,
-              busy: _busy,
-              saveLabel: _tool == StudioTool.split ? (_src.drafts ? t('حفظ مسودتين', 'Save two drafts') : t('حفظ ملفين', 'Save two files')) : null,
-              onReplace: (v) => setState(() => _replace = v),
-              onUndo: _undo,
-              onRedo: _redo,
-              onReset: _hist.current.isOriginal(_srcDur) ? null : _reset,
-              onSave: _save,
-              title: TextField(
-                key: const ValueKey('studio.title'),
-                controller: _title,
-                maxLength: 120,
-                onChanged: (_) => _titleTouched = true,
-                decoration: InputDecoration(
-                  labelText: _tool == StudioTool.split
-                      ? t('اسم الملفين (يُضاف 1 و2)', 'Name of the two (1 and 2 are added)')
-                      : _src.drafts
-                          ? t('اسم الفيديو الجديد', 'Name of the new video')
-                          : t('اسم التسجيل الجديد', 'Name of the new recording'),
-                ),
-              ),
-            ),
-      job: _job == null
-          ? null
-          : StudioJobCard(
-              items: _job!,
-              eta: {for (final r in _job!) r.id: _eta(r)},
-              downloading: _downloads,
-              onRetry: _retryJob,
-              onCancel: _cancelJob,
-              onDownload: (r) => _download(job: r),
-              onContinue: _continueJob,
-              onPlay: widget.onPlay == null ? null : (r) => widget.onPlay!(context, r),
-              onAgain: _again,
-              onLibrary: () => Navigator.of(context).pop(_popValue()),
-              actionsFor: widget.jobActions == null ? null : (r) => widget.jobActions!(context, r),
-              drafts: _src.drafts,
-              libraryLabel: widget.libraryLabel,
-            ),
-      footer: studioIsWide(MediaQuery.sizeOf(context)) ? const StudioKeysHint() : null, // keys: a desktop's, not a phone browser's
-      stageNote: _stageNote,
+      footer: wide ? const StudioKeysHint() : null, // keys: a desktop's, not a phone browser's
+      stageNote: _stageNote ?? (_projectReady ? null : t('يجهّز عملك المحفوظ…', 'Getting your saved work…')),
     );
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) Navigator.of(context).pop(_popValue());
+        if (didPop) return;
+        if (_panelOpen) {
+          setState(() => _panelOpen = false);
+          return;
+        }
+        _leave();
       },
       child: BasePage(
         key: const ValueKey('records.studio'),
@@ -1492,11 +1888,23 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
           onCanvas: () => setState(() => _canvas = StudioCanvas.values[(_canvas.index + 1) % StudioCanvas.values.length]),
           onDownload: () => _download(),
           downloading: _originalDownload,
+          canUndo: editing && _hist.canUndo,
+          canRedo: editing && _hist.canRedo,
+          onUndo: _undo,
+          onRedo: _redo,
+          onExport: _ready && _projectReady ? _openExport : null,
+          exporting: exporting,
+          exportDone: _exportUnseen && !running && job != null && job.every((r) => r.isDone),
         ),
         child: Focus(focusNode: _focus, autofocus: true, onKeyEvent: _key, child: layout),
       ),
     );
   }
+}
+
+/// Rebuilds the open Export panel.
+class _Tick extends ChangeNotifier {
+  void ping() => notifyListeners();
 }
 
 /// Is the app in Arabic (a new text starts in the Arabic font choice).

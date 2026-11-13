@@ -12,6 +12,7 @@ import 'package:flutter_education_app/features/shared/records/records_guests_par
 import 'package:flutter_education_app/features/shared/records/records_share_api.dart';
 import 'package:flutter_education_app/features/shared/records/records_share_parts.dart';
 import 'package:flutter_education_app/features/shared/records/records_studio_parts.dart';
+import 'package:flutter_education_app/features/shared/records/studio_export.dart';
 import 'package:flutter_education_app/features/shared/records/studio_project.dart';
 import 'package:flutter_education_app/features/shared/records/studio_timeline.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -60,32 +61,48 @@ Widget _studio(StudioTool tool, {bool job = false}) {
   const tools = [StudioTool.edit, StudioTool.text, StudioTool.image, StudioTool.history, StudioTool.quality, StudioTool.split, StudioTool.merge];
   final item = _material();
   final ready = _d(21, const {});
+  if (job) {
+    return SingleChildScrollView(
+      child: StudioExportJob(
+        card: StudioJobCard(
+          items: [ready.item, _d(22, {'status': 'assembling', 'progress': 30, 'can_publish': false}).item],
+          drafts: true,
+          libraryLabel: 'To the session',
+          onPlay: (_) {},
+          onAgain: () {},
+          onLibrary: () {},
+          actionsFor: (r) => r.id == 21 ? AppPillLike(onTap: () {}) : null,
+        ),
+        running: true,
+        onKeepEditing: () {},
+      ),
+    );
+  }
+  if (tool == StudioTool.quality || tool == StudioTool.split) {
+    // a material's Quality and Two files are choices of the Export panel (D-827), where the draft note replaces Keep / Replace
+    return SingleChildScrollView(
+      child: StudioExportSettings(
+        item: item,
+        duration: 3590,
+        draft: true,
+        form: StudioSaveArea(title: const TextField(decoration: InputDecoration(labelText: 'Name of the new video')), draft: true).form,
+        onQuality: (_, _) {},
+        twoFiles: tool == StudioTool.split,
+        halves: (60, 3530),
+        onTwoFiles: (_) {},
+        result: const [1190],
+        onExport: () {},
+      ),
+    );
+  }
   return RecordStudioLayout(
-    tools: tools,
+    tools: [for (final x in tools) if (x.inRail) x],
     tool: tool,
     onTool: (_) {},
     preview: const SizedBox.expand(),
     transport: StudioTransport(position: 60, duration: 3600, onPlayPause: () {}, onSkip: (_) {}, onPreviewSpeed: () {}),
     timeline: StudioTimelineView(edit: StudioEdit.original(3600).split(1200), position: 60, sourceDuration: 3600, onScrub: (_) {}),
     panel: StudioToolPanel(tool: tool, item: item, duration: 3600, showImages: false),
-    summary: const StudioSummary(original: 3600, result: [1190]),
-    save: StudioSaveArea(
-      title: const TextField(decoration: InputDecoration(labelText: 'Name of the new video')),
-      draft: true,
-      canSave: true,
-      onSave: () {},
-    ),
-    job: job
-        ? StudioJobCard(
-            items: [ready.item, _d(22, {'status': 'assembling', 'progress': 30, 'can_publish': false}).item],
-            drafts: true,
-            libraryLabel: 'To the session',
-            onPlay: (_) {},
-            onAgain: () {},
-            onLibrary: () {},
-            actionsFor: (r) => r.id == 21 ? AppPillLike(onTap: () {}) : null,
-          )
-        : null,
   );
 }
 
@@ -194,18 +211,20 @@ void main() {
       await expectNoLayoutErrors(t, () => _studio(StudioTool.edit, job: true));
     });
 
-    testWidgets('material mode: no Cover tool, Save as draft, the draft note, Publish on a ready draft', (t) async {
+    testWidgets('material mode: no Cover tool, Export as a draft, the draft note, Publish on a ready draft', (t) async {
       t.view.physicalSize = const Size(1400, 900);
       t.view.devicePixelRatio = 1;
       addTearDown(t.view.reset);
-      await t.pumpWidget(layoutHost(_studio(StudioTool.edit, job: true), scale: 1));
+      await t.pumpWidget(layoutHost(_studio(StudioTool.edit), scale: 1));
       expect(find.byKey(const ValueKey('studio.tool.cover')), findsNothing);
       expect(find.byKey(const ValueKey('studio.tool.merge')), findsOneWidget);
+      expect(find.byKey(const ValueKey('studio.tool.quality')), findsNothing, reason: 'Quality is in the Export panel (D-827)');
+      await t.pumpWidget(layoutHost(_studio(StudioTool.edit, job: true), scale: 1));
       expect(find.text('The draft is ready — play it, then publish it'), findsNothing); // one item still saving
       expect(find.byKey(const ValueKey('test.publish')), findsOneWidget);
       expect(find.text('To the session'), findsOneWidget);
-      await t.pumpWidget(layoutHost(_studio(StudioTool.edit), scale: 1));
-      expect(find.text('Save as draft'), findsOneWidget);
+      await t.pumpWidget(layoutHost(_studio(StudioTool.quality), scale: 1));
+      expect(find.text('Export as a draft'), findsOneWidget);
       expect(find.byKey(const ValueKey('studio.draft.note')), findsOneWidget);
       expect(find.byKey(const ValueKey('studio.replace')), findsNothing);
     });

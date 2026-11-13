@@ -4561,3 +4561,42 @@ retired); the page only calls the public route with `auth: false`. A course card
 `/share/og/u/{name}` describes a teacher as "courses · students · ★ rating" (only the sections the teacher shows) and
 a student as "Learning on NextBrain". Still not wired in nginx: bots get the SPA until the owner routes them (see
 FLUTTER_API_CHANGES).
+## D-820 — The Studio redesigned around one preview, a track timeline and one Export · 2026-11-13 · accepted
+
+**Context.** The owner called the Studio's UI and logic very bad. Rendered at 390×844 and 1440×900 (ar / en, light / dark, `test/visual/studio_golden_test.dart`), the phone showed a stage of 30 % of the height, a timeline with unnamed lanes, an inspector that opened with a paragraph and hid its controls below the fold, eight tools in a strip that ran off the screen (edit tools beside output tools), and "Save as new" as the loudest thing on screen at all times although the work already autosaved. **Decision.** Top bar: back · the name with where the work is kept · Undo · Redo (always in view) · ⋯ (canvas, download the original) · **Export**, the one primary button (it shows the running percent, and "Ready"). Phones: the picture fills what is left, a large transport (52 px play), the timeline, and a contextual action bar (D-824); a tool's panel takes the timeline's place with a Done (the picture stays in view to judge a text or a speed); Back closes the panel first. Wide windows: the rail (Edit · Text · Picture · History | Merge · Cover), stage, transport, the action strip and the timeline, and the inspector with only the tool's controls. Kept: every tool, key, panel, job flow and the dark bay (D-320).
+
+## D-821 — The timeline has named tracks: Video, Text, Pictures, Audio · 2026-11-13 · accepted
+
+Texts and pictures had shared unlabeled rows and the waveform sat inside the frames. Now four tracks, a header column on their left (icons on phones, icon + word from 720 px), texts and pictures each packed into their own rows, the waveform on its own Audio track whose parts grip, trim and select like the Video track's (a bigger target). Empty tracks say how to fill them.
+
+## D-822 — Time runs left to right in Arabic, and so do the icons that point along it · 2026-11-13 · accepted
+
+Restates D-597 for the new parts: the timeline, its track headers (on the LEFT in Arabic too), the transport and every in / out pair stay left → right; words, panels and the action bars follow the language. An action that points along time (Earlier / Later, Mark in / out) draws its icon left to right (`StudioAction.timeIcon`), since a language-mirrored arrow would point against the timeline it moves things on.
+
+## D-823 — Parts can be moved: drag a selected part, or Earlier / Later · 2026-11-13 · accepted
+
+Select a part, then drag its body: it lifts, an insertion bar shows where it lands, release moves it (`StudioEdit.moveClip`, a `moveClip` step). Earlier / Later in the action bar and Alt+← / → do the same. A tap on the selected part still moves the playhead. A part's edges now stop at the parts next to it in the SOURCE, not in play order (`startBounds` / `endBounds`), so no two parts ever share a moment. Overlays stay anchored in source time (D-592) and travel with their part. Server: `validate_project` takes clips in any order and refuses only overlaps (`tests/org_v2/studio_project_rev_check.py`).
+
+## D-824 — One list of actions, drawn as a phone's bottom bar or a desktop strip · 2026-11-13 · accepted
+
+What can be done depends on the selection: nothing (Split · Text · Picture · Speed · Mark in · Mark out · History · Merge · Cover; on wide windows the rail holds the tools, so the strip keeps Split and the marks), a part (Split · Speed · Earlier · Later · Delete), a text or picture (Edit · Duplicate · Split · Delete), a marked period (Remove · Keep only · Speed · In here · Out here). The page builds ONE `StudioAction` list with a context line ("Part 2 of 4 · 05:00.0", ✕ clears); `StudioActionBar` / `StudioTimelineBar` only draw it. Text and Picture on a phone add at once at the playhead and open the panel to type / adjust.
+
+## D-825 — No question in the middle of an edit; "Continue editing" never throws work away · 2026-11-13 · accepted
+
+A new change after two or more undos asked "Continue?" — mid-drag, after a trim was let go. It now goes through and a notice says how many undone steps were dropped. "Continue editing" on a finished export REPLACED the whole history with the export's, losing everything done since; it now adds the export's edit as one new step (`restore`), so Undo returns to the work.
+
+## D-826 — The work is kept on the device first, and a newer copy is never overwritten in silence · 2026-11-13 · accepted
+
+**Faults.** The saved project loaded only after the player had opened, so anything done before that (a text added while the video buffered) made the history "not fresh" and the saved work was ignored — then autosaved over. A failed save retried every 12 s but Back left at once, losing the last 1.5 s of work or everything unsent; two tabs / devices overwrote each other. **Decision.** The project is looked for at once, in parallel with the player; editing (Undo, the timeline, the panels, Export) waits for it, the stage saying "Getting your saved work…". Every save goes to the device first (`studio_autosave.dart`, SharedPreferences, `dirty` until the server has it), then to the server with `rev` + `base`; the server answers 409 `project_conflict` with its copy when it moved on, and the person chooses Keep mine / open the other. On open, unsent device work wins unless the server moved past what it was made from (`studioPickProject`). Back saves first (≤ 4 s); what could not be sent stays on the device and says so. The top bar shows Saving… / Saved / Kept on this device / Not saved. Ctrl+S saves now.
+
+## D-827 — Quality and "Two files" are choices of the Export, not tools or edit steps · 2026-11-13 · accepted
+
+Quality and size was a step in the edit's history (undoing a split could undo a resolution) and "Two files" a tool that replaced the editor's Save. Both moved into the Export panel (`studio_export.dart`): the name, Quality and size (Original / 1080p / 720p / 480p × Best / Balanced / Smaller with the size it comes to), "Two files, split at the playhead" with both lengths, Keep / Replace (Records) or the draft note (materials), what comes out, Export. The choices are kept with the project (`doc.export`); an older project's Quality step still seeds them. The Merge tool keeps its own panel with its own name, Keep / Replace and Merge button (it works on the originals).
+
+## D-828 — Exporting never locks the editor · 2026-11-13 · accepted
+
+A saved job used to take the whole inspector and turn every tool off until "Edit" was pressed. The render runs on the server, so the panel now follows it (stages, %, time left, Stop) with "Keep editing": the panel closes, the Export button shows the percent, a notice says when it is ready or failed, and the button reopens the panel at its result: Play · Download · Share (Records, the share sheet) · Publish (a material) · Continue editing · New export.
+
+## D-829 — Desktop keys of the redesigned Studio · 2026-11-13 · accepted
+
+Space · J / K / L · ← / → (Shift: a second) · I / O · S split · Delete · Alt+← / → move the selected part · Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y · Ctrl+S save now · Ctrl+E Export · Home / End · + / − · Esc closes the panel, then clears the selection. They work with any tool open (S and Delete needed the Edit tool before) and while an export runs; never while typing or with the Export panel open. The list is at the foot of the inspector.
