@@ -21,6 +21,7 @@ import '../admin/admin_list.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_switch.dart';
+import 'package:flutter_education_app/design/app_badges.dart' show appColorGlyph;
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'dart:typed_data';
 import 'package:flutter_education_app/design/app_kit.dart' show AppButton, AppListSkeleton;
@@ -325,6 +326,8 @@ class OrgPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final col = color ?? context.colors.primary;
+    // an error / failed or achievement pill never rests on colour alone (D-862)
+    final icon = this.icon ?? appColorGlyph(context, col);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2 + 1),
       decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.pill)),

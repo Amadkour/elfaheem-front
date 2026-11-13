@@ -6,6 +6,7 @@
 //
 //   AppStatusBadge(label: 'Active', tone: AppTone.success, dot: true)   a full pill on an opaque warm tint
 //   AppStatusBadge(label: 'Top mark', tone: AppTone.gold)                achievements, streaks, top marks only
+//                   (danger and gold always wear a glyph, appToneGlyph: never colour alone, D-862)
 //   AppCountBadge(count: 150)                                            "99+" bubble (danger by default)
 //   AppCountBadge(count: 3, child: Icon(Icons.notifications))            the bubble over the child's top-end corner
 //
@@ -39,6 +40,23 @@ Color appToneColor(BuildContext context, AppTone tone) {
     AppTone.brand => c.primary,
     AppTone.gold => c.accent2,
   };
+}
+
+/// The glyph a tone always carries, so its meaning never rests on colour alone (D-862): an error / failed state wears
+/// the error mark, an achievement (gold: top mark, streak) the trophy. Null for the other tones.
+IconData? appToneGlyph(AppTone tone) => switch (tone) {
+      AppTone.danger => Icons.error_outline_rounded,
+      AppTone.gold => Icons.emoji_events_rounded,
+      _ => null,
+    };
+
+/// [appToneGlyph] for a chip that takes a raw colour: the danger or accent2 family of the theme (ink or base).
+IconData? appColorGlyph(BuildContext context, Color color) {
+  final c = context.colors;
+  final v = color.withValues(alpha: 1).toARGB32();
+  if (v == c.danger.toARGB32() || v == c.dangerBase.toARGB32()) return appToneGlyph(AppTone.danger);
+  if (v == c.accent2.toARGB32() || v == c.accent2Base.toARGB32()) return appToneGlyph(AppTone.gold);
+  return null;
 }
 
 /// The colour of a SOLID [tone] fill under a label (a count bubble): the server's own status tones
@@ -122,7 +140,7 @@ class AppStatusBadge extends StatelessWidget {
   final String label;
   final AppTone tone;
 
-  /// A leading icon (wins over [dot]).
+  /// A leading icon (wins over [dot]). Danger and gold fall back to their own glyph ([appToneGlyph], D-862).
   final IconData? icon;
 
   /// A leading coloured dot (the raw tone: a fill, not text).
@@ -138,6 +156,7 @@ class AppStatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ink = appToneInk(context, tone);
+    final icon = this.icon ?? appToneGlyph(tone);
     final style = (dense ? AppType.overline(context) : AppType.meta(context))
         .copyWith(color: ink, fontWeight: FontWeight.w600, letterSpacing: 0, height: 1.2);
     return Container(

@@ -41,10 +41,10 @@ class AppTheme {
   static const Color charcoalDark    = Color(0xFF211D18);
 
   static const Color accent          = Color(0xFFFBE2D3);   // block peach (accent1): learning / progress blocks
-  static const Color accent2         = Color(0xFFD9A21B);   // marigold gold (D-860): streaks, achievements, top marks; text via context.colors.accent2 (D-740 ink)
+  static const Color accent2         = Color(0xFFD46A4C);   // terracotta (D-860): streaks, achievements, top marks; text via context.colors.accent2 (D-740 ink)
   static const Color accent3         = Color(0xFFE4ECE3);   // block sage (the `sky` tone, D-630): schedule / information blocks
   static const Color success         = Color(0xFF12805C);
-  static const Color danger          = Color(0xFFB42E3A);
+  static const Color danger          = Color(0xFFE0245E);   // raspberry red (D-861): cooler than the terracotta accent2
   static const Color warning         = Color(0xFFB7791F);   // 2.9 – 3.6:1: icons and fills, never small text
   static const Color secondText      = Color(0xFF6E655A);   // light mode; 4.5:1+ on every light surface and block
   static const Color darkSecondText  = Color(0xFFA99C8A);   // dark mode; 4.5:1+ on every dark surface (WCAG AA)
