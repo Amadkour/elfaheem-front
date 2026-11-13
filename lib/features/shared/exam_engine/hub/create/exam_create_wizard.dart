@@ -399,7 +399,7 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
     final canSave = errors.isEmpty && perQ.isEmpty;
     final pick = await showAppSheet<CreateLeave>(
         context,
-        (ctx) => AppSheetContent(title: t('الخروج من إنشاء الاختبار؟', 'Leave this exam?'), children: [
+        (ctx) => AppSheetContent(tone: AppTone.warning, icon: Icons.warning_amber_rounded, title: t('الخروج من إنشاء الاختبار؟', 'Leave this exam?'), children: [
               CreateLeaveBody(hasDraft: hasDraft, canSave: canSave, onPick: (v) => Navigator.pop(ctx, v), onStay: () => Navigator.pop(ctx)),
             ]));
     if (pick == null || !mounted) return;

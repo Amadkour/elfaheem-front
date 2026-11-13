@@ -224,7 +224,7 @@ class MeetingInfoSheet extends StatelessWidget {
     };
     final title = i.title.trim().isEmpty ? kind : i.title.trim();
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      AppSheetHeader(t('عن الغرفة', 'About this room')),
+      AppSheetHeader(tone: AppTone.info, icon: Icons.info_outline_rounded, t('عن الغرفة', 'About this room')),
       Flexible(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.lg),

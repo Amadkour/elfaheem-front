@@ -28,6 +28,7 @@ import 'org_schedule_pages.dart' show OrgSchedulePage;
 import '../admin/admin_table_export.dart' show exportPagedList, orgCoursesExport;
 import '../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_side_sheet.dart' show AppSheetMode;
 
 /// Active members of one role (up to 200) — used by the pickers.
 Future<List<Map<String, dynamic>>> orgPeople(OrgSession s, String role, {String? search}) async {
@@ -316,7 +317,7 @@ Future<Map<String, dynamic>?> showOrgCourseForm(BuildContext context, {Map<Strin
   String? err;
   Map<String, dynamic>? saved;
 
-  await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+  await showAdminSheet<void>(context, mode: AppSheetMode.side, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         final canPublish = teacherId != null;
         return SingleChildScrollView(
@@ -472,7 +473,7 @@ Future<void> _enrollSheet(BuildContext context, OrgCoursesProvider p, Map<String
   final picked = <int>{};
   final q = TextEditingController();
   bool busy = false;
-  await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+  await showAdminSheet<void>(context, mode: AppSheetMode.side, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         final shown = students.where((u) => '${u['name']} ${u['email']}'.toLowerCase().contains(q.text.trim().toLowerCase())).toList();
         return Padding(

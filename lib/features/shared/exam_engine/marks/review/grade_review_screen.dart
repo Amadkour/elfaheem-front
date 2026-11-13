@@ -302,7 +302,7 @@ class _GradeReviewScreenState extends State<GradeReviewScreen> with SingleTicker
     if (!mounted) return;
     await showAppSheet<void>(
       context,
-      (ctx) => AppSheetContent(
+      (ctx) => AppSheetContent(tone: AppTone.info, icon: Icons.info_outline_rounded, 
         title: t('تفاصيل الورقة', 'Sheet details'),
         children: [
           GradeRowDetail(

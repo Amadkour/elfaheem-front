@@ -103,7 +103,7 @@ class _ImportResultSheet extends StatelessWidget {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SheetHeader(t('نتيجة الاستيراد', 'Import result')),
+        SheetHeader(tone: AppTone.info, icon: Icons.file_download_outlined, t('نتيجة الاستيراد', 'Import result')),
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           InfoChip(Icons.add_circle_rounded, '${t('جديد', 'New')} ${r['created']}', c.success),
           InfoChip(Icons.link_rounded, '${t('مرتبط', 'Linked')} ${r['linked']}', c.primary),
@@ -204,7 +204,7 @@ Future<void> exportData(BuildContext context, String path, [Map<String, dynamic>
   final fmt = await showAdminSheet<String>(context, (ctx) => SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          SheetHeader(t('تصدير بصيغة', 'Export as')),
+          SheetHeader(tone: AppTone.info, icon: Icons.ios_share_rounded, t('تصدير بصيغة', 'Export as')),
           for (final (f, label, icon) in [
             ('xlsx', 'Excel', Icons.table_chart_rounded),
             ('pdf', 'PDF', Icons.picture_as_pdf_rounded),

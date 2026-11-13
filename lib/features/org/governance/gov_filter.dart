@@ -408,7 +408,7 @@ Future<ItemFilter?> showItemFilterSheet(
   return showAppSheet<ItemFilter>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         return Column(mainAxisSize: MainAxisSize.min, children: [
-          SheetHeader(
+          SheetHeader(tone: AppTone.neutral, icon: Icons.tune_rounded, 
             t('تصفية', 'Filters'),
             trailing: TextButton(
               onPressed: () => set(() => draft = draft.cleared(keepDept: !showEntity)),

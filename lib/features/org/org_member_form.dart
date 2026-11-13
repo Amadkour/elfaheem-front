@@ -23,6 +23,7 @@ import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_side_sheet.dart' show AppSheetMode;
 
 /// Membership roles of POST /members (`MemberIn.role`); positions and permission bundles are separate (below).
 const orgMemberRoles = ['student', 'teacher', 'teacher_assistant', 'admin_assistant', 'org_admin'];
@@ -121,7 +122,7 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
   bool invited = false, invitedPositions = false;
   var failed = <String>[];
 
-  await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+  await showAdminSheet<void>(context, mode: AppSheetMode.side, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         final student = role == 'student';
         final teaching = role == 'teacher' || role == 'teacher_assistant';
@@ -386,7 +387,7 @@ Future<void> showGeneratedPassword(BuildContext context, String login, String pa
     (c2) => Padding(
           padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.xl),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            SheetHeader(t('بيانات الدخول', 'Login details')),
+            SheetHeader(tone: AppTone.info, icon: Icons.info_outline_rounded, t('بيانات الدخول', 'Login details')),
             SelectableText('$login\n$password',
                 textDirection: TextDirection.ltr, textAlign: TextAlign.center, style: AppType.section(context)),
             const SizedBox(height: AppSpace.xs),

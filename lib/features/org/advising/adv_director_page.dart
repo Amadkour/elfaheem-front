@@ -591,7 +591,7 @@ class _DirectorBodyState extends State<_DirectorBody> {
       showAppNotice(advErrorText(r.error!), error: true);
       return;
     }
-    await showAppSheet<void>(context, (_) => AppSheetContent(title: t('سجل التحديثات', 'Update history'), children: [AdvRunsList(runs: (r.data as AdvPage<AdvAnalyticsRun>).items)]));
+    await showAppSheet<void>(context, (_) => AppSheetContent(tone: AppTone.info, icon: Icons.history_rounded, title: t('سجل التحديثات', 'Update history'), children: [AdvRunsList(runs: (r.data as AdvPage<AdvAnalyticsRun>).items)]));
   }
 
   Future<void> _push(Widget page) async {

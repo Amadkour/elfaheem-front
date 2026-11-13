@@ -1026,7 +1026,7 @@ class _FilterSheetState extends State<_FilterSheet> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        SheetHeader(t('تصفية', 'Filters')),
+        SheetHeader(tone: AppTone.neutral, icon: Icons.tune_rounded, t('تصفية', 'Filters')),
         Flexible(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(AppSpace.lg, 0, AppSpace.lg, AppSpace.sm),

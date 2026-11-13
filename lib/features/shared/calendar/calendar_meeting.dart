@@ -298,7 +298,7 @@ class _AudiencePickerState extends State<_AudiencePicker> {
 Future<Map<String, dynamic>?> showMeetingForm(BuildContext context,
         {required CalendarApi api, required DateTime start, int? orgId, int? deptId}) =>
     showAppSheet<Map<String, dynamic>>(
-        context, (ctx) => MeetingForm(api: api, start: start, orgId: orgId, deptId: deptId));
+        context, mode: AppSheetMode.side, (ctx) => MeetingForm(api: api, start: start, orgId: orgId, deptId: deptId));
 
 /// Is the signed-in person a "student" for meetings (online + private only, free time without the plan)?
 bool calIsStudent(BuildContext context) {
@@ -1144,7 +1144,7 @@ class _QuickMeetingButtonState extends State<QuickMeetingButton> {
 Future<bool> showComplaintMeetingSheet(BuildContext context,
         {required int orgId, required int complaintId, required String subject, CalendarApi api = const RemoteCalendarApi()}) async =>
     await showAppSheet<bool>(
-        context, (ctx) => _ComplaintMeetingForm(api: api, orgId: orgId, complaintId: complaintId, subject: subject)) ??
+        context, mode: AppSheetMode.side, (ctx) => _ComplaintMeetingForm(api: api, orgId: orgId, complaintId: complaintId, subject: subject)) ??
     false;
 
 class _ComplaintMeetingForm extends StatefulWidget {

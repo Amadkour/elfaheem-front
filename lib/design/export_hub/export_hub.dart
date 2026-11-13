@@ -452,7 +452,7 @@ class _ExportHubSheetState extends State<ExportHubSheet> {
       ),
     ]);
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      SheetHeader(t('مركز التصدير', 'Export Hub')),
+      SheetHeader(tone: AppTone.info, icon: Icons.ios_share_rounded, t('مركز التصدير', 'Export Hub')),
       Flexible(child: SingleChildScrollView(child: body)),
     ]);
   }

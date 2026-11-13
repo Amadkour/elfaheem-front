@@ -57,7 +57,7 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.xl),
           child: Column(children: [
-            AppSheetHeader(t('كود الانضمام جاهز', 'Your join code is ready')),
+            AppSheetHeader(tone: AppTone.success, icon: Icons.check_circle_outline_rounded, t('كود الانضمام جاهز', 'Your join code is ready')),
             Container(
               padding: const EdgeInsets.all(AppSpace.sm),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.divider)),

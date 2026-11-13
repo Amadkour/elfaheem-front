@@ -44,7 +44,7 @@ Future<void> showCertificateManagerSheet(
   final isWide = MediaQuery.sizeOf(context).width >= 1000;
 
   return showAppSideSheet<void>(
-    context,
+    context, mode: AppSheetMode.side,
     width: isWide ? 860 : 520,
     builder: (_) => ChangeNotifierProvider(
       create: (_) => CertificateManagerProvider(),

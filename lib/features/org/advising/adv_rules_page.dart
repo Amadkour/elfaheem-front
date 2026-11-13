@@ -314,7 +314,7 @@ Future<void> showAdvRunHistorySheet(BuildContext context, AdvWarningApi api) {
           started = true;
           more();
         }
-        return AppSheetContent(
+        return AppSheetContent(tone: AppTone.info, icon: Icons.history_rounded, 
           title: t('سجل الفحوص', 'Run history'),
           children: [
             if (error != null && runs.isEmpty)

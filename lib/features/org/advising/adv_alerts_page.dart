@@ -507,7 +507,7 @@ class _AdvAlertsBodyState extends State<_AdvAlertsBody> {
 
   Future<void> _filters() async {
     var q = _query;
-    final apply = await showAppSheet<bool>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => AppSheetContent(
+    final apply = await showAppSheet<bool>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => AppSheetContent(tone: AppTone.neutral, icon: Icons.tune_rounded, 
           title: t('تصفية التنبيهات', 'Filter the alerts'),
           children: [AdvAlertFilterForm(query: q, rules: _rules, onChanged: (x) => set(() => q = x), onApply: () => Navigator.pop(ctx, true))],
         )));

@@ -11,7 +11,7 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh, AppTime, showAppNotice;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh, AppTime, AppTone, showAppNotice;
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart';
@@ -647,7 +647,7 @@ class _FilterRow extends StatelessWidget {
     showAppModalSheet(
       useSafeArea: true,
       context: context,
-      builder: (ctx) => AppSheetContent(
+      builder: (ctx) => AppSheetContent(tone: AppTone.neutral, icon: Icons.tune_rounded, 
             title: _t('تصفية حسب النوع', 'Filter by category'),
             children: [
               Wrap(

@@ -183,7 +183,7 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> {
   }
 
   Future<void> _open(ResultRow r) async {
-    await showAppSheet<void>(context, (_) => AttemptAnswersSheet(attemptId: r.attemptId, title: r.name, api: _api, examId: widget.examId, examTitle: widget.examTitle));
+    await showAppSheet<void>(context, mode: AppSheetMode.side, (_) => AttemptAnswersSheet(attemptId: r.attemptId, title: r.name, api: _api, examId: widget.examId, examTitle: widget.examTitle));
     _load();
   }
 
@@ -191,7 +191,7 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> {
     final v = _exam;
     if (v == null) return;
     final qs = [for (final s in v.sections) ...s.questions];
-    final saved = await showAppSheet<bool>(context, (_) => OfflineMarksSheet(examId: widget.examId, questions: qs, students: _names, api: _api));
+    final saved = await showAppSheet<bool>(context, mode: AppSheetMode.side, (_) => OfflineMarksSheet(examId: widget.examId, questions: qs, students: _names, api: _api));
     if (saved == true) _load();
   }
 

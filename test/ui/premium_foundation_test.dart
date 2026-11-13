@@ -81,7 +81,7 @@ void main() {
   });
 
   group('sheet', () {
-    testWidgets('is a side panel on a wide window and a bottom sheet on a phone', (t) async {
+    testWidgets('is a content-sized dialog on a wide window and a bottom sheet on a phone (D-710)', (t) async {
       Future<void> open(Size size) async {
         t.view.physicalSize = size;
         t.view.devicePixelRatio = 1;
@@ -92,13 +92,13 @@ void main() {
 
       addTearDown(t.view.reset);
       await open(const Size(1400, 900));
-      expect(find.byKey(const ValueKey('app.side_sheet.panel')), findsOneWidget);
+      expect(find.byKey(const ValueKey('app.dialog_sheet.panel')), findsOneWidget);
       expect(find.byType(BottomSheet), findsNothing);
       Navigator.of(t.element(find.text('body'))).pop();
       await t.pumpAndSettle();
 
       await open(const Size(390, 800));
-      expect(find.byKey(const ValueKey('app.side_sheet.panel')), findsNothing);
+      expect(find.byKey(const ValueKey('app.dialog_sheet.panel')), findsNothing);
       expect(find.byType(BottomSheet), findsOneWidget);
     });
   });

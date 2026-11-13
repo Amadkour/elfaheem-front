@@ -195,7 +195,7 @@ class _ExamGetResultScreenState extends State<ExamGetResultScreen> {
   }
 
   void _openAttempt(ResultEntry e) {
-    showAppSheet<void>(context, (_) => AttemptAnswersSheet(attemptId: e.attemptId!, title: e.name, api: _authoring, examId: widget.examId, examTitle: widget.title)).then((_) {
+    showAppSheet<void>(context, mode: AppSheetMode.side, (_) => AttemptAnswersSheet(attemptId: e.attemptId!, title: e.name, api: _authoring, examId: widget.examId, examTitle: widget.title)).then((_) {
       if (mounted) _load(silent: true);
     });
   }
@@ -207,7 +207,7 @@ class _ExamGetResultScreenState extends State<ExamGetResultScreen> {
   void _showAllQuestions() {
     final o = _board?.omr;
     if (o == null) return;
-    showAppSheet<void>(context, (_) => AppSheetContent(title: t('إحصاءات الأسئلة', 'Question statistics'), children: [OmrQuestionStatsView(questions: o.questions, wide: false)]));
+    showAppSheet<void>(context, (_) => AppSheetContent(tone: AppTone.info, icon: Icons.insights_rounded, title: t('إحصاءات الأسئلة', 'Question statistics'), children: [OmrQuestionStatsView(questions: o.questions, wide: false)]));
   }
 
   void _export() {

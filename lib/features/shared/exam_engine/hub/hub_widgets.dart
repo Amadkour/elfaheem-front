@@ -315,7 +315,7 @@ Future<void> showHubFilterSheet(BuildContext context, {required AllExamsFilter f
   return showAppSheet<void>(
     context,
     (ctx) => StatefulBuilder(
-      builder: (ctx, setSheet) => AppSheetContent(title: t('تصفية', 'Filter'), children: [
+      builder: (ctx, setSheet) => AppSheetContent(tone: AppTone.neutral, icon: Icons.tune_rounded, title: t('تصفية', 'Filter'), children: [
         HubFilterBody(
           type: current.type,
           onType: (k) {

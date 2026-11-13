@@ -340,7 +340,7 @@ class _OrgLevelsTabState extends State<OrgLevelsTab> with AutomaticKeepAliveClie
         ? LevelDraft(key: LevelDraft.nextKey(_levels.map((l) => l.key)))
         : LevelDraft.fromJson(_levels[index].toJson()..['students'] = _levels[index].students);
     final saved = await showAppSheet<bool>(
-      context,
+      context, mode: AppSheetMode.side,
       (_) => _LevelEditor(
         draft: draft,
         index: isNew ? _levels.length : index,
@@ -1072,7 +1072,7 @@ Future<void> showEnrollBlock(BuildContext context, Map<String, dynamic> reason) 
       return SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          AppSheetHeader(roadmap ? t('خطوة قبل شراء المسار', 'One step before you buy this roadmap') : t('خطوة قبل التسجيل', 'One step before you join')),
+          AppSheetHeader(tone: AppTone.warning, icon: Icons.warning_amber_rounded, roadmap ? t('خطوة قبل شراء المسار', 'One step before you buy this roadmap') : t('خطوة قبل التسجيل', 'One step before you join')),
           if (!roadmap)
             ..._blockDetails(ctx, reason, names)
           else ...[

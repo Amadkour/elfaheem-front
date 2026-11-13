@@ -531,7 +531,7 @@ class _OmrReviewPageState extends State<OmrReviewPage> {
     await showAppSheet<void>(
         context,
         (ctx) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              AppSheetHeader(t('سجل التعديلات اليدوية', 'Manual changes')),
+              AppSheetHeader(tone: AppTone.info, icon: Icons.history_rounded, t('سجل التعديلات اليدوية', 'Manual changes')),
               Flexible(child: SingleChildScrollView(padding: const EdgeInsets.all(AppSpace.md), child: OmrChangesList(changes: rows, meId: _me))),
             ]));
   }

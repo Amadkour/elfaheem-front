@@ -175,7 +175,7 @@ class _HubDegreesImportSheetState extends State<HubDegreesImportSheet> {
   @override
   Widget build(BuildContext context) {
     final p = _preview;
-    return AppSheetContent(title: t('استيراد الدرجات من Excel', 'Import degrees from Excel'), children: [
+    return AppSheetContent(tone: AppTone.info, icon: Icons.file_download_outlined, title: t('استيراد الدرجات من Excel', 'Import degrees from Excel'), children: [
       Text(widget.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.label(context)),
       AppSpace.gapMd,
       if (_error != null) ...[

@@ -9,6 +9,8 @@
 library;
 
 import 'package:flutter_education_app/design/app_side_sheet.dart';
+import 'package:flutter_education_app/design/app_sheet_header.dart';
+export 'package:flutter_education_app/design/app_badges.dart' show AppTone;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -311,33 +313,26 @@ class _AskTextDialogState extends State<_AskTextDialog> {
   }
 }
 
-/// Full-height modal sheet that survives the keyboard.
-Future<T?> showAdminSheet<T>(BuildContext context, WidgetBuilder builder) =>
-    showAppSideSheet<T>(context, builder: (ctx) => Directionality(textDirection: dir, child: Builder(builder: builder)));
+/// The app's sheet (D-710): a content-sized dialog on wide windows, a bottom sheet on phones, the full-height side
+/// panel with [AppSheetMode.side] (editors and detail panels only). Survives the keyboard.
+Future<T?> showAdminSheet<T>(BuildContext context, WidgetBuilder builder, {AppSheetMode mode = AppSheetMode.auto, double? width}) =>
+    showAppSideSheet<T>(context,
+        mode: mode, width: width, builder: (ctx) => Directionality(textDirection: dir, child: Builder(builder: builder)));
 
 // ── small widgets ────────────────────────────────────────────────────────────
 
+/// The admin pages' sheet header: the kit's [AppSheetHeader] (a tinted band in [tone], an optional [icon]).
 class SheetHeader extends StatelessWidget {
-  const SheetHeader(this.title, {super.key, this.trailing});
+  const SheetHeader(this.title, {super.key, this.trailing, this.tone = AppTone.brand, this.icon, this.subtitle});
   final String title;
   final Widget? trailing;
+  final AppTone tone;
+  final IconData? icon;
+  final String? subtitle;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md + AppSpace.xxs, AppSpace.md, AppSpace.sm, AppSpace.xs),
-      child: Row(children: [
-        Expanded(child: Semantics(header: true, child: Text(title, style: AppType.pageTitle(context)))),
-        ?trailing,
-        IconButton(tooltip: t('إغلاق', 'Close'),
-            constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
-            style: IconButton.styleFrom(backgroundColor: c.inputBg),
-            onPressed: () => Navigator.pop(context),
-            icon: Icon(Icons.close_rounded, color: c.textMedium, size: AppIconSize.md)),
-      ]),
-    );
-  }
+  Widget build(BuildContext context) => AppSheetHeader(title,
+      trailing: trailing, tone: tone, icon: icon, subtitle: subtitle, closeTooltip: t('إغلاق', 'Close'));
 }
 
 class StatusChip extends StatelessWidget {

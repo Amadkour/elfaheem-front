@@ -18,7 +18,7 @@ Future<void> showSessionFormSheet(
     }) async {
   final provider = context.read<TeacherCourseScreenProvider>();
   await showAppSideSheet<void>(
-    context,
+    context, mode: AppSheetMode.side,
     builder: (_) => ChangeNotifierProvider.value(
       value: provider,
       child: SessionFormSheet(existing: existing, provider: provider, openLive: openLive),

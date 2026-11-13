@@ -17,7 +17,7 @@ import 'roadmap_api.dart';
 
 /// Opens the editor for [roadmap]; returns the saved roadmap, null when closed without saving.
 Future<Roadmap?> showRoadmapEditor(BuildContext context, {required int courseId, required Roadmap roadmap, RoadmapApi api = const RoadmapApi()}) =>
-    showAppSheet<Roadmap>(context, (_) => _RoadmapEditorSheet(courseId: courseId, roadmap: roadmap, api: api));
+    showAppSheet<Roadmap>(context, mode: AppSheetMode.side, (_) => _RoadmapEditorSheet(courseId: courseId, roadmap: roadmap, api: api));
 
 class _RoadmapEditorSheet extends StatefulWidget {
   const _RoadmapEditorSheet({required this.courseId, required this.roadmap, required this.api});

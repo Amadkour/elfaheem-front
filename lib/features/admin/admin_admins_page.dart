@@ -41,6 +41,7 @@ import 'package:flutter_education_app/design/app_username.dart';
 import '../auth/username.dart' show UsernameError;
 import '../auth/username_field.dart' show UsernameStatus;
 import 'admin_username_field.dart';
+import 'package:flutter_education_app/design/app_side_sheet.dart' show AppSheetMode;
 
 class _AdminsApi {
   static const list = '/api/v1/admin/users';
@@ -531,7 +532,7 @@ Future<void> _openAdminForm(
       Map<String, dynamic>? existing,
     }) {
   return showAdminSheet(
-    context,
+    context, mode: AppSheetMode.side,
         (ctx) => _AdminForm(provider: p, existing: existing),
   );
 }

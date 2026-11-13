@@ -103,7 +103,7 @@ class _HelpExportSheetState extends State<HelpExportSheet> {
   @override
   Widget build(BuildContext context) {
     final roleOpts = [for (final r in helpRoles) (r, helpRoleLabel(r, _ar))];
-    return AppSheetContent(
+    return AppSheetContent(tone: AppTone.info, icon: Icons.ios_share_rounded, 
       title: _t('تصدير المساعدة', 'Export help'),
       children: [
         _label(_t('ماذا تصدّر؟', 'What to export')),

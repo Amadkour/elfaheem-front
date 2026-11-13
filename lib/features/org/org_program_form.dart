@@ -22,6 +22,7 @@ import 'org_ui.dart';
 import 'org_v3.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_side_sheet.dart' show AppSheetMode;
 
 String orgCourseName(Map c) =>
     '${(c['code'] ?? '').toString().isEmpty ? '' : '${c['code']} · '}${t('${c['name_ar'] ?? c['name_en']}', '${c['name_en'] ?? c['name_ar']}')}';
@@ -60,7 +61,7 @@ Map<String, String> programProblem({
 
 /// Returns true when the server saved the program.
 Future<bool> showProgramForm(BuildContext context, {Map<String, dynamic>? edit, List<Map<String, dynamic>>? courses}) async {
-  final saved = await showAdminSheet<bool>(context, (_) => _ProgramForm(edit: edit, courses: courses));
+  final saved = await showAdminSheet<bool>(context, mode: AppSheetMode.side, (_) => _ProgramForm(edit: edit, courses: courses));
   return saved == true;
 }
 

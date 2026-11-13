@@ -397,7 +397,7 @@ class _RecordsPageState extends State<RecordsPage> {
   Future<void> _delete(List<RecordItem> rs) async {
     final onDrive = rs.any((r) => r.remoteUrl != null);
     final c = context.colors;
-    final how = await showAppSheet<String>(context, (ctx) => AppSheetContent(
+    final how = await showAppSheet<String>(context, (ctx) => AppSheetContent(tone: AppTone.danger, icon: Icons.delete_outline_rounded, 
           title: rs.length == 1 ? t('حذف «${rs.first.title}»؟', 'Delete “${rs.first.title}”?') : t('حذف ${recordsCountText(rs.length)}؟', 'Delete ${recordsCountText(rs.length)}?'),
           children: [
             Text(

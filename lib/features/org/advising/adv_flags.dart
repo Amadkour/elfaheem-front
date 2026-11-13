@@ -654,7 +654,7 @@ Future<void> showAdvFlagHistorySheet(BuildContext context, AdvApi api, AdvFlag f
             });
           });
         }
-        return AppSheetContent(
+        return AppSheetContent(tone: AppTone.info, icon: Icons.history_rounded, 
           title: t('سجل التنبيه', 'Flag history'),
           children: [
             Text(flag.category.name, style: AppType.section(ctx)),

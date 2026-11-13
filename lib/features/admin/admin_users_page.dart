@@ -48,6 +48,7 @@ import 'package:flutter_education_app/design/app_username.dart' show usernameFro
 import '../auth/username.dart' show UsernameError;
 import '../auth/username_field.dart' show UsernameStatus;
 import 'admin_username_field.dart';
+import 'package:flutter_education_app/design/app_side_sheet.dart' show AppSheetMode;
 
 class AdminUsersPage extends StatelessWidget {
   const AdminUsersPage({super.key, required this.role, this.embedded = false});
@@ -916,7 +917,7 @@ Future<void> _openForm(
   AdminUser? existing,
 }) {
   return showAdminSheet(
-    context,
+    context, mode: AppSheetMode.side,
     (ctx) => _UserForm(provider: p, existing: existing),
   );
 }

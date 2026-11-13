@@ -65,7 +65,8 @@ import 'app_gradients.dart' show AppDoodleScope, AppGradientIcon;
 import 'app_inputs.dart';
 import 'app_motion_kit.dart';
 import 'app_search_field.dart';
-import 'app_side_sheet.dart' show appScrimColor;
+import 'app_sheet_header.dart';
+import 'app_side_sheet.dart' show appScrimColor, AppSheetMode;
 import 'app_tokens.dart';
 import '../features/admin/admin_common.dart' as admin;
 import '../features/org/org_ui.dart' as org;
@@ -90,6 +91,7 @@ export 'app_page_header.dart';
 export 'app_header.dart';
 export 'app_back_button.dart';
 export 'app_side_sheet.dart';
+export 'app_sheet_header.dart';
 export 'app_depth.dart';
 export 'app_focus_mode.dart';
 export 'app_number_field.dart';
@@ -145,8 +147,11 @@ typedef AppSwitchRow = org.OrgSwitchRow;
 typedef AppAudiencePicker = org.OrgAudiencePicker;
 
 // ── Sheets, confirmations, toasts ──────────────────────────────────────────
-Future<T?> showAppSheet<T>(BuildContext context, Widget Function(BuildContext) builder) =>
-    admin.showAdminSheet<T>(context, builder);
+/// The app's sheet (D-710): sized to its content — a centred dialog on wide windows, a bottom sheet on phones.
+/// [AppSheetMode.side] opens the full-height side panel instead: only for a real editor or detail panel.
+Future<T?> showAppSheet<T>(BuildContext context, Widget Function(BuildContext) builder,
+        {AppSheetMode mode = AppSheetMode.auto, double? width}) =>
+    admin.showAdminSheet<T>(context, builder, mode: mode, width: width);
 
 /// "Are you sure?" with one message. The paper dialog (radius 28, the warm scrim, `AppPopIn`, D-612) with a tinted
 /// mark on top, the message centred in the body role, and two equal buttons: Cancel, then Confirm — the danger fill
@@ -268,74 +273,6 @@ class AppConfirmDialog extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-/// A sheet's header: the title in the editorial page-title role, an optional [trailing] widget (a Reset button) and
-/// the close button in a tinted circle. The title's start inset (20) is the inset [AppSheetContent] gives the body.
-class AppSheetHeader extends StatelessWidget {
-  const AppSheetHeader(this.title, {super.key, this.trailing});
-
-  final String title;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md + AppSpace.xxs, AppSpace.md, AppSpace.sm, AppSpace.xs),
-      child: Row(children: [
-        Expanded(
-          child: Semantics(
-            header: true,
-            child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context)),
-          ),
-        ),
-        ?trailing,
-        AppSpace.gapXs,
-        IconButton(
-          tooltip: 'close'.tr,
-          constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
-          style: IconButton.styleFrom(backgroundColor: c.inputBg),
-          onPressed: () => Navigator.pop(context),
-          icon: Icon(Icons.close_rounded, color: c.textMedium, size: AppIconSize.md),
-        ),
-      ]),
-    );
-  }
-}
-
-/// A sheet's whole content: its [AppSheetHeader] and a body with the kit's side padding (in line with the header's
-/// title) that scrolls when it is taller than the sheet. `showAppSheet` draws no padding of its own — a body put
-/// straight under the header touches the sheet's edges — so a sheet is `showAppSheet(context, (_) =>
-/// AppSheetContent(title: …, children: […]))`. Pumped on its own (a layout test, unbounded height) the body simply
-/// takes its height.
-class AppSheetContent extends StatelessWidget {
-  const AppSheetContent({super.key, required this.title, required this.children, this.headerTrailing});
-
-  final String title;
-  final List<Widget> children;
-  final Widget? headerTrailing;
-
-  /// The body's padding: the header title's start inset on both sides, a section gap under the last widget.
-  static const EdgeInsets padding = EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, 0, AppSpace.md + AppSpace.xxs, AppSpace.lg);
-
-  @override
-  Widget build(BuildContext context) {
-    final body = Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
-    return LayoutBuilder(builder: (context, box) {
-      final header = AppSheetHeader(title, trailing: headerTrailing);
-      if (!box.maxHeight.isFinite) {
-        return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          header,
-          Padding(padding: padding, child: body),
-        ]);
-      }
-      return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        header,
-        Flexible(child: SingleChildScrollView(padding: padding, child: body)),
-      ]);
-    });
   }
 }
 

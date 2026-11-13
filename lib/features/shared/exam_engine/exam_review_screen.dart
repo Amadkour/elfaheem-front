@@ -503,7 +503,7 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
   }
 
   Future<void> _edit(ReviewItem it) async {
-    final saved = await showAppSheet<bool>(context, (_) => MarkEditor(item: it, onSave: ({score, criteria, comment}) async {
+    final saved = await showAppSheet<bool>(context, mode: AppSheetMode.side, (_) => MarkEditor(item: it, onSave: ({score, criteria, comment}) async {
           final r = await _api.mark(it.answerId, score: score, criteria: criteria, comment: comment);
           if (!r.ok) appToast(examCodeText(r.code ?? r.message), error: true);
           return r.ok;

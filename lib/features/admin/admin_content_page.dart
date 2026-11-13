@@ -40,6 +40,7 @@ import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
     show AppListSkeleton, AppRefresh, AppKpiGrid, AppKpiCard, AppTabs, AppTabItem, AppSpace, appErrorMessage, AppBanner;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_side_sheet.dart' show AppSheetMode;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  icons · contact types · quick-start presets
@@ -291,7 +292,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
         bool single = false, // singleton rows (about info / terms meta): always PATCH, no id
       }) async {
     final body = await showAdminSheet<Map<String, dynamic>>(
-        context, (ctx) => _EntityForm(cfg: cfg, item: item));
+        context, mode: AppSheetMode.side, (ctx) => _EntityForm(cfg: cfg, item: item));
     if (body == null) return;
     if (single) {
       await _run(() => _api.patch('$_write$path', body: body), ok: 'content_saved');

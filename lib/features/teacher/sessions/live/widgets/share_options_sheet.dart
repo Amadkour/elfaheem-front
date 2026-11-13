@@ -188,7 +188,7 @@ class ShareOptionsLayout extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-        AppSheetHeader(whiteboard ? t('مشاركة', 'Share') : t('مشاركة الشاشة', 'Share your screen')),
+        AppSheetHeader(tone: AppTone.brand, icon: Icons.share_rounded, whiteboard ? t('مشاركة', 'Share') : t('مشاركة الشاشة', 'Share your screen')),
         if (whiteboard) ...[
           _ShareTabs(value: shown, onChanged: onTab),
           const SizedBox(height: 14),

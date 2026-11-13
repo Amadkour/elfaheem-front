@@ -477,7 +477,7 @@ class _GenRejectSheetState extends State<GenRejectSheet> {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        AppSheetHeader(t('رفض السؤال', 'Reject the question')),
+        AppSheetHeader(tone: AppTone.danger, icon: Icons.block_rounded, t('رفض السؤال', 'Reject the question')),
         Text(t('لماذا؟ يساعد ذلك المولّد على كتابة أسئلة أفضل.', 'Why? It helps the generator write better questions.'),
             style: appText(13, c: c.textMedium)),
         const SizedBox(height: 10),

@@ -424,7 +424,7 @@ class _GoogleFormsImportSheetState extends State<GoogleFormsImportSheet> {
   }
 
   @override
-  Widget build(BuildContext context) => AppSheetContent(title: t('استيراد من Google Forms', 'Import from Google Forms'), children: [
+  Widget build(BuildContext context) => AppSheetContent(tone: AppTone.info, icon: Icons.dynamic_form_outlined, title: t('استيراد من Google Forms', 'Import from Google Forms'), children: [
         GoogleFormsImportBody(
           loading: _loading,
           connected: _connected,

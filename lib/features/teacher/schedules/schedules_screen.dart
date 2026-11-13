@@ -31,7 +31,7 @@ class TeacherSchedulesScreen extends StatefulWidget {
   final TeacherCourse course;
   const TeacherSchedulesScreen({super.key, required this.course});
   static void openAddScheduleScreenSheet(BuildContext context,) => showAppSideSheet<void>(
-    context,
+    context, mode: AppSheetMode.side,
     builder: (_) => ChangeNotifierProvider.value(
       value: context.read<TeacherSchedulesProvider>(),
       child: const AddScheduleSheet(),

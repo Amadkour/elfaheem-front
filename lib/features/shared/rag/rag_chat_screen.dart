@@ -502,7 +502,7 @@ class RagChatViewState extends State<RagChatView> {
     }
     await _loadConversations();
     if (!mounted) return;
-    await showAppSheet<void>(context, (ctx) => RagSessionsPanel(
+    await showAppSheet<void>(context, mode: AppSheetMode.side, (ctx) => RagSessionsPanel(
           items: _convs,
           currentId: _current?.id,
           retentionDays: _retentionDays,

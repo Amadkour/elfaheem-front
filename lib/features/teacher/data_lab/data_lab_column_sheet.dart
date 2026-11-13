@@ -18,12 +18,13 @@ import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppNumberField;
+import 'package:flutter_education_app/design/app_side_sheet.dart' show AppSheetMode;
 
 /// Translation with a friendly English fallback while a key is not in the language files yet.
 String _tr(String key, String fallback) => dlTr(key, fallback);
 
 Future<void> showColumnEditor(BuildContext context, DataLabProvider p, {DlColumn? column}) =>
-    showAdminSheet(context, (_) => _ColumnEditor(p: p, column: column));
+    showAdminSheet(context, mode: AppSheetMode.side, (_) => _ColumnEditor(p: p, column: column));
 
 /// One tappable piece of the formula keyboard and its help: what it does + an example on the teacher's own columns.
 /// [example] receives the names of two real columns ([Quiz], [Exam]) so the example reads like the teacher's sheet.

@@ -1005,7 +1005,7 @@ class _ExportSheetState extends State<_ExportSheet> {
     final ofKind = members.where((m) => m.kind == memberKind).toList()..sort((a, b) => exportMemberTitle(a, widget.names).compareTo(exportMemberTitle(b, widget.names)));
     final sheets = _sheets;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-      SheetHeader(t('تصدير الجدول', 'Export the timetable')),
+      SheetHeader(tone: AppTone.info, icon: Icons.ios_share_rounded, t('تصدير الجدول', 'Export the timetable')),
       Text('${widget.title} · ${widget.sourceLabel}', style: AppType.meta(context).copyWith(color: c.textMedium)),
       const SizedBox(height: AppSpace.sm),
       OrgSectionTitle(t('لمن؟', 'For whom?')),

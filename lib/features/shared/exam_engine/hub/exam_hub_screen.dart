@@ -194,7 +194,7 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
     if (hubCorrectionOf(e) == HubCorrection.notEnded) {
       final anyway = await showAppSheet<bool>(
           context,
-          (ctx) => AppSheetContent(title: t('لم ينتهِ هذا الاختبار بعد', 'This exam has not ended yet'), children: [
+          (ctx) => AppSheetContent(tone: AppTone.warning, icon: Icons.warning_amber_rounded, title: t('لم ينتهِ هذا الاختبار بعد', 'This exam has not ended yet'), children: [
                 HubNotEndedBody(text: hubNotEndedText(e), onWait: () => Navigator.pop(ctx, false), onCorrectAnyway: () => Navigator.pop(ctx, true)),
               ]));
       if (anyway != true || !mounted) return;
@@ -208,7 +208,7 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
   Future<void> _addDegrees(AllExam e, HubBackOn? from) async {
     final pick = await showAppSheet<HubAction>(
         context,
-        (ctx) => AppSheetContent(title: t('لا درجات لهذا الاختبار بعد', 'This exam has no grades yet'), children: [
+        (ctx) => AppSheetContent(tone: AppTone.warning, icon: Icons.warning_amber_rounded, title: t('لا درجات لهذا الاختبار بعد', 'This exam has no grades yet'), children: [
               HubNoDegreesBody(
                 canImport: hubCanImport(e),
                 importRecommended: hubImportRecommended(e),

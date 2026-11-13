@@ -142,7 +142,7 @@ class _DataCenterPageState extends State<DataCenterPage> {
 
   Future<void> _export() async {
     if (_exporting || _key == null) return;
-    final fmt = await showAppSheet<String>(context, (ctx) => AppSheetContent(title: t('تصدير بصيغة', 'Export as'), children: [
+    final fmt = await showAppSheet<String>(context, (ctx) => AppSheetContent(tone: AppTone.info, icon: Icons.ios_share_rounded, title: t('تصدير بصيغة', 'Export as'), children: [
           for (final (f, label, icon) in [('xlsx', 'Excel', Icons.table_chart_rounded), ('pdf', 'PDF', Icons.picture_as_pdf_rounded), ('docx', 'Word', Icons.description_rounded)])
             ListTile(leading: Icon(icon), title: Text(label), onTap: () => Navigator.pop(ctx, f)),
         ]));
@@ -214,7 +214,7 @@ class _DataCenterPageState extends State<DataCenterPage> {
           return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              SheetHeader(t('تصميم التصدير', 'Design the export')),
+              SheetHeader(tone: AppTone.info, icon: Icons.ios_share_rounded, t('تصميم التصدير', 'Design the export')),
               // ── live preview ──
               Container(
                 height: 300,
@@ -325,7 +325,7 @@ class _DataCenterPageState extends State<DataCenterPage> {
       if (!mounted || r is! Map) return;
       final errors = asMapList(r['errors']);
       final creds = asMapList(r['credentials']);
-      await showAppSheet<void>(context, (ctx) => AppSheetContent(title: t('نتيجة الاستيراد', 'Import result'), children: [
+      await showAppSheet<void>(context, (ctx) => AppSheetContent(tone: AppTone.info, icon: Icons.file_download_outlined, title: t('نتيجة الاستيراد', 'Import result'), children: [
             Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               AppStatusBadge(label: t('${r['created']} حساب جديد', '${r['created']} new accounts'), tone: AppTone.success),
               AppStatusBadge(label: t('${r['linked']} ربط', '${r['linked']} links'), tone: AppTone.brand),

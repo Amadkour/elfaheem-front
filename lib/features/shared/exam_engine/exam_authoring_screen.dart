@@ -447,7 +447,7 @@ class _ExcelImportSheetState extends State<ExcelImportSheet> {
   }
 
   @override
-  Widget build(BuildContext context) => AppSheetContent(title: t('استيراد من Excel', 'Import from Excel'), children: [
+  Widget build(BuildContext context) => AppSheetContent(tone: AppTone.info, icon: Icons.file_download_outlined, title: t('استيراد من Excel', 'Import from Excel'), children: [
         ExcelImportBody(
           sections: widget.sections,
           sectionId: _section,
@@ -1141,7 +1141,7 @@ class _QuestionEditorFormState extends State<QuestionEditorForm> with _Controlle
 Future<Map<String, dynamic>?> showQuestionEditor(BuildContext context, {QuestionDraft? draft, int? orgId, int? courseId, ExamAuthoringApi? api}) {
   final a = api ?? ExamAuthoringApi();
   return showAppSheet<Map<String, dynamic>>(
-    context,
+    context, mode: AppSheetMode.side,
     (ctx) => QuestionEditorForm(
       orgId: orgId,
       courseId: courseId,

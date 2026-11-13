@@ -95,7 +95,7 @@ class _AppShareSheetState extends State<_AppShareSheet> {
   }
 
   @override
-  Widget build(BuildContext context) => AppSheetContent(
+  Widget build(BuildContext context) => AppSheetContent(tone: AppTone.brand, icon: Icons.share_rounded, 
         title: t('مشاركة', 'Share'),
         children: [
           AppShareSheetBody(

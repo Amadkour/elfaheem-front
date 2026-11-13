@@ -318,7 +318,7 @@ class _RecordShareSheetState extends State<_RecordShareSheet> {
   @override
   Widget build(BuildContext context) {
     final s = _saved;
-    return AppSheetContent(
+    return AppSheetContent(tone: AppTone.brand, icon: Icons.share_rounded, 
       title: t('مشاركة «${widget.item.title}»', 'Share “${widget.item.title}”'),
       children: [
         if (_loading)

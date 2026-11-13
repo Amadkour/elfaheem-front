@@ -1095,7 +1095,7 @@ class ShareLinkBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      AppSheetHeader(t('رابط المشاركة', 'Share link')),
+      AppSheetHeader(tone: AppTone.brand, icon: Icons.share_rounded, t('رابط المشاركة', 'Share link')),
       Flexible(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),

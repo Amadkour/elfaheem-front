@@ -724,7 +724,7 @@ class _AdvWorkspaceBodyState extends State<_AdvWorkspaceBody> {
             if (a != null) set(() => draft = draft.copyWith(advisor: () => AdvRef(userId: a.userId, name: a.name), page: 1));
           }
 
-          return AppSheetContent(
+          return AppSheetContent(tone: AppTone.neutral, icon: Icons.tune_rounded, 
             title: t('التصفية والترتيب', 'Filter and order'),
             children: [
               AdvWorkspaceFilterForm(

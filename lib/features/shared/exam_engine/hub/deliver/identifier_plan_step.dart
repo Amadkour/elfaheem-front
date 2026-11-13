@@ -239,7 +239,7 @@ class _IdentifierPlanStepState extends State<IdentifierPlanStep> {
     if (!r.ok) return _notice(deliverErrorText(r), error: true);
     final current = IdCoverage.fromJson(r.map);
     if (current.masked) return _notice(t('قيم هذا المعرّف لا تُعدَّل من هنا.', 'The values of this identifier cannot be edited here.'), error: true);
-    final saved = await showAppSheet<bool>(context, (ctx) => IdentifierRosterSheet(examId: widget.examId, option: o, api: _api, rows: current.items));
+    final saved = await showAppSheet<bool>(context, mode: AppSheetMode.side, (ctx) => IdentifierRosterSheet(examId: widget.examId, option: o, api: _api, rows: current.items));
     if (saved == true && mounted) await _refreshOne(o.choice);
   }
 
@@ -741,7 +741,7 @@ class _IdentifierImportSheetState extends State<IdentifierImportSheet> {
   @override
   Widget build(BuildContext context) {
     final p = _preview;
-    return AppSheetContent(title: t('استيراد من Excel', 'Import from Excel'), children: [
+    return AppSheetContent(tone: AppTone.info, icon: Icons.file_download_outlined, title: t('استيراد من Excel', 'Import from Excel'), children: [
       Text(t('1. نزّل القالب (فيه أسماء طلاب المقرر). 2. اكتب القيم في العمود الأخير. 3. ارفع الملف وراجع النتيجة قبل الحفظ.',
           '1. Download the template (it holds the course\'s students). 2. Type the values in the last column. 3. Upload it and check the result before saving.'), style: AppType.label(context).copyWith(height: 1.5)),
       const SizedBox(height: AppSpace.sm),

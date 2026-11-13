@@ -51,6 +51,7 @@ import 'admin_providers.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppCard, AppDropdown, AppEmpty, AppListSkeleton;
 import '../shared/exam_engine/exam_review_screen.dart' show EngineReviewSection;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_side_sheet.dart' show AppSheetMode;
 
 class AdminCoursesPage extends StatelessWidget {
   const AdminCoursesPage({super.key, this.embedded = false});
@@ -1237,7 +1238,7 @@ Future<void> _openCourseForm(
       AdminCourse? existing,
     }) {
   return showAdminSheet(
-    context,
+    context, mode: AppSheetMode.side,
         (ctx) => _CourseForm(provider: p, existing: existing),
   );
 }

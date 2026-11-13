@@ -593,7 +593,7 @@ class _AnnouncementCardState extends State<AnnouncementCard> {
 
   void _open() {
     _ViewTracker.i.seen(_id);
-    showAppSheet<void>(context, (ctx) => _AnnouncementDetail(state: this));
+    showAppSheet<void>(context, mode: AppSheetMode.side, (ctx) => _AnnouncementDetail(state: this));
   }
 
   @override
@@ -1842,7 +1842,7 @@ class _PeopleSectionState extends State<_PeopleSection> {
     final fmt = await showAppSheet<String>(context, (ctx) => SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            AppSheetHeader(t('تصدير «${annPeopleLists(widget.hasForm)[_list]}»', 'Export “${annPeopleLists(widget.hasForm)[_list]}”')),
+            AppSheetHeader(tone: AppTone.info, icon: Icons.ios_share_rounded, t('تصدير «${annPeopleLists(widget.hasForm)[_list]}»', 'Export “${annPeopleLists(widget.hasForm)[_list]}”')),
             for (final (f, label, icon) in [
               ('xlsx', 'Excel', Icons.table_chart_rounded),
               ('pdf', 'PDF', Icons.picture_as_pdf_rounded),

@@ -387,7 +387,7 @@ class _OrgReviewPanelState extends State<OrgReviewPanel> {
   }
 
   Future<void> _edit() async {
-    final ok = await showAppSheet<bool>(context, (ctx) => OrgProfileEditSheet(org: d));
+    final ok = await showAppSheet<bool>(context, mode: AppSheetMode.side, (ctx) => OrgProfileEditSheet(org: d));
     if (ok == true) await _refresh();
   }
 

@@ -699,7 +699,7 @@ class _HistorySheetState extends State<_HistorySheet> {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.sm),
           child: Column(children: [
-            AppSheetHeader('${t('سجل', 'History')} · ${widget.row.user.name}'),
+            AppSheetHeader(tone: AppTone.info, icon: Icons.history_rounded, '${t('سجل', 'History')} · ${widget.row.user.name}'),
             Expanded(child: PointsHistoryView(items: _items, error: _error, onRetry: _load)),
           ]),
         ),
