@@ -47,7 +47,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../auth/profile_link_test.dart' show courseJson, teacherJson;
 import '../ui/public_profile_stats_test.dart' show owner, richTeacher, studentJson;
-import 'package:flutter_education_app/features/shared/public_profile/public_profile_page.dart' show ProfileOwnerPanel, ProfileJoinCard;
+import 'package:flutter_education_app/features/shared/public_profile/public_profile_page.dart' show ProfileOwnerPanel;
 import '../support/fake_api.dart';
 import '../ui/instructor_courses_section_test.dart' show teacherCourses;
 import 'home_screens_golden_test.dart' show pubspecFonts;
