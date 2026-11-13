@@ -186,6 +186,7 @@ void main() {
       common(j, h);
       expect(h.orgOverview, isNull);
       expect(h.coursesProgress, isEmpty);
+      expect(h.studyPrompt, j['study_prompt'] == true, reason: 'the study card flag (D-793)');
     });
 
     test('teacher block', () {
@@ -890,7 +891,7 @@ void main() {
       final s = EntitySummary.fromJson(j);
       sameSummary(s, j, 'student');
       hasKeys(m(j['header']), const ['id', 'name', 'username', 'image_url', 'country', 'is_active', 'created_at',
-          'last_login', 'email', 'phone'], 'student.header');
+          'last_login', 'email', 'phone', 'study'], 'student.header');
       hasKeys(m(j['stats']), const ['enrolled', 'in_progress', 'completed', 'withdrawn', 'expired', 'pending',
           'avg_progress', 'last_activity_at'], 'student.stats');
       expect(s.ref.name, j['header']['name']);

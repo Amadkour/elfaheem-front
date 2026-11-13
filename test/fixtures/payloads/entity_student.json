@@ -13,10 +13,11 @@
    "image_url": null,
    "country": null,
    "is_active": true,
-   "created_at": "2026-11-06T06:32:05.179721",
+   "created_at": "2026-11-13T05:22:45.442042",
    "last_login": null,
    "email": "alice@ent.io",
    "phone": null,
+   "study": null,
    "organizations": [
     {
      "id": 1,
@@ -33,7 +34,7 @@
    "withdrawn": 0,
    "expired": 0,
    "avg_progress": 46.7,
-   "last_activity_at": "2026-11-04T06:32:04.835804",
+   "last_activity_at": "2026-11-11T05:22:45.399934",
    "paid": [
     {
      "currency": "EGP",

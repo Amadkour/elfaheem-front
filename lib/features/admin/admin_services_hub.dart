@@ -8,6 +8,8 @@
 // So an icon / label / page is changed in exactly one place.
 library;
 
+import 'package:flutter_education_app/features/shared/study_profile/study_profile_model.dart' show kStudyProfileFeatureKey;
+import 'admin_study_profile_settings_page.dart' show AdminStudyProfileSettingsPage;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -210,6 +212,19 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           icon: Icons.family_restroom_rounded,
           colors: AdminPalette.green,
           onTap: () => push(const AdminParentLinkingPage()),
+        ),
+        // the sign-up's study step, the home card, the required fields (D-794, super admin)
+        AdminService(
+          labelKey: 'svc_study_profile',
+          descKey: 'svc_study_profile_d',
+          label: t('بيانات الدراسة للطلاب', 'Student study details'),
+          desc: t('خطوة المرحلة والصف عند التسجيل، بطاقة «أكمل ملفك»، والحقول المطلوبة',
+              'The stage and grade step at sign-up, the Complete your profile card, and the required fields'),
+          icon: Icons.school_rounded,
+          colors: AdminPalette.indigo,
+          visible: isSuper,
+          featureKey: kStudyProfileFeatureKey,
+          onTap: () => push(const AdminStudyProfileSettingsPage()),
         ),
       ],
     ),

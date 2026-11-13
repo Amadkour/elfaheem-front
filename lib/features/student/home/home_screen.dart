@@ -62,6 +62,8 @@ import 'package:flutter_education_app/features/student/home/home_event_rows.dart
 import 'package:flutter_education_app/features/student/home/home_journey.dart';
 import 'package:flutter_education_app/features/student/home/home_live.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
+import 'package:flutter_education_app/features/shared/study_profile/study_profile_model.dart' show StudyProfileApi, kStudyProfileFeatureKey;
+import 'package:flutter_education_app/features/shared/study_profile/study_profile_pages.dart' show StudyPromptCard, StudyProfilePage;
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:provider/provider.dart';
 
@@ -131,6 +133,14 @@ class _HomeScreenState extends State<HomeScreen> {
   /// The feeds move from under the skeleton to under the sections when /me/home answers: a GlobalKey moves them
   /// instead of mounting them again (a remount asked GET /ads/feed, /home/mix and /org/public/mine a second time).
   final _feedsKey = GlobalKey(debugLabel: 'student_home.feeds');
+
+  /// "Not now" on the study card (D-793): hidden at once; the server keeps it hidden for 30 days.
+  bool _studyHidden = false;
+
+  void _dismissStudy() {
+    setState(() => _studyHidden = true);
+    StudyProfileApi().dismiss().catchError((_) {}); // a hint: a failed dismissal only means the card comes back later
+  }
 
   @override
   void initState() {
@@ -269,6 +279,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                   onOpenNotifications: () => Navigator.of(context).pushNamed('/notifications'),
                                   onOpenTodo: () => showAttentionItems(context, AttentionTabs.home),
                                   onOpenOrgs: () => showContextSwitcherSheet(context),
+                                  // the study card (D-793): the page, then a reload (a saved profile drops the card);
+                                  // "Not now" hides it at once and for 30 days on the server
+                                  onCompleteStudy: _studyHidden
+                                      ? null
+                                      : () => Navigator.of(context)
+                                          .push(MaterialPageRoute(builder: (_) => const StudyProfilePage()))
+                                          .then((_) => svc.refresh()),
+                                  onDismissStudy: _studyHidden ? null : _dismissStudy,
                                   feeds: KeyedSubtree(key: _feedsKey, child: const _Feeds()),
                                 );
                               },
@@ -362,6 +380,8 @@ class StudentHomeBody extends StatelessWidget {
     this.onOpenNotifications,
     this.onOpenTodo,
     this.onOpenOrgs,
+    this.onCompleteStudy,
+    this.onDismissStudy,
     this.feeds,
   });
 
@@ -380,6 +400,9 @@ class StudentHomeBody extends StatelessWidget {
   final ValueChanged<CalEvent>? onOpenEvent;
   final VoidCallback? onOpenInbox;
   final VoidCallback? onOpenNotifications, onOpenTodo, onOpenOrgs;
+
+  /// The "Complete your study profile" card (D-793): open the study page / hide it; both null = no card.
+  final VoidCallback? onCompleteStudy, onDismissStudy;
 
   /// Ads, organizations, other courses … (network widgets) — null in layout tests.
   final Widget? feeds;
@@ -584,20 +607,32 @@ class _Sections extends StatelessWidget {
     //    (D-309: with a "Continue" button into the next course); no journey yet → the "pick your interests" invite
     final j = homeJourney(home.journey);
     final invite = j == null && body.onPickInterests != null && homeJourneyInvite(home.journeyHint);
-    final coursesBlock = j == null && !invite
+    // ── the dismissible "Complete your study profile" card (D-793), last in the same column: a hint, never a wall
+    final study = home.studyPrompt && body.onCompleteStudy != null && body.onDismissStudy != null;
+    final coursesBlock = j == null && !invite && !study
         ? courses
         : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             ?courses,
-            enter(Padding(
-              padding: EdgeInsets.fromLTRB(kStudentHomeInset, courses == null ? 0 : AppSpace.md, kStudentHomeInset, 0),
-              child: j != null
-                  ? HomeJourneyCard(
-                      journey: j,
-                      onTap: body.onOpenJourney,
-                      onContinue: body.onOpenCourse == null ? null : () => body.onOpenCourse!(j.next.id),
-                    )
-                  : HomeJourneyInvite(onPick: body.onPickInterests!),
-            )),
+            if (j != null || invite)
+              enter(Padding(
+                padding: EdgeInsets.fromLTRB(kStudentHomeInset, courses == null ? 0 : AppSpace.md, kStudentHomeInset, 0),
+                child: j != null
+                    ? HomeJourneyCard(
+                        journey: j,
+                        onTap: body.onOpenJourney,
+                        onContinue: body.onOpenCourse == null ? null : () => body.onOpenCourse!(j.next.id),
+                      )
+                    : HomeJourneyInvite(onPick: body.onPickInterests!),
+              )),
+            if (study)
+              ParentComponent(
+                featureKey: kStudyProfileFeatureKey,
+                child: enter(Padding(
+                  padding: EdgeInsets.fromLTRB(
+                      kStudentHomeInset, courses == null && j == null && !invite ? 0 : AppSpace.md, kStudentHomeInset, 0),
+                  child: StudyPromptCard(onOpen: body.onCompleteStudy!, onDismiss: body.onDismissStudy!),
+                )),
+              ),
           ]);
 
     // ── inbox: ONE slim entry into the inbox page (its rows and the notifications live there), only while it holds
