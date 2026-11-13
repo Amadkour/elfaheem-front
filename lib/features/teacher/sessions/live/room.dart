@@ -4134,7 +4134,7 @@ class _RoomPageState extends State<RoomPage>
                   ),
                 ),
               // Stop button
-              GestureDetector(
+              _LiveTap(
                 onTap: _stopIOSBroadcast,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -6140,7 +6140,7 @@ class _RoomPageState extends State<RoomPage>
         ),
         ...List.generate(q.options.length, (idx) {
           final selected = _selectedAnswers[q.id] == idx;
-          return GestureDetector(
+          return _LiveTap(
             onTap: () {
               if (mounted) setState(() => _selectedAnswers[q.id] = idx);
             },
@@ -6205,7 +6205,7 @@ class _RoomPageState extends State<RoomPage>
             children: [
               if (_currentQuestionIndex > 0) ...[
                 Expanded(
-                  child: GestureDetector(
+                  child: _LiveTap(
                     onTap: () {
                       if (mounted) setState(() => _currentQuestionIndex--);
                     },
@@ -6242,7 +6242,7 @@ class _RoomPageState extends State<RoomPage>
               ],
               Expanded(
                 flex: 2,
-                child: GestureDetector(
+                child: _LiveTap(
                   onTap: isLast
                       ? () => _submitQuiz()
                       : () {
@@ -6336,7 +6336,7 @@ class _RoomPageState extends State<RoomPage>
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
-          GestureDetector(
+          _LiveTap(
             onTap: _dismissQuiz,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 13),
@@ -7945,7 +7945,7 @@ class _SessionEndedDialog extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          GestureDetector(
+          _LiveTap(
             onTap: () => Navigator.pop(context),
             child: Container(
               width: double.infinity,
@@ -8063,4 +8063,23 @@ class NotificationChannelHelper {
       log('NotificationChannelHelper: ${e.message}');
     }
   }
+}
+
+/// A tap target drawn by hand in the room's own palette (quiz answers and buttons, the iOS stop-sharing pill, the
+/// session-ended OK): a GestureDetector that screen readers announce as a button and a mouse shows as clickable.
+class _LiveTap extends StatelessWidget {
+  const _LiveTap({required this.onTap, required this.child});
+
+  final VoidCallback? onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        enabled: onTap != null,
+        child: MouseRegion(
+          cursor: onTap == null ? SystemMouseCursors.basic : SystemMouseCursors.click,
+          child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: onTap, child: child),
+        ),
+      );
 }

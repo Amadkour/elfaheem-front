@@ -3,6 +3,7 @@
 // Room — the screen share if any, else the speaker's camera, else any camera, else an avatar ([liveMiniPick] is
 // the pure choice, unit-tested). Tap → full screen; the microphone can be muted and the room left from the box.
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'live_media_plan.dart' show kBoardVideoTrackName;
 import 'package:livekit_client/livekit_client.dart';
 
@@ -166,8 +167,8 @@ class LiveMiniBoxLayout extends StatelessWidget {
               left: 4,
               right: 4,
               child: Row(children: [
-                const _LivePill(),
-                const Spacer(),
+                // the pill takes what the buttons leave (the Arabic word is wider than LIVE)
+                const Expanded(child: Align(alignment: AlignmentDirectional.centerStart, child: _LivePill())),
                 if (onToggleMic != null)
                   _TinyButton(
                     key: const ValueKey('live_room.mini_mic'),
@@ -238,15 +239,22 @@ class _LivePill extends StatelessWidget {
             decoration: BoxDecoration(color: LivePalette.danger, shape: BoxShape.circle),
           ),
           const SizedBox(width: 4),
-          Text(
-            t('مباشر', 'LIVE'),
-            textScaler: TextScaler.noScaling,
-            style: TextStyle(
-              fontFamily: AppFonts.family,
-              fontSize: 9,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1,
-              color: LivePalette.textHigh,
+          // Flexible: the Arabic word is wider than LIVE and the box is small at 320 px
+          Flexible(
+            child: Text(
+              t('مباشر', 'LIVE'),
+              textScaler: TextScaler.noScaling,
+              maxLines: 1,
+              overflow: TextOverflow.clip,
+              softWrap: false,
+              style: TextStyle(
+                fontFamily: AppFonts.family,
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                // tracking breaks Arabic joining: Latin only
+                letterSpacing: AppConfig.lang == 'ar' ? 0 : 1,
+                color: LivePalette.textHigh,
+              ),
             ),
           ),
         ]),
