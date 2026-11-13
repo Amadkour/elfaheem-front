@@ -4696,3 +4696,59 @@ The course form built its `CourseReelController` with no url, so an existing ree
 
 **Context.** The brief asks for a configurable quorum AND majority; only the quorum was configurable (simple majority, ties by rule).
 **Decision.** `org_councils.majority_pct` (migration 0083): null = simple majority (approve > reject, unchanged); a number 50–100 = approve > reject AND the approval share of the counted votes (the same denominator as before: abstentions / non-voters per the council's rules) reaches it, otherwise rejected. A tie still follows the tie rule. The settings form offers simple / 60 % / two thirds / three quarters; the PUT replaces the whole object, so the app always sends `majority_pct`. Votes can still be changed while the row is voting and are frozen after the close (409 `voting_closed`) — unchanged, recorded here because the brief asked.
+
+## D-920 — The Export Studio's start screen says what will be exported and shows the file · 2026-11-14 · accepted
+
+**Context.** The owner called the Export Studio "very bad". In the real app (org members, 8 rows) the start screen was
+three choice blocks and a gallery of grey schematics: no row or field count, no way to drop a column without opening
+the four-step designer, no sight of the actual file before "Export now", and the result was one grey line ("Saved: …")
+with a text link.
+**Decision.** The start screen opens on a summary card (format badge, the file's name, "8 rows · 4 fields · Arabic"),
+then format, language, a **Fields** block (chips; a tick applies to every language's design, a table re-shares its
+width, a table keeps one column) and the gallery. From 1100 px the live preview pane (the server's first page, the same
+renderer as the file) sits next to it, as it already did in the designer; phones get a Preview button between
+"Customize" and "Export now". The run is one status card in every state: a spinner badge with the rows done / in all
+while it works, "Your file is ready" with the name, the size and "Download again", or the reason with "Try again" /
+"Export again". The first requests (templates, fonts, starters, the dataset's columns) go out together.
+**Rejected:** a second, "simple" export dialog (two flows to keep in step; the designer stays one tap away); a local
+(Flutter-drawn) preview on the start screen (it would drift from the server's file, the very complaint).
+
+## D-921 — Coded values print their label in the file's language · 2026-11-14 · accepted
+
+**Context.** A server-dataset export printed the raw codes ("active") in an Arabic file, and `{{filters}}` printed
+"roles: student · status: active". An uploaded table was right (the app sends the labels with the rows), a dataset
+was not.
+**Decision.** A dataset column may carry `values` {code: {ar, en}} (org.people status / role, course.students status),
+and the app sends the table's own status labels as `value_labels` with the document (cleaned: ≤ 40 fields, ≤ 60 codes,
+120 characters). The renderer gives every binding of a labelled field its language's labels; rules still compare the
+code. `{{filters}}` is written with readable names and value labels in the file's language.
+**Rejected:** relabelling the rows in the dataset generators (the spool is shared by both languages of a two-language
+export, and rules compare codes).
+
+## D-922 — A table row grows to three lines instead of clipping its text · 2026-11-14 · accepted
+
+**Context.** Layout v3 fixed every row at one line (D-142: fixed heights let the PDF count its pages first), so a long
+note or name was cut in the middle of a word with no ellipsis, in PDF and Word alike.
+**Decision.** A table with no fixed `row_height` measures each row (`pdf.table_row_measure`, the PDF's own font
+metrics): the longest wrapping value sets the height, up to `flow.AUTO_ROW_LINES` (3), and a longer value ends with
+"…". The block heights stay known before drawing (the page count still works); Word and Excel use the same measure,
+so the three files agree row by row. A design that sets `row_height` is drawn exactly as before.
+
+## D-923 — Excel exports get an AutoFilter · 2026-11-14 · accepted
+
+The format card promises "sort, filter and calculate", but the sheet had no filter. An ungrouped table / list now has
+an AutoFilter from its column-header row to its last row (group header rows would break a filter, so grouped sheets
+keep none).
+
+## D-924 — A whole number stored as a float prints without ".0" · 2026-11-14 · accepted
+
+A score kept as a float (37.0) printed "37.0" in a text-formatted field. A whole float now prints as an integer; a
+fraction and every explicit number format are unchanged.
+
+## D-925 — The old studio's field picker and the docked canvas on a short window · 2026-11-14 · accepted
+
+`test/ui/export_studio_layout_test.dart` failed 4 times on production since the editorial theme: the field picker's
+"Fields" title (the editorial section face at ×1.3) pushed its count chip 26 px past a 320 px phone. The title now
+gives way (ellipsis) — a code fix, the tests are unchanged. The design step's docked canvas squeezed the canvas to
+nothing on a 900 × 760 window (0.1 px overflow, `layout_flow_layout_test` "tablet width"): under 480 px of room the
+toolbar, a canvas of usable height and the dock now scroll as one column.

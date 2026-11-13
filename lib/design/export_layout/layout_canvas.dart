@@ -633,26 +633,42 @@ class _LayoutCanvasEditorState extends State<LayoutCanvasEditor> {
         ),
       ]);
     }
-    return LayoutBuilder(
-      builder: (context, box) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+    return LayoutBuilder(builder: (context, box) {
+      final dock = StudioDockPanel(
+        controller: _ctl,
+        open: _dockOpen,
+        maxHeight: box.maxHeight,
+        semanticLabel: t('خصائص العنصر', 'Element properties'),
+        title: sel == null
+            ? (_ctl.selection.length > 1 ? '${_ctl.selection.length} ${t('عناصر محددة', 'selected')}' : t('لا عنصر محدد', 'Nothing selected'))
+            : (sel.name ?? layoutKindLabel(sel.kind)),
+        icon: sel == null ? Icons.ads_click_rounded : Icons.tune_rounded,
+        body: tabbed,
+      );
+      // a short window (a landscape tablet under the stepper and the tabs, large text): the toolbar, a canvas of a
+      // usable height and the dock scroll together instead of squeezing the canvas to nothing
+      if (box.maxHeight < kLayoutCanvasMinRoom) {
+        return SingleChildScrollView(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            toolbar,
+            const SizedBox(height: AppSpace.xs),
+            SizedBox(height: kLayoutCanvasMinRoom * .6, child: canvas),
+            dock,
+          ]),
+        );
+      }
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         toolbar,
         const SizedBox(height: AppSpace.xs),
         Expanded(child: canvas),
-        StudioDockPanel(
-          controller: _ctl,
-          open: _dockOpen,
-          maxHeight: box.maxHeight,
-          semanticLabel: t('خصائص العنصر', 'Element properties'),
-          title: sel == null
-              ? (_ctl.selection.length > 1 ? '${_ctl.selection.length} ${t('عناصر محددة', 'selected')}' : t('لا عنصر محدد', 'Nothing selected'))
-              : (sel.name ?? layoutKindLabel(sel.kind)),
-          icon: sel == null ? Icons.ads_click_rounded : Icons.tune_rounded,
-          body: tabbed,
-        ),
-      ]),
-    );
+        dock,
+      ]);
+    });
   }
 }
+
+/// Below this height the docked canvas editor scrolls as one column (the canvas keeps 60 % of it).
+const double kLayoutCanvasMinRoom = 480;
 
 /// Several elements selected: the host's font control for all of them.
 class _MultiFontProps extends StatelessWidget {

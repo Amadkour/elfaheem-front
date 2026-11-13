@@ -312,6 +312,15 @@ class _ExportLayoutPageState extends State<ExportLayoutPage> {
               label: Text(t('تخصيص التصميم', 'Customize design'), maxLines: 1, overflow: TextOverflow.ellipsis),
               style: OutlinedButton.styleFrom(minimumSize: minBtn),
             )),
+            if (!pane) ...[
+              const SizedBox(width: AppSpace.xs),
+              IconButton.outlined(
+                key: const ValueKey('layout-start-preview'),
+                tooltip: t('معاينة الملف', 'Preview the file'),
+                onPressed: _ready ? _previewSheet : null,
+                icon: const Icon(Icons.visibility_outlined),
+              ),
+            ],
             const SizedBox(width: AppSpace.sm),
             flex(FilledButton.icon(
               key: const ValueKey('layout-export-now'),
@@ -406,7 +415,8 @@ class _ExportLayoutPageState extends State<ExportLayoutPage> {
       child: LayoutBuilder(builder: (context, box) {
         // the stepper's own "labels fit" guess is for shorter labels: the dots form below 1200 px
         final compact = box.maxWidth < 1200;
-        final pane = _ready && box.maxWidth >= kLayoutLivePreviewMin && (_flow.step == 1 || _flow.step == 2);
+        // the start screen too (D-920): the file's first page, drawn by the same renderer, next to the choices
+        final pane = _ready && box.maxWidth >= kLayoutLivePreviewMin && (_flow.step == 1 || _flow.step == 2 || (_flow.step == 0 && !widget.designOnly));
         // the live preview follows the edits while it is on screen (the phone's sheet turns it on itself)
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted && !_sheetOpen) _flow.wantLivePreview(pane);

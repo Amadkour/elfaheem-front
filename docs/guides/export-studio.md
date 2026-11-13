@@ -28,6 +28,15 @@ pages and the file. Phones get the simple form (starters, field picking, toggles
 `test/export/layout_model_test.dart`, `layout_flow_test.dart` (FakeApi server in `layout_fake.dart`),
 `test/ui/layout_flow_layout_test.dart`.
 
+**Export Studio v2 (D-920 – D-925)** — the start screen (`layout_start.dart`) opens on `LayoutExportSummary` (format,
+file name, rows · fields · language), then format, language, `LayoutQuickFields` (chips; `LayoutFlowController.toggleField`
+ticks a field in every language's design, `layoutRebalanceColumns` re-shares the table width) and the gallery; from
+1100 px the live preview pane sits beside it, phones have a Preview button (`layout-start-preview`). Every run state is
+one `LayoutStatusCard` (`LayoutRunPanel`: progress, "Your file is ready" with size + Download again, Try again). A dataset
+run sends the table's status labels as `value_labels` (`layoutValueLabels`); the server prints coded values and
+`{{filters}}` in the file's language. Table rows with no fixed height grow to 3 lines then "…" (`pdf.table_row_measure`,
+shared by PDF / Word / Excel); Excel tables get an AutoFilter. Server checks: `../back/tests/org_v2/export_quality.py`.
+
 **Design engine, layout v4 (D-164 / D-165, contract `docs/design_engine/ENGINE.md`, tracker `docs/design_engine/PROGRESS.md`)** —
 the layout document is THE engine document for exports and certificates (exam papers / covers, bubble sheets and the
 guide export get the API, their sessions migrate them). v4 = v3 + optional keys: document-level computed columns

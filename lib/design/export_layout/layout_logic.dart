@@ -104,6 +104,28 @@ Object? layoutRowValue(LayoutField? f, Object? v, String lang) {
   return v;
 }
 
+/// The status labels of [fields] as the server reads them (`value_labels`, D-921): {field: {ar: {code: label},
+/// en: {…}}}. A table with one set of labels (not per language) sends it for both.
+Map<String, Map<String, Map<String, String>>> layoutValueLabels(List<LayoutField> fields) => {
+      for (final f in fields)
+        if (f.statusLabels.isNotEmpty)
+          f.key: {
+            for (final l in const ['ar', 'en'])
+              if ((f.statusLabels[l] ?? f.statusLabels['any']) case final m? when m.isNotEmpty) l: m,
+          },
+    }..removeWhere((_, v) => v.isEmpty);
+
+/// Scales [d]'s table columns so together they fill the page's content width again (after one is added or removed).
+void layoutRebalanceColumns(LayoutDesign d) {
+  final cols = d.table.columns;
+  final sum = cols.fold<double>(0, (a, c) => a + c.width);
+  if (sum <= 0) return;
+  final k = d.page.contentWidth / sum;
+  for (final col in cols) {
+    col.width = mm(col.width * k);
+  }
+}
+
 /// Every field [d] reads (printed, ruled on, joined, sorted, grouped or totalled) — the server's
 /// `referenced_fields` for one design (the items part of its own mode only).
 Set<String> layoutReferencedFields(LayoutDesign d) {
