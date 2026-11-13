@@ -46,6 +46,8 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../auth/profile_link_test.dart' show courseJson, teacherJson;
+import '../ui/public_profile_stats_test.dart' show owner, richTeacher, studentJson;
+import 'package:flutter_education_app/features/shared/public_profile/public_profile_page.dart' show ProfileOwnerPanel, ProfileJoinCard;
 import '../support/fake_api.dart';
 import '../ui/instructor_courses_section_test.dart' show teacherCourses;
 import 'home_screens_golden_test.dart' show pubspecFonts;
@@ -304,6 +306,34 @@ void main() {
       ), grow: false));
   testWidgets('public teacher', (t) => _render(t, 'public_teacher',
       () => BasePage(enableFooterWidget: false, child: PublicProfileView(result: _teacher(), onOpenCourse: (_) {}))));
+  // the ONE profile page (D-850 – D-855): a teacher's figures + growth + most joined with the guest's join card, a
+  // student's opt-in summary, and the owner's panel over the same page
+  testWidgets('public teacher stats', (t) => _render(t, 'public_teacher_stats', () => BasePage(
+      enableFooterWidget: false,
+      child: PublicProfileView(
+        result: PublicProfileResult(PublicProfileStatus.found,
+            profile: PublicProfile.fromJson(richTeacher()..['name'] = 'Ahmed Hamdy'..['image_url'] = null..['courses'] = [])),
+        onOpenCourse: (_) {},
+        onOpenCourseId: (_) {},
+        joinCard: ProfileJoinCard(name: 'Ahmed Hamdy', teacher: true, onJoin: () {}, onSignIn: () {}),
+      ))));
+  testWidgets('public student', (t) => _render(t, 'public_student', () => BasePage(
+      enableFooterWidget: false,
+      child: PublicProfileView(
+        result: PublicProfileResult(PublicProfileStatus.found,
+            profile: PublicProfile.fromJson(studentJson()..['name'] = 'Mariam Adel')),
+        onOpenCourse: (_) {},
+        onOpenCourseId: (_) {},
+      ))));
+  testWidgets('my profile owner', (t) => _render(t, 'my_profile_owner', () => BasePage(
+      enableFooterWidget: false,
+      child: PublicProfileView(
+        result: PublicProfileResult(PublicProfileStatus.found,
+            profile: PublicProfile.fromJson(richTeacher()..['name'] = 'Ahmed Hamdy'..['image_url'] = null..['courses'] = [])),
+        onOpenCourse: (_) {},
+        ownerPanel: ProfileOwnerPanel(
+            mine: owner(), onPublic: (_) {}, onField: (_, _) {}, onEdit: () {}, onShare: () {}, onAccount: () {}, onDocuments: () {}),
+      )), role: 'teacher'));
   testWidgets('subscription plans', (t) => _render(t, 'subscription_plans', () => const SubscriptionScreen(), act: (t) async {
         final plan = find.text(AppConfig.lang == 'ar' ? 'فصل دراسي' : 'One term');
         if (plan.evaluate().isNotEmpty) {

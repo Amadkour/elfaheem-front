@@ -48,7 +48,6 @@ import '../rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubble
 import 'change_password_widget.dart';
 import 'compalints/complaint_provider.dart';
 import 'compalints/complaints_hub_page.dart';
-import 'course_instractor_profile.dart';
 import 'privacy_export.dart' show DataExportPage, dataExportEntryLabel;
 import 'profile_provider.dart' show ProfileProvider;
 import 'profile_hero.dart';
@@ -62,7 +61,7 @@ import '../../admin/admin_common.dart' show t;
 import '../points/points_api.dart' show kPointsFeatureKey;
 import '../points/points_wallet_page.dart' show PointsWalletPage;
 import '../records/records_page.dart' show RecordsPage, RecordsSettingsTile;
-import '../public_profile/public_profile_page.dart' show ShareMyProfileTile, myShareableUsername, shareProfileLink;
+import '../public_profile/public_profile_page.dart' show MyProfileTile, ShareMyProfileTile, myShareableUsername, shareProfileLink;
 import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_page.dart' show CertVerifyEntryTile;
 import 'package:flutter_education_app/design/app_header.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
@@ -139,6 +138,9 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
 
     // ── My teaching / My learning ──────────────────────────────
     final work = <Widget>[
+      // the ONE profile page, owner view (D-850): teachers keep the old `profile.teacher_profile` switch on it too;
+      // the teacher's documents moved into its owner panel
+      ParentComponent(featureKey: teacher ? 'profile.teacher_profile' : 'profile.my_profile', child: const MyProfileTile()),
       // The Exam Hub (D-350): teachers, and whoever teaches inside an organization; never students or parents
       if (teacher || examHubTeachesInAnyOrg(AppModeController.instance.liveEntries))
         AppSettingsTile(
@@ -150,18 +152,6 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
           onTap: () => _push(deferredExamHub()),
         ),
       if (teacher) ...[
-        AppSettingsTile(
-          featureKey: 'profile.teacher_profile',
-          icon: Icons.badge_rounded,
-          label: 'teacher_profile'.tr,
-          onTap: () => _push(
-            InstructorProfileScreen(
-              teacher: context.read<TeacherHomeProvider>().stats.teacher!,
-              studentView: false,
-              stats: context.read<TeacherHomeProvider>().stats,
-            ),
-          ),
-        ),
         AppSettingsTile(
           featureKey: 'profile.certificate_designs',
           icon: Icons.workspace_premium_rounded,

@@ -367,6 +367,9 @@ class TeacherProfileData {
   final DateTime createdAt;
   final TeacherProfileDetail? teacherProfile;
 
+  /// The confirmed @username (the server hides an auto-filled one): their one profile page `/@name` (D-853).
+  final String? username;
+
   const TeacherProfileData({
     required this.id,
     required this.name,
@@ -381,6 +384,7 @@ class TeacherProfileData {
     required this.registrationStep,
     required this.createdAt,
     this.teacherProfile,
+    this.username,
   });
 
   /// A course's / the doctors list's `teacher` block. The server blanks a teacher's contact fields there (`gmail`
@@ -399,6 +403,7 @@ class TeacherProfileData {
         loginTimes: (j['login_times'] as num?)?.toInt() ?? 0,
         registrationStep: j['registration_step'] as String? ?? '',
         createdAt: (j['created_at'] as String).toLocalSaTime,
+        username: j['username'] is String && (j['username'] as String).trim().isNotEmpty ? (j['username'] as String).trim() : null,
         teacherProfile: j['teacher_profile'] != null
             ? TeacherProfileDetail.fromJson(
           j['teacher_profile'] as Map<String, dynamic>,

@@ -30,7 +30,7 @@ import '../../../../utils/widget/app_navigator.dart' show AppNavigator;
 import '../../../shared/guest/guest_state.dart';
 import '../../../shared/profile/compalints/complaint_provider.dart';
 import '../../../shared/profile/compalints/new_complaint_screen.dart';
-import '../../../shared/profile/course_instractor_profile.dart';
+import '../../../shared/public_profile/public_profile_page.dart' show openPersonProfile;
 import '../../../teacher/data_lab/data_lab_api.dart';
 import '../../../teacher/sessions/components/course_reel_player.dart';
 import '../../analysis/exam/student_course_exams_widget.dart';
@@ -359,10 +359,7 @@ class _CoursePageState extends State<_CoursePage> {
       teacherImageUrl: c.teacher?.imageUrl,
       onTeacher: c.teacher == null
           ? null
-          : () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => InstructorProfileScreen(teacher: c.teacher!)),
-            ),
+          : () => openPersonProfile(context, c.teacher!), // the one profile page when public (D-853)
       stats: [
         CourseSpaceStat(
           icon: Icons.groups_rounded,
