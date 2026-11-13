@@ -15,6 +15,7 @@ import 'package:livekit_client/livekit_client.dart';
 
 import '../../../../design/app_notice.dart';
 import '../../../admin/admin_common.dart' show t;
+import '../live_room_words.dart' show liveT;
 import '../../../teacher/sessions/live/widgets/live_call_service.dart';
 import '../../../teacher/sessions/live/widgets/live_video_view.dart';
 import 'companion_core.dart';
@@ -244,7 +245,7 @@ class _CompanionPageState extends State<CompanionPage> {
   }
 
   Future<void> _leave() async {
-    if (_leaving) return;
+    if (_leaving) return _finish(null); // a second tap while the server call runs still closes the page
     _leaving = true;
     _send({'t': 'bye'});
     try {
@@ -277,19 +278,25 @@ class _CompanionPageState extends State<CompanionPage> {
 
   void _onDisconnected(RoomDisconnectedEvent e) {
     if (_leaving || _closed) return;
+    final kind = widget.join.request.ref.kind;
     final msg = switch (e.reason) {
       DisconnectReason.participantRemoved => t('أُزيل هذا الهاتف من الجلسة.', 'This phone was removed from the session.'),
-      DisconnectReason.roomDeleted => t('انتهت الجلسة.', 'The session ended.'),
+      DisconnectReason.roomDeleted =>
+        liveT(kind, ar: 'انتهت الجلسة.', en: 'The session ended.', meetingAr: 'انتهى الاجتماع.', meetingEn: 'The meeting ended.'),
       _ => t('انقطع اتصال الهاتف بالجلسة.', 'This phone lost the session.'),
     };
     _finish(msg);
   }
 
+  /// Closes the phone's page: the room ended, the person stopped, Leave. D-810: a direct pop past the page's own
+  /// PopScope — `maybePop` asked the PopScope, which refused and re-ran Leave, so the page never closed (frozen phone).
   void _finish(String? notice, {bool error = false}) {
-    if (_closed) return;
-    _closed = true;
-    if (notice != null) showAppNotice(notice, error: error);
-    if (mounted) unawaited(Navigator.of(context).maybePop());
+    if (!_closed) {
+      _closed = true;
+      _primaryGone?.cancel();
+      if (notice != null) showAppNotice(notice, error: error);
+    }
+    if (mounted) closeCompanionRoute(context);
   }
 
   void _setState(CompanionPhoneState s) {
@@ -302,6 +309,7 @@ class _CompanionPageState extends State<CompanionPage> {
   }
 
   Future<void> _confirmLeave() async {
+    if (_closed) return _finish(null); // already over (the room ended): back just closes the page
     await _leave();
   }
 

@@ -4,6 +4,7 @@
 //   PreJoinPhoneRow           the pre-join page's row
 //   CompanionIncomingLayout   the call-style prompt on the phone
 //   CompanionPhoneLayout      the compact screen while the phone is in use
+//   closeCompanionRoute       closes the phone's page past its own PopScope (D-810)
 library;
 
 import 'package:flutter/material.dart';
@@ -16,6 +17,24 @@ import '../../../admin/admin_common.dart' show t;
 import '../../../teacher/sessions/live/widgets/live_palette.dart';
 import 'companion_core.dart';
 import 'companion_link.dart' show CompanionStage;
+
+/// Closes the page [context] sits on even though that page refuses a back gesture (`PopScope(canPop: false)`, D-810).
+///
+/// The phone's page used to close itself with `Navigator.maybePop`, which asks the PopScope first: the PopScope said no
+/// and ran the leave flow again, which found the page already leaving and did nothing. So the page stayed on the screen
+/// after the room ended (or after Leave), its buttons and the back button dead: the phone looked frozen. A direct pop
+/// (or a removal when something lies above the page) never asks the PopScope. Safe to call twice.
+void closeCompanionRoute(BuildContext context) {
+  if (!context.mounted) return;
+  final route = ModalRoute.of(context);
+  final nav = Navigator.maybeOf(context);
+  if (route == null || nav == null || !route.isActive) return;
+  if (route.isCurrent) {
+    nav.pop();
+  } else {
+    nav.removeRoute(route);
+  }
+}
 
 IconData companionSourceIcon(CompanionSource s) => switch (s) {
       CompanionSource.camera => Icons.videocam_rounded,
