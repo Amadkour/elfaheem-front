@@ -123,6 +123,7 @@ class _ParentAlertsPageState extends State<ParentAlertsPage> {
               ),
             ),
           PopupMenuButton<String>(
+            tooltip: 'more'.tr,
             icon: Icon(Icons.more_vert_rounded, color: c.textMedium),
             onSelected: (v) {
               if (v == 'read') p.readAll();
@@ -303,12 +304,8 @@ class _AlertCard extends StatelessWidget {
         secondaryBackground: _swipeBg(context, Alignment.centerRight),
         onDismissed: (_) {
           p.setStatus([key], 'dismissed');
-          ScaffoldMessenger.of(context)
-            ..clearSnackBars()
-            ..showSnackBar(SnackBar(
-              content: Text('pl_alert_dismissed'.tr),
-              action: SnackBarAction(label: 'pl_undo'.tr, onPressed: () => p.setStatus([key], 'unread')),
-            ));
+          showAppNotice('pl_alert_dismissed'.tr,
+              actionLabel: 'pl_undo'.tr, onAction: () => p.setStatus([key], 'unread'));
         },
         child: AnimatedOpacity(
           duration: AppMotion.of(context).fast,

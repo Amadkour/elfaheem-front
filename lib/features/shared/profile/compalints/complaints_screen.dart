@@ -6,12 +6,11 @@ library;
 
 import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:async';
-import 'dart:developer';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh, AppTime, AppTone, showAppNotice;
+import 'package:flutter_education_app/design/app_kit.dart' show AppEmpty, AppListSkeleton, AppRefresh, AppTime, AppTone, showAppNotice;
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart';
@@ -1325,10 +1324,10 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     // Failed (network / upload) → give the typed text back instead of losing it.
     if (sent == null && mounted) _replyCtrl.text = msg;
     await Future.delayed(const Duration(milliseconds: 100));
-    if (_scrollCtrl.hasClients) {
+    if (_scrollCtrl.hasClients && mounted) {
       _scrollCtrl.animateTo(
         _scrollCtrl.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
+        duration: AppMotion.of(context).slow,
         curve: Curves.easeOut,
       );
     }
@@ -1340,7 +1339,6 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     final c = context.colors;
     final auth = context.read<MyAuthProvider>();
     final complaint = p.selected;
-    log(' persona is===========> ${auth.isStudent}');
     return BasePage(appBar: ScreenAppBar(title: 'complaint_details_title'.tr), child: SafeArea(
       child: Column(
         children: [
@@ -1349,7 +1347,14 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
               child: AppListSkeleton(items: 4, withAvatar: false),
             )
           else if (complaint == null)
-            Expanded(child: Center(child: Text('complaint_not_found'.tr)))
+            Expanded(
+              child: AppEmpty(
+                icon: Icons.search_off_rounded,
+                title: 'complaint_not_found'.tr,
+                actionLabel: 'retry'.tr,
+                onAction: () => p.loadDetail(widget.complaintId),
+              ),
+            )
           else ...[
               Expanded(
                 child: ListView(

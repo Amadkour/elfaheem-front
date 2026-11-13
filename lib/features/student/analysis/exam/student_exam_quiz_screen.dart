@@ -17,7 +17,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'exam_tr.dart';
 import 'exam_ui.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
-import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
+import 'package:flutter_education_app/design/app_tokens.dart' show AppRadius, AppSpace, AppWidth;
 
 class StudentExamQuizScreen extends StatefulWidget {
   const StudentExamQuizScreen({super.key});
@@ -585,24 +585,20 @@ class _ReviewFlagButton extends StatelessWidget {
     final flagged = prov.isReviewFlagged(question.id);
     final color = flagged ? context.colors.danger : context.colors.textLight;
     return InkWell(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppRadius.chip),
       onTap: prov.flagBusy
           ? null
           : () async {
-        final messenger = ScaffoldMessenger.maybeOf(context);
         final wasFlagged = flagged;
         final err = await prov.toggleReviewFlag(question);
-        messenger?.hideCurrentSnackBar();
-        showAppNotice(err ??
-                (wasFlagged
-                    ? tx('flag_review_removed')
-                    : tx('flag_review_added')));
+        // a failure reads as an error, not as a quiet confirmation
+        showAppNotice(err ?? (wasFlagged ? tx('flag_review_removed') : tx('flag_review_added')), error: err != null);
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
         decoration: BoxDecoration(
           color: color.withValues(alpha: .12),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(AppRadius.chip),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(

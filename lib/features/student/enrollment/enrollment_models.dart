@@ -1,3 +1,4 @@
+import 'package:flutter_education_app/config/app_config.dart';
 /// enrollment_models.dart
 ///
 /// Plain models for the enrollment / payment API. The server is the single
@@ -6,12 +7,14 @@
 Map<String, dynamic>? asJsonMap(Object? raw) =>
     raw is Map ? Map<String, dynamic>.from(raw) : null;
 
-String currencySymbolFor(String? code) => switch (code?.toUpperCase()) {
-  'SAR' => 'ر.س',
-  'EGP' => 'ج.م',
-  'USD' => r'$',
-  _ => code ?? 'ج.م',
-};
+/// The currency's mark: the Arabic abbreviation in Arabic, the ISO code in English (an Arabic "ج.م" inside an
+/// English line breaks the reading order and falls back to a dot in a Latin-only font, D-751).
+String currencySymbolFor(String? code) {
+  final c = (code == null || code.trim().isEmpty) ? 'EGP' : code.trim().toUpperCase();
+  if (c == 'USD') return r'$';
+  if (AppConfig.lang != 'ar') return c;
+  return switch (c) { 'SAR' => 'ر.س', 'EGP' => 'ج.م', _ => c };
+}
 
 /// GET /api/v1/config
 /// GET /api/v1/config
