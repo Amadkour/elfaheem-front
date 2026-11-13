@@ -12,7 +12,7 @@ import '../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
 import '../org_page_header.dart' show OrgPushedPage;
 import '../org_v3.dart' show orgCall;
 import 'gov_api.dart';
-import 'gov_models.dart' show entityKindLabel, entityKinds, priorities, priorityLabelOf, slaHours;
+import 'gov_models.dart' show entityKindLabel, entityKinds, externalRoutingLabel, externalRoutings, priorities, priorityLabelOf, slaHours;
 
 /// One routing rule: items may go from entities of [fromKind] to entities of [toKind] (`*` = any).
 class RoutingRule {
@@ -28,13 +28,16 @@ class RoutingRule {
 
 /// The editable settings document (`GET …/settings`).
 class GovSettings {
-  GovSettings({this.mode = 'open', List<RoutingRule>? rules, Map<String, int>? sla, this.email = 'fallback'})
+  GovSettings({this.mode = 'open', List<RoutingRule>? rules, Map<String, int>? sla, this.email = 'fallback', this.externalRouting = 'department_council'})
       : rules = rules ?? [],
         sla = sla ?? Map.of(slaHours);
   String mode; // open | rules
   final List<RoutingRule> rules;
   final Map<String, int> sla;
   String email; // fallback | always
+
+  /// D-891: where an outside request received by a department goes on its own.
+  String externalRouting;
 
   factory GovSettings.fromJson(Map<String, dynamic> j) {
     final routing = asMap(j['routing']);
@@ -44,6 +47,7 @@ class GovSettings {
       rules: [for (final r in asMapList(routing['rules'])) RoutingRule.fromJson(r)],
       sla: {for (final p in priorities) p: asInt(hours[p], slaHours[p]!)},
       email: j['email'] == 'always' ? 'always' : 'fallback',
+      externalRouting: j['external_routing'] == 'faculty_council' ? 'faculty_council' : 'department_council',
     );
   }
 
@@ -51,6 +55,7 @@ class GovSettings {
         'routing': {'mode': mode, 'rules': [for (final r in rules) r.toJson()]},
         'sla_hours': sla,
         'email': email,
+        'external_routing': externalRouting,
       };
 }
 
@@ -172,6 +177,25 @@ class _GovSettingsFormState extends State<GovSettingsForm> {
                 onChanged: (v) {
                   final n = int.tryParse(v.trim());
                   if (n != null && n > 0) s.sla[p] = n;
+                },
+              ),
+            ),
+        ]),
+      ),
+      const SizedBox(height: AppSpace.md),
+      AppSectionTitle(t('الطلبات الخارجية', 'Outside requests'),
+          subtitle: t('طلب يرد من خارج المؤسسة إلى قسم علمي أو إدارة خدمية يُحال تلقائياً إلى:', 'A request from outside the institution received by a department goes automatically to:')),
+      AppCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (final r in externalRoutings)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
+              child: AppChoiceChip(
+                label: externalRoutingLabel(r),
+                selected: s.externalRouting == r,
+                onTap: () {
+                  s.externalRouting = r;
+                  onChanged();
                 },
               ),
             ),

@@ -29,6 +29,7 @@ import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDash
 import '../org_providers.dart' show OrgSession;
 import '../org_v3.dart' show orgCall, orgErrorText, orgUtc;
 import 'gov_api.dart';
+import 'gov_forward_sheet.dart';
 import 'gov_models.dart';
 import 'gov_request_parts.dart';
 import 'gov_route_sheet.dart';
@@ -59,6 +60,7 @@ class GovItemBody extends StatelessWidget {
     this.onOpenAttachment,
     this.onResubmit,
     this.onExport,
+    this.onForward,
   });
 
   final WorkItem item;
@@ -69,6 +71,9 @@ class GovItemBody extends StatelessWidget {
 
   /// The requester edits a rejected item and sends it again (D-141); export = this one item (D-140).
   final VoidCallback? onResubmit, onExport;
+
+  /// D-890: an approved item onward (higher council · outside party · person with required actions).
+  final VoidCallback? onForward;
   final ValueChanged<WorkRoute>? onAnswerRoute;
   final ValueChanged<GovAttachment>? onOpenAttachment;
 
@@ -85,7 +90,10 @@ class GovItemBody extends StatelessWidget {
     final it = item;
     final can = it.can;
     final pr = it.pendingRoute;
+    final myForward = it.routes.where((r) => r.awaits(currentUserId)).firstOrNull;
     final actions = <Widget>[
+      if (!member && can['forward'] && onForward != null && it.status == 'approved')
+        AppPill(icon: Icons.forward_to_inbox_rounded, label: t('إحالة بعد الاعتماد', 'Forward after approval'), color: c.success, onTap: busy ? null : onForward),
       if (!member && can['route'] && onRoute != null && it.isOpen) AppPill(icon: Icons.alt_route_rounded, label: t('إحالة / توجيه', 'Route / forward'), onTap: busy ? null : onRoute),
       if (!member && (can['decide'] || can['route']) && onEscalate != null && it.isOpen)
         AppPill(icon: Icons.trending_up_rounded, label: t('تصعيد لمجلس الكلية', 'Escalate to faculty council'), color: c.purple, onTap: busy ? null : onEscalate),
@@ -105,9 +113,13 @@ class GovItemBody extends StatelessWidget {
       if (it.decision != null) ...[const SizedBox(height: AppSpace.sm), _DecisionBanner(decision: it.decision!, status: it.status)],
       if (!member && can['decide'] && it.isDecidable && onDecide != null) ...[const SizedBox(height: AppSpace.sm), _DecisionBar(busy: busy, onDecide: onDecide!)],
       if (it.chain != null && it.chain!.steps.isNotEmpty) ...[const SizedBox(height: AppSpace.sm), GovChainCard(chain: it.chain!, itemStatus: it.status)],
-      if (pr != null) ...[
+      if (myForward != null) ...[
         const SizedBox(height: AppSpace.sm),
-        _PendingRouteCard(route: pr, canAnswer: _routedToMe && onAnswerRoute != null && pr.action != 'vote', busy: busy, onAnswer: () => onAnswerRoute?.call(pr)),
+        GovForwardTaskCard(route: myForward, busy: busy, onRespond: onAnswerRoute == null ? null : () => onAnswerRoute!(myForward)),
+      ],
+      if (pr != null && pr.id != myForward?.id) ...[
+        const SizedBox(height: AppSpace.sm),
+        _PendingRouteCard(route: pr, canAnswer: !member && _routedToMe && onAnswerRoute != null && pr.action != 'vote', busy: busy, onAnswer: () => onAnswerRoute?.call(pr)),
       ],
       if (actions.isNotEmpty) ...[const SizedBox(height: AppSpace.sm), Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: actions)],
       if (it.routes.isNotEmpty) ...[
@@ -166,7 +178,13 @@ class _Header extends StatelessWidget {
         ],
         const Divider(height: 22),
         GovKV(Icons.apartment_rounded, t('لدى', 'With'), it.ownerDept?.name ?? '—'),
-        GovKV(Icons.outbox_rounded, it.beneficiary == null ? t('المصدر', 'Source') : t('قدّمه', 'Filed by'), source),
+        if (it.externalSource != null) ...[
+          GovKV(Icons.public_rounded, t('وارد من', 'From'), it.externalSource!.label),
+          if ((it.externalSource!.reference ?? '').isNotEmpty) GovKV(Icons.tag_rounded, t('رقم الخطاب', 'Letter no.'), it.externalSource!.reference!),
+          if ((it.externalSource!.contact ?? '').isNotEmpty) GovKV(Icons.contact_phone_rounded, t('للتواصل', 'Contact'), it.externalSource!.contact!),
+          if (it.externalSource!.receivedAt != null) GovKV(Icons.move_to_inbox_rounded, t('ورد في', 'Received'), govWhen(it.externalSource!.receivedAt)),
+        ] else
+          GovKV(Icons.outbox_rounded, it.beneficiary == null ? t('المصدر', 'Source') : t('قدّمه', 'Filed by'), source),
         // a link only when this person may open that student (service staff, a council member: the name alone, D-290)
         if (!it.anonymous && it.sourceUser != null)
           EntityGuardedChip(EntityRef(EntityKind.student, it.sourceUser!.id, label: it.sourceUser!.name)),
@@ -345,7 +363,8 @@ class GovRouteChain extends StatelessWidget {
                       style: AppType.meta(context).copyWith(color: c.textLight),
                     ),
                     if ((routes[i].note ?? '').isNotEmpty) Text(routes[i].note!, style: AppType.label(context).copyWith(color: c.textDark, height: 1.4)),
-                    if (routes[i].answeredAt != null)
+                    if (routes[i].forward != null) GovForwardDetails(forward: routes[i].forward!),
+                    if (routes[i].answeredAt != null && routes[i].forward == null)
                       Text(
                         '${t('الرد', 'Answer')}: ${routes[i].answeredBy?.name ?? ''} · ${govWhen(routes[i].answeredAt)}${(routes[i].answerNote ?? '').isEmpty ? '' : ' — ${routes[i].answerNote}'}',
                         style: AppType.meta(context).copyWith(color: c.textMedium, height: 1.4),
@@ -774,7 +793,26 @@ class _GovItemScreenState extends State<GovItemScreen> {
     if (r.ok) Navigator.of(context).pop();
   }
 
+  Future<void> _forward() async {
+    final r = await showGovForwardSheet(context, _api!, _item!);
+    if (r != null && mounted) setState(() => _item = r);
+  }
+
+  /// D-890: the person an approved item was forwarded to answers one required action (staff or member route).
+  Future<void> _answerForward(WorkRoute r) async {
+    final it = _item!;
+    final body = await showGovForwardAnswerSheet(context, r);
+    if (body == null || !mounted) return;
+    final (action, answer, note) = body;
+    await _do(
+        () => widget.member
+            ? GovApi.memberAnswerRoute(it.id, r.id, answer: answer, action: action, note: note.isEmpty ? null : note)
+            : _api!.answerRoute(it.id, r.id, answer: answer, action: action, note: note.isEmpty ? null : note),
+        ok: t('أُرسل الرد', 'Answer sent'));
+  }
+
   Future<void> _answerRoute(WorkRoute r) async {
+    if (r.forward != null) return _answerForward(r);
     final it = _item!;
     final answers = switch (r.action) {
       'info' => ['noted'],
@@ -915,7 +953,8 @@ class _GovItemScreenState extends State<GovItemScreen> {
               onWithdraw: widget.member ? _withdraw : null,
               onEdit: widget.member ? null : _edit,
               onDelete: widget.member ? null : _delete,
-              onAnswerRoute: widget.member ? null : _answerRoute,
+              onAnswerRoute: widget.member ? _answerForward : _answerRoute,
+              onForward: widget.member ? null : _forward,
               onOpenAttachment: (a) => openGovAttachment(context, a),
               onResubmit: widget.member ? _resubmit : null,
               onExport: !widget.member && govExportHubEnabled() ? _export : null,

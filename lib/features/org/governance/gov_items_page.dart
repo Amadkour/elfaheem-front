@@ -135,11 +135,17 @@ Future<WorkItem?> showGovNewItemSheet(BuildContext context, GovApi api, {require
   GovPerson? forMember;
   final forCtl = GovForControllers();
   var forErrors = const <String, String>{};
+  // an outside party's request received by a scientific / service department (D-891): routed to its council at once
+  var external = false;
+  final extName = TextEditingController(), extOrg = TextEditingController(), extRef = TextEditingController(), extContact = TextEditingController();
   final created = await showAppSheet<WorkItem>(context, (ctx) => _DisposeWith(
       onDispose: () {
         title.dispose();
         body.dispose();
         forCtl.dispose();
+        for (final x in [extName, extOrg, extRef, extContact]) {
+          x.dispose();
+        }
       },
       child: StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
@@ -186,7 +192,28 @@ Future<WorkItem?> showGovNewItemSheet(BuildContext context, GovApi api, {require
                 onChanged: (v) => set(() => category = v == 0 ? null : v),
               ),
             ],
-            if (type == 'request' || type == 'complaint') ...[
+            if (owner != null && (owner!.kind == 'scientific' || owner!.kind == 'service')) ...[
+              const SizedBox(height: AppSpace.xs),
+              AppSwitchTile(
+                title: t('وارد من خارج المؤسسة', 'Received from outside the institution'),
+                subtitle: t('يُحال تلقائياً إلى مجلس القسم أو مجلس الكلية حسب إعدادات المؤسسة', 'Goes to the department or faculty council automatically, by the organization rule'),
+                value: external,
+                onChanged: (v) => set(() {
+                  external = v;
+                  if (v) routeNow = false;
+                }),
+              ),
+              if (external) ...[
+                AppField(controller: extName, label: t('الجهة المرسِلة', 'Sender (outside party)')),
+                const SizedBox(height: AppSpace.sm),
+                AppField(controller: extOrg, label: t('الإدارة / الجهة التابعة لها (اختياري)', 'Department / organization (optional)')),
+                const SizedBox(height: AppSpace.sm),
+                AppField(controller: extRef, label: t('رقم الخطاب الوارد (اختياري)', 'Incoming letter number (optional)')),
+                const SizedBox(height: AppSpace.sm),
+                AppField(controller: extContact, label: t('وسيلة التواصل (اختياري)', 'Contact (optional)')),
+              ],
+            ],
+            if (!external && (type == 'request' || type == 'complaint')) ...[
               const SizedBox(height: AppSpace.sm),
               GovForSection(
                 kind: forKind,
@@ -226,13 +253,15 @@ Future<WorkItem?> showGovNewItemSheet(BuildContext context, GovApi api, {require
               },
               onClear: () => set(() => due = null),
             ),
-            const SizedBox(height: AppSpace.xs),
-            AppSwitchTile(
-              title: t('إحالتها فور الإنشاء', 'Route it right after creating'),
-              subtitle: t('تفتح شاشة الإحالة بعد الحفظ', 'The route sheet opens after saving'),
-              value: routeNow,
-              onChanged: (v) => set(() => routeNow = v),
-            ),
+            if (!external) ...[
+              const SizedBox(height: AppSpace.xs),
+              AppSwitchTile(
+                title: t('إحالتها فور الإنشاء', 'Route it right after creating'),
+                subtitle: t('تفتح شاشة الإحالة بعد الحفظ', 'The route sheet opens after saving'),
+                value: routeNow,
+                onChanged: (v) => set(() => routeNow = v),
+              ),
+            ],
             const SizedBox(height: AppSpace.xs),
             AppPrimaryButton(
               label: t('إنشاء', 'Create'),
@@ -245,8 +274,20 @@ Future<WorkItem?> showGovNewItemSheet(BuildContext context, GovApi api, {require
                         appToast(t('اكتب العنوان', 'Enter a title'), error: true);
                         return;
                       }
+                      if (external && extName.text.trim().length < 2) {
+                        appToast(govCodeTexts()['external_name_required']!, error: true);
+                        return;
+                      }
+                      final extBody = !external
+                          ? null
+                          : {
+                              'name': extName.text.trim(),
+                              if (extOrg.text.trim().isNotEmpty) 'organization': extOrg.text.trim(),
+                              if (extRef.text.trim().isNotEmpty) 'reference': extRef.text.trim(),
+                              if (extContact.text.trim().isNotEmpty) 'contact': extContact.text.trim(),
+                            };
                       Map<String, dynamic>? beneficiary;
-                      if (forKind != 'self' && (type == 'request' || type == 'complaint')) {
+                      if (!external && forKind != 'self' && (type == 'request' || type == 'complaint')) {
                         final draft = BeneficiaryDraft(kind: forKind, member: forMember);
                         forCtl.fill(draft);
                         final errors = draft.validate();
@@ -266,6 +307,7 @@ Future<WorkItem?> showGovNewItemSheet(BuildContext context, GovApi api, {require
                             'priority': priority,
                             'due_at': orgUtc(due),
                             'beneficiary': ?beneficiary,
+                            'external_source': ?extBody,
                           }));
                       if (!ctx.mounted) return;
                       set(() => busy = false);
