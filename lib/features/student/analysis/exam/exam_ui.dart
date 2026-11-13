@@ -772,7 +772,7 @@ class ExamEmpty extends StatelessWidget {
               width: 88,
               height: 88,
               decoration: BoxDecoration(
-                color: context.colors.primary.withValues(alpha: 0.08),
+                color: context.colors.primaryWash,
                 shape: BoxShape.circle,
               ),
               child: Icon(icon,

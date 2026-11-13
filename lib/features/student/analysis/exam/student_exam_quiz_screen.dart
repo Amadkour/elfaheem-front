@@ -651,7 +651,7 @@ class _OptionTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: selected ? c.primary.withValues(alpha: .07) : c.cardBg,
+          color: selected ? c.primaryWash : c.cardBg,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: selected ? c.primary : c.divider.withValues(alpha: .7),

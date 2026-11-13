@@ -458,7 +458,7 @@ class _VoteRulePreviewState extends State<VoteRulePreview> {
     return Container(
       padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(
-        color: c.primary.withValues(alpha: 0.05),
+        color: c.primaryWash,
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: c.primary.withValues(alpha: 0.18)),
       ),

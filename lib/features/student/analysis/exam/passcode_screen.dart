@@ -332,7 +332,7 @@ class _KeyButtonState extends State<_KeyButton>
         child: Container(
           height: 62,
           decoration: BoxDecoration(
-            color: widget.background ?? c.primary.withValues(alpha: 0.06),
+            color: widget.background ?? c.primaryWash,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: widget.borderColor ?? c.divider.withValues(alpha: 0.7),

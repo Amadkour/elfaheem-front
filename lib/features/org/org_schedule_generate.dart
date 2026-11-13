@@ -674,7 +674,7 @@ class _GenerationLivePanelState extends State<GenerationLivePanel> with SingleTi
                   padding: const EdgeInsets.only(top: AppSpace.xs),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
-                    decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(AppRadius.chip)),
+                    decoration: BoxDecoration(color: c.primaryWash, borderRadius: BorderRadius.circular(AppRadius.chip)),
                     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Icon(Icons.hourglass_top_rounded, size: AppIconSize.sm, color: c.primary),
                       const SizedBox(width: AppSpace.xs),
@@ -1261,7 +1261,7 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
       padding: const EdgeInsets.only(top: AppSpace.sm),
       child: Container(
         padding: const EdgeInsets.all(AppSpace.sm),
-        decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.primary.withValues(alpha: 0.3))),
+        decoration: BoxDecoration(color: c.primaryWash, borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.primary.withValues(alpha: 0.3))),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Icon(Icons.auto_fix_high_rounded, color: c.primary),

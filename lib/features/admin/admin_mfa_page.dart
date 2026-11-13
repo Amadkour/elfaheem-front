@@ -338,7 +338,7 @@ class MfaRecoveryCodesView extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
                   decoration: BoxDecoration(
-                    color: c.primary.withValues(alpha: 0.06),
+                    color: c.primaryWash,
                     borderRadius: BorderRadius.circular(AppRadius.chip),
                     border: Border.all(color: c.divider),
                   ),

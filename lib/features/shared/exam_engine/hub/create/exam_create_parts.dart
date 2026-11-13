@@ -186,10 +186,11 @@ class _Rail extends StatelessWidget {
           if (estimate.isNotEmpty)
             Padding(
               padding: const EdgeInsets.all(AppSpace.md),
-              // what the exam will come to, as it is planned: an information (sky) block
+              // what the exam will come to, as it is planned: a quiet paper block (D-728: the sage block competed with
+              // the steps above it)
               child: AppBlock(
                 key: const ValueKey('create.estimate'),
-                tone: AppBlockTone.sky,
+                tone: AppBlockTone.paper,
                 padding: const EdgeInsets.all(AppSpace.md),
                 child: Builder(builder: (context) {
                   final b = AppBlock.colorsOf(context);
@@ -327,8 +328,12 @@ class _SummaryChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Material(
-      color: c.primary.withValues(alpha: .08),
-      borderRadius: BorderRadius.circular(AppRadius.chip),
+      color: c.primaryWash,
+      // D-728: the quiet wash takes a primary hairline so the chip keeps its shape
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.chip),
+        side: BorderSide(color: c.primary.withValues(alpha: c.isDark ? 0.30 : 0.22), width: AppBorder.hairline),
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadius.chip),
         onTap: item.onTap,

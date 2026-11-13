@@ -1547,7 +1547,7 @@ class _CourseLineRow extends StatelessWidget {
               child: url != null && url.startsWith('http')
                   ? AppNetworkImage(url: url, width: 40, height: 40)
                   : ColoredBox(
-                      color: c.primary.withValues(alpha: 0.07),
+                      color: c.primaryWash,
                       child: Icon(Icons.menu_book_outlined, size: 19, color: appInk(context, c.primary).withValues(alpha: 0.85)),
                     ),
             ),

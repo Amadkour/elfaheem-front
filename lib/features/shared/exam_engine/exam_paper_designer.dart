@@ -454,7 +454,7 @@ class _SourceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Material(
-      color: selected ? c.primary.withValues(alpha: .08) : c.cardBg,
+      color: selected ? c.primaryWash : c.cardBg,
       shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: BorderSide(color: selected ? c.primary : c.divider, width: selected ? 1.5 : 1)),
       child: InkWell(
         borderRadius: AppRadius.cardAll,

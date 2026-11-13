@@ -259,7 +259,7 @@ class _TemplateCardState extends State<_TemplateCard> {
                   padding: const EdgeInsets.all(AppSpace.sm),
                   child: Stack(fit: StackFit.expand, children: [
                     Container(
-                      decoration: BoxDecoration(color: c.primary.withValues(alpha: .05), borderRadius: BorderRadius.circular(AppRadius.chip)),
+                      decoration: BoxDecoration(color: c.primaryWash, borderRadius: BorderRadius.circular(AppRadius.chip)),
                       child: _Preview(template: tp, lang: widget.lang, width: 720, loader: widget.loader),
                     ),
                     PositionedDirectional(
@@ -465,7 +465,7 @@ class _LargePreviewState extends State<_LargePreview> {
           constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .62),
           child: Container(
             padding: const EdgeInsets.all(AppSpace.sm),
-            decoration: BoxDecoration(color: c.primary.withValues(alpha: .05), borderRadius: AppRadius.cardAll, border: Border.all(color: c.divider)),
+            decoration: BoxDecoration(color: c.primaryWash, borderRadius: AppRadius.cardAll, border: Border.all(color: c.divider)),
             child: _Preview(key: ValueKey('$_lang-${colors.bg}-${colors.bg2}-${colors.accent}'), template: tp, lang: _lang, width: 1200, colorHex: colors.accent, bgHex: colors.bg, bg2Hex: colors.bg2, loader: widget.loader),
           ),
         ),

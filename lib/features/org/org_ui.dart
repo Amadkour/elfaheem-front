@@ -687,7 +687,7 @@ class OrgPickField<T> extends StatelessWidget {
                 title: Text(text, style: orgText(ctx, w: v == value ? FontWeight.w800 : FontWeight.w500)),
                 trailing: v == value ? Icon(Icons.check_circle_rounded, color: c.primary) : null,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
-                tileColor: v == value ? c.primary.withValues(alpha: 0.07) : null,
+                tileColor: v == value ? c.primaryWash : null,
               ));
           return Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),

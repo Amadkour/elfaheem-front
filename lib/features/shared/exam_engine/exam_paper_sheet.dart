@@ -766,7 +766,7 @@ class PaperTemplateCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: selected ? c.primary : c.divider, width: selected ? 2 : 1),
-            color: selected ? c.primary.withValues(alpha: .06) : null,
+            color: selected ? c.primaryWash : null,
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AspectRatio(aspectRatio: 0.78, child: PaperPreview(template: template, accent: Color(0xFF000000 | int.parse(accentHex, radix: 16)))),

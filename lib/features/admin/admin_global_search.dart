@@ -715,7 +715,7 @@ class _ResultRow extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
           child: Material(
-            color: active ? c.primary.withValues(alpha: 0.10) : Colors.transparent,
+            color: active ? c.primaryWash : Colors.transparent,
             borderRadius: BorderRadius.circular(AppRadius.chip),
             child: InkWell(
               borderRadius: BorderRadius.circular(AppRadius.chip),

@@ -4292,3 +4292,17 @@ and saves the exam's design on the draft.
 ## D-723 — A trim is a new version this exam pins, undone by Restore · 2026-11-13 · accepted
 
 **Decision.** Trim removes wrong options from the last up (never one any key of the exam names: the fixed key, each printed version's key) until the question fits; nothing changes before the teacher confirms a preview of the struck choices. The server writes a new question version (edits never touch a pinned version), pins it for this exam's rows, renumbers printed versions' option orders and keeps `{from, to, removed, option_orders}`; Restore pins the original back. Both are refused once answers exist (409 `trim_after_answers`); when the correct answers alone exceed the sheet the choice is not offered (`can_trim: false`, 409 `trim_impossible`). The question paper must be printed again after a trim; the panel says so.
+
+## D-728 — Quieter light-mode washes behind components · 2026-11-13 · accepted
+
+**Context.** The owner found the mint wash behind selected cards, notes, sheet header bands and summary boxes too heavy in light mode ("very bad colour"). Its sources: `primaryTint` at 12 %, a translucent 7–10 % primary fill that also let the sage canvas through (a selected card on the canvas stayed mint), the badge-strength tint (14 %) on the sheet header band, `AppBanner` at 8 %, and the emerald / identity blocks.
+
+**Decision.** Light mode only (dark mode keeps its values):
+- `primary_tint` and `light_primary` are 6 % (were 12 %): the front default (`AppTheme`) and the server derivation (`theme_config_service.py`) together.
+- A new token, `c.primaryWash`, for a LARGE surface (selected card / row / chip, a note, a summary box): 5 % of the primary laid OPAQUE on the card white; dark mode the old translucent 12 %. `appWashOn(context, tone)` is the same for any tone. Small marks (icon wells, badges, `appTintOn`) keep their tint.
+- `AppBanner` (`DlBanner`) is the wash plus a hairline of its tone; the sheet header band goes 7 % → 2 % (was 14 % → 5 %); the emerald block sits at 0.94 lightness (was 0.9), the identity block's stops at 0.92 / 0.965 (were 0.86 / 0.945) and its glow at 5 %.
+- Selection is carried by the border, the check mark and the ink: `SetupChoiceTile` takes a `AppBorder.focus` (2) border when selected; the wizard's summary chip gets a primary hairline; the wizard rail's estimate is a paper block.
+
+## D-729 — Hand-written primary fills routed to the wash · 2026-11-13 · accepted
+
+**Decision.** The hand-written `c.primary.withValues(alpha: …)` fills used as component backgrounds (81 sites in 60 files) became `c.primaryWash`: every fill of 3–9 %, and the 10–16 % ones only where they mark a selection (`selected ? …`, `tileColor`, `selectedColor`). Left alone on purpose: hover / focus / splash / overlay colours, progress tracks, charts, gradients, borders, circles and avatars, and 10 %+ icon wells (small marks). The bubble print sheet (`omr_sheets_sheet.dart`) was not touched (another job owns it); it follows through `AppBanner` and `AppSheetHeader`. New code takes `c.primaryWash` / `appWashOn`, never a raw primary alpha behind a surface.

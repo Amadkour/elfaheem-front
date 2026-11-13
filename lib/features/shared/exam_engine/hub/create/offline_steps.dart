@@ -135,7 +135,7 @@ class _LayoutCard extends StatelessWidget {
         opacity: on ? 1 : .6,
         child: Material(
           key: ValueKey('create.layout.${paperLayoutKey(l)}'),
-          color: selected ? c.primary.withValues(alpha: 0.07) : c.cardBg,
+          color: selected ? c.primaryWash : c.cardBg,
           shape: RoundedRectangleBorder(borderRadius: r, side: BorderSide(color: selected ? c.primary : c.divider, width: selected ? AppBorder.strong : AppBorder.hairline)),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
@@ -403,7 +403,7 @@ class _AttributeRow extends StatelessWidget {
     return Container(
       constraints: const BoxConstraints(minHeight: AppTouch.min),
       padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs, end: AppSpace.xxs),
-      decoration: BoxDecoration(color: c.primary.withValues(alpha: .06), borderRadius: AppRadius.controlAll, border: Border.all(color: c.primary.withValues(alpha: .4))),
+      decoration: BoxDecoration(color: c.primaryWash, borderRadius: AppRadius.controlAll, border: Border.all(color: c.primary.withValues(alpha: .4))),
       child: Row(children: [
         ReorderableDragStartListener(
           index: index,

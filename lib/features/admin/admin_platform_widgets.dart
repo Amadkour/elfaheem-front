@@ -85,7 +85,7 @@ class RegionEditor extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(AppSpace.sm),
         decoration: BoxDecoration(
-          color: c.primary.withValues(alpha: 0.06),
+          color: c.primaryWash,
           borderRadius: BorderRadius.circular(AppRadius.control),
           border: Border.all(color: c.primary.withValues(alpha: 0.15)),
         ),

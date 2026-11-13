@@ -321,7 +321,7 @@ class GovChainPreview extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(
-        color: c.primary.withValues(alpha: 0.05),
+        color: c.primaryWash,
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: c.primary.withValues(alpha: 0.18)),
       ),
@@ -443,7 +443,7 @@ class GovChainStepRow extends StatelessWidget {
             padding: EdgeInsets.only(bottom: last ? 0 : AppSpace.sm),
             child: Container(
               padding: current ? const EdgeInsets.all(AppSpace.xs) : EdgeInsets.zero,
-              decoration: current ? BoxDecoration(color: c.primary.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(AppRadius.chip)) : null,
+              decoration: current ? BoxDecoration(color: c.primaryWash, borderRadius: BorderRadius.circular(AppRadius.chip)) : null,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs / 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
                   Text('${index + 1}. ${step.label}', style: AppType.bodyStrong(context).copyWith(color: c.textDark)),

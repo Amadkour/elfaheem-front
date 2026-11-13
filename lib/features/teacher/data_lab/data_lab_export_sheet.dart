@@ -296,7 +296,7 @@ class _Dest extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.all(AppSpace.sm),
           decoration: BoxDecoration(
-            color: selected ? c.primary.withValues(alpha: 0.08) : c.inputBg,
+            color: selected ? c.primaryWash : c.inputBg,
             borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(color: selected ? c.primary : c.divider, width: selected ? 1.6 : 1),
           ),

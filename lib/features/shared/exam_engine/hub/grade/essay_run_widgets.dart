@@ -137,7 +137,7 @@ class _EssayQuestionEditorState extends State<EssayQuestionEditor> {
               padding: const EdgeInsets.only(bottom: AppSpace.sm),
               child: Container(
                 padding: const EdgeInsets.all(AppSpace.sm),
-                decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(AppRadius.control)),
+                decoration: BoxDecoration(color: c.primaryWash, borderRadius: BorderRadius.circular(AppRadius.control)),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   Row(children: [
                     Expanded(child: Text(t('المعيار ${i + 1}', 'Criterion ${i + 1}'), style: AppType.label(context))),
@@ -336,7 +336,7 @@ class _Crop extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadius.control),
       child: Material(
-        color: c.primary.withValues(alpha: 0.04),
+        color: c.primaryWash,
         child: InkWell(
           onTap: onTap,
           child: ConstrainedBox(constraints: const BoxConstraints(maxHeight: kEssayCropMaxHeight), child: Center(child: child)),
@@ -362,7 +362,7 @@ class _Suggestion extends StatelessWidget {
     final auto = s.pending ? null : s.auto;
     return Container(
       padding: const EdgeInsets.all(AppSpace.sm),
-      decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(AppRadius.control)),
+      decoration: BoxDecoration(color: c.primaryWash, borderRadius: BorderRadius.circular(AppRadius.control)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
           Text(

@@ -305,7 +305,7 @@ class ShareOptionsLayout extends StatelessWidget {
       const SizedBox(height: 12),
       Container(
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(14)),
+        decoration: BoxDecoration(color: c.primaryWash, borderRadius: BorderRadius.circular(14)),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(Icons.auto_awesome_rounded, size: 20, color: c.primary),
           const SizedBox(width: 10),
@@ -422,7 +422,7 @@ class ShareModeTile extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 56),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: selected ? c.primary.withValues(alpha: 0.07) : c.cardBg,
+            color: selected ? c.primaryWash : c.cardBg,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: selected ? c.primary : c.divider, width: selected ? 1.5 : 1),
           ),

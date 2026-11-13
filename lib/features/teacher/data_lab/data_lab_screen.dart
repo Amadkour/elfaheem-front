@@ -1095,7 +1095,7 @@ class _SheetTable extends StatelessWidget {
                                   child: Container(
                                     decoration: BoxDecoration(
                                       color: picked
-                                          ? c.primary.withValues(alpha: 0.06)
+                                          ? c.primaryWash
                                           : (i.isEven ? null : c.inputBg.withValues(alpha: 0.45)),
                                       border: Border(top: line),
                                     ),
@@ -1253,7 +1253,7 @@ class _FrozenHeader extends StatelessWidget {
     final all = students.isNotEmpty && picked == students.length;
     return Container(
       height: _headH * z,
-      color: c.primary.withValues(alpha: 0.08),
+      color: c.primaryWash,
       child: Row(children: [
         SizedBox(
           width: _slotW * z,
@@ -1346,7 +1346,7 @@ class _FrozenRow extends StatelessWidget {
     return Container(
       height: _rowH * z,
       decoration: BoxDecoration(
-        color: picked ? c.primary.withValues(alpha: 0.07) : (even ? null : c.inputBg.withValues(alpha: 0.45)),
+        color: picked ? c.primaryWash : (even ? null : c.inputBg.withValues(alpha: 0.45)),
         border: Border(top: BorderSide(color: c.divider.withValues(alpha: 0.6))),
       ),
       child: Row(children: [
@@ -1621,7 +1621,7 @@ void showPinSheet(BuildContext context, DataLabProvider p) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Material(
-                color: on ? c.primary.withValues(alpha: 0.08) : c.inputBg,
+                color: on ? c.primaryWash : c.inputBg,
                 borderRadius: BorderRadius.circular(14),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(14),
@@ -1741,7 +1741,7 @@ class _HeadCell extends StatelessWidget {
                     color: hovering
                         ? c.primary.withValues(alpha: 0.18)
                         : (dlStyleColor(context, col.style.color)?.withValues(alpha: 0.20) ??
-                        (shown ? c.success.withValues(alpha: 0.09) : c.primary.withValues(alpha: 0.08))),
+                        (shown ? c.success.withValues(alpha: 0.09) : c.primaryWash)),
                     padding: const EdgeInsetsDirectional.only(start: 2, end: 14),
                     alignment: AlignmentDirectional.centerStart,
                     child: Row(children: [

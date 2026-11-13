@@ -194,7 +194,7 @@ class _GuestLinkRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xxs, AppSpace.xxs, AppSpace.xxs),
       decoration: BoxDecoration(
-        color: active ? c.primary.withValues(alpha: 0.06) : c.inputBg,
+        color: active ? c.primaryWash : c.inputBg,
         borderRadius: BorderRadius.circular(AppRadius.chip),
       ),
       child: Row(children: [

@@ -871,7 +871,7 @@ class _MyAcademicPathPageState extends State<MyAcademicPathPage> {
                     padding: const EdgeInsets.all(AppSpace.md),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(AppRadius.card),
-                      color: sel == p['id'] ? c.primary.withValues(alpha: 0.08) : c.cardBg,
+                      color: sel == p['id'] ? c.primaryWash : c.cardBg,
                       border: Border.all(color: sel == p['id'] ? c.primary : c.divider, width: sel == p['id'] ? 1.6 : 1),
                     ),
                     child: Row(children: [

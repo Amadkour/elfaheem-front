@@ -351,7 +351,7 @@ class GovPeopleList extends StatelessWidget {
             subtitle: p.email == null ? null : Text(p.email!, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: AppType.meta(context).copyWith(color: c.textMedium)),
             trailing: selectedId == p.id ? Icon(Icons.check_circle_rounded, color: c.primary) : null,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
-            tileColor: selectedId == p.id ? c.primary.withValues(alpha: 0.07) : null,
+            tileColor: selectedId == p.id ? c.primaryWash : null,
           ),
         ),
     ]);

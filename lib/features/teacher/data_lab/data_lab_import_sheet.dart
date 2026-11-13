@@ -467,7 +467,7 @@ class _ImportWizardState extends State<_ImportWizard> {
             dense: true,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
             selected: on,
-            selectedTileColor: c.primary.withValues(alpha: 0.08),
+            selectedTileColor: c.primaryWash,
             leading: Icon(icon, color: enabled ? (color ?? c.primary) : c.textLight, size: 20),
             title: Text(label, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: enabled ? c.textDark : c.textLight)),
             subtitle: sub == null ? null : Text(sub, style: AppType.meta(context).copyWith(color: c.textLight)),
@@ -560,7 +560,7 @@ class _ImportWizardState extends State<_ImportWizard> {
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsetsDirectional.fromSTEB(14, AppSpace.sm, AppSpace.xs, 10),
           decoration: BoxDecoration(
-            color: h.target == 'skip' ? c.inputBg : c.primary.withValues(alpha: 0.06),
+            color: h.target == 'skip' ? c.inputBg : c.primaryWash,
             borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(color: h.target == 'skip' ? c.divider : c.primary.withValues(alpha: 0.35)),
           ),
@@ -1066,7 +1066,7 @@ class _PolicyTile extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.all(AppSpace.sm),
           decoration: BoxDecoration(
-            color: selected ? c.primary.withValues(alpha: 0.08) : c.inputBg,
+            color: selected ? c.primaryWash : c.inputBg,
             borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(color: selected ? c.primary : c.divider, width: selected ? 1.6 : 1),
           ),

@@ -1214,7 +1214,7 @@ class _RoleCard extends StatelessWidget {
         curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
           borderRadius: radius,
-          color: selected ? c.primary.withValues(alpha: 0.08) : c.inputBg,
+          color: selected ? c.primaryWash : c.inputBg,
           border: Border.all(
             color: selected ? c.primary : c.divider,
             width: selected ? 2 : 1.4,
@@ -1245,7 +1245,7 @@ class _RoleCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(15),
                       gradient: selected ? c.primaryGradient : null,
-                      color: selected ? null : c.primary.withValues(alpha: 0.09),
+                      color: selected ? null : c.primaryWash,
                     ),
                     child: Icon(
                       meta?.icon ?? Icons.person_rounded,
