@@ -4450,3 +4450,23 @@ and saves the exam's design on the draft.
 ## D-808 — Grade written papers follows the AI grading switch · 2026-11-13 · accepted
 
 **Context.** A written-papers run (`exam.essay_run`, D-662) suggests marks with the AI grader, but it had only its own switch, so turning off "AI grading of written answers" (`exam.auto_grade`) left it on. **Decision (owner, 2026-11-13).** The run needs both keys: `hubGradeKinds` hides Written papers when either is off, and `essay_runs.create` / `upload` refuse with 403 `feature_disabled` (`exam.auto_grade`). Runs already made, their pages and their marks stay; teachers keep grading by hand from the results. The AI controls text says so.
+
+## D-840 — A guest link's page never sends the guest to the login page · 2026-11-13 · accepted
+
+**Context.** The guest pages (`/live/<token>`, `/s/record/g_…`) already called only public routes with `auth: false`, but anything else that fired an authenticated call while they were open — most often a stale session left in this browser, whose refresh is refused — ended in ApiClient's `_redirectToLogin`, which replaced the whole stack with `/login` mid-video or mid-meeting. **Decision.** `GuestLinkVisit` (`lib/core/guest_link_visit.dart`): every guest page enters it in `initState` and leaves in `dispose`; while it is held, `_redirectToLogin` returns at once (the call still fails, quietly). The pages' own calls stay `auth: false` (no Authorization header even with a stale token, `test/org/guest_share_test.dart`).
+
+## D-841 — A course video shared with guests by link · 2026-11-13 · accepted
+
+**Context.** A lesson video could only be shared as its member link `/s/material/<id>`, which a guest opens as "Sign in". **Decision.** The session's staff (`material_studio.may_edit`) make a link for ONE video material in the material's ⋯ › "Share with guests" (`material_guest_links_sheet.dart`): `https://nextbrain.site/s/video/v_<32 random chars>`, expiry 1 · 7 · 30 days · never, at most 20 live per video, revocable. The router opens `/s/video/v_…` straight on the public player (`GuestRecordPage(kind: video)`, outside `_Guard`), signed in or not. Security (back `services/material_guests.py`, migration 0079): the token is the only key — a material id never opens a video; the stream is a 2 h signed token bound to the link row and re-checked on EVERY request (revoked, expired, the material still a video with the same file, the course not archived, the creator active and still allowed to manage the session, the kill switch `materials.guest_link` on), so any change stops a running playback; everything invalid is the same 404 `link_not_found`; card and play are rate limited per IP; view only (inline, `no-store`, no filename), the window screen-protected like the course player; the card carries the lesson, the course and the teacher's public name, nothing else. The kill switch off also stops existing links: course content is never public by default.
+
+## D-842 — A recording's one open guest link · 2026-11-13 · accepted
+
+**Context.** A recording reached a guest only through a personal e-mail invitation (D-315); "anyone with the link" (D-312) needs an account. **Decision.** The Share sheet's guests section gains "Create a guest link": the record's ONE `g_` guest row not tied to an address (marker `*link`, `kind: link`, never mailed, `resend` → 422 `not_emailed`), with the expiry picked above, revoked like any guest, and gone when sharing stops. The guest page says "View only" instead of "personal — don't forward it" (`personal: false`). No migration: the existing guest table and its per-request checks carry it.
+
+## D-843 — Guest links are always the root form, and the apps also claim `/app/` copies · 2026-11-13 · accepted
+
+**Decision.** The server's `web_base_url()` drops a trailing `/app`, so a `PUBLIC_WEB_URL` set to the web app's folder can never produce `…/app/live/…` links. The phone apps also claim `/app/live/` and `/app/s/` (AndroidManifest, AASA), and `guestLiveTokenFromRoute` accepts `/app/live/<token>`, so a link copied from the web app's address bar opens the installed app straight on the guest page too. The web start already honoured guest links signed out (`resolveWebEntry` + `_isLink`).
+
+## D-844 — After the video or the meeting: a soft "create an account / sign in" card · 2026-11-13 · accepted
+
+**Decision.** `GuestLinkCta` (`lib/features/shared/guest/guest_link_cta.dart`): under the guest player for a signed-out guest, and on the meeting's guest page once the guest is back from the room. It pushes `/register` or `/login` on top (Back returns to the video); the page works the same without it. A meeting still asks a guest only for a display name, and keeps its PIN, lobby and host approval.

@@ -8,6 +8,8 @@
 //                                                      teacher (by id) · course (an alias of /c/)
 //   https://nextbrain.site/s/record/<token>            a shared meeting recording (D-312): by the share's TOKEN, not
 //                                                      the record id, so "anyone with the link" means exactly that
+//   https://nextbrain.site/s/video/v_<token>           a course video shared with guests (D-841): no account, the
+//                                                      token is the only key (a material id never opens a video)
 //   https://nextbrain.site/s/page/<pageId>?<params>    a page of the route registry (D-170, core/routing/app_routes)
 //
 // Root form on purpose: nginx sends a person on to the web app under /app/ (D-270), the phone apps claim `/s/` with
@@ -31,6 +33,9 @@ enum AppLinkKind {
 
   /// A companion device's QR code (D-520): the token opens that person's request on their phone.
   companion,
+
+  /// A course video's guest link (D-841): the token ([AppLink.token], `v_…`) opens the public player, no account.
+  video,
   page;
 
   /// The `/s/<kind>/` segment.
@@ -58,6 +63,9 @@ class AppLink {
   /// A shared recording by its share token (D-312).
   const AppLink.record(String token) : this._(AppLinkKind.record, token: token);
 
+  /// A course video's guest link (D-841).
+  const AppLink.video(String token) : this._(AppLinkKind.video, token: token);
+
   /// A companion phone's QR link (D-520).
   const AppLink.companion(String secret) : this._(AppLinkKind.companion, token: secret);
 
@@ -77,7 +85,7 @@ class AppLink {
   final Map<String, String> params;
   final int? ref;
 
-  /// [AppLinkKind.record] and [AppLinkKind.companion].
+  /// [AppLinkKind.record], [AppLinkKind.video] and [AppLinkKind.companion].
   final String? token;
 
   /// The in-app route of the link (what Flutter's deep linking hands to `onGenerateRoute`).
@@ -92,6 +100,8 @@ class AppLink {
         return '/s/record/$token';
       case AppLinkKind.companion:
         return '/s/companion/$token';
+      case AppLinkKind.video:
+        return '/s/video/$token';
       default:
         return '/s/${kind.segment}/$id';
     }
@@ -121,6 +131,10 @@ class AppLink {
     if (kind == AppLinkKind.record) {
       final tok = segs[2];
       return recordToken.hasMatch(tok) ? AppLink.record(tok) : null;
+    }
+    if (kind == AppLinkKind.video) {
+      final tok = segs[2];
+      return tok.startsWith('v_') && recordToken.hasMatch(tok) ? AppLink.video(tok) : null;
     }
     if (kind == AppLinkKind.companion) {
       final tok = segs[2];

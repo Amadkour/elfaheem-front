@@ -5,12 +5,15 @@
 //   owner   POST   /api/v1/me/records/{rid}/share/guests             {emails, message?, expires_days?} → share + mail
 //           POST   /api/v1/me/records/{rid}/share/guests/{gid}/resend → share + mail
 //           DELETE /api/v1/me/records/{rid}/share/guests/{gid}        → share (that link dies at once)
+//           POST   /api/v1/me/records/{rid}/share/guest-link          {expires_days?} → share: the ONE open guest
+//                                                                      link (D-842, `kind: link`, no address)
 //   guest   GET    /api/v1/public/records/guest/{token}               → GuestRecordCard   (no account, auth: false)
 //           POST   /api/v1/public/records/guest/{token}/play          → RecordPlay (a short-lived signed stream)
 //
 // A guest link is https://nextbrain.site/s/record/g_<secret> (the share link scheme of D-312, a `g_` token).
 // Contract: ../back/FLUTTER_API_CHANGES.md "Studio on session materials + record guests by e-mail". Tests:
 // test/org/records_guests_api_test.dart.
+import '../../../config/app_config.dart';
 import '../../../core/api_client.dart';
 import '../../../design/app_inputs.dart' show kEmailRegex;
 import '../../admin/admin_common.dart' show t, asMap, asMapList, asInt;
@@ -87,10 +90,16 @@ class RecordGuest {
     this.lastOpenedAt,
     this.views = 0,
     this.emailStatus,
+    this.openLink = false,
   });
 
   final int id;
+
+  /// The guest's address ('' for the open link).
   final String email;
+
+  /// The record's one open guest link (D-842): not tied to an address, never e-mailed.
+  final bool openLink;
   final String token;
   final String? link;
   final String? message;
@@ -108,12 +117,14 @@ class RecordGuest {
 
   static RecordGuest? fromJson(Map<String, dynamic> j) {
     final id = asInt(j['id']);
-    final email = _s(j['email']);
+    final open = j['kind'] == 'link';
+    final email = open ? '' : _s(j['email']);
     final token = _s(j['token']);
     if (id <= 0 || email == null || token == null) return null;
     return RecordGuest(
       id: id,
       email: email,
+      openLink: open,
       token: token,
       link: _s(j['link']),
       message: _s(j['message']),
@@ -134,7 +145,7 @@ class RecordGuest {
       if (openedAt == null) t('لم يفتحه بعد', 'Not opened yet') else t('فتحه', 'Opened'),
       if (views > 0) t('$views مشاهدة', '$views views'),
       if (emailStatus == 'failed') t('لم يُرسل البريد', 'E-mail not sent'),
-      if (emailStatus == 'unavailable') t('انسخ الرابط وأرسله', 'Copy the link and send it'),
+      if (!openLink && emailStatus == 'unavailable') t('انسخ الرابط وأرسله', 'Copy the link and send it'),
     ];
     return parts.join(' · ');
   }
@@ -196,7 +207,19 @@ class GuestInviteResult {
 
 /// What a guest sees before the player.
 class GuestRecordCard {
-  const GuestRecordCard({required this.title, this.ownerName = '', this.ownerImage, this.durationSeconds = 0, this.audio = false, this.coverUrl, this.message, this.expiresAt});
+  const GuestRecordCard({
+    required this.title,
+    this.ownerName = '',
+    this.ownerImage,
+    this.durationSeconds = 0,
+    this.audio = false,
+    this.coverUrl,
+    this.message,
+    this.expiresAt,
+    this.subtitle,
+    this.personal = true,
+    this.video = false,
+  });
 
   final String title;
   final String ownerName;
@@ -206,6 +229,15 @@ class GuestRecordCard {
   final String? coverUrl;
   final String? message;
   final DateTime? expiresAt;
+
+  /// The course of a lesson video (D-841).
+  final String? subtitle;
+
+  /// A personal invitation ("don't forward it"); false for an open link and a lesson video (D-842).
+  final bool personal;
+
+  /// A course video's guest link (D-841), not a recording.
+  final bool video;
 
   static GuestRecordCard fromJson(Map<String, dynamic> j) {
     final o = j['owner'] is Map ? asMap(j['owner']) : const <String, dynamic>{};
@@ -219,6 +251,9 @@ class GuestRecordCard {
       coverUrl: _s(j['cover_url']),
       message: _s(j['message']),
       expiresAt: parseRecordingTime(j['expires_at']),
+      subtitle: AppConfig.lang == 'en' ? (_s(j['subtitle_en']) ?? _s(j['subtitle'])) : _s(j['subtitle']),
+      personal: j['personal'] != false,
+      video: j['kind'] == 'video',
     );
   }
 }
@@ -226,7 +261,7 @@ class GuestRecordCard {
 /// A guest link that is not (or no longer) valid answers 404: one calm text for every reason.
 String guestRecordErrorText(Object e) {
   final ex = ApiException.from(e);
-  if (ex.code == 'record_not_found' || ex.statusCode == 404) {
+  if (ex.code == 'record_not_found' || ex.code == 'link_not_found' || ex.statusCode == 404) {
     return t('هذا الرابط غير متاح — ربما انتهت صلاحيته أو أوقفه صاحب التسجيل',
         'This link is not available — it may have expired or its owner stopped it');
   }
@@ -246,6 +281,7 @@ String recordGuestsErrorText(Object e) {
     'too_many_guests' => t('وصلت إلى الحد الأقصى للضيوف لهذا التسجيل', 'This recording has the most guests it can have'),
     'bad_expiry' => t('اختر مدة صلاحية الرابط', 'Pick how long the link works'),
     'guest_not_found' => t('هذا الضيف لم يعد في القائمة', 'This guest is not on the list any more'),
+    'not_emailed' => t('هذا رابط مفتوح، لا يُرسل بالبريد', 'This is an open link, it is not e-mailed'),
     'too_many_attempts' => t('أرسلت دعوات كثيرة — حاول بعد قليل', 'You sent many invitations — try again later'),
     'feature_disabled' => t('المشاركة متوقفة حالياً', 'Sharing is switched off right now'),
     _ => recordsErrorText(e),
@@ -256,6 +292,9 @@ abstract class RecordGuestsApi {
   Future<GuestInviteResult> invite(int recordId, List<String> emails, {String? message, int? expiresDays});
   Future<GuestInviteResult> resend(int recordId, int guestId);
   Future<GuestInviteResult> revoke(int recordId, int guestId);
+
+  /// The record's one open guest link (D-842): made on the first call, its expiry set on every call.
+  Future<GuestInviteResult> openLink(int recordId, {int? expiresDays});
 }
 
 class RemoteRecordGuestsApi implements RecordGuestsApi {
@@ -281,6 +320,11 @@ class RemoteRecordGuestsApi implements RecordGuestsApi {
   @override
   Future<GuestInviteResult> revoke(int recordId, int guestId) async =>
       GuestInviteResult.fromJson(asMap(await _api.delete('$_base/$recordId/share/guests/$guestId')), recordId: recordId);
+
+  @override
+  Future<GuestInviteResult> openLink(int recordId, {int? expiresDays}) async => GuestInviteResult.fromJson(
+      asMap(await _api.post('$_base/$recordId/share/guest-link', body: {'expires_days': expiresDays})),
+      recordId: recordId);
 }
 
 /// The guest's side: no account (auth: false), so a 401 can never send them to the login page.

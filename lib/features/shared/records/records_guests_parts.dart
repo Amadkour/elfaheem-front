@@ -4,9 +4,11 @@
 //   RecordGuestRow        a guest in the Share sheet's people list: a mail avatar, the address (LTR), a Guest badge,
 //                         opened / views / e-mail state / expiry, Copy link, and ⋯ (Resend · Revoke)
 //   RecordGuestsInvite    "Guests by e-mail": the addresses slot, the message slot, how long the link works
-//                         (7 days · 30 days · never), Invite; the server-can't-send banner
-//   GuestRecordView       the guest's own page (no account): loading · not available · the card (title, who shared
-//                         it, length, message, expiry) with the player slot or Play
+//                         (7 days · 30 days · never), Invite; the server-can't-send banner; "Guest link" — the
+//                         record's ONE open link, no address, no account (D-842)
+//   GuestRecordView       the guest's own page (no account): loading · not available · the card (title, the course
+//                         of a lesson video, who shared it, length, message, expiry, "view only") with the player
+//                         slot or Play (a recording's guest link, D-315, and a course video's, D-841)
 library;
 
 import 'package:flutter/material.dart';
@@ -59,17 +61,18 @@ class RecordGuestRow extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.14), shape: BoxShape.circle),
-            child: Icon(Icons.mail_outline_rounded, size: AppIconSize.md, color: appInk(context, c.warning)),
+            child: Icon(g.openLink ? Icons.link_rounded : Icons.mail_outline_rounded,
+                size: AppIconSize.md, color: appInk(context, c.warning)),
           ),
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               Row(children: [
                 Flexible(
-                  child: Text(g.email,
+                  child: Text(g.openLink ? t('أي شخص معه الرابط', 'Anyone with this link') : g.email,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      textDirection: TextDirection.ltr,
+                      textDirection: g.openLink ? null : TextDirection.ltr,
                       style: AppType.row(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
                 ),
                 const SizedBox(width: AppSpace.xxs),
@@ -95,14 +98,15 @@ class RecordGuestRow extends StatelessWidget {
             icon: Icon(Icons.more_vert_rounded, color: c.textMedium),
             onSelected: (a) => (a == RecordGuestAction.resend ? onResend : onRevoke)?.call(),
             itemBuilder: (_) => [
-              if (!g.expired)
+              if (!g.expired && !g.openLink)
                 PopupMenuItem(
                   value: RecordGuestAction.resend,
                   child: Text(t('إعادة إرسال البريد', 'Resend the e-mail')),
                 ),
               PopupMenuItem(
                 value: RecordGuestAction.revoke,
-                child: Text(t('إلغاء رابط هذا الضيف', "Revoke this guest's link"), style: TextStyle(color: c.danger)),
+                child: Text(g.openLink ? t('إلغاء رابط الضيوف', 'Revoke the guest link') : t('إلغاء رابط هذا الضيف', "Revoke this guest's link"),
+                    style: TextStyle(color: c.danger)),
               ),
             ],
           ),
@@ -123,7 +127,15 @@ class RecordGuestsInvite extends StatelessWidget {
     this.mailUnavailable = false,
     this.onExpiry,
     this.onInvite,
+    this.hasOpenLink = false,
+    this.onOpenLink,
   });
+
+  /// The record already has its open guest link (the button then sets its expiry).
+  final bool hasOpenLink;
+
+  /// Makes (or re-times) the record's ONE open guest link (D-842).
+  final VoidCallback? onOpenLink;
 
   /// The addresses field (the sheet owns its controller).
   final Widget emails;
@@ -192,13 +204,46 @@ class RecordGuestsInvite extends StatelessWidget {
         expand: true,
         onPressed: busy || problem != null ? null : onInvite,
       ),
+      if (onOpenLink != null) ...[
+        const SizedBox(height: AppSpace.md),
+        Text(t('رابط للضيوف', 'Guest link'), style: AppType.section(context)),
+        const SizedBox(height: 2),
+        Text(
+          t('رابط واحد يشغّل التسجيل لأي شخص يفتحه دون حساب، للمشاهدة فقط، بالمدة التي اخترتها أعلاه. يمكنك إلغاؤه من القائمة.',
+              'One link that plays it for anyone who opens it, no account, view only, for the time picked above. Revoke it from the list.'),
+          style: AppType.meta(context).copyWith(color: c.textMedium),
+        ),
+        const SizedBox(height: AppSpace.xs),
+        AppButton(
+          key: const ValueKey('records.share.guests.open_link'),
+          label: hasOpenLink ? t('تحديث صلاحية رابط الضيوف', 'Update the guest link') : t('إنشاء رابط للضيوف', 'Create a guest link'),
+          icon: Icons.add_link_rounded,
+          variant: AppButtonVariant.secondary,
+          busy: busy,
+          expand: true,
+          onPressed: busy ? null : onOpenLink,
+        ),
+      ],
     ]);
   }
 }
 
 /// The guest's page body. [player] is the video slot once Play was pressed (the page owns the controller).
 class GuestRecordView extends StatelessWidget {
-  const GuestRecordView({super.key, this.card, this.error, this.player, this.starting = false, this.onPlay, this.onRetry, this.showImage = true});
+  const GuestRecordView({
+    super.key,
+    this.card,
+    this.error,
+    this.player,
+    this.starting = false,
+    this.onPlay,
+    this.onRetry,
+    this.showImage = true,
+    this.footer,
+  });
+
+  /// Under the card: the soft "create an account / sign in" invitation for a signed-out guest (D-844).
+  final Widget? footer;
 
   final GuestRecordCard? card;
   final String? error;
@@ -263,10 +308,15 @@ class GuestRecordView extends StatelessWidget {
         ),
         const SizedBox(height: AppSpace.md),
         Text(r.title, style: AppType.section(context).copyWith(color: c.textDark)),
+        if (r.subtitle != null) ...[
+          const SizedBox(height: 2),
+          Text(r.subtitle!, style: AppType.bodyStrong(context).copyWith(color: c.textMedium)),
+        ],
         const SizedBox(height: AppSpace.xxs),
         Text(
           [
-            if (r.ownerName.isNotEmpty) t('شاركه معك ${r.ownerName}', 'Shared with you by ${r.ownerName}'),
+            if (r.ownerName.isNotEmpty)
+              r.video ? t('المعلم: ${r.ownerName}', 'Teacher: ${r.ownerName}') : t('شاركه معك ${r.ownerName}', 'Shared with you by ${r.ownerName}'),
             if (r.durationSeconds > 0) mmss(r.durationSeconds),
           ].join(' · '),
           style: AppType.body(context).copyWith(color: c.textMedium),
@@ -285,11 +335,20 @@ class GuestRecordView extends StatelessWidget {
         ],
         const SizedBox(height: AppSpace.sm),
         Text(
-          r.expiresAt == null
-              ? t('هذا الرابط شخصي لك — لا تشاركه.', "This link is personal — please don't forward it.")
-              : t('الرابط شخصي لك وصالح حتى ${AppTime.date(r.expiresAt!)}.', 'This personal link works until ${AppTime.date(r.expiresAt!)}.'),
+          !r.personal
+              ? [
+                  t('للمشاهدة فقط.', 'View only.'),
+                  if (r.expiresAt != null) t('الرابط صالح حتى ${AppTime.date(r.expiresAt!)}.', 'The link works until ${AppTime.date(r.expiresAt!)}.'),
+                ].join(' ')
+              : r.expiresAt == null
+                  ? t('هذا الرابط شخصي لك — لا تشاركه.', "This link is personal — please don't forward it.")
+                  : t('الرابط شخصي لك وصالح حتى ${AppTime.date(r.expiresAt!)}.', 'This personal link works until ${AppTime.date(r.expiresAt!)}.'),
           style: AppType.meta(context).copyWith(color: c.textLight),
         ),
+        if (footer != null) ...[
+          const SizedBox(height: AppSpace.md),
+          footer!,
+        ],
       ]);
     }
     return Center(

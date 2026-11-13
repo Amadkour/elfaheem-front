@@ -18,6 +18,9 @@
 //                              Tried once per visit; a PIN or a missing recording consent waits for the visitor.
 //   GuestLiveContent       → the pure layout (plain values + callbacks): loading skeleton · not live (waiting) ·
 //                            live · error. Tested with expectNoLayoutErrors (test/ui/guest_live_layout_test.dart).
+//                            Back from the room, a signed-out guest also sees the soft "create an account / sign
+//                            in" card (GuestLinkCta, D-844) — never a wall. While the page is open a stray 401 never
+//                            redirects to the login page (GuestLinkVisit, D-840).
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'dart:async';
 import 'dart:math' as math;
@@ -39,6 +42,8 @@ import '../../teacher/sessions/model/live_response_model.dart';
 import '../live/live_lobby_sheets.dart' show WaitingForHostPage;
 import '../live/live_room.dart';
 import '../live/live_room_words.dart';
+import '../../../core/guest_link_visit.dart';
+import 'guest_link_cta.dart';
 import 'guest_live_api.dart';
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/design/app_icons.dart';
@@ -65,6 +70,9 @@ class GuestLivePage extends StatefulWidget {
 }
 
 class _GuestLivePageState extends State<GuestLivePage> {
+  /// The guest came back from the room on this page (the sign-up card shows, D-844).
+  bool _backFromRoom = false;
+
   final _nameCtrl = TextEditingController();
   final _pinCtrl = TextEditingController(); // in memory only: never persisted
   GuestLiveInfo? _info;
@@ -87,6 +95,7 @@ class _GuestLivePageState extends State<GuestLivePage> {
   void initState() {
     super.initState();
     AppAssistant.hide(); // full screen: no floating assistant bubble
+    GuestLinkVisit.enter(this);
     unawaited(_restorePrefs());
     unawaited(_load(first: true));
   }
@@ -97,6 +106,7 @@ class _GuestLivePageState extends State<GuestLivePage> {
     _rateTimer?.cancel();
     _nameCtrl.dispose();
     _pinCtrl.dispose();
+    GuestLinkVisit.leave(this);
     AppAssistant.release();
     super.dispose();
   }
@@ -377,8 +387,12 @@ class _GuestLivePageState extends State<GuestLivePage> {
         ),
       ),
     );
-    // Back on this page after leaving: refresh (the session may have ended meanwhile).
-    if (mounted) unawaited(_load());
+    // Back on this page after leaving: refresh (the session may have ended meanwhile), and offer a signed-out guest
+    // the soft sign-up card (D-844).
+    if (mounted) {
+      setState(() => _backFromRoom = true);
+      unawaited(_load());
+    }
   }
 
   @override
@@ -405,6 +419,13 @@ class _GuestLivePageState extends State<GuestLivePage> {
           onConsentChanged: (v) => unawaited(_setConsent(v)),
           onJoin: _join,
           onRetry: () => _load(first: true),
+          afterRoom: _backFromRoom && !_signedIn
+              ? GuestLinkCta(
+                  afterMeeting: true,
+                  onRegister: () => openGuestSignUp(context, '/register'),
+                  onSignIn: () => openGuestSignUp(context, '/login'),
+                )
+              : null,
         ),
       );
 }
@@ -434,7 +455,11 @@ class GuestLiveContent extends StatelessWidget {
     this.signedIn = false,
     this.accountName = '',
     this.onJoinWithAccount,
+    this.afterRoom,
   });
+
+  /// Back from the room: the soft "create an account / sign in" card under the page (D-844).
+  final Widget? afterRoom;
 
   final bool loading;
   final GuestLiveInfo? info;
@@ -533,6 +558,10 @@ class GuestLiveContent extends StatelessWidget {
                     onJoinWithAccount: onJoinWithAccount,
                   ),
                 ),
+              if (afterRoom != null && !loading) ...[
+                const SizedBox(height: AppSpace.md),
+                Padding(padding: const EdgeInsets.symmetric(horizontal: 14), child: afterRoom!),
+              ],
             ],
           ),
         ),

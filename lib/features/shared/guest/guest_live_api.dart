@@ -395,7 +395,9 @@ String? guestLiveTokenFromRoute(String? routeName) {
   if (routeName == null || routeName.isEmpty) return null;
   final uri = Uri.tryParse(routeName);
   if (uri == null) return null;
-  final seg = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+  var seg = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+  // `/app/live/x`: the web app's folder (D-270) on a link an installed app opened, or a copied browser URL (D-843)
+  if (seg.length == 3 && seg[0] == 'app') seg = seg.sublist(1);
   if (seg.length == 2 && seg[0] == 'live' && seg[1].trim().isNotEmpty) {
     return Uri.decodeComponent(seg[1].trim());
   }

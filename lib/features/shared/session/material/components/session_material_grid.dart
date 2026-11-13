@@ -32,6 +32,8 @@ import '../../../../../core/offline/offline_strings.dart' show offlineT;
 import '../../../../../design/app_motion_kit.dart' show AppPressScale, AppEase;
 import '../../../records/material_studio_page.dart'
     show MaterialStudioDraftsPanel, materialStudioLabel, materialStudioOn, openMaterialStudio;
+import '../material_guest_links_api.dart' show kMaterialGuestLinkKey;
+import '../material_guest_links_sheet.dart' show showMaterialGuestLinksSheet;
 import '../session_material_model.dart';
 import 'material_file_style.dart';
 import 'material_tile_parts.dart';
@@ -600,6 +602,14 @@ class SessionMaterialGrid extends StatelessWidget {
                   label: _shareTip,
                   hint: tt('يفتحه طلاب المقرر بعد تسجيل الدخول', 'The course students open it after signing in'),
                 ),
+              // D-841: a link that plays THIS video for anyone, no account, view only, revocable
+              if (isVideo && !AppConfig.disableList.contains(kMaterialGuestLinkKey))
+                MaterialOption(
+                  id: 'guests',
+                  icon: Icons.public_rounded,
+                  label: tt('مشاركة مع ضيوف', 'Share with guests'),
+                  hint: tt('رابط يشغّل هذا الفيديو دون حساب، للمشاهدة فقط، ويمكن إلغاؤه', 'A link that plays this video without an account, view only, revocable'),
+                ),
             ],
         ],
         danger: MaterialOption(
@@ -618,6 +628,8 @@ class SessionMaterialGrid extends StatelessWidget {
         _showEditDialog(context, m);
       case 'share':
         shareAppLink(context, AppLink.material(m.id), title: m.name, subtitle: session.name);
+      case 'guests':
+        await showMaterialGuestLinksSheet(context, sessionId: session.id, materialId: m.id, title: m.name);
       case 'delete':
         _showDeleteDialog(context, m);
     }

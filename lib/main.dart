@@ -97,7 +97,7 @@ import 'features/student/courses/details/course_link_loader.dart';
 import 'features/shared/public_profile/public_profile_page.dart' show PublicProfileScreen;
 import 'core/share/app_links.dart';
 import 'features/shared/share/share_link_page.dart';
-import 'features/shared/records/record_guest_page.dart' show GuestRecordPage;
+import 'features/shared/records/record_guest_page.dart' show GuestMediaKind, GuestRecordPage;
 import 'features/shared/records/records_guests_api.dart' show isGuestRecordToken;
 import 'features/shared/live/meeting_links_page.dart';
 import 'core/routing/deferred_screens.dart';
@@ -838,6 +838,10 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
     // a guest's personal link to a record (D-315, `g_` token): the public read-only player, no account and no guard
     if (shared != null && shared.kind == AppLinkKind.record && isGuestRecordToken(shared.token)) {
       return _fade(GuestRecordPage(token: shared.token!), settings);
+    }
+    // a course video's guest link (D-841, `v_` token): the same public player, no account and no guard
+    if (shared != null && shared.kind == AppLinkKind.video) {
+      return _fade(GuestRecordPage(token: shared.token!, kind: GuestMediaKind.video), settings);
     }
     if (shared != null) return _fade(ShareLinkPage(link: shared), settings);
     // /@ahmed — a profile link (D-074): the same flow as a course link (signed out → login, then the profile)
