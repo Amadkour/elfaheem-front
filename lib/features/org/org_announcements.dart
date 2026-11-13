@@ -1255,7 +1255,7 @@ class _WhenChip extends StatelessWidget {
       onPressed: onTap,
       onDeleted: onClear,
       deleteIcon: const Icon(Icons.close_rounded, size: AppIconSize.sm),
-      backgroundColor: active ? c.primary.withValues(alpha: 0.08) : c.background,
+      backgroundColor: active ? c.primaryWash : c.background,
       side: BorderSide(color: active ? c.primary.withValues(alpha: 0.4) : c.divider),
     );
   }

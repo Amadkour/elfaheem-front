@@ -1035,7 +1035,7 @@ class _EmptyQueue extends StatelessWidget {
     child: Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: context.colors.primary.withValues(alpha: 0.06),
+        color: context.colors.primaryWash,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: context.colors.primary.withValues(alpha: 0.15),

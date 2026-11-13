@@ -789,7 +789,7 @@ Future<void> _addMaterial(BuildContext context, int? deptId, List<String> folder
                 padding: const EdgeInsets.all(AppSpace.lg),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(AppRadius.card),
-                  color: c.primary.withValues(alpha: 0.06),
+                  color: c.primaryWash,
                   border: Border.all(color: c.primary.withValues(alpha: 0.35), width: 1.4),
                 ),
                 child: Column(children: [

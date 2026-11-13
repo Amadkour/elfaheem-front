@@ -791,8 +791,8 @@ class SetupChoiceTile extends StatelessWidget {
       button: true,
       selected: selected,
       child: Material(
-        color: selected ? c.primary.withValues(alpha: 0.07) : c.cardBg,
-        shape: RoundedRectangleBorder(borderRadius: r, side: BorderSide(color: selected ? c.primary : c.divider, width: selected ? 1.6 : 1)),
+        color: selected ? c.primaryWash : c.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: r, side: BorderSide(color: selected ? c.primary : c.divider, width: selected ? AppBorder.focus : AppBorder.hairline)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,

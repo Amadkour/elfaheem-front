@@ -422,7 +422,7 @@ class AdvFlagStatusForm extends StatelessWidget {
             selected: s == ch,
             inMutuallyExclusiveGroup: true,
             child: Material(
-              color: s == ch ? c.primary.withValues(alpha: 0.06) : c.cardBg,
+              color: s == ch ? c.primaryWash : c.cardBg,
               borderRadius: AppRadius.cardAll,
               child: InkWell(
                 borderRadius: AppRadius.cardAll,

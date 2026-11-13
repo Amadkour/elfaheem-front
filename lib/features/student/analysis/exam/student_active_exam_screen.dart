@@ -182,7 +182,7 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
                           hintText: '••••••',
                           errorText: _error,
                           filled: true,
-                          fillColor: c.primary.withValues(alpha: 0.05),
+                          fillColor: c.primaryWash,
                           border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
                               borderSide: BorderSide.none),
@@ -489,7 +489,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
                               color: selected
-                                  ? c.primary.withValues(alpha: 0.07)
+                                  ? c.primaryWash
                                   : c.cardBg,
                               borderRadius: BorderRadius.circular(18),
                               border: Border.all(

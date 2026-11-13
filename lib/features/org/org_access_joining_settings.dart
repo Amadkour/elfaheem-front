@@ -131,7 +131,7 @@ class _JoinSettingsTabState extends State<_JoinSettingsTab> {
                   padding: const EdgeInsets.all(AppSpace.sm),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(AppRadius.control),
-                    color: _unit == k ? c.primary.withValues(alpha: 0.08) : Colors.transparent,
+                    color: _unit == k ? c.primaryWash : Colors.transparent,
                     border: Border.all(color: _unit == k ? c.primary : c.divider),
                   ),
                   child: Row(children: [

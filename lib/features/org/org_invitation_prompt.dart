@@ -203,7 +203,7 @@ class OrgInvitationPromptView extends StatelessWidget {
           Container(
             key: const ValueKey('org.invite_prompt.message'),
             padding: const EdgeInsets.all(AppSpace.sm),
-            decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(AppRadius.card)),
+            decoration: BoxDecoration(color: c.primaryWash, borderRadius: BorderRadius.circular(AppRadius.card)),
             child: Text(i.message, style: AppType.body(context)),
           ),
         ],

@@ -614,7 +614,7 @@ class _SwipeHint extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
-          color: c.primary.withValues(alpha: 0.07),
+          color: c.primaryWash,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: c.primary.withValues(alpha: 0.18)),
         ),

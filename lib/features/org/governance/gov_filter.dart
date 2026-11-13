@@ -603,7 +603,7 @@ class _ItemFilterBarState extends State<ItemFilterBar> {
                 label: Text(ch.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
                 onDeleted: () => widget.onChanged(f.without(ch.key)),
                 deleteIconColor: c.textMedium,
-                backgroundColor: c.primary.withValues(alpha: 0.07),
+                backgroundColor: c.primaryWash,
                 side: BorderSide(color: c.primary.withValues(alpha: 0.2)),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
                 visualDensity: VisualDensity.compact,
@@ -654,7 +654,7 @@ class _FilterButton extends StatelessWidget {
     final c = context.colors;
     final on = count > 0 || open;
     return Material(
-      color: on ? c.primary.withValues(alpha: 0.10) : c.inputBg,
+      color: on ? c.primaryWash : c.inputBg,
       borderRadius: BorderRadius.circular(AppRadius.control),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadius.control),

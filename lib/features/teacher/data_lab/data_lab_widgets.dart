@@ -19,6 +19,7 @@ import 'package:flutter_education_app/core/display/display_settings.dart';
 import 'package:flutter_education_app/design/app_blocks.dart';
 import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
+import 'package:flutter_education_app/design/app_badges.dart' show appWashOn;
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 import 'package:flutter_education_app/design/app_gradients.dart' show AppBrandLayer;
 import 'package:flutter_education_app/design/app_inputs.dart' show AppFieldLabel, appFieldDecoration, appFieldTextStyle;
@@ -785,7 +786,8 @@ class DlHistogram extends StatelessWidget {
   }
 }
 
-/// A calm, tinted message block (tips, warnings, "locked" notes …): the tone's tint, radius `card`, ink text.
+/// A calm, tinted message block (tips, warnings, "locked" notes …): the tone's quiet wash with a hairline of the tone
+/// (D-728: the fill alone, at 8 %, read as a heavy green slab), radius `card`, ink text.
 class DlBanner extends StatelessWidget {
   const DlBanner({super.key, required this.icon, required this.text, this.color, this.action});
 
@@ -800,7 +802,11 @@ class DlBanner extends StatelessWidget {
     final col = color ?? c.primary;
     return Container(
       padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.xs, AppSpace.sm),
-      decoration: BoxDecoration(color: col.withValues(alpha: c.isDark ? 0.16 : 0.08), borderRadius: AppRadius.cardAll),
+      decoration: BoxDecoration(
+        color: c.isDark ? col.withValues(alpha: 0.16) : appWashOn(context, col),
+        borderRadius: AppRadius.cardAll,
+        border: c.isDark ? null : Border.all(color: col.withValues(alpha: 0.16), width: AppBorder.hairline),
+      ),
       child: Row(children: [
         Icon(icon, size: AppIconSize.md, color: appInk(context, col)),
         const SizedBox(width: AppSpace.sm),

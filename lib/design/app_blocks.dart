@@ -239,7 +239,7 @@ class AppBlock extends StatelessWidget {
       // primary light in the top-end corner; static, so Reduce motion has nothing to park
       final (from, to) = context.colors.blockIdentityStops;
       final dir = Directionality.maybeOf(context) ?? TextDirection.ltr;
-      final glow = context.colors.primary.withValues(alpha: context.colors.isDark ? 0.16 : 0.10);
+      final glow = context.colors.primary.withValues(alpha: context.colors.isDark ? 0.16 : 0.05); // D-728: 0.10 → 0.05 in light mode
       body = Ink(
         decoration: BoxDecoration(
           gradient: LinearGradient(

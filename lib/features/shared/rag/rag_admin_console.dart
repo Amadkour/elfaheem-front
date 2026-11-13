@@ -944,7 +944,7 @@ class _RatePill extends StatelessWidget {
     return Container(
       padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 12, 6),
       decoration: BoxDecoration(
-        color: c.primary.withValues(alpha: 0.08),
+        color: c.primaryWash,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: c.primary.withValues(alpha: 0.18)),
       ),

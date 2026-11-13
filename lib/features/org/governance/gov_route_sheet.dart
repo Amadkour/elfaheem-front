@@ -84,7 +84,7 @@ class GovEntityPickField extends StatelessWidget {
                         ),
                         trailing: value?.id == e.id ? Icon(Icons.check_circle_rounded, color: c.primary) : null,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
-                        tileColor: value?.id == e.id ? c.primary.withValues(alpha: 0.07) : null,
+                        tileColor: value?.id == e.id ? c.primaryWash : null,
                       ),
                     ),
                   if (shown.isEmpty)

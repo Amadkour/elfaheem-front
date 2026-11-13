@@ -187,7 +187,7 @@ class IssueChoiceCard extends StatelessWidget {
       selected: selected,
       button: true,
       child: Material(
-        color: selected ? c.primary.withValues(alpha: 0.07) : c.cardBg,
+        color: selected ? c.primaryWash : c.cardBg,
         shape: RoundedRectangleBorder(
           borderRadius: AppRadius.cardAll,
           side: BorderSide(color: selected ? c.primary : c.divider, width: selected ? 1.6 : 1),
@@ -296,7 +296,7 @@ class IssueCourseList extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpace.xs),
           child: Material(
-            color: co.id == selectedId ? c.primary.withValues(alpha: 0.07) : c.cardBg,
+            color: co.id == selectedId ? c.primaryWash : c.cardBg,
             shape: RoundedRectangleBorder(
               borderRadius: AppRadius.chipAll,
               side: BorderSide(color: co.id == selectedId ? c.primary : c.divider),
@@ -410,7 +410,7 @@ class IssueColumnChips extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs + 2),
             decoration: BoxDecoration(
-              color: c.primary.withValues(alpha: 0.08),
+              color: c.primaryWash,
               borderRadius: BorderRadius.circular(AppRadius.chip),
             ),
             child: Text(
@@ -540,7 +540,7 @@ class IssueUploadPanel extends StatelessWidget {
       ]),
       const SizedBox(height: AppSpace.md),
       Material(
-        color: c.primary.withValues(alpha: 0.05),
+        color: c.primaryWash,
         shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: BorderSide(color: c.primary.withValues(alpha: 0.35))),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -1210,7 +1210,7 @@ class IssueBatchTile extends StatelessWidget {
     };
     final when = batch.createdAt == null ? '' : AppTime.dateTime(batch.createdAt!);
     return Material(
-      color: selected ? c.primary.withValues(alpha: 0.07) : c.cardBg,
+      color: selected ? c.primaryWash : c.cardBg,
       shape: RoundedRectangleBorder(borderRadius: AppRadius.chipAll, side: BorderSide(color: selected ? c.primary : c.divider)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -1350,7 +1350,7 @@ class IssueSavedListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Material(
-      color: selected ? c.primary.withValues(alpha: 0.07) : c.cardBg,
+      color: selected ? c.primaryWash : c.cardBg,
       shape: RoundedRectangleBorder(borderRadius: AppRadius.chipAll, side: BorderSide(color: selected ? c.primary : c.divider)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(

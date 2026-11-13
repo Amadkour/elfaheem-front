@@ -545,7 +545,7 @@ class _FormatCard extends StatelessWidget {
             duration: const Duration(milliseconds: 180),
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
             decoration: BoxDecoration(
-              color: selected ? c.primary.withValues(alpha: .08) : c.cardBg,
+              color: selected ? c.primaryWash : c.cardBg,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: selected ? c.primary : c.divider, width: selected ? 1.6 : 1),
             ),

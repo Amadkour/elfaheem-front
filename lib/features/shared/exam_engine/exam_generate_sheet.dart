@@ -418,7 +418,7 @@ class _GenReviewBarState extends State<GenReviewBar> {
         if (m.evidence.isNotEmpty)
           Container(
             padding: const EdgeInsets.all(AppSpace.sm),
-            decoration: BoxDecoration(color: c.primary.withValues(alpha: .06), borderRadius: BorderRadius.circular(AppRadius.chip)),
+            decoration: BoxDecoration(color: c.primaryWash, borderRadius: BorderRadius.circular(AppRadius.chip)),
             child: SelectableText(m.evidence, style: appText(13.5, c: c.textDark, h: 1.5)),
           )
         else

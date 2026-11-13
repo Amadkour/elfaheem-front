@@ -306,6 +306,13 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       ? (_model?.primaryTintDark ?? AppTheme.primaryTintDark)
       : (_model?.primaryTint ?? AppTheme.primaryTint);
 
+  /// The quiet primary wash behind a LARGE surface (D-728): a selected card or row, a note, a summary box, a selected
+  /// chip. Light mode is 5 % of the primary laid OPAQUE on the card white, so a selected card on the sage canvas reads
+  /// as a near-white card (a translucent wash let the canvas through and stayed mint) and the selection reads from its
+  /// border, check mark and ink; dark mode keeps the translucent strength the old hand-written fills had. Small marks
+  /// (icon wells, badges) take [primaryTint].
+  Color get primaryWash => isDark ? primary.withValues(alpha: 0.12) : Color.alphaBlend(primary.withValues(alpha: 0.05), cardBg);
+
   Color get blueTint => charcoal.withValues(alpha: isDark ? 0.20 : 0.12);
 
   Color get accentTint => accent.withValues(alpha: isDark ? 0.20 : 0.12);
@@ -400,17 +407,18 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     return isDark ? darkBlock(light) : light;
   }
 
-  /// Emerald: done / correct / the primary subject (a tint of the primary).
+  /// Emerald: done / correct / the primary subject (a tint of the primary). Light mode sits at 0.94 lightness
+  /// (D-728: 0.9 read as a heavy mint slab).
   Color get blockEmerald {
     final p = HSLColor.fromColor(primary);
-    final light = blockSurface(p.withSaturation(p.saturation.clamp(0.0, 0.42)).withLightness(0.9).toColor(), _lightInk);
+    final light = blockSurface(p.withSaturation(p.saturation.clamp(0.0, 0.42)).withLightness(0.94).toColor(), _lightInk);
     return isDark ? darkBlock(light) : light;
   }
 
   /// Identity (D-713): the header of a person or an organization (the Account page, a public /@name page, a
   /// teacher's profile, the member home's organization block) wears a soft degree of the PRIMARY instead of the
   /// peach band. Two stops for a gentle diagonal gradient: light mode goes from a primary tint (about #D3EADF for the
-  /// default preset) to an almost-canvas tint; dark mode from a deep primary tone (about #26503F) to a deeper one.
+  /// default preset; #E6F2EC since D-728) to an almost-canvas tint; dark mode from a deep primary tone (about #26503F) to a deeper one.
   /// Every ink of the block ([blockInk], [blockIdentityMuted], [blockIdentityFaint]) reads at AA on both stops.
   (Color, Color) get blockIdentityStops => _identityCache[(primary, _lightInk, textDark, isDark)] ??= _deriveIdentity();
 
@@ -427,8 +435,9 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       }
       return (a.toColor(), b.toColor());
     }
-    final a = blockSurface(p.withSaturation(math.min(p.saturation, 0.48)).withLightness(0.86).toColor(), _lightInk);
-    final b = blockSurface(p.withSaturation(math.min(p.saturation, 0.3)).withLightness(0.945).toColor(), _lightInk);
+    // D-728: a quieter degree (0.86 → 0.92 at the strong stop) — the old one read as a heavy mint band
+    final a = blockSurface(p.withSaturation(math.min(p.saturation, 0.42)).withLightness(0.92).toColor(), _lightInk);
+    final b = blockSurface(p.withSaturation(math.min(p.saturation, 0.3)).withLightness(0.965).toColor(), _lightInk);
     return (a, b);
   }
 

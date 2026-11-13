@@ -728,7 +728,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(AppSpace.md),
                   decoration: BoxDecoration(
-                    color: c.primary.withValues(alpha: 0.07),
+                    color: c.primaryWash,
                     borderRadius: BorderRadius.circular(AppRadius.card),
                     border: Border.all(color: c.primary.withValues(alpha: 0.22)),
                   ),
@@ -1261,7 +1261,7 @@ class _EntityFormState extends State<_EntityForm> {
                           style: AppType.meta(context).copyWith(color: _type == e.key ? c.primary : c.textMedium, fontWeight: FontWeight.w600)),
                       selected: _type == e.key,
                       showCheckmark: false,
-                      selectedColor: c.primary.withValues(alpha: 0.13),
+                      selectedColor: c.primaryWash,
                       backgroundColor: c.inputBg,
                       side: BorderSide(color: _type == e.key ? c.primary : c.divider),
                       onSelected: (_) => setState(() => _type = e.key),

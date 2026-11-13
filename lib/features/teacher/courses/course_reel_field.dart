@@ -321,7 +321,7 @@ class CourseReelField extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
       decoration: BoxDecoration(
-        color: c.primary.withValues(alpha: 0.04),
+        color: c.primaryWash,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: dashed ? c.primary.withValues(alpha: 0.4) : c.divider,

@@ -668,7 +668,7 @@ class _Chips<T> extends StatelessWidget {
       ),
       selected: selected,
       showCheckmark: false,
-      selectedColor: c.primary.withValues(alpha: 0.14),
+      selectedColor: c.primaryWash,
       backgroundColor: c.inputBg,
       side: BorderSide(color: selected ? c.primary : c.divider),
       onSelected: (_) => onTap(),

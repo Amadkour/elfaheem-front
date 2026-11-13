@@ -529,7 +529,7 @@ class _NewIdentifierFormState extends State<NewIdentifierForm> {
           child: Container(
             padding: const EdgeInsets.all(AppSpace.sm),
             decoration: BoxDecoration(
-                borderRadius: AppRadius.cardAll, border: Border.all(color: on ? c.primary : c.divider, width: on ? 1.5 : 1), color: on ? c.primary.withValues(alpha: .06) : null),
+                borderRadius: AppRadius.cardAll, border: Border.all(color: on ? c.primary : c.divider, width: on ? 1.5 : 1), color: on ? c.primaryWash : null),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Icon(icon, color: on ? c.primary : c.textMedium, size: 20),
               const SizedBox(width: AppSpace.xs),

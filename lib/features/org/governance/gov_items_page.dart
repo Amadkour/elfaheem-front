@@ -48,7 +48,7 @@ class GovItemCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
       decoration: BoxDecoration(
-        color: selected ? c.primary.withValues(alpha: 0.06) : c.cardBg,
+        color: selected ? c.primaryWash : c.cardBg,
         borderRadius: BorderRadius.circular(c.radiusLarge - 4),
         border: Border.all(color: accent?.withValues(alpha: 0.5) ?? c.divider),
         boxShadow: c.cardShadow,

@@ -646,7 +646,7 @@ class _DeptChoice extends StatelessWidget {
         selected: selected,
         inMutuallyExclusiveGroup: true,
         child: Material(
-          color: selected ? c.primary.withValues(alpha: 0.06) : c.cardBg,
+          color: selected ? c.primaryWash : c.cardBg,
           borderRadius: AppRadius.cardAll,
           child: InkWell(
             borderRadius: AppRadius.cardAll,

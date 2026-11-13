@@ -729,7 +729,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
       child: Container(
         decoration: BoxDecoration(
           border: Border.all(color: sel ? c.primary : c.divider.withValues(alpha: .0), width: sel ? 1.4 : 1),
-          color: sel ? c.primary.withValues(alpha: .05) : null,
+          color: sel ? c.primaryWash : null,
         ),
         child: Stack(clipBehavior: Clip.none, children: [
           Positioned.fill(child: ClipRect(child: content)),

@@ -61,8 +61,9 @@ class AppSheetHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final base = appSheetToneColor(context, tone);
-    final tint = appTintOn(context, base);
-    final fade = Color.alphaBlend(base.withValues(alpha: c.isDark ? 0.10 : 0.05), c.cardBg);
+    // D-728: a quiet band in light mode (7 % fading to 2 %); the badge strength (14 %) read as a heavy slab.
+    final tint = c.isDark ? appTintOn(context, base) : Color.alphaBlend(base.withValues(alpha: 0.07), c.cardBg);
+    final fade = Color.alphaBlend(base.withValues(alpha: c.isDark ? 0.10 : 0.02), c.cardBg);
     final edge = base.withValues(alpha: c.isDark ? 0.34 : 0.20);
     final ink = c.textDark;
     final sub = subtitle;

@@ -134,7 +134,7 @@ class _ShareLinkDialogState extends State<_ShareLinkDialog> {
                   decoration: InputDecoration(
                     isDense: true,
                     filled: true,
-                    fillColor: c.primary.withValues(alpha: 0.06),
+                    fillColor: c.primaryWash,
                     prefixIcon: Icon(Icons.link_rounded, size: 18, color: c.primary),
                     contentPadding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 14),

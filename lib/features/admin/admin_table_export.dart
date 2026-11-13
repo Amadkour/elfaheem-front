@@ -156,7 +156,7 @@ class AppExportPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Material(
-      color: c.primary.withValues(alpha: .08),
+      color: c.primaryWash,
       shape: StadiumBorder(side: BorderSide(color: c.primary.withValues(alpha: .25))),
       child: InkWell(
         customBorder: const StadiumBorder(),

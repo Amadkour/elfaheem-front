@@ -850,7 +850,7 @@ class _ExamPageState extends State<_ExamPage> {
                   Container(
                     width: 92,
                     padding: const EdgeInsets.symmetric(vertical: AppSpace.xs, horizontal: AppSpace.xs),
-                    decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(AppRadius.control)),
+                    decoration: BoxDecoration(color: c.primaryWash, borderRadius: BorderRadius.circular(AppRadius.control)),
                     child: Column(children: [
                       Text(clockOf(x['start_time']), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.primary)),
                       Text(clockOf(x['end_time']), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),

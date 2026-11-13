@@ -11,6 +11,7 @@
 //
 //   appTintOn(context, tone)        the opaque tint of a tone over the card surface (badges, delta chips, icon boxes)
 //   appInkOn(context, tone, tint)   the tone as TEXT on that tint, at WCAG AA (hue kept)
+//   appWashOn(context, tone)        the quiet wash of a tone behind a LARGE surface (a note, a selected card, D-728)
 //
 // Colours come from `context.colors` only.
 library;
@@ -45,6 +46,15 @@ Color appToneColor(BuildContext context, AppTone tone) {
 Color appTintOn(BuildContext context, Color tone, {Color? surface}) {
   final c = context.colors;
   return Color.alphaBlend(tone.withValues(alpha: c.isDark ? 0.24 : 0.14), surface ?? c.cardBg);
+}
+
+/// The quiet wash of [tone] behind a LARGE surface: a note, a selected card or row, a sheet's header band (D-728).
+/// Light mode is 5 % laid opaque on the card white (the tint of a badge, 14 %, read as a heavy green slab across a whole
+/// card, and a translucent wash let the sage canvas through), so the border, the icon and the ink carry the meaning;
+/// dark mode keeps the old translucent strength. Like [ThemeConfigProvider.primaryWash].
+Color appWashOn(BuildContext context, Color tone) {
+  final c = context.colors;
+  return c.isDark ? tone.withValues(alpha: 0.14) : Color.alphaBlend(tone.withValues(alpha: 0.05), c.cardBg);
 }
 
 /// [tone] as TEXT (or an icon) on [tint]: the same hue, darkened — lifted in dark mode — until it reads at AA.

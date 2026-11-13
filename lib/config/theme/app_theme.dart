@@ -34,7 +34,7 @@ class AppTheme {
   static const Color primary         = Color(0xFF0B6B4F);   // deep emerald: the primary action, success / correct
   static const Color primaryDark     = Color(0xFF064733);
   static const Color primaryLight    = Color(0xFF3E9C78);
-  static const Color lightPrimary    = Color(0x1F0B6B4F);   // primary @ 12 %
+  static const Color lightPrimary    = Color(0x0F0B6B4F);   // primary @ 6 % (D-728: was 12 %)
 
   static const Color charcoal        = Color(0xFF2A251F);   // warm charcoal: ink, the shadow tone
   static const Color charcoalLight   = Color(0xFF4D463E);
@@ -51,7 +51,7 @@ class AppTheme {
   static const Color purple          = Color(0xFF6F58C9);
 
   // ── Tints & shadow base colours ───────────────────────────────────────────
-  static const Color primaryTint            = Color(0x1F0B6B4F);   // 12 %
+  static const Color primaryTint            = Color(0x0F0B6B4F);   // 6 % (D-728: 12 % was too heavy behind components)
   static const Color primaryTintDark        = Color(0x330B6B4F);   // 20 %
   static const Color primaryShadowColor     = Color(0x4D0B6B4F);   // light mode, 30 %
   static const Color primaryShadowColorDark = Color(0x260B6B4F);   // dark mode, 15 %

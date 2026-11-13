@@ -893,7 +893,7 @@ Future<void> _billingSheet(BuildContext context, int orgId, String orgName) asyn
                   padding: const EdgeInsets.all(AppSpace.sm),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(AppRadius.card),
-                    color: students == key ? c.primary.withValues(alpha: 0.08) : c.cardBg,
+                    color: students == key ? c.primaryWash : c.cardBg,
                     border: Border.all(color: students == key ? c.primary : c.divider, width: students == key ? 1.6 : 1),
                   ),
                   child: Row(children: [

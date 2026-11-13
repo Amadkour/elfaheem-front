@@ -1137,7 +1137,7 @@ class _CertEngineStudioState extends State<CertEngineStudio> {
     final c = context.colors;
     return Container(
       key: const ValueKey('cert-converted-banner'),
-      color: c.primary.withValues(alpha: .08),
+      color: c.primaryWash,
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
       child: Row(children: [
         Icon(Icons.info_outline_rounded, size: 18, color: c.primary),

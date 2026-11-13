@@ -281,7 +281,7 @@ class _GatewayTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Material(
-      color: selected ? c.primary.withValues(alpha: .1) : c.cardBg,
+      color: selected ? c.primaryWash : c.cardBg,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.card),
         side: BorderSide(color: selected ? c.primary : c.divider, width: selected ? 1.6 : 1),
@@ -774,7 +774,7 @@ class _Group extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpace.md),
       decoration: BoxDecoration(
-        color: c.primary.withValues(alpha: .035),
+        color: c.primaryWash,
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: c.divider),
       ),

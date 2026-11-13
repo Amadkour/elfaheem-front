@@ -18,7 +18,7 @@ class ThemeConfigModel {
   final Color primary;
   final Color primaryDark;
   final Color primaryLight;
-  final Color lightPrimary; // primary @ 12 % opacity
+  final Color lightPrimary; // primary @ 6 % opacity (D-728)
   final Color accent; // == primary (monochromatic)
   final Color primaryTint;
   final Color primaryTintDark;

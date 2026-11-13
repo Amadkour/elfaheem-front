@@ -271,7 +271,7 @@ class GenTopicCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(
-        color: prominent ? c.primary.withValues(alpha: 0.06) : c.surface,
+        color: prominent ? c.primaryWash : c.surface,
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: prominent ? c.primary.withValues(alpha: 0.35) : c.divider),
       ),

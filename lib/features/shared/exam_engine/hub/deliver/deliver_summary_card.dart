@@ -36,7 +36,7 @@ class DeliverSummaryCard extends StatelessWidget {
       key: const ValueKey('deliver.summary'),
       padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(
-        color: c.primary.withValues(alpha: .05),
+        color: c.primaryWash,
         borderRadius: AppRadius.cardAll,
         border: Border.all(color: c.primary.withValues(alpha: .18)),
       ),
