@@ -16393,6 +16393,22 @@
     "en": "Back",
     "ar": "رجوع"
   },
+  "lr_participants_title": {
+    "en": "Participants",
+    "ar": "المشاركون"
+  },
+  "lr_screen_badge": {
+    "en": "Screen",
+    "ar": "الشاشة"
+  },
+  "lr_quiz_submit": {
+    "en": "Submit",
+    "ar": "إرسال"
+  },
+  "lr_connecting": {
+    "en": "Connecting…",
+    "ar": "جارٍ الاتصال…"
+  },
   "lr_devices": {
     "en": "Devices",
     "ar": "الأجهزة"

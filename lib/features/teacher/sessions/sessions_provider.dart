@@ -13,6 +13,7 @@
 //   • No other logic changed.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -420,13 +421,13 @@ class TeacherCourseScreenProvider extends BaseProvider {
         if (put.statusCode == null || put.statusCode! >= 300) {
           throw ApiException(
             statusCode: put.statusCode ?? 0,
-            message: 'تعذر رفع الملف، حاول مرة أخرى',
+            message: AppConfig.lang == 'ar' ? 'تعذّر رفع الملف، حاول مرة أخرى' : 'The file could not be uploaded, try again',
           );
         }
       } on DioException catch (e) {
         throw ApiException(
           statusCode: e.response?.statusCode ?? 0,
-          message: 'تعذر رفع الملف، حاول مرة أخرى',
+          message: AppConfig.lang == 'ar' ? 'تعذّر رفع الملف، حاول مرة أخرى' : 'The file could not be uploaded, try again',
         );
       }
 

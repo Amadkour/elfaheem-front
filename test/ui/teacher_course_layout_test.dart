@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/shared/course/course_space/course_space.dart';
+import 'package:flutter_education_app/features/teacher/courses/component/add_item_dialog.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_education_app/features/student/models.dart' show TeacherSessionItem;
 import 'package:flutter_education_app/features/teacher/sessions/components/session_form_sheet.dart';
@@ -56,6 +57,13 @@ TeacherCourse _course({bool published = true, bool rich = true, String type = 'l
 
 void main() {
   setUp(() => AppConfig.lang = 'ar');
+
+  testWidgets('course form: the add-an-item dialog (kit buttons in both languages, a long hint)', (t) async {
+    final ctrl = TextEditingController(text: _long);
+    addTearDown(ctrl.dispose);
+    await expectNoLayoutErrors(t, () => AddItemPanel(hint: _long, ctrl: ctrl),
+        act: (t) async => expect(find.byKey(const ValueKey('add_item.add')), findsOneWidget));
+  });
 
   testWidgets('status side card: published and draft', (t) async {
     for (final published in [true, false]) {

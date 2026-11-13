@@ -7,6 +7,7 @@ library;
 import 'dart:convert';
 import 'dart:typed_data';
 
+import '../../../../config/app_config.dart';
 import '../../../../core/api_client.dart';
 import '../../../../design/export_layout/layout_model.dart';
 import 'cert_font_picker.dart' show CertFontInfo;
@@ -311,4 +312,20 @@ class CertEngineApi {
 }
 
 /// The text of a failed call that is safe to show.
-String certErrorText(Object e) => ApiException.from(e).message;
+/// The person's text for a failed studio call. The client-side checks above throw short English codes
+/// (statusCode 0); those get bilingual words here instead of reaching an Arabic screen as English.
+String certErrorText(Object e) {
+  final x = ApiException.from(e);
+  if (x.statusCode != 0) return x.message;
+  final ar = AppConfig.lang == 'ar';
+  String tx(String a, String en) => ar ? a : en;
+  return switch (x.message) {
+    'empty preview' => tx('تعذّر عرض المعاينة، حاول مرة أخرى', 'The preview could not be drawn, try again'),
+    'upload failed' => tx('تعذّر رفع الملف', 'The file could not be uploaded'),
+    'no background' => tx('تعذّر تجهيز الخلفية', 'The background could not be made'),
+    'font unavailable' => tx('هذا الخط غير متاح الآن', 'This font is not available right now'),
+    'create failed' => tx('تعذّر إنشاء التصميم', 'The design could not be created'),
+    'copy failed' => tx('تعذّر نسخ التصميم', 'The design could not be copied'),
+    _ => x.message,
+  };
+}

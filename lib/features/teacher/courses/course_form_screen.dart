@@ -1198,11 +1198,7 @@ class _EditCertificateTemplateCardState
           hasExisting
               ? 'certificate_template_card_hint_edit'.tr
               : 'certificate_template_card_hint'.tr,
-          style: TextStyle(
-            fontFamily: AppFonts.family,
-            fontSize: 12,
-            color: context.colors.textMedium,
-          ),
+          style: AppType.meta(context),
         ),
         const SizedBox(height: AppSpace.md),
         if (hasExisting)
@@ -1210,21 +1206,13 @@ class _EditCertificateTemplateCardState
             label: 'certificate_title_label'.tr,
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              padding: const EdgeInsets.all(AppSpace.md),
               decoration: BoxDecoration(
                 color: context.colors.background,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: context.colors.divider, width: 1.2),
+                borderRadius: AppRadius.controlAll,
+                border: Border.all(color: context.colors.divider, width: AppBorder.strong),
               ),
-              child: Text(
-                _existingCert!.title,
-                style: TextStyle(
-                  fontFamily: AppFonts.family,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: context.colors.textDark,
-                ),
-              ),
+              child: Text(_existingCert!.title, style: AppType.bodyStrong(context)),
             ),
           )
         else
@@ -1236,71 +1224,63 @@ class _EditCertificateTemplateCardState
             ),
           ),
         const SizedBox(height: AppSpace.md),
-        GestureDetector(
-          onTap: _uploading ? null : _pick,
-          child: AspectRatio(
-            aspectRatio: 1.6,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: context.colors.divider, width: 1.2),
-                color: context.colors.background,
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: _uploading
-                  ? const Center(child: AppLoadingIndicator())
-                  : _pickedBytes != null
-                  ? Image.memory(_pickedBytes!, fit: BoxFit.cover)
-                  : _templateUrl != null
-                  ? Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.network(_templateUrl!, fit: BoxFit.cover),
-                  Positioned(
-                    bottom: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: context.colors.textMedium,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        'change_template_btn'.tr,
-                        style: TextStyle(
-                          fontFamily: AppFonts.family,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: context.colors.onHero,
-                        ),
-                      ),
-                    ),
+        // a real button (keyboard, screen reader), not a bare GestureDetector
+        Semantics(
+          button: true,
+          label: (_templateUrl != null || _pickedBytes != null) ? 'change_template_btn'.tr : 'upload_template_btn'.tr,
+          child: Material(
+            color: context.colors.background,
+            borderRadius: AppRadius.cardAll,
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: _uploading ? null : _pick,
+              child: AspectRatio(
+                aspectRatio: 1.6,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: AppRadius.cardAll,
+                    border: Border.all(color: context.colors.divider, width: AppBorder.strong),
                   ),
-                ],
-              )
-                  : Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.add_photo_alternate_rounded,
-                      size: 28,
-                      color: context.colors.textLight,
-                    ),
-                    const SizedBox(height: AppSpace.xs),
-                    Text(
-                      'upload_template_btn'.tr,
-                      style: TextStyle(
-                        fontFamily: AppFonts.family,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: context.colors.textMedium,
-                      ),
-                    ),
-                  ],
+                  clipBehavior: Clip.antiAlias,
+                  child: _uploading
+                      ? const Center(child: AppLoadingIndicator())
+                      : _pickedBytes != null
+                          ? Image.memory(_pickedBytes!, fit: BoxFit.cover, excludeFromSemantics: true)
+                          : _templateUrl != null
+                              ? Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    Image.network(_templateUrl!, fit: BoxFit.cover, excludeFromSemantics: true,
+                                        // a dead link shows the calm well, not Flutter's broken-image glyph
+                                        errorBuilder: (_, _, _) => Center(child: Icon(Icons.image_not_supported_outlined, color: context.colors.textLight))),
+                                    // the corner that reads first in either direction (was a fixed right: in RTL too)
+                                    PositionedDirectional(
+                                      bottom: AppSpace.xs,
+                                      end: AppSpace.xs,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
+                                        decoration: BoxDecoration(
+                                          color: context.colors.textMedium,
+                                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                                        ),
+                                        child: Text(
+                                          'change_template_btn'.tr,
+                                          style: AppType.meta(context).copyWith(fontWeight: FontWeight.w700, color: context.colors.onHero),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.add_photo_alternate_rounded, size: AppIconSize.xl - 4, color: context.colors.textLight),
+                                      const SizedBox(height: AppSpace.xs),
+                                      Text('upload_template_btn'.tr, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                                ),
                 ),
               ),
             ),
