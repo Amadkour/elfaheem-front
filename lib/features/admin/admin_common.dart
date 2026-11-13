@@ -29,6 +29,7 @@ import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import 'admin_premium_widgets.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_search_field.dart';
+import 'package:flutter_education_app/design/app_badges.dart' show appColorGlyph;
 import 'package:flutter_education_app/design/app_blocks.dart';
 import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
@@ -349,13 +350,19 @@ class StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tint = Color.alphaBlend(color.withValues(alpha: 0.14), context.colors.cardBg);
+    final ink = context.colors.blockAccentInk(color, tint);
+    // an error / failed or achievement state never rests on colour alone (D-862)
+    final glyph = appColorGlyph(context, color);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs / 2),
       decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(AppRadius.pill)),
-      child: Text(label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AppType.overline(context).copyWith(color: context.colors.blockAccentInk(color, tint))),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        if (glyph != null) ...[Icon(glyph, size: AppIconSize.xs, color: ink), const SizedBox(width: AppSpace.xxs)],
+        Flexible(
+          child: Text(label,
+              maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.overline(context).copyWith(color: ink)),
+        ),
+      ]),
     );
   }
 }

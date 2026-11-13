@@ -31,10 +31,10 @@ List<Color> palette(Color primary, Color accent1, Color accent2, {Color? accent3
 const presets = {
   'normal': (Color(0xFF24B1B1), Color(0xFFD7C3F1), Color(0xFF7E5CAD), null),
   'blue': (Color(0xFF2F3E9E), Color(0xFFF6E3B4), Color(0xFFC9A227), null),
-  'green': (Color(0xFF0F7B5F), Color(0xFFF3E6C4), Color(0xFFD9A21B), null),
+  'green': (Color(0xFF0F7B5F), Color(0xFFF3E6C4), Color(0xFFD46A4C), null),
   'burgundy_champagne': (Color(0xFF7A1F3D), Color(0xFFF5E6CF), Color(0xFFC8A96A), null),
   'midnight_coral': (Color(0xFF22306B), Color(0xFFFFD9D3), Color(0xFFFF6F61), null),
-  'warm_editorial': (Color(0xFF0B6B4F), Color(0xFFFBE2D3), Color(0xFFD9A21B), Color(0xFFE4ECE3)),
+  'warm_editorial': (Color(0xFF0B6B4F), Color(0xFFFBE2D3), Color(0xFFD46A4C), Color(0xFFE4ECE3)),
 };
 
 String hex(Color c) => '#${c.toARGB32().toRadixString(16).substring(2)}';
