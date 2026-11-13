@@ -65,20 +65,6 @@ void main() {
         act: (t) async => expect(find.byKey(const ValueKey('add_item.add')), findsOneWidget));
   });
 
-  testWidgets('status side card: published and draft', (t) async {
-    for (final published in [true, false]) {
-      await expectNoLayoutErrors(
-        t,
-        () => SingleChildScrollView(
-          child: SizedBox(
-            width: kCourseAsideW,
-            child: TeacherCourseStatusCard(course: _course(published: published), onAddSession: () {}, onEdit: () {}),
-          ),
-        ),
-      );
-    }
-  });
-
   testWidgets('details tab: everything, long Arabic data', (t) async {
     await expectNoLayoutErrors(
       t,

@@ -339,7 +339,17 @@ class _CoursePageState extends State<_CoursePage> {
     final hours = c.totalHours.toStringAsFixed(c.totalHours % 1 == 0 ? 0 : 1);
     final reel = p.reelUrl;
     final showReel = reel != null && reel.isNotEmpty && !AppConfig.disableList.contains('course_hero.reel');
+    final rate = c.rateSummary;
+    final total = c.materialsTotal;
+    final done = c.materialsCompleted;
+    final learned = total > 0 ? done / total : c.progress.clamp(0, 100) / 100;
+    // the next thing that can be taken (an ended live session with nothing recorded is skipped, H8)
+    final next = p.nextPlayable;
+    final status = ManualTransferStatusBanner(courseId: c.id, onRetry: () => _openEnrollment(context, c));
+    final started = done > 0 || c.progress > 0;
 
+    // D-941: the header carries the role's ONE action — Continue for an enrolled student, the price + Enroll for a
+    // visitor (on phones the sticky bottom bar carries those, so the price shows once, D-943)
     final hero = CourseSpaceHeroData(
       title: title,
       subtitle: ar ? c.descriptionAr : c.descriptionEn,
@@ -372,17 +382,33 @@ class _CoursePageState extends State<_CoursePage> {
           label: courseStatNoun(c.sessionsCount, 'course_hero_lessons'),
         ),
         CourseSpaceStat(icon: Icons.schedule_rounded, value: hours, label: courseStatNoun(c.totalHours, 'course_hero_hours')),
+        if (rate != null && rate.total > 0)
+          CourseSpaceStat(
+            icon: Icons.star_rounded,
+            tone: col.accent2,
+            value: rate.average.toStringAsFixed(1),
+            label: courseRatingCount(rate.total),
+          ),
       ],
       progress: c.isEnrolled ? c.progress.clamp(0, 100) / 100 : null,
-      progressLabel: gt('تقدّمك', 'Your progress'),
+      progressLabel: total > 0 ? gt('تقدّمك · $done/$total', 'Your progress · $done/$total') : gt('تقدّمك', 'Your progress'),
+      cta: archived
+          ? null
+          : c.isEnrolled
+          ? (next == null || learned >= 1
+                ? null
+                : CourseSpaceCta(
+                    primary: CourseSpaceButton(
+                      label: started ? gt('تابع التعلم', 'Continue learning') : gt('ابدأ التعلم', 'Start learning'),
+                      icon: Icons.play_arrow_rounded,
+                      onTap: () => p.focusSession(next.id),
+                    ),
+                    caption: gt('التالي: ${next.name}', 'Up next: ${next.name}'),
+                  ))
+          : courseBuyCta(c, onEnroll: () => _openEnrollment(context, c), status: status),
     );
 
     // ── spotlight ──────────────────────────────────────────────────────────
-    final total = c.materialsTotal;
-    final done = c.materialsCompleted;
-    final learned = total > 0 ? done / total : c.progress.clamp(0, 100) / 100;
-    // the next thing that can be taken (an ended live session with nothing recorded is skipped, H8)
-    final next = p.nextPlayable;
     final spotlight = <Widget>[
       // the plan ends within a week, or has ended: one calm line (D-210)
       if (accessBannerText(c.access) != null) CourseAccessBanner(access: c.access),
@@ -400,7 +426,8 @@ class _CoursePageState extends State<_CoursePage> {
           featureKey: 'course_hero.attendance',
           child: AttendanceCourseEntry(courseId: courseId, title: title),
         ),
-      if (c.isEnrolled && p.sessions.isNotEmpty)
+      // Continue and the progress are the hero's (D-943): the card stays for the finished course (its certificates)
+      if (c.isEnrolled && p.sessions.isNotEmpty && learned >= 1)
         courseLearningCard(
           progress: learned.toDouble(),
           done: done,
@@ -519,8 +546,6 @@ class _CoursePageState extends State<_CoursePage> {
       ),
     ];
 
-    final status = ManualTransferStatusBanner(courseId: c.id, onRetry: () => _openEnrollment(context, c));
-
     return SafeArea(
       top: false,
       child: CourseSpace(
@@ -560,7 +585,7 @@ class _CoursePageState extends State<_CoursePage> {
             ? null
             : c.isEnrolled
             ? CourseEnrolledCard(course: c)
-            : CourseBuyCard(course: c, status: status, onEnroll: () => _openEnrollment(context, c)),
+            : CourseBuyCard(course: c, purchase: false, onEnroll: () => _openEnrollment(context, c)),
         bottomBar: c.isEnrolled || archived
             ? null
             : CourseBuyBar(course: c, status: status, onEnroll: () => _openEnrollment(context, c)),

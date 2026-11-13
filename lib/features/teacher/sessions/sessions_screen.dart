@@ -4,7 +4,8 @@
 // course details): hero · spotlight (archived · live now · attendance · setup checklist) · quick actions · tabs Sessions ·
 // Announcements · Class · Team · Archive · Path · About (the course profile's parts are tabs of THIS page, D-111,
 // course_profile_hub.dart, loaded when first opened; Path = the roadmap editor of a personal course, D-120,
-// shared/roadmap/roadmap_tab.dart) · desktop side card (status, price, Add session). The server's caps decide Edit (course_settings) once the profile is known; a TA opening the
+// shared/roadmap/roadmap_tab.dart). The header carries New session · Edit course · Share and the price / rating figures
+// (D-941, D-943: no side card repeats them). The server's caps decide Edit (course_settings) once the profile is known; a TA opening the
 // page from an old profile entry point has it loaded.
 //
 // REBUILD SCOPING
@@ -259,7 +260,13 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
     final reel = d.reelUrl;
     final hasReel = reel != null && reel.isNotEmpty && !AppConfig.disableList.contains('course_hero.reel');
     final live = course.type == 'live';
+    final rate = course.rateSummary;
+    final hub = _hub;
+    // Edit: the server's course_settings once the profile is known; the course's own teacher before that
+    final canEdit = hub.profile?.caps.courseSettings ?? true;
 
+    // D-941: the header carries the page's ONE New session, its ONE Edit course and Share; the price and the rating are
+    // figures of its stats (the side card that repeated them is gone, D-943)
     final hero = CourseSpaceHeroData(
       title: title,
       subtitle: description,
@@ -302,13 +309,35 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
           value: coursePriceLabel(course.currency, course.finalPrice ?? 0),
           label: 'cost'.tr,
         ),
+        if (rate != null && rate.total > 0)
+          CourseSpaceStat(
+            featureKey: 'course_stats.rating',
+            icon: Icons.star_rounded,
+            tone: c.accent2,
+            value: rate.average.toStringAsFixed(1),
+            label: courseRatingCount(rate.total),
+          ),
       ],
+      cta: CourseSpaceCta(
+        primary: CourseSpaceButton(label: 'add_session_btn'.tr, icon: Icons.add_rounded, onTap: _openAddSheet),
+        secondary: canEdit
+            ? CourseSpaceButton(label: _t('تعديل الكورس', 'Edit course'), icon: Icons.edit_rounded, onTap: _openEditCourse)
+            : null,
+        icons: [
+          CourseSpaceTopAction(
+            icon: Icons.ios_share_rounded,
+            tooltip: 'course_hero_share'.tr,
+            onTap: () => shareCourseLink(context, course.toCourseModel),
+          ),
+        ],
+        // a draft says once why nobody sees it yet
+        caption: course.isPublished
+            ? null
+            : _t('الطلاب لا يرون الكورس حتى تنشره.', 'Students cannot see the course until you publish it.'),
+      ),
     );
 
     final showRefresh = kIsWeb || MediaQuery.sizeOf(context).width >= Breakpoints.desktop;
-    final hub = _hub;
-    // Edit: the server's course_settings once the profile is known; the course's own teacher before that
-    final canEdit = hub.profile?.caps.courseSettings ?? true;
 
     return CourseSpace(
       hero: hero,
@@ -327,18 +356,6 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
             icon: Icons.info_outline_rounded,
             tooltip: _t('معلومات عن هذه الصفحة', 'About this page'),
             onTap: () => unawaited(showHelpForPage(context, 'teacher.session')),
-          ),
-        CourseSpaceTopAction(
-          icon: Icons.ios_share_rounded,
-          tooltip: 'course_hero_share'.tr,
-          onTap: () => shareCourseLink(context, course.toCourseModel),
-        ),
-        if (canEdit)
-          CourseSpaceTopAction(
-            icon: Icons.edit_rounded,
-            tooltip: _t('تعديل الكورس', 'Edit course'),
-            primary: true,
-            onTap: _openEditCourse,
           ),
         // rarer: the ⋮ menu (refresh is pull-to-refresh on phones)
         courseAskDocsAction(context, course.id, title),
@@ -399,13 +416,8 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
             ],
           ),
       ],
+      // the shortcuts: where the header's actions do not go (New session and Edit course are the header's, D-943)
       actions: [
-        CourseSpaceAction(
-          icon: Icons.add_rounded,
-          label: 'add_session_btn'.tr,
-          caption: _t('جلسة جديدة بموادها', 'A new session with its materials'),
-          onTap: _openAddSheet,
-        ),
         CourseSpaceAction(
           icon: Icons.groups_rounded,
           label: _t('الطلاب', 'Students'),
@@ -455,14 +467,6 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
                 ? _openCertificate(course.certificates.first)
                 : _setTab(_tabDetails),
           ),
-        if (canEdit)
-          CourseSpaceAction(
-            icon: Icons.edit_rounded,
-            label: _t('تعديل الكورس', 'Edit course'),
-            caption: _t('السعر، الوصف، النشر', 'Price, description, publishing'),
-            color: c.textMedium,
-            onTap: _openEditCourse,
-          ),
       ],
       tabs: [
         CourseSpaceTab(
@@ -503,7 +507,6 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
       ],
       activeTab: _tab,
       onTab: _setTab,
-      aside: TeacherCourseStatusCard(course: course, onAddSession: _openAddSheet, onEdit: _openEditCourse),
     );
   }
 }

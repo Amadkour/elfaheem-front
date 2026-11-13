@@ -7,8 +7,9 @@
 //   phone / tablet (< 1000)   hero (the cover full bleed, the hero block overlapping its foot) → spotlight cards →
 //                             quick actions strip → PINNED tab bar → the active tab → footer, with an optional sticky
 //                             bottom bar (price + enroll).
-//   desktop (≥ 1000)          main column: hero (chrome on the canvas, the block with the cover framed beside the
-//                             title) → pinned tab bar → the active tab → footer;
+//   desktop (≥ 1000)          main column: hero (chrome on the canvas, ONE block: the text and the call to action
+//                             with the cover framed at 16:9 beside them, the stats under a hairline) → pinned tab
+//                             bar → the active tab → footer;
 //                             side column (sticky, own scroll): aside card → spotlight cards → quick actions list.
 //
 // Warm Editorial (D-610 – D-629): the hero block is the page's one memorable thing — the title in the editorial
@@ -16,7 +17,8 @@
 // (the page's one orchestrated entrance); everything else is still paper on the canvas.
 //
 // Slots:
-//   hero        CourseSpaceHeroData — title, pills, teacher, figures, progress, the block's tone
+//   hero        CourseSpaceHeroData — title, pills, teacher, figures, progress, the block's tone and the role's ONE
+//               call to action (cta, D-941: left out on a phone that has a bottomBar — price once, D-943)
 //   spotlight   contextual cards ("live now", "continue learning", "open attendance", the setup checklist …).
 //               A card that has nothing to say returns SizedBox.shrink() and leaves no gap.
 //   actions     CourseSpaceAction tiles — every "go somewhere" entry of the course in one place
@@ -48,14 +50,56 @@ const double kCourseAsideW = 340;
 // Plain values
 // ═════════════════════════════════════════════════════════════════════════════
 
-/// One number of the hero's glass strip (students · lessons · hours …).
+/// One figure of the hero's stats (students · sessions · hours · price · rating). With [onTap] the cell is drawn as a
+/// button (a paper chip with a chevron), never as underlined text.
 class CourseSpaceStat {
-  const CourseSpaceStat({required this.icon, required this.value, required this.label, this.onTap, this.featureKey});
+  const CourseSpaceStat({
+    required this.icon,
+    required this.value,
+    required this.label,
+    this.onTap,
+    this.featureKey,
+    this.tone,
+  });
 
   final IconData icon;
   final String value, label;
   final VoidCallback? onTap;
   final String? featureKey;
+
+  /// The icon's colour when it means something (the rating's star in accent2); null → the block's muted ink.
+  final Color? tone;
+}
+
+/// A labelled button of the hero's call to action.
+class CourseSpaceButton {
+  const CourseSpaceButton({required this.label, required this.onTap, this.icon, this.featureKey});
+
+  final String label;
+  final IconData? icon;
+  final VoidCallback onTap;
+  final String? featureKey;
+}
+
+/// The hero's call to action (D-941): the ONE primary action of the role (teacher: New session · enrolled student:
+/// Continue · a visitor: Enroll), an optional [secondary] (Edit course), small [icons] (Share), the [price] beside
+/// them for a visitor, and a [note] that stands in for the primary (a payment under review, contact support).
+/// On a phone that has a [CourseSpace.bottomBar] the bar carries this action and the hero leaves it out.
+class CourseSpaceCta {
+  const CourseSpaceCta({this.price, this.primary, this.secondary, this.icons = const [], this.note, this.caption});
+
+  final Widget? price;
+  final CourseSpaceButton? primary;
+  final CourseSpaceButton? secondary;
+
+  /// Icon-only actions after the buttons (their [CourseSpaceTopAction.tooltip] is the label).
+  final List<CourseSpaceTopAction> icons;
+  final Widget? note;
+
+  /// One quiet line under the buttons ("Up next: Functions").
+  final String? caption;
+
+  bool get isEmpty => price == null && primary == null && secondary == null && icons.isEmpty && note == null;
 }
 
 /// A small pill on the hero (live · recorded · certificate · draft …).
@@ -114,6 +158,8 @@ class CourseSpaceHeroData {
     this.progress,
     this.progressLabel,
     this.tone = AppBlockTone.peach,
+    this.cta,
+    this.coverImage,
   });
 
   final String title;
@@ -133,6 +179,12 @@ class CourseSpaceHeroData {
 
   /// The hero block's tint (peach: learning; sky for an information-led page).
   final AppBlockTone tone;
+
+  /// The role's call to action, drawn in the hero (D-941).
+  final CourseSpaceCta? cta;
+
+  /// A cover already in hand (a picture just picked, a test image); else [imageUrl].
+  final ImageProvider? coverImage;
 }
 
 /// One entry of the quick actions (course profile · attendance · students · schedule · support …).
@@ -302,6 +354,8 @@ class CourseSpace extends StatelessWidget {
     topActions: topActions,
     onBack: onBack,
     rounded: rounded,
+    // a phone's sticky bottom bar is the call to action there: the hero does not repeat it (price once, D-943)
+    showCta: rounded || bottomBar == null,
     // desktop: the bar is pinned over both columns ([_withBar]), not drawn in the scrolling masthead
     withBar: !rounded,
   );

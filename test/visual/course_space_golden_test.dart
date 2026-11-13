@@ -661,7 +661,7 @@ Widget _teacherReal() => Builder(
       ],
       activeTab: 'details',
       onTab: (_) {},
-      aside: TeacherCourseStatusCard(course: course, onAddSession: () {}, onEdit: () {}),
+
     );
   },
 );

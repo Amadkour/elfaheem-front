@@ -246,13 +246,6 @@ void main() {
     });
 
     group('teacher course page sections', () {
-      testWidgets('status side card', (t) async {
-        await expectNoLayoutErrors(
-          t,
-          () => SingleChildScrollView(child: TeacherCourseStatusCard(course: course(), onAddSession: () {}, onEdit: () {})),
-        );
-      });
-
       testWidgets('details tab (schedules via AppTime, certificates, tools)', (t) async {
         await expectNoLayoutErrors(
           t,
