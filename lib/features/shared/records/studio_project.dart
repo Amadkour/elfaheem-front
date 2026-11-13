@@ -761,6 +761,22 @@ Map<String, dynamic> studioRenderParams(StudioEdit e,
   };
 }
 
+/// Trim start / Trim end at the playhead (D-904): the part under output second [at] (the [selected] one when the
+/// playhead is on it) loses what lies before ([start]) or after it. (new edit, the part, the source second) — null when
+/// nothing would change (the playhead on the part's own edge, or no part).
+(StudioEdit, int, double)? studioTrimAt(StudioEdit e, double at, {required bool start, int? selected, required double sourceDuration}) {
+  final h = e.hit(at);
+  if (h == null) return null;
+  final sel = selected;
+  final onSel = sel != null && sel < e.clips.length && e.clipStart(sel) <= at + 1e-6 && at <= e.clipStart(sel) + e.clips[sel].length + 1e-6;
+  final i = onSel ? sel : h.clip;
+  final c = e.clips[i];
+  final src = c.start + (at - e.clipStart(i)).clamp(0.0, c.length) * c.speed;
+  final n = start ? e.trimStart(i, src) : e.trimEnd(i, src, sourceDuration);
+  if (identical(n, e)) return null;
+  return (n, i, src);
+}
+
 /// The two halves of [e] at output second [at]: "Split into two files" renders each as its own project.
 (StudioEdit, StudioEdit)? studioHalves(StudioEdit e, double at) {
   final s = e.split(at);

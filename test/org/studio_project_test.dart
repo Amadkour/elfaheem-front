@@ -191,6 +191,29 @@ void main() {
       expect(studioProjectConflict(server: null, local: mine), isFalse);
     });
 
+    test('Trim start / Trim end cut the part under the playhead at the playhead (D-904)', () {
+      final e = StudioEdit.original(90).split(30); // [0-30][30-90]
+      final (a, i, src) = studioTrimAt(e, 40, start: true, sourceDuration: 90)!;
+      expect((i, src), (1, 40.0));
+      expect([a.clips[1].start, a.clips[1].end], [40, 90]);
+      expect(a.duration, closeTo(80, 1e-9));
+      final (b, j, _) = studioTrimAt(e, 10, start: false, sourceDuration: 90)!;
+      expect((j, b.clips[0].end), (0, 10.0));
+      expect(studioTrimAt(e, 0, start: true, sourceDuration: 90), isNull, reason: 'already the start: nothing to cut');
+      // at ×2 the playhead's output second maps to the source at twice the pace
+      final f = StudioEdit.original(90).speedOn(2, clip: 0);
+      expect(studioTrimAt(f, 10, start: false, sourceDuration: 90)!.$3, 20);
+      // the selected part wins when the playhead sits on the edge it shares with the next one
+      expect(studioTrimAt(e, 30, start: false, selected: 0, sourceDuration: 90), isNull);
+      expect(studioTrimAt(e, 30, start: false, sourceDuration: 90)!.$2, 1);
+    });
+
+    test('an export a project remembers is followed again after a reload (D-905)', () {
+      expect(studioDocJobs({'export': {'jobs': [12, '13', 'x']}}), [12, 13]);
+      expect(studioDocJobs({'export': {'height': 720}}), isEmpty);
+      expect(studioDocJobs(null), isEmpty);
+    });
+
     test('a 409 body is read as a Map or a JSON string; an unreadable one gives no revision (D-832)', () {
       final asMap = studioConflictOf({'detail': {'code': 'project_conflict', 'doc': {'rev': 9, 'v': 1}}});
       expect((asMap.rev, asMap.doc?['v']), (9, 1));

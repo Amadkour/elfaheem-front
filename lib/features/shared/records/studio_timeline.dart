@@ -819,13 +819,21 @@ class _TimelinePainter extends CustomPainter {
       final tick = Paint()
         ..color = bay.c.onHero.withValues(alpha: 0.22)
         ..strokeWidth = 1;
-      final first = (math.max(0.0, (offset - StudioLanes.pad) / pps) / minor).floor() * minor;
-      for (double s = first; s <= dur + 1e-6; s += minor) {
+      // whole tick numbers, not a running sum: 0.2 added five times is 0.9999…, which printed "00:00" where 00:01
+      // belonged and labelled two marks 00:01 (seen in the browser run, D-903)
+      final per = math.max(1, (step / minor).round());
+      final k0 = (math.max(0.0, (offset - StudioLanes.pad) / pps) / minor).floor();
+      for (var k = k0;; k++) {
+        final s = k * minor;
+        if (s > dur + 1e-6) break;
         final x = _x(s);
         if (x > size.width + 2) break;
-        final major = ((s / step) - (s / step).roundToDouble()).abs() < 1e-6;
+        final major = k % per == 0;
         canvas.drawLine(Offset(x, StudioLanes.ruler - (major ? 10 : 5)), Offset(x, StudioLanes.ruler - 2), tick);
-        if (major) _text(step < 1 ? studioTimecode(s) : mmss(s), _font(10, bay.faint)).paint(canvas, Offset(x + 4, 3));
+        if (major) {
+          final at = (k ~/ per) * step;
+          _text(step < 1 ? studioTimecode(at) : mmss(at.roundToDouble()), _font(10, bay.faint)).paint(canvas, Offset(x + 4, 3));
+        }
       }
     }
     // the in / out marks: a lit band on the ruler and a soft one over the lanes
@@ -959,8 +967,17 @@ class _TimelinePainter extends CustomPainter {
         ..close();
       canvas.drawPath(cap, Paint()..color = bay.ink);
     }
-    // ── the exact time of what is dragged ──
+    // ── the playhead's own time, always beside its cap (D-903): no need to look away to the transport ──
     final bb = bubble;
+    if (bb == null && hx >= 0 && hx <= size.width) {
+      final tp = _text(studioTimecode(position), _font(10, bay.deck, w: FontWeight.w700));
+      final w = tp.width + 10, h = tp.height + 3;
+      final left = hx + 9 + w <= size.width ? hx + 9 : hx - 9 - w;
+      final r = RRect.fromRectAndRadius(Rect.fromLTWH(left, 1, w, h), Radius.circular(h / 2));
+      canvas.drawRRect(r, Paint()..color = bay.ink.withValues(alpha: 0.9));
+      tp.paint(canvas, Offset(left + 5, 2.5));
+    }
+    // ── the exact time of what is dragged ──
     if (bb != null) {
       final tp = _text(bb.$2, _font(11, bay.deck, w: FontWeight.w700));
       final w = tp.width + 14, h = tp.height + 5;

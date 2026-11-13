@@ -232,6 +232,19 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
   // Player: plays THROUGH the edit
   // ─────────────────────────────────────────────────────────────────────────
 
+  /// The preview failed (a link that expired, a dropped connection, a file the browser can't play): try again in place.
+  Future<void> _reopen() async {
+    final old = _player;
+    setState(() {
+      _playError = null;
+      _ready = false;
+      _player = null;
+    });
+    old?.removeListener(_onPlayer);
+    await old?.dispose();
+    _open();
+  }
+
   Future<void> _open() async {
     try {
       final play = await _src.play(_item.id);
@@ -294,6 +307,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
         _saveState = fromDevice ? StudioSaveState.local : StudioSaveState.saved;
       }
     });
+    _resumeJobs(doc);
     if (conflict) {
       if (h != null && h.steps.length >= 2) _fetchImages();
       await _resolve(server, studioDocRev(server));
@@ -602,8 +616,43 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       : {
           ..._hist.toJson(_srcDur),
           'rev': rev,
-          'export': {'height': _exHeight, 'level': _exLevel.wire, 'two': _twoFiles},
+          'export': {'height': _exHeight, 'level': _exLevel.wire, 'two': _twoFiles, 'jobs': _jobIds},
         };
+
+  List<int> get _jobIds => [for (final r in _job ?? const <RecordItem>[]) r.id];
+
+  /// Remembers the running export on the device and with the project, so a reload follows it again (D-905).
+  void _rememberJobs() {
+    StudioLocalStore.writeJobs(_storeKind, _item.id, _jobIds);
+    if (_hist.steps.length > 1) _scheduleSave();
+  }
+
+  /// After a reload: the exports this source had going (device or project), followed again — running ones show their
+  /// percent on Export, finished ones say Ready until they are seen.
+  Future<void> _resumeJobs(Map<String, dynamic>? doc) async {
+    final ids = {...studioDocJobs(doc), ...await StudioLocalStore.readJobs(_storeKind, _item.id)}.toList();
+    if (ids.isEmpty || _job != null) return;
+    final found = <RecordItem>[];
+    for (final id in ids) {
+      try {
+        final r = await _src.get(id);
+        if (r != null) found.add(r);
+      } catch (_) {/* gone: nothing to follow */}
+    }
+    if (!mounted || _job != null) return;
+    if (found.isEmpty) {
+      StudioLocalStore.writeJobs(_storeKind, _item.id, const []);
+      return;
+    }
+    final running = found.any((r) => r.inProgress);
+    _update(() {
+      _job = found;
+      _exportUnseen = true;
+    });
+    _keep(found);
+    _watchJob();
+    showAppNotice(running ? t('التصدير ما زال يجري — نتابعه هنا', 'Your export is still running — following it here') : t('آخر تصدير جاهز', 'Your last export is ready'));
+  }
 
   Future<void> _saveNow() {
     final run = _saveOnce();
@@ -716,11 +765,26 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
     final e = _edit;
     final n = e.split(_pos);
     if (identical(n, e)) {
-      showAppNotice(t('المؤشر على حافة جزء — حرّكه قليلاً', 'The playhead is on a part’s edge — move it a little'));
+      showAppNotice(t('المؤشر على حافة جزء — حرّكه قليلاً ثم قسّم', 'The playhead is on a part’s edge — move it a little, then split'), error: true);
       return;
     }
     _commit(StudioStepKind.split, n, info: {'at': _pos});
     setState(() => _selClip = n.hit(_pos)?.clip);
+  }
+
+  /// Trim start / Trim end (Q / W, D-904): the part under the playhead loses everything before / after it — the
+  /// quickest way to trim a start or an end without dragging a handle.
+  void _trimToPlayhead(bool start) {
+    final e = _edit;
+    final r = studioTrimAt(e, _pos, start: start, selected: _selClip, sourceDuration: _srcDur);
+    if (r == null) {
+      showAppNotice(t('لا شيء يُقص هنا — حرّك المؤشر داخل الجزء', 'Nothing to trim here — move the playhead inside the part'), error: true);
+      return;
+    }
+    final (n, i, src) = r;
+    _commit(start ? StudioStepKind.trimStart : StudioStepKind.trimEnd, n, info: {'to': src});
+    setState(() => _selClip = i);
+    _seek(start ? n.clipStart(i) : math.max(0, n.clipStart(i) + n.clips[i].length - 0.04));
   }
 
   void _setMark(bool isIn) {
@@ -1184,6 +1248,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       _exportUnseen = !_sheetOpen;
     });
     _keep(made);
+    _rememberJobs();
     _watchJob();
   }
 
@@ -1341,6 +1406,15 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       _titleTouched = false;
       _syncTitle();
     });
+    _rememberJobs(); // nothing to follow after a reload any more
+  }
+
+  /// Every key of the Studio in one sheet (? or ⋯ › Keyboard shortcuts, D-910).
+  void _showKeys() {
+    showAppSheet<void>(
+      context,
+      (ctx) => AppSheetContent(title: t('اختصارات لوحة المفاتيح', 'Keyboard shortcuts'), icon: Icons.keyboard_alt_outlined, children: const [StudioKeysHint(sheet: true)]),
+    );
   }
 
   /// The Export panel: the settings, or the job it follows.
@@ -1511,6 +1585,10 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       return KeyEventResult.handled;
     }
     if (ctrl) return KeyEventResult.ignored;
+    if (e.character == '?' || (k == LogicalKeyboardKey.slash && kb.isShiftPressed)) {
+      _showKeys();
+      return KeyEventResult.handled;
+    }
     final step = kb.isShiftPressed ? 1.0 : StudioTransport.frame;
     if (kb.isAltPressed && (k == LogicalKeyboardKey.arrowLeft || k == LogicalKeyboardKey.arrowRight)) {
       final i = _selClip;
@@ -1541,6 +1619,10 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       _setMark(false);
     } else if (k == LogicalKeyboardKey.keyS && edit) {
       _split();
+    } else if (k == LogicalKeyboardKey.keyQ && edit) {
+      _trimToPlayhead(true);
+    } else if (k == LogicalKeyboardKey.keyW && edit) {
+      _trimToPlayhead(false);
     } else if ((k == LogicalKeyboardKey.delete || k == LogicalKeyboardKey.backspace) && edit) {
       if (_markIn != null && _markOut != null) {
         _removeMarked();
@@ -1589,6 +1671,10 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
     final e = _edit;
     final split = StudioAction(id: 'split', icon: Icons.content_cut_rounded, label: t('تقسيم', 'Split'), tip: t('تقسيم عند المؤشر (S)', 'Split at the playhead (S)'), onTap: _split);
     final speed = StudioAction(id: 'speed', icon: Icons.speed_rounded, label: t('السرعة', 'Speed'), onTap: () => _openTool(StudioTool.edit));
+    final trimIn = StudioAction(
+        id: 'trim_start', icon: Icons.start_rounded, timeIcon: true, label: t('قص البداية', 'Trim start'), tip: t('حذف ما قبل المؤشر في هذا الجزء (Q)', 'Remove what is before the playhead in this part (Q)'), onTap: () => _trimToPlayhead(true));
+    final trimOut = StudioAction(
+        id: 'trim_end', icon: Icons.keyboard_tab_rounded, timeIcon: true, label: t('قص النهاية', 'Trim end'), tip: t('حذف ما بعد المؤشر في هذا الجزء (W)', 'Remove what is after the playhead in this part (W)'), onTap: () => _trimToPlayhead(false));
     void clear() => setState(() {
           _selClip = null;
           _selOverlay = null;
@@ -1628,9 +1714,15 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       return (
         [
           split,
+          trimIn,
+          trimOut,
           speed,
-          StudioAction(id: 'move_back', icon: Icons.keyboard_double_arrow_left_rounded, timeIcon: true, label: t('للخلف', 'Earlier'), tip: t('تشغيله قبل الجزء السابق (Alt+←)', 'Play it before the part before (Alt+←)'), onTap: i > 0 ? () => _moveClip(i, i - 1) : null),
-          StudioAction(id: 'move_fwd', icon: Icons.keyboard_double_arrow_right_rounded, timeIcon: true, label: t('للأمام', 'Later'), tip: t('تشغيله بعد الجزء التالي (Alt+→)', 'Play it after the next part (Alt+→)'), onTap: i < e.clips.length - 1 ? () => _moveClip(i, i + 1) : null),
+          if (wide) ...[
+            StudioAction(id: 'move_back', icon: Icons.keyboard_double_arrow_left_rounded, timeIcon: true, label: t('للخلف', 'Earlier'), tip: t('تشغيله قبل الجزء السابق (Alt+←)', 'Play it before the part before (Alt+←)'), onTap: i > 0 ? () => _moveClip(i, i - 1) : null),
+            StudioAction(id: 'move_fwd', icon: Icons.keyboard_double_arrow_right_rounded, timeIcon: true, label: t('للأمام', 'Later'), tip: t('تشغيله بعد الجزء التالي (Alt+→)', 'Play it after the next part (Alt+→)'), onTap: i < e.clips.length - 1 ? () => _moveClip(i, i + 1) : null),
+          ] else if (e.clips.length > 1)
+            // phones: one Move (the bar keeps six whole words, D-902); dragging the part works too
+            StudioAction(id: 'move', icon: Icons.swap_horiz_rounded, label: t('نقل', 'Move'), onTap: () => _moveSheet(i)),
           StudioAction(id: 'delete_clip', icon: Icons.delete_outline_rounded, label: t('حذف', 'Delete'), danger: true, tip: t('حذف الجزء (Delete)', 'Delete the part (Delete)'), onTap: e.clips.length > 1 ? _deleteClip : null),
         ],
         StudioActionContext(
@@ -1642,23 +1734,76 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
     // nothing selected: the tools (a wide window has them on the rail, so its strip keeps to the timeline's own)
     final markIn = StudioAction(id: 'mark_in', icon: Icons.first_page_rounded, timeIcon: true, label: t('بداية', 'Mark in'), tip: t('بداية الفترة عند المؤشر (I)', 'Mark in at the playhead (I)'), onTap: () => _setMark(true));
     final markOut = StudioAction(id: 'mark_out', icon: Icons.last_page_rounded, timeIcon: true, label: t('نهاية', 'Mark out'), tip: t('نهاية الفترة عند المؤشر (O)', 'Mark out at the playhead (O)'), onTap: () => _setMark(false));
-    if (wide) {
-      return ([split, markIn, markOut], _markIn != null || _markOut != null ? StudioActionContext(label: t('حدّد النهاية', 'Now mark the end'), onClear: clear) : null);
-    }
+    final marking = _markIn != null || _markOut != null ? StudioActionContext(label: t('حدّد النهاية', 'Now mark the end'), onClear: clear) : null;
+    if (wide) return ([split, trimIn, trimOut, markIn, markOut], marking);
+    // phones: the six that fit a 390 px bar with their words whole; the rest under More (D-902)
     return (
       [
         split,
+        trimIn,
+        trimOut,
         if (!_item.isAudio && _tools.contains(StudioTool.text)) StudioAction(id: 'text', icon: Icons.title_rounded, label: t('نص', 'Text'), onTap: _quickText),
         if (!_item.isAudio && _tools.contains(StudioTool.image)) StudioAction(id: 'image', icon: Icons.add_photo_alternate_outlined, label: t('صورة', 'Picture'), onTap: _quickPicture),
-        speed,
-        markIn,
-        markOut,
-        StudioAction(id: 'history', icon: Icons.history_rounded, label: t('السجل', 'History'), onTap: () => _openTool(StudioTool.history)),
-        if (_tools.contains(StudioTool.merge)) StudioAction(id: 'merge', icon: Icons.merge_rounded, label: StudioTool.merge.short, onTap: () => _openTool(StudioTool.merge)),
-        if (_tools.contains(StudioTool.cover)) StudioAction(id: 'cover', icon: Icons.image_outlined, label: StudioTool.cover.short, onTap: () => _openTool(StudioTool.cover)),
+        if (_markIn != null) markOut,
+        StudioAction(id: 'more', icon: Icons.more_horiz_rounded, label: t('المزيد', 'More'), onTap: _moreSheet),
       ],
-      _markIn != null || _markOut != null ? StudioActionContext(label: t('حدّد النهاية', 'Now mark the end'), onClear: clear) : null,
+      marking,
     );
+  }
+
+  /// Phones: move the selected part one place earlier or later (or drag it on the timeline).
+  void _moveSheet(int i) {
+    final n = _edit.clips.length;
+    showAppSheet<void>(context, (ctx) {
+      Widget row(String key, IconData icon, String label, VoidCallback? onTap) => ListTile(
+            key: ValueKey('studio.move.$key'),
+            enabled: onTap != null,
+            leading: Directionality(textDirection: TextDirection.ltr, child: Icon(icon)),
+            title: Text(label),
+            onTap: onTap == null
+                ? null
+                : () {
+                    Navigator.of(ctx).pop();
+                    onTap();
+                  },
+          );
+      return AppSheetContent(
+        title: t('نقل الجزء ${i + 1}', 'Move part ${i + 1}'),
+        icon: Icons.swap_horiz_rounded,
+        subtitle: t('أو اسحبه على الخط الزمني', 'Or drag it on the timeline'),
+        children: [
+          row('first', Icons.first_page_rounded, t('إلى البداية', 'To the start'), i > 0 ? () => _moveClip(i, 0) : null),
+          row('back', Icons.keyboard_double_arrow_left_rounded, t('مكاناً واحداً للخلف', 'One place earlier'), i > 0 ? () => _moveClip(i, i - 1) : null),
+          row('fwd', Icons.keyboard_double_arrow_right_rounded, t('مكاناً واحداً للأمام', 'One place later'), i < n - 1 ? () => _moveClip(i, i + 1) : null),
+          row('last', Icons.last_page_rounded, t('إلى النهاية', 'To the end'), i < n - 1 ? () => _moveClip(i, n - 1) : null),
+        ],
+      );
+    });
+  }
+
+  /// Phones: what does not fit the bar (Speed, History, Merge, Cover).
+  void _moreSheet() {
+    showAppSheet<void>(context, (ctx) {
+      Widget row(String key, IconData icon, String label, String sub, VoidCallback onTap) => ListTile(
+            key: ValueKey('studio.more.$key'),
+            leading: Icon(icon),
+            title: Text(label),
+            subtitle: Text(sub),
+            onTap: () {
+              Navigator.of(ctx).pop();
+              onTap();
+            },
+          );
+      return AppSheetContent(title: t('المزيد', 'More'), icon: Icons.more_horiz_rounded, children: [
+        row('mark_in', Icons.first_page_rounded, t('بداية فترة هنا', 'Mark in here'), t('ثم «نهاية» لتحديد فترة تحذفها أو تبقيها', 'Then Mark out, to remove or keep that period'), () => _setMark(true)),
+        row('speed', Icons.speed_rounded, t('السرعة', 'Speed'), t('للجزء المحدد أو للفيديو كله', 'For the selected part or the whole video'), () => _openTool(StudioTool.edit)),
+        row('history', Icons.history_rounded, t('السجل', 'History'), t('كل خطوة، والعودة إلى أي منها', 'Every step; go back to any of them'), () => _openTool(StudioTool.history)),
+        if (_tools.contains(StudioTool.merge))
+          row('merge', Icons.merge_rounded, StudioTool.merge.label, t('ضم تسجيلات أخرى بعد هذا', 'Add other recordings after this one'), () => _openTool(StudioTool.merge)),
+        if (_tools.contains(StudioTool.cover))
+          row('cover', Icons.image_outlined, StudioTool.cover.label, t('الصورة في المكتبة وعند المشاركة', 'The picture in the library and when shared'), () => _openTool(StudioTool.cover)),
+      ]);
+    });
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1668,15 +1813,8 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
   Widget _preview(BuildContext context) {
     final c = context.colors;
     final p = _player;
-    if (_playError != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpace.md),
-          child: Text(_playError!, textAlign: TextAlign.center, style: AppType.body(context).copyWith(color: c.onHeroMuted)),
-        ),
-      );
-    }
-    if (!_ready || p == null) return AppShimmer(child: ColoredBox(color: c.heroShade, child: const SizedBox.expand()));
+    if (_playError != null) return StudioPreviewProblem(detail: _playError!, onRetry: _reopen);
+    if (!_ready || p == null) return const StudioPreviewLoading();
     if (_item.isAudio) {
       return GestureDetector(
         onTap: _playPause,
@@ -1922,6 +2060,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
           canvas: _canvas,
           onCanvas: () => setState(() => _canvas = StudioCanvas.values[(_canvas.index + 1) % StudioCanvas.values.length]),
           onDownload: () => _download(),
+          onShortcuts: wide ? _showKeys : null,
           downloading: _originalDownload,
           canUndo: editing && _hist.canUndo,
           canRedo: editing && _hist.canRedo,

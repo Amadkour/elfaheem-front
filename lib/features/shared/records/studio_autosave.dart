@@ -47,6 +47,13 @@ int studioDocRev(Map<String, dynamic>? doc) {
 bool studioProjectConflict({Map<String, dynamic>? server, StudioLocalCopy? local, bool serverFailed = false}) =>
     !serverFailed && server != null && local != null && local.dirty && studioDocRev(server) > local.base;
 
+/// The export jobs a saved doc remembers (`export.jobs`, D-905).
+List<int> studioDocJobs(Map<String, dynamic>? doc) {
+  final x = doc?['export'];
+  final j = x is Map ? x['jobs'] : null;
+  return j is List ? [for (final v in j) if (v is num) v.toInt() else ?int.tryParse('$v')] : const [];
+}
+
 /// What a 409 project_conflict carries: the stored doc and its revision (null rev: the answer could not be read —
 /// the caller must not guess a revision from it, D-832). [body] may be a Map or a JSON string.
 ({Map<String, dynamic>? doc, int? rev}) studioConflictOf(dynamic body) {
@@ -75,6 +82,28 @@ abstract final class StudioLocalStore {
     } catch (_) {
       return null;
     }
+  }
+
+  /// The exports started on this source and not yet seen through (D-905): a reload, a crash or closing the tab finds
+  /// them again and follows them.
+  static Future<List<int>> readJobs(String kind, int id) async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      return [for (final v in p.getStringList('studio.jobs.$kind.$id') ?? const <String>[]) ?int.tryParse(v)];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  static Future<void> writeJobs(String kind, int id, List<int> jobs) async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      if (jobs.isEmpty) {
+        await p.remove('studio.jobs.$kind.$id');
+      } else {
+        await p.setStringList('studio.jobs.$kind.$id', [for (final j in jobs) '$j']);
+      }
+    } catch (_) {/* the project doc keeps them too */}
   }
 
   static Future<void> write(String kind, int id, Map<String, dynamic>? doc, {required bool dirty, required int base}) async {

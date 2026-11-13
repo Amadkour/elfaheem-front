@@ -4696,3 +4696,31 @@ The course form built its `CourseReelController` with no url, so an existing ree
 
 **Context.** The brief asks for a configurable quorum AND majority; only the quorum was configurable (simple majority, ties by rule).
 **Decision.** `org_councils.majority_pct` (migration 0083): null = simple majority (approve > reject, unchanged); a number 50–100 = approve > reject AND the approval share of the counted votes (the same denominator as before: abstentions / non-voters per the council's rules) reaches it, otherwise rejected. A tie still follows the tie rule. The settings form offers simple / 60 % / two thirds / three quarters; the PUT replaces the whole object, so the app always sends `majority_pct`. Votes can still be changed while the row is voting and are frozen after the close (409 `voting_closed`) — unchanged, recorded here because the brief asked.
+
+## D-900 — The Studio is verified for real: ffmpeg renders and the page in a browser · 2026-11-14 · accepted
+
+Goldens had passed while the owner still found the Studio bad, so this round checks the real thing. **Renders:** `../back/tests/org_v2/studio_real_render_check.py` runs the jobs' own `render_project` with a real ffmpeg on a generated clip: four colour blocks, each starting with a beep. It then measures the output files: length, the colour in each part (order after a trim, a cut, a reorder and ×2), beep onsets against block starts (audio sync within 60 ms), the overlay's pixels, and the size, sound and length for every resolution × level. On a busy picture it also checks that the file shrinks from Best to Smaller. **Browser:** `tool/studio_harness/main.dart` mounts the real `RecordStudioPage` (real player, timeline, panels, export panel) over a local source that keeps its project and jobs in the browser's storage, so a reload behaves like a server. It is built with `flutter build web --profile -t tool/studio_harness/main.dart` and driven with Playwright at 1440×900 and 390×844 in en and ar. The real backend could not run here: there is no Docker daemon, so no MinIO or Postgres, and the Studio's sources live in MinIO or Google Drive. Headless Chromium cannot decode H.264, so the harness plays a VP9 copy.
+
+## D-901 — A preview that cannot play says why and offers Try again · 2026-11-14 · accepted
+
+The browser run showed a bare "Something went wrong. Please try again." on the stage, in English even in Arabic, with no way to retry short of leaving. `StudioPreviewProblem` now says "The video couldn't play here — your work is safe", gives the reason and has a Try again button that reopens the player in place (`_reopen`). While loading, the stage says "Getting the video ready…" (`StudioPreviewLoading`) instead of showing a silent shimmer.
+
+## D-902 — A phone's action bar shows six whole words · 2026-11-14 · accepted
+
+At 390 px the bar held eight tools and ran off the edge; in Arabic the last one was cut in half. With nothing selected it now holds Split · Trim start · Trim end · Text · Picture · More. Mark out joins once Mark in is set. More holds Mark in, Speed, History, Merge and Cover. A selected part shows Split · Trim start · Trim end · Speed · Move · Delete; Move opens a sheet (To the start, One place earlier, One place later, To the end), while wide windows keep Earlier and Later as buttons. Cells are 52 px at the narrowest, so the words stay whole at 390.
+
+## D-903 — The playhead shows its time; the ruler counts in whole ticks · 2026-11-14 · accepted
+
+A pill beside the playhead's cap always shows its exact time (hundredths), so there is no need to look away to the transport; the drag bubble replaces it while something is dragged. The ruler added 0.2 s five times and printed 00:01 twice (0.9999… shown as 00:00, the next mark as 00:01). It now places marks by whole tick numbers.
+
+## D-904 — Trim start / Trim end at the playhead (Q / W) · 2026-11-14 · accepted
+
+Trimming a lecture's start used to mean selecting the part and dragging a handle exactly. Now: move the playhead and press Trim start or Trim end (Q / W on a keyboard), and the part under it loses what lies before or after (`studioTrimAt`, pure, tested). If the playhead sits on the selected part's edge, the selected part wins. The action sits on every bar: phones, the desktop strip, and the part's own actions.
+
+## D-905 — An export survives a reload · 2026-11-14 · accepted
+
+Running exports lived only in the page, so a reload, a closed tab or a crash lost track of them; the file was still made, but the Studio no longer knew. Their ids are now kept on the device (`StudioLocalStore.writeJobs`) and with the project (`doc.export.jobs`, so another device sees them too). On open, the Studio fetches them and follows them again: a running export shows its percent on Export, a finished one says Ready. "New export" forgets them. Verified in the browser: an export started, the page was reloaded, and the Studio picked the job up and showed Ready.
+
+## D-910 — Keyboard shortcuts in one sheet · 2026-11-14 · accepted
+
+? (or ⋯ › Keyboard shortcuts on wide windows) opens every key in one sheet; the list at the foot of the inspector stays. Q / W and ? are added to it.

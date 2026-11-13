@@ -197,6 +197,7 @@ class StudioTopBar extends StatelessWidget implements PreferredSizeWidget {
     this.canvas = StudioCanvas.dark,
     this.onCanvas,
     this.onDownload,
+    this.onShortcuts,
     this.downloading,
     this.canUndo = false,
     this.canRedo = false,
@@ -217,6 +218,9 @@ class StudioTopBar extends StatelessWidget implements PreferredSizeWidget {
 
   /// Download the original (null: not offered).
   final VoidCallback? onDownload;
+
+  /// The keyboard shortcuts sheet (wide windows).
+  final VoidCallback? onShortcuts;
 
   /// A download in progress (0–1; null: none).
   final double? downloading;
@@ -319,6 +323,7 @@ class StudioTopBar extends StatelessWidget implements PreferredSizeWidget {
       onSelected: (v) {
         if (v == 'canvas') onCanvas?.call();
         if (v == 'download') onDownload?.call();
+        if (v == 'keys') onShortcuts?.call();
       },
       itemBuilder: (_) => [
         if (onCanvas != null)
@@ -342,6 +347,15 @@ class StudioTopBar extends StatelessWidget implements PreferredSizeWidget {
               const Icon(Icons.download_rounded),
               const SizedBox(width: AppSpace.sm),
               Flexible(child: Text(downloading == null ? t('تنزيل الأصل', 'Download the original') : t('يُنزّل الأصل…', 'Downloading the original…'))),
+            ]),
+          ),
+        if (onShortcuts != null)
+          PopupMenuItem(
+            value: 'keys',
+            child: Row(children: [
+              const Icon(Icons.keyboard_alt_outlined),
+              const SizedBox(width: AppSpace.sm),
+              Flexible(child: Text(t('اختصارات لوحة المفاتيح (?)', 'Keyboard shortcuts (?)'))),
             ]),
           ),
       ],
@@ -796,7 +810,7 @@ class StudioActionBar extends StatelessWidget {
             borderRadius: AppRadius.chipAll,
             onTap: on ? a.onTap : null,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: AppTouch.primary, minWidth: 64),
+              constraints: const BoxConstraints(minHeight: AppTouch.primary, minWidth: 52),
               child: Column(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
                 AnimatedContainer(
                   duration: motion.fast,
@@ -861,7 +875,7 @@ class StudioActionBar extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs, vertical: AppSpace.xxs),
               child: LayoutBuilder(builder: (context, box) {
-                if (box.maxWidth / math.max(1, actions.length) >= 64) {
+                if (box.maxWidth / math.max(1, actions.length) >= 52) {
                   return Row(children: [for (final a in actions) Expanded(child: cell(a))]);
                 }
                 return SingleChildScrollView(
@@ -1805,6 +1819,74 @@ class StudioJobCard extends StatelessWidget {
 /// Below this width (upright) the Studio stacks: stage, timeline, the inspector as a sheet, the tool strip.
 const studioWideMin = 960.0;
 
+/// The preview could not open the video (D-901): what happened, in words, and Try again — never a bare error line.
+class StudioPreviewProblem extends StatelessWidget {
+  const StudioPreviewProblem({super.key, required this.detail, this.onRetry});
+
+  /// The reason (the server's words when there are any).
+  final String detail;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final bay = StudioBay.of(context);
+    return LayoutBuilder(builder: (context, box) {
+      final small = box.maxHeight < 200;
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpace.md),
+          child: Column(key: const ValueKey('studio.preview.problem'), mainAxisSize: MainAxisSize.min, children: [
+            if (!small) ...[
+              Icon(Icons.videocam_off_outlined, size: AppIconSize.xl, color: bay.muted),
+              const SizedBox(height: AppSpace.xs),
+            ],
+            Text(t('تعذّر تشغيل الفيديو هنا', "The video couldn't play here"),
+                textAlign: TextAlign.center, style: AppType.bodyStrong(context).copyWith(color: bay.ink)),
+            const SizedBox(height: AppSpace.xxs),
+            Text(
+              t('عملك محفوظ. تحقّق من الاتصال ثم أعد المحاولة. ($detail)', 'Your work is safe. Check the connection and try again. ($detail)'),
+              textAlign: TextAlign.center,
+              maxLines: small ? 2 : 4,
+              overflow: TextOverflow.ellipsis,
+              style: AppType.meta(context).copyWith(color: bay.muted),
+            ),
+            if (onRetry != null) ...[
+              const SizedBox(height: AppSpace.sm),
+              FilledButton.icon(
+                key: const ValueKey('studio.preview.retry'),
+                style: FilledButton.styleFrom(backgroundColor: bay.accent, foregroundColor: bay.deck, minimumSize: const Size(AppTouch.min, AppTouch.min)),
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh_rounded, size: AppIconSize.md),
+                label: Text(t('إعادة المحاولة', 'Try again')),
+              ),
+            ],
+          ]),
+        ),
+      );
+    });
+  }
+}
+
+/// The video is on its way: the shimmering stage with a line saying so.
+class StudioPreviewLoading extends StatelessWidget {
+  const StudioPreviewLoading({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final bay = StudioBay.of(context);
+    return Stack(fit: StackFit.expand, children: [
+      AppShimmer(child: ColoredBox(color: bay.deck, child: const SizedBox.expand())),
+      Center(
+        child: Row(key: const ValueKey('studio.preview.loading'), mainAxisSize: MainAxisSize.min, children: [
+          SizedBox(width: AppIconSize.sm, height: AppIconSize.sm, child: CircularProgressIndicator(strokeWidth: 2, color: bay.muted)),
+          const SizedBox(width: AppSpace.xs),
+          Flexible(child: Text(t('يجهّز الفيديو…', 'Getting the video ready…'), style: AppType.meta(context).copyWith(color: bay.muted))),
+        ]),
+      ),
+    ]);
+  }
+}
+
 /// The round play mark over a paused picture.
 class StudioPlayMark extends StatelessWidget {
   const StudioPlayMark({super.key, required this.playing});
@@ -2070,7 +2152,10 @@ class RecordStudioLayout extends StatelessWidget {
 
 /// The web / desktop keys, shown at the end of the inspector.
 class StudioKeysHint extends StatelessWidget {
-  const StudioKeysHint({super.key});
+  const StudioKeysHint({super.key, this.sheet = false});
+
+  /// In the shortcuts sheet: no gap above, every key on its own row.
+  final bool sheet;
 
   @override
   Widget build(BuildContext context) {
@@ -2088,22 +2173,30 @@ class StudioKeysHint extends StatelessWidget {
           const SizedBox(width: AppSpace.xxs),
           Flexible(child: Text(what, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium))),
         ]);
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSpace.lg),
-      child: Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xs, children: [
+    final keys = <Widget>[
         key(t('مسافة', 'Space'), t('تشغيل / إيقاف', 'Play / pause')),
         key('J · K · L', t('رجوع · إيقاف · تقديم', 'Back · pause · forward')),
         key('← →', t('إطار (Shift: ثانية)', 'A frame (Shift: a second)')),
         key('I · O', t('علامة البداية / النهاية', 'Mark in / out')),
         key('S', t('تقسيم عند المؤشر', 'Split at the playhead')),
+        key('Q · W', t('قص البداية / النهاية عند المؤشر', 'Trim start / end at the playhead')),
         key('Del', t('حذف المحدد', 'Delete the selection')),
         key('Alt + ← →', t('نقل الجزء المحدد', 'Move the selected part')),
         key('Ctrl+Z', t('تراجع', 'Undo')),
         key('Ctrl+Shift+Z', t('إعادة', 'Redo')),
         key('Ctrl+S', t('حفظ الآن', 'Save now')),
         key('Ctrl+E', t('تصدير', 'Export')),
+        key('?', t('هذه القائمة', 'This list')),
         key('Ctrl + ${t('العجلة', 'wheel')}', t('تكبير الخط الزمني', 'Zoom the timeline')),
-      ]),
+    ];
+    if (sheet) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+        for (final k in keys) Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: k),
+      ]);
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpace.lg),
+      child: Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xs, children: keys),
     );
   }
 }

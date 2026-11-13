@@ -197,6 +197,19 @@ void main() {
       final a = VodAction(id: 'studio', icon: Icons.auto_fix_high_rounded, label: 'Open in Studio', onTap: () {});
       await expectNoLayoutErrors(t, () => Row(children: [VodActionButton(action: a, showLabel: true), VodActionButton(action: a)]));
     });
+    testWidgets('the preview: loading, a problem with Try again, the keys sheet (D-901, D-910)', (t) async {
+      for (final h in [120.0, 220.0, 480.0]) {
+        await expectNoLayoutErrors(t, () => SizedBox(height: h, child: const StudioPreviewProblem(detail: 'The link has expired — open it again from the list', onRetry: _noop)));
+      }
+      await expectNoLayoutErrors(t, () => const SizedBox(height: 200, child: StudioPreviewLoading()));
+      await expectNoLayoutErrors(t, () => const SingleChildScrollView(child: StudioKeysHint(sheet: true)));
+      var retried = 0;
+      await t.pumpWidget(layoutHost(SizedBox(height: 300, child: StudioPreviewProblem(detail: 'x', onRetry: () => retried++)), scale: 1));
+      await t.tap(find.byKey(const ValueKey('studio.preview.retry')));
+      expect(retried, 1);
+      expect(find.text("The video couldn't play here"), findsOneWidget);
+    });
+
     testWidgets('the action bar and the timeline strip alone', (t) async {
       await expectNoLayoutErrors(t, () => Align(alignment: Alignment.bottomCenter, child: StudioActionBar(actions: _acts(), context: StudioActionContext(label: 'Text “a very long caption that goes on”', onClear: () {}))));
       await expectNoLayoutErrors(t, () => Align(alignment: Alignment.topCenter, child: StudioTimelineBar(actions: _acts(), context: const StudioActionContext(label: 'Marked 01:10.0 – 01:25.0'))));
@@ -458,3 +471,5 @@ void main() {
     });
   });
 }
+
+void _noop() {}
