@@ -39,6 +39,7 @@ import 'dart:math' as math;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/api_error_text.dart' show featureDisabledText;
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/core/offline/downloads_availability.dart' show kDownloadsAvailable, linkAvailableHere;
 
@@ -545,6 +546,8 @@ String ragCodeText(String? code, String fallback) => switch (code) {
       'not_in_course' => t('لست مسجلاً في هذا المقرر', 'You are not in this course'),
       'authz_unavailable' => t('تعذر التحقق من الصلاحيات — حاول بعد قليل', 'Could not check your access — try again shortly'),
       'app_context_only' => t('مساعد التطبيق لا يتبع مقرراً', 'The app assistant does not follow a course'),
+      // the Super Admin's AI controls (D-780): the server refuses a new question; past chats stay readable
+      'feature_disabled' => featureDisabledText('rag.assistant'),
       // chat sessions (Track E.5)
       'conversation_not_found' => 'rag_chat_not_found'.tr,
       'not_owner' => 'rag_chat_not_owner'.tr,
@@ -561,8 +564,12 @@ bool ragOrgBlocked(String? code) => code == 'orgs_disabled' || code == 'org_not_
 
 /// The text of a failed chat call: [ragCodeText], plus the organization's `status` a 423 org_not_approved carries
 /// (suspended · pending · rejected).
-String ragChatResultText(EngineResult r) =>
-    r.code == 'org_not_approved' ? ragOrgStatusText(asStr(r.detail['status'])) : ragCodeText(r.code, r.message);
+String ragChatResultText(EngineResult r) => switch (r.code) {
+      'org_not_approved' => ragOrgStatusText(asStr(r.detail['status'])),
+      // which assistant the Super Admin switched off (rag.app_assistant | rag.assistant, D-780)
+      'feature_disabled' => featureDisabledText(asStr(r.detail['feature']).isEmpty ? 'rag.assistant' : asStr(r.detail['feature'])),
+      _ => ragCodeText(r.code, r.message),
+    };
 
 class RagApi {
   RagApi([ApiClient? api]) : _api = api ?? ApiClient();

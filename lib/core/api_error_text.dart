@@ -42,10 +42,27 @@ String _wait(Duration? d) {
   return ' (${_t('${d.inSeconds} ثانية', '${d.inSeconds} s')})';
 }
 
+/// The sentence for a 403 `feature_disabled` {feature} refusal (D-781): the Super Admin's AI controls by name, any
+/// other kill-switch key in general words. Used by [apiErrorText], `orgErrorText` and the assistant's `ragCodeText`.
+String featureDisabledText(String? feature) => switch (feature) {
+      'exam.auto_create' => _t('إنشاء الأسئلة بالذكاء الاصطناعي متوقف حالياً من إدارة المنصة — اكتب الأسئلة بنفسك',
+          'AI question generation is switched off by the platform right now — write the questions yourself'),
+      'exam.auto_grade' => _t('التصحيح بالذكاء الاصطناعي متوقف حالياً — الإجابات المكتوبة محفوظة لتصححها يدوياً',
+          'AI grading is switched off right now — the written answers are kept for you to mark by hand'),
+      'exam.auto_correct' => _t('التصحيح التلقائي لأوراق التظليل متوقف حالياً من إدارة المنصة — لم يُحذف شيء',
+          'Automatic bubble-sheet correction is switched off by the platform right now — nothing was deleted'),
+      'rag.app_assistant' => _t('مساعد التطبيق متوقف حالياً من إدارة المنصة', 'The app assistant is switched off by the platform right now'),
+      'rag.assistant' => _t('المساعد الذكي متوقف حالياً من إدارة المنصة', 'The AI assistant is switched off by the platform right now'),
+      'rag.learning' => _t('التعلم من الملاحظات متوقف حالياً من إدارة المنصة', 'Learning from feedback is switched off by the platform right now'),
+      _ => _t('هذه الميزة متوقفة حالياً من إدارة المنصة', 'This feature is switched off by the platform right now'),
+    };
+
 /// A short sentence in the user's language for any [ApiException]; the server's own text when the code is unknown.
 String apiErrorText(ApiException e) {
   final d = apiErrorDetail(e);
   switch (e.code) {
+    case 'feature_disabled':                               // the Super Admin's kill switch, enforced by the server
+      return featureDisabledText(d['feature']?.toString());
     case 'server_busy':                                    // 503 from the Exam Engine / RAG in-flight cap (D-038)
       return _t(ApiMessages.serverBusyAr, ApiMessages.serverBusyEn);
     case 'image_too_large':

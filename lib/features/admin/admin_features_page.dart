@@ -6,6 +6,7 @@
 //     the organization grant, the description, and delete (features added from here only)
 //   • "Add feature": key + Arabic / English names + group (existing or new) + description + grants
 // A feature switched OFF here disappears for everyone — organization admins can never switch it back on.
+// The super admin sees the AI controls first (admin_ai_controls.dart, D-780): the same keys, switched on every platform.
 // The app bar opens the app features guide (admin_feature_guide.dart): user-level features built on these switches,
 // with what the app assistant explains about each.
 //
@@ -18,6 +19,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../org/org_v3.dart';
+import 'admin_ai_controls.dart' show AiControlsSection;
 import 'admin_common.dart' show asMap, asMapList, t;
 import 'admin_feature_guide.dart' show AdminFeatureGuidePage;
 import 'admin_labels.dart' show disposeAfterRoute;
@@ -220,6 +222,8 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
         SliverPadding(
           padding: EdgeInsets.fromLTRB(gutter, AppSpace.md, gutter, 0),
           sliver: SliverList.list(children: [
+            // D-780: the AI features first — one platform-wide switch each, enforced by the server too
+            if (_super) ...[AiControlsSection(onChanged: _load), AppSpace.gapMd],
             AppKpiGrid(maxColumns: 3, children: [
               AppKpiCard(icon: Icons.widgets_rounded, value: '${counts['total'] ?? _items.length}', label: t('ميزة', 'Features')),
               AppKpiCard(icon: Icons.visibility_off_rounded, value: '${counts['hidden'] ?? 0}', label: t('مخفية', 'Hidden')),
