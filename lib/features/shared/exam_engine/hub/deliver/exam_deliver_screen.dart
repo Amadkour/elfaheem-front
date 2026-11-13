@@ -124,7 +124,8 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
     });
     final s = load.source;
     if (s == null) return setState(() => _previewBusy = false);
-    if (s.isPaper && s.hasCourse) {
+    // a course's roster, or the uploaded list of an exam with no course planned for one copy per student (D-716)
+    if (_named(s)) {
       final roster = await loadPlanRoster(_id, _vApi);
       if (!mounted) return;
       setState(() {
@@ -133,7 +134,7 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
         _settleScope(s, rosterKnown: roster.error == null);
       });
       // only who has an address: asked for when the email card can actually be used
-      if (roster.items.isEmpty || AppConfig.disableList.contains(kDeliverEmailFeatureKey)) {
+      if (roster.items.isEmpty || !s.hasCourse || AppConfig.disableList.contains(kDeliverEmailFeatureKey)) {
         if (mounted) setState(() => _email = null);
       } else {
         final email = await _api.values(_id, 'email', null);
@@ -146,10 +147,13 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
     await _reloadDeliveries();
   }
 
+  /// Copies can be named: a paper exam of a course, or one with no course whose plan is a copy per student (its list).
+  bool _named(DeliverSource s) => s.isPaper && (s.hasCourse || s.plan?.personal == true);
+
   /// Opens once on what the wizard planned; after that the teacher's choice stands, through every reload.
   void _settleScope(DeliverSource s, {required bool rosterKnown}) {
     if (!_scopeSettled) {
-      _scope = deliverOpeningScope(s.plan, paper: s.isPaper && s.hasCourse, hasRoster: _roster.isNotEmpty);
+      _scope = deliverOpeningScope(s.plan, paper: _named(s), hasRoster: _roster.isNotEmpty);
       _scopeSettled = rosterKnown;
     } else if (_scope == DeliverScope.students && _roster.isEmpty) {
       _scope = DeliverScope.versions;

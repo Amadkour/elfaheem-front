@@ -185,7 +185,8 @@ class CreateBubbleWays extends StatelessWidget {
 
 // ═══════════════════════════════════════ copies ════════════════════════════════════════════════════════════════
 
-/// One generic copy (with the versions under it) or one copy per student.
+/// One generic copy (with the versions under it) or one copy per student, and under them, plainly, what each copy holds
+/// (D-716).
 class CreateCopiesBody extends StatelessWidget {
   const CreateCopiesBody({
     super.key,
@@ -196,12 +197,16 @@ class CreateCopiesBody extends StatelessWidget {
     this.whyNotPersonal,
     this.lastUsed,
     this.versions,
+    this.parts = const [],
   });
   final SheetCopies copies;
   final bool hasCourse, personalAllowed;
   final String? whyNotPersonal;
   final SheetCopies? lastUsed;
   final ValueChanged<SheetCopies> onCopies;
+
+  /// What one copy of the chosen kind holds ([copyPartsOf]); empty = not said.
+  final List<CopyPart> parts;
 
   /// The versions panel, under the generic choice while it is chosen.
   final Widget? versions;
@@ -222,7 +227,7 @@ class CreateCopiesBody extends StatelessWidget {
               : (v == SheetCopies.personal
                   ? (hasCourse
                       ? t('باسم كل طالب وبياناته من طلاب المقرر، فتُطابق كل ورقة وحدها', 'Named for each student from the course, so each paper matches by itself')
-                      : t('من قائمة طلاب ترفعها (Excel أو CSV)', 'From a student list you upload (Excel or CSV)'))
+                      : t('ترفع قائمة طلابك (Excel أو CSV) وتختار أعمدتها التي تُطبع على كل نسخة', 'Upload your student list (Excel or CSV) and pick the columns printed on each copy'))
                   : t('تُطبع بعدد الحاضرين، ويكتب الطالب اسمه ورقمه', 'Printed for those attending; students write their name and number')),
           selected: copies == v,
           badge: v == lastUsed && !off ? AppBadgePill(t('آخر اختيار', 'Last used'), color: c.primary) : null,
@@ -236,7 +241,59 @@ class CreateCopiesBody extends StatelessWidget {
       _gap,
       tile(SheetCopies.generic),
       if (copies == SheetCopies.generic && versions != null) ...[const SizedBox(height: AppSpace.xs), versions!],
+      if (parts.isNotEmpty) ...[const SizedBox(height: AppSpace.md), CreateCopyParts(parts: parts, personal: copies == SheetCopies.personal, fromFile: !hasCourse)],
     ]);
+  }
+}
+
+/// "What each student gets": the parts of one copy, each with what it says about the student, and for a list without a
+/// course the next two steps.
+class CreateCopyParts extends StatelessWidget {
+  const CreateCopyParts({super.key, required this.parts, required this.personal, this.fromFile = false});
+  final List<CopyPart> parts;
+  final bool personal;
+
+  /// The students come from an uploaded list (no course).
+  final bool fromFile;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return AppCard(
+      key: const ValueKey('create.copies.parts'),
+      padding: const EdgeInsets.all(AppSpace.md),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(personal ? t('ما يأخذه كل طالب', 'What each student gets') : t('ما تحويه كل نسخة', 'What each copy holds'),
+            style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
+        for (final part in parts) ...[
+          const SizedBox(height: AppSpace.sm),
+          Row(key: ValueKey('create.copies.part.${part.kind.name}'), crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(
+              part.printedByUs ? (part.named ? Icons.badge_outlined : Icons.description_outlined) : Icons.do_not_disturb_on_outlined,
+              size: AppIconSize.md,
+              color: part.printedByUs ? c.primary : c.textMedium,
+            ),
+            const SizedBox(width: AppSpace.sm),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(copyPartLabel(part.kind), style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
+                const SizedBox(height: AppSpace.xxs),
+                Text(copyPartNote(part), style: AppType.meta(context)),
+              ]),
+            ),
+          ]),
+        ],
+        if (personal && fromFile) ...[
+          const SizedBox(height: AppSpace.md),
+          AppBanner(
+            key: const ValueKey('create.copies.next'),
+            icon: Icons.upload_file_rounded,
+            text: t('التالي: ارفع قائمة طلابك (Excel أو CSV)، ثم اختر أعمدتها التي تُطبع في رأس كل ورقة، ويمكنك إضافة صفة جديدة.',
+                'Next: upload your student list (Excel or CSV), then pick which of its columns print in each paper\'s header; you can add a new one too.'),
+          ),
+        ],
+      ]),
+    );
   }
 }
 

@@ -532,9 +532,12 @@ class CreateOwnSheetNote extends StatelessWidget {
 
 // ═══════════════════════════════════════ questions ═════════════════════════════════════════════════════════════
 
-enum CreateQuestionWay { automatic, manual, file, forms }
+/// The ways to questions. Automatic, manual, Google Forms and Excel all add to the same list and combine (D-717); a
+/// ready exam file is the paper itself and stands alone.
+enum CreateQuestionWay { automatic, manual, file, forms, excel }
 
-/// How the questions get here. The two main ways first, the others quieter below.
+/// How the questions start. The two main ways first, the imports below them, and the ready exam paper apart, since it
+/// cannot be combined with the others.
 class CreateQuestionWayBody extends StatelessWidget {
   const CreateQuestionWayBody({super.key, required this.onPick, required this.hasCourse, required this.canGenerate, required this.canImportForms, required this.bubble});
   final ValueChanged<CreateQuestionWay> onPick;
@@ -577,33 +580,49 @@ class CreateQuestionWayBody extends StatelessWidget {
         badge: hasCourse && canGenerate ? null : const CreateRecommended(),
         onTap: () => onPick(CreateQuestionWay.manual),
       ),
-      const SizedBox(height: AppSpace.md),
-      Text(t('طرق أخرى', 'Other ways'), style: AppType.label(context)),
-      const SizedBox(height: AppSpace.xs),
-      _Muted(
-        off: bubble,
-        child: SetupChoiceTile(
-          key: const ValueKey('create.way.file'),
-          icon: Icons.upload_file_rounded,
-          title: t('ارفع ملف امتحان جاهز', 'Upload a ready exam file'),
-          subtitle: bubble
-              ? t('ورقة التظليل تحتاج إلى أسئلة بإجابات صحيحة، والملف لا يوفرها', 'A bubble sheet needs questions with right answers, which a file does not give')
-              : t('PDF أو Word أو صورة', 'A PDF, Word file or photo'),
-          selected: false,
-          onTap: bubble ? null : () => onPick(CreateQuestionWay.file),
-        ),
-      ),
       if (canImportForms) ...[
         _gap,
         SetupChoiceTile(
           key: const ValueKey('create.way.forms'),
           icon: Icons.dynamic_form_outlined,
           title: t('استيراد من Google Forms', 'Import from Google Forms'),
-          subtitle: t('نموذج من حسابك يصبح أسئلة هذا الاختبار', 'A form from your account becomes this exam\'s questions'),
+          subtitle: t('أسئلة نموذج من حسابك تُضاف إلى هذا الاختبار', 'The questions of a form from your account are added to this exam'),
           selected: false,
           onTap: () => onPick(CreateQuestionWay.forms),
         ),
       ],
+      _gap,
+      SetupChoiceTile(
+        key: const ValueKey('create.way.excel'),
+        icon: Icons.table_chart_outlined,
+        title: t('استيراد من ملف Excel', 'Import from an Excel file'),
+        subtitle: t('نستخرج الأسئلة من ملف على قالب الأسئلة، وتُضاف إلى هذا الاختبار', 'We read the questions from a file on the questions template and add them to this exam'),
+        selected: false,
+        onTap: () => onPick(CreateQuestionWay.excel),
+      ),
+      const SizedBox(height: AppSpace.sm),
+      AppBanner(
+        key: const ValueKey('create.way.combine'),
+        icon: Icons.merge_type_rounded,
+        text: t('يمكنك الجمع بين هذه الطرق: ابدأ بواحدة، ثم أضف أسئلة من غيرها إلى القائمة نفسها.',
+            'You can combine these: start with one, then add questions from the others to the same list.'),
+      ),
+      const SizedBox(height: AppSpace.md),
+      Text(t('أو', 'Or'), style: AppType.label(context)),
+      const SizedBox(height: AppSpace.xs),
+      _Muted(
+        off: bubble,
+        child: SetupChoiceTile(
+          key: const ValueKey('create.way.file'),
+          icon: Icons.upload_file_rounded,
+          title: t('ملف امتحان جاهز هو الورقة نفسها', 'A ready exam file is the paper itself'),
+          subtitle: bubble
+              ? t('ورقة التظليل تحتاج إلى أسئلة بإجابات صحيحة، والملف لا يوفرها', 'A bubble sheet needs questions with right answers, which a file does not give')
+              : t('PDF أو Word أو صورة تُطبع كما هي، بلا أسئلة في التطبيق، فلا تُجمع مع غيرها', 'A PDF, Word file or photo printed as it is, with no questions in the app, so it is not combined with the others'),
+          selected: false,
+          onTap: bubble ? null : () => onPick(CreateQuestionWay.file),
+        ),
+      ),
     ]);
   }
 }
@@ -676,26 +695,6 @@ class CreateBubbleProblems extends StatelessWidget {
       lines.add(row(t('${questionsCountText(check.choicesOver)} بها اختيارات أكثر من فقاعات الورقة.', '${questionsCountText(check.choicesOver)} have more choices than the sheet has bubbles.')));
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: lines);
-  }
-}
-
-/// Questions already on the server from an import.
-class CreateImportedCard extends StatelessWidget {
-  const CreateImportedCard({super.key, required this.count, required this.points, this.onEditor});
-  final int count;
-  final double points;
-  final VoidCallback? onEditor;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return AppBanner(
-      key: const ValueKey('create.imported'),
-      icon: Icons.task_alt_rounded,
-      color: c.success,
-      text: t('استوردنا ${questionsCountText(count)}، والمجموع ${marksCountText(points)}.', 'Imported ${questionsCountText(count)}, ${marksCountText(points)} in all.'),
-      action: onEditor == null ? null : AppButton.ghost(size: AppButtonSize.sm, onPressed: onEditor, label: t('راجعها', 'Review')),
-    );
   }
 }
 
