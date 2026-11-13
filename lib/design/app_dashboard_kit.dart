@@ -531,7 +531,8 @@ class AppStatCard extends StatelessWidget {
               ],
               if (footer != null)
                 Expanded(
-                  child: Text(footer!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: band.muted)),
+                  // D-743: two lines before an ellipsis ("3 of 5 in the last 7 days" in a half-width phone tile)
+                  child: Text(footer!, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: band.muted, height: 1.3)),
                 )
               else
                 const Spacer(),

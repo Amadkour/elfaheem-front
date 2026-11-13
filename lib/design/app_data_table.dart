@@ -574,7 +574,29 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
       child: Padding(
         padding: phone ? const EdgeInsets.only(bottom: AppSpace.xs) : const EdgeInsets.all(AppSpace.sm),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-          if (widget.onSearch != null || widget.toolbarTrailing != null || widget.columnMenu || _showDensity)
+          // D-742: on a phone the search fills the first line and the table's own icon buttons (density, columns)
+          // sit at its end, so they never wrap onto a line of their own; the page's trailing controls follow below
+          if (phone && widget.onSearch != null) ...[
+            Row(children: [
+              Expanded(
+                child: AppSearchField(
+                  hint: widget.searchHint,
+                  controller: widget.searchController,
+                  onChanged: (v) {
+                    if (v.isEmpty != _query.isEmpty) setState(() => _query = v);
+                    _query = v;
+                    widget.onSearch!(v);
+                  },
+                ),
+              ),
+              if (_showDensity && widget.mobileCard == null) _densityButton(context),
+              if (widget.columnMenu && widget.mobileCard == null) _columnsButton(context, true),
+            ]),
+            if (widget.toolbarTrailing != null) ...[
+              const SizedBox(height: AppSpace.xs),
+              Align(alignment: AlignmentDirectional.centerStart, child: widget.toolbarTrailing!),
+            ],
+          ] else if (widget.onSearch != null || widget.toolbarTrailing != null || widget.columnMenu || _showDensity)
             Wrap(
               spacing: AppSpace.sm,
               runSpacing: AppSpace.xs,
@@ -1066,20 +1088,23 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
                   padding: const EdgeInsets.only(top: AppSpace.xxs),
                   // centred on one line: the label (meta, 1.4) and the value (body, a taller Arabic line) would
                   // otherwise drift apart, the value looking like it belongs to the next label
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                    Expanded(
-                      flex: 2,
-                      child: Text(col.label, style: AppType.meta(context), maxLines: 2, overflow: TextOverflow.ellipsis),
-                    ),
-                    const SizedBox(width: AppSpace.xs),
-                    Expanded(
-                      flex: 3,
-                      child: Align(
-                        alignment: AlignmentDirectional.centerEnd,
-                        child: DefaultTextStyle.merge(style: const TextStyle(height: 1.3), child: _cell(context, col, row)),
+                  // D-742: the label takes its own width up to 38 % of the card and the value the rest, so a short
+                  // label ("E-mail") leaves an address the room it needs (a fixed 2 : 3 split cut it off)
+                  child: LayoutBuilder(
+                    builder: (context, box) => Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                      ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: box.maxWidth * 0.38),
+                        child: Text(col.label, style: AppType.meta(context), maxLines: 2, overflow: TextOverflow.ellipsis),
                       ),
-                    ),
-                  ]),
+                      const SizedBox(width: AppSpace.sm),
+                      Expanded(
+                        child: Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: DefaultTextStyle.merge(style: const TextStyle(height: 1.3), child: _cell(context, col, row)),
+                        ),
+                      ),
+                    ]),
+                  ),
                 ),
           ]);
     // compact cards only tighten the vertical padding: a phone keeps 48 px touch targets

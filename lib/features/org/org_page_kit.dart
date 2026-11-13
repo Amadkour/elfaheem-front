@@ -176,12 +176,13 @@ class _Toolbar extends StatelessWidget {
           if (moreBtn != null) ...[AppSpace.gapXs, moreBtn],
         ]);
     if (search == null) return filterAndMore();
-    if (tight && (filter != null || moreBtn != null)) {
+    // D-742: next to a filter a phone's search kept 3 / 5 of the row (about 200 px at 390) and its hint was cut, so
+    // with a filter the search takes a row of its own on any phone; beside the ⋯ square alone it keeps the row
+    if ((tight && moreBtn != null) || filter != null) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [search!, AppSpace.gapXs, filterAndMore()]);
     }
     return Row(children: [
-      Expanded(flex: 3, child: search!),
-      if (filter != null) ...[AppSpace.gapXs, Flexible(flex: 2, child: filter!)],
+      Expanded(child: search!),
       if (moreBtn != null) ...[AppSpace.gapXs, moreBtn],
     ]);
   }

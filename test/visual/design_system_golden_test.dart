@@ -189,6 +189,7 @@ class _GalleryState extends State<_Gallery> {
             title: _tr('جدول البيانات', 'Data table'),
             child: AppDataTable<_Row>(
               shrinkWrap: true,
+              columnMenu: true,
               rows: _rows,
               searchHint: _tr('ابحث بالاسم أو البريد', 'Search by name or email'),
               onSearch: (_) {},
@@ -204,7 +205,7 @@ class _GalleryState extends State<_Gallery> {
               ],
               columns: [
                 AppTableColumn.text(key: 'name', label: _tr('الاسم', 'Name'), text: (r) => r.$1, primary: true, sortable: true, flex: 2),
-                AppTableColumn.text(key: 'email', label: _tr('البريد', 'Email'), text: (r) => r.$2, flex: 2, showOnPhone: false),
+                AppTableColumn.text(key: 'email', label: _tr('البريد', 'Email'), text: (r) => r.$2, flex: 2),
                 AppTableColumn(key: 'status', label: _tr('الحالة', 'Status'), cell: (_, r) => Align(alignment: AlignmentDirectional.centerStart, child: AppStatusBadge(label: label(r.$3), tone: tone(r.$3)))),
                 AppTableColumn.text(key: 'courses', label: _tr('الكورسات', 'Courses'), text: (r) => '${r.$4}', numeric: true),
                 AppTableColumn.text(key: 'paid', label: _tr('المدفوع', 'Paid'), text: (r) => r.$5.toStringAsFixed(0), numeric: true, sortable: true),

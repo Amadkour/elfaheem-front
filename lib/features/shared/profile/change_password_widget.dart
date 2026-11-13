@@ -223,8 +223,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   Widget _buildForm(ProfileProvider p, ThemeConfigProvider c) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      // ── The title: an editorial headline beside a quiet lock well (no gradient badge) ──
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // ── The lead: the hint beside a quiet lock well. The page title is the app bar's alone (it was repeated here
+      // as a headline, word for word) ──
+      Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
         Container(
           width: AppTouch.min,
           height: AppTouch.min,
@@ -237,11 +238,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         ),
         const SizedBox(width: AppSpace.md),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Semantics(header: true, child: Text('change_password_subtitle'.tr, style: AppType.headline(context))),
-            const SizedBox(height: AppSpace.xxs),
-            Text('change_password_hint'.tr, style: AppType.body(context)),
-          ]),
+          child: Text('change_password_hint'.tr, style: AppType.body(context)),
         ),
       ]),
       const SizedBox(height: AppSpace.lg),

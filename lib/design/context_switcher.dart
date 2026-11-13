@@ -199,6 +199,9 @@ class ContextPill extends StatelessWidget {
     return LayoutBuilder(builder: (context, box) {
       // a long name degrades in steps: one line → two lines (no caption) → the mark alone on a very narrow row
       final markOnly = box.maxWidth.isFinite && box.maxWidth < markOnlyBelow;
+      // narrower than mark + chevron (a 320 px Arabic top bar): the mark alone, the pill still opens the sheet
+      final bare = box.maxWidth.isFinite &&
+          box.maxWidth < _ContextMark.size + AppSpace.xxs + AppIconSize.md + AppSpace.xs * 2;
       final twoLines = caption == null;
       return Semantics(
         button: true,
@@ -220,16 +223,20 @@ class ContextPill extends StatelessWidget {
                 onTap: onTap,
                 child: Padding(
                   padding: EdgeInsetsDirectional.fromSTEB(
-                      AppSpace.xs, AppSpace.xs, markOnly ? AppSpace.xs : AppSpace.sm, AppSpace.xs),
+                      AppSpace.xs, AppSpace.xs, markOnly || bare ? AppSpace.xs : AppSpace.sm, AppSpace.xs),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      glass
-                          ? DecoratedBox(
-                              decoration: BoxDecoration(color: c.cardBg, shape: BoxShape.circle),
-                              child: _ContextMark(icon: icon, tone: tone, logoUrl: logoUrl),
-                            )
-                          : _ContextMark(icon: icon, tone: tone, logoUrl: logoUrl),
+                      // bare: the count rides on the mark's corner
+                      AppCountBadge(
+                        count: bare ? badge : 0,
+                        child: glass
+                            ? DecoratedBox(
+                                decoration: BoxDecoration(color: c.cardBg, shape: BoxShape.circle),
+                                child: _ContextMark(icon: icon, tone: tone, logoUrl: logoUrl),
+                              )
+                            : _ContextMark(icon: icon, tone: tone, logoUrl: logoUrl),
+                      ),
                       if (!markOnly) ...[
                         AppSpace.gapXs,
                         Flexible(
@@ -255,9 +262,11 @@ class ContextPill extends StatelessWidget {
                           ),
                         ),
                       ],
-                      if (badge > 0) ...[AppSpace.gapXs, AppCountBadge(count: badge)],
-                      const SizedBox(width: AppSpace.xxs),
-                      Icon(Icons.unfold_more_rounded, size: AppIconSize.md, color: inkSoft),
+                      if (badge > 0 && !bare) ...[AppSpace.gapXs, AppCountBadge(count: badge)],
+                      if (!bare) ...[
+                        const SizedBox(width: AppSpace.xxs),
+                        Icon(Icons.unfold_more_rounded, size: AppIconSize.md, color: inkSoft),
+                      ],
                     ],
                   ),
                 ),
