@@ -213,7 +213,7 @@ class AdvStudentRequestView extends StatelessWidget {
           ]),
         ),
     ];
-    return AdvPageFrame(maxWidth: 760, children: [
+    return AdvPageFrame(maxWidth: AppWidth.reading.max, children: [
       for (var i = 0; i < children.length; i++) ...[if (i > 0) const SizedBox(height: AppSpace.sm), children[i]],
     ]);
   }
@@ -222,7 +222,7 @@ class AdvStudentRequestView extends StatelessWidget {
 /// A member page: the dashboard's header for staff of this organization, else the screen's own app bar.
 Widget _memberChrome(BuildContext context, int orgId, {required String title, required Widget child}) {
   if (orgUsesDashboardHeader(context, orgId)) {
-    return OrgPushedPage(title: title, helpPageId: 'org.advising', maxWidth: 800, child: child);
+    return OrgPushedPage(title: title, helpPageId: 'org.advising', width: AppWidth.reading, child: child);
   }
   return BasePage(useWebCard: true, maxWith: 800, appBar: ScreenAppBar(title: title), child: child);
 }
@@ -348,7 +348,7 @@ class _AdvStudentSupportPageState extends State<AdvStudentSupportPage> {
               setState(() => _load = AdvLoad.loading);
               _reload();
             })
-        : AdvPageFrame(maxWidth: 760, children: [
+        : AdvPageFrame(maxWidth: AppWidth.reading.max, children: [
             AdvHubRequestsSection(
               requests: d.requests,
               first: true,

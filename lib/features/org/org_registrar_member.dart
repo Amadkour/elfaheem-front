@@ -30,7 +30,7 @@ String _pub(int orgId) => '$orgBase/public/$orgId/registrar';
 Widget _staffPage(BuildContext context,
         {required int orgId, required String title, String? subtitle, required OrgPageRefresh refresh, required Widget child}) =>
     orgUsesDashboardHeader(context, orgId)
-        ? OrgPushedPage(title: title, subtitle: subtitle, refresh: refresh, maxWidth: 1000, child: child)
+        ? OrgPushedPage(title: title, subtitle: subtitle, refresh: refresh, width: AppWidth.reading, child: child)
         : BasePage(useWebCard: true, maxWith: 1000, appBar: ScreenAppBar(title: title), child: child);
 
 String _courseTitle(Map<String, dynamic> c) {

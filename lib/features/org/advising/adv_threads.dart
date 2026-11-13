@@ -157,7 +157,7 @@ class AdvThreadsView extends StatelessWidget {
               onAction: onNew,
             );
     } else {
-      body = AdvPageFrame(fab: onNew != null, maxWidth: 1440, children: [
+      body = AdvPageFrame(fab: onNew != null, maxWidth: AppWidth.wide.max, children: [
         if (unreadTotal > 0)
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpace.xs),
@@ -210,7 +210,7 @@ class AdvThreadsPage extends StatelessWidget {
         orgId: orgId,
         title: student ? t('رسائلي مع المرشد', 'Messages with my advisor') : t('رسائل الإرشاد', 'Advising messages'),
         subtitle: studentName,
-        maxWidth: 1440,
+        maxWidth: AppWidth.wide.max,
         child: _AdvThreadsBody(orgId: orgId, student: student, memberId: memberId, studentName: studentName, advisors: advisors),
       );
 }
@@ -666,7 +666,7 @@ class AdvThreadPage extends StatelessWidget {
         orgId: orgId,
         title: subject ?? t('محادثة', 'Conversation'),
         subtitle: t('الإرشاد الأكاديمي', 'Academic advising'),
-        maxWidth: 960,
+        maxWidth: AppWidth.reading.max,
         child: _AdvThreadBody(orgId: orgId, threadId: threadId, student: student),
       );
 }

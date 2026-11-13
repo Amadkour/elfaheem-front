@@ -15,7 +15,7 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
-import '../../admin/admin_common.dart' show SheetHeader, asInt, asMapList, t;
+import '../../admin/admin_common.dart' show dirArrow, SheetHeader, asInt, asMapList, t;
 import '../../admin/admin_list.dart' show AdminAvatar;
 import '../org_page_header.dart' show OrgPushedPage, orgUsesDashboardHeader;
 import '../org_providers.dart' show OrgApi, OrgSession, orgBase;
@@ -229,7 +229,7 @@ class GovDelegationCard extends StatelessWidget {
         const SizedBox(height: AppSpace.xs),
         Text(
           [
-            if (d.startsAt != null || d.endsAt != null) '${d.startsAt == null ? '…' : govWhen(d.startsAt)} → ${d.endsAt == null ? t('مفتوح', 'open') : govWhen(d.endsAt)}',
+            if (d.startsAt != null || d.endsAt != null) '${d.startsAt == null ? '…' : govWhen(d.startsAt)} $dirArrow ${d.endsAt == null ? t('مفتوح', 'open') : govWhen(d.endsAt)}',
             if ((d.note ?? '').isNotEmpty) d.note!,
           ].join(' · '),
           style: AppType.meta(context).copyWith(color: c.textMedium, height: 1.4),

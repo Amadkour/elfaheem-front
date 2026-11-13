@@ -1170,7 +1170,7 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
         title: title,
         subtitle: s == null ? null : [if (s.council != null) sessionKindLabel(s.kind), sessionStatusLabel(s.status)].join(' · '),
         refresh: _refresh,
-        maxWidth: 1000,
+        maxWidth: AppWidth.reading.max,
         child: body,
       );
     }

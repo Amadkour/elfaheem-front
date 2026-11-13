@@ -360,7 +360,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
       title: title,
       subtitle: d == null ? null : '${t('الخطوة', 'Step')} ${_step + 1}/${_steps.length} · ${_steps[_step].$1}',
       refresh: _refresh,
-      maxWidth: 1000,
+      maxWidth: AppWidth.reading.max,
       child: body,
     );
   }

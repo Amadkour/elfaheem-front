@@ -352,7 +352,7 @@ class AdvRulesPage extends StatelessWidget {
   Widget build(BuildContext context) => OrgPushedPage(
         title: t('قواعد الإنذار المبكر', 'Early-warning rules'),
         helpPageId: 'org.advising',
-        maxWidth: 960,
+        maxWidth: AppWidth.reading.max,
         child: _AdvRulesBody(orgId: orgId),
       );
 }

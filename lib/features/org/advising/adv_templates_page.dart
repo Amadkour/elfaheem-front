@@ -44,7 +44,7 @@ class AdvTemplatesView extends StatelessWidget {
       final shown = [for (final x in templates) if (kind.isEmpty || x.kind == kind) x];
       body = shown.isEmpty
           ? AppEmpty(icon: Icons.description_outlined, title: t('لا قوالب من هذا النوع', 'No templates of this kind'), actionLabel: onAdd == null ? null : t('قالب جديد', 'New template'), onAction: onAdd)
-          : AdvPageFrame(fab: onAdd != null, maxWidth: 1440, children: [
+          : AdvPageFrame(fab: onAdd != null, maxWidth: AppWidth.wide.max, children: [
               for (final k in advTemplateKinds)
                 if ([for (final x in shown) if (x.kind == k) x] case final group when group.isNotEmpty) ...[
                   AdvSectionTitle(advTemplateKindLabel(k), first: k == advTemplateKinds.firstWhere((x) => shown.any((y) => y.kind == x))),
@@ -281,7 +281,7 @@ class AdvTemplatesPage extends StatelessWidget {
   Widget build(BuildContext context) => AdvCommScaffold(
         orgId: orgId,
         title: t('قوالب الإرشاد', 'Advising templates'),
-        maxWidth: 1440,
+        maxWidth: AppWidth.wide.max,
         child: _AdvTemplatesBody(orgId: orgId, manage: manage),
       );
 }

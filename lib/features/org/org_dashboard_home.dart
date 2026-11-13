@@ -713,15 +713,15 @@ Future<void> _generateTerms(BuildContext context, List<TermNeed> terms) async {
   final busy = <int>{};
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(t('فصول بلا جدول', 'Terms without a timetable')),
             Text(t('يُنشأ الجدول من مقررات الفصل، يُولَّد خلال نحو دقيقة، وتُصلَح تعارضاته تلقائياً؛ ثم تراجعه وتنشره.', 'The timetable is created from the term\'s courses, generated in about a minute and its conflicts fixed automatically; then you review and publish it.'),
-                style: orgText(ctx, size: 12.5, color: ctx.colors.textMedium)),
-            const SizedBox(height: 10),
+                style: AppType.label(ctx).copyWith(color: ctx.colors.textMedium)),
+            const SizedBox(height: AppSpace.sm),
             for (final n in terms)
               Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.only(bottom: AppSpace.xs),
                 child: TermTimetableCard(
                   need: n,
                   busy: busy.contains(n.id),
@@ -769,35 +769,35 @@ Future<void> _showExpiring(BuildContext context, OrgAttentionItem a) async {
         }
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             SheetHeader(t('عضويات تنتهي قريباً', 'Memberships ending soon')),
             Text(t('بعد تاريخ الانتهاء يفقد الشخص الوصول وتتوقف صلاحياته تلقائياً.', 'After the end date the person loses access and their rights switch off automatically.'),
-                style: orgText(ctx, size: 12.5, color: c.textMedium)),
-            const SizedBox(height: 12),
+                style: AppType.label(ctx).copyWith(color: c.textMedium)),
+            const SizedBox(height: AppSpace.sm),
             for (final m in rows)
               AppCard(
-                margin: const EdgeInsets.only(bottom: 10),
+                margin: const EdgeInsets.only(bottom: AppSpace.xs),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
                     AdminAvatar(name: '${asMap(m['user'])['name'] ?? '—'}', url: asMap(m['user'])['image_url'] as String?, size: 38),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: AppSpace.sm),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('${asMap(m['user'])['name'] ?? '—'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(ctx, w: FontWeight.w500)),
+                        Text('${asMap(m['user'])['name'] ?? '—'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(ctx)),
                         Text(
                             '${memberRoleLabels()['${m['role']}'] ?? m['role']} · '
                             '${t('تنتهي', 'ends')} ${orgParseUtc(m['expires_at']) == null ? '—' : AppTime.date(orgParseUtc(m['expires_at'])!.toUtc())}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: orgText(ctx, size: 11.5, color: c.textLight)),
+                            style: AppType.meta(ctx).copyWith(color: c.textLight)),
                       ]),
                     ),
                     if (done.contains(asInt(m['member_id']))) Icon(Icons.check_circle_rounded, color: c.success),
                   ]),
                   if (!done.contains(asInt(m['member_id']))) ...[
-                    const SizedBox(height: 10),
-                    Wrap(spacing: 8, runSpacing: 8, children: [
+                    const SizedBox(height: AppSpace.sm),
+                    Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                       for (final (label, months) in [
                         (t('شهر', '1 month'), 1),
                         (t('3 أشهر', '3 months'), 3),

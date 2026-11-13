@@ -120,7 +120,7 @@ class _BreakdownSheetState extends State<_BreakdownSheet> {
                   for (final r in byPlan)
                     KeyValue(
                       '${_planLabel(asStr(r['plan']))} • ${asStr(r['currency'])} (${asInt(r['count'])})',
-                      '${money(asDouble(r['course_income']), asStr(r['currency']))} → ${money(asDouble(r['collected']), asStr(r['currency']))}',
+                      '${money(asDouble(r['course_income']), asStr(r['currency']))} $dirArrow ${money(asDouble(r['collected']), asStr(r['currency']))}',
                     ),
                 ]),
               ),

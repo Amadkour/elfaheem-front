@@ -774,7 +774,7 @@ class _LevelEditorState extends State<_LevelEditor> {
   String? _termHelp(String kind) {
     final d = asMap(widget.termDates[kind]);
     if (d.isEmpty) return t('لا توجد تواريخ لهذا الفصل في التقويم بعد', 'No dates for this term in the calendar yet');
-    return '${d['year_label'] ?? ''} · ${shortDate('${d['start_date']}')} → ${shortDate('${d['end_date']}')}';
+    return '${d['year_label'] ?? ''} · ${shortDate('${d['start_date']}')} $dirArrow ${shortDate('${d['end_date']}')}';
   }
 }
 
@@ -910,7 +910,7 @@ class _MyLevelCardState extends State<MyLevelCard> {
               const SizedBox(width: AppSpace.xs),
               Expanded(
                 child: Text(
-                  '${h['via'] == 'auto' ? t('انتقال تلقائي', 'Moved up automatically') : t('نقل من المؤسسة', 'Moved by your organization')} → ${_lname(levels.firstWhere((l) => l['key'] == h['to'], orElse: () => {'key': h['to']}))} · ${orgParseUtc(h['at']) == null ? '—' : AppTime.date(orgParseUtc(h['at'])!)}',
+                  '${h['via'] == 'auto' ? t('انتقال تلقائي', 'Moved up automatically') : t('نقل من المؤسسة', 'Moved by your organization')} $dirArrow ${_lname(levels.firstWhere((l) => l['key'] == h['to'], orElse: () => {'key': h['to']}))} · ${orgParseUtc(h['at']) == null ? '—' : AppTime.date(orgParseUtc(h['at'])!)}',
                   style: AppType.meta(context).copyWith(color: c.textMedium),
                 ),
               ),
@@ -1006,7 +1006,7 @@ class _TermCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: AppSpace.xxs / 2),
             child: Text(
-              '${shortDate('${dates['start_date']}')} → ${shortDate('${dates['end_date']}')}'
+              '${shortDate('${dates['start_date']}')} $dirArrow ${shortDate('${dates['end_date']}')}'
               '${status == 'current' ? t(' · جارٍ الآن', ' · in progress') : status == 'upcoming' ? t(' · قادم', ' · upcoming') : ''}',
               style: AppType.meta(context).copyWith(color: c.textMedium),
             ),

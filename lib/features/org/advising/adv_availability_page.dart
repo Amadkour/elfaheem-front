@@ -70,7 +70,7 @@ class AdvAvailabilityView extends StatelessWidget {
     final c = context.colors;
     final err = error;
     final weekly = rules.fold<int>(0, (n, r) => n + r.slots);
-    return AdvPageFrame(maxWidth: 820, children: [
+    return AdvPageFrame(maxWidth: AppWidth.reading.max, children: [
       AppBanner(
         icon: Icons.public_rounded,
         text: [
@@ -458,7 +458,7 @@ class AdvAvailabilityPage extends StatelessWidget {
         orgId: orgId,
         title: advisorName == null ? t('ساعاتي المكتبية', 'My office hours') : t('الساعات المكتبية', 'Office hours'),
         subtitle: advisorName,
-        maxWidth: 820,
+        maxWidth: AppWidth.reading.max,
         child: _AdvAvailabilityBody(orgId: orgId, advisorUserId: advisorUserId, advisorName: advisorName),
       );
 }

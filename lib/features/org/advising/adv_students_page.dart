@@ -133,7 +133,7 @@ class AdvStudentsView extends StatelessWidget {
       );
     } else {
       final unassigned = p.facet('unassigned'), away = p.facet('away');
-      body = AdvPageFrame(maxWidth: 1440, fab: primary != null, children: [
+      body = AdvPageFrame(maxWidth: AppWidth.wide.max, fab: primary != null, children: [
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpace.xs),
           child: Text(
@@ -430,7 +430,7 @@ class AdvStudentsPage extends StatelessWidget {
   Widget build(BuildContext context) => OrgPushedPage(
         title: manage ? t('الطلاب ومرشدوهم', 'Students and advisors') : t('طلابي', 'My students'),
         helpPageId: 'org.advising',
-        maxWidth: 1440,
+        maxWidth: AppWidth.wide.max,
         child: _AdvStudentsBody(orgId: orgId, manage: manage, filter: filter),
       );
 }

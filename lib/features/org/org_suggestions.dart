@@ -16,7 +16,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../../core/api_client.dart';
 import '../../design/app_kit.dart';
-import '../admin/admin_common.dart' show t, asInt, asMap, asMapList, toast, shortDate;
+import '../admin/admin_common.dart' show dirArrow, t, asInt, asMap, asMapList, toast, shortDate;
 import 'org_v3.dart' show orgCall;
 
 /// What a term draft carries: {year_label, kind, start_date, end_date}.
@@ -25,13 +25,14 @@ typedef TermDraftEditor = Future<Map<String, dynamic>?> Function(Map<String, dyn
 const _kinds = {'missing_term', 'missing_offerings', 'missing_periods'};
 
 class OrgTermSuggestions extends StatefulWidget {
-  const OrgTermSuggestions({super.key, required this.orgBase, required this.onChanged, required this.onCreateManually,
+  const OrgTermSuggestions({super.key, required this.orgBase, required this.onChanged, this.onCreateManually,
       required this.editDraft, this.kindLabel});
 
   /// `${OrgSession.base}` (= /api/v1/org/orgs/{id}).
   final String orgBase;
   final VoidCallback onChanged;
-  final VoidCallback onCreateManually;
+  /// Null when the page already has its own "New term" button (D-771): one way in, not two side by side.
+  final VoidCallback? onCreateManually;
   /// Opens the term form pre-filled with the draft; returns the edited draft or null (cancelled).
   final TermDraftEditor editDraft;
   final String Function(String kind)? kindLabel;
@@ -190,7 +191,7 @@ class _OrgTermSuggestionsState extends State<OrgTermSuggestions> {
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         AppPill(icon: Icons.auto_fix_high_rounded, label: _busy ? t('جارٍ…', 'Working…') : t('توليد تلقائي', 'Auto-generate'),
             color: c.primary, onTap: _busy ? null : _generate),
-        AppPill(icon: Icons.edit_calendar_rounded, label: t('إنشاء يدوي', 'Create manually'), onTap: widget.onCreateManually),
+        if (widget.onCreateManually != null) AppPill(icon: Icons.edit_calendar_rounded, label: t('إنشاء يدوي', 'Create manually'), onTap: widget.onCreateManually),
       ]),
       if (_items.isNotEmpty) ...[
         const SizedBox(height: AppSpace.sm),
@@ -215,7 +216,7 @@ class _OrgTermSuggestionsState extends State<OrgTermSuggestions> {
     };
     final (IconData icon, String title, List<String> lines) = switch ('${d['kind']}') {
       'missing_term' => (Icons.event_note_rounded, '${_kind('${p['kind']}')} · ${p['year_label']}',
-          ['${shortDate('${p['start_date']}')} → ${shortDate('${p['end_date']}')}']),
+          ['${shortDate('${p['start_date']}')} $dirArrow ${shortDate('${p['end_date']}')}']),
       'missing_offerings' => (Icons.menu_book_rounded, t('${d['title']}', '${d['description'] ?? d['title']}'), [
           (p['course_ids'] as List? ?? const []).map(_course).join(' · '),
           if ((rec['blocked'] as List? ?? const []).isNotEmpty)
