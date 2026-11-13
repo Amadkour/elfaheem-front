@@ -59,6 +59,14 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
     _load();
   }
 
+  /// The AI controls section reloads with the list (D-802): pull-to-refresh, or a key switched in the list below.
+  int _aiGeneration = 0;
+
+  Future<void> _refresh() {
+    setState(() => _aiGeneration++);
+    return _load();
+  }
+
   Future<void> _load() async {
     final r = await orgCall(() => ApiClient().get(_catalog), quiet: true);
     if (!mounted) return;
@@ -130,6 +138,7 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
     if (!mounted) return;
     setState(() => _busy.remove(key));
     if (r.ok) {
+      _aiGeneration++;
       setState(() {
         final cur = {for (final p in (f['platforms'] as List? ?? const [])) '$p'};
         final targets = platforms ?? _platforms;
@@ -179,7 +188,7 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
       title: t('الميزات', 'Features'),
       subtitle: t('ما تخفيه هنا يختفي من التطبيق لكل المستخدمين فوراً.', 'What you hide here disappears from the app for everyone, right away.'),
       icon: Icons.dashboard_customize_rounded,
-      onRefresh: _load,
+      onRefresh: _refresh,
       primaryAction: _super && _data != null
           ? AppButton.primary(label: t('ميزة جديدة', 'New feature'), icon: Icons.add_rounded, onPressed: _openCreate)
           : null,
@@ -217,13 +226,13 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
     final gutter = AppSpace.gutter(MediaQuery.sizeOf(context).width);
 
     return AppRefresh(
-      onRefresh: _load,
+      onRefresh: _refresh,
       child: CustomScrollView(slivers: [
         SliverPadding(
           padding: EdgeInsets.fromLTRB(gutter, AppSpace.md, gutter, 0),
           sliver: SliverList.list(children: [
             // D-780: the AI features first — one platform-wide switch each, enforced by the server too
-            if (_super) ...[AiControlsSection(onChanged: _load), AppSpace.gapMd],
+            if (_super) ...[AiControlsSection(onChanged: _load, generation: _aiGeneration), AppSpace.gapMd],
             AppKpiGrid(maxColumns: 3, children: [
               AppKpiCard(icon: Icons.widgets_rounded, value: '${counts['total'] ?? _items.length}', label: t('ميزة', 'Features')),
               AppKpiCard(icon: Icons.visibility_off_rounded, value: '${counts['hidden'] ?? 0}', label: t('مخفية', 'Hidden')),

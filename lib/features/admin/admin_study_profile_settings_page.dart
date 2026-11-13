@@ -109,7 +109,7 @@ class _AdminStudyProfileSettingsPageState extends State<AdminStudyProfileSetting
             ),
             AppSwitchTile(
               key: const ValueKey('study_settings.prompt'),
-              title: t('بطاقة «أكمل ملفك» في الرئيسية', 'The Complete your profile card'),
+              title: t('بطاقة «أكمل ملفك الدراسي» في الرئيسية', 'The “Complete your study profile” home card'),
               subtitle: t('للطلاب الذين لم يكملوا بياناتهم؛ يمكن إخفاؤها 30 يوماً',
                   'For students whose details are incomplete; they can hide it for 30 days'),
               icon: Icons.dashboard_customize_rounded,

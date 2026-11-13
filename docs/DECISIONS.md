@@ -4413,3 +4413,35 @@ and saves the exam's design on the draft.
 ## D-796 — Not used for recommendations yet · 2026-11-13 · accepted
 
 **Decision.** Courses have no grade (their `level` is beginner / intermediate / advanced), so matching by grade needs a course field and a teacher editor first: the data is stored and shown, filtering comes later. Tests: `test/ui/study_profile_test.dart` (model, chips, layout harness, the home card), back `tests/org_v2/e2e_study_profile.py`.
+
+## D-800 — A sign-up refused from the study step goes back to the form · 2026-11-13 · accepted
+
+**Decision.** The study step's button submits the whole registration, so a refusal is nearly always about the form underneath (a taken username or e-mail, a weak password), whose inline error the student could not see. On any failure sent from the step, `register_screen._submit` pops back to the form (`popUntil` past `/register/study`); the step's values are kept (`onChanged`), so Next reopens it filled in. The register provider exposes no error code, so a rare study-field refusal also lands on the form with its notice.
+
+## D-801 — Student study settings are never hidden by `profile.study` · 2026-11-13 · accepted
+
+**Decision.** The super admin's "Student study details" tile in the services hub is not behind the kill switch it configures: switching the feature off must not hide the page that configures it (super admin only, as before).
+
+## D-802 — The Features page's AI section reloads with the list · 2026-11-13 · accepted
+
+**Decision.** The AI controls and the catalog list below write the same keys. `AiControlsSection(generation:)` reloads in place (no skeleton) when the list switches a key or the page is refreshed, so the section never shows a stale ON or partial state.
+
+## D-803 — A queued assistant ask answered after the switch went off says why · 2026-11-13 · accepted
+
+**Decision.** The RAG worker now closes such an ask `failed` with `error: feature_disabled` (back D-803). The chat draws that as a warning banner with `featureDisabledText(rag.app_assistant | rag.assistant)`, not "Could not answer — ask again". The super admin's playground stays open (back D-803).
+
+## D-804 — An AI control hidden on some platforms reads OFF · 2026-11-13 · accepted
+
+**Decision.** Back D-804. The switch shows OFF with the "Hidden on some platforms only" badge, and switching it on clears every platform.
+
+## D-805 — Study details: one width and one wording · 2026-11-13 · accepted
+
+**Decision.** `StudyProfilePage` is a web card (`useWebCard: true`), so `AppWidth.form` applies; before this the form stretched to 1400 px on desktop. The step, the card, the page and the admin settings give the same reason ("so your teachers know who they teach"), and the sign-up no longer promises "what fits you": D-796 does not use the data for recommendations. The card is named "Complete your study profile" everywhere.
+
+## D-806 — The AI controls subtitle fits two phone lines · 2026-11-13 · accepted
+
+**Decision.** "One switch per feature, for the whole platform. Nothing is deleted." The section card cuts its subtitle at two lines, and the old sentence was cut off at 390 px. What OFF does stays on each switch.
+
+## D-807 — Solid status fills under white ink use the `*Base` tones · 2026-11-13 · accepted
+
+**Decision.** After D-740 lifted dark-mode `danger` / `success` for use as ink, the count bubbles, close and remove dots, danger and approve buttons, the calendar's "now" line and the red toasts that painted those as solid fills under `onHero` / white text read about 2:1 in dark mode. They now use `dangerBase` / `successBase` (admin filters, org announcements / department / ui / councils, schedule now line, attendance close, material done tick, course access keypad, OMR approve, register and helpers toasts, certificate and exam-hub danger buttons, academic approve, course sessions live tile, complaints badges and remove dots). Ink (text, icons, outlines, tints) keeps the lifted tones.

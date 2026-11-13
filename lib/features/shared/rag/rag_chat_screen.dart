@@ -33,6 +33,7 @@ import 'chat/rag_action_open.dart';
 import 'chat/rag_answer_extras.dart';
 import 'chat/rag_chat_parts.dart';
 import 'chat/rag_payload.dart';
+import 'package:flutter_education_app/core/api_error_text.dart' show featureDisabledText;
 import 'rag_chat.dart';
 import 'rag_chat_sessions.dart';
 import 'rag_library.dart';
@@ -1156,6 +1157,13 @@ class RagAnswerCard extends StatelessWidget {
       ]);
     }
     if (answer.state == 'failed') {
+      // D-803: asked before the Super Admin switched the assistant off, picked up after: say so, never "ask again"
+      if (answer.error == 'feature_disabled') {
+        return AppBanner(
+            icon: Icons.power_settings_new_rounded,
+            color: c.warning,
+            text: featureDisabledText(answer.app ? 'rag.app_assistant' : 'rag.assistant'));
+      }
       return AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: t('تعذرت الإجابة — أعد السؤال', 'Could not answer — ask again'));
     }
     final nothing = answer.found == false && !answer.smallTalk;

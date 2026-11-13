@@ -69,8 +69,8 @@ class AiControlsCard extends StatelessWidget {
     final offCount = items.where((i) => !i.on).length;
     return AppSectionCard(
       title: t('التحكم في الذكاء الاصطناعي', 'AI controls'),
-      subtitle: t('مفتاح لكل ميزة على المنصة كلها؛ الخادم يطبّق الإيقاف أيضاً ولا يُحذف شيء.',
-          'One switch per feature for the whole platform; the server enforces an OFF too and nothing is deleted.'),
+      // short enough for the section card's two subtitle lines on a phone (D-806)
+      subtitle: t('مفتاح لكل ميزة على المنصة كلها. لا يُحذف شيء.', 'One switch per feature, for the whole platform. Nothing is deleted.'),
       actions: [
         if (offCount > 0)
           AppStatusBadge(
@@ -105,9 +105,13 @@ class AiControlsCard extends StatelessWidget {
 
 /// Loads and saves the controls; [onChanged] runs after a save (the Features page reloads its list: same keys).
 class AiControlsSection extends StatefulWidget {
-  const AiControlsSection({super.key, this.onChanged});
+  const AiControlsSection({super.key, this.onChanged, this.generation = 0});
 
   final VoidCallback? onChanged;
+
+  /// Bumped by the Features page when its list below switched a key or was refreshed (D-802): the same keys, so the
+  /// section reloads in place (no skeleton) and never shows a stale on / partial state.
+  final int generation;
 
   @override
   State<AiControlsSection> createState() => _AiControlsSectionState();
@@ -122,6 +126,12 @@ class _AiControlsSectionState extends State<AiControlsSection> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant AiControlsSection old) {
+    super.didUpdateWidget(old);
+    if (old.generation != widget.generation) _load();
   }
 
   Future<void> _load() async {

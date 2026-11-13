@@ -148,7 +148,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Fluttertoast.showToast(
         msg: 'password must be identical',
         timeInSecForIosWeb: 3,
-        backgroundColor: context.colors.danger,
+        backgroundColor: context.colors.dangerBase,
       );
       return;
     }
@@ -156,7 +156,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Fluttertoast.showToast(
         msg: 'please select your birth of date',
         timeInSecForIosWeb: 3,
-        backgroundColor: context.colors.danger,
+        backgroundColor: context.colors.dangerBase,
       );
       return;
     }
@@ -174,7 +174,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Fluttertoast.showToast(
         msg: 'please select your role',
         timeInSecForIosWeb: 3,
-        backgroundColor: context.colors.danger,
+        backgroundColor: context.colors.dangerBase,
       );
       return;
     }
@@ -182,7 +182,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Fluttertoast.showToast(
         msg: 'يجب قراءة والموافقة على الشروط والأحكام',
         timeInSecForIosWeb: 3,
-        backgroundColor: context.colors.danger,
+        backgroundColor: context.colors.dangerBase,
       );
       return;
     }
@@ -201,7 +201,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Fluttertoast.showToast(
         msg: 'phone_required'.tr,
         timeInSecForIosWeb: 3,
-        backgroundColor: context.colors.danger,
+        backgroundColor: context.colors.dangerBase,
       );
       return;
     }
@@ -240,6 +240,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
     _busy.value = false;
     if (!mounted) return;
+    // D-800: a refusal sent from the study step is about the form underneath (a taken username or e-mail, a weak
+    // password): back to the form, where its inline error shows; the step's values are kept (onChanged)
+    if (!success && study != null) {
+      Navigator.of(context).popUntil((r) => r.settings.name != '/register/study');
+    }
     // taken / reserved / invalid at submit: the field shows why, with the server's suggestions
     if (!success && authProvider.usernameError != null) {
       setState(() => _usernameError = authProvider.usernameError);

@@ -72,8 +72,8 @@ class _StudyProfileStepPageState extends State<StudyProfileStepPage> {
   Widget build(BuildContext context) {
     return AuthScaffold(
       title: t('دراستك', 'Your studies'),
-      subtitle: t('خطوة أخيرة قصيرة: مرحلتك وصفك لنعرض عليك ما يناسبك.',
-          'One short last step: your stage and grade, so we can show you what fits.'),
+      subtitle: t('خطوة أخيرة قصيرة: مرحلتك وصفك ليعرف معلموك من يدرّسون.',
+          'One short last step: your stage and grade, so your teachers know who they teach.'),
       pageKey: const ValueKey('register.study'),
       maxWidth: 640,
       builder: (context, isWide) => Column(
@@ -215,6 +215,7 @@ class _StudyProfilePageState extends State<StudyProfilePage> {
     }
     return BasePage(
       key: const ValueKey(kStudyProfileFeatureKey),
+      useWebCard: true, // the form width role on a wide screen (D-805), not a 1400 px wide form
       width: AppWidth.form,
       appBar: ScreenAppBar(title: t('بيانات الدراسة', 'Study details')),
       child: SafeArea(
