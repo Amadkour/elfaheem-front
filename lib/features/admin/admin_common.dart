@@ -69,6 +69,11 @@ class Debouncer {
 /// Arabic / English inline text (the admin screens ship with both).
 String t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
+/// The "from -> to" arrow in the reading direction (D-770): the arrow character is
+/// not mirrored, so in Arabic a plain one points from the end back to the start.
+/// Put it between two values in a sentence or a chip: `'$a $dirArrow $b'`.
+String get dirArrow => AppConfig.lang == 'ar' ? '←' : '→';
+
 /// Translates [key] with `.tr`, then fills `{name}` placeholders from [params].
 String trp(String key, Map<String, Object?> params) {
   var s = key.tr;

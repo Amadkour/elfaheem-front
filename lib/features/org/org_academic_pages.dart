@@ -178,7 +178,6 @@ class _Calendar extends StatelessWidget {
   Widget _suggestions(BuildContext context) => OrgTermSuggestions(
         orgBase: base.substring(0, base.length - '/academic'.length),
         onChanged: onChanged,
-        onCreateManually: () => _edit(context),
         editDraft: (d) => _edit(context, d, true),
         kindLabel: (k) => termKinds()[k] ?? k,
       );
@@ -217,7 +216,7 @@ class _Calendar extends StatelessWidget {
                         const SizedBox(width: AppSpace.sm),
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(termKinds()['${term['kind']}'] ?? '', style: AppType.bodyStrong(context)),
-                          Text('${shortDate('${term['start_date']}')} → ${shortDate('${term['end_date']}')}', style: AppType.meta(context).copyWith(color: c.textMedium)),
+                          Text('${shortDate('${term['start_date']}')} $dirArrow ${shortDate('${term['end_date']}')}', style: AppType.meta(context).copyWith(color: c.textMedium)),
                         ])),
                         OrgPill({'current': t('جارٍ', 'Current'), 'upcoming': t('قادم', 'Upcoming'), 'finished': t('انتهى', 'Finished')}['${term['status']}'] ?? '',
                             color: term['status'] == 'current' ? c.success : c.textMedium),
@@ -707,7 +706,7 @@ class _CourseArchiveScreenState extends State<CourseArchiveScreen> {
           SheetHeader(t('تسجيل المقرر في فصل', 'Offer the course in a term')),
           for (final x in terms)
             ListTile(leading: const Icon(Icons.event_note_rounded), title: Text('${termKinds()[x['kind']]} ${x['year_label']}'),
-                subtitle: Text('${shortDate('${x['start_date']}')} → ${shortDate('${x['end_date']}')}'), onTap: () => Navigator.pop(ctx, asInt(x['id']))),
+                subtitle: Text('${shortDate('${x['start_date']}')} $dirArrow ${shortDate('${x['end_date']}')}'), onTap: () => Navigator.pop(ctx, asInt(x['id']))),
         ]));
     if (id != null && await OrgApi.i.post('$_a/courses/${widget.courseId}/runs', {'term_id': id}, t('فُتح المقرر للفصل', 'Offered in the term')) != null) _load();
   }
@@ -771,7 +770,7 @@ class _CourseArchiveScreenState extends State<CourseArchiveScreen> {
         title: title,
         subtitle: d == null ? null : t('أرشيف المقرر', 'Course archive'),
         refresh: _refresh,
-        maxWidth: 820,
+        maxWidth: AppWidth.reading.max,
         child: _content(context, d),
       );
     }

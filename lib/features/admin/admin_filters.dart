@@ -313,7 +313,7 @@ class _ActiveChips extends StatelessWidget {
       case FilterKind.dateRange:
         final a = v[s.key], b = v[s.keyTo];
         if (a == null && b == null) return null;
-        return '$title: ${a == null ? '…' : _fmtDate(a)} → ${b == null ? '…' : _fmtDate(b)}';
+        return '$title: ${a == null ? '…' : _fmtDate(a)} $dirArrow ${b == null ? '…' : _fmtDate(b)}';
       case FilterKind.numberRange:
         final a = v[s.key], b = v[s.keyTo];
         if (a == null && b == null) return null;

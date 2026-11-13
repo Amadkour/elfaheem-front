@@ -15,7 +15,7 @@ import '../../../design/app_bidi.dart';
 import '../../../design/app_kit.dart';
 import '../../../design/app_motion_kit.dart' show AppCountUp, AppReveal;
 import '../../../design/app_tokens.dart';
-import '../admin_common.dart' show t;
+import '../admin_common.dart' show dirArrow, t;
 import 'models_hub_text.dart';
 
 /// Wide enough for the table (below: cards).
@@ -865,11 +865,11 @@ class AiModelsHistory extends StatelessWidget {
     final change = switch (a.action) {
       'activate' || 'seed_active' => n['ref'] ?? n['active'],
       'rollback' => n['ref'] ?? n['active'],
-      'set_fallback' => '${o['fallback_id'] == null ? '—' : ref(o['fallback_id'])} → ${n['fallback_id'] == null ? '—' : ref(n['fallback_id'])}',
-      'set_limits' => [for (final e in n.entries) if (!e.key.startsWith('_') && o[e.key] != e.value) '${e.key}: ${o[e.key] ?? '—'} → ${e.value}'].join(', '),
+      'set_fallback' => '${o['fallback_id'] == null ? '—' : ref(o['fallback_id'])} $dirArrow ${n['fallback_id'] == null ? '—' : ref(n['fallback_id'])}',
+      'set_limits' => [for (final e in n.entries) if (!e.key.startsWith('_') && o[e.key] != e.value) '${e.key}: ${o[e.key] ?? '—'} $dirArrow ${e.value}'].join(', '),
       'health_test' => n['ok'] == true ? t('نجح', 'passed') : '${t('فشل', 'failed')}${n['error'] == null ? '' : ': ${bidiIsolate('${n['error']}')}'}',
       'delete' => n['freed_bytes'] is num ? t('حُرّر ${hubBytes((n['freed_bytes'] as num).toInt())}', 'freed ${hubBytes((n['freed_bytes'] as num).toInt())}') : null,
-      'fallback' => '${o['active'] ?? ''} → ${n['served_by'] ?? ''}',
+      'fallback' => '${o['active'] ?? ''} $dirArrow ${n['served_by'] ?? ''}',
       _ => null,
     };
     return [?model, if (change != null && '$change'.isNotEmpty && '$change' != model) '$change', if (a.detail != null) a.detail!].join(' · ');

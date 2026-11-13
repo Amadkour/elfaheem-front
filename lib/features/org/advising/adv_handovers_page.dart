@@ -221,7 +221,7 @@ class AdvHandoversPage extends StatelessWidget {
   Widget build(BuildContext context) => OrgPushedPage(
         title: t('ملفات التسليم', 'Handovers'),
         helpPageId: 'org.advising',
-        maxWidth: 1440,
+        maxWidth: AppWidth.wide.max,
         child: _AdvHandoversBody(orgId: orgId, manage: manage),
       );
 }

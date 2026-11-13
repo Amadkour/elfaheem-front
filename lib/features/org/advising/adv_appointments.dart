@@ -952,7 +952,7 @@ class AdvAppointmentsPage extends StatelessWidget {
   Widget build(BuildContext context) => AdvCommScaffold(
         orgId: orgId,
         title: title ?? (student ? t('مواعيدي', 'My appointments') : t('مواعيد الإرشاد', 'Advising appointments')),
-        maxWidth: 1440,
+        maxWidth: AppWidth.wide.max,
         child: _AdvAppointmentsBody(orgId: orgId, student: student, memberId: memberId, onOpenStudent: onOpenStudent, onChat: onChat),
       );
 }
@@ -1044,7 +1044,7 @@ class _AdvAppointmentsBodyState extends State<_AdvAppointmentsBody> {
             : null,
       );
     } else {
-      body = AdvPageFrame(maxWidth: 1440, children: [
+      body = AdvPageFrame(maxWidth: AppWidth.wide.max, children: [
         for (final a in _items) AdvAppointmentCard(appointment: a, actions: flow.actions(context), staff: !widget.student),
         if (_page < _pages)
           Align(

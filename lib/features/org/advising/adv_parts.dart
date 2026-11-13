@@ -23,7 +23,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/core/api_client.dart' show ApiException;
 import 'package:flutter_education_app/core/plural.dart';
 
-import '../../admin/admin_common.dart' show asInt, asMap, t;
+import '../../admin/admin_common.dart' show dirArrow, asInt, asMap, t;
 import '../org_v3.dart' show OrgCall, orgCall, orgErrorText;
 import 'adv_api.dart';
 import 'adv_models.dart';
@@ -138,7 +138,7 @@ class AdvLoadBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final col = advLoadColor(context, warn: warn, over: over);
     final b = before;
-    final numbers = b == null || b == load ? '$load / $max' : '$b → $load / $max';
+    final numbers = b == null || b == load ? '$load / $max' : '$b $dirArrow $load / $max';
     final label = t('الحمل $load من $max', 'Load $load of $max');
     return Semantics(
       label: over ? '$label, ${t('فوق الحد', 'over the maximum')}' : (warn ? '$label, ${t('قريب من الحد', 'close to the maximum')}' : label),

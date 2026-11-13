@@ -569,7 +569,7 @@ class AdvDistributePage extends StatelessWidget {
   Widget build(BuildContext context) => OrgPushedPage(
         title: t('توزيع الطلاب', 'Distribute students'),
         helpPageId: 'org.advising',
-        maxWidth: 1440,
+        maxWidth: AppWidth.wide.max,
         child: _AdvDistributeBody(orgId: orgId, initial: initial ?? const AdvPlanRequest()),
       );
 }

@@ -14,7 +14,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:provider/provider.dart';
 
-import '../../admin/admin_common.dart' show SheetHeader, asInt, asMap, asMapList, t;
+import '../../admin/admin_common.dart' show dirArrow, SheetHeader, asInt, asMap, asMapList, t;
 import '../../admin/admin_list.dart' show IconBadge;
 import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage;
 import '../org_page_kit.dart' show OrgPrimaryAction, OrgPrimaryButton;
@@ -96,7 +96,7 @@ class GovItemCard extends StatelessWidget {
                     GovPriorityPill(it.priority),
                     GovDuePill(dueAt: it.dueAt, overdue: it.overdue),
                     if (pr != null)
-                      AppBadgePill('${routeActionLabel(pr.action)} → ${pr.targetName}', color: c.warning, icon: Icons.alt_route_rounded),
+                      AppBadgePill('${routeActionLabel(pr.action)} $dirArrow ${pr.targetName}', color: c.warning, icon: Icons.alt_route_rounded),
                     if (it.voteOutcome != null) GovOutcomePill(it.voteOutcome!),
                     if (it.assignee != null && !member) AppBadgePill(it.assignee!.name, color: c.textMedium, icon: Icons.person_rounded),
                     if (it.category != null) AppBadgePill(it.category!.name, color: c.textMedium, icon: Icons.label_outline_rounded),

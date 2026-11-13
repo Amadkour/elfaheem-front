@@ -23,7 +23,7 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
-import '../../admin/admin_common.dart' show SheetHeader, asMap, t;
+import '../../admin/admin_common.dart' show dirArrow, SheetHeader, asMap, t;
 import '../../admin/admin_list.dart' show AdminAvatar;
 import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
 import '../org_providers.dart' show OrgSession;
@@ -332,7 +332,7 @@ class GovRouteChain extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: AppSpace.sm),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                      Text('${routes[i].sourceName.isEmpty ? '—' : routes[i].sourceName} → ${routes[i].targetName}', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
+                      Text('${routes[i].sourceName.isEmpty ? '—' : routes[i].sourceName} $dirArrow ${routes[i].targetName}', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
                       AppBadgePill(routeActionLabel(routes[i].action), color: c.textMedium),
                       AppBadgePill(routes[i].answer != null ? routeAnswerLabel(routes[i].answer!) : routeStatusLabel(routes[i].status), color: col(routes[i])),
                     ]),
@@ -475,8 +475,8 @@ class GovTimeline extends StatelessWidget {
     if (d['status'] != null) parts.add(itemStatusLabel('${d['status']}'));
     if (d['action'] != null) parts.add(routeActionLabel('${d['action']}'));
     final to = d['to'];
-    if (to is Map) parts.add('→ ${to['name'] ?? to['name_ar'] ?? to['name_en'] ?? ''}');
-    if (d['to_name'] != null) parts.add('→ ${d['to_name']}');
+    if (to is Map) parts.add('$dirArrow ${to['name'] ?? to['name_ar'] ?? to['name_en'] ?? ''}');
+    if (d['to_name'] != null) parts.add('$dirArrow ${d['to_name']}');
     if (d['note'] != null && '${d['note']}'.isNotEmpty) parts.add('${d['note']}');
     if (d['sla'] == true) parts.add(t('تجاوز المهلة', 'SLA passed'));
     return parts.join(' · ');
@@ -932,7 +932,7 @@ class _GovItemScreenState extends State<GovItemScreen> {
         title: title,
         subtitle: it == null ? null : [itemTypeLabel(it.type), itemStatusLabel(it.status), if (it.ownerDept != null) it.ownerDept!.name].join(' · '),
         refresh: _refresh,
-        maxWidth: 900,
+        maxWidth: AppWidth.reading.max,
         child: child,
       );
     }

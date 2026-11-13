@@ -580,7 +580,7 @@ class AdvConfigPage extends StatelessWidget {
   Widget build(BuildContext context) => OrgPushedPage(
         title: t('إعدادات الإرشاد', 'Advising settings'),
         helpPageId: 'org.advising',
-        maxWidth: 1000,
+        maxWidth: AppWidth.reading.max,
         child: _AdvConfigBody(orgId: orgId),
       );
 }

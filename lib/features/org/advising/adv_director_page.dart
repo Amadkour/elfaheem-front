@@ -253,7 +253,7 @@ class AdvDirectorView extends StatelessWidget {
       Widget column(List<Widget> list) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             for (var i = 0; i < list.length; i++) ...[if (i > 0) const SizedBox(height: AppSpace.md), list[i]],
           ]);
-      return AdvPageFrame(maxWidth: 1440, fab: onReports != null, children: [
+      return AdvPageFrame(maxWidth: AppWidth.wide.max, fab: onReports != null, children: [
         AdvFilterSummary(range: o.range, filter: filter, programName: options?.programName(filter.programId), onEdit: onFilters),
         if (refreshing) ...[const SizedBox(height: AppSpace.xs), AdvBusyStrip(label: t('يجري تحديث الأرقام', 'Updating the figures'))],
         if (o.viewer.aggregate) ...[const SizedBox(height: AppSpace.sm), const AdvAggregateBanner()],
@@ -393,7 +393,7 @@ class AdvDirectorPage extends StatelessWidget {
   Widget build(BuildContext context) => OrgPushedPage(
         title: t('تحليلات الإرشاد', 'Advising analytics'),
         helpPageId: 'org.advising',
-        maxWidth: 1440,
+        maxWidth: AppWidth.wide.max,
         child: _DirectorBody(orgId: orgId, outreach: outreach),
       );
 }

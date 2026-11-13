@@ -624,7 +624,7 @@ class _GovCouncilSettingsPageState extends State<GovCouncilSettingsPage> {
       return OrgPushedPage(helpPageId: 'org.governance', 
         title: council?.name ?? t('إعدادات المجلس', 'Council settings'),
         subtitle: council == null ? null : t('إعدادات المجلس', 'Council settings'),
-        maxWidth: 900,
+        maxWidth: AppWidth.reading.max,
         child: body,
       );
     }

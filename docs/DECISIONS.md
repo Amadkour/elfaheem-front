@@ -4335,3 +4335,11 @@ and saves the exam's design on the draft.
 ## D-732 — Cover pages carry a code the scanner skips · 2026-11-13 · accepted
 
 **Decision.** Every cover page of a paper exam prints a 16 mm QR in its bottom corner, `NBC:<exam>.<sig>` (`cover_code` from GET /paper-design, `withCoverCode`); the scanner sets such pages aside (`status: cover`, no review item, not counted). An online exam's cover prints without it. Tests: `test/org/exam_cover_test.dart` (model, limits, upload with a page, the cover page, PDF / Word with the cover in front and the numbering untouched, the picker's saves, layout harness), back `tests/exam_engine/e2e_exam_cover.py`; renders `test/visual/exam_cover_golden_test.dart`.
+
+## D-770 — "From → to" arrows follow the reading direction · 2026-11-13 · accepted
+
+**Decision.** The arrow character is not mirrored by the bidi algorithm, so a date range or a "before → after" written with `→` pointed from the end back to the start in Arabic (term dates, delegation periods, finance filters, governance routes, AI-model history, advisor load). Admin and organization strings put `dirArrow` (`admin_common.dart`: `←` in Arabic, `→` in English) between the two values instead; Arabic-only texts that already used `←` are unchanged.
+
+## D-771 — One way to each action on a page, page widths by role in Advising and Governance · 2026-11-13 · accepted
+
+**Decision.** Academics → Calendar showed "Create manually" next to "Auto-generate" while the page's own "New term" button opened the same form: `OrgTermSuggestions.onCreateManually` is now optional and the calendar leaves it out. Advising, Governance, the registrar member pages, the timetable wizard and the term picker name a width role (`AppWidth.reading` / `content` / `wide`, D-304) instead of pixel widths (820, 900, 960, 1000, 1180, 1440 → the nearest role). Smaller polish in the same pass: the dashboard's "Terms without a timetable" / "Memberships ending soon" sheets use spacing tokens and `AppType`, the timetable studio's name uses `AppType.section`, and the admin home's AI tile says "Median answer" (the old label was cut off on wide screens), "Pending transfers" in sentence case.

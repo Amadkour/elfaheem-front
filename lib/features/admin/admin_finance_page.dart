@@ -74,7 +74,7 @@ class _View extends StatelessWidget {
         if (f.statuses.isNotEmpty) t('الحالة', 'Status'): f.statuses.map(_statusLabel).join(', '),
         if (f.methods.isNotEmpty) t('الطريقة', 'Method'): f.methods.map(_methodLabel).join(', '),
         if (f.kind != 'all') t('النوع', 'Type'): f.kind,
-        if (f.range != null) t('الفترة', 'Period'): '${shortDate(f.range!.start.toIso8601String())} → ${shortDate(f.range!.end.toIso8601String())}',
+        if (f.range != null) t('الفترة', 'Period'): '${shortDate(f.range!.start.toIso8601String())} $dirArrow ${shortDate(f.range!.end.toIso8601String())}',
       },
     );
   }
@@ -855,7 +855,7 @@ class _FilterBar extends StatelessWidget {
           },
         ),
       if (f.range != null)
-        _ActiveChip('${shortDate(f.range!.start.toIso8601String())} → ${shortDate(f.range!.end.toIso8601String())}', () {
+        _ActiveChip('${shortDate(f.range!.start.toIso8601String())} $dirArrow ${shortDate(f.range!.end.toIso8601String())}', () {
           f.range = null;
           p.load(tab);
         }),
@@ -1086,7 +1086,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                     label: Text(
                       _d.range == null || [0, 7, 30, 90].any(isQuick)
                           ? t('مخصص…', 'Custom…')
-                          : '${shortDate(_d.range!.start.toIso8601String())} → ${shortDate(_d.range!.end.toIso8601String())}',
+                          : '${shortDate(_d.range!.start.toIso8601String())} $dirArrow ${shortDate(_d.range!.end.toIso8601String())}',
                       style: AppType.meta(context),
                     ),
                     onPressed: _custom,

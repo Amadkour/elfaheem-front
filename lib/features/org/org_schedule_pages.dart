@@ -1047,7 +1047,7 @@ class _StudioState extends State<_Studio> {
             children: [
               AppBackButton(onPressed: p.closeSchedule),
               Expanded(
-                child: Text('${sch['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: c.h2.copyWith(fontSize: 16)),
+                child: Text('${sch['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
               ),
               StatusChip(
                 {'active': t('منشور', 'Published'), 'draft': t('مسودة', 'Draft'), 'archived': t('مؤرشف', 'Archived')}['${sch['status']}'] ?? '${sch['status']}',

@@ -599,7 +599,7 @@ class _DataCenterPageState extends State<DataCenterPage> {
               alignment: AlignmentDirectional.centerStart,
               child: InputChip(
                 avatar: const Icon(Icons.event_available_rounded, size: AppIconSize.sm),
-                label: Text('${_range!.start.toIso8601String().substring(0, 10)} → ${_range!.end.toIso8601String().substring(0, 10)}'),
+                label: Text('${_range!.start.toIso8601String().substring(0, 10)} $dirArrow ${_range!.end.toIso8601String().substring(0, 10)}'),
                 deleteButtonTooltipMessage: t('إزالة الفترة', 'Clear the dates'),
                 onDeleted: () {
                   setState(() => _range = null);

@@ -93,7 +93,7 @@ class AdvChainEditorView extends StatelessWidget {
     final hasDept = steps.any((s) => s.kind == 'student_department_council');
     final editable = !inherit && !busy;
     final canDirector = editable && (steps.isEmpty || steps.first.kind != 'director_review');
-    return AdvPageFrame(maxWidth: 820, children: [
+    return AdvPageFrame(maxWidth: AppWidth.reading.max, children: [
       AppBanner(
         icon: Icons.account_tree_outlined,
         text: t('يمر كل طلب دعم بهذه الخطوات بالترتيب، ويرى الطالب والمرشد كل خطوة. يمكن لبرنامج أو مستوى أن يكون له مسار خاص.',
@@ -290,7 +290,7 @@ class AdvRequestChainPage extends StatelessWidget {
   Widget build(BuildContext context) => OrgPushedPage(
         title: t('مسار اعتماد الطلبات', 'Request approval chain'),
         helpPageId: 'org.advising',
-        maxWidth: 900,
+        maxWidth: AppWidth.reading.max,
         child: _ChainBody(orgId: orgId),
       );
 }

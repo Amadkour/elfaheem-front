@@ -73,7 +73,7 @@ class AdvDrillView extends StatelessWidget {
         message: search.trim().isEmpty ? t('لا أحد يطابق هذا الرقم الآن.', 'Nobody matches this figure right now.') : t('جرّب بحثاً آخر.', 'Try another search.'),
       );
     } else {
-      body = AdvPageFrame(maxWidth: 1440, fab: onMessage != null, children: [
+      body = AdvPageFrame(maxWidth: AppWidth.wide.max, fab: onMessage != null, children: [
         AdvFilterSummary(range: range, filter: filter, programName: programName),
         const SizedBox(height: AppSpace.xs),
         Semantics(
@@ -130,7 +130,7 @@ class AdvDrillPage extends StatelessWidget {
     return OrgPushedPage(
       title: shown,
       helpPageId: 'org.advising',
-      maxWidth: 1440,
+      maxWidth: AppWidth.wide.max,
       child: _DrillBody(orgId: orgId, drill: drill, filter: filter, range: range, title: shown, programName: programName, canMessage: canMessage),
     );
   }

@@ -5466,7 +5466,7 @@
     "ar": "دخل تسجيل الطلاب"
   },
   "admin_pending_transfers": {
-    "en": "Pending Transfers",
+    "en": "Pending transfers",
     "ar": "العمليات المعلقة"
   },
   "admin_active_enrolments": {
@@ -17498,7 +17498,7 @@
     "ar": "بلا إجابة"
   },
   "admin_home_ai_p50": {
-    "en": "Median answer time",
+    "en": "Median answer",
     "ar": "وسيط زمن الإجابة"
   },
   "admin_home_ai_open": {

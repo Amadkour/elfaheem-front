@@ -708,7 +708,7 @@ class AdvStudentPage extends StatelessWidget {
         title: name ?? t('الطالب', 'Student'),
         subtitle: t('ملف الإرشاد', 'Advising record'),
         helpPageId: 'org.advising',
-        maxWidth: 1440,
+        maxWidth: AppWidth.wide.max,
         child: _AdvStudentBody(orgId: orgId, memberId: memberId, section: section, logContact: logContact),
       );
 }

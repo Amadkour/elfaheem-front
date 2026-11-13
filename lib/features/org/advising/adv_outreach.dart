@@ -401,7 +401,7 @@ class AdvOutreachListPage extends StatelessWidget {
   Widget build(BuildContext context) => OrgPushedPage(
         title: t('الرسائل الجماعية', 'Group messages'),
         helpPageId: 'org.advising',
-        maxWidth: 1440,
+        maxWidth: AppWidth.wide.max,
         child: _ListBody(orgId: orgId, manage: manage),
       );
 }
@@ -479,7 +479,7 @@ class _ListBodyState extends State<_ListBody> {
         onAction: _compose,
       );
     } else {
-      body = AdvPageFrame(maxWidth: 1440, fab: true, children: [
+      body = AdvPageFrame(maxWidth: AppWidth.wide.max, fab: true, children: [
         for (final o in p.items) AdvOutreachCard(outreach: o, showSender: widget.manage && !_mine, onTap: () => _openTracking(o.id)),
         if (p.pages > 1) ...[
           const SizedBox(height: AppSpace.sm),
@@ -569,7 +569,7 @@ class AdvOutreachTrackingView extends StatelessWidget {
               options: {for (final s in advRecipientStates) s: advRecipientStateLabel(s)},
               onChanged: onState!,
             ),
-      child: AdvPageFrame(maxWidth: 960, fab: onMessageUnread != null && unread > 0, children: [
+      child: AdvPageFrame(maxWidth: AppWidth.reading.max, fab: onMessageUnread != null && unread > 0, children: [
         AppCard(
           padding: AppSpace.card,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -693,7 +693,7 @@ class AdvOutreachTrackingPage extends StatelessWidget {
   Widget build(BuildContext context) => OrgPushedPage(
         title: t('متابعة الرسالة', 'Message tracking'),
         helpPageId: 'org.advising',
-        maxWidth: 960,
+        maxWidth: AppWidth.reading.max,
         child: _TrackingBody(orgId: orgId, id: outreachId),
       );
 }
@@ -1002,7 +1002,7 @@ class _AdvStudentMessagesPageState extends State<AdvStudentMessagesPage> {
     }
     final title = t('رسائل الإرشاد', 'Advising messages');
     // a student opens it from the hub: the plain app bar; staff on the dashboard: the org header
-    if (orgUsesDashboardHeader(context, widget.orgId)) return OrgPushedPage(title: title, maxWidth: 880, child: body);
+    if (orgUsesDashboardHeader(context, widget.orgId)) return OrgPushedPage(title: title, width: AppWidth.reading, child: body);
     return Scaffold(appBar: AppHeader(title: title), body: body);
   }
 }
