@@ -822,6 +822,8 @@ class OmrSheetsInfo {
     required this.questions,
     required this.sheetQuestions,
     this.templateId,
+    this.ownSheet = false,
+    this.templateName = '',
     this.forms = const [],
     this.sheetForms = const [],
     this.formMarkers = const [],
@@ -834,8 +836,13 @@ class OmrSheetsInfo {
 
   final int? templateId;
 
-  /// Only the built-in sheets are printed by the engine (a learned template is the school's own printed sheet).
+  /// The engine can print the sheet: a built-in one, or the teacher's own sheet from its stored picture (D-724).
   final bool printable;
+
+  /// The teacher's own sheet (taught from a photo, a written table, a learned layout): printed as its picture with the
+  /// exam's header, no NextBrain QR or model letter.
+  final bool ownSheet;
+  final String templateName;
   final int questions;
   final int sheetQuestions;
   final List<String> forms;
@@ -890,6 +897,8 @@ class OmrSheetsInfo {
   static OmrSheetsInfo fromJson(Map<String, dynamic> j) => OmrSheetsInfo(
         templateId: j['template_id'] == null ? null : asInt(j['template_id']),
         printable: j['printable'] == true,
+        ownSheet: j['own_sheet'] == true,
+        templateName: '${j['template_name'] ?? ''}',
         questions: asInt(j['questions']),
         sheetQuestions: asInt(j['sheet_questions']),
         forms: [for (final f in (j['forms'] as List?) ?? const []) '$f'],
@@ -1105,8 +1114,8 @@ String omrCodeText(String? code, [Map<String, dynamic> detail = const {}]) => sw
       'marker_not_on_template' => t('علامة النموذج المختارة غير موجودة على هذه الورقة', 'The chosen model marker is not on this sheet'),
       'forms_not_on_template' => t('بعض أكواد النماذج غير موجودة على الورقة', 'Some model codes are not on the sheet'),
       'no_bubble_questions' => t('لا توجد أسئلة اختيار في الأقسام الورقية للاختبار', 'The paper sections have no multiple-choice questions'),
-      'template_not_printable' => t('قالب مخصص: اطبع ورقتك الأصلية — يطبع النظام الأوراق المدمجة فقط',
-          'A learned template is your own printed sheet: the app prints built-in sheets only'),
+      'template_not_printable' => t('لا توجد صورة محفوظة لهذه الورقة: أضفها من جديد من «أنواع أوراق التظليل» لتطبعها',
+          'This sheet has no saved picture to print from: add it again from Bubble sheet types to print it'),
       'form_unknown' => t('نموذج ليس في الاختبار أو على الورقة', 'A model that is not in the exam or on the sheet'),
       'identifier_zone_mismatch' => identifierZoneMismatchText(detail),
       'not_a_student' => t('طالب ليس من طلاب هذا الاختبار${detail['student_id'] == null ? '' : ' (#${detail['student_id']})'}',

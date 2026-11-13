@@ -1,7 +1,9 @@
 // The bubble-fit panel (D-720 – D-722) at every size and language, and the print sheet's flow: a 409
 // question_options_exceed_sheet opens the panel (never the bare error), a trim is confirmed first, then the sheet prints.
+// D-724: the teacher's own sheet ends with Download PDF (no dead end). D-725: the alert after a trim names the change.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppPrimaryButton;
 import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/bubble_fit.dart';
@@ -33,6 +35,8 @@ class _Scan extends OmrScanApi {
 }
 
 class _Fit extends BubbleFitApi {
+  _Fit({this.changes = const []});
+  final List<Map<String, dynamic>> changes;
   final puts = <Map<String, dynamic>>[];
   @override
   Future<EngineResult> get(int examId) async => EngineResult.ok(openFit());
@@ -41,6 +45,7 @@ class _Fit extends BubbleFitApi {
     puts.add(body);
     final j = openFit();
     j['items'] = [<String, dynamic>{...((j['items'] as List).last as Map<String, dynamic>), 'choice': 'ignore'}];
+    j['changes'] = changes;
     return EngineResult.ok(j);
   }
 }
@@ -72,6 +77,74 @@ void main() {
         () => SingleChildScrollView(
             child: BubbleFitView(
                 fit: BubbleFit.fromJson({...fitJson(), 'locked': true}), chosen: const {}, onChoose: (_, _) {}, onApply: () {}, sheets: const [], error: 'x')));
+  });
+
+  testWidgets('the alert body and the own-sheet print options (D-724, D-725)', (tester) async {
+    const changes = [
+      BubbleFitChange(questionId: 14, number: 5, restored: false, removed: [BubbleFitRemovedOption(id: 'e', index: 4, text: 'All of the above, and a long choice text that wraps')]),
+      BubbleFitChange(questionId: 16, number: 12, restored: false, removed: [BubbleFitRemovedOption(id: 'd', index: 3, text: 'Telnet')]),
+    ];
+    await expectNoLayoutErrors(tester, () => const SingleChildScrollView(child: BubbleFitChangesBody(changes: changes)));
+    final info = OmrSheetsInfo.fromJson({'template_id': 9, 'printable': true, 'own_sheet': true, 'template_name': 'ورقة المدرسة 150 سؤال',
+      'questions': 15, 'sheet_questions': 150, 'forms': <String>[], 'id_kind': 'shaded', 'modes': ['prefilled', 'named', 'blank']});
+    expect((info.ownSheet, info.printable), (true, true));
+    expect(info.forms, isEmpty);
+    final copies = TextEditingController(text: '30');
+    addTearDown(copies.dispose);
+    await expectNoLayoutErrors(
+        tester,
+        () => SingleChildScrollView(
+            child: OmrSheetsOptionsView(
+                info: info, mode: OmrPrintMode.blank, onMode: (_) {}, forms: const {}, onForm: (_) {}, copiesController: copies,
+                students: const SizedBox.shrink(), onDownload: () {}, onShare: () {})));
+    await tester.pumpWidget(layoutHost(
+        SingleChildScrollView(
+            child: OmrSheetsOptionsView(
+                info: info, mode: OmrPrintMode.blank, onMode: (_) {}, forms: const {}, onForm: (_) {}, copiesController: copies,
+                students: const SizedBox.shrink(), onDownload: () {}, onShare: () {})),
+        scale: 1));
+    expect(find.byKey(const ValueKey('omr.sheets.own')), findsOneWidget);
+    expect(find.byType(AppPrimaryButton), findsOneWidget, reason: 'the panel always ends with Download PDF');
+    final dead = OmrSheetsInfo.fromJson({'printable': false, 'own_sheet': true, 'questions': 15, 'sheet_questions': 150});
+    await expectNoLayoutErrors(
+        tester,
+        () => SingleChildScrollView(
+            child: OmrSheetsOptionsView(
+                info: dead, mode: OmrPrintMode.blank, onMode: (_) {}, forms: const {}, onForm: (_) {}, copiesController: copies,
+                students: const SizedBox.shrink(), onDownload: () {}, onShare: () {})));
+  });
+
+  testWidgets('a trim: confirmed, sent, then the alert names the change and asks to reprint', (tester) async {
+    AppConfig.lang = 'en';
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1400, 1600);
+    addTearDown(tester.view.resetPhysicalSize);
+    final fit = _Fit(changes: [
+      {'question_id': 14, 'n': 5, 'action': 'trim', 'removed_options': [{'id': 'd', 'index': 3, 'text': 'opt 3'}]},
+    ]);
+    var resolved = 0;
+    await tester.pumpWidget(layoutHost(SingleChildScrollView(child: BubbleFitSection(examId: 7, api: fit, setupApi: _Setup(), onResolved: () => resolved++)), scale: 1));
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    await tester.tap(find.byKey(const ValueKey('fit.q.14.trim')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('fit.q.15.ignore')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('fit.apply')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Remove them'));
+    await tester.pumpAndSettle();
+    expect(fit.puts.single, {'questions': {'14': 'trim', '15': 'ignore'}});
+    expect(find.text('The question paper was updated'), findsOneWidget);
+    expect(find.text('Question 5: removed choice D “opt 3”'), findsOneWidget);
+    expect(find.byKey(const ValueKey('fit.change.reprint')), findsOneWidget);
+    expect(resolved, 0, reason: 'the alert is read first');
+    await tester.tap(find.byKey(const ValueKey('fit.change.ok')));
+    await tester.pumpAndSettle();
+    expect(find.text('The question paper was updated'), findsNothing);
+    expect(resolved, 1);
+    await tester.pump(const Duration(seconds: 4));
   });
 
   testWidgets('print sheet: 409 opens the panel, apply sends the choice, then the options come back', (tester) async {

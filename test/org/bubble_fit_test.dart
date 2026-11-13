@@ -1,5 +1,6 @@
 // Questions with more choices than the bubble sheet (D-720 – D-722): the GET …/omr/fit reply as the back e2e
-// (tests/exam_engine/e2e_bubble_fit.py) returns it, the PUT body, the sheet filter and the wizard's warning.
+// (tests/exam_engine/e2e_bubble_fit.py) returns it, the PUT body, the sheet filter and the wizard's warning; the PUT's
+// `changes` and the alert's words after a trim / an Undo (D-725).
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/hub/create/exam_create_logic.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup.dart' show OmrTemplateItem;
@@ -78,6 +79,36 @@ void main() {
     expect([for (var i = 0; i < 5; i++) bubbleFitLetter(i, ar: true)], ['أ', 'ب', 'ج', 'د', 'هـ']);
     AppConfig.lang = 'ar';
     expect(bubbleFitHeadline(BubbleFit.fromJson(fitJson())), startsWith('سؤالان'));
+  });
+
+  test('a trim / an Undo: the PUT names the changes, the alert says what and asks to reprint (D-725)', () {
+    // the shape tests/exam_engine/e2e_bubble_fit.py asserts
+    final j = {
+      ...fitJson(),
+      'changes': [
+        {'question_id': 13, 'n': 4, 'action': 'trim', 'removed_options': [{'id': 'e', 'index': 4, 'text': 'All of the above'}]},
+      ],
+    };
+    final ch = bubbleFitChangesOf(j);
+    expect((ch.single.number, ch.single.restored, ch.single.removed.single.index), (4, false, 4));
+    expect(bubbleFitChangesOf(fitJson()), isEmpty, reason: 'an older server sends no changes: no alert');
+    expect(bubbleFitChangeLine(ch.single, ar: false), 'Question 4: removed choice E “All of the above”');
+    expect(bubbleFitChangesTitle(ch), 'The question paper was updated');
+    expect(bubbleFitReprintLine(ch), contains('print it again'));
+    expect(bubbleFitChangesFollow(ch), contains('online exam'));
+    const back = BubbleFitChange(questionId: 13, number: 4, restored: true, removed: [BubbleFitRemovedOption(id: 'e', index: 4, text: 'x'), BubbleFitRemovedOption(id: 'd', index: 3)]);
+    expect(bubbleFitChangeLine(back, ar: false), 'Question 4: choices E “x”, D are back');
+    expect(bubbleFitChangesTitle([back]), contains('back on the question paper'));
+    final tr = BubbleFit.fromJson({
+      ...fitJson(),
+      'trimmed': [
+        {'question_id': 13, 'n': 4, 'removed': ['e'], 'removed_options': [{'id': 'e', 'index': 4, 'text': 'E'}]},
+      ],
+    });
+    expect(tr.trimmed.single.removedOptions.single.text, 'E');
+    AppConfig.lang = 'ar';
+    expect(bubbleFitChangeLine(ch.single, ar: true), 'السؤال 4: حُذف الخيار هـ «All of the above»');
+    expect(bubbleFitReprintLine(ch), contains('اطبعها من جديد'));
   });
 
   test('the wizard warns with the numbers and no longer blocks (D-722)', () {

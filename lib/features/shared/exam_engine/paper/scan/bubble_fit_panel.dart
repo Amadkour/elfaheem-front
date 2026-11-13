@@ -1,8 +1,9 @@
 // The resolution panel of "Print bubble sheets" when questions have more choices than the sheet's bubbles (D-720 –
 // D-722): which questions, how many choices against the sheet's, and per question (or for all at once) Remove wrong
 // choices · Leave off the sheet · Answer on the written sheet, plus Use another sheet. A trim shows which choices go
-// and changes nothing before the teacher confirms; a trimmed question is listed with Undo. `BubbleFitView` takes plain
-// values (the layout harness pumps it); `BubbleFitSection` owns the calls (bubble_fit.dart).
+// and changes nothing before the teacher confirms; a trimmed question is listed with Undo. After a trim or an Undo an
+// alert names the questions and the choices and says the question paper changed with it (D-725, `BubbleFitChangesBody`).
+// `BubbleFitView` takes plain values (the layout harness pumps it); `BubbleFitSection` owns the calls (bubble_fit.dart).
 library;
 
 import 'package:flutter/material.dart';
@@ -251,7 +252,12 @@ class _TrimmedCard extends StatelessWidget {
           Row(children: [
             Expanded(
               child: Text(
-                  '${t('السؤال ${x.number}', 'Question ${x.number}')} · ${countText(x.removed.length, ar1: 'خيار محذوف', ar2: 'خياران محذوفان', arFew: '{n} خيارات محذوفة', arMany: '{n} خيارًا محذوفًا', en1: '1 choice removed', en: '{n} choices removed')}',
+                  x.removedOptions.isEmpty
+                      ? '${t('السؤال ${x.number}', 'Question ${x.number}')} · ${countText(x.removed.length, ar1: 'خيار محذوف', ar2: 'خياران محذوفان', arFew: '{n} خيارات محذوفة', arMany: '{n} خيارًا محذوفًا', en1: '1 choice removed', en: '{n} choices removed')}'
+                      : bubbleFitChangeLine(BubbleFitChange(questionId: x.questionId, number: x.number, restored: false, removed: x.removedOptions),
+                          ar: AppConfig.lang == 'ar'),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: appText(13, c: c.textDark)),
             ),
             AppButton.ghost(
@@ -319,6 +325,52 @@ class _SheetsCard extends StatelessWidget {
     );
   }
 }
+
+/// The alert's body after a trim or an Undo (D-725), plain values: what changed per question, what follows it, and
+/// "print the question paper again".
+class BubbleFitChangesBody extends StatelessWidget {
+  const BubbleFitChangesBody({super.key, required this.changes});
+  final List<BubbleFitChange> changes;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ar = AppConfig.lang == 'ar';
+    final restored = changes.every((x) => x.restored);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+      for (final x in changes)
+        Padding(
+          key: ValueKey('fit.change.${x.questionId}'),
+          padding: const EdgeInsets.only(bottom: AppSpace.xs),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Icon(x.restored ? Icons.undo_rounded : Icons.content_cut_rounded, size: AppIconSize.sm, color: appInk(context, x.restored ? c.primary : c.danger)),
+            ),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(child: Text(bubbleFitChangeLine(x, ar: ar), style: appText(14, w: FontWeight.w600, c: c.textDark, h: 1.4))),
+          ]),
+        ),
+      const SizedBox(height: AppSpace.xxs),
+      Text(bubbleFitChangesFollow(changes), style: appText(13, c: c.textMedium, h: 1.45)),
+      const SizedBox(height: AppSpace.sm),
+      AppBanner(key: const ValueKey('fit.change.reprint'), icon: Icons.print_outlined, text: bubbleFitReprintLine(changes), color: restored ? null : c.warning),
+    ]);
+  }
+}
+
+/// The alert after a trim or an Undo. Resolves when the teacher closes it.
+Future<void> showBubbleFitChanges(BuildContext context, List<BubbleFitChange> changes) => showAppDialog<void>(
+      context,
+      title: bubbleFitChangesTitle(changes),
+      icon: Icons.description_outlined,
+      body: BubbleFitChangesBody(changes: changes),
+      actions: [
+        Builder(
+            builder: (ctx) => AppButton.primary(
+                key: const ValueKey('fit.change.ok'), label: t('حسنًا', 'Got it'), icon: Icons.check_rounded, onPressed: () => Navigator.pop(ctx))),
+      ],
+    );
 
 /// The panel with its calls. [onResolved]: the sheet can print now (every question has a way, or the sheet changed).
 class BubbleFitSection extends StatefulWidget {
@@ -416,6 +468,11 @@ class _BubbleFitSectionState extends State<BubbleFitSection> {
       _busy = false;
       _take(f);
     });
+    final changes = bubbleFitChangesOf(r.map);
+    if (changes.isNotEmpty) {
+      await showBubbleFitChanges(context, changes);
+      if (!mounted) return;
+    }
     if (f.items.every((x) => x.choice != null)) {
       showAppNotice(t('جاهزة للطباعة', 'Ready to print'));
       widget.onResolved();

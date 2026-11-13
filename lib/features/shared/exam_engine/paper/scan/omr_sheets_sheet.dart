@@ -1,7 +1,8 @@
 // "Print bubble sheets" (brief 3, D-156): what the engine will print (`GET …/omr/sheets`), then blank sheets per form ×
 // copies or one named sheet per student (the forms cycle), as a PDF (`POST …/omr/sheets`) saved or shared with the
 // same helpers the table exports use (data_lab_saver: a browser download on the web, Downloads on desktop, the share
-// sheet on phones). Only the built-in sheets are printable: a learned template is the school's own printed sheet.
+// sheet on phones). The teacher's own sheet (taught from a photo, a written table) prints too, as the picture of its
+// empty sheet under the exam's header (D-724, back mlkit/omr/ownsheet.py): one line says so, the rest is the same.
 // The named sheets are chosen by name from the exam's audience (`OmrAudiencePicker`, `GET …/omr/students`), never
 // typed as raw ids.
 // Print modes (a server whose describe lists `modes`): Pre-filled (name + number printed, the number's bubbles shaded)
@@ -41,6 +42,16 @@ String omrIdKindText(String kind) => switch (kind) {
       'qr' => t('رمز QR', 'QR code'),
       _ => t('بلا رقم طالب', 'no student ID'),
     };
+
+/// One line on how the teacher's own sheet prints (D-724).
+String omrOwnSheetLine(OmrSheetsInfo info) {
+  final name = info.templateName.trim();
+  return name.isEmpty
+      ? t('ورقتك الخاصة: تُطبع كما صوّرتها، وفوقها عنوان الاختبار واسم الطالب. يظلّل الطلاب عليها كالمعتاد، ويقرؤها التصحيح كالأصل.',
+          'Your own sheet: printed as you photographed it, with the exam title and the student\'s name on top. Students shade it as usual and it is read like the original.')
+      : t('ورقتك الخاصة «$name»: تُطبع كما صوّرتها، وفوقها عنوان الاختبار واسم الطالب. يظلّل الطلاب عليها كالمعتاد، ويقرؤها التصحيح كالأصل.',
+          'Your own sheet "$name": printed as you photographed it, with the exam title and the student\'s name on top. Students shade it as usual and it is read like the original.');
+}
 
 /// The modes offered: the server's list, or (an older server) blank + named.
 List<OmrPrintMode> omrOfferedModes(OmrSheetsInfo info) => info.modes ?? const [OmrPrintMode.named, OmrPrintMode.blank];
@@ -185,7 +196,7 @@ class OmrSheetsOptionsView extends StatelessWidget {
         '${info.questions} questions on a ${info.sheetQuestions}-question sheet · ${omrIdKindText(info.idKind)}');
     if (!info.printable) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-        AppBanner(icon: Icons.info_outline_rounded, text: omrCodeText('template_not_printable')),
+        AppBanner(icon: Icons.info_outline_rounded, text: omrCodeText('template_not_printable'), color: c.warning),
         const SizedBox(height: AppSpace.sm),
         Text(summary, style: appText(13.5, c: c.textMedium)),
       ]);
@@ -193,6 +204,10 @@ class OmrSheetsOptionsView extends StatelessWidget {
     final named = mode != OmrPrintMode.blank;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       Text(summary, style: appText(13.5, c: c.textMedium, h: 1.4)),
+      if (info.ownSheet) ...[
+        const SizedBox(height: AppSpace.sm),
+        AppBanner(key: const ValueKey('omr.sheets.own'), icon: Icons.description_outlined, text: omrOwnSheetLine(info)),
+      ],
       const SizedBox(height: AppSpace.md),
       if (!info.hasModes)
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [

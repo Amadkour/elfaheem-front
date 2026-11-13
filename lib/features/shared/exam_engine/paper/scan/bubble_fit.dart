@@ -6,8 +6,11 @@
 //   another sheet  PUT …/setup omr_template_id with a sheet that has enough bubbles, or the teacher's own sheet
 // Server: GET / PUT /api/v1/exam/exams/{id}/omr/fit (back exam_engine/services/bubble_fit.py), stored in
 // `settings.bubble_fit`, so printing, reading and grading follow the same choice.
+// A trim (and its Undo) changes the question paper too (D-725): the PUT answer's `changes` name the questions and the
+// removed choices, and the panel says so in an alert ("the question paper was updated · print it again").
 //
-// Pure (unit-tested): BubbleFit · BubbleFitItem · BubbleFitAction · bubbleFitBody · bubbleFitSheets · the words.
+// Pure (unit-tested): BubbleFit · BubbleFitItem · BubbleFitAction · bubbleFitBody · bubbleFitSheets · BubbleFitChange ·
+// the words.
 library;
 
 import '../../../../../core/api_client.dart';
@@ -81,16 +84,52 @@ class BubbleFitItem {
       );
 }
 
+/// A choice a trim removed, as the original question printed it: [index] is its letter's place (0 = A / أ).
+class BubbleFitRemovedOption {
+  const BubbleFitRemovedOption({required this.id, required this.index, this.text = ''});
+  final String id;
+  final int index;
+  final String text;
+
+  static BubbleFitRemovedOption fromJson(Map<String, dynamic> j) =>
+      BubbleFitRemovedOption(id: '${j['id'] ?? ''}', index: asInt(j['index']), text: '${j['text'] ?? ''}');
+}
+
+List<BubbleFitRemovedOption> _removedOf(Object? v) =>
+    [for (final o in (v is List ? v : const [])) if (o is Map) BubbleFitRemovedOption.fromJson(asMap(o))];
+
 /// A question already trimmed for this exam (Restore pins the original back).
 class BubbleFitTrimmed {
-  const BubbleFitTrimmed({required this.questionId, required this.number, this.removed = const []});
+  const BubbleFitTrimmed({required this.questionId, required this.number, this.removed = const [], this.removedOptions = const []});
   final int questionId;
   final int number;
   final List<String> removed;
 
+  /// The removed choices with their letters and texts (an older server: empty, [removed] only).
+  final List<BubbleFitRemovedOption> removedOptions;
+
   static BubbleFitTrimmed fromJson(Map<String, dynamic> j) => BubbleFitTrimmed(
-      questionId: asInt(j['question_id']), number: asInt(j['n']), removed: [for (final x in (j['removed'] is List ? j['removed'] as List : const [])) '$x']);
+      questionId: asInt(j['question_id']),
+      number: asInt(j['n']),
+      removed: [for (final x in (j['removed'] is List ? j['removed'] as List : const [])) '$x'],
+      removedOptions: _removedOf(j['removed_options']));
 }
+
+/// What one PUT changed on the question paper (D-725): a trim removed [removed], or an Undo ([restored]) put them back.
+class BubbleFitChange {
+  const BubbleFitChange({required this.questionId, required this.number, required this.restored, this.removed = const []});
+  final int questionId;
+  final int number;
+  final bool restored;
+  final List<BubbleFitRemovedOption> removed;
+
+  static BubbleFitChange fromJson(Map<String, dynamic> j) => BubbleFitChange(
+      questionId: asInt(j['question_id']), number: asInt(j['n']), restored: j['action'] == 'restore', removed: _removedOf(j['removed_options']));
+}
+
+/// The PUT answer's `changes` (none from an older server, or when nothing on the paper changed).
+List<BubbleFitChange> bubbleFitChangesOf(Map<String, dynamic> j) =>
+    [for (final x in (j['changes'] is List ? j['changes'] as List : const [])) if (x is Map) BubbleFitChange.fromJson(asMap(x))];
 
 /// `GET …/omr/fit`.
 class BubbleFit {
@@ -183,6 +222,45 @@ String bubbleFitHeadline(BubbleFit f) {
 
 String bubbleFitCountLine(BubbleFitItem x, int sheetOptions) =>
     t('${x.count} خيارات · الورقة $sheetOptions', '${x.count} choices · the sheet has $sheetOptions');
+
+/// "E" / "هـ" + the choice's text in quotes when it has one.
+String bubbleFitRemovedText(BubbleFitRemovedOption o, {required bool ar}) {
+  final letter = bubbleFitLetter(o.index, ar: ar);
+  final text = o.text.trim();
+  return text.isEmpty ? letter : (ar ? '$letter «$text»' : '$letter “$text”');
+}
+
+/// The alert's title: the question paper changed with the bubble sheet.
+String bubbleFitChangesTitle(List<BubbleFitChange> changes) => changes.every((x) => x.restored)
+    ? t('أُعيدت الخيارات إلى ورقة الأسئلة', 'The choices are back on the question paper')
+    : t('حُدّثت ورقة الأسئلة', 'The question paper was updated');
+
+/// One line per question: "Question 4: removed E “All of the above”" / "Question 4: E “…” is back".
+String bubbleFitChangeLine(BubbleFitChange x, {required bool ar}) {
+  final opts = x.removed.map((o) => bubbleFitRemovedText(o, ar: ar)).join(ar ? '، ' : ', ');
+  final n = x.removed.length;
+  if (x.restored) {
+    return n == 0
+        ? t('السؤال ${x.number}: عادت خياراته كما كانت', 'Question ${x.number}: its choices are back as they were')
+        : t('السؤال ${x.number}: ${n == 1 ? 'عاد الخيار' : 'عادت الخيارات'} $opts', 'Question ${x.number}: ${n == 1 ? 'choice' : 'choices'} $opts ${n == 1 ? 'is' : 'are'} back');
+  }
+  return n == 0
+      ? t('السؤال ${x.number}: حُذفت منه خيارات خاطئة', 'Question ${x.number}: wrong choices removed')
+      : t('السؤال ${x.number}: ${n == 1 ? 'حُذف الخيار' : 'حُذفت الخيارات'} $opts', 'Question ${x.number}: removed ${n == 1 ? 'choice' : 'choices'} $opts');
+}
+
+/// What else follows the change, in one sentence.
+String bubbleFitChangesFollow(List<BubbleFitChange> changes) => changes.every((x) => x.restored)
+    ? t('ورقة الأسئلة ودفتر الإجابة وملفات Word وPDF والاختبار الإلكتروني تعرض الخيارات كاملة من جديد، وورقة التظليل لا تتسع لهذا السؤال فاختر له طريقة أخرى.',
+        'The question paper, the answer booklet, the Word and PDF files and the online exam show every choice again; the bubble sheet cannot hold this question, so choose another way for it.')
+    : t('ورقة الأسئلة ودفتر الإجابة وملفات Word وPDF والاختبار الإلكتروني تعرض الآن الخيارات الباقية فقط، بنفس ترتيب فقاعات ورقة التظليل. الإجابة الصحيحة لم تتغير.',
+        'The question paper, the answer booklet, the Word and PDF files and the online exam now show only the remaining choices, in the same order as the bubble sheet. The correct answer did not change.');
+
+/// The reprint callout. No server record says whether the question paper was printed, so it is always said.
+String bubbleFitReprintLine(List<BubbleFitChange> changes) => changes.every((x) => x.restored)
+    ? t('إن كنت طبعت ورقة الأسئلة أو نزّلتها بعد الحذف، فاطبعها من جديد.', 'If you printed or downloaded the question paper after the removal, print it again.')
+    : t('إن كنت طبعت ورقة الأسئلة أو نزّلتها من قبل، فاطبعها من جديد: النسخة القديمة ما زالت تعرض الخيارات المحذوفة.',
+        'If you already printed or downloaded the question paper, print it again: the old copy still shows the removed choices.');
 
 /// Server codes of this flow in words.
 String bubbleFitCodeText(EngineResult r) => switch (r.code) {

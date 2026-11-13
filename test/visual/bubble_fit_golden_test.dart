@@ -6,6 +6,8 @@
 // → test/visual/goldens/bubble_fit_<scene>_<width>_<lang>_<light|dark>.png at 390×844, 1440×900 and 391×2000 (the whole panel):
 //   start    three questions that do not fit, nothing chosen yet, a 5-choice sheet offered, one question trimmed earlier
 //   chosen   a trim with its preview (the struck choice, the correct one ticked), Leave off the sheet, Apply enabled
+//   print_own  the teacher's own sheet (D-724): "You chose earlier … Change", the own-sheet line, the modes, Download PDF
+//   alert    after a trim (D-725): which questions and choices, what follows, "print the question paper again"
 @Tags(['visual'])
 library;
 
@@ -17,6 +19,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/paper/review/omr_review.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_scan.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_sheets_sheet.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup.dart';
@@ -113,7 +119,34 @@ class _PanelState extends State<_Panel> {
 
 final _shot = GlobalKey();
 
-Widget _host({required bool dark, required Map<int, BubbleFitAction> chosen}) {
+/// The screenshot's exam: 15 questions on the school's own 150-question sheet, one question trimmed earlier.
+class _OwnScan extends OmrScanApi {
+  @override
+  Future<EngineResult> sheetsInfo(int examId) async => EngineResult.ok({
+        'template_id': 9, 'printable': true, 'own_sheet': true, 'template_name': t('ورقة المدرسة', 'School answer sheet'),
+        'questions': 15, 'sheet_questions': 150, 'forms': <String>[], 'id_kind': 'shaded',
+        'modes': ['prefilled', 'named', 'blank'], 'fit': {'ignore': 0, 'written': 0, 'trimmed': 1},
+      });
+}
+
+class _Audience extends OmrReviewApi {
+  @override
+  Future<EngineResult> audience(int examId, String q, {int limit = 20}) async => EngineResult.ok({
+        'total': 3,
+        'items': [
+          {'user_id': 1, 'name': t('أحمد علي', 'Ahmed Ali'), 'identifier': '••0451'},
+          {'user_id': 2, 'name': t('مريم حسن', 'Mariam Hassan'), 'identifier': '••7002'},
+          {'user_id': 3, 'name': t('يوسف خالد', 'Youssef Khaled'), 'identifier': '••0977'},
+        ],
+      });
+}
+
+const _changes = [
+  BubbleFitChange(questionId: 31, number: 3, restored: false, removed: [BubbleFitRemovedOption(id: 'e', index: 4, text: 'All of the above')]),
+  BubbleFitChange(questionId: 37, number: 9, restored: false, removed: [BubbleFitRemovedOption(id: 'd', index: 3, text: 'Telnet')]),
+];
+
+Widget _host({required bool dark, required Map<int, BubbleFitAction> chosen, String scene = ''}) {
   final theme = ThemeConfigProvider(api: ApiClient());
   final rtl = AppConfig.lang == 'ar';
   return ThemeConfigScope(
@@ -125,7 +158,15 @@ Widget _host({required bool dark, required Map<int, BubbleFitAction> chosen}) {
       themeMode: dark ? ThemeMode.dark : ThemeMode.light,
       builder: (context, w) => RepaintBoundary(key: _shot, child: Directionality(textDirection: rtl ? TextDirection.rtl : TextDirection.ltr, child: w!)),
       home: Builder(builder: (context) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => showAppSheet<void>(context, (_) => _Panel(chosen)));
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (scene == 'alert') {
+            showBubbleFitChanges(context, _changes);
+          } else if (scene == 'print_own') {
+            showAppSheet<void>(context, (_) => OmrSheetsSheet(examId: 7, api: _OwnScan(), audienceApi: _Audience()));
+          } else {
+            showAppSheet<void>(context, (_) => _Panel(chosen));
+          }
+        });
         return Scaffold(body: Center(child: Text(t('تجهيز الاختبار وتسليمه', 'Prepare and deliver the exam'))));
       }),
     ),
@@ -143,7 +184,7 @@ Future<void> _render(WidgetTester tester, String name, Map<int, BubbleFitAction>
           tester.view.devicePixelRatio = 1;
           tester.view.physicalSize = size;
           await tester.pumpWidget(const SizedBox());
-          await tester.pumpWidget(_host(dark: dark, chosen: chosen));
+          await tester.pumpWidget(_host(dark: dark, chosen: chosen, scene: name));
           for (var i = 0; i < 14; i++) {
             await tester.pump(const Duration(milliseconds: 100));
           }
@@ -173,4 +214,6 @@ void main() {
 
   testWidgets('start', (t) => _render(t, 'start', const {}));
   testWidgets('chosen', (t) => _render(t, 'chosen', const {31: BubbleFitAction.trim, 37: BubbleFitAction.written, 40: BubbleFitAction.ignore}));
+  testWidgets('print_own', (t) => _render(t, 'print_own', const {}));
+  testWidgets('alert', (t) => _render(t, 'alert', const {}));
 }
