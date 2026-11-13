@@ -4612,3 +4612,14 @@ A dirty device copy whose server copy has a higher `rev` than its `base` opened 
 ## D-832 — Reading a 409 safely · 2026-11-13 · accepted
 
 The 409 body may be JSON text: `studioConflictOf` reads it through `ApiException.asMap`. When the other copy cannot be read, its revision is unknown (never 0, which looped a 409 on every save) and nothing is overwritten without a yes ("Replace with mine" saves once without `base`; No keeps mine unsent on the device). An offline open takes the device copy's `base` as the revision.
+## D-860 — The gold accent (`accent2`) is marigold #D9A21B · 2026-11-13 · accepted
+
+**Context.** The owner found the gold accent unattractive: production wore the green preset's caramel `#C98A3D`, which reads muddy next to the forest green and the cream (the default warm_editorial preset had a dark ochre `#94691A`). `accent2` drives the gold highlight CTA (Go live, Upgrade), the hero's gold glow, gold stat / ring / KPI / shortcut cards, the `AppTone.gold` badges, `blockGold` and the light gradient glyph's end. **Candidates** (rendered on those surfaces, production palette, light and dark: `test/visual/accent2_candidates_golden_test.dart`): marigold `#D9A21B`, saffron `#D6A80E`, antique gold `#C9A227`, terracotta `#D46A4C`, berry `#A23B72`. **Decision.** Marigold `#D9A21B`: a clean, saturated gold that sits with green and cream (the classic forest / cream / gold triad) and still means "gold" for streaks and achievements. Rejected: saffron (its AA ink turns olive in light mode), antique gold (olive-brown ink, as flat as the caramel), terracotta (a "Top mark" badge reads like "Failed" next to danger), berry (premium, but a pink Go live and pink achievements lose the gold meaning). **Contrast (D-740).** Text never uses the raw tone: `context.colors.accent2` derives the ink, about `#8C6811` on the light canvas and cards; dark mode keeps `#D9A21B` (it already reads at AA on the grey cards). Solid fills use `accent2Base`; the gold CTA keeps its dark forest ink.
+
+## D-861 — Shipped as a server theme change, both presets · 2026-11-13 · accepted
+
+Backend D-860 / revision 0080 moves the `green` and `warm_editorial` presets and every platform row that still holds `#C98A3D` or `#94691A`; a colour a super admin set by hand is kept. `AppTheme.accent2` (the offline fallback, a mirror of warm_editorial) is `#D9A21B` too, and `.interface-design/system.md` names it.
+
+## D-862 — Marigold stays apart from warning · 2026-11-13 · accepted
+
+Warning is the orange amber (`#F2A93B` on green, `#B7791F` on warm_editorial); marigold sits about 6 – 10° yellower and lighter, and its block tint (`#FBEED0`) is a pale butter, not the amber cream of a warning chip. Rule kept from D-740: gold means achievement only, never a state; a status that needs attention is always `AppTone.warning`.

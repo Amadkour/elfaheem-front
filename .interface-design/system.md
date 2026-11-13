@@ -32,7 +32,7 @@ from `context.colors`, never hex values, so other presets keep working.
 | `text_light` (captions) | `#6E655A` (≥ 4.5:1 on canvas, peach, sky) | `#A99C8A` | |
 | primary (CTA, selection) | `#0B6B4F` deep emerald (white ink 6.5:1) | same family, lifted where needed for AA | `primary_dark #064733` · `primary_light #3E9C78` |
 | `success` (completion, correct answer) | `#12805C` | | emerald = "done / right" |
-| `accent2` gold (streaks, achievements, top marks) | `#94691A` text-safe | | gold fills use its tint `#F6E7C4` |
+| `accent2` gold (streaks, achievements, top marks) | `#D9A21B` marigold (D-860; text uses the D-740 ink) | | gold fills use its tint `#F6E7C4` |
 | block peach `accent1` | `#FBE2D3` | dark: tinted `#3A2A22` | learning / progress blocks |
 | block sage `accent3` (optional key; tone `sky` = `sage`) | `#E4ECE3` | dark: `#1E2A23` | schedule / information / calm empty blocks (was the cool sky `#DCE7F5`, D-630) |
 | hero forest (derived, D-630) | `primary_dark` deepened to 7:1 under cream ≈ `#0E3B2E` | ≈ `#14392D` + cream hairline | THE home hero; ink = canvas cream, muted = cream 78 % |
