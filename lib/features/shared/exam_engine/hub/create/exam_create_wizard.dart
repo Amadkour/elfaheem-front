@@ -25,18 +25,17 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../../../admin/admin_common.dart' show asMapList, t;
 import '../../../rag/rag_learning.dart' show LearningApi, kRagLearningFeatureKey;
 import '../../exam_all.dart';
 import '../../exam_all_screen.dart' show staffOrgs;
 import '../../exam_authoring.dart';
-import '../../exam_authoring_screen.dart' show ExamEditorScreen;
+import '../../exam_authoring_screen.dart' show ExamEditorScreen, ExcelImportSheet;
 import '../../exam_forms_import.dart' show GoogleFormsImportSheet, formExamTitle;
 import '../../exam_gen_api.dart' show genMetaOf, kExamAutoCreateKey;
 import '../../exam_generate.dart' show ExamGenReview, GenMark, deleteGenItem, regenerateGenItem, sendGenFeedback;
-import '../../exam_generate_sheet.dart' show GenRejectSheet, GenReviewBar, QuickGenerateCard, openExamGenerator;
+import '../../exam_generate_sheet.dart' show GenRejectSheet, GenReviewBar, openExamGenerator;
 import '../../exam_quick.dart';
 import '../../exam_quick_screen.dart' show QuickAdvancedPanel, QuickFilePanel, QuickQuestionCard, paperFileExtensions, quickFormsAvailable, quickTypeIcon;
 import '../../exam_results_screen.dart';
@@ -59,6 +58,7 @@ import 'exam_create_prefs.dart';
 import 'exam_create_sync.dart';
 import 'offline_steps.dart';
 import 'paper_preview.dart';
+import 'question_sources.dart';
 
 /// Opens the wizard. [courseId] / [orgId] fix or narrow where the exam goes.
 Future<void> openExamCreateWizard(BuildContext context, {int? orgId, int? courseId}) => Navigator.of(context).push<void>(MaterialPageRoute(
@@ -506,7 +506,10 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
     if (got == null || got.items.isEmpty || !mounted) return;
     _review.track(got);
     setState(() {
-      q.questions.addAll(got.questions);
+      for (final x in got.questions) {
+        _plan.markOrigin(x, QuestionOrigin.generated);
+      }
+      q.questions.addAll(got.questions);   // appended after whatever came from the other sources (D-717)
       _genNotice = got.notice;
       _started = true;
     });
@@ -538,8 +541,11 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
               api: _api,
               createExam: (form) async {
                 final q = _plan.exam;
-                q.title = formExamTitle(form, q.title);
-                _title.text = q.title;
+                // the form names the exam only when it is the first source (D-717): later it only adds questions
+                if (!_plan.hasContent) {
+                  q.title = formExamTitle(form, q.title);
+                  _title.text = q.title;
+                }
                 final e = await _sync.ensure(_plan);
                 done = e == null;
                 return QuickResult(examId: _sync.examId, error: e);
@@ -547,17 +553,62 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
             ));
     if (done && mounted) {
       setState(() => _started = true);
-      await _refreshImported();
+      await _refreshImported(QuestionOrigin.forms);
     }
   }
 
-  Future<void> _refreshImported() async {
+  /// "From an Excel file": the questions on the questions template are read into the same draft, after the others.
+  Future<void> _importExcel() async {
+    if (!await _syncDraft() || !mounted) return;
+    final added = await showAppSheet<bool>(context, (_) => ExcelImportSheet(api: _api, examId: _sync.examId!, sections: const []));
+    if (!mounted) return;
+    if (added == true) setState(() => _started = true);
+    await _refreshImported(QuestionOrigin.excel);
+  }
+
+  /// The questions the server holds beyond the written ones; new ones are tagged [origin].
+  Future<void> _refreshImported([QuestionOrigin origin = QuestionOrigin.editor]) async {
     final r = await _sync.imported();
     if (r == null || !mounted) return;
+    setState(() => _plan.setHeld(r, origin));
+  }
+
+  Future<void> _removeHeld(HeldQuestion h) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final e = await _sync.removeHeld(h);
+    if (!mounted) return;
     setState(() {
-      _plan.importedQuestions = r.questions;
-      _plan.importedPoints = r.points;
-      _plan.importedNotBubble = r.notBubble;
+      _busy = false;
+      if (e == null) {
+        _plan.held = [for (final x in _plan.held) if (x.placementId != h.placementId) x];
+      } else {
+        _error = e;
+      }
+    });
+  }
+
+  /// In-app questions, or the ready exam file as the paper. The file cannot sit beside imported questions on the server,
+  /// so they are taken off the draft first, after asking; the written ones stay here for the way back.
+  Future<void> _setSource(QuickSource s) async {
+    final q = _plan.exam;
+    if (s == q.source) return;
+    if (s == QuickSource.file && _plan.held.isNotEmpty) {
+      final ok = await appConfirm(context,
+          danger: true,
+          confirmLabel: t('استخدم الملف', 'Use the file'),
+          message: t('ملف الامتحان يُطبع كما هو، فتُحذف من هذا الاختبار ${questionsCountText(_plan.held.length)} مستوردة. أسئلتك المكتوبة تبقى محفوظة.',
+              'The exam file prints as it is, so ${questionsCountText(_plan.held.length)} imported into this exam will be removed. Your written questions are kept.'));
+      if (!ok || !mounted) return;
+      for (final h in List.of(_plan.held)) {
+        await _removeHeld(h);
+        if (!mounted || _error != null) return;
+      }
+    }
+    setState(() {
+      _started = true;
+      q.source = s;
+      _plan.normalize();
     });
   }
 
@@ -569,20 +620,21 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
   }
 
   void _way(CreateQuestionWay w) {
-    void source(QuickSource s) => setState(() {
-          _started = true;
-          _plan.exam.source = s;
-          _plan.normalize();
-        });
     switch (w) {
       case CreateQuestionWay.automatic:
         _generate();
       case CreateQuestionWay.manual:
-        source(QuickSource.questions);
+        if (_plan.exam.source == QuickSource.questions) {
+          setState(() => _started = true);
+        } else {
+          _setSource(QuickSource.questions);
+        }
       case CreateQuestionWay.file:
-        source(QuickSource.file);
+        _setSource(QuickSource.file);
       case CreateQuestionWay.forms:
         _importForms();
+      case CreateQuestionWay.excel:
+        _importExcel();
     }
   }
 
@@ -768,9 +820,8 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
             copies: _plan.effectiveCopies,
             hasCourse: _plan.hasCourse,
             personalAllowed: _plan.personalAllowed,
-            whyNotPersonal: _plan.exam.isFile
-                ? t('الملف المرفوع يُطبع كما هو، فلا يحمل اسم الطالب', 'An uploaded file prints as it is, so it cannot carry a name')
-                : t('ورقتك الخاصة لا تطبعها NextBrain', 'NextBrain does not print your own sheet'),
+            whyNotPersonal: t('الملف المرفوع يُطبع كما هو، فلا يحمل اسم الطالب', 'An uploaded file prints as it is, so it cannot carry a name'),
+            parts: _plan.copyParts(_plan.effectiveCopies),
             lastUsed: _lastCopies,
             onCopies: (v) => setState(() => _plan.setCopies(v)),
             versions: CreateVersionsPanel(
@@ -935,10 +986,6 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
     }
     final (rawErrors, perQ) = _tried ? questionStepErrors(_plan) : (const <String>[], const <int, List<String>>{});
     final check = bubbleCheckOf(_plan);
-    void source(QuickSource s) => setState(() {
-          q.source = s;
-          _plan.normalize();
-        });
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       AppField(key: const ValueKey('create.title'), controller: _title, label: t('اسم الاختبار', 'Exam name'), onChanged: (v) => setState(() => q.title = v)),
       const SizedBox(height: AppSpace.sm),
@@ -957,60 +1004,34 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
         CreateBubbleProblems(check: check, onRemove: _removeNotHeld, onNormal: _usePaper, onEditor: _openEditor),
         const SizedBox(height: AppSpace.xs),
       ],
-      if (!bubble) ...[
-        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-          AppChoiceChip(label: t('أسئلة في التطبيق', 'Questions in the app'), icon: Icons.quiz_outlined, selected: !q.isFile, onTap: () => source(QuickSource.questions)),
-          AppChoiceChip(label: t('رفع ملف الامتحان', 'Upload the exam file'), icon: Icons.upload_file_rounded, selected: q.isFile, onTap: () => source(QuickSource.file)),
-        ]),
+      if (q.isFile) ...[
+        QuickFilePanel(fileName: q.fileName, points: q.filePoints, offline: _plan.isPaper, onPick: _busy ? null : _pickFile, onPoints: (v) => setState(() => q.filePoints = v)),
         const SizedBox(height: AppSpace.sm),
-      ],
-      if (q.isFile)
-        QuickFilePanel(fileName: q.fileName, points: q.filePoints, offline: _plan.isPaper, onPick: _busy ? null : _pickFile, onPoints: (v) => setState(() => q.filePoints = v))
-      else ...[
-        if (_plan.importedQuestions > 0) ...[
-          CreateImportedCard(count: _plan.importedQuestions, points: _plan.importedPoints, onEditor: _openEditor),
-          const SizedBox(height: AppSpace.sm),
-        ],
-        if (_plan.hasCourse)
-          ParentComponent(
-            featureKey: kExamAutoCreateKey,
-            child: Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: QuickGenerateCard(onTap: _busy ? null : _generate)),
-          ),
+        CreatePaperFileChoice(usingFile: true, questionsKept: q.questions.length, onTap: _busy ? null : () => _setSource(QuickSource.questions)),
+      ] else ...[
         if (_genNotice.isNotEmpty)
           Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppBanner(icon: Icons.info_outline_rounded, color: c.warning, text: _genNotice)),
-        for (var i = 0; i < q.questions.length; i++)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpace.sm),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              if (_reviewing(q.questions[i]))
-                GenReviewBar(
-                  key: ObjectKey(_review.of(q.questions[i])),
-                  mark: _review.of(q.questions[i])!.mark,
-                  onAccept: () => setState(() => _review.mark(q.questions[i], GenMark.accepted)),
-                  onEdit: () => setState(() => _review.mark(q.questions[i], GenMark.edited)),
-                  onReject: () => _reject(q.questions[i]),
-                  meta: genMetaOf(q.questions[i]),
-                  onRegenerate: genMetaOf(q.questions[i]) == null ? null : () => _regenerate(q.questions[i]),
-                ),
-              QuickQuestionCard(
-                key: ObjectKey(q.questions[i]),
-                index: i,
-                question: q.questions[i],
-                orgId: q.orgId,
-                courseId: q.courseId,
-                errors: perQ[i] ?? const [],
-                onChanged: () => setState(() {}),
-                onRemove: _reviewing(q.questions[i]) ? () => _reject(q.questions[i]) : () => setState(() => q.questions.removeAt(i)),
-              ),
-            ]),
-          ),
-        if (q.questions.isEmpty && _plan.importedQuestions == 0)
-          AppEmpty(icon: Icons.post_add_rounded, title: t('أضف أول سؤال', 'Add the first question'), message: t('اختر نوع السؤال من الأسفل', 'Pick a question type below')),
+        Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: QuestionSourcesSummary(counts: _plan.originCounts)),
+        ..._questionRows(perQ),
+        if (q.questions.isEmpty && _plan.held.isEmpty)
+          AppEmpty(icon: Icons.post_add_rounded, title: t('أضف أول سؤال', 'Add the first question'), message: t('اكتب سؤالًا من الأسفل، أو أضف أسئلة من مصدر آخر', 'Write one below, or add questions from another source')),
         const SizedBox(height: AppSpace.xxs),
+        Text(t('اكتب سؤالًا', 'Write a question'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600)),
+        const SizedBox(height: AppSpace.xs),
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final ty in bubble ? [...kBubbleQuestionTypes, if (_plan.answerSheetOn) ...kWrittenQuestionTypes] : quickQuestionTypes)
             AppPill(key: ValueKey('create.add.$ty'), icon: quickTypeIcon(ty), label: quickTypeLabel(ty), onTap: () => setState(() => q.questions.add(QuickQuestion.ofType(ty)))),
         ]),
+        const SizedBox(height: AppSpace.md),
+        CreateSourceBar(
+          onGenerate: _plan.hasCourse && _canGenerate && !_busy ? _generate : null,
+          onForms: quickFormsAvailable && !_busy ? _importForms : null,
+          onExcel: _busy ? null : _importExcel,
+        ),
+        if (!bubble) ...[
+          const SizedBox(height: AppSpace.md),
+          CreatePaperFileChoice(usingFile: false, onTap: _busy ? null : () => _setSource(QuickSource.file)),
+        ],
       ],
       if (_tried && rawErrors.isNotEmpty) ...[
         const SizedBox(height: AppSpace.sm),
@@ -1021,6 +1042,64 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
         AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: t('أكمل الأسئلة المعلّمة', 'Complete the marked questions')),
       ],
     ]);
+  }
+
+  /// The one list (D-717): written questions as editable cards, held ones (imports) as compact cards, each with where it
+  /// came from and up / down; numbered in the exam's order.
+  List<Widget> _questionRows(Map<int, List<String>> perQ) {
+    final q = _plan.exam;
+    final entries = _plan.entries;
+    final out = <Widget>[];
+    for (var k = 0; k < entries.length; k++) {
+      final e = entries[k];
+      final up = k == 0 || _busy ? null : () => setState(() => _plan.moveEntry(k, k - 1));
+      final down = k == entries.length - 1 || _busy ? null : () => setState(() => _plan.moveEntry(k, k + 1));
+      final h = e.held;
+      if (h != null) {
+        out.add(Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
+          child: HeldQuestionCard(
+            number: k + 1,
+            question: h,
+            marks: marksCountText(h.points),
+            onUp: up,
+            onDown: down,
+            onRemove: _busy ? null : () => _removeHeld(h),
+            onEdit: _busy ? null : _openEditor,
+          ),
+        ));
+        continue;
+      }
+      final x = e.local!;
+      final i = q.questions.indexOf(x);
+      out.add(Padding(
+        padding: const EdgeInsets.only(bottom: AppSpace.sm),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          CreateEntryStrip(key: ValueKey('create.entry.$k'), origin: _plan.originOf(x), onUp: up, onDown: down),
+          if (_reviewing(x))
+            GenReviewBar(
+              key: ObjectKey(_review.of(x)),
+              mark: _review.of(x)!.mark,
+              onAccept: () => setState(() => _review.mark(x, GenMark.accepted)),
+              onEdit: () => setState(() => _review.mark(x, GenMark.edited)),
+              onReject: () => _reject(x),
+              meta: genMetaOf(x),
+              onRegenerate: genMetaOf(x) == null ? null : () => _regenerate(x),
+            ),
+          QuickQuestionCard(
+            key: ObjectKey(x),
+            index: k,
+            question: x,
+            orgId: q.orgId,
+            courseId: q.courseId,
+            errors: perQ[i] ?? const [],
+            onChanged: () => setState(() {}),
+            onRemove: _reviewing(x) ? () => _reject(x) : () => setState(() => q.questions.remove(x)),
+          ),
+        ]),
+      ));
+    }
+    return out;
   }
 
   Widget _publishBody() {

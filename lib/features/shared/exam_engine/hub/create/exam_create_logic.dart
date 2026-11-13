@@ -19,7 +19,7 @@ import 'package:flutter_education_app/core/plural.dart';
 import '../../exam_all.dart' show NewExamPlace;
 import '../../exam_authoring.dart' show fmtPoints;
 import '../../exam_quick.dart';
-import '../../paper/exam_setup.dart' show OmrTemplateItem;
+import '../../paper/exam_setup.dart' show ObjectiveQuestion, OmrTemplateItem;
 import '../../paper/omr_counts.dart' show omrMinutesText;
 import 'answer_format.dart';
 import 'answer_sheet_plan.dart';
@@ -110,10 +110,77 @@ class ExamCreatePlan {
   /// A paper design was saved for this exam (the Paper design step).
   bool designed = false;
 
-  // questions already on the server (a Google Forms import): counted, never touched by the wizard
-  int importedQuestions = 0;
-  double importedPoints = 0;
-  int importedNotBubble = 0;
+  /// Questions the server holds that this wizard did not write (a Google Forms or Excel import, the full editor): shown
+  /// in the one list beside the written ones, removed and moved there, edited in the full editor (D-717).
+  List<HeldQuestion> held = [];
+
+  int get importedQuestions => held.length;
+  double get importedPoints => held.fold(0.0, (s, h) => s + h.points);
+  int get importedNotBubble => held.where((h) => !h.objective).length;
+
+  final _origins = Expando<QuestionOrigin>();
+  List<Object> _order = [];
+
+  /// Where a written question came from (generated or typed here).
+  QuestionOrigin originOf(QuickQuestion q) => _origins[q] ?? QuestionOrigin.manual;
+  void markOrigin(QuickQuestion q, QuestionOrigin o) => _origins[q] = o;
+
+  /// The one list of questions in the exam's order (D-717): every source appends at the end, and the teacher's moves
+  /// are kept. A question written here is its object, one held on the server its placement id.
+  List<QuestionEntry> get entries {
+    final locals = exam.questions;
+    final byPlacement = {for (final h in held) h.placementId: h};
+    final out = <QuestionEntry>[];
+    final seenLocal = <QuickQuestion>{};
+    final seenHeld = <int>{};
+    for (final k in _order) {
+      if (k is QuickQuestion && !seenLocal.contains(k) && locals.any((x) => identical(x, k))) {
+        seenLocal.add(k);
+        out.add(QuestionEntry.local(k));
+      } else if (k is int && byPlacement.containsKey(k) && seenHeld.add(k)) {
+        out.add(QuestionEntry.held(byPlacement[k]!));
+      }
+    }
+    for (final q in locals) {
+      if (seenLocal.add(q)) out.add(QuestionEntry.local(q));
+    }
+    for (final h in held) {
+      if (seenHeld.add(h.placementId)) out.add(QuestionEntry.held(h));
+    }
+    _order = [for (final e in out) e.key];
+    return out;
+  }
+
+  /// How many questions came from each source.
+  Map<QuestionOrigin, int> get originCounts {
+    final out = <QuestionOrigin, int>{};
+    for (final e in entries) {
+      final o = e.held?.origin ?? originOf(e.local!);
+      out[o] = (out[o] ?? 0) + 1;
+    }
+    return out;
+  }
+
+  /// Moves a question in the one list; the written ones keep the same relative order in [QuickExam.questions].
+  void moveEntry(int from, int to) {
+    final list = entries;
+    if (from < 0 || from >= list.length || to < 0 || to >= list.length || from == to) return;
+    final e = list.removeAt(from);
+    list.insert(to, e);
+    _order = [for (final x in list) x.key];
+    final locals = [for (final x in list) if (x.local != null) x.local!];
+    exam.questions
+      ..clear()
+      ..addAll(locals);
+  }
+
+  /// The held questions after a read from the server: the ones known keep their origin, new ones take [origin].
+  void setHeld(List<HeldQuestion> fresh, QuestionOrigin origin) {
+    final keys = [for (final e in entries) e.key];   // the list as it stands: the new ones go after all of it
+    final before = {for (final h in held) h.placementId: h.origin};
+    held = [for (final h in fresh) h.withOrigin(before[h.placementId] ?? origin)];
+    _order = [...keys, for (final h in held) if (!keys.contains(h.placementId)) h.placementId];
+  }
 
   bool get isBubble => type == CreateType.bubble;
   bool get hasCourse => exam.courseId != null;
@@ -157,6 +224,9 @@ class ExamCreatePlan {
   }
 
   bool get personalSheets => asksCopies && effectiveCopies == SheetCopies.personal;
+
+  /// What each printed copy holds (the Copies step says it plainly, D-716).
+  List<CopyPart> copyParts(SheetCopies v) => copyPartsOf(this, v);
 
   /// Per-student copies of an exam with no course: the students come from an uploaded list.
   bool get needsPeopleFile => personalSheets && !hasCourse;
@@ -276,8 +346,10 @@ class ExamCreatePlan {
   bool get shuffleQuestionsAllowed => !isBubble && shuffleAllowed;
 
   /// A copy named for each student: something NextBrain prints must carry the name (the question paper, or the bubble
-  /// sheet beside an uploaded file). The students come from the course, or from a list without one.
-  bool get personalAllowed => (!exam.isFile && !ownSheet) || (exam.isFile && printsBubbleSheets);
+  /// sheet beside an uploaded file). The students come from the course, or from a list without one. An own bubble form
+  /// (D-716) is not printed by NextBrain, but the question paper and the answer paper beside it are, so they carry the
+  /// name; the form itself is handed out blank and matched by the ID the student shades on it.
+  bool get personalAllowed => !exam.isFile || printsBubbleSheets;
 
   int get effectiveVersions => isPaper && paperPlan == PaperPlan.versions && versionsAllowed ? versions : 1;
 
@@ -314,6 +386,91 @@ class ExamCreatePlan {
       'form_markers': const <String>[],
     };
   }
+}
+
+// ── one list of questions from many sources (D-717) ─────────────────────────────────────────────────────────────
+
+/// Where a question in the list came from. Every source appends to the same list.
+enum QuestionOrigin { manual, generated, forms, excel, editor }
+
+String questionOriginLabel(QuestionOrigin o) => switch (o) {
+      QuestionOrigin.manual => t('مكتوب هنا', 'Written here'),
+      QuestionOrigin.generated => t('تلقائي', 'Generated'),
+      QuestionOrigin.forms => 'Google Forms',
+      QuestionOrigin.excel => t('ملف Excel', 'Excel file'),
+      QuestionOrigin.editor => t('المحرر الكامل', 'Full editor'),
+    };
+
+/// A question on the server's draft that the wizard did not write: an import, or one added in the full editor.
+class HeldQuestion {
+  const HeldQuestion({required this.placementId, required this.sectionId, required this.type, required this.prompt, required this.points, this.origin = QuestionOrigin.editor});
+  final int placementId, sectionId;
+  final String type, prompt;
+  final double points;
+  final QuestionOrigin origin;
+
+  /// A bubble sheet can carry it.
+  bool get objective => ObjectiveQuestion.types.contains(type);
+
+  HeldQuestion withOrigin(QuestionOrigin o) => HeldQuestion(placementId: placementId, sectionId: sectionId, type: type, prompt: prompt, points: points, origin: o);
+}
+
+/// One row of the questions list: written here ([local]) or held on the server ([held]).
+class QuestionEntry {
+  const QuestionEntry.local(QuickQuestion this.local) : held = null;
+  const QuestionEntry.held(HeldQuestion this.held) : local = null;
+  final QuickQuestion? local;
+  final HeldQuestion? held;
+
+  /// What the order remembers: the question object, or the placement id.
+  Object get key => local ?? held!.placementId;
+}
+
+// ── what each printed copy holds (D-716) ────────────────────────────────────────────────────────────────────────
+
+enum CopyPartKind { questionPaper, answerSheet, booklet, bubbleSheet, ownBubbleForm, uploadedFile }
+
+/// One part of a printed copy: what it is, whether it carries the student's name and details, and whether NextBrain
+/// prints it.
+typedef CopyPart = ({CopyPartKind kind, bool named, bool printedByUs});
+
+/// The parts of one copy, in the order they are handed out. A named copy puts the student's name and the chosen details
+/// on every part NextBrain prints; the teacher's own bubble form is never printed here, so it is handed out blank and
+/// read by the ID the student shades on it.
+List<CopyPart> copyPartsOf(ExamCreatePlan p, SheetCopies v) {
+  final named = v == SheetCopies.personal;
+  final l = p.layout;
+  final booklet = !p.exam.isFile && l != null && l != PaperLayout.questionsOnly && p.writtenSheet == WrittenSheet.booklet;
+  return [
+    if (p.exam.isFile) (kind: CopyPartKind.uploadedFile, named: false, printedByUs: true) else (kind: CopyPartKind.questionPaper, named: named, printedByUs: true),
+    if (p.wantsAnswerSheet) (kind: CopyPartKind.answerSheet, named: named, printedByUs: true),
+    if (booklet) (kind: CopyPartKind.booklet, named: named, printedByUs: true),
+    if (p.isBubble && p.ownSheet)
+      (kind: CopyPartKind.ownBubbleForm, named: false, printedByUs: false)
+    else if (p.isBubble && p.bubbleSource == BubbleSource.print)
+      (kind: CopyPartKind.bubbleSheet, named: named, printedByUs: true),
+  ];
+}
+
+String copyPartLabel(CopyPartKind k) => switch (k) {
+      CopyPartKind.questionPaper => t('ورقة الأسئلة', 'The question paper'),
+      CopyPartKind.answerSheet => t('ورقة الإجابة الكتابية', 'The written answer sheet'),
+      CopyPartKind.booklet => t('كراسة الإجابة', 'The answer booklet'),
+      CopyPartKind.bubbleSheet => t('ورقة التظليل', 'The bubble sheet'),
+      CopyPartKind.ownBubbleForm => t('ورقة التظليل الخاصة بك', 'Your own bubble form'),
+      CopyPartKind.uploadedFile => t('ملف الامتحان المرفوع', 'The uploaded exam file'),
+    };
+
+/// What the part says about the student.
+String copyPartNote(CopyPart part) {
+  if (part.kind == CopyPartKind.ownBubbleForm) {
+    return t('لا تطبعها NextBrain: وزّع أوراقك كما هي، ويظلل الطالب رقمه عليها فتُطابق به',
+        'Not printed by NextBrain: hand out your sheets as they are; the student shades their ID on it, and that is how it is matched');
+  }
+  if (part.kind == CopyPartKind.uploadedFile) return t('يُطبع كما هو، بلا اسم', 'Printed as it is, without a name');
+  return part.named
+      ? t('يُطبع عليها اسم الطالب وبياناته التي تختارها', "Printed with the student's name and the details you choose")
+      : t('سطر يكتب فيه الطالب اسمه ورقمه', 'A line where the student writes their name and number');
 }
 
 // ── the steps ───────────────────────────────────────────────────────────────────────────────────────────────────

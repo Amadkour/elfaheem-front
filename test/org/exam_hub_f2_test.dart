@@ -236,7 +236,7 @@ void main() {
       expect(createSteps(p..answerSheetOn = false, whereNeeded: false, omrOn: true, identifiersOn: true).contains(CreateStep.layout), isFalse);
     });
 
-    test('per-student copies: the course roster, or an uploaded list without a course; never on an own sheet', () {
+    test('per-student copies: the course roster, or an uploaded list without a course; an own sheet too (D-716)', () {
       final p = _plan()..setCopies(SheetCopies.personal);
       expect(p.paperPlan, PaperPlan.personal);
       expect(needsIdentifierStep(p, identifiersOn: true), isFalse, reason: 'a course\'s roster is automatic');
@@ -244,7 +244,7 @@ void main() {
       expect(p.paperPlan, PaperPlan.personal);
       expect(needsIdentifierStep(p, identifiersOn: true), isTrue, reason: 'no course: the uploaded list');
       final own = _plan(bubble: true)..template = _own;
-      expect(own.personalAllowed, isFalse);
+      expect(own.personalAllowed, isTrue, reason: 'the question paper carries the name; the own form is handed out blank');
       expect(own.versionsAllowed, isFalse);
     });
 
@@ -294,7 +294,8 @@ void main() {
     });
 
     test('imported questions a bubble cannot hold do not block either', () {
-      final p = _plan(bubble: true)..importedNotBubble = 2;
+      final p = _plan(bubble: true)..held = const [HeldQuestion(placementId: 1, sectionId: 1, type: 'essay', prompt: 'a', points: 1), HeldQuestion(placementId: 2, sectionId: 1, type: 'matching', prompt: 'b', points: 1)];
+      expect(p.importedNotBubble, 2);
       expect(bubbleCheckOf(p).blocks, isFalse);
     });
 
@@ -489,7 +490,6 @@ void main() {
             const CreateOwnSheetNote(),
             const CreateBubbleRules(),
             CreateBubbleProblems(check: BubbleCheck(notHeld: [QuickQuestion.essay()], over: 3, capacity: 20, choicesOver: 1, importedNotHeld: 2), onRemove: () {}, onNormal: () {}, onEditor: () {}),
-            const CreateImportedCard(count: 12, points: 40),
             CreateLeaveBody(hasDraft: true, canSave: true, onPick: (_) {}, onStay: () {}),
           ])));
       await expectNoLayoutErrors(t, () => CreateDoneBody(title: 'A long exam title', place: 'Biology', lines: const [('Questions', '12'), ('Opens', 'Now')], onDone: () {}, onOpen: () {}, onFollow: () {}, onShare: () {}));

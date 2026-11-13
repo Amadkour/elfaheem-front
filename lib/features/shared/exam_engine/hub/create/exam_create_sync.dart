@@ -16,7 +16,7 @@ import '../../exam_authoring.dart';
 import '../../exam_engine_api.dart' show EngineResult, ExamEngineApi, engineCall;
 import '../../exam_quick.dart';
 import '../../exam_versions.dart' show ExamVersionsApi, versionBody, versionsErrorText;
-import '../../paper/exam_setup.dart' show ExamSetupApi, ObjectiveQuestion, setupErrorText;
+import '../../paper/exam_setup.dart' show ExamSetupApi, setupErrorText;
 import 'exam_create_logic.dart';
 import 'offline_plan_api.dart';
 
@@ -25,9 +25,6 @@ class _Placed {
   final String fingerprint;
   final int questionId, placementId;
 }
-
-/// What the server holds beyond the questions this wizard placed (a Google Forms import).
-typedef ImportedCount = ({int questions, double points, int notBubble});
 
 class ExamCreateSync {
   ExamCreateSync({ExamAuthoringApi? api, ExamSetupApi? setup, ExamVersionsApi? versions, OfflinePlanApi? plans, Future<EngineResult> Function(int)? deleter})
@@ -48,7 +45,7 @@ class ExamCreateSync {
   int? _sectionId;
   bool published = false;
   final List<_Placed> _placed = [];
-  String? _examSent, _sectionSent, _setupSent, _fileSent;
+  String? _examSent, _sectionSent, _setupSent, _fileSent, _orderSent;
   int _versionsMade = 0;
   bool _markersSet = false;
 
@@ -132,16 +129,27 @@ class ExamCreateSync {
       kept[i] = _Placed(prints[i], asInt(created.map['id']), asInt(placed.map['placement_id']));
       _placed.add(kept[i]!);
     }
-    final want = [for (final x in kept) x!.placementId];
-    final have = [for (final x in _placed) x.placementId];
-    // imported questions are in the same section: the server wants the whole set, and the wizard does not own them
-    if (want.length > 1 && p.importedQuestions == 0 && jsonEncode(want) != jsonEncode(have)) {
-      final r = await api.reorderQuestions(examId!, _sectionId!, want);
-      if (!r.ok) return authoringError(r);
-    }
     _placed
       ..clear()
       ..addAll([for (final x in kept) x!]);
+    // one order for the written and the held questions of this section (D-717): the server wants the whole set
+    final want = q.isFile ? [for (final x in kept) x!.placementId] : questionOrder(p, [for (final x in kept) x!.placementId], _sectionId!);
+    final sent = jsonEncode(want);
+    if (want.length > 1 && sent != _orderSent) {
+      final r = await api.reorderQuestions(examId!, _sectionId!, want);
+      if (!r.ok) return authoringError(r);
+    }
+    _orderSent = sent;
+    return null;
+  }
+
+  /// Takes a held question (an import) off the draft; the bank question stays the teacher's.
+  Future<String?> removeHeld(HeldQuestion h) async {
+    final id = examId;
+    if (id == null) return null;
+    final r = await api.unplace(id, h.placementId);
+    if (!r.ok) return authoringError(r);
+    _orderSent = null;
     return null;
   }
 
@@ -221,24 +229,15 @@ class ExamCreateSync {
     return null;
   }
 
-  /// What the server holds that this wizard did not place (read back after a Google Forms import).
-  Future<ImportedCount?> imported() async {
+  /// What the server holds that this wizard did not place (read back after an import or the full editor), in the
+  /// server's order. The wizard's own file question is not one of them.
+  Future<List<HeldQuestion>?> imported() async {
     final id = examId;
     if (id == null) return null;
     final r = await api.exam(id);
     if (!r.ok) return null;
-    final mine = {for (final x in _placed) x.placementId};
-    var n = 0, notBubble = 0;
-    var pts = 0.0;
-    for (final s in asMapList(r.map['sections'])) {
-      for (final x in asMapList(s['questions'])) {
-        if (mine.contains(asInt(x['placement_id']))) continue;
-        n++;
-        pts += x['points'] is num ? (x['points'] as num).toDouble() : 0;
-        if (!ObjectiveQuestion.types.contains('${x['type']}')) notBubble++;
-      }
-    }
-    return (questions: n, points: pts, notBubble: notBubble);
+    _orderSent = null;
+    return heldOf(r.map, {for (final x in _placed) x.placementId});
   }
 
   /// Removes the draft and the questions written for it.
@@ -253,7 +252,39 @@ class ExamCreateSync {
     _placed.clear();
     examId = null;
     _sectionId = null;
-    _examSent = _sectionSent = _setupSent = _fileSent = _planSent = null;
+    _examSent = _sectionSent = _setupSent = _fileSent = _planSent = _orderSent = null;
     return null;
   }
+}
+
+/// The held questions in a `GET /exams/{id}` answer: every placement not in [mine].
+List<HeldQuestion> heldOf(Map<String, dynamic> exam, Set<int> mine) => [
+      for (final s in asMapList(exam['sections']))
+        for (final x in asMapList(s['questions']))
+          if (!mine.contains(asInt(x['placement_id'])))
+            HeldQuestion(
+              placementId: asInt(x['placement_id']),
+              sectionId: asInt(s['id']),
+              type: '${x['type'] ?? ''}',
+              prompt: '${asMap(x['body'])['prompt'] ?? ''}',
+              points: x['points'] is num ? (x['points'] as num).toDouble() : 0,
+            ),
+    ];
+
+/// The section's placements in the list's order (D-717): [written] are the wizard's own, in [QuickExam.questions]
+/// order; held questions of another section keep their place there.
+List<int> questionOrder(ExamCreatePlan p, List<int> written, int sectionId) {
+  final out = <int>[];
+  var i = 0;
+  for (final e in p.entries) {
+    if (e.local != null) {
+      if (i < written.length) out.add(written[i++]);
+    } else if (e.held!.sectionId == sectionId) {
+      out.add(e.held!.placementId);
+    }
+  }
+  while (i < written.length) {
+    out.add(written[i++]);
+  }
+  return out;
 }
