@@ -43,6 +43,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/boot_splash.dart' show SplashState;
 import 'package:flutter_education_app/design/calendar_entry.dart' show ChatEntryIcon;
 import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
@@ -184,7 +185,8 @@ class _HomeScreenState extends State<HomeScreen> {
               cta: guest || AppModeController.instance.isOrg
                   ? null
                   : AppGreetingHeroButton(label: 'home_full_timetable'.tr, icon: Icons.calendar_month_rounded, onTap: () => _tab('my_schedule')),
-              name: guest ? 'guest_name'.tr : (user?.name ?? 'sir'.tr),
+              // the first name: "Good morning, Sara" fits a phone's hero, the full name was cut (D-750)
+              name: guest ? 'guest_name'.tr : _firstOr(user?.name, 'sir'.tr),
               // the day in one line ("2 sessions today · 1 live now · 3 to do") instead of another card — in
               // Organization mode from what that organization's home draws (M6)
               subtitle: guest
@@ -829,4 +831,10 @@ class _MarketingFeeds extends StatelessWidget {
       const SizedBox(height: AppSpace.xl),
     ]);
   }
+}
+
+/// The greeting's name: the first name of [full] (titles dropped), or [fallback] when there is none (D-750).
+String _firstOr(String? full, String fallback) {
+  final first = SplashState.firstName(full ?? '');
+  return first.isEmpty ? fallback : first;
 }

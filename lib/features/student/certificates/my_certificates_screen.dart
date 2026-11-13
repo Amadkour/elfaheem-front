@@ -351,7 +351,9 @@ class _Actions extends StatelessWidget {
 
       case MyCertState.rejected:
       case MyCertState.available:
-        return AppButton.primary(
+        // the course is not finished (the pill says so) and the certificate comes by itself on completion: asking
+        // early is an option, not the card's main move, so it is tonal rather than the solid primary (D-752)
+        return AppButton.tonal(
           label: 'request_certificate'.tr,
           icon: Icons.send_rounded,
           expand: true,

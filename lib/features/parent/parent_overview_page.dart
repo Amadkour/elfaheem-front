@@ -21,6 +21,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/boot_splash.dart' show SplashState;
 import 'package:flutter_education_app/design/calendar_entry.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/core/plural.dart';
@@ -102,7 +103,8 @@ class _ParentOverviewPageState extends State<ParentOverviewPage> with AutomaticK
                 child: ParentOverviewBody(
                   greeting: ParentHomeGreeting(
                     helpPageId: 'home.parent',
-                    name: user?.name ?? 'role_parent'.tr,
+                    // the first name: "Good morning, Ahmed" fits a phone's hero, the full name was cut (D-750)
+                    name: _firstOr(user?.name, 'role_parent'.tr),
                     leading: user == null ? null : UserChipButton(user: user, showLabel: false),
                     shellActions: [const CalendarEntryIcon(), const ChatEntryIcon(), NotificationIcon(unreadCount: unread)],
                   ),
@@ -744,4 +746,10 @@ class _MarkLine extends StatelessWidget {
       ]),
     );
   }
+}
+
+/// The greeting's name: the first name of [full] (titles dropped), or [fallback] when there is none (D-750).
+String _firstOr(String? full, String fallback) {
+  final first = SplashState.firstName(full ?? '');
+  return first.isEmpty ? fallback : first;
 }

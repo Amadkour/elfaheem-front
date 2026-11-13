@@ -4354,3 +4354,14 @@ and saves the exam's design on the draft.
 ## D-743 — Stat card footers wrap to two lines; Change password shows its title once · 2026-11-13 · accepted
 
 **Decision.** `AppStatCard`'s footer band takes two lines before an ellipsis ("3 of 5 in the last 7 days" in a half-width phone tile). The Change password page drops the headline that repeated the app bar's title word for word; the lock well now leads the hint. The "peach band" at the end of primary buttons in the renders is NOT a shine caught mid-sweep: it is the D-650 r3 "60 / 40" brand gradient the owner asked for (primary held past the label, then a blend to accent1), so real users see it, and it is static (nothing to park under Reduce motion). Left as decided; changing it is the owner's call.
+## D-750 — A home greets by the first name · 2026-11-13 · accepted
+
+**Decision.** The student and parent homes pass the first name (`SplashState.firstName`: titles dropped, the first word) to `HomeHeader`, so "Good morning, Sara" fits a phone's hero in the editorial face; the full name was cut to "Good morning, Sar…" at 390 px. The avatar initial is unchanged. The audit of the student / parent / shared screens (same round) also moved the parent alert's undo to `showAppNotice` (no SnackBar), gave the complaint thread a not-found state with Retry and made a failed review flag toast an error.
+
+## D-751 — Prices in English show the currency code · 2026-11-13 · accepted
+
+**Decision.** `currencySymbolFor` returns the Arabic abbreviation (ج.م, ر.س) only in Arabic and the ISO code (EGP, SAR) in English; an Arabic mark inside an English price broke the reading order and rendered as a lone dot in a Latin font. `$` stays `$`.
+
+## D-752 — Asking for a certificate early is a tonal button · 2026-11-13 · accepted
+
+**Decision.** On My certificates a course that is not finished says so in its pill, and the certificate is issued by itself on completion; "Request certificate" (an early request the teacher approves) is therefore `AppButton.tonal`, not the solid primary that contradicted the pill.
