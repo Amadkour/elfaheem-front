@@ -179,9 +179,15 @@ class AppBlock extends StatelessWidget {
     this.onTap,
     this.semanticLabel,
     this.pattern = false,
+    this.wash = false,
   });
 
   final AppBlockTone tone;
+
+  /// A tinted tone (peach, sky, gold, emerald) drawn as a soft diagonal wash instead of a flat fill (D-942): the tone
+  /// at the top-start, easing toward the card surface at the bottom-end, with a faint accent2 light in the top-end
+  /// corner. The inks stay those of the tone (the wash only lifts toward paper, so they keep AA). Static.
+  final bool wash;
 
   /// forest only: the faint brand lattice over the gradient (the auth brand panel, D-649).
   final bool pattern;
@@ -266,6 +272,38 @@ class AppBlock extends StatelessWidget {
         ]),
       );
     }
+    final washed = wash && !forest && !identity && tone != AppBlockTone.paper;
+    if (washed) {
+      final c = context.colors;
+      final dir = Directionality.maybeOf(context) ?? TextDirection.ltr;
+      final end = Color.lerp(colors.surface, c.cardBg, c.isDark ? 0.3 : 0.4)!;
+      final glow = c.accent2.withValues(alpha: c.isDark ? 0.10 : 0.08);
+      body = Ink(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: AlignmentDirectional.topStart.resolve(dir),
+            end: AlignmentDirectional.bottomEnd.resolve(dir),
+            colors: [colors.surface, end],
+          ),
+        ),
+        child: Stack(fit: StackFit.passthrough, children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: AlignmentDirectional.topEnd.resolve(dir),
+                    radius: 1.1,
+                    colors: [glow, glow.withValues(alpha: 0)],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          body,
+        ]),
+      );
+    }
     if (onTap != null) {
       body = InkWell(onTap: onTap, borderRadius: radius, child: body);
     }
@@ -273,10 +311,12 @@ class AppBlock extends StatelessWidget {
     body = SizedBox(
       width: double.infinity,
       child: _maybeLift(paper, radius, Material(
-        color: forest || identity ? Colors.transparent : colors.surface,
+        color: forest || identity || washed ? Colors.transparent : colors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: radius,
-          side: colors.border == null ? BorderSide.none : BorderSide(color: colors.border!, width: AppBorder.hairline),
+          side: colors.border == null && !washed
+              ? BorderSide.none
+              : BorderSide(color: colors.border ?? context.colors.cardEdge, width: AppBorder.hairline),
         ),
         clipBehavior: Clip.antiAlias,
         child: body,

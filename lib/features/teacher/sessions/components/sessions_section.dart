@@ -34,7 +34,7 @@ class TeacherSessionsBody extends StatelessWidget {
         TeacherSessionsHeader(
           key: const ValueKey('teacher_sessions.header'),
           count: provider.sessionCount,
-          onAdd: onAdd,
+          // New session is the page header's (D-943); the empty state below keeps its own first-session button
         ),
         if (loading)
           const AppListSkeleton(items: 3, padding: EdgeInsetsDirectional.fromSTEB(kCourseGutter, 0, kCourseGutter, 0))

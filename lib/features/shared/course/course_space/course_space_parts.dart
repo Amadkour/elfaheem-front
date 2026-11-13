@@ -1,10 +1,10 @@
 // lib/features/shared/course/course_space/course_space_parts.dart
 //
 // The pieces of [CourseSpace] (course_space.dart), each one plain values only so the layout harness can pump it:
-//   CourseSpaceHero        the editorial masthead: the cover (phone: full bleed, the block overlapping its foot;
-//                          desktop: a framed picture inside the block) · the hero block (pills · title · teacher ·
-//                          figures · progress) · the chrome on the canvas or as glass on the cover
-//   CourseCover            the cover picture (drifts with the scroll on phones), a quiet drawn plate without one
+//   CourseSpaceHero        the masthead (D-940): the cover (phone: full bleed, the block overlapping its foot;
+//                          desktop: framed at 16:9 inside the block) · the block (pills · title · one line · teacher
+//                          · progress · the call to action; the stats grid) · the chrome on the canvas or on the cover
+//   CourseCover            the cover picture shown whole over a blurred copy of itself (D-942), a plate without one
 //   CourseProgressBar      the one progress bar of the course page: an emerald fill that fills once (AppFill)
 //   CourseSpaceTabBar      underline tabs (labels in ink, a 2 px ink rule under the open one); scrolls when the tabs
 //                          do not fit; count + live dot per tab
@@ -34,6 +34,7 @@ import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
+import '../../../../core/plural.dart' show countText;
 import '../../../../design/app_contrast.dart' show ensureContrast;
 import '../../../../design/app_display.dart' show syncMotionLoop;
 import '../../../../design/chrome_button.dart' show ChromeCard;
@@ -63,6 +64,7 @@ class CourseSpaceHero extends StatelessWidget {
     this.onBack,
     this.rounded = false,
     this.withBar = true,
+    this.showCta = true,
   });
 
   final CourseSpaceHeroData data;
@@ -77,7 +79,10 @@ class CourseSpaceHero extends StatelessWidget {
   /// false: the desktop masthead draws no bar of its own — [CourseSpace] pins [CourseSpaceBar] over both columns.
   final bool withBar;
 
-  bool get _hasCover => background != null || data.imageUrl.isNotEmpty;
+  /// false: the call to action is left out (a phone whose sticky bottom bar carries it).
+  final bool showCta;
+
+  bool get _hasCover => background != null || data.imageUrl.isNotEmpty || data.coverImage != null;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -90,124 +95,141 @@ class CourseSpaceHero extends StatelessWidget {
   Widget _bar({required bool onCover}) =>
       _keyed('course_hero.topbar', _TopBar(onBack: onBack, actions: topActions, onCover: onCover));
 
-  Widget _block(BuildContext context, {required bool big, Widget? aside}) {
-    final body = _HeroBody(data: data, big: big);
-    return AppBlock(
-      tone: data.tone,
-      hero: true,
-      child: aside == null
-          ? body
-          : Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(flex: 5, child: body),
-                const SizedBox(width: AppSpace.xl),
-                Expanded(flex: 4, child: aside),
-              ],
-            ),
-    );
-  }
+  CourseSpaceCta? get _cta => showCta && data.cta != null && !data.cta!.isEmpty ? data.cta : null;
 
-  /// Phone: the cover full bleed with the chrome on it as glass, the block overlapping its foot by [AppSpace.xl]
-  /// (a caption card on a magazine cover); without a cover, the chrome on the canvas and the block under it.
+  /// Phone / tablet (D-944): the chrome on the canvas, then ONE block — the cover framed whole at 16:9 at its top
+  /// (nothing ever sits on the picture), the text, the stats, the progress and the call to action under it.
   Widget _narrow(BuildContext context, double w) {
     final top = MediaQuery.paddingOf(context).top;
-    // the display size once the phone has room for it (Arabic's editorial face is drawn larger already)
-    final big = w >= 600 || (w >= 360 && AppConfig.lang != 'ar');
-    final block = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: kCourseGutter),
-      child: _block(context, big: big),
-    );
-    if (!_hasCover) {
-      return Padding(
-        padding: EdgeInsets.only(top: top),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: kCourseGutter, vertical: AppSpace.xs),
-              child: _bar(onCover: false),
-            ),
-            const SizedBox(height: AppSpace.xxs),
-            block,
-          ],
-        ),
-      );
-    }
-    final coverH = (w * 9 / 16).clamp(180.0, 320.0) + top;
-    final c = context.colors;
-    return Stack(
-      children: [
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          height: coverH,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              background ?? CourseCover(imageUrl: data.imageUrl, parallax: true),
-              // a soft shade under the status bar and the chrome only: the glass buttons read on a light picture
-              IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      stops: const [0, 0.45],
-                      colors: [c.heroShade.withValues(alpha: 0.42), c.heroShade.withValues(alpha: 0)],
+    return Padding(
+      padding: EdgeInsets.only(top: top),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: kCourseGutter, vertical: AppSpace.xs),
+            child: _bar(onCover: false),
+          ),
+          const SizedBox(height: AppSpace.xxs),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: kCourseGutter),
+            child: AppBlock(
+              tone: data.tone,
+              hero: true,
+              wash: true,
+              padding: EdgeInsets.zero,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_hasCover)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(AppSpace.xs, AppSpace.xs, AppSpace.xs, 0),
+                      child: _CoverFrame(
+                        tilt: false,
+                        child: background ?? CourseCover(imageUrl: data.imageUrl, image: data.coverImage),
+                      ),
                     ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(AppSpace.lg, _hasCover ? AppSpace.md : AppSpace.lg, AppSpace.lg, AppSpace.lg),
+                    child: _HeroInfo(data: data, cta: _cta, wide: false, statsInline: true),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
-        ),
-        Positioned(
-          top: top + AppSpace.xxs,
-          left: AppSpace.xs,
-          right: AppSpace.xs,
-          child: _bar(onCover: true),
-        ),
-        Padding(
-          padding: EdgeInsets.only(top: coverH - AppSpace.xl),
-          child: DecoratedBox(
-            // the block floats over the picture: the one place this page lifts something
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppRadius.block),
-              boxShadow: AppElevation.of(context, 2),
             ),
-            position: DecorationPosition.background,
-            child: block,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  /// Desktop: the chrome on the canvas, then the block — the text and, beside it, the cover as a framed picture that
-  /// leans a little under the pointer (AppTilt.subtle).
+  /// Desktop (D-940): ONE block — the text column (pills · title · line · teacher · progress · call to action) with
+  /// the cover framed at 16:9 beside it, then a hairline and the stats across the block's width.
   Widget _wide(BuildContext context, double w) {
     final side = _hasCover && w >= 720;
+    final coverW = (w * 0.38).clamp(280.0, 520.0);
     final frame = !_hasCover
         ? null
-        : AppTilt.subtle(
-            radius: AppRadius.card,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.card),
-              child: AspectRatio(aspectRatio: 16 / 10, child: background ?? CourseCover(imageUrl: data.imageUrl)),
-            ),
-          );
+        : _CoverFrame(child: background ?? CourseCover(imageUrl: data.imageUrl, image: data.coverImage));
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (withBar) ...[_bar(onCover: false), const SizedBox(height: AppSpace.xs)],
-        if (frame != null && !side) ...[frame, const SizedBox(height: AppSpace.sm)],
-        _block(context, big: w >= 640, aside: side ? frame : null),
+        AppBlock(
+          tone: data.tone,
+          hero: true,
+          wash: true,
+          padding: const EdgeInsets.all(AppSpace.xl),
+          child: Builder(
+            builder: (context) {
+              final ink = AppBlock.colorsOf(context);
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (frame != null && !side) ...[frame, const SizedBox(height: AppSpace.lg)],
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(child: _HeroInfo(data: data, cta: _cta, wide: true, statsInline: false)),
+                      if (frame != null && side) ...[
+                        const SizedBox(width: AppSpace.xl),
+                        SizedBox(width: coverW, child: frame),
+                      ],
+                    ],
+                  ),
+                  if (data.stats.isNotEmpty) ...[
+                    const SizedBox(height: AppSpace.lg),
+                    Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: ink.ink.withValues(alpha: 0.12)),
+                    const SizedBox(height: AppSpace.md),
+                    _keyed('course_hero.stats', _StatsGrid(stats: data.stats, wide: true)),
+                  ],
+                ],
+              );
+            },
+          ),
+        ),
       ],
     );
+  }
+}
+
+/// The desktop cover: 16:9, the card radius, a hairline frame and a soft lift, the picture whole (CourseCover); a
+/// reel keeps its own controls and shows its play mark until it plays (CourseReelPlayer).
+class _CoverFrame extends StatelessWidget {
+  const _CoverFrame({required this.child, this.tilt = true});
+
+  final Widget child;
+  final bool tilt;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final radius = BorderRadius.circular(AppRadius.card);
+    final framed = MediaQuery.removePadding(
+      context: context,
+      removeTop: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(borderRadius: radius, boxShadow: AppElevation.of(context, 1)),
+        child: ClipRRect(
+          borderRadius: radius,
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: DecoratedBox(
+              position: DecorationPosition.foreground,
+              decoration: BoxDecoration(
+                borderRadius: radius,
+                border: Border.all(color: c.cardEdge, width: AppBorder.hairline),
+              ),
+              child: child,
+            ),
+          ),
+        ),
+      ),
+    );
+    return tilt ? AppTilt.subtle(radius: AppRadius.card, child: framed) : framed;
   }
 }
 
@@ -224,26 +246,49 @@ class CourseSpaceBar extends StatelessWidget {
       _keyed('course_hero.topbar', _TopBar(onBack: onBack, actions: topActions, onCover: false));
 }
 
-/// The widest the hero's figures and progress run on a wide block (they read as one group, not spread apart).
+/// The widest the progress runs on a wide block (it reads as one group with the call to action).
 const double _kFiguresMax = 560;
 
-/// The block's content: pills · the title in the editorial serif · the line · the teacher · figures · progress.
-class _HeroBody extends StatelessWidget {
-  const _HeroBody({required this.data, required this.big});
+/// "12 ratings" under the rating figure (the stat cell draws the average as its value).
+String courseRatingCount(int n) => countText(
+  n,
+  ar1: 'تقييم واحد',
+  ar2: 'تقييمان',
+  arFew: '{n} تقييمات',
+  arMany: '{n} تقييمًا',
+  en1: '1 rating',
+  en: '{n} ratings',
+);
+
+/// The hero's title role (D-940): a clear scale, never the display size. Desktop: headline for a short title, the
+/// page title's size for a long one (two lines at most); phone: the page title's size, a section's for a long one
+/// (three lines at most).
+TextStyle courseHeroTitleStyle(BuildContext context, String title, {required bool wide}) {
+  final n = title.characters.length;
+  if (wide) return n > 52 ? AppType.pageTitle(context) : AppType.headline(context);
+  return n > 48 ? AppType.section(context) : AppType.pageTitle(context);
+}
+
+/// The block's text: pills · the title · one line · the teacher · (phone: the stats) · progress · call to action.
+class _HeroInfo extends StatelessWidget {
+  const _HeroInfo({required this.data, required this.cta, required this.wide, required this.statsInline});
 
   final CourseSpaceHeroData data;
-  final bool big;
+  final CourseSpaceCta? cta;
+  final bool wide;
+  final bool statsInline;
 
   @override
   Widget build(BuildContext context) {
     final b = AppBlock.colorsOf(context);
     final pills = <Widget>[
       if (data.category != null && data.category!.isNotEmpty)
-        _keyed('course_hero.category', _HeroPill(label: data.category!)),
+        _keyed('course_hero.category', _HeroPill(label: data.category!, icon: Icons.local_offer_outlined)),
       if (data.isPrivate) _keyed('course_hero.private', PrivateFlag(label: data.privateLabel)),
       for (final p in data.badges) _keyed(p.featureKey, _HeroPill(label: p.label, icon: p.icon, color: p.color)),
     ];
-    final title = (big ? AppType.display(context) : AppType.headline(context)).copyWith(color: b.ink);
+    final title = courseHeroTitleStyle(context, data.title, wide: wide).copyWith(color: b.ink);
+    final subtitle = data.subtitle?.trim() ?? '';
     return Directionality(
       textDirection: Helpers.textDirOf(data.title),
       child: Column(
@@ -256,15 +301,16 @@ class _HeroBody extends StatelessWidget {
           ],
           Semantics(
             header: true,
-            child: Text(data.title, maxLines: 3, overflow: TextOverflow.ellipsis, style: title),
+            child: Text(data.title, maxLines: wide ? 2 : 3, overflow: TextOverflow.ellipsis, style: title),
           ),
-          if (data.subtitle != null && data.subtitle!.trim().isNotEmpty) ...[
+          if (subtitle.isNotEmpty) ...[
             const SizedBox(height: AppSpace.xs),
             _keyed(
               'course_hero.description',
               Text(
-                data.subtitle!.trim(),
-                maxLines: 2,
+                // one line: the first line of the description (the About tab has the rest)
+                subtitle.split('\n').first,
+                maxLines: wide ? 1 : 2,
                 overflow: TextOverflow.ellipsis,
                 style: AppType.body(context).copyWith(color: b.muted),
               ),
@@ -277,12 +323,9 @@ class _HeroBody extends StatelessWidget {
               _TeacherChip(name: data.teacherName!, imageUrl: data.teacherImageUrl, onTap: data.onTeacher),
             ),
           ],
-          if (data.stats.isNotEmpty) ...[
+          if (statsInline && data.stats.isNotEmpty) ...[
             const SizedBox(height: AppSpace.md),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: _kFiguresMax),
-              child: _keyed('course_hero.stats', _StatsRow(stats: data.stats)),
-            ),
+            _keyed('course_hero.stats', _StatsGrid(stats: data.stats, wide: false)),
           ],
           if (data.progress != null) ...[
             const SizedBox(height: AppSpace.md),
@@ -291,19 +334,164 @@ class _HeroBody extends StatelessWidget {
               child: _keyed('course_hero.progress', _HeroProgress(value: data.progress!, label: data.progressLabel)),
             ),
           ],
+          if (cta != null) ...[
+            SizedBox(height: wide ? AppSpace.lg : AppSpace.md),
+            _HeroCta(cta: cta!, wide: wide),
+          ],
         ],
       ),
     );
   }
 }
 
-/// The cover picture fading in over a quiet plate (no flash, no layout jump), or the plate alone. With [parallax]
-/// the picture drifts a few pixels against the page's scroll (AppParallaxImage).
+/// The hero's call to action (D-941): the price, the ONE primary button, the secondary and the icon actions. Wide: one
+/// row that wraps; phone: the price and the primary across the width, the secondary and the icons under it.
+class _HeroCta extends StatelessWidget {
+  const _HeroCta({required this.cta, required this.wide});
+
+  final CourseSpaceCta cta;
+  final bool wide;
+
+  @override
+  Widget build(BuildContext context) {
+    // a tablet's block is wide enough for the desktop's one row (a full-width button there is a slab)
+    if (!wide) {
+      return LayoutBuilder(
+        builder: (context, box) =>
+            box.maxWidth >= 560 ? _HeroCta(cta: cta, wide: true) : _build(context),
+      );
+    }
+    return _build(context);
+  }
+
+  Widget _build(BuildContext context) {
+    final b = AppBlock.colorsOf(context);
+    final p = cta.primary;
+    final s = cta.secondary;
+    final primary = p == null
+        ? null
+        : _keyed(
+            p.featureKey,
+            AppButton.primary(label: p.label, icon: p.icon, onPressed: p.onTap, size: AppButtonSize.lg, expand: !wide),
+          );
+    final secondary = s == null
+        ? null
+        : _keyed(
+            s.featureKey,
+            AppButton.secondary(label: s.label, icon: s.icon, onPressed: s.onTap, size: AppButtonSize.lg, expand: !wide),
+          );
+    final icons = [
+      for (final a in cta.icons)
+        if (a.featureKey == null || !AppConfig.disableList.contains(a.featureKey)) _CtaIconButton(action: a),
+    ];
+    final caption = cta.caption == null || cta.caption!.isEmpty
+        ? null
+        : Text(
+            cta.caption!,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppType.meta(context).copyWith(color: b.muted),
+          );
+    if (wide) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (cta.note != null) ...[cta.note!, const SizedBox(height: AppSpace.sm)],
+          Wrap(
+            spacing: AppSpace.sm,
+            runSpacing: AppSpace.sm,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (cta.price != null)
+                Padding(padding: const EdgeInsetsDirectional.only(end: AppSpace.xs), child: cta.price!),
+              ?primary,
+              ?secondary,
+              ...icons,
+            ],
+          ),
+          if (caption != null) ...[const SizedBox(height: AppSpace.xs), caption],
+        ],
+      );
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (cta.price != null) ...[
+          Align(alignment: AlignmentDirectional.centerStart, child: cta.price!),
+          const SizedBox(height: AppSpace.sm),
+        ],
+        if (cta.note != null) ...[cta.note!, const SizedBox(height: AppSpace.sm)],
+        ?primary,
+        if (caption != null) ...[const SizedBox(height: AppSpace.xs), caption],
+        if (secondary != null || icons.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.xs),
+          Row(
+            children: [
+              if (secondary != null) Expanded(child: secondary),
+              for (final i in icons) ...[const SizedBox(width: AppSpace.xs), i],
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// An icon action of the call to action (Share): a 48 px paper circle with a hairline, its tooltip as its label.
+class _CtaIconButton extends StatelessWidget {
+  const _CtaIconButton({required this.action});
+
+  final CourseSpaceTopAction action;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      button: true,
+      toggled: action.selected,
+      label: action.tooltip,
+      excludeSemantics: true,
+      child: Tooltip(
+        message: action.tooltip,
+        child: Material(
+          color: c.cardBg,
+          shape: CircleBorder(side: BorderSide(color: c.cardEdge, width: AppBorder.hairline)),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: action.onTap,
+            child: SizedBox(
+              width: AppTouch.primary,
+              height: AppTouch.primary,
+              child: Icon(
+                action.icon,
+                size: AppIconSize.md,
+                color: action.color == null ? c.textDark : ensureContrast(action.color!, [c.cardBg], min: 3),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The cover picture fading in over a quiet plate (no flash, no layout jump), or the plate alone. The picture is
+/// shown WHOLE (D-942): contained inside [inset] over a blurred, cover-fitted copy of itself, so a cover whose text
+/// runs to its edges is never cut, and a 16:9 cover in a 16:9 frame fills it edge to edge. With [parallax] the blurred
+/// copy drifts a few pixels against the page's scroll (AppParallaxImage).
 class CourseCover extends StatelessWidget {
-  const CourseCover({super.key, required this.imageUrl, this.parallax = false});
+  const CourseCover({super.key, required this.imageUrl, this.image, this.parallax = false, this.inset = EdgeInsets.zero});
 
   final String imageUrl;
+
+  /// A picture already in hand; wins over [imageUrl].
+  final ImageProvider? image;
   final bool parallax;
+
+  /// Where the sharp picture sits inside the cover (a phone keeps it clear of the status bar and the block).
+  final EdgeInsets inset;
 
   @override
   Widget build(BuildContext context) {
@@ -314,10 +502,11 @@ class CourseCover extends StatelessWidget {
         child: Icon(Icons.auto_stories_rounded, size: AppIconSize.hero, color: c.textLight.withValues(alpha: 0.5)),
       ),
     );
-    if (imageUrl.isEmpty) return plate;
-    final image = Image.network(
-      imageUrl,
-      fit: BoxFit.cover,
+    final provider = image ?? (imageUrl.isEmpty ? null : NetworkImage(imageUrl));
+    if (provider == null) return plate;
+    Widget pic(BoxFit fit) => Image(
+      image: provider,
+      fit: fit,
       frameBuilder: (_, child, frame, sync) => sync
           ? child
           : AnimatedOpacity(
@@ -328,9 +517,19 @@ class CourseCover extends StatelessWidget {
             ),
       errorBuilder: (_, _, _) => const SizedBox.shrink(),
     );
+    final backdrop = ImageFiltered(
+      imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+      child: SizedBox.expand(child: pic(BoxFit.cover)),
+    );
     return Stack(
       fit: StackFit.expand,
-      children: [plate, parallax ? AppParallaxImage(image: SizedBox.expand(child: image)) : image],
+      children: [
+        plate,
+        ClipRect(child: parallax ? AppParallaxImage(image: backdrop) : backdrop),
+        // the blurred copy steps back a little so the sharp picture reads as the subject
+        ColoredBox(color: c.heroShade.withValues(alpha: 0.16)),
+        Padding(padding: inset, child: pic(BoxFit.contain)),
+      ],
     );
   }
 }
@@ -645,28 +844,57 @@ class _TeacherChip extends StatelessWidget {
   }
 }
 
-/// The figures under the title: each a tabular number that counts up once over its label, parted by hairlines.
-class _StatsRow extends StatelessWidget {
-  const _StatsRow({required this.stats});
+/// The hero's stats (D-940, D-945): equal tiles in balanced rows — one row across a wide block, 2 (or 3 when they
+/// divide evenly) per row on a phone, the last row's tiles sharing its width. A tile: the icon in a paper well, the
+/// value in the page-title type, the label as a caption; a tile with an action wears a hairline and a chevron.
+class _StatsGrid extends StatelessWidget {
+  const _StatsGrid({required this.stats, required this.wide});
 
   final List<CourseSpaceStat> stats;
+  final bool wide;
+
+  /// The narrowest a tile gets before the row breaks.
+  static const double _kTileMin = 150;
 
   @override
   Widget build(BuildContext context) {
-    final b = AppBlock.colorsOf(context);
-    final rule = Container(
-      width: AppBorder.hairline,
-      height: AppSpace.xl,
-      margin: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
-      color: b.ink.withValues(alpha: 0.14),
-    );
-    return Row(
-      children: [
-        for (var i = 0; i < stats.length; i++) ...[
-          if (i > 0) rule,
-          Expanded(child: _keyed(stats[i].featureKey, _StatCell(stat: stats[i]))),
-        ],
-      ],
+    final shown = [
+      for (final s in stats)
+        if (s.featureKey == null || !AppConfig.disableList.contains(s.featureKey)) s,
+    ];
+    if (shown.isEmpty) return const SizedBox.shrink();
+    return LayoutBuilder(
+      builder: (context, box) {
+        const gap = AppSpace.xs;
+        final w = box.maxWidth;
+        final n = shown.length;
+        final scale = MediaQuery.textScalerOf(context).scale(1);
+        int cols;
+        if (w / n >= _kTileMin * scale) {
+          cols = n;
+        } else if (n % 3 == 0 && w / 3 >= (_kTileMin - AppSpace.xl) * scale) {
+          cols = 3;
+        } else {
+          cols = w >= (_kTileMin - AppSpace.xl) * 2 * scale ? 2 : 1;
+        }
+        final rows = <Widget>[];
+        for (var i = 0; i < n; i += cols) {
+          final part = shown.sublist(i, (i + cols).clamp(0, n));
+          if (rows.isNotEmpty) rows.add(const SizedBox(height: gap));
+          rows.add(IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final (j, st) in part.indexed) ...[
+                  if (j > 0) const SizedBox(width: gap),
+                  Expanded(child: _StatCell(stat: st)),
+                ],
+              ],
+            ),
+          ));
+        }
+        return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: rows);
+      },
     );
   }
 }
@@ -678,47 +906,70 @@ class _StatCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final b = AppBlock.colorsOf(context);
-    final body = Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs / 2),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final tappable = stat.onTap != null;
+    final iconInk = stat.tone == null ? b.ink : ensureContrast(stat.tone!, [c.cardBg], min: 3);
+    final radius = BorderRadius.circular(AppRadius.control);
+    final cell = Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.xs, AppSpace.sm),
+      child: Row(
         children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: AlignmentDirectional.centerStart,
-            child: Row(
+          Container(
+            width: AppSpace.xl + AppSpace.xxs,
+            height: AppSpace.xl + AppSpace.xxs,
+            decoration: BoxDecoration(color: b.surface, borderRadius: BorderRadius.circular(AppRadius.chip)),
+            child: Icon(stat.icon, size: AppIconSize.md, color: iconInk),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(stat.icon, size: AppIconSize.xs, color: b.muted),
-                const SizedBox(width: AppSpace.xxs + 1),
-                AppCountUp(
-                  stat.value,
-                  memoryKey: 'course_hero.${stat.label}',
-                  style: AppType.figure(context).copyWith(color: b.ink),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: AppCountUp(
+                    stat.value,
+                    memoryKey: 'course_hero.${stat.label}',
+                    // the figure role (sans, tabular): editorial serif digits and currency read poorly in Arabic
+                    style: AppType.figureLarge(context).copyWith(color: b.ink),
+                  ),
+                ),
+                const SizedBox(height: AppSpace.xxs / 2),
+                Text(
+                  stat.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.meta(context).copyWith(color: tappable ? b.ink : b.muted),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: AppSpace.xxs / 2),
-          Text(
-            stat.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppType.meta(context).copyWith(
-              color: b.muted,
-              decoration: stat.onTap == null ? null : TextDecoration.underline,
-              decorationColor: b.faint,
-            ),
-          ),
+          if (tappable) Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: b.muted),
         ],
       ),
     );
-    if (stat.onTap == null) return body;
-    return Material(
-      type: MaterialType.transparency,
-      child: InkWell(borderRadius: BorderRadius.circular(AppRadius.chip), onTap: stat.onTap, child: body),
+    final tile = Material(
+      color: c.cardBg.withValues(alpha: c.isDark ? 0.55 : 0.78),
+      shape: RoundedRectangleBorder(
+        borderRadius: radius,
+        side: BorderSide(color: tappable ? c.primary.withValues(alpha: 0.35) : c.cardEdge, width: AppBorder.hairline),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: tappable
+          ? InkWell(
+              onTap: stat.onTap,
+              child: ConstrainedBox(constraints: const BoxConstraints(minHeight: AppTouch.min), child: cell),
+            )
+          : cell,
+    );
+    return Semantics(
+      button: tappable,
+      label: '${stat.value} ${stat.label}',
+      excludeSemantics: true,
+      child: tile,
     );
   }
 }
@@ -1589,6 +1840,69 @@ class CourseActionList extends StatelessWidget {
           ),
           for (final a in shown) _ActionRow(action: a, onTap: a.onTap),
         ],
+      ),
+    );
+  }
+}
+
+/// Desktop (D-944): the course's shortcuts as ONE slim row of paper pills under the hero (icon · label · badge), so
+/// no side column is kept just for them. Wraps when they do not fit.
+class CourseActionRow extends StatelessWidget {
+  const CourseActionRow({super.key, required this.actions, this.title});
+
+  final List<CourseSpaceAction> actions;
+
+  /// The row's name for screen readers ("Course shortcuts").
+  final String? title;
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = _visibleActions(actions);
+    if (shown.isEmpty) return const SizedBox.shrink();
+    return Semantics(
+      container: true,
+      label: title ?? _t('اختصارات الكورس', 'Course shortcuts'),
+      child: Wrap(
+        spacing: AppSpace.xs,
+        runSpacing: AppSpace.xs,
+        children: [for (final a in shown) _keyed(a.featureKey, _ActionPill(action: a))],
+      ),
+    );
+  }
+}
+
+class _ActionPill extends StatelessWidget {
+  const _ActionPill({required this.action});
+
+  final CourseSpaceAction action;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final radius = BorderRadius.circular(AppRadius.pill);
+    return Tooltip(
+      message: action.caption ?? action.label,
+      child: Material(
+        color: c.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: c.cardEdge, width: AppBorder.hairline)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: action.onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppTouch.min),
+            child: Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xxs, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _ActionIcon(icon: action.icon, tone: action.color ?? c.primary, badge: action.badge, size: AppSpace.xl + AppSpace.xxs),
+                  const SizedBox(width: AppSpace.xs),
+                  Text(action.label, maxLines: 1, style: AppType.row(context)),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -4,7 +4,9 @@
 //   CoursePriceBlock        price · discount ribbon · countdown
 //   CourseEnrollButton      the call to action (the kit's solid emerald primary, 56 px)
 //   CourseIncludedList      what the course includes (lessons · hours · live / recorded · certificate)
-//   CourseBuyCard           desktop side card: price · payment status slot · enroll · included
+//   courseBuyCta            the hero's call to action for a visitor (D-941): price · enroll / renew, or the note
+//   CourseBuyCard           desktop side card: what the course includes (the price and the button are the hero's,
+//                           D-943; `purchase: true` draws them too, for a page with no hero call to action)
 //   CourseEnrolledCard      desktop side card once enrolled
 //   CourseBuyBar            phones: the sticky price + enroll bar
 //   courseLiveNowCard / courseLearningCard   the spotlight cards of an enrolled student
@@ -147,12 +149,58 @@ class CourseIncludedList extends StatelessWidget {
   }
 }
 
-/// Desktop side card before enrolling: price · payment status · enroll · what is included.
+/// The hero's call to action for a visitor (a student not enrolled, a guest), D-941: the price beside Enroll (or
+/// Renew, with the plan's end under it), the payment status above them; a payment under review or a cancelled plan
+/// shows its note instead of the button.
+CourseSpaceCta courseBuyCta(CourseModel course, {required VoidCallback onEnroll, Widget? status, VoidCallback? onSupport}) {
+  final mode = enrollBarMode(enrolled: course.isEnrolled, access: course.access);
+  if (mode == EnrollBarMode.hidden) return const CourseSpaceCta();
+  if (mode == EnrollBarMode.pending || mode == EnrollBarMode.support) {
+    return CourseSpaceCta(
+      note: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [?status, CourseAccessNote(mode: mode, access: course.access)],
+      ),
+      secondary: mode == EnrollBarMode.support && onSupport != null
+          ? CourseSpaceButton(label: 'course_access_support_btn'.tr, onTap: onSupport)
+          : null,
+    );
+  }
+  final free = (course.finalPrice ?? 0) == 0;
+  final renew = mode == EnrollBarMode.renew;
+  return CourseSpaceCta(
+    price: CoursePriceBlock(course: course),
+    note: status,
+    primary: CourseSpaceButton(
+      label: renew
+          ? 'course_renew_btn'.tr
+          : free
+          ? gt('سجّل مجاناً الآن', 'Enroll for free')
+          : gt('انضم الآن', 'Enroll now'),
+      onTap: onEnroll,
+    ),
+    caption: renew ? renewSubtitle(course.access) : null,
+  );
+}
+
+/// Desktop side card before enrolling: what is included — with [purchase], also the price · payment status · enroll
+/// (the course page leaves those to its hero, D-943).
 class CourseBuyCard extends StatelessWidget {
-  const CourseBuyCard({super.key, required this.course, required this.onEnroll, this.status, this.onSupport});
+  const CourseBuyCard({
+    super.key,
+    required this.course,
+    required this.onEnroll,
+    this.status,
+    this.onSupport,
+    this.purchase = true,
+  });
 
   final CourseModel course;
   final VoidCallback onEnroll;
+
+  /// false: the included list only (the hero carries the price and the button).
+  final bool purchase;
 
   /// "Contact support" for a cancelled / refunded course (null → the note only).
   final VoidCallback? onSupport;
@@ -168,13 +216,15 @@ class CourseBuyCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          CoursePriceBlock(course: course),
-          const SizedBox(height: AppSpace.md),
-          ?status,
-          ..._accessActions(course, onEnroll, onSupport),
-          const SizedBox(height: AppSpace.lg),
-          Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
-          const SizedBox(height: AppSpace.md),
+          if (purchase) ...[
+            CoursePriceBlock(course: course),
+            const SizedBox(height: AppSpace.md),
+            ?status,
+            ..._accessActions(course, onEnroll, onSupport),
+            const SizedBox(height: AppSpace.lg),
+            Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+            const SizedBox(height: AppSpace.md),
+          ],
           CourseIncludedList(course: course),
         ],
       ),

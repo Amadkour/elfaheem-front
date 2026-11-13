@@ -22,6 +22,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:video_player/video_player.dart';
 
 import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/features/shared/course/course_space/course_space.dart' show CourseCover;
 
 /// The glass play badge in the middle of a paused reel, its icon, and the glass of a control (in a 48 px target).
 const double _playGlass = 56;
@@ -275,15 +276,13 @@ class _CourseReelPlayerState extends State<CourseReelPlayer>
           ),
         ],
 
-        // still loading → a discreet spinner over the poster
+        // still loading → the play mark over the poster (it says "this cover is a video", D-942)
         if (!showVideo && !_failed)
-          Center(
-            child: SizedBox(
-              width: AppIconSize.lg,
-              height: AppIconSize.lg,
-              child: CircularProgressIndicator(
-                strokeWidth: AppBorder.focus,
-                color: context.colors.onHeroMuted,
+          IgnorePointer(
+            child: Center(
+              child: _Glass(
+                size: _playGlass,
+                child: Icon(Icons.play_arrow_rounded, color: context.colors.onHero, size: _playIcon),
               ),
             ),
           ),
@@ -304,11 +303,8 @@ class _Poster extends StatelessWidget {
     // no picture: the hero's own deep shade (a flat surface, never a decorative wash)
     final fallback = ColoredBox(color: context.colors.heroShade);
     if (url == null || url!.isEmpty) return fallback;
-    return Image.network(
-      url!,
-      fit: BoxFit.cover,
-      errorBuilder: (_, _, _) => fallback,
-    );
+    // the poster whole, over a blurred copy of itself (D-942)
+    return Stack(fit: StackFit.expand, children: [fallback, CourseCover(imageUrl: url!)]);
   }
 }
 
