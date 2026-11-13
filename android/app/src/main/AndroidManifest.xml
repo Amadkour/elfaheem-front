@@ -121,6 +121,16 @@
                     android:host="nextbrain.site"
                     android:pathPrefix="/s/"
                     android:scheme="https" />
+                <!-- the same guest / share links copied from the web app's address bar (/app/…, D-270): the installed
+                     app opens them too, straight to the video or the meeting (D-843) -->
+                <data
+                    android:host="nextbrain.site"
+                    android:pathPrefix="/app/live/"
+                    android:scheme="https" />
+                <data
+                    android:host="nextbrain.site"
+                    android:pathPrefix="/app/s/"
+                    android:scheme="https" />
             </intent-filter>
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"

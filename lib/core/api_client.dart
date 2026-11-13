@@ -23,6 +23,7 @@ import 'package:flutter/material.dart' show MaterialPageRoute;
 import '../features/admin/admin_mfa_page.dart' show AdminMfaPage;
 import '../features/auth/teacher_onboarding_token.dart';
 import '../features/shared/guest/guest_state.dart';
+import 'guest_link_visit.dart';
 import '../features/student/courses/security/device_blocked_dialog.dart';
 import '../features/student/courses/security/device_id_service.dart';
 import '../features/student/courses/security/device_security_provider.dart';
@@ -1188,6 +1189,7 @@ class ApiClient {
 
   Future<void> _redirectToLogin() async {
     if (GuestState.active) return; // a guest has no session to lose
+    if (GuestLinkVisit.active) return; // a guest link's page is open: never throw the visitor out of it (D-840)
     if (_redirecting) return;
     _redirecting = true;
 

@@ -35,6 +35,7 @@ import '../course_profile/course_profile_hub.dart' show CoursePageLoader;
 import '../guest/guest_state.dart';
 import '../public_profile/public_profile_page.dart' show PublicProfileScreen;
 import '../live/companion/companion_incoming.dart' show CompanionIncoming;
+import '../records/record_guest_page.dart' show GuestMediaKind, GuestRecordPage;
 import '../records/records_share.dart' show SharedRecordPage;
 
 /// The public card of a link (`GET /api/v1/public/share/{kind}/{id}`).
@@ -103,6 +104,7 @@ class _ShareLinkPageState extends State<ShareLinkPage> {
       _error = null;
     });
     if (_signedIn) return _openTarget();
+    if (_link.kind == AppLinkKind.video) return _openTarget(); // a guest link: the player, signed in or not
     if (_link.kind == AppLinkKind.page || _link.kind == AppLinkKind.companion) {
       setState(() => _loading = false);
       return;
@@ -144,6 +146,8 @@ class _ShareLinkPageState extends State<ShareLinkPage> {
         return;
       case AppLinkKind.record:
         return _replace(SharedRecordPage(token: _link.token ?? ''), name: '/records/shared');
+      case AppLinkKind.video: // main.dart's router opens a video guest link itself; kept for a direct push
+        return _replace(GuestRecordPage(token: _link.token ?? '', kind: GuestMediaKind.video), name: '/s/video');
       case AppLinkKind.companion:
         final secret = _link.token ?? '';
         nav.pushReplacementNamed(home);

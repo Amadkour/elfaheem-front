@@ -1,30 +1,52 @@
-// lib/features/shared/records/record_guest_page.dart — where a guest's personal link lands (D-315):
-// /s/record/g_<secret> (main.dart's router sends a `g_` token here before the share-link page, signed in or not).
-// No account: the page calls ONLY the public guest routes with auth: false (RemoteGuestRecordApi), so nothing can
-// redirect to the login page. Read-only: the card, then Play → a short-lived signed stream in a plain player
-// (play / pause, scrub, ±10 s). The body is the plain-values [GuestRecordView] (test/ui/records_guests_layout_test.dart).
+// lib/features/shared/records/record_guest_page.dart — where a guest link to a VIDEO lands, straight to the player:
+//   /s/record/g_<secret>   a recording shared with a guest (D-315) or by its open guest link (D-842)
+//   /s/video/v_<secret>    a course session's video shared with guests (D-841, [GuestMediaKind.video])
+// main.dart's router sends both here before the share-link page and outside _Guard, signed in or not.
+// No account: the page calls ONLY the public guest routes with auth: false (RemoteGuestRecordApi /
+// RemoteGuestVideoApi), and while it is open a stray 401 elsewhere never redirects to the login page
+// (GuestLinkVisit, D-840). View only: the card, then Play → a short-lived signed stream in a plain player (play /
+// pause, scrub, ±10 s), no download, and the window is screen-protected like the course player (ScreenSecurity,
+// D-083). A signed-out guest sees the soft "create an account / sign in" card under it (GuestLinkCta, D-844).
+// The body is the plain-values [GuestRecordView] (test/ui/records_guests_layout_test.dart,
+// test/ui/guest_share_layout_test.dart).
 library;
+
+import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../core/guest_link_visit.dart';
+import '../../../core/screen_security.dart';
 import '../../admin/admin_common.dart' show t;
+import '../../auth/auth_provider.dart';
+import '../guest/guest_link_cta.dart';
+import '../session/material/material_guest_links_api.dart' show RemoteGuestVideoApi;
 import 'records_guests_api.dart';
 import 'records_guests_parts.dart';
 
+/// What a guest link plays: a Records item (`g_`) or a course session's video (`v_`).
+enum GuestMediaKind { record, video }
+
 class GuestRecordPage extends StatefulWidget {
-  const GuestRecordPage({super.key, required this.token, this.api});
+  const GuestRecordPage({super.key, required this.token, this.api, this.kind = GuestMediaKind.record, this.signedIn});
   final String token;
   final GuestRecordApi? api;
+  final GuestMediaKind kind;
+
+  /// Tests: whether the soft sign-up card shows (default: read from MyAuthProvider; no provider = signed out).
+  final bool? signedIn;
 
   @override
   State<GuestRecordPage> createState() => _GuestRecordPageState();
 }
 
 class _GuestRecordPageState extends State<GuestRecordPage> {
-  late final GuestRecordApi _api = widget.api ?? RemoteGuestRecordApi();
+  late final GuestRecordApi _api =
+      widget.api ?? (widget.kind == GuestMediaKind.video ? RemoteGuestVideoApi() : RemoteGuestRecordApi());
   GuestRecordCard? _card;
   String? _error;
   VideoPlayerController? _player;
@@ -33,13 +55,26 @@ class _GuestRecordPageState extends State<GuestRecordPage> {
   @override
   void initState() {
     super.initState();
+    GuestLinkVisit.enter(this);
+    unawaited(ScreenSecurity.instance.protect(this)); // view only: no screenshots / recordings (D-083)
     _load();
   }
 
   @override
   void dispose() {
     _player?.dispose();
+    unawaited(ScreenSecurity.instance.release(this));
+    GuestLinkVisit.leave(this);
     super.dispose();
+  }
+
+  bool get _signedIn {
+    if (widget.signedIn != null) return widget.signedIn!;
+    try {
+      return context.read<MyAuthProvider>().isAuthenticated;
+    } catch (_) {
+      return false; // no provider above (tests / previews)
+    }
   }
 
   Future<void> _load() async {
@@ -86,7 +121,9 @@ class _GuestRecordPageState extends State<GuestRecordPage> {
     return Scaffold(
       key: const ValueKey('records.guest'),
       backgroundColor: c.background,
-      appBar: AppHeader(title: t('تسجيل', 'Recording'), showBack: Navigator.of(context).canPop()),
+      appBar: AppHeader(
+          title: widget.kind == GuestMediaKind.video ? t('فيديو', 'Video') : t('تسجيل', 'Recording'),
+          showBack: Navigator.of(context).canPop()),
       body: SafeArea(
         child: SingleChildScrollView(
           child: GuestRecordView(
@@ -96,6 +133,12 @@ class _GuestRecordPageState extends State<GuestRecordPage> {
             onPlay: _play,
             onRetry: _load,
             player: p == null ? null : _GuestPlayer(controller: p, onReload: _play),
+            footer: _signedIn
+                ? null
+                : GuestLinkCta(
+                    onRegister: () => openGuestSignUp(context, '/register'),
+                    onSignIn: () => openGuestSignUp(context, '/login'),
+                  ),
           ),
         ),
       ),

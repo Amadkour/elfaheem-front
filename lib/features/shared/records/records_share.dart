@@ -216,9 +216,32 @@ class _RecordShareSheetState extends State<_RecordShareSheet> {
         clear: true);
   }
 
+  /// The record's ONE open guest link (D-842): made, or re-timed to the picked expiry, then copied.
+  Future<void> _openLink() async {
+    setState(() => _guestBusy = true);
+    try {
+      final r = await widget.guestsApi.openLink(widget.item.id, expiresDays: _guestExpiry);
+      if (!mounted) return;
+      setState(() {
+        _guestBusy = false;
+        _guests = r.guests;
+        _saved = r.share;
+      });
+      final link = r.guests.where((g) => g.openLink).firstOrNull?.link;
+      if (link != null) await Clipboard.setData(ClipboardData(text: link));
+      showAppNotice(t('رابط الضيوف جاهز ونُسخ — من يفتحه يشاهد دون حساب', 'Guest link ready and copied — whoever opens it watches without an account'));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _guestBusy = false);
+      showAppNotice(recordGuestsErrorText(e), error: true);
+    }
+  }
+
   Future<void> _revokeGuest(RecordGuest g) async {
     if (!await appConfirm(context,
-        message: t('سيتوقف رابط ${g.email} فوراً. متابعة؟', 'The link of ${g.email} stops working at once. Continue?'),
+        message: g.openLink
+            ? t('سيتوقف رابط الضيوف فوراً لكل من معه. متابعة؟', 'The guest link stops working at once for everyone who has it. Continue?')
+            : t('سيتوقف رابط ${g.email} فوراً. متابعة؟', 'The link of ${g.email} stops working at once. Continue?'),
         danger: true,
         confirmLabel: t('إلغاء الرابط', 'Revoke'))) {
       return;
@@ -231,7 +254,7 @@ class _RecordShareSheetState extends State<_RecordShareSheet> {
     final link = g.link;
     if (link == null) return;
     await Clipboard.setData(ClipboardData(text: link));
-    showAppNotice(t('تم نسخ رابط ${g.email}', 'Link of ${g.email} copied'));
+    showAppNotice(g.openLink ? t('تم نسخ رابط الضيوف', 'Guest link copied') : t('تم نسخ رابط ${g.email}', 'Link of ${g.email} copied'));
   }
 
   bool get _dirty {
@@ -388,6 +411,8 @@ class _RecordShareSheetState extends State<_RecordShareSheet> {
                 mailUnavailable: _mailUnavailable,
                 onExpiry: (d) => setState(() => _guestExpiry = d),
                 onInvite: typed ? _invite : null,
+                hasOpenLink: _guests.any((g) => g.openLink),
+                onOpenLink: _openLink,
               );
             },
           ),
