@@ -428,7 +428,7 @@ class _CpTrackTabState extends State<CpTrackTab> {
     if (_items.isEmpty) {
       return Column(children: [
         header,
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         AppEmpty(
           icon: widget.track == 'lecture' ? Icons.co_present_rounded : Icons.science_rounded,
           title: widget.track == 'lecture' ? t('لا محاضرات بعد', 'No lectures yet') : t('لا سكاشن أو معامل بعد', 'No sections or labs yet'),
@@ -441,7 +441,7 @@ class _CpTrackTabState extends State<CpTrackTab> {
     if (_reorder) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         header,
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         ReorderableListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -453,11 +453,11 @@ class _CpTrackTabState extends State<CpTrackTab> {
           }),
           itemBuilder: (_, i) => Padding(
             key: ValueKey(_items[i].id),
-            padding: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
             child: AppCard(
               child: Row(children: [
                 Icon(Icons.drag_indicator_rounded, color: c.textLight),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
                 Expanded(child: Text(_items[i].name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700))),
               ]),
             ),
@@ -467,10 +467,10 @@ class _CpTrackTabState extends State<CpTrackTab> {
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       header,
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       for (var i = 0; i < _items.length; i++)
         Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
           child: _SessionCard(
             profile: p,
             session: _items[i],
@@ -516,7 +516,7 @@ class _SessionCard extends StatelessWidget {
           onTap: onToggle,
           borderRadius: BorderRadius.circular(c.radiusLarge - 4),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AppSpace.md),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Container(
                 width: 40,
@@ -525,7 +525,7 @@ class _SessionCard extends StatelessWidget {
                 decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
                 child: Text('$number', style: appText(15, w: FontWeight.w800, c: tone)),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(s.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w800, c: c.textDark)),
@@ -533,7 +533,7 @@ class _SessionCard extends StatelessWidget {
                   Text(_when(s.scheduledAt) + (s.durationMinutes != null ? ' · ${s.durationMinutes} ${t('د', 'min')}' : ''),
                       maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textLight)),
                   if (status.isNotEmpty) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpace.xs),
                     Wrap(spacing: 6, runSpacing: 6, children: status),
                   ],
                 ]),
@@ -545,10 +545,10 @@ class _SessionCard extends StatelessWidget {
         if (open) ...[
           Divider(height: 1, color: c.divider),
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(AppSpace.sm),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               if ((s.description ?? '').trim().isNotEmpty)
-                Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(s.description!, style: appText(13, c: c.textMedium))),
+                Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: Text(s.description!, style: appText(13, c: c.textMedium))),
               if (!p.caps.viewMaterial)
                 AppBanner(icon: Icons.lock_rounded, text: t('المحتوى مقفل', 'Material is locked'))
               else if (s.materials.isEmpty)
@@ -556,7 +556,7 @@ class _SessionCard extends StatelessWidget {
               else
                 for (final m in s.materials) _MaterialTile(material: m, siblings: s.materials, profile: p),
               if (canAttend && !p.closed && !p.readOnly) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.xs),
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   AppPill(
                       icon: Icons.qr_code_2_rounded,
@@ -630,7 +630,7 @@ class _MaterialTile extends StatelessWidget {
     final done = material['completed'] == true;
     final dur = material['duration_seconds'];
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: Material(
         color: c.inputBg,
         borderRadius: BorderRadius.circular(12),
@@ -638,19 +638,19 @@ class _MaterialTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           onTap: () => _open(context),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.sm),
             child: Row(children: [
               Icon(_icon, color: c.primary),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Text('${material['name']}', maxLines: 2, overflow: TextOverflow.ellipsis,
                     style: appText(13.5, w: FontWeight.w600, c: c.textDark)),
               ),
               if (dur is num && dur > 0) ...[
-                const SizedBox(width: 6),
+                const SizedBox(width: AppSpace.xs),
                 Text('${(dur ~/ 60)}:${(dur % 60).toInt().toString().padLeft(2, '0')}', style: appText(12, c: c.textLight)),
               ],
-              if (done) ...[const SizedBox(width: 6), Icon(Icons.check_circle_rounded, size: 18, color: c.success)],
+              if (done) ...[const SizedBox(width: AppSpace.xs), Icon(Icons.check_circle_rounded, size: 18, color: c.success)],
             ]),
           ),
         ),
@@ -787,19 +787,19 @@ class _CpAttendanceTabState extends State<CpAttendanceTab> {
         final u = _map(r['user']);
         final abs = _num(r['absence_pct']) ?? 0;
         body.add(AppCard(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.only(bottom: AppSpace.xs),
+          padding: const EdgeInsets.all(AppSpace.sm),
           child: Row(children: [
             AppAvatar(name: '${u['name'] ?? ''}', url: u['image_url']?.toString(), size: 36),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${u['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark)),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpace.xxs),
                 AppProgressBar(value: 100 - abs, color: appScoreColor(context, 100 - abs)),
               ]),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpace.sm),
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
               Text('${r['attended']}/${r['expected']}', style: appText(13, w: FontWeight.w800, c: c.textDark)),
               Text(t('غياب ${_pct(abs)}', 'absent ${_pct(abs)}'), style: appText(11.5, c: appScoreColor(context, 100 - abs))),
@@ -819,22 +819,22 @@ class _CpAttendanceTabState extends State<CpAttendanceTab> {
         final pres = (s['present'] as num?)?.toInt() ?? 0;
         final mark = staff && p.caps.attend('${s['track']}') && !p.readOnly && !p.closed;
         body.add(AppCard(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.only(bottom: AppSpace.xs),
+          padding: const EdgeInsets.all(AppSpace.sm),
           onTap: mark
               ? () => showCpManualAttendance(context, p, sessionId: (s['id'] as num?)?.toInt(), onChanged: _afterMark)
               : null,
           child: Row(children: [
             Icon(s['track'] == 'section' ? Icons.science_rounded : Icons.co_present_rounded,
                 color: s['track'] == 'section' ? c.purple : c.primary),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${s['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark)),
                 Text(_when(orgParseUtcLocal(s['scheduled_at'])), maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: appText(12, c: c.textLight)),
                 if (staff && held) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: AppSpace.xs),
                   AppProgressBar(value: exp == 0 ? 0 : 100.0 * pres / exp, color: appScoreColor(context, exp == 0 ? 0 : 100.0 * pres / exp)),
                 ],
                 if (staff && missed && s['staff'] is Map)
@@ -842,7 +842,7 @@ class _CpAttendanceTabState extends State<CpAttendanceTab> {
                       maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textMedium)),
               ]),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.xs),
             if (me != null)
               AppBadgePill(
                   switch (me) { 'present' => t('حاضر', 'Present'), 'absent' => t('غائب', 'Absent'), _ => t('لم تُعقد', 'Not held') },
@@ -859,9 +859,9 @@ class _CpAttendanceTabState extends State<CpAttendanceTab> {
       onRefresh: _load,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         head,
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         summary,
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         ...body,
       ]),
     );
@@ -893,7 +893,7 @@ class CpCertificatesTab extends StatelessWidget {
     return Column(children: [
       for (final cert in p.certificates)
         Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
           child: p.caps.manageCertificates
               ? _StaffCertificate(profile: p, cert: cert, onChanged: onChanged)
               : _StudentCertificate(cert: cert),
@@ -916,7 +916,7 @@ class _StudentCertificate extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.workspace_premium_rounded, color: issued ? c.accent : c.textLight, size: 30),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${cert['title']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w800, c: c.textDark)),
@@ -924,7 +924,7 @@ class _StudentCertificate extends StatelessWidget {
             ]),
           ),
         ]),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         if (issued)
           Wrap(spacing: 8, runSpacing: 8, children: [
             if ((cert['url'] ?? '').toString().isNotEmpty)
@@ -936,7 +936,7 @@ class _StudentCertificate extends StatelessWidget {
           ])
         else ...[
           AppProgressBar(value: prog, color: appScoreColor(context, prog)),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs),
           Text(
               cert['auto_send'] == true
                   ? t('تُرسل تلقائياً عند إكمال ${scope.$1} (${_pct(prog)} الآن)', 'Sent automatically at 100% of ${scope.$2} (${_pct(prog)} now)')
@@ -1001,7 +1001,7 @@ class _StaffCertificate extends StatelessWidget {
                   }),
               ]),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             AppButton.primary(expand: true, 
               icon: Icons.send_rounded,
               label: t('إرسال (${chosen.length})', 'Send (${chosen.length})'),
@@ -1021,13 +1021,13 @@ class _StaffCertificate extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           Icon(Icons.workspace_premium_rounded, color: c.accent, size: 28),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.sm),
           Expanded(child: Text('${cert['title']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w800, c: c.textDark))),
           AppBadgePill(t('صدرت ${cert['issued_count'] ?? 0}', '${cert['issued_count'] ?? 0} issued'), color: c.success),
         ]),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         Text(t('تُمنح عن', 'Certifies'), style: appText(12.5, w: FontWeight.w700, c: c.textMedium)),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final s in const ['lecture', 'section', 'both'])
             AppChoiceChip(
@@ -1081,7 +1081,7 @@ class CpTeamTab extends StatelessWidget {
         AppCard(
           child: Row(children: [
             AppAvatar(name: '${ins['name'] ?? ''}', url: ins['image_url']?.toString(), size: 44),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${ins['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w800, c: c.textDark)),
@@ -1090,21 +1090,21 @@ class CpTeamTab extends StatelessWidget {
             ),
           ]),
         ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       AppSectionTitle(t('المعيدون', 'Teaching assistants'),
           subtitle: t('السكاشن والمعامل افتراضياً — امنح صلاحيات المحاضرات عند الحاجة',
               'Sections & labs by default — grant lecture rights when needed')),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       if (p.assistants.isEmpty)
         AppEmpty(icon: Icons.person_add_alt_rounded, title: t('لا معيدين لهذا المقرر', 'No assistants for this course')),
       for (final a in p.assistants)
         Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
           child: AppCard(
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Row(children: [
                 AppAvatar(name: '${_map(a['user'])['name'] ?? ''}', url: _map(a['user'])['image_url']?.toString(), size: 38),
-                const SizedBox(width: 10),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Text('${_map(a['user'])['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis,
                       style: appText(14.5, w: FontWeight.w700, c: c.textDark)),
@@ -1200,14 +1200,14 @@ class _CpArchiveTabState extends State<CpArchiveTab> {
               subtitle: t('بعد إغلاق المقرر يفتح الطلاب المحتوى للقراءة فقط', 'After the course closes, students open the material read-only')),
           if (pol['open_access'] != true)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: AppSpace.xs),
               child: AppBanner(
                   icon: Icons.admin_panel_settings_rounded,
                   color: c.warning,
                   text: t('الوصول المفتوح غير مفعّل في المؤسسة — كل وصول يحتاج موافقة المسؤول',
                       'Open archive access is off in the organization — every access needs admin approval')),
             ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           Wrap(spacing: 8, runSpacing: 8, children: [
             for (final m in const ['auto', 'request', 'code'])
               AppChoiceChip(
@@ -1216,7 +1216,7 @@ class _CpArchiveTabState extends State<CpArchiveTab> {
                   onTap: () => _policy(m)),
           ]),
           if (mode == 'code' && pol['code'] != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             Row(children: [
               Expanded(
                 child: SelectableText('${pol['code']}',
@@ -1248,7 +1248,7 @@ class _CpArchiveTabState extends State<CpArchiveTab> {
           out.add(AppCard(
             child: Row(children: [
               AppAvatar(name: '${u['name'] ?? ''}', url: u['image_url']?.toString(), size: 36),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('${u['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark)),
@@ -1266,7 +1266,7 @@ class _CpArchiveTabState extends State<CpArchiveTab> {
       }
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      for (final w in out) Padding(padding: const EdgeInsets.only(bottom: 12), child: w),
+      for (final w in out) Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: w),
     ]);
   }
 
@@ -1291,10 +1291,10 @@ class _CpArchiveTabState extends State<CpArchiveTab> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppSectionTitle(t('افتح أرشيف المقرر', 'Open the course archive'),
             subtitle: AppConfig.lang == 'ar' ? cpArchiveModeLabel(mode).$1 : cpArchiveModeLabel(mode).$2),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
         if (mode == 'code') ...[
           AppField(controller: _code, label: t('كود الأرشيف', 'Archive code'), ltr: true),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           AppButton.primary(expand: true, 
             icon: Icons.key_rounded,
             label: t('فتح', 'Unlock'),
@@ -1306,7 +1306,7 @@ class _CpArchiveTabState extends State<CpArchiveTab> {
           ),
         ] else ...[
           AppField(controller: _reason, label: t('السبب (اختياري)', 'Reason (optional)'), maxLines: 2),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           AppButton.primary(expand: true, 
             icon: Icons.send_rounded,
             label: t('اطلب الوصول', 'Request access'),

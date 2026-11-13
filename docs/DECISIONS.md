@@ -4335,3 +4335,15 @@ and saves the exam's design on the draft.
 ## D-732 — Cover pages carry a code the scanner skips · 2026-11-13 · accepted
 
 **Decision.** Every cover page of a paper exam prints a 16 mm QR in its bottom corner, `NBC:<exam>.<sig>` (`cover_code` from GET /paper-design, `withCoverCode`); the scanner sets such pages aside (`status: cover`, no review item, not counted). An online exam's cover prints without it. Tests: `test/org/exam_cover_test.dart` (model, limits, upload with a page, the cover page, PDF / Word with the cover in front and the numbering untouched, the picker's saves, layout harness), back `tests/exam_engine/e2e_exam_cover.py`; renders `test/visual/exam_cover_golden_test.dart`.
+
+## D-750 — A home greets by the first name · 2026-11-13 · accepted
+
+**Decision.** The student and parent homes pass the first name (`SplashState.firstName`: titles dropped, the first word) to `HomeHeader`, so "Good morning, Sara" fits a phone's hero in the editorial face; the full name was cut to "Good morning, Sar…" at 390 px. The avatar initial is unchanged. The audit of the student / parent / shared screens (same round) also moved the parent alert's undo to `showAppNotice` (no SnackBar), gave the complaint thread a not-found state with Retry and made a failed review flag toast an error.
+
+## D-751 — Prices in English show the currency code · 2026-11-13 · accepted
+
+**Decision.** `currencySymbolFor` returns the Arabic abbreviation (ج.م, ر.س) only in Arabic and the ISO code (EGP, SAR) in English; an Arabic mark inside an English price broke the reading order and rendered as a lone dot in a Latin font. `$` stays `$`.
+
+## D-752 — Asking for a certificate early is a tonal button · 2026-11-13 · accepted
+
+**Decision.** On My certificates a course that is not finished says so in its pill, and the certificate is issued by itself on completion; "Request certificate" (an early request the teacher approves) is therefore `AppButton.tonal`, not the solid primary that contradicted the pill.

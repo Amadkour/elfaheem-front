@@ -574,7 +574,7 @@ class _FormTab extends StatelessWidget {
                 ParentComponent(
                   featureKey: 'new_complaint.suggested_solution',
                   child: Padding(
-                    padding: const EdgeInsets.only(bottom: 24),
+                    padding: const EdgeInsets.only(bottom: AppSpace.lg),
                     child: _SuggestedSolutionField(
                       controller: suggestionCtrl,
                       isExpanded: suggestionExpanded,
@@ -775,7 +775,7 @@ class _HistoryTab extends StatelessWidget {
     return AppRefresh(
       onRefresh: () => provider.loadComplaints(reset: true),
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xl),
         itemCount: all.length + 1,
         itemBuilder: (_, i) {
           if (i == 0) return _HistorySummary(total: all.length, open: open);
@@ -786,7 +786,7 @@ class _HistoryTab extends StatelessWidget {
               ? all.firstWhere((c) => c.id == complaint.id, orElse: () => complaint)
               : complaint;
           return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: AppSpace.sm),
             child: _ComplaintHistoryCard(
               complaint: full,
               isExpanded: isExpanded,
@@ -810,15 +810,15 @@ class _HistorySummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: AppSpace.md),
+      padding: const EdgeInsets.all(AppSpace.md),
       decoration: BoxDecoration(
         color: c.primaryTint,
         borderRadius: BorderRadius.circular(c.radiusLarge),
       ),
       child: Row(children: [
         _GradIcon(icon: Icons.forum_rounded, gradient: c.primaryGradient, size: 40),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Text(
             'complaint_history_summary'
@@ -875,13 +875,13 @@ class _ComplaintHistoryCard extends StatelessWidget {
             onTap: onToggle,
             borderRadius: BorderRadius.circular(c.radiusLarge),
             child: Padding(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(AppSpace.md),
               child: Row(children: [
                 // priority stripe (start edge)
                 Container(
                   width: 4,
                   height: 46,
-                  margin: const EdgeInsetsDirectional.only(end: 12),
+                  margin: const EdgeInsetsDirectional.only(end: AppSpace.sm),
                   decoration: BoxDecoration(
                     color: _priorityColor(c, complaint.priority),
                     borderRadius: BorderRadius.circular(4),
@@ -900,7 +900,7 @@ class _ComplaintHistoryCard extends StatelessWidget {
                       ),
                       if (hasUnread)
                         Container(
-                          margin: const EdgeInsetsDirectional.only(end: 6),
+                          margin: const EdgeInsetsDirectional.only(end: AppSpace.xs),
                           width: 8,
                           height: 8,
                           decoration:
@@ -909,7 +909,7 @@ class _ComplaintHistoryCard extends StatelessWidget {
                       _StatusBadge(
                           label: _statusLabel(complaint.status), color: statusClr),
                     ]),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpace.xs),
                     Row(children: [
                       _CategoryBadge(
                         label: _categoryLabel(complaint.category),
@@ -917,7 +917,7 @@ class _ComplaintHistoryCard extends StatelessWidget {
                         tint: c.primaryTint,
                       ),
                       if (complaint.suggestedSolution != null) ...[
-                        const SizedBox(width: 6),
+                        const SizedBox(width: AppSpace.xs),
                         const _SuggestionBadge(),
                       ],
                       const Spacer(),
@@ -925,7 +925,7 @@ class _ComplaintHistoryCard extends StatelessWidget {
                     ]),
                   ]),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
                 AnimatedRotation(
                   turns: isExpanded ? 0.5 : 0.0,
                   duration: const Duration(milliseconds: 250),
@@ -941,7 +941,7 @@ class _ComplaintHistoryCard extends StatelessWidget {
             firstChild: const SizedBox(width: double.infinity),
             secondChild: isLoading
                 ? const Padding(
-              padding: EdgeInsets.all(20),
+              padding: EdgeInsets.all(AppSpace.lg),
               child: Center(child: AppLoadingIndicator()),
             )
                 : _ExpandedBody(complaint: complaint),
@@ -989,14 +989,14 @@ class _SuggestionBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
       decoration: BoxDecoration(
         color: c.successTint,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(Icons.lightbulb_rounded, size: 11, color: c.success),
-        const SizedBox(width: 3),
+        const SizedBox(width: AppSpace.xxs),
         Text(
           'has_suggestion'.tr,
           style: TextStyle(
@@ -1020,27 +1020,27 @@ class _ExpandedBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Divider(color: c.divider, height: 1),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         Text(complaint.description, style: c.body.copyWith(height: 1.7)),
         if (complaint.suggestedSolution != null) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.md),
           _SuggestedSolutionBlock(text: complaint.suggestedSolution!),
         ],
         if (complaint.attachments.isNotEmpty) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           _AttachmentGallery(attachments: complaint.attachments),
         ],
         if (complaint.resolvedAt != null) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           _ResolvedBanner(resolvedAt: complaint.resolvedAt!),
         ],
         if (complaint.replies.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           Text('replies_label'.tr, style: c.h3.copyWith(fontSize: 13)),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           ...complaint.replies.map((r) => _HistoryReplyBubble(reply: r)),
         ],
       ]),
@@ -1058,7 +1058,7 @@ class _SuggestedSolutionBlock extends StatelessWidget {
     final c = context.colors;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpace.md),
       decoration: BoxDecoration(
         color: c.successTint,
         borderRadius: BorderRadius.circular(c.radiusMedium),
@@ -1067,7 +1067,7 @@ class _SuggestedSolutionBlock extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.lightbulb_rounded, size: 16, color: c.success),
-          const SizedBox(width: 6),
+          const SizedBox(width: AppSpace.xs),
           Text(
             'suggested_solution_label'.tr,
             style: TextStyle(
@@ -1078,7 +1078,7 @@ class _SuggestedSolutionBlock extends StatelessWidget {
             ),
           ),
         ]),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         Text(text, style: c.body.copyWith(fontSize: 13, height: 1.6, color: c.textDark)),
       ]),
     );
@@ -1344,7 +1344,7 @@ class _AttachmentGallery extends StatelessWidget {
             fontWeight: FontWeight.w700,
             color: c.textLight),
       ),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       Wrap(
         spacing: 8,
         runSpacing: 8,
@@ -1366,7 +1366,7 @@ class _HistoryReplyBubble extends StatelessWidget {
     final c = context.colors;
     final isAdmin = reply.isAdmin;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: Row(
         mainAxisAlignment: isAdmin ? MainAxisAlignment.start : MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -1381,14 +1381,14 @@ class _HistoryReplyBubble extends StatelessWidget {
                   ? Icon(Icons.support_agent_rounded, size: 15, color: c.primary)
                   : null,
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: AppSpace.xs),
           ],
           ConstrainedBox(
             constraints: BoxConstraints(
               maxWidth: MediaQuery.of(context).size.width * 0.68,
             ),
             child: Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppSpace.sm),
               decoration: BoxDecoration(
                 color: isAdmin ? c.primaryTint : null,
                 gradient: isAdmin ? null : c.primaryGradient,
@@ -1402,7 +1402,7 @@ class _HistoryReplyBubble extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 if (isAdmin)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 3),
+                    padding: const EdgeInsets.only(bottom: AppSpace.xxs),
                     child: Text(
                       reply.senderName,
                       style: TextStyle(
@@ -1423,7 +1423,7 @@ class _HistoryReplyBubble extends StatelessWidget {
                   ),
                 ),
                 if (reply.attachments.isNotEmpty) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: AppSpace.xs),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
@@ -1450,7 +1450,7 @@ class _ResolvedBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.sm),
       decoration: BoxDecoration(
         color: c.successTint,
         borderRadius: BorderRadius.circular(c.radiusMedium),
@@ -1458,7 +1458,7 @@ class _ResolvedBanner extends StatelessWidget {
       ),
       child: Row(children: [
         Icon(Icons.check_circle_rounded, size: 18, color: c.success),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpace.xs),
         Text(
           '${'resolved_at_prefix'.tr} ${AppTime.date(resolvedAt)}',
           style: TextStyle(
@@ -1481,7 +1481,7 @@ class _EmptyHistory extends StatelessWidget {
     final c = context.colors;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(AppSpace.xl),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
             width: 92,
@@ -1493,10 +1493,10 @@ class _EmptyHistory extends StatelessWidget {
             ),
             child: Icon(Icons.inbox_rounded, size: 44, color: context.colors.onHero),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpace.lg),
           Text('no_previous_complaints'.tr,
               textAlign: TextAlign.center, style: c.h2.copyWith(fontSize: 16)),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           Text('complaints_appear_after_send'.tr,
               textAlign: TextAlign.center, style: c.caption.copyWith(height: 1.5)),
         ]),
@@ -1517,7 +1517,7 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+    padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
     decoration: BoxDecoration(
       color: color.withValues(alpha: 0.12),
       borderRadius: BorderRadius.circular(20),
@@ -1529,7 +1529,7 @@ class _StatusBadge extends StatelessWidget {
         height: 6,
         decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       ),
-      const SizedBox(width: 5),
+      const SizedBox(width: AppSpace.xxs),
       Text(
         label,
         style: TextStyle(
@@ -1556,7 +1556,7 @@ class _CategoryBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+    padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
     decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(20)),
     child: Text(
       label,
@@ -1580,7 +1580,7 @@ class _RepliesCountChip extends StatelessWidget {
     final c = context.colors;
     return Row(mainAxisSize: MainAxisSize.min, children: [
       Icon(Icons.chat_bubble_outline_rounded, size: 14, color: c.textLight),
-      const SizedBox(width: 4),
+      const SizedBox(width: AppSpace.xxs),
       Text('$count', style: c.caption.copyWith(fontSize: 11.5)),
     ]);
   }

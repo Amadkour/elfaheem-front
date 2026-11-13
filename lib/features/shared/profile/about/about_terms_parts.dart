@@ -398,9 +398,9 @@ class _ReadingTocChipsState extends State<ReadingTocChips> {
       child: ListView.separated(
         controller: _row,
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
         itemCount: widget.titles.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpace.xs),
         itemBuilder: (context, i) {
           final on = i == widget.active;
           final ink = on ? c.onHero : appInk(context, c.textMedium);
@@ -417,12 +417,12 @@ class _ReadingTocChipsState extends State<ReadingTocChips> {
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 240, minHeight: 40),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Text(readingNumber(i + 1),
                           textDirection: TextDirection.ltr,
                           style: appText(12, w: FontWeight.w800, c: on ? c.onHero.withValues(alpha: 0.8) : c.primary, h: 1.1)),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpace.xs),
                       Flexible(
                         child: Text(widget.titles[i],
                             maxLines: 1,
@@ -457,7 +457,7 @@ class ReadingTocList extends StatelessWidget {
     final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
       Padding(
-        padding: const EdgeInsetsDirectional.only(start: 16, bottom: 8),
+        padding: const EdgeInsetsDirectional.only(start: AppSpace.md, bottom: AppSpace.xs),
         child: Text('reading_on_this_page'.tr, style: appText(12.5, w: FontWeight.w700, c: c.textLight, h: 1.3)),
       ),
       for (var i = 0; i < titles.length; i++)
@@ -469,7 +469,7 @@ class ReadingTocList extends StatelessWidget {
             onTap: () => onTap(i),
             child: Container(
               constraints: const BoxConstraints(minHeight: 40),
-              padding: const EdgeInsetsDirectional.fromSTEB(14, 8, 8, 8),
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.xs, AppSpace.xs, AppSpace.xs),
               decoration: BoxDecoration(
                 border: BorderDirectional(
                   start: BorderSide(color: i == active ? c.primary : c.divider, width: i == active ? 2.5 : 1.5),
@@ -494,7 +494,7 @@ class ReadingTocList extends StatelessWidget {
             ),
           ),
         ),
-      if (footer != null) ...[const SizedBox(height: 24), footer!],
+      if (footer != null) ...[const SizedBox(height: AppSpace.lg), footer!],
     ]);
   }
 }
@@ -535,7 +535,7 @@ class ReadingBody extends StatelessWidget {
                 decoration: BoxDecoration(color: c.primary, shape: BoxShape.circle),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpace.sm),
             Expanded(child: Text(b.text, style: style)),
           ]));
         case ReadingBlockKind.numbered:
@@ -544,7 +544,7 @@ class ReadingBody extends StatelessWidget {
               width: 24,
               child: Text('${b.number}.', style: style.copyWith(fontWeight: FontWeight.w700, color: appInk(context, c.primary))),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: AppSpace.xxs),
             Expanded(child: Text(b.text, style: style)),
           ]));
       }
@@ -622,7 +622,7 @@ class ReadingNote extends StatelessWidget {
     final c = context.colors;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpace.lg),
       decoration: BoxDecoration(
         color: c.success.withValues(alpha: c.isDark ? 0.12 : 0.06),
         borderRadius: BorderRadius.circular(AppRadius.card),
@@ -630,12 +630,12 @@ class ReadingNote extends StatelessWidget {
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Icon(icon, color: appInk(context, c.success), size: 22),
-        const SizedBox(width: 16),
+        const SizedBox(width: AppSpace.md),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(text, style: appText(14, w: FontWeight.w500, c: c.textDark, h: 1.7)),
             if ((caption ?? '').isNotEmpty) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               Text(caption!, style: appText(12.5, w: FontWeight.w500, c: c.textLight, h: 1.4)),
             ],
           ]),
@@ -746,7 +746,7 @@ class ReadingLegalActions extends StatelessWidget {
                   style: FilledButton.styleFrom(
                     backgroundColor: c.primary,
                     minimumSize: const Size(AppTouch.min, AppTouch.min),
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md + 4),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md + AppSpace.xxs),
                     shape: const StadiumBorder(),
                   ),
                 )
@@ -756,14 +756,14 @@ class ReadingLegalActions extends StatelessWidget {
                   label: Text(label, style: appText(14, w: FontWeight.w600, c: ink)),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(AppTouch.min, AppTouch.min),
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md + 4),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md + AppSpace.xxs),
                     side: BorderSide(color: c.divider),
                     shape: const StadiumBorder(),
                   ),
                 ),
         );
     return ReadingSurface(
-      padding: const EdgeInsets.all(AppSpace.md + 4),
+      padding: const EdgeInsets.all(AppSpace.md + AppSpace.xxs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('legal_questions_title'.tr, style: AppType.section(context).copyWith(color: c.textDark)),
         const SizedBox(height: AppSpace.xxs),
@@ -820,7 +820,7 @@ class ReadingAskCard extends StatelessWidget {
     final c = context.colors;
     final text = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
       Text('reading_ask_title'.tr, style: appText(compact ? 14 : 15.5, w: FontWeight.w700, c: c.textDark, h: 1.35)),
-      const SizedBox(height: 4),
+      const SizedBox(height: AppSpace.xxs),
       Text('reading_ask_body'.tr, style: appText(compact ? 12.5 : 13.5, w: FontWeight.w400, c: c.textMedium, h: 1.55)),
     ]);
     final button = FilledButton.icon(
@@ -831,14 +831,14 @@ class ReadingAskCard extends StatelessWidget {
         backgroundColor: c.primary,
         foregroundColor: c.onHero,
         minimumSize: const Size(48, 44),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
         textStyle: appText(13.5, w: FontWeight.w700, h: 1.2),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control - AppSpace.xxs)),
       ),
     );
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(compact ? 16 : 20),
+      padding: EdgeInsets.all(compact ? 16 : AppSpace.lg),
       decoration: BoxDecoration(
         color: c.primary.withValues(alpha: c.isDark ? 0.14 : 0.05),
         borderRadius: BorderRadius.circular(AppRadius.card),
@@ -850,18 +850,18 @@ class ReadingAskCard extends StatelessWidget {
           return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const ReadingBotMark(size: 36),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpace.sm),
               Expanded(child: text),
             ]),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.md),
             SizedBox(width: double.infinity, child: button),
           ]);
         }
         return Row(children: [
           const ReadingBotMark(size: 44),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSpace.md),
           Expanded(child: text),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSpace.md),
           button,
         ]);
       }),
@@ -898,7 +898,7 @@ class AskAboutPageChip extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(AppSpace.xs),
               child: AnimatedSize(
                 duration: reduce ? Duration.zero : const Duration(milliseconds: 220),
                 curve: Curves.easeOutCubic,
@@ -906,14 +906,14 @@ class AskAboutPageChip extends StatelessWidget {
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   const ReadingBotMark(size: 36),
                   if (expanded) ...[
-                    const SizedBox(width: 10),
+                    const SizedBox(width: AppSpace.sm),
                     Flexible(
                       child: Text('assistant_ask_page'.tr,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: appText(14, w: FontWeight.w700, c: c.textDark, h: 1.2)),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: AppSpace.sm),
                   ],
                 ]),
               ),
@@ -934,7 +934,7 @@ class AskAboutPageAction extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsetsDirectional.only(end: 8),
+      padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
       child: Tooltip(
         message: 'assistant_ask_page_tip'.tr,
         child: Semantics(
@@ -975,7 +975,7 @@ class ReadingSkeleton extends StatelessWidget {
     final c = context.colors;
     Widget card(double h, List<Widget> lines) => Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(AppSpace.lg),
           decoration: BoxDecoration(
             color: c.cardBg,
             borderRadius: BorderRadius.circular(AppRadius.card),
@@ -986,49 +986,49 @@ class ReadingSkeleton extends StatelessWidget {
     return AppShimmer(
       child: SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.lg),
         child: Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: AppWidth.reading.max),
             child: Column(children: [
               card(0, const [
                 AppSkeletonBox(width: 52, height: 52, radius: 16),
-                SizedBox(height: 24),
+                SizedBox(height: AppSpace.lg),
                 AppSkeletonBox(width: 220, height: 22),
-                SizedBox(height: 12),
+                SizedBox(height: AppSpace.sm),
                 AppSkeletonBox(height: 12),
-                SizedBox(height: 8),
+                SizedBox(height: AppSpace.xs),
                 AppSkeletonBox(width: 200, height: 12),
-                SizedBox(height: 24),
+                SizedBox(height: AppSpace.lg),
                 Row(children: [
                   AppSkeletonBox(width: 110, height: 28, radius: 14),
-                  SizedBox(width: 8),
+                  SizedBox(width: AppSpace.xs),
                   AppSkeletonBox(width: 90, height: 28, radius: 14),
                 ]),
               ]),
               if (chips) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpace.md),
                 const Row(children: [
                   AppSkeletonBox(width: 120, height: 36, radius: 18),
-                  SizedBox(width: 8),
+                  SizedBox(width: AppSpace.xs),
                   AppSkeletonBox(width: 96, height: 36, radius: 18),
-                  SizedBox(width: 8),
+                  SizedBox(width: AppSpace.xs),
                   Expanded(child: AppSkeletonBox(height: 36, radius: 18)),
                 ]),
               ],
               for (var i = 0; i < 3; i++) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpace.md),
                 card(0, [
                   const Row(children: [
                     AppSkeletonBox(width: 40, height: 40, radius: 12),
-                    SizedBox(width: 16),
+                    SizedBox(width: AppSpace.md),
                     AppSkeletonBox(width: 160, height: 16),
                   ]),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpace.lg),
                   const AppSkeletonBox(height: 12),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AppSpace.sm),
                   const AppSkeletonBox(height: 12),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AppSpace.sm),
                   AppSkeletonBox(width: 140.0 + i * 40, height: 12),
                 ]),
               ],
@@ -1124,7 +1124,7 @@ class AboutSectionTitle extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(title, style: AppType.pageTitle(context).copyWith(color: c.textDark)),
         if ((sub ?? '').isNotEmpty) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpace.xxs),
           Text(sub!, style: appText(13.5, w: FontWeight.w400, c: c.textMedium, h: 1.5)),
         ],
       ]),
@@ -1226,7 +1226,7 @@ class AboutFeatureGrid extends StatelessWidget {
       const gap = 16.0;
       final cols = box.maxWidth > 560 ? 3 : (box.maxWidth < 300 ? 1 : 2);
       Widget card(AppFeatureModel f) => ReadingSurface(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppSpace.md),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Container(
                   width: 40,
@@ -1237,11 +1237,11 @@ class AboutFeatureGrid extends StatelessWidget {
                   ),
                   child: Icon(contentIcon(f.iconName), size: 20, color: appInk(context, c.primary)),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpace.md),
                 Text(f.title,
                     maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w700, c: c.textDark, h: 1.35)),
                 if ((f.description ?? '').isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpace.xxs),
                   Text(f.description!,
                       maxLines: 4,
                       overflow: TextOverflow.ellipsis,
@@ -1286,7 +1286,7 @@ class AboutTeamRow extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         clipBehavior: Clip.none,
         itemCount: team.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 16),
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpace.md),
         itemBuilder: (context, i) {
           final m = team[i];
           final photo = (m.imageUrl ?? '').isNotEmpty;
@@ -1310,16 +1310,16 @@ class AboutTeamRow extends StatelessWidget {
           return SizedBox(
             width: 152,
             child: ReadingSurface(
-              padding: const EdgeInsets.fromLTRB(12, 20, 12, 16),
+              padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.lg, AppSpace.sm, AppSpace.md),
               child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                 GestureDetector(onTap: photo && onZoom != null ? () => onZoom!(m) : null, child: avatar),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpace.md),
                 Text(m.name,
                     textAlign: TextAlign.center,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: appText(14, w: FontWeight.w700, c: c.textDark, h: 1.3)),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpace.xxs),
                 Text(m.role,
                     textAlign: TextAlign.center,
                     maxLines: 2,
@@ -1392,10 +1392,10 @@ class AboutSupportCard extends StatelessWidget {
           onTap: onTap,
           onLongPress: onLong,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.sm),
             child: Row(children: [
               lead,
-              const SizedBox(width: 16),
+              const SizedBox(width: AppSpace.md),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(label, style: appText(12.5, w: FontWeight.w500, c: c.textLight, h: 1.3)),
@@ -1437,11 +1437,11 @@ class AboutSupportCard extends StatelessWidget {
         ),
       if (version.isNotEmpty || latest != null)
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.sm),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               well(updateAvailable ? Icons.system_update_rounded : Icons.verified_rounded, versionColor),
-              const SizedBox(width: 16),
+              const SizedBox(width: AppSpace.md),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('about_this_app'.tr, style: appText(12.5, w: FontWeight.w500, c: c.textLight, h: 1.3)),
@@ -1451,24 +1451,24 @@ class AboutSupportCard extends StatelessWidget {
                 ]),
               ),
             ]),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             Padding(
               padding: const EdgeInsetsDirectional.only(start: 56),
               child: Column(children: [
                 if (version.isNotEmpty) _VersionLine(label: 'about_installed_version'.tr, value: version),
                 if (latest != null) _VersionLine(label: 'about_latest_version'.tr, value: latest!),
                 if (updateAvailable && notes.isNotEmpty) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.xs),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(AppSpace.sm),
                     decoration: BoxDecoration(
                       color: versionColor.withValues(alpha: c.isDark ? 0.14 : 0.08),
                       borderRadius: BorderRadius.circular(AppRadius.control - AppSpace.xxs),
                     ),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('about_whats_new'.tr, style: appText(12.5, w: FontWeight.w700, c: appInk(context, versionColor), h: 1.3)),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpace.xxs),
                       Text(notes, style: appText(13, w: FontWeight.w400, c: c.textMedium, h: 1.6)),
                     ]),
                   ),
@@ -1479,10 +1479,10 @@ class AboutSupportCard extends StatelessWidget {
         ),
     ];
     return ReadingSurface(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.xs),
           child: AboutSectionTitle(title: 'about_support'.tr, sub: contacts.isEmpty ? null : 'about_contact_hint'.tr),
         ),
         for (var i = 0; i < rows.length; i++) ...[
@@ -1502,7 +1502,7 @@ class _VersionLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
       child: Row(children: [
         Expanded(child: Text(label, style: appText(13, w: FontWeight.w500, c: c.textMedium, h: 1.3))),
         Text(value, textDirection: TextDirection.ltr, style: appText(13.5, w: FontWeight.w700, c: c.textDark, h: 1.3)),

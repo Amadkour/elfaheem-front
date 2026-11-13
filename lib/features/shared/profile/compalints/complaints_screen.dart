@@ -264,7 +264,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                 loadingMore: p.loadingMore,
                 done: !p.hasMore,
                 icon: Icons.support_agent_rounded,
-                margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                margin: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
               ),
             Expanded(child: _buildList(p, staff, myId)),
           ],
@@ -311,7 +311,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
       onRefresh: () => p.loadComplaints(reset: true),
       child: ListView.builder(
         controller: _scrollCtrl,
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 100),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 100),
         itemCount: p.complaints.length + 1,
         itemBuilder: (_, i) {
           if (i == p.complaints.length) {
@@ -334,7 +334,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
 
           if (!_canSwipe(cm, staff, myId)) {
             return Padding(
-              padding: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.only(bottom: AppSpace.md),
               child: card(false),
             );
           }
@@ -389,7 +389,7 @@ class _OverviewStrip extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
           child: Row(
             children: [
               Expanded(
@@ -406,7 +406,7 @@ class _OverviewStrip extends StatelessWidget {
               if (stats.unreadAdmin > 0)
                 Container(
                   padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
                   decoration: BoxDecoration(
                     color: context.colors.danger.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20),
@@ -419,7 +419,7 @@ class _OverviewStrip extends StatelessWidget {
                         size: 14,
                         color: context.colors.danger,
                       ),
-                      const SizedBox(width: 5),
+                      const SizedBox(width: AppSpace.xxs),
                       Text(
                         'complaints_new_n'.tr
                             .replaceAll('{n}', '${stats.unreadAdmin}'),
@@ -440,7 +440,7 @@ class _OverviewStrip extends StatelessWidget {
           height: 130,
           child: ListView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xs),
             children: [
               _Kpi(
                 icon: Icons.inbox_rounded,
@@ -522,8 +522,8 @@ class _Kpi extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         width: 150,
-        margin: const EdgeInsetsDirectional.only(end: 10),
-        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsetsDirectional.only(end: AppSpace.sm),
+        padding: const EdgeInsets.all(AppSpace.sm),
         decoration: BoxDecoration(
           color: selected ? color.withValues(alpha: 0.10) : c.cardBg,
           borderRadius: BorderRadius.circular(18),
@@ -540,14 +540,14 @@ class _Kpi extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(6),
+                  padding: const EdgeInsets.all(AppSpace.xs),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(icon, size: 16, color: color),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
                 Expanded(
                   child: Text(
                     title,
@@ -609,9 +609,9 @@ class _SwipeHint extends StatelessWidget {
         ? 'complaint_swipe_hint_left'.tr
         : 'complaint_swipe_hint_right'.tr;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
         decoration: BoxDecoration(
           color: c.primaryWash,
           borderRadius: BorderRadius.circular(14),
@@ -620,7 +620,7 @@ class _SwipeHint extends StatelessWidget {
         child: Row(
           children: [
             Icon(Icons.swipe_rounded, color: c.primary, size: 20),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpace.sm),
             Expanded(child: Text(text, style: c.caption)),
           ],
         ),
@@ -696,7 +696,7 @@ class _FilterRow extends StatelessWidget {
           onTap: onTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
             decoration: BoxDecoration(
               color: selected ? color : Colors.transparent,
               borderRadius: BorderRadius.circular(14),
@@ -714,10 +714,10 @@ class _FilterRow extends StatelessWidget {
                   ),
                 ),
                 if (badge > 0) ...[
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpace.xs),
                   Container(
                     padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 1),
                     decoration: BoxDecoration(
                       color: selected ? context.colors.onHero : color,
                       borderRadius: BorderRadius.circular(10),
@@ -740,7 +740,7 @@ class _FilterRow extends StatelessWidget {
     final category = provider.categoryFilter;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xxs),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -753,7 +753,7 @@ class _FilterRow extends StatelessWidget {
                   icon: Icons.search_rounded,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -767,7 +767,7 @@ class _FilterRow extends StatelessWidget {
                       top: -2,
                       end: -2,
                       child: Container(
-                        padding: const EdgeInsets.all(5),
+                        padding: const EdgeInsets.all(AppSpace.xxs),
                         decoration: BoxDecoration(
                           color: context.colors.danger,
                           shape: BoxShape.circle,
@@ -786,10 +786,10 @@ class _FilterRow extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           // status — segmented pill (same look as the finance tabs)
           Container(
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.all(AppSpace.xxs),
             decoration: BoxDecoration(
               color: c.inputBg,
               borderRadius: BorderRadius.circular(18),
@@ -819,7 +819,7 @@ class _FilterRow extends StatelessWidget {
           ),
           // removable active filters
           if (active) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             Wrap(
               spacing: 6,
               runSpacing: 6,
@@ -864,7 +864,7 @@ class _ActiveChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsetsDirectional.fromSTEB(12, 5, 6, 5),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xxs, AppSpace.xs, AppSpace.xxs),
       decoration: BoxDecoration(
         color: c.primary.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(20),
@@ -886,7 +886,7 @@ class _ActiveChip extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: AppSpace.xxs),
           GestureDetector(
             onTap: onRemove,
             child: Icon(Icons.close_rounded, size: 16, color: c.primary),
@@ -917,8 +917,8 @@ class _FilterChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsetsDirectional.only(end: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        margin: const EdgeInsetsDirectional.only(end: AppSpace.xs),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
         decoration: BoxDecoration(
           color: selected ? accent.withValues(alpha: 0.14) : c.cardBg,
           borderRadius: BorderRadius.circular(20),
@@ -1027,7 +1027,7 @@ class _ComplaintCard extends StatelessWidget {
                       size: 22,
                     ),
                   ),
-                const SizedBox(width: 10),
+                const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1059,7 +1059,7 @@ class _ComplaintCard extends StatelessWidget {
                       label: _statusTxt(cm.status),
                       color: statusColor,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpace.xxs),
                     Text(
                       _agoTxt(cm.updatedAt),
                       style: c.caption.copyWith(fontSize: 11),
@@ -1079,7 +1079,7 @@ class _ComplaintCard extends StatelessWidget {
                             value: st,
                             child: Row(children: [
                               Icon(Icons.circle, size: 10, color: _statusClr(context.colors, st)),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: AppSpace.xs),
                               Text(_statusTxt(st)),
                             ]),
                           ),
@@ -1087,7 +1087,7 @@ class _ComplaintCard extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
 
             // ── title + unread dot ──────────────────────────────────────
             Row(
@@ -1097,7 +1097,7 @@ class _ComplaintCard extends StatelessWidget {
                   Container(
                     width: 9,
                     height: 9,
-                    margin: const EdgeInsetsDirectional.only(end: 8, top: 5),
+                    margin: const EdgeInsetsDirectional.only(end: AppSpace.xs, top: AppSpace.xxs),
                     decoration: BoxDecoration(
                       color: c.primary,
                       shape: BoxShape.circle,
@@ -1116,14 +1116,14 @@ class _ComplaintCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.xs),
             Text(
               cm.description,
               style: c.caption.copyWith(height: 1.5),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
 
             // ── priority · category · counters ──────────────────────────
             Wrap(
@@ -1167,7 +1167,7 @@ class _ComplaintCard extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpace.md),
             _Journey(status: cm.status),
           ],
         ),
@@ -1209,7 +1209,7 @@ class _Journey extends StatelessWidget {
               border: i == at ? Border.all(color: tone.withValues(alpha: 0.25), width: 3) : null,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpace.xxs),
           Text(_statusTxt(steps[i]),
               style: c.caption.copyWith(fontSize: 10, fontWeight: i == at ? FontWeight.w800 : FontWeight.w500,
                   color: i <= at ? c.textDark : c.textLight)),
@@ -1218,7 +1218,7 @@ class _Journey extends StatelessWidget {
           Expanded(
             child: Container(
               height: 2,
-              margin: const EdgeInsets.only(bottom: 16),
+              margin: const EdgeInsets.only(bottom: AppSpace.md),
               color: i < at ? tone : c.divider,
             ),
           ),
@@ -1257,12 +1257,12 @@ class _EmptyState extends StatelessWidget {
               color: context.colors.onHero,
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AppSpace.md),
           Text(
             filtered ? 'admin_nothing_here_yet'.tr : 'no_complaints_yet'.tr,
             style: c.h2.copyWith(fontSize: 16),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           if (!filtered)
             Text(
               'complaints_empty_hint'.tr,
@@ -1902,7 +1902,7 @@ class _ReplyInput extends StatelessWidget {
       context: context,
       builder: (_) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
