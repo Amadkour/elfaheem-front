@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'data_lab_models.dart';
 import 'data_lab_saver_io.dart' if (dart.library.html) 'data_lab_saver_web.dart' as saver;
@@ -111,7 +112,7 @@ class DataLabApi {
     try {
       bytes = await file.readAsBytes(); // file_picker ≥ 12: no `bytes` field / withData flag any more
     } catch (_) {
-      throw const ApiException(statusCode: 0, message: 'The file could not be read');
+      throw ApiException(statusCode: 0, message: AppConfig.lang == 'ar' ? 'تعذّرت قراءة الملف' : 'The file could not be read');
     }
     return DlImportPreview.fromJson(dlMap(await _api.postMultipart(
       '$_b/courses/$courseId/import/preview',

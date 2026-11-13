@@ -239,7 +239,7 @@ class _LivePill extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Text(
-            'LIVE',
+            t('مباشر', 'LIVE'),
             textScaler: TextScaler.noScaling,
             style: TextStyle(
               fontFamily: AppFonts.family,

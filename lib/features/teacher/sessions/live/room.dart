@@ -44,7 +44,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../admin/admin_common.dart';
 import '../components/exts.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show appConfirm;
+import 'package:flutter_education_app/design/app_kit.dart' show appConfirm, AppBorder, AppIconSize, AppRadius;
 import 'package:flutter_education_app/core/app_time.dart';
 import 'widgets/controls.dart';
 import 'widgets/live_chat.dart';
@@ -3253,7 +3253,11 @@ class _RoomPageState extends State<RoomPage>
                               Positioned(
                                 bottom: 14 + _boardDockClearance,
                                 right: 14, // the self-view keeps clear of the bottom row (D-092)
-                                child: GestureDetector(
+                                child: Semantics(
+                                  button: true,
+                                  label: '${'lr_participants_title'.tr} · $_peopleCount',
+                                  excludeSemantics: true,
+                                  child: GestureDetector(
                                   onTap: _toggleParticipantPanel,
                                   child: _GlassBadge(
                                     icon: Icons.people_rounded,
@@ -3261,6 +3265,7 @@ class _RoomPageState extends State<RoomPage>
                                     '$_peopleCount',
                                     color: _showParticipants ? _cyan : null,
                                   ),
+                                ),
                                 ),
                               ),
 
@@ -5650,26 +5655,32 @@ class _RoomPageState extends State<RoomPage>
                     (s) => liveIdentityIsStudent(p.identity, p.name, studentId: s.id, studentName: s.name)))
             .toList();
 
+    // the panel lives on the END side: right in English, left in Arabic (it was pinned right in both)
+    final rtl = Directionality.of(context) == TextDirection.rtl;
     return Positioned.fill(
-      child: GestureDetector(
-        onTap: _toggleParticipantPanel,
-        child: Container(color: LivePalette.shade(0.45)),
+      child: Semantics(
+        button: true,
+        label: 'lr_close'.tr,
+        child: GestureDetector(
+          onTap: _toggleParticipantPanel,
+          child: Container(color: LivePalette.shade(0.45)),
+        ),
       ),
     ).withChild(
-      Positioned(
+      PositionedDirectional(
         top: 0,
         bottom: 0,
-        right: 0,
+        end: 0,
         width: 300,
         child: SlideTransition(
           position: Tween<Offset>(
-            begin: const Offset(1, 0),
+            begin: Offset(rtl ? -1 : 1, 0),
             end: Offset.zero,
           ).animate(_panelSlide),
           child: Container(
             decoration: BoxDecoration(
               color: _surfaceHi,
-              border: Border(left: BorderSide(color: _glassBdr, width: 1)),
+              border: BorderDirectional(start: BorderSide(color: _glassBdr, width: AppBorder.hairline)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -5685,7 +5696,7 @@ class _RoomPageState extends State<RoomPage>
                       Icon(Icons.people_rounded, color: _cyan, size: 18),
                       const SizedBox(width: 8),
                       Text(
-                        'Participants',
+                        'lr_participants_title'.tr,
                         style: TextStyle(
                           fontFamily: AppFonts.family,
                           color: _textHigh,
@@ -5721,21 +5732,15 @@ class _RoomPageState extends State<RoomPage>
                                 icon: Icon(Icons.mic_off_rounded, size: 18, color: LivePalette.warning),
                               ),
                       const SizedBox(width: 4),
-                      GestureDetector(
-                        onTap: _toggleParticipantPanel,
-                        child: Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            color: _glass10,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.close_rounded,
-                            size: 16,
-                            color: _textMid,
-                          ),
+                      IconButton(
+                        key: const ValueKey('live_room.people_close'),
+                        tooltip: 'lr_close'.tr,
+                        onPressed: _toggleParticipantPanel,
+                        style: IconButton.styleFrom(
+                          backgroundColor: _glass10,
+                          shape: RoundedRectangleBorder(borderRadius: AppRadius.chipAll),
                         ),
+                        icon: const Icon(Icons.close_rounded, size: AppIconSize.sm, color: _textMid),
                       ),
                     ],
                   ),
@@ -5747,7 +5752,7 @@ class _RoomPageState extends State<RoomPage>
 
                 // Teacher row
                 _ParticipantRow(
-                  name: widget.room.localParticipant?.name ?? 'You',
+                  name: widget.room.localParticipant?.name ?? 'lr_you'.tr,
                   isOnline: true,
                   isTeacher: true,
                   isAttended: true,
@@ -6221,7 +6226,7 @@ class _RoomPageState extends State<RoomPage>
                           ),
                           SizedBox(width: 6),
                           Text(
-                            'Back',
+                            'lr_go_back'.tr,
                             style: TextStyle(
                               fontFamily: AppFonts.family,
                               color: _textMid,
@@ -6263,7 +6268,7 @@ class _RoomPageState extends State<RoomPage>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          isLast ? 'Submit' : 'Next',
+                          isLast ? 'lr_quiz_submit'.tr : 'next_question'.tr,
                           style: const TextStyle(
                             color: _textHigh,
                             fontWeight: FontWeight.w700,
@@ -7034,7 +7039,7 @@ class _ScreenShareLiveBadge extends StatelessWidget {
         Icon(Icons.screen_share_rounded, size: 13, color: LivePalette.textHigh),
         SizedBox(width: 6),
         Text(
-          'SCREEN',
+          'lr_screen_badge'.tr,
           style: TextStyle(
             fontFamily: AppFonts.family,
             fontSize: 10,
@@ -7231,7 +7236,7 @@ class _ScreenShareLoadingPlaceholder extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'Connecting…',
+          'lr_connecting'.tr,
           style: TextStyle(
             fontFamily: AppFonts.family,
             color: _cyan.withValues(alpha: 0.6),
@@ -7960,7 +7965,7 @@ class _SessionEndedDialog extends StatelessWidget {
                 ],
               ),
               child: Text(
-                'OK',
+                'btn_ok'.tr,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: AppFonts.family,
