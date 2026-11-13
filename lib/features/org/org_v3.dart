@@ -11,6 +11,7 @@
 library;
 
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/api_error_text.dart' show featureDisabledText;
 
 import '../admin/admin_common.dart';
 import 'advising/adv_texts.dart' show advCodeTexts;
@@ -351,6 +352,10 @@ String orgErrorText(ApiException e) {
   if (c == 'generation_blocked') {        // schedule_auto.preconditions: the exact reasons, in the user's language
     final rs = asMapList(asMap(ApiException.asMap(e.body)?['detail'])['reasons']);
     if (rs.isNotEmpty) return rs.map((r) => t('${r['text_ar']}', '${r['text_en']}')).join(' · ');
+  }
+  if (c == 'feature_disabled') {            // a kill switch the server names: the AI controls by name (D-781)
+    final f = asStr(asMap(ApiException.asMap(e.body)?['detail'])['feature']);
+    if (f.isNotEmpty) return featureDisabledText(f);
   }
   if (c != null) {
     final txt = _codeTexts()[c] ?? govCodeTexts()[c] ?? advCodeTexts()[c];   // governance (D-057) · advising codes
