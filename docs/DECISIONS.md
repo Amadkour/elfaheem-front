@@ -4732,7 +4732,9 @@ note or name was cut in the middle of a word with no ellipsis, in PDF and Word a
 **Decision.** A table with no fixed `row_height` measures each row (`pdf.table_row_measure`, the PDF's own font
 metrics): the longest wrapping value sets the height, up to `flow.AUTO_ROW_LINES` (3), and a longer value ends with
 "…". The block heights stay known before drawing (the page count still works); Word and Excel use the same measure,
-so the three files agree row by row. A design that sets `row_height` is drawn exactly as before.
+so the three files agree row by row. The column header of such a table takes two lines when a label needs them
+("تاريخ التسجيل" in a narrow column printed "تاريخ"). A design that sets `row_height` is drawn exactly as before.
+File names in the app (`exportLtr`) isolate each run of digits as well: after Arabic letters a date read 14-11-2026.
 
 ## D-923 — Excel exports get an AutoFilter · 2026-11-14 · accepted
 

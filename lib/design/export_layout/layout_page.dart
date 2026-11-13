@@ -309,7 +309,8 @@ class _ExportLayoutPageState extends State<ExportLayoutPage> {
               key: const ValueKey('layout-customize'),
               onPressed: _ready && !f.busy ? f.next : null,
               icon: const Icon(Icons.tune_rounded),
-              label: Text(t('تخصيص التصميم', 'Customize design'), maxLines: 1, overflow: TextOverflow.ellipsis),
+              // a phone has a third button (Preview) beside it: the short label, never "تخصيص …"
+              label: Text(pane || MediaQuery.sizeOf(context).width >= 600 ? t('تخصيص التصميم', 'Customize design') : t('تخصيص', 'Customize'), maxLines: 1, overflow: TextOverflow.ellipsis),
               style: OutlinedButton.styleFrom(minimumSize: minBtn),
             )),
             if (!pane) ...[
