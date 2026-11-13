@@ -103,7 +103,9 @@ abstract class StudioSource {
 
   /// The autosaved work on this source (null: none).
   Future<Map<String, dynamic>?> loadProject(int sourceId);
-  Future<void> saveProject(int sourceId, Map<String, dynamic>? doc);
+  /// [base]: the `rev` of the saved doc this one was made from: a server that holds a newer one answers 409
+  /// `project_conflict` with it (D-826). Null: overwrite.
+  Future<void> saveProject(int sourceId, Map<String, dynamic>? doc, {int? base});
 
   /// The project a finished job was rendered from (null: it was not a project).
   Future<Map<String, dynamic>?> jobProject(int jobId);
@@ -176,7 +178,8 @@ class RecordStudioSource with StudioAssetCalls implements StudioSource {
   }
 
   @override
-  Future<void> saveProject(int sourceId, Map<String, dynamic>? doc) async => _client.put('$_base/$sourceId/project', body: {'doc': doc});
+  Future<void> saveProject(int sourceId, Map<String, dynamic>? doc, {int? base}) async =>
+      _client.put('$_base/$sourceId/project', body: {'doc': doc, 'base': ?base});
 
   @override
   Future<Map<String, dynamic>?> jobProject(int jobId) async {

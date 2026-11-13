@@ -777,6 +777,8 @@ IconData studioStepIcon(StudioStepKind k) => switch (k) {
       StudioStepKind.overlayRemove => Icons.delete_outline_rounded,
       StudioStepKind.quality => Icons.high_quality_rounded,
       StudioStepKind.reset => Icons.restart_alt_rounded,
+      StudioStepKind.moveClip => Icons.swap_calls_rounded,
+      StudioStepKind.restore => Icons.settings_backup_restore_rounded,
     };
 
 class StudioHistoryPanel extends StatelessWidget {

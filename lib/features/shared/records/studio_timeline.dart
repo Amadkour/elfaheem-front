@@ -1,8 +1,10 @@
 // lib/features/shared/records/studio_timeline.dart — the Studio's timeline (D-590 / D-591): plain values in, gestures
 // out, so test/ui/studio_timeline_test.dart drives it without a player.
 //
-//   Lanes        ruler (time, the in / out marks) · the clips (each clip's own frames from the server's sprite, its
-//                waveform, its speed) · the text and picture lanes (overlays packed in rows)
+//   Tracks       ruler (time, the in / out marks) · Video (each clip's own frames from the server's sprite, its speed) ·
+//                Text · Pictures (overlays packed in rows, one track each) · Audio (each clip's waveform). A labelled
+//                header column sits on the left of the tracks (D-821); the Audio track grips the clips like Video.
+//   Reorder      drag a SELECTED part's body to play it elsewhere (an insertion bar shows where, D-823)
 //   Time         OUTPUT time, left → right in every language (D-597: like every editor and the player's own bar)
 //   The playhead a line across every lane with a cap on the ruler; dragged from the ruler (or anywhere on the clips) it
 //                scrubs at once (`onScrub` on every move: the page shows that very frame)
@@ -29,24 +31,55 @@ import 'records_studio_parts.dart' show StudioBay, studioRulerStep;
 import 'studio_project.dart';
 
 /// What the finger holds.
-enum StudioGrip { head, clipStart, clipEnd, overlay, overlayStart, overlayEnd, markIn, markOut }
+enum StudioGrip { head, clipStart, clipEnd, clipMove, overlay, overlayStart, overlayEnd, markIn, markOut }
 
 /// The heights of the lanes.
 abstract final class StudioLanes {
   static const ruler = 26.0;
-  static const clips = 64.0;
+  static const clips = 58.0;
   static const row = 28.0;
   static const gap = 6.0;
+  static const audio = 32.0;
   static const pad = 18.0; // both ends: a grip at 0:00 or at the end is still on screen
 
-  static double height(int rows) => ruler + clips + gap + math.max(1, rows) * row + gap;
+  /// The header column on the left of the tracks: icons on phones, icon + word on wide windows.
+  static const headerNarrow = 34.0;
+  static const headerWide = 92.0;
+
+  static double height(int textRows, [int imageRows = 1, bool overlays = true]) =>
+      StudioTracks(textRows: textRows, imageRows: imageRows, overlays: overlays).height;
 }
 
-/// The overlays packed in rows: each row holds ones that don't overlap in output time.
-List<List<(StudioOverlay, double, double)>> studioOverlayRows(StudioEdit e) {
+/// Where each track sits (y, px from the top of the timeline).
+class StudioTracks {
+  const StudioTracks({required this.textRows, required this.imageRows, this.overlays = true});
+
+  /// Rows of each overlay track (at least one is drawn, empty or not).
+  final int textRows;
+  final int imageRows;
+
+  /// The Text and Pictures tracks (an audio file has none).
+  final bool overlays;
+
+  double get videoTop => StudioLanes.ruler;
+  double get videoBottom => videoTop + StudioLanes.clips;
+  double get textTop => videoBottom + StudioLanes.gap;
+  double get textBottom => overlays ? textTop + math.max(1, textRows) * StudioLanes.row : videoBottom;
+  double get imageTop => overlays ? textBottom + StudioLanes.gap : videoBottom;
+  double get imageBottom => overlays ? imageTop + math.max(1, imageRows) * StudioLanes.row : videoBottom;
+  double get audioTop => imageBottom + StudioLanes.gap;
+  double get audioBottom => audioTop + StudioLanes.audio;
+  double get height => audioBottom + StudioLanes.gap;
+
+  bool inClips(double y) => (y >= videoTop - 4 && y <= videoBottom + 3) || (y >= audioTop - 3 && y <= audioBottom + 3);
+}
+
+/// The overlays packed in rows: each row holds ones that don't overlap in output time ([kind]: that track only).
+List<List<(StudioOverlay, double, double)>> studioOverlayRows(StudioEdit e, {StudioOverlayKind? kind}) {
   final spans = <(StudioOverlay, double, double)>[
     for (final o in e.overlays)
-      if (e.overlayOut(o) case final s?) (o, s.$1, s.$2),
+      if (kind == null || o.kind == kind)
+        if (e.overlayOut(o) case final s?) (o, s.$1, s.$2),
   ]..sort((a, b) => a.$2.compareTo(b.$2));
   final rows = <List<(StudioOverlay, double, double)>>[];
   for (final s in spans) {
@@ -98,9 +131,17 @@ class StudioTimelineView extends StatefulWidget {
     this.onOverlaySpan,
     this.onOverlaySpanEnd,
     this.onMarks,
+    this.onMoveClip,
+    this.overlays = true,
   });
 
   final StudioEdit edit;
+
+  /// The Text and Pictures tracks (off for an audio file).
+  final bool overlays;
+
+  /// A selected part dragged to another place: from, to (0-based, D-823).
+  final void Function(int from, int to)? onMoveClip;
 
   /// The playhead (output seconds).
   final double position;
@@ -214,10 +255,25 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
 
   // ── hit testing ──
 
-  List<List<(StudioOverlay, double, double)>> get _rows => studioOverlayRows(widget.edit);
+  List<List<(StudioOverlay, double, double)>> get _textRows => studioOverlayRows(widget.edit, kind: StudioOverlayKind.text);
+  List<List<(StudioOverlay, double, double)>> get _imageRows => studioOverlayRows(widget.edit, kind: StudioOverlayKind.image);
+  StudioTracks get _tracks => StudioTracks(textRows: _textRows.length, imageRows: _imageRows.length, overlays: widget.overlays);
 
-  double get _clipsTop => StudioLanes.ruler;
-  double get _rowsTop => StudioLanes.ruler + StudioLanes.clips + StudioLanes.gap;
+  // a reorder in progress: the pointer's x and where the part would go
+  double? _moveX;
+  int? _moveTo;
+
+  /// Where a part dragged to [x] would be played (0-based among the others).
+  int _insertAt(double x, int from) {
+    final e = widget.edit;
+    var to = 0;
+    for (var i = 0; i < e.clips.length; i++) {
+      if (i == from) continue;
+      final mid = _x(e.clipStart(i) + e.clips[i].length / 2);
+      if (x > mid) to++;
+    }
+    return to;
+  }
 
   ({StudioGrip grip, int? clip, String? overlay})? _hit(Offset p) {
     final w = widget;
@@ -229,19 +285,32 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
       if (w.markOut != null && (_x(w.markOut!) - p.dx).abs() <= 14) return (grip: StudioGrip.markOut, clip: null, overlay: null);
       return (grip: StudioGrip.head, clip: null, overlay: null);
     }
-    // the selected clip's edges
+    final tr = _tracks;
+    // the selected clip's edges (on the Video or the Audio track), and its body (drag to reorder)
     final sc = w.selectedClip;
-    if (sc != null && sc < e.clips.length && p.dy >= _clipsTop - 4 && p.dy <= _clipsTop + StudioLanes.clips + 4) {
+    if (sc != null && sc < e.clips.length && tr.inClips(p.dy)) {
       final a = _x(e.clipStart(sc)), b = _x(e.clipStart(sc) + e.clips[sc].length);
       final da = (p.dx - a).abs(), db = (p.dx - b).abs();
       // inside the clip the edge wins only within its grip; outside, up to the 48 px target
       if (da <= grab && (p.dx <= a + 16 || da <= db)) return (grip: StudioGrip.clipStart, clip: sc, overlay: null);
       if (db <= grab && p.dx >= b - 16) return (grip: StudioGrip.clipEnd, clip: sc, overlay: null);
+      if (e.clips.length > 1 && w.onMoveClip != null && p.dx > a && p.dx < b) return (grip: StudioGrip.clipMove, clip: sc, overlay: null);
     }
-    // overlay lanes
-    if (p.dy >= _rowsTop) {
-      final r = ((p.dy - _rowsTop) / StudioLanes.row).floor();
-      final rows = _rows;
+    // the overlay tracks
+    final List<List<(StudioOverlay, double, double)>>? rows;
+    final double rowsTop;
+    if (w.overlays && p.dy >= tr.textTop && p.dy < tr.textBottom) {
+      rows = _textRows;
+      rowsTop = tr.textTop;
+    } else if (w.overlays && p.dy >= tr.imageTop && p.dy < tr.imageBottom) {
+      rows = _imageRows;
+      rowsTop = tr.imageTop;
+    } else {
+      rows = null;
+      rowsTop = 0;
+    }
+    if (rows != null) {
+      final r = ((p.dy - rowsTop) / StudioLanes.row).floor();
       if (r >= 0 && r < rows.length) {
         for (final (o, a, b) in rows[r]) {
           final xa = _x(a), xb = _x(b);
@@ -330,6 +399,8 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
         _gripA = w.edit.clips[hit.clip!].start;
       case StudioGrip.clipEnd:
         _gripA = w.edit.clips[hit.clip!].end;
+      case StudioGrip.clipMove:
+        _gripA = 0;
       case StudioGrip.overlay:
       case StudioGrip.overlayStart:
       case StudioGrip.overlayEnd:
@@ -388,6 +459,9 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
         final src = (c.start + (outEdge - w.edit.clipStart(i)) * c.speed).clamp(lo, hi);
         _liveA = src;
         w.onTrim?.call(i, false, src);
+      case StudioGrip.clipMove:
+        _moveX = e.localPosition.dx;
+        _moveTo = _insertAt(e.localPosition.dx, _gripClip!);
       case StudioGrip.overlay:
         final len = _gripB - _gripA;
         var a = (_gripA + dt).clamp(0.0, math.max(0.0, _dur - len)).toDouble();
@@ -445,8 +519,12 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
       // a tap
       switch (g) {
         case StudioGrip.head:
-          final ci = e.localPosition.dy >= _clipsTop && e.localPosition.dy <= _clipsTop + StudioLanes.clips ? _clipAt(_downTime) : null;
-          if (e.localPosition.dy >= _clipsTop) w.onSelectClip?.call(ci);
+          final tr = _tracks;
+          final ci = tr.inClips(e.localPosition.dy) ? _clipAt(_downTime) : null;
+          if (e.localPosition.dy >= tr.videoTop) w.onSelectClip?.call(ci);
+        case StudioGrip.clipMove:
+          // a tap on the selected part: the playhead goes there, the part stays selected
+          w.onScrub?.call(_downTime);
         case StudioGrip.overlay:
         case StudioGrip.overlayStart:
         case StudioGrip.overlayEnd:
@@ -462,6 +540,9 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
         case StudioGrip.clipStart:
         case StudioGrip.clipEnd:
           w.onTrimEnd?.call(_gripClip!, g == StudioGrip.clipStart, _liveA);
+        case StudioGrip.clipMove:
+          final to = _moveTo;
+          if (to != null && to != _gripClip) w.onMoveClip?.call(_gripClip!, to);
         case StudioGrip.overlay:
         case StudioGrip.overlayStart:
         case StudioGrip.overlayEnd:
@@ -487,6 +568,8 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
       _snapAt = null;
       _scrubbing = false;
       _moved = false;
+      _moveX = null;
+      _moveTo = null;
     });
   }
 
@@ -516,7 +599,7 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
   MouseCursor get _cursor => switch (_grip ?? _hover) {
         StudioGrip.clipStart || StudioGrip.clipEnd || StudioGrip.overlayStart || StudioGrip.overlayEnd || StudioGrip.markIn || StudioGrip.markOut =>
           SystemMouseCursors.resizeLeftRight,
-        StudioGrip.overlay => _grip == null ? SystemMouseCursors.grab : SystemMouseCursors.grabbing,
+        StudioGrip.overlay || StudioGrip.clipMove => _grip == null ? SystemMouseCursors.grab : SystemMouseCursors.grabbing,
         _ => SystemMouseCursors.precise,
       };
 
@@ -533,13 +616,28 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
   @override
   Widget build(BuildContext context) {
     final bay = StudioBay.of(context);
-    final w = widget;
-    final rows = _rows;
-    final h = StudioLanes.height(rows.length);
+    final textRows = _textRows, imageRows = _imageRows;
+    final tracks = _tracks;
+    final h = tracks.height;
     return Directionality(
-      // time runs left → right in every language (D-597)
+      // time runs left → right in every language (D-597, D-822): the headers on the left, as in every editor
       textDirection: TextDirection.ltr,
-      child: LayoutBuilder(builder: (context, box) {
+      child: LayoutBuilder(builder: (context, outer) {
+        final wideHead = outer.maxWidth >= 720;
+        final headW = wideHead ? StudioLanes.headerWide : StudioLanes.headerNarrow;
+        return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(width: headW, height: h, child: StudioTrackHeaders(tracks: tracks, wide: wideHead)),
+          Expanded(child: LayoutBuilder(builder: (context, box) => _canvas(context, box, bay, tracks, textRows, imageRows, h))),
+        ]);
+      }),
+    );
+  }
+
+  Widget _canvas(BuildContext context, BoxConstraints box, StudioBay bay, StudioTracks tracks, List<List<(StudioOverlay, double, double)>> textRows,
+      List<List<(StudioOverlay, double, double)>> imageRows, double h) {
+    final w = widget;
+    {
+      {
         _viewport = box.maxWidth.isFinite ? box.maxWidth : 600;
         _offset = _offset.clamp(0.0, _maxOffset);
         // a clip-start drag keeps the clip's END where it was on screen: the drawn edit shifts by what the start moved
@@ -576,9 +674,12 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
                       edit: _shown,
                       shift: shift,
                       shiftClip: _grip == StudioGrip.clipStart ? _gripClip : null,
-                      rows: _grip == StudioGrip.overlay || _grip == StudioGrip.overlayStart || _grip == StudioGrip.overlayEnd
-                          ? _liveRows(rows)
-                          : rows,
+                      tracks: tracks,
+                      textRows: _overlayDrag ? _liveRows(textRows) : textRows,
+                      imageRows: _overlayDrag ? _liveRows(imageRows) : imageRows,
+                      moving: _grip == StudioGrip.clipMove && _moved ? _gripClip : null,
+                      moveX: _moveX,
+                      moveTo: _moveTo,
                       position: w.position,
                       markIn: w.markIn,
                       markOut: w.markOut,
@@ -602,9 +703,11 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
             ),
           ),
         );
-      }),
-    );
+      }
+    }
   }
+
+  bool get _overlayDrag => _grip == StudioGrip.overlay || _grip == StudioGrip.overlayStart || _grip == StudioGrip.overlayEnd;
 
   List<List<(StudioOverlay, double, double)>> _liveRows(List<List<(StudioOverlay, double, double)>> rows) {
     if (_liveA == null || _liveB == null) return rows;
@@ -634,6 +737,8 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
       case StudioGrip.markIn:
       case StudioGrip.markOut:
         return _liveA == null ? null : (_liveA!, studioTimecode(_liveA!));
+      case StudioGrip.clipMove:
+        return null;
       case null:
         return null;
     }
@@ -645,7 +750,12 @@ class _TimelinePainter extends CustomPainter {
     required this.edit,
     required this.shift,
     required this.shiftClip,
-    required this.rows,
+    required this.tracks,
+    required this.textRows,
+    required this.imageRows,
+    required this.moving,
+    required this.moveX,
+    required this.moveTo,
     required this.position,
     required this.markIn,
     required this.markOut,
@@ -667,7 +777,14 @@ class _TimelinePainter extends CustomPainter {
   final StudioEdit edit;
   final double shift;
   final int? shiftClip;
-  final List<List<(StudioOverlay, double, double)>> rows;
+  final StudioTracks tracks;
+  final List<List<(StudioOverlay, double, double)>> textRows;
+  final List<List<(StudioOverlay, double, double)>> imageRows;
+
+  /// A part being dragged to another place: its index, the pointer's x and the place it would take.
+  final int? moving;
+  final double? moveX;
+  final int? moveTo;
   final double position;
   final double? markIn, markOut;
   final int? selectedClip;
@@ -694,8 +811,7 @@ class _TimelinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final dur = edit.duration;
-    final clipsTop = StudioLanes.ruler, clipsBottom = StudioLanes.ruler + StudioLanes.clips;
-    final rowsTop = clipsBottom + StudioLanes.gap;
+    final clipsTop = tracks.videoTop;
     // ── ruler ──
     if (dur > 0) {
       final step = studioRulerStep(pps, minGap: 76);
@@ -732,11 +848,14 @@ class _TimelinePainter extends CustomPainter {
         canvas.drawPath(path, flag);
       }
     }
-    // ── clips ──
-    final lane = RRect.fromRectAndRadius(Rect.fromLTRB(_x(0) - 2, clipsTop, _x(dur) + 2, clipsBottom), const Radius.circular(8));
-    canvas.drawRRect(lane, Paint()..color = bay.floor);
+    // ── clips: the Video track (frames) and the Audio track (waveform), the same parts on both ──
+    final vTop = tracks.videoTop, vBottom = tracks.videoBottom, aTop = tracks.audioTop, aBottom = tracks.audioBottom;
+    for (final (top, bottom) in [(vTop, vBottom), (aTop, aBottom)]) {
+      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTRB(_x(0) - 2, top, _x(dur) + 2, bottom), const Radius.circular(8)), Paint()..color = bay.floor);
+    }
     var s0 = 0.0;
     Rect? selRect;
+    Rect? selAudio;
     for (var i = 0; i < edit.clips.length; i++) {
       final c = edit.clips[i];
       // a clip-start drag: that clip and the ones after it are drawn [shift] px later, so its end stays put and its
@@ -745,110 +864,76 @@ class _TimelinePainter extends CustomPainter {
       final a = _x(s0) + sh, b = _x(s0 + c.length) + sh;
       s0 += c.length;
       if (b < -4 || a > size.width + 4) continue;
-      final r = Rect.fromLTRB(a + 1, clipsTop + 1, b - 1, clipsBottom - 1);
-      final rr = RRect.fromRectAndRadius(r, const Radius.circular(7));
-      canvas.save();
-      canvas.clipRRect(rr);
-      canvas.drawRect(r, Paint()..color = bay.raised);
-      final img = sprite;
-      final thumbH = StudioLanes.clips - 16;
-      if (img != null && spriteCount > 0 && sourceDuration > 0) {
-        final tw = img.width / spriteCount, th = img.height.toDouble();
-        final cell = thumbH * tw / th;
-        final from = math.max(r.left, 0.0), to = math.min(r.right, size.width);
-        var x = r.left + ((from - r.left) / cell).floor() * cell;
-        for (; x < to; x += cell) {
-          final mid = x + cell / 2;
-          final src = c.start + ((mid - r.left) / pps).clamp(0.0, c.length) * c.speed;
-          final k = (src / sourceDuration * spriteCount).floor().clamp(0, spriteCount - 1);
-          canvas.drawImageRect(img, Rect.fromLTWH(k * tw, 0, tw, th), Rect.fromLTWH(x, r.top, cell, thumbH),
-              Paint()..filterQuality = FilterQuality.medium);
-        }
-      } else {
-        final p = Paint()
-          ..color = bay.line
-          ..strokeWidth = 1;
-        for (var x = r.left + 60; x < r.right; x += 60) {
-          canvas.drawLine(Offset(x, r.top), Offset(x, r.top + thumbH), p);
-        }
-        if (pending) canvas.drawRect(Rect.fromLTRB(r.left, r.top, r.right, r.top + thumbH), Paint()..color = bay.c.onHero.withValues(alpha: 0.04));
-      }
-      // the waveform strip under the frames
-      final wave = waveform;
-      final wy = r.top + thumbH, wh = r.bottom - wy;
-      canvas.drawRect(Rect.fromLTRB(r.left, wy, r.right, r.bottom), Paint()..color = bay.deck.withValues(alpha: 0.85));
-      if (wave != null && wave.isNotEmpty && sourceDuration > 0) {
-        final bar = Paint()..color = bay.accent.withValues(alpha: 0.75);
-        final from = math.max(r.left, 0.0), to = math.min(r.right, size.width);
-        for (var x = from; x < to; x += 2) {
-          final src = c.start + ((x - r.left) / pps).clamp(0.0, c.length) * c.speed;
-          final k = (src / sourceDuration * wave.length).floor().clamp(0, wave.length - 1);
-          final v = wave[k] / 255 * (wh - 2);
-          canvas.drawRect(Rect.fromLTWH(x, wy + (wh - v) / 2, 1.2, math.max(0.8, v)), bar);
-        }
-      }
-      canvas.restore();
+      final lifted = moving == i;
+      final r = Rect.fromLTRB(a + 1, vTop + 1, b - 1, vBottom - 1);
+      final ra = Rect.fromLTRB(a + 1, aTop + 1, b - 1, aBottom - 1);
+      _clipFrames(canvas, size, r, c);
+      _clipWave(canvas, size, ra, c);
       final sel = selectedClip == i;
-      canvas.drawRRect(
-          rr,
-          Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = sel ? 2.4 : 1
-            ..color = sel ? bay.accent : bay.c.onHero.withValues(alpha: 0.18));
+      for (final box in [r, ra]) {
+        final rr = RRect.fromRectAndRadius(box, const Radius.circular(7));
+        if (lifted) canvas.drawRRect(rr, Paint()..color = bay.floor.withValues(alpha: 0.72));
+        canvas.drawRRect(
+            rr,
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = sel ? 2.4 : 1
+              ..color = sel ? bay.accent : bay.c.onHero.withValues(alpha: 0.18));
+      }
       if (c.speed != 1 && r.width > 34) {
         final tp = _text(speedLabel(c.speed), _font(10.5, bay.deck, w: FontWeight.w700));
         final pill = RRect.fromRectAndRadius(Rect.fromLTWH(r.left + 5, r.top + 4, tp.width + 10, tp.height + 3), const Radius.circular(8));
         canvas.drawRRect(pill, Paint()..color = bay.c.warning);
         tp.paint(canvas, Offset(pill.left + 5, pill.top + 1.5));
       }
-      if (sel) selRect = r;
+      if (sel && !lifted) {
+        selRect = r;
+        selAudio = ra;
+      }
     }
     // the joins between clips
     for (final (j, cut) in edit.cuts.indexed) {
       final x = _x(cut) + (shiftClip != null && j + 1 >= shiftClip! ? shift : 0.0);
       if (x < -2 || x > size.width + 2) continue;
-      canvas.drawLine(Offset(x, clipsTop - 2), Offset(x, clipsBottom + 2), Paint()
-        ..color = bay.deck
-        ..strokeWidth = 3);
+      for (final (top, bottom) in [(vTop, vBottom), (aTop, aBottom)]) {
+        canvas.drawLine(Offset(x, top - 2), Offset(x, bottom + 2), Paint()
+          ..color = bay.deck
+          ..strokeWidth = 3);
+      }
     }
     if (selRect != null) _grips(canvas, selRect); // over the neighbours, so both tabs show
-    // ── overlay rows ──
-    final rowCount = math.max(1, rows.length);
-    for (var r = 0; r < rowCount; r++) {
-      final top = rowsTop + r * StudioLanes.row;
-      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTRB(_x(0) - 2, top + 2, _x(dur) + 2, top + StudioLanes.row - 2), const Radius.circular(6)),
-          Paint()..color = bay.c.onHero.withValues(alpha: 0.035));
-    }
-    if (rows.isEmpty) {
-      final tp = _text(t('النصوص والصور تظهر هنا', 'Texts and pictures show here'), _font(11, bay.faint), max: math.max(10, size.width - 40));
-      tp.paint(canvas, Offset(math.max(StudioLanes.pad + 8, _x(0) + 8), rowsTop + (StudioLanes.row - tp.height) / 2));
-    }
-    for (var r = 0; r < rows.length; r++) {
-      final top = rowsTop + r * StudioLanes.row + 3, bottom = top + StudioLanes.row - 6;
-      for (final (o, a, b) in rows[r]) {
-        final xa = _x(a), xb = _x(b);
-        if (xb < -2 || xa > size.width + 2) continue;
-        final sel = o.id == selectedOverlay;
-        final tone = o.isText ? bay.accent : bay.c.success;
-        final rr = RRect.fromRectAndRadius(Rect.fromLTRB(xa, top, math.max(xa + 6, xb), bottom), const Radius.circular(6));
-        canvas.drawRRect(rr, Paint()..color = tone.withValues(alpha: sel ? 0.95 : 0.55));
-        if (sel) {
-          canvas.drawRRect(rr, Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2
-            ..color = bay.ink);
-          for (final x in [xa + 4, xb - 4]) {
-            canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(x, (top + bottom) / 2), width: 3.5, height: 12), const Radius.circular(2)),
-                Paint()..color = bay.deck);
-          }
-        }
-        final label = o.isText ? o.name : t('صورة', 'Picture');
-        final room = xb - xa - 16;
-        if (room > 18) {
-          final tp = _text(label, _font(11, sel ? bay.deck : bay.ink, w: FontWeight.w600), max: room, dir: o.rtl ? TextDirection.rtl : TextDirection.ltr);
-          tp.paint(canvas, Offset(xa + 8, top + (bottom - top - tp.height) / 2));
-        }
+    if (selAudio != null) _grips(canvas, selAudio);
+    // ── a part being moved: the insertion bar and the part under the pointer ──
+    if (moving != null && moveX != null && moving! < edit.clips.length) {
+      final m = edit.clips[moving!];
+      // where it would land: between the others, in their current places
+      var at = 0.0;
+      var k = 0;
+      for (var i = 0; i < edit.clips.length && k < (moveTo ?? 0); i++) {
+        if (i == moving) continue;
+        at += edit.clips[i].length;
+        k++;
       }
+      // the clips before the moving one keep their place; the bar sits after [moveTo] of the others
+      final before = moving! < (moveTo ?? 0) ? at + m.length : at;
+      final ix = _x(moving! < (moveTo ?? 0) ? before : at);
+      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(ix, (vTop + aBottom) / 2), width: 4, height: aBottom - vTop + 8), const Radius.circular(2)),
+          Paint()..color = bay.accent);
+      final w = math.max(36.0, math.min(160.0, m.length * pps));
+      final ghost = Rect.fromLTWH(moveX! - w / 2, vTop - 6, w, vBottom - vTop);
+      canvas.drawRRect(RRect.fromRectAndRadius(ghost.shift(const Offset(0, 4)), const Radius.circular(8)), Paint()..color = bay.floor.withValues(alpha: 0.6));
+      _clipFrames(canvas, size, ghost, m);
+      canvas.drawRRect(
+          RRect.fromRectAndRadius(ghost, const Radius.circular(8)),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.4
+            ..color = bay.accent);
+    }
+    // ── the Text and Pictures tracks ──
+    if (tracks.overlays) {
+      _overlayTrack(canvas, size, textRows, tracks.textTop, t('اضغط «نص» لإضافة عنوان أو شرح', 'Tap Text to add a title or a caption'));
+      _overlayTrack(canvas, size, imageRows, tracks.imageTop, t('اضغط «صورة» لإضافة شعار أو صورة', 'Tap Picture to add a logo or an image'));
     }
     // ── snap line ──
     if (snapAt != null) {
@@ -887,6 +972,107 @@ class _TimelinePainter extends CustomPainter {
     if (!enabled) canvas.drawRect(Offset.zero & size, Paint()..color = bay.deck.withValues(alpha: 0.45));
   }
 
+  /// A part's frames from the sprite (or a plain track while there are none).
+  void _clipFrames(Canvas canvas, Size size, Rect r, StudioClip c) {
+    final rr = RRect.fromRectAndRadius(r, const Radius.circular(7));
+    canvas.save();
+    canvas.clipRRect(rr);
+    canvas.drawRect(r, Paint()..color = bay.raised);
+    final img = sprite;
+    final thumbH = r.height;
+    if (img != null && spriteCount > 0 && sourceDuration > 0) {
+      final tw = img.width / spriteCount, th = img.height.toDouble();
+      final cell = thumbH * tw / th;
+      final from = math.max(r.left, 0.0), to = math.min(r.right, size.width);
+      var x = r.left + ((from - r.left) / cell).floor() * cell;
+      final span = math.max(1e-6, r.width);
+      for (; x < to; x += cell) {
+        final mid = x + cell / 2;
+        final src = c.start + ((mid - r.left) / span).clamp(0.0, 1.0) * c.sourceLength;
+        final k = (src / sourceDuration * spriteCount).floor().clamp(0, spriteCount - 1);
+        canvas.drawImageRect(img, Rect.fromLTWH(k * tw, 0, tw, th), Rect.fromLTWH(x, r.top, cell, thumbH), Paint()..filterQuality = FilterQuality.medium);
+      }
+    } else {
+      final p = Paint()
+        ..color = bay.line
+        ..strokeWidth = 1;
+      for (var x = r.left + 60; x < r.right; x += 60) {
+        canvas.drawLine(Offset(x, r.top), Offset(x, r.bottom), p);
+      }
+      if (pending) canvas.drawRect(r, Paint()..color = bay.c.onHero.withValues(alpha: 0.04));
+    }
+    canvas.restore();
+  }
+
+  /// A part's waveform on the Audio track.
+  void _clipWave(Canvas canvas, Size size, Rect r, StudioClip c) {
+    final rr = RRect.fromRectAndRadius(r, const Radius.circular(7));
+    canvas.save();
+    canvas.clipRRect(rr);
+    canvas.drawRect(r, Paint()..color = Color.alphaBlend(bay.c.success.withValues(alpha: 0.10), bay.raised));
+    final wave = waveform;
+    final wh = r.height;
+    if (wave != null && wave.isNotEmpty && sourceDuration > 0) {
+      final bar = Paint()..color = Color.lerp(bay.c.success, bay.ink, 0.35)!.withValues(alpha: 0.85);
+      final from = math.max(r.left, 0.0), to = math.min(r.right, size.width);
+      for (var x = from; x < to; x += 2) {
+        final src = c.start + ((x - r.left) / pps).clamp(0.0, c.length) * c.speed;
+        final k = (src / sourceDuration * wave.length).floor().clamp(0, wave.length - 1);
+        final v = wave[k] / 255 * (wh - 4);
+        canvas.drawRect(Rect.fromLTWH(x, r.top + (wh - v) / 2, 1.2, math.max(0.8, v)), bar);
+      }
+    } else {
+      canvas.drawLine(Offset(r.left, r.center.dy), Offset(r.right, r.center.dy), Paint()
+        ..color = bay.line
+        ..strokeWidth = 1);
+    }
+    canvas.restore();
+  }
+
+  /// One overlay track: its rows, the overlays on them, or a hint while it is empty.
+  void _overlayTrack(Canvas canvas, Size size, List<List<(StudioOverlay, double, double)>> rows, double top0, String hint) {
+    final dur = edit.duration;
+    final rowCount = math.max(1, rows.length);
+    for (var r = 0; r < rowCount; r++) {
+      final top = top0 + r * StudioLanes.row;
+      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTRB(_x(0) - 2, top + 2, _x(dur) + 2, top + StudioLanes.row - 2), const Radius.circular(6)),
+          Paint()..color = bay.c.onHero.withValues(alpha: 0.035));
+    }
+    if (rows.isEmpty) {
+      final tp = _text(hint, _font(11, bay.faint), max: math.max(10, size.width - 40));
+      tp.paint(canvas, Offset(math.max(StudioLanes.pad + 8, _x(0) + 8), top0 + (StudioLanes.row - tp.height) / 2));
+      return;
+    }
+    for (var r = 0; r < rows.length; r++) {
+      final top = top0 + r * StudioLanes.row + 3, bottom = top + StudioLanes.row - 6;
+      for (final (o, a, b) in rows[r]) {
+        final xa = _x(a), xb = _x(b);
+        if (xb < -2 || xa > size.width + 2) continue;
+        final sel = o.id == selectedOverlay;
+        final tone = o.isText ? bay.accent : bay.c.purple;
+        final rr = RRect.fromRectAndRadius(Rect.fromLTRB(xa, top, math.max(xa + 6, xb), bottom), const Radius.circular(6));
+        canvas.drawRRect(rr, Paint()..color = Color.alphaBlend(tone.withValues(alpha: sel ? 0.95 : 0.55), bay.deck));
+        if (sel) {
+          canvas.drawRRect(rr, Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2
+            ..color = bay.ink);
+          for (final x in [xa + 4, xb - 4]) {
+            canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(x, (top + bottom) / 2), width: 3.5, height: 12), const Radius.circular(2)),
+                Paint()..color = bay.deck);
+          }
+        }
+        final label = o.isText ? o.name : t('صورة', 'Picture');
+        final room = xb - xa - 16;
+        if (room > 18) {
+          final ink = sel ? bay.deck : bay.ink;
+          final tp = _text(label, _font(11, ink, w: FontWeight.w600), max: room, dir: o.rtl ? TextDirection.rtl : TextDirection.ltr);
+          tp.paint(canvas, Offset(xa + 8, top + (bottom - top - tp.height) / 2));
+        }
+      }
+    }
+  }
+
   /// The selected clip's two edge grips: bright tabs outside its frame, an arrow in each.
   void _grips(Canvas canvas, Rect r) {
     final p = Paint()..color = bay.accent;
@@ -912,4 +1098,57 @@ class _TimelinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _TimelinePainter o) => true;
+}
+
+/// The track names on the left of the timeline (D-821): an icon on phones, icon + word on wide windows. Left to right
+/// in every language, like the tracks.
+class StudioTrackHeaders extends StatelessWidget {
+  const StudioTrackHeaders({super.key, required this.tracks, this.wide = false});
+
+  final StudioTracks tracks;
+  final bool wide;
+
+  @override
+  Widget build(BuildContext context) {
+    final bay = StudioBay.of(context);
+    Widget head(double top, double bottom, IconData icon, String label, Color tone) => Positioned(
+          left: 0,
+          right: AppSpace.xxs,
+          top: top,
+          height: bottom - top,
+          child: Tooltip(
+            message: label,
+            child: Semantics(
+              label: label,
+              excludeSemantics: true,
+              child: Container(
+                decoration: BoxDecoration(color: bay.raised, borderRadius: AppRadius.chipAll),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
+                alignment: wide ? Alignment.centerLeft : Alignment.center,
+                child: Row(mainAxisSize: wide ? MainAxisSize.max : MainAxisSize.min, children: [
+                  Icon(icon, size: AppIconSize.sm, color: tone),
+                  if (wide) ...[
+                    const SizedBox(width: AppSpace.xxs),
+                    Expanded(
+                      child: Text(label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textScaler: TextScaler.noScaling,
+                          style: appText(11.5, w: FontWeight.w600, c: bay.muted)),
+                    ),
+                  ],
+                ]),
+              ),
+            ),
+          ),
+        );
+    return Stack(children: [
+      head(tracks.videoTop, tracks.videoBottom, Icons.movie_outlined, t('الفيديو', 'Video'), bay.accent),
+      if (tracks.overlays) ...[
+        head(tracks.textTop, tracks.textBottom, Icons.title_rounded, t('النص', 'Text'), bay.accent),
+        head(tracks.imageTop, tracks.imageBottom, Icons.image_outlined, t('الصور', 'Pictures'), Color.lerp(bay.c.purple, bay.ink, 0.3)!),
+      ],
+      head(tracks.audioTop, tracks.audioBottom, Icons.graphic_eq_rounded, t('الصوت', 'Audio'), Color.lerp(bay.c.success, bay.ink, 0.35)!),
+    ]);
+  }
 }

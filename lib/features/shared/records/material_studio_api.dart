@@ -184,7 +184,7 @@ abstract class MaterialStudioApi {
   Future<bool> discard(int draftId);
   Future<List<MaterialDraft>> render(int sessionId, int materialId, Map<String, dynamic> params);
   Future<Map<String, dynamic>?> loadProject(int sessionId, int materialId);
-  Future<void> saveProject(int sessionId, int materialId, Map<String, dynamic>? doc);
+  Future<void> saveProject(int sessionId, int materialId, Map<String, dynamic>? doc, {int? base});
   Future<Map<String, dynamic>?> draftProject(int draftId);
   Future<MaterialDraft?> cancel(int draftId);
   Future<StudioDownload> downloadSource(int sessionId, int materialId);
@@ -210,8 +210,8 @@ class RemoteMaterialStudioApi implements MaterialStudioApi {
   }
 
   @override
-  Future<void> saveProject(int sessionId, int materialId, Map<String, dynamic>? doc) async =>
-      _api.put('${_m(sessionId, materialId)}/project', body: {'doc': doc});
+  Future<void> saveProject(int sessionId, int materialId, Map<String, dynamic>? doc, {int? base}) async =>
+      _api.put('${_m(sessionId, materialId)}/project', body: {'doc': doc, 'base': ?base});
 
   @override
   Future<Map<String, dynamic>?> draftProject(int draftId) async {
@@ -348,7 +348,7 @@ class MaterialStudioSource with StudioAssetCalls implements StudioSource {
   @override
   Future<Map<String, dynamic>?> loadProject(int sourceId) => api.loadProject(sessionId, sourceId);
   @override
-  Future<void> saveProject(int sourceId, Map<String, dynamic>? doc) => api.saveProject(sessionId, sourceId, doc);
+  Future<void> saveProject(int sourceId, Map<String, dynamic>? doc, {int? base}) => api.saveProject(sessionId, sourceId, doc, base: base);
   @override
   Future<Map<String, dynamic>?> jobProject(int jobId) => api.draftProject(jobId);
   @override

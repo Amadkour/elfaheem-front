@@ -1,6 +1,8 @@
 // The Studio's edit list and history (D-590 … D-593): splits, removes, trims and speed on the clips; overlays anchored
-// to the source; undo / redo / restore; the saved doc; the render params; the preview's animation curves.
+// to the source; undo / redo / restore; the saved doc; the render params; the preview's animation curves; moving a part
+// (D-823) and which saved copy opens the Studio (D-826).
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/features/shared/records/studio_autosave.dart';
 import 'package:flutter_education_app/features/shared/records/studio_project.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -150,6 +152,34 @@ void main() {
       expect(a.duration, closeTo(40, 1e-9));
       expect(b.duration, closeTo(50, 1e-9));
       expect(studioHalves(e, 0.2), isNull);
+    });
+    test('a part moves to another place; its edges stop at its SOURCE neighbours, not its play neighbours (D-823)', () {
+      final e = StudioEdit.original(90).split(30).split(60); // [0-30][30-60][60-90]
+      final m = e.moveClip(2, 0); // [60-90][0-30][30-60]
+      expect([for (final c in m.clips) c.start], [60, 0, 30]);
+      expect(m.duration, closeTo(90, 1e-9));
+      expect(m.reordered, isTrue);
+      expect(identical(e.moveClip(1, 1), e), isTrue);
+      // the first-played part [60-90]: its start may not go back over [30-60], which lies before it in the source
+      expect(m.startBounds(0).$1, 60);
+      // [0-30] (played second) may grow to 30, where [30-60] begins — not to 60
+      expect(m.endBounds(1, 90).$2, 30);
+      // an overlay anchored in the source follows its part to the front
+      final o = m.putOverlay(const StudioOverlay(id: 'x', kind: StudioOverlayKind.text, start: 65, end: 70, text: 'Hi'));
+      expect(o.overlayOut(o.overlays.single), (5.0, 10.0));
+      final h = StudioHistory.start(90).commit(StudioStepKind.moveClip, m, info: {'to': 1});
+      expect(studioStepLabel(h.steps.last), 'Moved a part to place 1');
+    });
+
+    test('which saved copy opens: unsent work on the device wins unless the server moved on (D-826)', () {
+      final server = {'rev': 4, 'v': 1};
+      final mine = StudioLocalCopy(doc: const {'rev': 5, 'v': 1, 'mine': true}, dirty: true, base: 4);
+      expect(studioPickProject(server: server, local: mine).$2, isTrue, reason: 'made from rev 4, the server still has 4');
+      expect(studioPickProject(server: {'rev': 6}, local: mine).$2, isFalse, reason: 'another device saved since');
+      expect(studioPickProject(server: null, local: mine, serverFailed: true).$2, isTrue, reason: 'offline');
+      expect(studioPickProject(server: server, local: const StudioLocalCopy(doc: {'rev': 3}, dirty: false)).$1, server);
+      expect(studioPickProject().$1, isNull);
+      expect(studioDocRev({'rev': '7'}), 7);
     });
   });
 }
