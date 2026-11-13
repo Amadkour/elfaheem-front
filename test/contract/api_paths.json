@@ -1006,6 +1006,7 @@
   "POST /api/v1/courses/{course_id:int}/reel",
   "POST /api/v1/courses/{course_id:int}/schedules",
   "POST /api/v1/courses/{course_id:int}/share-click",
+  "POST /api/v1/courses/{course_id:int}/students/nudge",
   "POST /api/v1/courses/{course_id:int}/tools",
   "POST /api/v1/courses/{course_id:int}/unlock",
   "POST /api/v1/courses/{course_id:int}/unpublish",

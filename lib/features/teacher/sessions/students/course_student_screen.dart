@@ -1,23 +1,24 @@
 // course_student_screen.dart
 //
-// The students enrolled in one of the teacher's courses (Warm Editorial, D-610 – D-629).
+// The students of one course, for its staff (D-870 – D-874; Warm Editorial, D-610 – D-629; master-detail, D-290).
 // ─────────────────────────────────────────────────────────────────────────────
-// One memorable thing, everything else quiet:
-//   • the editorial page header (title, the course as its subtitle, Back) on the canvas;
-//   • ONE peach hero block — the class's progress: the average as a ring that fills once with its figure rolling
-//     (AppOdometer), beside the class size and how many completed (counting up once); it leans under the pointer
-//     (AppTilt) and is the screen's only colour block;
-//   • search and "send a certificate to everyone" under it, on one row on wide windows;
-//   • each student a paper card on a warm hairline: a progress ring around the avatar, name / @username / email /
-//     joined, the percentage in its meaning's ink and a compact certificate pill; a list on phones, a 2–3 column grid
-//     once there is room; the first cards rise in once (AppReveal) with the ring — the screen's one entrance;
-//   • a tapped card opens the student's connected detail in the shared panel (D-290); certificates stay one action
-//     away (the panel's Certificates action opens the student's certificates in the kit's dialog).
+// What a teacher needs, in reading order:
+//   • the page header (title, the course as its subtitle, Back) with Export and "Send a certificate to everyone";
+//   • four figures for the whole course: enrolled, active this week, average progress, at risk (a tap shows them);
+//   • when someone needs a nudge: ONE calm amber card, "5 students need a nudge · 3 have a linked parent", Nudge all;
+//   • one search, one filter (All / Active / Low progress / Inactive / Completed, with counts) and the sort;
+//   • the students: cards on phones, two columns on wide lists, each with its progress bar (the class average as the
+//     marker), last activity (AppTime-free relative words), lessons done, the exam average, and only what needs
+//     saying — the server's low-progress reason ("No activity for 12 days") and "Nudged 3 h ago". The bell nudges an
+//     at-risk student; a long press selects several (a bar at the bottom nudges them together);
+//   • a tapped card opens the student's connected detail in the shared panel (D-290), with Nudge and Certificates.
+// The RULE behind "low progress" is the server's (services/course_students_service.py `classify`, D-871).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/entities/entity_models.dart' show EntitySummary;
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/master_detail/entity_detail_view.dart' show EntityPanelAction;
 import 'package:flutter_education_app/design/master_detail/entity_navigator.dart';
 import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
@@ -26,14 +27,14 @@ import 'package:flutter_education_app/design/master_detail/master_detail_scaffol
 import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
-import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/base_page.dart';
-import '../../../../utils/widget/search_text_field.dart';
+import '../../../admin/admin_common.dart' show t;
 import '../../../teacher/home/teacher_models.dart';
+import 'course_student_card.dart';
 import 'course_student_provider.dart';
+import 'course_students_nudge.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppFill, AppOdometer, AppPressScale, AppReveal, AppTilt;
-import 'package:flutter_education_app/design/app_username.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppFill, AppReveal;
 
 class EnrolledStudentsScreen extends StatefulWidget {
   final TeacherCourse course;
@@ -47,8 +48,13 @@ class EnrolledStudentsScreen extends StatefulWidget {
 class _EnrolledStudentsScreenState extends State<EnrolledStudentsScreen> {
   final _search = TextEditingController();
   // A student card opens that student's connected detail (their courses with me, history, Message) in the shared panel
-  // (D-290); the certificates of this course stay one action away.
+  // (D-290); the nudge and the certificates of this course stay one action away.
   final _panel = EntityPanelController(rowKind: EntityKind.student);
+
+  String get _courseName => (AppConfig.lang == 'ar' ? widget.course.titleAr : widget.course.titleEn) ??
+      widget.course.titleAr ??
+      widget.course.titleEn ??
+      '';
 
   @override
   void initState() {
@@ -81,23 +87,60 @@ class _EnrolledStudentsScreenState extends State<EnrolledStudentsScreen> {
     return false;
   }
 
-  List<EntityPanelAction> _actions(BuildContext context, EntityRef ref, EntitySummary? s) => [
-        ...entityViewerActions(context, ref, s, controller: _panel),
-        if (ref.kind == EntityKind.student && widget.course.certificates.isNotEmpty)
-          EntityPanelAction(
-            key: const ValueKey('md.course_student.certificates'),
-            icon: Icons.workspace_premium_rounded,
-            label: 'certificates'.tr,
-            onPressed: () {
-              final p = context.read<EnrolledStudentsProvider>();
-              final st = p.students.where((x) => x.id == ref.id).firstOrNull;
-              if (st != null) _showStudentDialog(context, st, widget.course, _progressColorOf(context, st));
-            },
-          ),
-      ];
+  void _nudge(List<EnrolledStudent> targets, {bool allLow = false}) {
+    final p = context.read<EnrolledStudentsProvider>();
+    openNudgeSheet(context, p, courseName: _courseName, targets: targets, allLow: allLow);
+  }
+
+  List<EntityPanelAction> _actions(BuildContext context, EntityRef ref, EntitySummary? s) {
+    final p = context.read<EnrolledStudentsProvider>();
+    final st = ref.kind == EntityKind.student ? p.students.where((x) => x.id == ref.id).firstOrNull : null;
+    return [
+      ...entityViewerActions(context, ref, s, controller: _panel),
+      if (st != null && p.nudgeEnabled)
+        EntityPanelAction(
+          key: const ValueKey('md.course_student.nudge'),
+          icon: Icons.notifications_active_outlined,
+          label: st.canNudge ? t('تذكير', 'Nudge') : t('تم التذكير', 'Nudged'),
+          onPressed: () => _nudge([st]),
+        ),
+      if (st != null && widget.course.certificates.isNotEmpty)
+        EntityPanelAction(
+          key: const ValueKey('md.course_student.certificates'),
+          icon: Icons.workspace_premium_rounded,
+          label: 'certificates'.tr,
+          onPressed: () => _showStudentDialog(context, st, widget.course, _progressColorOf(context, st)),
+        ),
+    ];
+  }
+
+  Future<void> _export() async {
+    final p = context.read<EnrolledStudentsProvider>();
+    final all = await p.fetchAll();
+    if (!mounted) return;
+    if (all == null) {
+      showAppNotice(t('تعذّر تحميل الطلاب للتصدير', 'Could not load the students to export'), error: true);
+      return;
+    }
+    await showAppExportSheet(context, courseStudentsExport(all, courseName: _courseName, filter: p.filter, query: p.query));
+  }
+
+  Future<void> _sendCertificateToAll() async {
+    final provider = context.read<EnrolledStudentsProvider>();
+    final cert = await _pickCertificate(context, widget.course.certificates);
+    if (cert == null || !mounted) return;
+    final students = countText(provider.summary.enrolled,
+        ar1: 'طالب واحد', ar2: 'طالبان', arFew: '{n} طلاب', arMany: '{n} طالبًا', en1: '1 student', en: '{n} students');
+    final ok = await appConfirm(context, message: '${'send_to_all_confirm'.tr}\n\n${cert.title} · $students', confirmLabel: 'send_btn'.tr);
+    if (!ok || !mounted) return;
+    final sent = await provider.sendCertificateToAll(cert.id);
+    if (!mounted) return;
+    _showResultSnack(context, sent >= 0, '${'send_to_all_success'.tr} ($sent)');
+  }
 
   @override
   Widget build(BuildContext context) {
+    final p = context.watch<EnrolledStudentsProvider>();
     final course = widget.course;
     return BasePage(
       useWebCard: true,
@@ -112,8 +155,24 @@ class _EnrolledStudentsScreenState extends State<EnrolledStudentsScreen> {
             children: [
               AppPageHeader(
                 title: 'enrolled_students_title'.tr,
-                subtitle: (AppConfig.lang == 'ar' ? course.titleAr : course.titleEn) ?? '',
+                subtitle: _courseName,
                 onBack: () => Navigator.maybePop(context),
+                actions: [
+                  AppIconButton(
+                    key: const ValueKey('course_students.export'),
+                    icon: Icons.ios_share_rounded,
+                    tooltip: t('تصدير', 'Export'),
+                    onPressed: p.summary.enrolled == 0 ? null : _export,
+                  ),
+                  if (course.certificates.isNotEmpty)
+                    AppIconButton(
+                      key: const ValueKey('course_students.certificate_all'),
+                      icon: Icons.workspace_premium_rounded,
+                      tooltip: 'send_to_all_students_btn'.tr,
+                      busy: p.isBulkSending,
+                      onPressed: p.summary.enrolled == 0 || p.isBulkSending ? null : _sendCertificateToAll,
+                    ),
+                ],
               ),
               Expanded(
                 child: AppRefresh(
@@ -123,13 +182,50 @@ class _EnrolledStudentsScreenState extends State<EnrolledStudentsScreen> {
                     child: CustomScrollView(
                       physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                       slivers: [
-                        SliverToBoxAdapter(child: _Top(search: _search, course: course)),
-                        _StudentsSliver(course: course, onRetry: _load),
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
+                          sliver: SliverToBoxAdapter(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                              p.loadedOnce
+                                  ? CourseStudentsSummaryGrid(
+                                      summary: p.summary,
+                                      onAtRisk: () => p.setFilter(StudentFilter.low),
+                                    )
+                                  : const _SummarySkeleton(),
+                              if (p.nudgeEnabled && p.summary.lowNudgeable > 0 && !p.selecting) ...[
+                                AppSpace.gapSm,
+                                CourseStudentsNudgeBanner(
+                                  students: p.summary.lowNudgeable,
+                                  withParent: p.summary.lowWithParent,
+                                  onNudgeAll: () => _nudge(const [], allLow: true),
+                                ),
+                              ],
+                              AppSpace.gapMd,
+                              CourseStudentsToolbar(
+                                search: _search,
+                                filter: p.filter,
+                                sort: p.sort,
+                                countOf: p.countOf,
+                                onQuery: p.setQuery,
+                                onFilter: p.setFilter,
+                                onSort: p.setSort,
+                              ),
+                            ]),
+                          ),
+                        ),
+                        _StudentsSliver(onRetry: _load, onNudge: (s) => _nudge([s])),
                       ],
                     ),
                   ),
                 ),
               ),
+              if (p.selecting)
+                CourseStudentsSelectionBar(
+                  count: p.selected.length,
+                  canNudge: p.nudgeEnabled,
+                  onClear: p.clearSelection,
+                  onNudge: () => _nudge(p.selectedStudents),
+                ),
             ],
           ),
         ),
@@ -139,263 +235,342 @@ class _EnrolledStudentsScreenState extends State<EnrolledStudentsScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Hero — the class's progress, the screen's one block
+// The export (Export Studio): every student of the current search / filter / sort
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _ProgressHero extends StatelessWidget {
-  const _ProgressHero();
+/// The Export Studio table of [students] (both languages' headers, D-130).
+AppTableExport courseStudentsExport(List<EnrolledStudent> students,
+    {required String courseName, StudentFilter filter = StudentFilter.all, String query = ''}) {
+  return bilingualExport(() => AppTableExport(
+        id: 'course.students',
+        title: t('طلاب المقرر', 'Course students'),
+        subtitle: courseName,
+        filters: {
+          if (filter != StudentFilter.all) t('التصفية', 'Filter'): filter.label,
+          if (query.trim().isNotEmpty) t('بحث', 'Search'): query.trim(),
+        },
+        columns: [
+          AppExportColumn('name', t('الطالب', 'Student'), locked: true),
+          AppExportColumn('username', t('اسم المستخدم', 'Username'), visible: false),
+          AppExportColumn('email', t('البريد', 'E-mail')),
+          AppExportColumn('progress', t('التقدم', 'Progress'), type: AppColType.percent, total: AppTotal.average),
+          AppExportColumn('lessons', t('الدروس المنجزة', 'Lessons done'), type: AppColType.integer),
+          AppExportColumn('lessons_total', t('كل الدروس', 'All lessons'), type: AppColType.integer, visible: false),
+          AppExportColumn('exam_avg', t('متوسط الاختبارات', 'Exam average'), type: AppColType.percent),
+          AppExportColumn('last_active', t('آخر نشاط', 'Last active'), type: AppColType.dateTime),
+          AppExportColumn('state', t('الحالة', 'Status'), type: AppColType.status, statusLabels: {
+            'completed': t('أكمل', 'Completed'),
+            'active': t('نشط', 'Active'),
+            'low': t('تقدّم منخفض', 'Low progress'),
+            'inactive': t('غير نشط', 'Inactive'),
+            'new': t('جديد', 'New'),
+          }, statusTones: const {
+            'completed': AppStatusTone.good,
+            'active': AppStatusTone.info,
+            'low': AppStatusTone.warn,
+            'inactive': AppStatusTone.bad,
+            'new': AppStatusTone.neutral,
+          }),
+          AppExportColumn('reason', t('السبب', 'Reason')),
+          AppExportColumn('parents', t('أولياء الأمور', 'Parents'), type: AppColType.integer, visible: false),
+          AppExportColumn('nudged', t('آخر تذكير', 'Last nudge'), type: AppColType.dateTime, visible: false),
+          AppExportColumn('enrolled', t('تاريخ التسجيل', 'Enrolled'), type: AppColType.dateTime, visible: false),
+        ],
+        rows: [
+          for (final s in students)
+            {
+              'name': s.name,
+              'username': s.username == null ? '' : '@${s.username}',
+              'email': s.gmail,
+              'progress': s.progressPercentage,
+              'lessons': s.lessonsDone,
+              'lessons_total': s.lessonsTotal,
+              'exam_avg': s.examAvg,
+              'last_active': s.lastActiveAt,
+              'state': s.state,
+              'reason': s.atRisk && s.risk != null ? riskText(s.risk!) : '',
+              'parents': s.parentCount,
+              'nudged': s.lastNudgedAt,
+              'enrolled': parseServerUtc(s.enrolledAt),
+            },
+        ],
+      ));
+}
 
-  /// From this width the two counts sit side by side next to the ring.
-  static const double _wide = 520;
+// ─────────────────────────────────────────────────────────────────────────────
+// The figures, the nudge card, the toolbar, the selection bar (plain values: the layout harness pumps them)
+// ─────────────────────────────────────────────────────────────────────────────
 
-  /// The widest one count gets beside the ring on a wide block.
-  static const double _countMax = 180;
+/// Enrolled · active this week · average progress · at risk (a tap filters to them).
+class CourseStudentsSummaryGrid extends StatelessWidget {
+  const CourseStudentsSummaryGrid({super.key, required this.summary, this.onAtRisk});
+
+  final CourseStudentsSummary summary;
+  final VoidCallback? onAtRisk;
 
   @override
   Widget build(BuildContext context) {
-    final p = context.watch<EnrolledStudentsProvider>();
-    return AppTilt(
-      radius: AppRadius.block,
-      child: AppBlock(
-        tone: AppBlockTone.peach,
-        hero: true,
-        child: LayoutBuilder(builder: (context, box) {
-          final wide = box.maxWidth >= _wide;
-          final counts = [
-            _HeroCount(
-              value: p.totalCount,
-              label: 'stat_total'.tr,
-              icon: Icons.people_alt_rounded,
-              memoryKey: 'course_students.total',
-            ),
-            _HeroCount(
-              value: p.completedCount,
-              label: 'stat_completed'.tr,
-              icon: Icons.task_alt_rounded,
-              done: true,
-              memoryKey: 'course_students.completed',
-            ),
-          ];
-          return Row(
-            children: [
-              _ProgressRing(value: p.avgProgress),
-              const SizedBox(width: AppSpace.lg),
-              Expanded(
-                child: wide
-                    ? Wrap(spacing: AppSpace.xxl, runSpacing: AppSpace.md, children: [
-                        for (final n in counts) ConstrainedBox(constraints: const BoxConstraints(maxWidth: _countMax), child: n),
-                      ])
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [counts[0], const SizedBox(height: AppSpace.md), counts[1]],
-                      ),
-              ),
-            ],
-          );
-        }),
+    final s = summary;
+    final share = s.enrolled == 0 ? 0 : (s.activeWeek / s.enrolled * 100).round();
+    return AppKpiGrid(maxColumns: 4, children: [
+      AppStatCard(
+        icon: Icons.people_alt_rounded,
+        value: '${s.enrolled}',
+        label: t('مسجّلون', 'Enrolled'),
+        tone: AppBlockTone.emerald,
+        footer: countText(s.completed,
+            ar0: 'لم يُكمل أحد بعد', ar1: 'أكمل طالب واحد', ar2: 'أكمل طالبان', arFew: 'أكمل {n} طلاب', arMany: 'أكمل {n} طالبًا',
+            en0: 'None completed yet', en1: '1 completed', en: '{n} completed'),
       ),
-    );
+      AppStatCard(
+        icon: Icons.bolt_rounded,
+        value: '${s.activeWeek}',
+        label: t('نشطون هذا الأسبوع', 'Active this week'),
+        tone: AppBlockTone.sky,
+        footer: t('$share٪ من الطلاب', '$share% of the class'),
+      ),
+      AppStatCard(
+        icon: Icons.trending_up_rounded,
+        value: '${s.avgProgress.round()}%',
+        label: t('متوسط التقدم', 'Average progress'),
+        tone: AppBlockTone.peach,
+        footer: t('من دروس المقرر', 'of the course lessons'),
+      ),
+      AppStatCard(
+        key: const ValueKey('course_students.at_risk'),
+        icon: Icons.error_outline_rounded,
+        value: '${s.atRisk}',
+        label: t('يحتاجون متابعة', 'At risk'),
+        tone: AppBlockTone.gold,
+        footer: s.atRisk == 0 ? t('الجميع على المسار', 'Everyone is on track') : t('اضغط لعرضهم', 'Tap to see them'),
+        onTap: s.atRisk == 0 ? null : onAtRisk,
+      ),
+    ]);
   }
 }
 
-/// The average progress: a ring that fills once (and glides on a change) around its rolling figure.
-class _ProgressRing extends StatelessWidget {
-  final double value; // 0..100
+class _SummarySkeleton extends StatelessWidget {
+  const _SummarySkeleton();
 
-  const _ProgressRing({required this.value});
+  @override
+  Widget build(BuildContext context) => AppShimmer(
+        child: AppKpiGrid(maxColumns: 4, children: [
+          for (var i = 0; i < 4; i++) const AppSkeletonBox(height: 96, radius: AppSpace.md),
+        ]),
+      );
+}
 
-  /// The ring's side and stroke: the block's focal figure.
-  static const double _side = 128;
-  static const double _stroke = 8;
+/// "5 students need a nudge · 3 have a linked parent" with Nudge all — the page's one call to action.
+class CourseStudentsNudgeBanner extends StatelessWidget {
+  const CourseStudentsNudgeBanner({super.key, required this.students, required this.withParent, required this.onNudgeAll});
+
+  final int students;
+  final int withParent;
+  final VoidCallback onNudgeAll;
+
+  /// From this width the button stands beside the text.
+  static const double _row = 560;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final b = AppBlock.colorsOf(context);
-    final pct = value.clamp(0, 100).toDouble();
-    final track = Color.lerp(b.surface, b.ink, 0.1)!;
-    // the fill in the block's readable accent ink (a deep emerald is lost on the dark peach)
-    final fill = b.accentInk(pct >= 100 ? c.success : c.primary);
-    return Semantics(
-      label: 'stat_avg_progress'.tr,
-      value: '${pct.toStringAsFixed(0)}%',
-      child: SizedBox(
-        width: _side,
-        height: _side,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Positioned.fill(
-              child: AppFill(
-                value: pct / 100,
-                builder: (context, v) => CircularProgressIndicator(
-                  value: v,
-                  strokeWidth: _stroke,
-                  strokeCap: StrokeCap.round,
-                  backgroundColor: track,
-                  valueColor: AlwaysStoppedAnimation(fill),
-                ),
+    final title = countText(students,
+        ar1: 'طالب واحد يحتاج تذكيرًا', ar2: 'طالبان يحتاجان تذكيرًا', arFew: '{n} طلاب يحتاجون تذكيرًا', arMany: '{n} طالبًا يحتاجون تذكيرًا',
+        en1: '1 student needs a nudge', en: '{n} students need a nudge');
+    final sub = withParent == 0
+        ? t('تذكير ودود يعيدهم إلى المسار.', 'A friendly reminder gets them back on track.')
+        : t('$withParent منهم لديهم ولي أمر مرتبط يمكن إبلاغه.', '$withParent of them have a linked parent you can tell too.');
+    final button = AppButton.primary(
+      key: const ValueKey('course_students.nudge_all'),
+      label: t('تذكير الكل', 'Nudge all'),
+      icon: Icons.notifications_active_outlined,
+      onPressed: onNudgeAll,
+    );
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.sm),
+      decoration: BoxDecoration(
+        // opaque over the card (the page doodles never show through the call to action)
+        color: c.isDark ? Color.alphaBlend(c.warning.withValues(alpha: 0.14), c.cardBg) : appWashOn(context, c.warning),
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: c.warning.withValues(alpha: 0.22), width: AppBorder.hairline),
+      ),
+      child: LayoutBuilder(builder: (context, box) {
+        final text = Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(Icons.notifications_active_outlined, size: AppIconSize.md, color: appInk(context, c.warning)),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: AppType.bodyStrong(context)),
+              const SizedBox(height: AppSpace.xxs),
+              Text(sub, style: AppType.meta(context).copyWith(color: c.textMedium)),
+            ]),
+          ),
+        ]);
+        if (box.maxWidth >= _row) {
+          return Row(children: [Expanded(child: text), const SizedBox(width: AppSpace.sm), button]);
+        }
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          text,
+          AppSpace.gapSm,
+          Align(alignment: AlignmentDirectional.centerEnd, child: button),
+        ]);
+      }),
+    );
+  }
+}
+
+/// One search, one filter (with counts), the sort.
+class CourseStudentsToolbar extends StatelessWidget {
+  const CourseStudentsToolbar({
+    super.key,
+    required this.search,
+    required this.filter,
+    required this.sort,
+    required this.countOf,
+    required this.onQuery,
+    required this.onFilter,
+    required this.onSort,
+  });
+
+  final TextEditingController search;
+  final StudentFilter filter;
+  final StudentSort sort;
+  final int Function(StudentFilter) countOf;
+  final ValueChanged<String> onQuery;
+  final ValueChanged<StudentFilter> onFilter;
+  final ValueChanged<StudentSort> onSort;
+
+  /// From this width the sort shows its label beside the search.
+  static const double _labelled = 560;
+
+  Future<void> _pickSort(BuildContext context) async {
+    final picked = await showAppSheet<StudentSort>(
+      context,
+      (ctx) => AppSheetContent(
+        title: t('ترتيب الطلاب', 'Sort students'),
+        icon: Icons.sort_rounded,
+        children: [
+          for (final s in StudentSort.values)
+            InkWell(
+              key: ValueKey('course_students.sort.${s.wire}'),
+              borderRadius: AppRadius.controlAll,
+              onTap: () => Navigator.pop(ctx, s),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: AppTouch.min),
+                child: Row(children: [
+                  Icon(s == sort ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
+                      size: AppIconSize.md, color: s == sort ? ctx.colors.primary : ctx.colors.textLight),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(child: Text(s.label, style: AppType.row(ctx))),
+                ]),
               ),
             ),
-            ExcludeSemantics(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpace.md),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: AppOdometer(
-                        '${pct.toStringAsFixed(0)}%',
-                        memoryKey: 'course_students.avg',
-                        style: AppType.figureLarge(context).copyWith(color: b.ink),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpace.xxs / 2),
-                    Text(
-                      'stat_avg_progress'.tr,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppType.meta(context).copyWith(color: b.muted),
-                    ),
-                  ],
-                ),
-              ),
+        ],
+      ),
+    );
+    if (picked != null) onSort(picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      LayoutBuilder(builder: (context, box) {
+        final labelled = box.maxWidth >= _labelled;
+        return Row(children: [
+          Expanded(
+            child: AppSearchField(
+              controller: search,
+              hint: 'search_student_by_name_email'.tr,
+              onChanged: onQuery,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: AppSpace.xs),
+          labelled
+              ? AppPill(
+                  key: const ValueKey('course_students.sort'),
+                  icon: Icons.sort_rounded,
+                  label: sort.label,
+                  onTap: () => _pickSort(context),
+                )
+              : AppIconButton(
+                  key: const ValueKey('course_students.sort'),
+                  icon: Icons.sort_rounded,
+                  tooltip: '${t('ترتيب', 'Sort')}: ${sort.label}',
+                  onPressed: () => _pickSort(context),
+                ),
+        ]);
+      }),
+      AppSpace.gapSm,
+      AppTabs(
+        key: const ValueKey('course_students.filter'),
+        items: [for (final f in StudentFilter.values) AppTabItem(f.label, count: countOf(f))],
+        index: StudentFilter.values.indexOf(filter),
+        onChanged: (i) => onFilter(StudentFilter.values[i]),
+      ),
+    ]);
+  }
+}
+
+/// The selection's bar at the bottom: how many, Clear, Nudge.
+class CourseStudentsSelectionBar extends StatelessWidget {
+  const CourseStudentsSelectionBar({super.key, required this.count, required this.onClear, required this.onNudge, this.canNudge = true});
+
+  final int count;
+  final bool canNudge;
+  final VoidCallback onClear;
+  final VoidCallback onNudge;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Material(
+      color: c.cardBg,
+      elevation: 0,
+      child: Container(
+        decoration: BoxDecoration(border: Border(top: BorderSide(color: c.divider, width: AppBorder.hairline))),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xs),
+        child: Row(children: [
+          AppIconButton(
+            key: const ValueKey('course_students.selection.clear'),
+            icon: Icons.close_rounded,
+            tooltip: t('إلغاء التحديد', 'Clear selection'),
+            onPressed: onClear,
+          ),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(
+            child: Text(
+              countText(count, ar1: 'طالب واحد محدد', ar2: 'طالبان محددان', arFew: '{n} طلاب محددون', arMany: '{n} طالبًا محددًا',
+                  en1: '1 selected', en: '{n} selected'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppType.bodyStrong(context),
+            ),
+          ),
+          if (canNudge)
+            AppButton.primary(
+              key: const ValueKey('course_students.selection.nudge'),
+              label: t('تذكير', 'Nudge'),
+              icon: Icons.notifications_active_outlined,
+              onPressed: onNudge,
+            ),
+        ]),
       ),
     );
   }
 }
 
-/// One count of the hero: the figure counting up once, its label with a quiet glyph.
-class _HeroCount extends StatelessWidget {
-  const _HeroCount({required this.value, required this.label, required this.icon, required this.memoryKey, this.done = false});
-
-  final int value;
-  final String label;
-  final IconData icon;
-  final String memoryKey;
-
-  /// "Completed": the glyph in emerald (done), the figure stays ink.
-  final bool done;
-
-  @override
-  Widget build(BuildContext context) {
-    final b = AppBlock.colorsOf(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: AlignmentDirectional.centerStart,
-          child: AppCountUp('$value', memoryKey: memoryKey, style: AppType.figureLarge(context).copyWith(color: b.ink)),
-        ),
-        const SizedBox(height: AppSpace.xxs),
-        Row(children: [
-          Icon(icon, size: AppIconSize.sm, color: done ? b.accentInk(context.colors.success) : b.muted),
-          const SizedBox(width: AppSpace.xxs),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: AppType.label(context).copyWith(color: b.muted),
-            ),
-          ),
-        ]),
-      ],
-    );
-  }
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-// Top — the hero block, search and "send to everyone" (beside the block on wide lists, stacked on phones)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// The top of the list: the hero block, then search and "send to everyone". On a wide list the block keeps a reading
-/// width at the start and the tools stand beside it; on narrower ones everything stacks.
-class _Top extends StatelessWidget {
-  const _Top({required this.search, required this.course});
-
-  final TextEditingController search;
-  final TeacherCourse course;
-
-  /// From this width the tools stand beside the block.
-  static const double _wide = 1000;
-
-  /// The block's width beside the tools.
-  static const double _heroW = 560;
-
-  /// From this width (stacked) the button shares the search's row.
-  static const double _row = 720;
-
-  @override
-  Widget build(BuildContext context) {
-    final field = MySearchBar(
-      controller: search,
-      hint: 'search_student_by_name_email',
-      onChanged: context.read<EnrolledStudentsProvider>().setQuery,
-    );
-    return LayoutBuilder(builder: (context, box) {
-      if (box.maxWidth >= _wide) {
-        return Padding(
-          padding: const EdgeInsetsDirectional.only(start: AppSpace.md, top: AppSpace.xs),
-          child: Row(children: [
-            const SizedBox(width: _heroW, child: _ProgressHero()),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                field,
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
-                  child: Align(alignment: AlignmentDirectional.centerStart, child: _SendToAllButton(course: course)),
-                ),
-              ]),
-            ),
-          ]),
-        );
-      }
-      const hero = Padding(
-        padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xs),
-        child: _ProgressHero(),
-      );
-      if (box.maxWidth >= _row) {
-        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          hero,
-          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Expanded(child: field),
-            Padding(
-              padding: const EdgeInsetsDirectional.only(end: AppSpace.md, bottom: AppSpace.xxs),
-              child: _SendToAllButton(course: course),
-            ),
-          ]),
-        ]);
-      }
-      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        hero,
-        field,
-        Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
-          child: _SendToAllButton(course: course, expand: true),
-        ),
-      ]);
-    });
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Body — responsive: list on phone widths, grid once there's room (web/tablet).
+// Body — cards on phones, two columns once there is room.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _StudentsSliver extends StatelessWidget {
-  final TeacherCourse course;
   final VoidCallback onRetry;
+  final ValueChanged<EnrolledStudent> onNudge;
 
-  const _StudentsSliver({required this.course, required this.onRetry});
+  const _StudentsSliver({required this.onRetry, required this.onNudge});
+
+  /// From this list width the cards sit in two columns.
+  static const double _twoColumns = 900;
 
   @override
   Widget build(BuildContext context) {
@@ -417,14 +592,26 @@ class _StudentsSliver extends StatelessWidget {
     }
 
     if (p.students.isEmpty) {
-      final filtered = p.totalCount > 0;
+      final narrowed = p.summary.enrolled > 0 || p.query.isNotEmpty;
       return SliverFillRemaining(
         hasScrollBody: false,
-        child: AppEmpty(
-          icon: filtered ? Icons.search_off_rounded : Icons.people_outline_rounded,
-          title: 'no_students'.tr,
-          message: 'no_students_hint'.tr,
-        ),
+        child: narrowed
+            ? AppEmpty(
+                icon: p.filter == StudentFilter.low ? Icons.verified_rounded : Icons.search_off_rounded,
+                title: p.filter == StudentFilter.low && p.query.isEmpty
+                    ? t('لا أحد متأخر', 'Nobody is behind')
+                    : t('لا يوجد طلاب هنا', 'No students here'),
+                message: p.filter == StudentFilter.low && p.query.isEmpty
+                    ? t('كل الطلاب على المسار. أحسنت!', 'Every student is on track. Nice work!')
+                    : t('جرّب بحثًا آخر أو تصفية أخرى.', 'Try another search or filter.'),
+                actionLabel: p.filter != StudentFilter.all ? t('عرض الكل', 'Show all') : null,
+                onAction: p.filter != StudentFilter.all ? () => p.setFilter(StudentFilter.all) : null,
+              )
+            : AppEmpty(
+                icon: Icons.people_outline_rounded,
+                title: 'no_students'.tr,
+                message: 'no_students_hint'.tr,
+              ),
       );
     }
 
@@ -432,60 +619,66 @@ class _StudentsSliver extends StatelessWidget {
     MasterDetailScope.maybeOf(context)?.controller.siblings = [
       for (final s in p.students) EntityRef(EntityKind.student, s.id, label: s.name, imageUrl: s.imageUrl),
     ];
-    return SliverLayoutBuilder(builder: (context, box) => _grid(context, p, box.crossAxisExtent));
-  }
-
-  /// A card's height in the grid at text scale 1 (it grows with the reader's text size).
-  static const double _cardH = 112;
-  static const double _cardHMax = 156;
-
-  Widget _grid(BuildContext context, EnrolledStudentsProvider p, double width) {
-    final columns = width >= 1200 ? 3 : (width >= 760 ? 2 : 1);
-    Widget card(int i) => AppReveal(
-          index: i,
-          group: 'course_students',
-          child: _StudentCard(student: p.students[i], course: course),
-        );
-    const padding = EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xl);
-    final footer = [
-      const SliverToBoxAdapter(child: SizedBox(height: AppSpace.md)),
-      SliverToBoxAdapter(child: _LoadMoreFooter(provider: p)),
-    ];
-
-    if (columns == 1) {
+    final now = DateTime.now().toUtc();
+    return SliverLayoutBuilder(builder: (context, box) {
+      final columns = box.crossAxisExtent >= _twoColumns ? 2 : 1;
+      Widget card(int i) => AppReveal(
+            index: i,
+            group: 'course_students',
+            child: _StudentTile(student: p.students[i], now: now, onNudge: onNudge),
+          );
+      final rows = (p.students.length / columns).ceil();
       return SliverPadding(
-        padding: padding,
-        sliver: SliverMainAxisGroup(
-          slivers: [
-            SliverList.separated(
-              itemCount: p.students.length,
-              separatorBuilder: (_, _) => const SizedBox(height: AppSpace.xs),
-              itemBuilder: (_, i) => card(i),
-            ),
-            ...footer,
-          ],
-        ),
-      );
-    }
-
-    return SliverPadding(
-      padding: padding,
-      sliver: SliverMainAxisGroup(
-        slivers: [
-          SliverGrid(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: columns,
-              mainAxisSpacing: AppSpace.sm,
-              crossAxisSpacing: AppSpace.sm,
-              // the card's text lines grow with the reader's text size
-              mainAxisExtent: MediaQuery.textScalerOf(context).scale(_cardH).clamp(_cardH, _cardHMax),
-            ),
-            delegate: SliverChildBuilderDelegate((_, i) => card(i), childCount: p.students.length),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xl),
+        sliver: SliverMainAxisGroup(slivers: [
+          SliverList.separated(
+            itemCount: rows,
+            separatorBuilder: (_, _) => const SizedBox(height: AppSpace.xs),
+            itemBuilder: (_, r) {
+              if (columns == 1) return card(r);
+              final a = r * 2, b = a + 1;
+              return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(child: card(a)),
+                const SizedBox(width: AppSpace.xs),
+                Expanded(child: b < p.students.length ? card(b) : const SizedBox.shrink()),
+              ]);
+            },
           ),
-          ...footer,
-        ],
-      ),
-    );
+          const SliverToBoxAdapter(child: SizedBox(height: AppSpace.md)),
+          SliverToBoxAdapter(child: _LoadMoreFooter(provider: p)),
+        ]),
+      );
+    });
+  }
+}
+
+/// A card wired to the provider and the panel: tap opens the student (or toggles while selecting), long press selects.
+class _StudentTile extends StatelessWidget {
+  const _StudentTile({required this.student, required this.now, required this.onNudge});
+
+  final EnrolledStudent student;
+  final DateTime now;
+  final ValueChanged<EnrolledStudent> onNudge;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.watch<EnrolledStudentsProvider>();
+    final panel = MasterDetailScope.maybeOf(context)?.controller;
+    final ref = EntityRef(EntityKind.student, student.id, label: student.name, imageUrl: student.imageUrl);
+    Widget build(bool open) => CourseStudentCard(
+          student: student,
+          now: now,
+          classAverage: p.summary.enrolled > 1 ? p.summary.avgProgress : null,
+          selected: open,
+          selecting: p.selecting,
+          checked: p.selected.contains(student.id),
+          showNudge: p.nudgeEnabled && student.atRisk && student.canNudge,
+          onTap: p.selecting ? () => p.toggleSelected(student.id) : () => EntityNavigator.open(context, ref),
+          onLongPress: p.nudgeEnabled ? () => p.toggleSelected(student.id) : null,
+          onNudge: () => onNudge(student),
+        );
+    if (panel == null) return build(false);
+    return ListenableBuilder(listenable: panel, builder: (context, _) => build(panel.selectedId == student.id));
   }
 }
 
@@ -523,113 +716,15 @@ class _LoadMoreFooter extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Student card — ring-avatar + name/email, compact trailing certificate action.
-// ─────────────────────────────────────────────────────────────────────────────
-
+/// "3 Nov 2026" through AppTime (platform / organization timezone), or the raw text when unreadable.
 String _formatDate(String raw) {
-  try {
-    final dt = raw.toLocalSaTime;
-    return '${dt.day}/${dt.month}/${dt.year}';
-  } catch (_) {
-    return raw;
-  }
+  final d = parseServerUtc(raw);
+  return d == null ? raw : AppTime.date(d);
 }
 
-class _StudentCard extends StatelessWidget {
-  final EnrolledStudent student;
-  final TeacherCourse course;
-
-  const _StudentCard({required this.student, required this.course});
-
-  /// Below this inner width the certificate action is drawn as its glyph alone, so the name keeps its room.
-  static const double _compactBelow = 300;
-
-  @override
-  Widget build(BuildContext context) {
-    final panel = MasterDetailScope.maybeOf(context)?.controller;
-    final ref = EntityRef(EntityKind.student, student.id, label: student.name, imageUrl: student.imageUrl);
-    if (panel == null) return _card(context, ref, false);
-    return ListenableBuilder(listenable: panel, builder: (context, _) => _card(context, ref, panel.selectedId == student.id));
-  }
-
-  Widget _card(BuildContext context, EntityRef ref, bool selected) {
-    final c = context.colors;
-    final tone = _progressColorOf(context, student);
-    final meta = AppType.meta(context);
-    final radius = AppRadius.cardAll;
-    return AppPressScale(
-      child: Material(
-        color: selected ? Color.alphaBlend(c.primaryTint, c.cardBg) : c.cardBg,
-        shape: RoundedRectangleBorder(
-          borderRadius: radius,
-          side: BorderSide(
-            color: selected ? c.primary : c.divider,
-            width: selected ? AppBorder.strong : AppBorder.hairline,
-          ),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          key: ValueKey('md.course_student.${student.id}'),
-          onTap: () => EntityNavigator.open(context, ref),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpace.sm),
-            child: LayoutBuilder(builder: (context, box) => Row(
-              children: [
-                _RingAvatar(student: student, color: tone),
-                const SizedBox(width: AppSpace.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              student.name,
-                              style: AppType.bodyStrong(context),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpace.xs),
-                          Text(
-                            '${student.progressPercentage.toStringAsFixed(0)}%',
-                            style: AppType.label(context).copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: appInk(context, tone),
-                              fontFeatures: const [FontFeature.tabularFigures()],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpace.xxs / 2),
-                      if (student.username != null) AppUsernameLine(student.username, fontSize: meta.fontSize!),
-                      Text(student.gmail, style: meta, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: AppSpace.xxs / 2),
-                      Text(
-                        '${'joined'.tr} ${_formatDate(student.enrolledAt)}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: meta.copyWith(color: c.textLight),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppSpace.xs),
-                // a narrow card keeps the text and draws the action as its glyph alone
-                _CertificateAction(student: student, course: course, compact: box.maxWidth < _compactBelow),
-              ],
-            )),
-          ),
-        ),
-      ),
-    );
-  }
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Certificates — the picker, the student's certificates dialog (the panel's Certificates action).
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _RingAvatar extends StatelessWidget {
   final EnrolledStudent student;
@@ -702,72 +797,6 @@ class _RingAvatar extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Compact certificate action — send / sending / sent, with a picker when the
-// course has more than one certificate.
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _CertificateAction extends StatelessWidget {
-  final EnrolledStudent student;
-  final TeacherCourse course;
-
-  const _CertificateAction({required this.student, required this.course, this.compact = false});
-
-  /// The glyph alone in a 48 px target (a narrow card), the label as its tooltip and semantics.
-  final bool compact;
-
-  Future<void> _handleTap(BuildContext context) async {
-    final provider = context.read<EnrolledStudentsProvider>();
-    final target = await _pickCertificate(context, course.certificates);
-    if (target == null || !context.mounted) return;
-
-    final success = await provider.sendCertificate(target.id, student.id);
-    if (!context.mounted) return;
-    _showResultSnack(context, success, 'certificate_sent_success'.tr);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final provider = context.watch<EnrolledStudentsProvider>();
-    final singleCert = course.certificates.length == 1 ? course.certificates.first : null;
-    final isSending = singleCert != null &&
-        provider.isSendingCertificate(singleCert.id, student.id);
-    final isSent = singleCert != null &&
-        provider.isCertificateIssued(singleCert.id, student.id);
-
-    if (isSending) {
-      return SizedBox(
-        width: AppTouch.min,
-        height: AppTouch.min,
-        child: Center(
-          child: SizedBox(
-            width: AppIconSize.md,
-            height: AppIconSize.md,
-            child: CircularProgressIndicator(strokeWidth: AppBorder.focus, color: c.accent2),
-          ),
-        ),
-      );
-    }
-
-    // Always visible, labeled pill. After a send it turns emerald and reads
-    // "Resend", but stays tappable so the certificate can go out again.
-    final icon = isSent ? Icons.replay_rounded : Icons.workspace_premium_rounded;
-    final label = isSent ? 'resend_certificate_btn'.tr : 'send_btn'.tr;
-    final tone = isSent ? c.success : c.accent2;
-    final onTap = provider.isBulkSending ? null : () => _handleTap(context);
-    if (compact) {
-      return IconButton(
-        tooltip: label,
-        onPressed: onTap,
-        constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
-        icon: Icon(icon, size: AppIconSize.md, color: appInk(context, tone)),
-      );
-    }
-    return AppPill(icon: icon, label: label, color: tone, onTap: onTap);
-  }
-}
-
 /// The certificate picker's rows (a sheet): one 48 px row per certificate, the gold glyph, the title.
 class _CertificatePicker extends StatelessWidget {
   final List<CourseCertificate> certificates;
@@ -819,53 +848,6 @@ Future<CourseCertificate?> _pickCertificate(
 
 void _showResultSnack(BuildContext context, bool success, String okMessage) {
   showAppNotice(success ? okMessage : 'certificate_send_failed'.tr, error: !success);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// "Send certificate to all students" — one click, with a confirmation step.
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _SendToAllButton extends StatelessWidget {
-  final TeacherCourse course;
-  final bool expand;
-
-  const _SendToAllButton({required this.course, this.expand = false});
-
-  Future<void> _onTap(BuildContext context) async {
-    final provider = context.read<EnrolledStudentsProvider>();
-
-    final cert = await _pickCertificate(context, course.certificates);
-    if (cert == null || !context.mounted) return;
-
-    final confirmed = await showAppDialog<bool>(
-      context,
-      title: 'send_to_all_title'.tr,
-      icon: Icons.workspace_premium_rounded,
-      body: Text('${'send_to_all_confirm'.tr}\n\n${cert.title} · ${provider.totalCount} ${'students'.tr}'),
-      actions: [
-        Builder(builder: (ctx) => AppButton.ghost(label: 'cancel'.tr, onPressed: () => Navigator.pop(ctx, false))),
-        Builder(builder: (ctx) => AppButton.primary(label: 'send_btn'.tr, icon: Icons.send_rounded, onPressed: () => Navigator.pop(ctx, true))),
-      ],
-    );
-    if (confirmed != true || !context.mounted) return;
-
-    final sent = await provider.sendCertificateToAll(cert.id);
-    if (!context.mounted) return;
-    _showResultSnack(context, sent >= 0, '${'send_to_all_success'.tr} ($sent)');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.watch<EnrolledStudentsProvider>();
-    final busy = p.isBulkSending;
-    return AppButton.secondary(
-      label: busy ? 'sending_label'.tr : 'send_to_all_students_btn'.tr,
-      icon: Icons.workspace_premium_rounded,
-      busy: busy,
-      expand: expand,
-      onPressed: p.totalCount == 0 ? null : () => _onTap(context),
-    );
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

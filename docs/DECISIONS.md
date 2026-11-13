@@ -4600,3 +4600,23 @@ A saved job used to take the whole inspector and turn every tool off until "Edit
 ## D-829 — Desktop keys of the redesigned Studio · 2026-11-13 · accepted
 
 Space · J / K / L · ← / → (Shift: a second) · I / O · S split · Delete · Alt+← / → move the selected part · Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y · Ctrl+S save now · Ctrl+E Export · Home / End · + / − · Esc closes the panel, then clears the selection. They work with any tool open (S and Delete needed the Edit tool before) and while an export runs; never while typing or with the Export panel open. The list is at the foot of the inspector.
+
+## D-870 — A course's students page: the figures, one filter, one sort, cards, export · 2026-11-13 · accepted
+
+The page (`lib/features/teacher/sessions/students/`) leads with four figures for the whole course — enrolled, active this week, average progress, at risk (a tap filters to them) — then, only when someone may be nudged, one amber card with Nudge all. One search, one filter (All / Active / Low progress / Inactive / Completed, counts of the search) and a sort (name, progress either way, last activity either way), all server-side so pages stay right. A student is a card: avatar, name and %, a progress bar with the class average as its marker, one meta line (last active · lessons done · exam average) and only what needs saying (the reason, "Nudged 3 h ago", Completed). Phones get a list, wide lists two columns, a tap opens the shared panel (D-290). The certificate pill left the card: one student's certificates are the panel's Certificates action, "send to everyone" a header action — the feature stays, the card says what matters. Export goes through the Export Studio (every student of the current search / filter, both languages' headers).
+
+## D-871 — "Low progress" is one server rule, and every card says why · 2026-11-13 · accepted
+
+`classify()` in `../back/services/course_students_service.py` is the only place: completed (100 %) is never at risk; never_started (no activity, enrolled ≥ 7 days); no_activity (last activity ≥ 7 days, inactive from 14); behind_pace (a course with dated sessions: ≥ 25 points under the share of lessons already due, after 7 days); slow_start (a self-paced course: < 20 % after 14 days). Last activity is the latest of the enrollment's activity stamp, a finished lesson and an exam. The app only words the verdict (`riskText`: "No activity for 12 days", "Behind the plan: 22% of 60%"). Dated sessions decide the pace because a self-paced course has no "expected" point; there a slow start is the honest signal.
+
+## D-872 — Course staff, not "any teacher", read the list and nudge · 2026-11-13 · accepted
+
+`GET /courses/{id}/students` and the nudge accept the course's teacher, platform admins, organization staff holding `courses.update` and the course's assistants (session_access), 403 `not_course_staff` for anyone else — the old route let any teacher role in and then checked ownership only, which shut out assistants and org staff.
+
+## D-873 — The nudge: one, a selection or all low, a parent text about their own child, once a day · 2026-11-13 · accepted
+
+`POST /courses/{id}/students/nudge` sends an in-app notification + push (e-mail when no push reaches them) from a short editable message (a bilingual template; `{name}` and `{course}` are filled per student, so one message serves a selection). "Also notify the parent" names only how many have a linked parent; each active linked parent gets a server-written text about THEIR child (name, course, progress) and nothing about anyone else. One nudge per (course, student) per 24 h, logged in `course_nudges` (migration 0081): the card reads "Nudged 3 h ago", a selection says how many will be skipped, all-recent answers 429. Taps go through AppNavigator: the student's opens the course (`module: course`), the parent's `parent_child` opens that child's report — the server's target checks the link. Kill switch `course_students.nudge` (403, the list stays).
+
+## D-874 — Selection by long press, the bell for one · 2026-11-13 · accepted
+
+The bell on an at-risk card nudges that student in one tap; a long press starts a selection (the check leads each card, a bottom bar says how many and nudges them); Nudge all is the card on top. No checkbox column on every card while not selecting: the page stays calm for reading.

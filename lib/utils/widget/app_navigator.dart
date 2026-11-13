@@ -110,6 +110,9 @@ class AppNavigator {
   /// parent_grades (D-350, a parent's notice that a child's result is out): the child's report with its grades; the
   /// notice does not say which child, so a parent of several picks one (a `student_id` in [data] is used if a server sends it).
   ///
+  /// parent_child (D-873, a teacher's nudge about a parent's child): that child's report; `student_id` (or [targetId])
+  /// names the child, and only a linked child opens (the server's target checks the link too).
+  ///
   /// exam_notice (D-247; also exam_appeal · exam_result): [data] is the push / notification target (`exam_id`, `attempt_id`,
   /// `kind` …), else [targetId] is the exam.
   static Future<void> openModule(String? module, {int? targetId, int? orgId, String? kind, Map<String, dynamic> data = const {}}) async {
@@ -197,8 +200,10 @@ class AppNavigator {
         }
         return;
       case 'parent_grades': // "a new result for your child" (D-350): that child's grades, for a parent only
+      case 'parent_child': // a teacher nudged my child (D-873): that child's report (progress), the server names the child
         if (ctx.read<MyAuthProvider>().currentUser?.role != 'parent' ||
-            !await _deferred('parent_grades_link', parent_grades_link.loadLibrary, () => parent_grades_link.openParentGradesLink(nav, ctx, data))) {
+            !await _deferred('parent_grades_link', parent_grades_link.loadLibrary, () => parent_grades_link.openParentGradesLink(
+                nav, ctx, {...data, if (data['student_id'] == null && targetId != null) 'student_id': targetId}))) {
           await nav.pushNamed('/notifications');
         }
         return;

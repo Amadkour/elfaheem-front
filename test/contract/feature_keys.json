@@ -136,6 +136,7 @@
  "course_stats.price",
  "course_stats.sessions",
  "course_stats.students",
+ "course_students.nudge",
  "course_tabs.about",
  "course_tabs.analytics",
  "course_tabs.lessons",
