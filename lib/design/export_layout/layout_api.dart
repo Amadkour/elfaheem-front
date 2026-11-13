@@ -154,10 +154,15 @@ class LayoutStarter {
 
 /// What `POST /assets` answered: the asset id and whether it came from a PDF (page 1 stored as a PNG).
 class LayoutAssetUpload {
-  const LayoutAssetUpload(this.id, {this.fromPdf = false, this.pages = 1});
+  const LayoutAssetUpload(this.id, {this.fromPdf = false, this.pages = 1, this.page = 1, this.width = 0, this.height = 0});
   final String id;
   final bool fromPdf;
-  final int pages;
+
+  /// A PDF's page count, and which page became the picture (1-based).
+  final int pages, page;
+
+  /// The stored picture's size in pixels (0 when an older server did not say).
+  final int width, height;
 }
 
 /// The server's limits on `POST /rows` (413 above them): rows and bytes.
@@ -303,11 +308,14 @@ class LayoutApi {
   }
 
   /// Like [uploadAsset] with the server's extras: `from_pdf` / `pages` when a PDF was rasterised.
-  Future<ExportResult<LayoutAssetUpload>> uploadAssetInfo(Uint8List bytes, String name) => _call(
-        () => api.postFiles('$_base/assets', files: [(name, bytes)], field: 'file'),
+  /// [page]: which page of a PDF becomes the picture (an exam cover may be any page, D-730); older servers keep page 1.
+  Future<ExportResult<LayoutAssetUpload>> uploadAssetInfo(Uint8List bytes, String name, {int page = 1}) => _call(
+        () => api.postFiles(page > 1 ? '$_base/assets?page=$page' : '$_base/assets', files: [(name, bytes)], field: 'file'),
         (r) {
           final m = _map(r);
-          return LayoutAssetUpload('${m['asset_id'] ?? ''}', fromPdf: m['from_pdf'] == true, pages: m['pages'] is num ? (m['pages'] as num).toInt() : 1);
+          int n(Object? v, int d) => v is num ? v.toInt() : d;
+          return LayoutAssetUpload('${m['asset_id'] ?? ''}',
+              fromPdf: m['from_pdf'] == true, pages: n(m['pages'], 1), page: n(m['page'], 1), width: n(m['width'], 0), height: n(m['height'], 0));
         },
       );
 

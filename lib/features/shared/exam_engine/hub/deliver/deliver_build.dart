@@ -15,6 +15,7 @@ import '../../../../admin/admin_common.dart' show t;
 import '../../../../../design/export_layout/layout_model.dart' show LayoutDocument;
 import '../../exam_authoring.dart' show ExamAuthoringApi, ExamView, authoringError;
 import '../../exam_media.dart' show bankQuestionBytes;
+import '../../exam_cover.dart' show coverAssetDocs, examCoverOf;
 import '../../exam_paper.dart';
 import '../../exam_paper_bands.dart' show ExamPaperCopy, PaperPrintedId;
 import '../../exam_paper_design_api.dart';
@@ -40,7 +41,7 @@ String get sampleStudentName => t('اسم الطالب', 'Student name');
 /// Everything delivery needs about one exam.
 class DeliverSource {
   DeliverSource({required this.view, required this.base, required this.tpl, required this.versions, required this.regular, required this.bold,
-      required this.delivery, required this.bubble, required this.printed, this.format = AnswerFormat.onPaper, this.bookletDefault = false, this.design, this.cover, this.designVersion = 0, this.identifier, this.orgId, this.hasCourse = false, this.plan, this.sheetPlan, this.layout});
+      required this.delivery, required this.bubble, required this.printed, this.format = AnswerFormat.onPaper, this.bookletDefault = false, this.design, this.cover, this.answerCover, this.designVersion = 0, this.identifier, this.orgId, this.hasCourse = false, this.plan, this.sheetPlan, this.layout});
   final ExamView view;
 
   /// The exam's paper with the design and every picture applied, in the exam's own order.
@@ -69,6 +70,9 @@ class DeliverSource {
   final List<PrintedIdSpec> printed;
   final LayoutDocument? design;
   final PaperCoverSpec? cover;
+
+  /// The answer booklet's cover page (D-730: the answer side's choice), ready for the writers; null = none.
+  final ExamCover? answerCover;
   final int designVersion;
   final IdentifierChoice? identifier;
   final int? orgId;
@@ -91,8 +95,9 @@ class DeliverSource {
     return d.copyWith(part: l.part, answerTable: l.table);
   }
 
-  /// [d] as its answer booklet (no cover: that belongs to the question paper).
-  ExamPaperDoc bookletOf(ExamPaperDoc d) => d.copyWith(part: PaperPart.booklet, answerTable: AnswerTablePlace.none, dropCover: true);
+  /// [d] as its answer booklet, with the answer side's cover (D-730), never the question paper's.
+  ExamPaperDoc bookletOf(ExamPaperDoc d) =>
+      d.copyWith(part: PaperPart.booklet, answerTable: AnswerTablePlace.none, cover: answerCover, dropCover: answerCover == null);
 }
 
 /// `load`: the exam can be delivered, else a [message] (and maybe [noQuestions] / [fileExam]).
@@ -144,14 +149,18 @@ Future<DeliverLoad> loadDeliverSource(int examId, {required String accentFallbac
       rtl: rtl,
       logo: logo,
       accentHex: accent);
+  // a paper exam's covers carry the cover code, so the scanner sets cover pages aside (D-732)
+  final coverCode = setup?.delivery == 'paper' ? (pd?.coverCode ?? '') : '';
+  ExamCover? answerCover;
   if (pd != null && !pd.isEmpty) {
-    final raw = await resolvePaperAssets([pd.document, pd.cover?.design]);
+    final raw = await resolvePaperAssets([pd.document, ...coverAssetDocs(pd.cover)]);
     final assets = <String, Uint8List>{};
     for (final e in raw.entries) {
       final b = printableImage(e.value);
       if (b != null) assets[e.key] = b;
     }
-    d = paperWithDesign(d, design: pd.document, cover: pd.cover, assets: assets);
+    d = paperWithDesign(d, design: pd.document, cover: pd.cover, assets: assets, coverCode: coverCode);
+    answerCover = examCoverOf(pd.cover, answer: true, rtl: rtl, code: coverCode);
   }
   d = await attachPaperImages(d, bankQuestionBytes);
   final style = PaperStyle.of(tpl);
@@ -175,6 +184,7 @@ Future<DeliverLoad> loadDeliverSource(int examId, {required String accentFallbac
     bookletDefault: deliverBookletDefault(format, settings),
     design: pd?.document,
     cover: pd?.cover,
+    answerCover: answerCover,
     designVersion: pd?.version ?? 0,
     identifier: setup?.identifier,
     orgId: view.exam.orgId,

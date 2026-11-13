@@ -38,6 +38,8 @@ import '../create/answer_format.dart' show AnswerFormat;
 import '../create/answer_sheet_plan.dart';
 import '../create/answer_sheet_widgets.dart' show AnswerSheetPrintCard;
 import '../create/exam_create_logic.dart' show versionsCountText;
+import '../../exam_cover.dart' show coverSummaryText;
+import '../../exam_cover_picker.dart' show openExamCoverSheet;
 import 'deliver_build.dart';
 import 'deliver_logic.dart';
 import 'deliver_summary_card.dart';
@@ -240,6 +242,15 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
   Future<void> _identifiers() async {
     await openIdentifierPlanSheet(context, examId: _id, courseId: _s?.hasCourse == true ? (widget.courseId ?? _s!.view.exam.courseId) : null);
     if (mounted) await _reloadAll();
+  }
+
+  /// The cover picker (D-730); the preview and every file are built again with the new choice.
+  Future<void> _cover() async {
+    final s = _s;
+    if (s == null) return;
+    final changed = await openExamCoverSheet(context,
+        examId: _id, answerSide: s.isPaper, title: widget.title, sample: deliverDesignerSample(s), orgId: s.orgId);
+    if (changed && mounted) await _reloadAll();
   }
 
   Future<void> _moreOptions() async {
@@ -558,6 +569,8 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
           busy: _printing,
           onPrint: _printing || s.versions.stale ? null : _print,
           onMore: _moreOptions,
+          coverText: AppConfig.disableList.contains('exam.paper_designer') ? null : coverSummaryText(s.cover, answerSide: paper),
+          onCover: _cover,
         ),
         ]),
       ),
@@ -785,6 +798,8 @@ class DeliverPrintCard extends StatelessWidget {
     required this.onPrint,
     required this.onMore,
     this.busy = false,
+    this.coverText,
+    this.onCover,
   });
 
   final DeliverScope scope;
@@ -795,6 +810,10 @@ class DeliverPrintCard extends StatelessWidget {
   final ValueChanged<int> onBlank;
   final VoidCallback? onPrint;
   final VoidCallback onMore;
+
+  /// The covers in one line (D-730) and the way to change them; null = the row is hidden (no designer).
+  final String? coverText;
+  final VoidCallback? onCover;
 
   @override
   Widget build(BuildContext context) {
@@ -850,13 +869,46 @@ class DeliverPrintCard extends StatelessWidget {
           padding: const EdgeInsets.only(top: AppSpace.xxs),
           child: Text(t('Word يرتّب الصفحات بنفسه: راجع صفحات نسخة واحدة قبل طباعة الكل.', 'Word lays out the pages itself: check one copy before printing them all.'), style: AppType.meta(context).copyWith(color: c.textLight, height: 1.4)),
         ),
+      if (coverText != null) ...[
+        const SizedBox(height: AppSpace.sm),
+        DeliverCoverRow(text: coverText!, onChange: busy ? null : onCover),
+      ],
       const SizedBox(height: AppSpace.sm),
       AppPrimaryButton(key: const ValueKey('deliver.print'), label: label, icon: Icons.print_rounded, busy: busy, onPressed: onPrint),
       Align(
         alignment: AlignmentDirectional.centerStart,
-        child: TextButton(key: const ValueKey('deliver.more'), onPressed: onMore, child: Text(t('خيارات أخرى: نموذج الإجابة، Excel، الغلاف', 'More: answer key, Excel, cover'))),
+        child: TextButton(key: const ValueKey('deliver.more'), onPressed: onMore, child: Text(t('خيارات أخرى: نموذج الإجابة، Excel', 'More: answer key, Excel'))),
       ),
     ]);
+  }
+}
+
+/// "Cover page" in the print card: what the covers are, and Change (the cover picker, D-730).
+class DeliverCoverRow extends StatelessWidget {
+  const DeliverCoverRow({super.key, required this.text, this.onChange});
+  final String text;
+  final VoidCallback? onChange;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      key: const ValueKey('deliver.cover'),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+      decoration: BoxDecoration(color: c.primaryWash, borderRadius: AppRadius.cardAll),
+      child: Row(children: [
+        Icon(Icons.menu_book_outlined, color: c.primary, size: AppIconSize.md),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text(t('صفحة الغلاف', 'Cover page'), style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w700)),
+            Text(text, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+          ]),
+        ),
+        const SizedBox(width: AppSpace.xs),
+        AppButton.secondary(key: const ValueKey('deliver.cover.change'), label: t('تغيير', 'Change'), size: AppButtonSize.sm, onPressed: onChange),
+      ]),
+    );
   }
 }
 

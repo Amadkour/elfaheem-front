@@ -12,6 +12,7 @@ import 'package:flutter_education_app/design/export_layout/layout_api.dart';
 import 'package:flutter_education_app/design/export_layout/layout_element_view.dart' show LayoutAssets;
 import 'package:flutter_education_app/design/export_layout/layout_model.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/exam_cover_picker.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_design_api.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_designer.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_sheet.dart';
@@ -106,7 +107,7 @@ void main() {
       expect(body['version'], 3);
       expect((body['document'] as Map)['purpose'], DesignPurpose.examPaper);
       expect((body['document'] as Map).containsKey('source'), isFalse);
-      expect(body['cover'], {'design': null, 'university': 'U', 'marks_table': true});
+      expect(body['cover'], {'mode': 'designed', 'design': null, 'university': 'U', 'marks_table': true, 'stamp': {'on': false, 'place': 'top'}});
     });
 
     test('save without a design or a cover sends nulls', () {
@@ -216,14 +217,10 @@ void main() {
             onDesign: () => log?.add('design'),
             onSaveTemplate: () => log?.add('save'),
             onUseBuiltIn: () => log?.add('builtin'),
-            coverOn: coverOn,
-            onCover: (v) => log?.add('cover:$v'),
-            university: TextEditingController(),
-            marksTable: true,
-            onMarksTable: (v) => log?.add('marks:$v'),
-            hasCoverDesign: false,
-            onCoverUpload: () => log?.add('coverUpload'),
-            onCoverDesign: () => log?.add('coverDesign'),
+            cover: coverOn
+                ? ExamCoverPickerBody(
+                    spec: const PaperCoverSpec(), university: TextEditingController(), onMode: (a, m) => log?.add('cover:${m.name}'), onDesign: () => log?.add('coverDesign'))
+                : null,
           ),
         );
 
@@ -238,16 +235,17 @@ void main() {
       expect(find.byKey(const ValueKey('paper.design')), findsNothing); // no design yet: no design actions
     });
 
-    testWidgets('a chosen design shows its actions; the cover being on shows the cover controls', (t) async {
+    testWidgets('a chosen design shows its actions; the cover slot holds the cover picker (D-730)', (t) async {
       final log = <String>[];
       await t.pumpWidget(layoutHost(block(log: log, hasDesign: true, coverOn: true)));
-      for (final k in ['paper.design', 'paper.save_template', 'paper.use_builtin', 'paper.cover.upload', 'paper.cover.design', 'paper.cover.university']) {
+      for (final k in ['paper.design', 'paper.save_template', 'paper.use_builtin', 'cover.paper.design', 'cover.paper.university', 'cover.paper.mode.uploaded']) {
         expect(find.byKey(ValueKey(k)), findsOneWidget, reason: k);
       }
       await t.tap(find.byKey(const ValueKey('paper.design')));
       await t.tap(find.byKey(const ValueKey('paper.save_template')));
-      await t.tap(find.byKey(const ValueKey('paper.cover.upload')));
-      expect(log, ['design', 'save', 'coverUpload']);
+      await t.ensureVisible(find.byKey(const ValueKey('cover.paper.mode.uploaded')));
+      await t.tap(find.byKey(const ValueKey('cover.paper.mode.uploaded')));
+      expect(log, ['design', 'save', 'cover:uploaded']);
     });
 
     testWidgets('while something runs the actions are disabled', (t) async {

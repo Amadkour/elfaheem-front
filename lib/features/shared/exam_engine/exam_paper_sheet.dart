@@ -29,6 +29,8 @@ import 'exam_media.dart' show bankQuestionBytes;
 import 'exam_paper.dart';
 import 'exam_paper_bands.dart' show ExamPaperCopy, PaperPrintedId;
 import 'exam_paper_design_api.dart';
+import 'exam_cover.dart' show coverAssetDocs;
+import 'exam_cover_picker.dart' show ExamCoverEditor;
 import 'exam_paper_designer.dart';
 import 'exam_paper_docx.dart';
 import 'exam_paper_pdf.dart';
@@ -124,11 +126,11 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
   late final ExamPaperDesignApi _dApi = widget.designApi ?? ExamPaperDesignApi();
   late final LayoutApi _lApi = widget.layoutApi ?? LayoutApi.instance;
   LayoutDocument? _design;
-  PaperCoverSpec _cover = const PaperCoverSpec();
-  bool _coverOn = false, _designDirty = false;
+  PaperCoverSpec? _cover;        // the covers (D-730), kept in step with the cover picker
+  String _coverCode = '';
+  bool _designLoaded = false, _designDirty = false;
   int _designVersion = 0;
   String? _designBusy;           // 'design' | 'template' | 'cover' | 'letterhead'
-  late final _university = TextEditingController()..addListener(() => _designDirty = true);
 
   /// The kill switch `exam.paper_designer` hides the whole block and the sheet works as it did before.
   bool get _designerOn => !AppConfig.disableList.contains('exam.paper_designer');
@@ -173,6 +175,7 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
     if (!mounted) return;
     if (pd != null && !_designDirty && _design == null) _adopt(pd);
     setState(() {
+      _designLoaded = true;
       if (v.ok) _versions = ExamVersions.fromJson(v.map);
       if (s.ok) {
         final x = ExamSetup.fromJson(s.map);
@@ -185,10 +188,8 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
   void _adopt(PaperDesignState s) {
     _designVersion = s.version;
     _design = s.document;
-    final c = s.cover;
-    _coverOn = c != null;
-    _cover = c ?? const PaperCoverSpec();
-    _university.text = _cover.university;
+    _cover = s.cover;
+    _coverCode = s.coverCode;
     _designDirty = false;
   }
 
@@ -196,8 +197,7 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
   Future<void> _persist() async {
     final id = widget.view.exam.id;
     if (id == null || !_designerOn) return;
-    _cover = _cover.copyWith(university: _university.text.trim());
-    var r = await _dApi.save(id, document: _design, cover: _coverOn ? _cover : null, version: _designVersion);
+    var r = await _dApi.save(id, document: _design, cover: _cover, version: _designVersion);
     if (!mounted) return;
     if (r.conflict) {
       final pick = await showPaperConflictDialog(context);
@@ -209,14 +209,14 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
         setState(() => _adopt(cur));
         return;
       }
-      r = await _dApi.save(id, document: _design, cover: _coverOn ? _cover : null, version: cur.version);
+      r = await _dApi.save(id, document: _design, cover: _cover, version: cur.version);
       if (!mounted) return;
     }
     if (r.ok) {
       _designVersion = r.state!.version;
       _designDirty = false;
       // the purge cannot read the engine's designs: keep their pictures alive (fire and forget)
-      final ids = {...paperAssetIds(_design), if (_coverOn) ...paperAssetIds(_cover.design)};
+      final ids = {...paperAssetIds(_design), ...paperAssetIds(_cover?.design)};
       if (ids.isNotEmpty) unawaited(LayoutApi.instance.keepAssets(ids));
     } else if (r.error != null) {
       appToast(r.error!, error: true);
@@ -230,7 +230,7 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
         institution: _institution.text, course: _course.text, dateText: _date.text.trim(), instructions: _instructions.text.split('\n'), rtl: AppConfig.lang == 'ar');
     return paperSampleRow(
         institution: _institution.text, course: _course.text, title: d.title, date: _date.text.trim(), duration: d.durationText,
-        total: '${d.total}', instructions: _instructions.text, university: _university.text);
+        total: '${d.total}', instructions: _instructions.text, university: _cover?.university ?? '');
   }
 
   Future<void> _withBusy(String what, Future<void> Function() fn) async {
@@ -324,56 +324,20 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
     });
   }
 
-  Future<void> _setCover(bool on) async {
-    setState(() => _coverOn = on);
-    await _persist();
-  }
-
-  /// The cover's start document: its saved design, else the classic cover starter, else an empty page.
-  Future<LayoutDocument> _coverDoc({String? assetId}) async {
-    final doc = _cover.design ?? await _starterDoc(DesignPurpose.examCover) ?? blankPaperDoc(purpose: DesignPurpose.examCover, assetId: assetId);
-    doc.purpose = DesignPurpose.examCover;
-    if (assetId != null) setPaperBackground(doc, assetId);
-    return doc;
-  }
-
-  Future<void> _openCoverDesigner(LayoutDocument doc) async {
-    final out = await openPaperDesigner(context,
-        purpose: DesignPurpose.examCover, title: widget.view.exam.title, initial: doc, sample: _sample(), orgId: widget.view.exam.orgId);
-    if (out == null || !mounted) return;
-    setState(() => _cover = _cover.copyWith(design: out));
-    await resolvePaperAssets([out]);
-    await _persist();
-  }
-
-  Future<void> _designCover() => _withBusy('cover', () async => _openCoverDesigner(await _coverDoc()));
-
-  Future<void> _uploadCover() async {
-    final f = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: const ['png', 'jpg', 'jpeg', 'pdf']);
-    if (f == null || !mounted) return;
-    await _withBusy('cover', () async {
-      final id = await uploadPaperBackground(_lApi, await f.readAsBytes(), f.name);
-      if (id == null || !mounted) return;
-      final doc = await _coverDoc(assetId: id);
-      setState(() => _cover = _cover.copyWith(design: doc));
-      await _persist();
-      if (mounted) await _openCoverDesigner(doc);
-    });
-  }
-
   /// The paper with the design, the cover and the bytes of their pictures (a custom Word template ignores them).
   Future<ExamPaperDoc> _designed(ExamPaperDoc d) async {
     if (!_designerOn || _tpl == PaperTemplate.custom) return d;
-    if (_designDirty && (_design != null || _coverOn)) await _persist();
-    final cover = _coverOn ? _cover.copyWith(university: _university.text.trim()) : null;
-    if (_design == null && cover == null) return d;
-    final raw = await resolvePaperAssets([_design, cover?.design]);
+    if (_designDirty && _design != null) await _persist();
+    final cover = _cover;
+    if (_design == null && (cover == null || cover.isNone)) return d;
+    final raw = await resolvePaperAssets([_design, ...coverAssetDocs(cover)]);
     final assets = <String, Uint8List>{};
     for (final e in raw.entries) {
       final b = printableImage(e.value);
       if (b != null) assets[e.key] = b;
     }
-    return paperWithDesign(d, design: _design, cover: cover, assets: assets);
+    // a paper exam's cover carries the cover code, so the scanner sets it aside (D-732)
+    return paperWithDesign(d, design: _design, cover: cover, assets: assets, coverCode: _setup != null ? _coverCode : '');
   }
 
   Future<void> _editVersions() async {
@@ -415,7 +379,7 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
 
   @override
   void dispose() {
-    for (final c in [_institution, _date, _course, _instructions, _university]) {
+    for (final c in [_institution, _date, _course, _instructions]) {
       c.dispose();
     }
     super.dispose();
@@ -600,17 +564,26 @@ class _ExamPaperSheetState extends State<ExamPaperSheet> {
           onDesign: () => _withBusy('design', _openDesigner),
           onSaveTemplate: _saveTemplate,
           onUseBuiltIn: _useBuiltIn,
-          coverOn: _coverOn,
-          onCover: _setCover,
-          university: _university,
-          marksTable: _cover.marksTable,
-          onMarksTable: (v) {
-            setState(() => _cover = _cover.copyWith(marksTable: v));
-            _persist();
-          },
-          hasCoverDesign: _cover.design != null,
-          onCoverUpload: _uploadCover,
-          onCoverDesign: _designCover,
+          cover: widget.view.exam.id == null || !_designLoaded
+              ? null
+              : ExamCoverEditor(
+                  key: const ValueKey('paper.cover.editor'),
+                  examId: widget.view.exam.id!,
+                  answerSide: _setup != null,
+                  initial: PaperDesignState(document: _design, cover: _cover, version: _designVersion, coverCode: _coverCode),
+                  currentDocument: () => _design,
+                  currentVersion: () => _designVersion,
+                  onSaved: (s) => setState(() {
+                    _designVersion = s.version;
+                    _cover = s.cover;
+                    if (s.coverCode.isNotEmpty) _coverCode = s.coverCode;
+                  }),
+                  layoutApi: _lApi,
+                  designApi: _dApi,
+                  title: widget.view.exam.title,
+                  sample: _sample(),
+                  orgId: widget.view.exam.orgId,
+                ),
         ),
       ),
       if (!designActive) ..._templatePicker(c, resolved) else const SizedBox.shrink(),

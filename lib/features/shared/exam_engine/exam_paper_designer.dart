@@ -19,6 +19,7 @@ import '../../../design/export_layout/layout_api.dart';
 import '../../../design/export_layout/layout_element_view.dart' show LayoutAssets;
 import '../../../design/export_layout/layout_model.dart';
 import '../../admin/admin_common.dart' show t;
+import 'exam_cover.dart' show examCoverOf;
 import 'exam_paper.dart';
 import 'exam_paper_bands.dart' show PaperPrintedId, kPaperMaxIdentifiers;
 import 'exam_paper_design_api.dart';
@@ -27,15 +28,12 @@ import 'exam_versions.dart';
 
 // ── the renderers' side (exam_paper.dart / exam_paper_xlsx.dart) ─────────────────────────────────────────────────
 
-/// The paper with the stored design applied: [design] the page design, [cover] the cover page (null = no cover),
-/// [assets] the bytes of every picture id they use.
-ExamPaperDoc paperWithDesign(ExamPaperDoc d, {LayoutDocument? design, PaperCoverSpec? cover, Map<String, Uint8List> assets = const {}}) {
-  return d.copyWith(
-      design: design,
-      dropDesign: design == null,
-      cover: cover == null ? null : ExamCover(design: cover.design, university: cover.university, marksTable: cover.marksTable),
-      dropCover: cover == null,
-      assets: assets);
+/// The paper with the stored design applied: [design] the page design, [cover] the covers (the question paper's is used
+/// here; null = no cover), [assets] the bytes of every picture id they use. [coverCode]: a paper exam's cover code, the
+/// QR the scanner sets cover pages aside by (D-732).
+ExamPaperDoc paperWithDesign(ExamPaperDoc d, {LayoutDocument? design, PaperCoverSpec? cover, Map<String, Uint8List> assets = const {}, String coverCode = ''}) {
+  final c = examCoverOf(cover, answer: false, rtl: d.rtl, code: coverCode);
+  return d.copyWith(design: design, dropDesign: design == null, cover: c, dropCover: c == null, assets: assets);
 }
 
 /// The Excel file of the paper (questions, answer key per version, marks grid).
@@ -340,26 +338,20 @@ class ExamPaperDesignBlock extends StatelessWidget {
     required this.onDesign,
     required this.onSaveTemplate,
     required this.onUseBuiltIn,
-    required this.coverOn,
-    required this.onCover,
-    required this.university,
-    required this.marksTable,
-    required this.onMarksTable,
-    required this.hasCoverDesign,
-    required this.onCoverUpload,
-    required this.onCoverDesign,
+    this.cover,
     this.busy,
     this.wordName,
   });
 
-  final bool hasDesign, wordSelected, coverOn, marksTable, hasCoverDesign;
+  final bool hasDesign, wordSelected;
+
+  /// The cover picker (exam_cover_picker.dart, D-730); null while the stored design loads.
+  final Widget? cover;
   final String? wordName;
 
   /// 'design' | 'template' | 'cover' | 'letterhead' while something runs (disables the actions).
   final String? busy;
-  final VoidCallback onProfessional, onWord, onLetterhead, onDesign, onSaveTemplate, onUseBuiltIn, onCoverUpload, onCoverDesign;
-  final ValueChanged<bool> onCover, onMarksTable;
-  final TextEditingController university;
+  final VoidCallback onProfessional, onWord, onLetterhead, onDesign, onSaveTemplate, onUseBuiltIn;
 
   @override
   Widget build(BuildContext context) {
@@ -409,34 +401,11 @@ class ExamPaperDesignBlock extends StatelessWidget {
           ),
         ]),
       ],
-      AppSwitchTile(
-        key: const ValueKey('paper.cover.toggle'),
-        title: t('صفحة غلاف', 'Cover page'),
-        subtitle: t('غلاف قبل الأسئلة بجدول الدرجات', 'A cover before the questions, with the marks grid'),
-        value: coverOn,
-        dense: true,
-        onChanged: off ? (_) {} : onCover,
-      ),
-      if (coverOn) ...[
-        AppField(key: const ValueKey('paper.cover.university'), controller: university, label: t('الجامعة / الجهة', 'University / body')),
-        AppSwitchTile(
-            key: const ValueKey('paper.cover.marks'), title: t('جدول درجات الأسئلة', 'Marks grid'), value: marksTable, dense: true, onChanged: off ? (_) {} : onMarksTable),
-        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-          OutlinedButton.icon(
-            key: const ValueKey('paper.cover.upload'),
-            onPressed: off ? null : onCoverUpload,
-            icon: const Icon(Icons.upload_file_rounded, size: 18),
-            label: Text(t('رفع غلاف (صورة أو PDF)', 'Upload a cover (image or PDF)')),
-            style: OutlinedButton.styleFrom(minimumSize: const Size(0, AppTouch.min)),
-          ),
-          FilledButton.tonalIcon(
-            key: const ValueKey('paper.cover.design'),
-            onPressed: off ? null : onCoverDesign,
-            icon: busy == 'cover' ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.brush_rounded, size: 18),
-            label: Text(hasCoverDesign ? t('عدّل الغلاف', 'Edit the cover') : t('صمّم الغلاف', 'Design the cover')),
-            style: FilledButton.styleFrom(minimumSize: const Size(0, AppTouch.min)),
-          ),
-        ]),
+      if (cover != null) ...[
+        const SizedBox(height: AppSpace.sm),
+        Text(t('صفحة الغلاف', 'Cover page'), style: appText(14, w: FontWeight.w700, c: c.textDark)),
+        const SizedBox(height: AppSpace.xs),
+        cover!,
       ],
       const SizedBox(height: AppSpace.xs),
     ]);

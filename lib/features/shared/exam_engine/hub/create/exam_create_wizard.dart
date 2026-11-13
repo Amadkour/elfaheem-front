@@ -46,6 +46,7 @@ import '../../paper/bubble/bubble_import_screen.dart' show openBubbleSheetFinder
 import '../../paper/templates/omr_template_learn.dart' show openOmrTemplateLearn;
 import '../../../../../design/engine/design_engine.dart' show DesignPurpose;
 import '../../../../../design/export_layout/layout_api.dart' show LayoutApi;
+import '../../exam_cover_picker.dart' show ExamCoverEditor;
 import '../../exam_paper_design_api.dart';
 import '../../exam_paper_designer.dart' show PaperConflictChoice, blankPaperDoc, openPaperDesigner, paperDocFrom, paperSampleRow, paperStartChoices, showPaperConflictDialog;
 import '../../exam_paper_bands.dart' show PaperPrintedId;
@@ -856,6 +857,20 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
               busy: _designing,
               onDesign: _designing ? null : _designPaper,
             ),
+            if (_sync.examId != null && !AppConfig.disableList.contains('exam.paper_designer')) ...[
+              const SizedBox(height: AppSpace.md),
+              Text(t('صفحة الغلاف', 'Cover page'), style: AppType.section(context)),
+              const SizedBox(height: AppSpace.xs),
+              ExamCoverEditor(
+                key: ValueKey('create.cover.${_sync.examId}.$_designRev'),
+                examId: _sync.examId!,
+                title: _plan.exam.title.trim(),
+                sample: paperSampleRow(
+                    institution: _orgNames[_plan.exam.orgId] ?? '', course: _plan.exam.courseId == null ? '' : (_plan.place?.name ?? ''), title: _plan.exam.title.trim(),
+                    date: '', duration: omrMinutesText(_plan.exam.durationMinutes), total: fmtPoints(_plan.totalPoints), instructions: ''),
+                orgId: _plan.exam.orgId,
+              ),
+            ],
             const SizedBox(height: AppSpace.md),
             _printPreview(),
           ]),
