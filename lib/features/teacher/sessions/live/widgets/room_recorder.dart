@@ -958,6 +958,12 @@ class ClientRecorder extends ChangeNotifier {
     return _webRecorder?.pushBoardFrame(label, frame) ?? true;
   }
 
+  /// The drawing on a shared screen as the transparent source [label] (D-811); the compositor lays it over the stage.
+  void pushInkFrame(String label, BoardRecFrame frame) {
+    if (!kIsWeb || audioOnly) return;
+    _webRecorder?.pushInkFrame(label, frame);
+  }
+
   /// Phase 2 confirmation: called from room.dart AFTER startScreenCaptureService
   /// has returned (meaning RPScreenRecorder / MediaProjection is running).
   /// No-op on web.

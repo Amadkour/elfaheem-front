@@ -12,6 +12,7 @@ library;
 import 'dart:typed_data';
 import 'dart:ui';
 
+import '../annotation/annotation_controller.dart' show AnnotStroke;
 import '../annotation/annotation_ink.dart';
 import '../annotation/annotation_painter.dart';
 import 'board_painter.dart';
@@ -27,6 +28,17 @@ class BoardRecStroke {
     final look = AnnotationPainter.traceStroke(BoardItemsPainter.strokeFor(ink), rect, ops);
     return look == null ? null : BoardRecStroke._(look, ops.values);
   }
+
+  /// A screen-share annotation stroke [s] in [rect] (the shared picture in frame pixels, D-811); null without points.
+  static BoardRecStroke? ofAnnot(AnnotStroke s, Rect rect) {
+    final ops = _OpList();
+    final look = AnnotationPainter.traceStroke(s, rect, ops);
+    return look == null ? null : BoardRecStroke._(look, ops.values);
+  }
+
+  /// A filled dot (the laser pointer in the recording, D-811).
+  factory BoardRecStroke.dot(Color color, double cx, double cy, double radius) =>
+      BoardRecStroke._(AnnotStrokeLook(color: color, fill: true), (_OpList()..circle(cx, cy, radius)).values);
 
   final AnnotStrokeLook look;
   final List<double> _ops;

@@ -4450,3 +4450,48 @@ and saves the exam's design on the draft.
 ## D-808 — Grade written papers follows the AI grading switch · 2026-11-13 · accepted
 
 **Context.** A written-papers run (`exam.essay_run`, D-662) suggests marks with the AI grader, but it had only its own switch, so turning off "AI grading of written answers" (`exam.auto_grade`) left it on. **Decision (owner, 2026-11-13).** The run needs both keys: `hubGradeKinds` hides Written papers when either is off, and `essay_runs.create` / `upload` refuse with 403 `feature_disabled` (`exam.auto_grade`). Runs already made, their pages and their marks stay; teachers keep grading by hand from the results. The AI controls text says so.
+
+
+## D-810 — The companion phone closes its own page past its PopScope · 2026-11-13 · accepted
+
+**Context (owner).** A person asked their phone to be their camera / microphone / speaker in a meeting (D-520). The host
+ended the meeting while the phone was in that role: the phone's page stayed on screen, its buttons and the back button
+did nothing, and the person could not get back into the app. **Root cause.** `CompanionPage` wraps its body in
+`PopScope(canPop: false)` (back means Leave, which tells the person's other device first) and closed itself with
+`Navigator.maybePop`. `maybePop` asks that PopScope: it refused and ran Leave again, which found the page already
+finishing (`_closed`) and returned. So the page never closed, on room end, disconnect, removal, "bye" from the other
+device, AND on the page's own Leave button. Android, iOS and the web share the code. The prompt before accepting
+(`_IncomingPage`) has no PopScope and already closes on the server's `live_companion_state` (`close_room` ends pending
+rows when the room finishes) or on its countdown; the server needed no change.
+**Decision.** `closeCompanionRoute(context)` (companion_parts.dart) pops the page directly (or removes it when a dialog
+lies above it), never asking the PopScope, and is safe to call twice. `_finish` uses it every time it is called (the
+notice shows once); back or Leave on a page whose room already ended just closes it. The phone returns to the page it was
+on with the notice "The meeting ended." / "The session ended." (by room kind). Test: `test/ui/companion_close_test.dart`
+(the old `maybePop` leaves the page up; the helper closes it, also under a dialog).
+
+## D-811 — The drawing on a shared screen is drawn into the web recording · 2026-11-13 · accepted
+
+**Context (owner).** Drawing on a shared screen during a meeting was missing from the recorded video. **Root cause, per
+recording path.**
+* Web (the browser composes the recording, D-306): a shared screen is the LiveKit video track, drawn by
+  `recorder_compositor.js`; the annotation is vector strokes on the data topic `annot`, painted by a Flutter layer over
+  the room's view of the share (`AnnotationLayer`), never part of the track. The compositor drew the bare screen, so
+  every stroke was lost. THIS was the bug.
+* Android, nothing shared from this phone: the recording copies the composited Flutter surface (D-110), the annotation
+  layer included: strokes are in it. While this phone shares, the recording is the MediaProjection picture: the in-app
+  layer is in it while the presenter is in the app; outside the app the overlay bubble (D-079) burns the presenter's
+  strokes in. Not changed.
+* iOS: ReplayKit records the app's own screen, the annotation layer included. Not changed.
+* Server egress: never used for meetings (they record on the creator's device, D-306 / D-311); a course session in
+  `server` mode does not get the strokes (recording_design.md: vectors are not rendered by egress), unchanged.
+**Decision.** The stage tile of the web recording names an overlay source (`RecSource.overlay` / tile `o`,
+`live_recording_layout.dart`); room.dart keeps one transparent canvas, `annot`, in the share's shape (long side 1920)
+and repaints it on every change of the annotation board, at most every 33 ms (every 50 ms while a laser dot fades), from
+`AnnotRecFrames` (annotation/annot_rec_frames.dart: each stroke's path traced with the painter's own geometry, once per
+change) through `pushInkFrame` (recorder_web_impl.dart: clear + replay the paths). The compositor draws it over the
+fitted share picture. Burned in at the source, no post-processing; the cost is one canvas clear and a path replay per
+change, none while nobody draws. Skipped in burned-in mode (the Android overlay already burns the strokes in).
+Tests: `test/org/annot_rec_frames_test.dart` (the tile carries the overlay, strokes land at the drawn place, traces
+cached, laser in and out). **Open (device check).** Android 14+ "share a single app": MediaProjection may leave out
+the overlay bubble's window, so burned-in strokes could miss the share and the recording; and a presenter outside the
+app without "Display over other apps" does not see (nor record) other people's vector strokes.

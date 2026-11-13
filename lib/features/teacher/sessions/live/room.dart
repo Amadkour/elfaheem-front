@@ -26,6 +26,7 @@ import 'widgets/live_control_bar.dart' show LiveControlAction;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'widgets/live_palette.dart';
 // Annotation over the shared screen (D-079): docs/live/annotation_wiring.md, the "Annotation" region below
+import 'annotation/annot_rec_frames.dart';
 import 'annotation/annotation_controller.dart';
 // The whiteboard (D-087): the "Whiteboard" region below
 import 'whiteboard/board_controller.dart';
@@ -98,6 +99,7 @@ import 'package:flutter_education_app/features/shared/live/live_net_pill.dart';
 import 'package:flutter_education_app/features/shared/live/live_quality_governor.dart' show LiveVideoTier;
 import 'whiteboard/board_video_track.dart';
 import 'whiteboard/board_export.dart' show BoardRecordingFrames;
+import 'whiteboard/board_rec_ink.dart' show BoardRecFrame;
 import 'package:flutter_education_app/features/shared/calendar/calendar_api.dart' show RemoteCalendarApi;
 import 'whiteboard/board_rec_pacing.dart';
 import 'whiteboard/board_format.dart' show BoardViewportPos;
@@ -2725,6 +2727,14 @@ class _RoomPageState extends State<RoomPage>
   final BoardRecPacer _recBoardPacer = BoardRecPacer();
   final BoardRecStats _recBoardStats = BoardRecStats();
   final BoardRecordingFrames _recBoardFrames = BoardRecordingFrames();
+  // D-811: the drawing on a shared screen in the web recording (annotation/annot_rec_frames.dart). The share is a
+  // video track and the strokes a Flutter layer over the room's view of it, so the compositor drew the bare screen.
+  // Now the stage tile names the transparent source 'annot', repainted on every change of the drawing (at most every
+  // 33 ms, the compositor's frame; every 50 ms while a laser dot fades).
+  final AnnotRecFrames _recAnnotFrames = AnnotRecFrames();
+  bool _recAnnotOn = false;
+  Timer? _recAnnotNext;
+  DateTime _recAnnotLast = DateTime.fromMillisecondsSinceEpoch(0);
 
   /// The board's size in this recording: follows the picked quality (D-319); a course session keeps 1280 × 720.
   (int, int) get _recBoardBaseSize {
@@ -2787,6 +2797,10 @@ class _RoomPageState extends State<RoomPage>
           wanted[stage.label] = track.mediaStreamTrack;
         }
       }
+      // D-811: the drawing over the share goes into the recording too (unless an Android overlay burns it in).
+      if (stage != null && _annotEnabled && !_annot.burnedIn) {
+        stage = RecSource(label: stage.label, kind: stage.kind, name: stage.name, overlay: kAnnotRecLabel);
+      }
     }
     final cams = <RecSource>[];
     final seen = <String>{};
@@ -2820,6 +2834,11 @@ class _RoomPageState extends State<RoomPage>
     if (json != _recLayoutSent) {
       _recLayoutSent = json;
       rec.setRecordingLayout(json);
+    }
+    if (stage?.overlay == kAnnotRecLabel) {
+      _startRecordingAnnot();
+    } else {
+      _stopRecordingAnnot();
     }
     // The whiteboard page, while it is on the stage (D-313: a frame on every change, see the fields above).
     if (stage?.kind == RecSourceKind.board) {
@@ -2909,7 +2928,54 @@ class _RoomPageState extends State<RoomPage>
     _recBoardFrames.dispose();
   }
 
+  void _startRecordingAnnot() {
+    if (_recAnnotOn) {
+      _kickRecordingAnnot(); // the share's shape may have changed
+      return;
+    }
+    _recAnnotOn = true;
+    _annot.board.addListener(_kickRecordingAnnot);
+    _kickRecordingAnnot();
+  }
+
+  /// The drawing changed: one frame now, or as soon as 33 ms have passed since the last one.
+  void _kickRecordingAnnot() {
+    if (!_recAnnotOn || (_recAnnotNext?.isActive ?? false)) return;
+    final wait = const Duration(milliseconds: 33) - DateTime.now().difference(_recAnnotLast);
+    _recAnnotNext = Timer(wait.isNegative ? Duration.zero : wait, _pushRecordingAnnot);
+  }
+
+  void _pushRecordingAnnot() {
+    _recAnnotNext = null;
+    final rec = _recorder;
+    if (!_recAnnotOn || rec == null || !mounted) return;
+    _recAnnotLast = DateTime.now();
+    try {
+      final frame = _recAnnotFrames.frame(_annot.board,
+          aspect: _stageShareAspect, laserOpacity: _annot.laserOpacity, laserColor: context.colors.danger);
+      rec.pushInkFrame(kAnnotRecLabel, frame);
+    } catch (e) {
+      log('[REC] annotation frame: $e');
+    }
+    // A laser dot fades without a change of the board: keep drawing while one is shown.
+    if (_annot.pruneLasers() && !(_recAnnotNext?.isActive ?? false)) {
+      _recAnnotNext = Timer(const Duration(milliseconds: 50), _pushRecordingAnnot);
+    }
+  }
+
+  void _stopRecordingAnnot() {
+    if (!_recAnnotOn) return;
+    _recAnnotOn = false;
+    _annot.board.removeListener(_kickRecordingAnnot);
+    _recAnnotNext?.cancel();
+    _recAnnotNext = null;
+    _recAnnotFrames.clear();
+    // The canvas stays with the recorder (the layout no longer names it): an empty frame, so a later share starts clean.
+    _recorder?.pushInkFrame(kAnnotRecLabel, BoardRecFrame(width: 1, height: 1, clip: Rect.zero));
+  }
+
   void _stopRecordingScene() {
+    _stopRecordingAnnot();
     _stopRecordingBoard();
     _recVideo.clear(); // the compositor drops its sources when it stops
     _recLayoutSent = null;

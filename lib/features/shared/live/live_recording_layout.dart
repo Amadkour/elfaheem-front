@@ -41,12 +41,16 @@ enum RecSourceKind { camera, screen, board }
 /// One thing the recording can draw: [label] is the compositor's source name ('camera' = this device's camera,
 /// 'screen' = this device's share, 'board' = the whiteboard page, 'rcam_<track sid>' / 'rscreen_<track sid>').
 class RecSource {
-  const RecSource({required this.label, required this.kind, this.name = '', this.speaking = false});
+  const RecSource({required this.label, required this.kind, this.name = '', this.speaking = false, this.overlay});
 
   final String label;
   final RecSourceKind kind;
   final String name;
   final bool speaking;
+
+  /// A transparent image source drawn over this one's picture, stretched to it (D-811: the drawing on a shared
+  /// screen, 'annot'). Null: nothing over it.
+  final String? overlay;
 }
 
 /// A source placed on the canvas (pixels of [kRecCanvas]).
@@ -58,12 +62,16 @@ class RecTile {
     this.name = '',
     this.main = false,
     this.speaking = false,
+    this.overlay,
   });
 
   final String label;
   final RecSourceKind kind;
   final Rect rect;
   final String name;
+
+  /// See [RecSource.overlay]: the compositor draws it over the fitted picture of this tile.
+  final String? overlay;
 
   /// The stage (or the only camera).
   final bool main;
@@ -82,6 +90,7 @@ class RecTile {
         if (name.isNotEmpty) 'n': name,
         if (main) 'm': true,
         if (speaking) 's': true,
+        'o': ?overlay,
       };
 
   @override
@@ -100,7 +109,7 @@ class RecLayout {
   bool get isEmpty => tiles.isEmpty;
 
   /// The labels the compositor must hold a source for.
-  Set<String> get labels => {for (final t in tiles) t.label};
+  Set<String> get labels => {for (final t in tiles) ...[t.label, ?t.overlay]};
 
   String toJson() => jsonEncode({
         'v': 1,
@@ -135,7 +144,7 @@ RecLayout recordingLayout({RecSource? stage, List<RecSource> cameras = const [],
 RecLayout _stageLayout(RecSource stage, List<RecSource> cams, bool rtl, Size canvas) {
   if (cams.isEmpty) {
     return RecLayout(rtl: rtl, tiles: [
-      RecTile(label: stage.label, kind: stage.kind, rect: Offset.zero & canvas, name: stage.name, main: true),
+      RecTile(label: stage.label, kind: stage.kind, rect: Offset.zero & canvas, name: stage.name, main: true, overlay: stage.overlay),
     ]);
   }
   final shown = cams.take(kRecMaxThumbs).toList();
@@ -151,6 +160,7 @@ RecLayout _stageLayout(RecSource stage, List<RecSource> cams, bool rtl, Size can
       rect: Rect.fromLTWH(stageLeft, _kMargin, stageW, canvas.height - _kMargin * 2),
       name: stage.name,
       main: true,
+      overlay: stage.overlay,
     ),
   ];
   // The column is centred on the canvas's height (room for the "+N" chip under it).

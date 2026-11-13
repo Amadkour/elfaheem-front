@@ -47,6 +47,7 @@ class WebRecorder {
   void setLayout(String json) {}
   void addTrack(Object? lkTrack, String label) {}
   bool pushBoardFrame(String label, BoardRecFrame frame) => true;
+  void pushInkFrame(String label, BoardRecFrame frame) {}
   void requestData() {}
   bool get hadRealData => false;
   int get chunksUploaded => 0;

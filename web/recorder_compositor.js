@@ -355,7 +355,8 @@
 
   // ── D-306: the room's layout (lib/features/shared/live/live_recording_layout.dart) ──────────────
   // setLayout(json) hands the canvas a list of tiles {l: source label, k: camera|screen|board, x, y, w, h (px on
-  // the 1920×1080 canvas), f: contain|auto, n: name, m: main, s: speaking} and `more` (cameras that did not fit).
+  // the 1920×1080 canvas), f: contain|auto, n: name, m: main, s: speaking, o: an overlay source drawn over the fitted
+  // picture — the drawing on a shared screen, D-811} and `more` (cameras that did not fit).
   // While a layout has tiles, _drawFrame draws them instead of the legacy "screen, else my camera" pair: the
   // stage letterboxed in its own shape, each camera cropped when its shape is close to its cell (letterboxed when
   // not: a phone held upright), an initials card while a source has no frame yet, a name pill and a ring on the
@@ -369,9 +370,10 @@
     return null;
   }
 
+  // Returns the rectangle the picture filled ([x, y, w, h]; null when nothing was drawn).
   function _drawFitted(el, x, y, w, h, fit) {
     const sw = el.videoWidth || el.width, sh = el.videoHeight || el.height;
-    if (!sw || !sh || w <= 0 || h <= 0) return;
+    if (!sw || !sh || w <= 0 || h <= 0) return null;
     const ratio = (sw / sh) / (w / h);
     const cover = fit === 'cover' || (fit === 'auto' && ratio > 0.72 && ratio < 1.39);
     if (cover) {
@@ -379,11 +381,12 @@
       let cw = sw, ch = sh;
       if (sw / sh > w / h) cw = sh * (w / h); else ch = sw / (w / h);
       _ctx.drawImage(el, (sw - cw) / 2, (sh - ch) / 2, cw, ch, x, y, w, h);
-    } else {
-      const s = Math.min(w / sw, h / sh);
-      const dw = sw * s, dh = sh * s;
-      _ctx.drawImage(el, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+      return [x, y, w, h];
     }
+    const s = Math.min(w / sw, h / sh);
+    const dw = sw * s, dh = sh * s;
+    _ctx.drawImage(el, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+    return [x + (w - dw) / 2, y + (h - dh) / 2, dw, dh];
   }
 
   function _drawLayout() {
@@ -401,7 +404,13 @@
       _ctx.fillStyle = t.k === 'board' && el ? '#FFFFFF' : '#111A2E'; // a page letterboxes on paper
       _ctx.fillRect(t.x, t.y, t.w, t.h);
       if (el) {
-        try { _drawFitted(el, t.x, t.y, t.w, t.h, t.f || 'contain'); } catch (_) { /* a frame not decodable yet */ }
+        let shown = null;
+        try { shown = _drawFitted(el, t.x, t.y, t.w, t.h, t.f || 'contain'); } catch (_) { /* a frame not decodable yet */ }
+        // D-811: the drawing on a shared screen (a transparent canvas in the share's shape) over the picture.
+        const over = t.o ? _sources[t.o] : null;
+        if (shown && over && over.canvasEl && over.canvasEl.width > 0) {
+          try { _ctx.drawImage(over.canvasEl, shown[0], shown[1], shown[2], shown[3]); } catch (_) { /* skipped frame */ }
+        }
       } else {
         // No frame yet (or a camera that just turned on): the person's initials.
         const cx = t.x + t.w / 2, cy = t.y + t.h / 2;

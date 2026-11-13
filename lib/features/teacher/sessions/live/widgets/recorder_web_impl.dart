@@ -609,6 +609,22 @@ class WebRecorder {
     }
   }
 
+  /// D-811: a transparent image source [label] (the drawing on a shared screen): cleared, then every stroke of [f]
+  /// (`open`) drawn on it. The compositor draws it over the stage tile that names it (`o`).
+  void pushInkFrame(String label, BoardRecFrame f) {
+    if (!_started) return;
+    try {
+      final before = _frames[label];
+      final shown = _sized(_frames, label, f.width, f.height);
+      if (shown == null) return;
+      if (!identical(before?.$1, shown.$1)) _dispatch('addCanvas', label.toJS, shown.$1);
+      shown.$2.clearRect(0, 0, f.width, f.height);
+      _drawStrokes(shown.$2, f, f.open);
+    } catch (e) {
+      _log('pushInkFrame($label) error: $e');
+    }
+  }
+
   static void _drawStrokes(web.CanvasRenderingContext2D g, BoardRecFrame f, List<BoardRecStroke> strokes) {
     if (strokes.isEmpty) return;
     g.save();
