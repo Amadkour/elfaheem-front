@@ -9,6 +9,8 @@
 // lists, each explained in one line, Pre-filled replaced by one line on why when it is missing; the student sheets in
 // order By name / By student number (the server sorts: the ids go as chosen) and an Index page first (default on).
 // An older server (no `modes`) keeps blank / named and the old body (it refuses unknown fields).
+// Questions with more choices than the sheet's bubbles (409 question_options_exceed_sheet) open the resolution panel
+// in place of the options (bubble_fit_panel.dart, D-720); once some were resolved, a line offers Change / Undo.
 library;
 
 import 'dart:typed_data';
@@ -25,6 +27,9 @@ import '../review/omr_review.dart' show OmrReviewApi;
 import 'omr_audience_picker.dart';
 import 'omr_scan.dart';
 import '../omr_counts.dart';
+import '../exam_setup.dart' show ExamSetupApi;
+import 'bubble_fit.dart' show kBubbleFitCode, BubbleFitApi;
+import 'bubble_fit_panel.dart';
 
 Future<void> showOmrSheetsSheet(BuildContext context, {required int examId, OmrScanApi? api}) =>
     showAppSheet<void>(context, (_) => OmrSheetsSheet(examId: examId, api: api));
@@ -271,10 +276,12 @@ class OmrSheetsOptionsView extends StatelessWidget {
 }
 
 class OmrSheetsSheet extends StatefulWidget {
-  const OmrSheetsSheet({super.key, required this.examId, this.api, this.audienceApi});
+  const OmrSheetsSheet({super.key, required this.examId, this.api, this.audienceApi, this.fitApi, this.setupApi});
   final int examId;
   final OmrScanApi? api;
   final OmrReviewApi? audienceApi;
+  final BubbleFitApi? fitApi;
+  final ExamSetupApi? setupApi;
 
   @override
   State<OmrSheetsSheet> createState() => _OmrSheetsSheetState();
@@ -292,6 +299,12 @@ class _OmrSheetsSheetState extends State<OmrSheetsSheet> {
   OmrPrintOrder _order = OmrPrintOrder.name;
   bool _index = true;
   bool _busy = false;
+
+  /// The resolution panel is open (the sheet refused, or Change was tapped).
+  bool _fitting = false;
+
+  /// Questions resolved earlier (off the sheet or trimmed), from the describe's `fit`.
+  int _resolved = 0;
 
   bool get _named => _mode != OmrPrintMode.blank;
 
@@ -311,7 +324,12 @@ class _OmrSheetsSheetState extends State<OmrSheetsSheet> {
     final r = await _api.sheetsInfo(widget.examId);
     if (!mounted) return;
     setState(() {
+      _loadError = null;
+      _fitting = !r.ok && r.code == kBubbleFitCode;
+      if (_fitting) return;
       if (r.ok) {
+        final fit = r.map['fit'] is Map ? r.map['fit'] as Map : const {};
+        _resolved = [for (final k in const ['ignore', 'written', 'trimmed']) fit[k] is num ? (fit[k] as num).toInt() : 0].fold(0, (a, b) => a + b);
         _info = OmrSheetsInfo.fromJson(r.map);
         // a server with modes opens on Name only; an older one on blank sheets, as before
         _mode = _info!.hasModes ? omrDefaultMode(_info!) : OmrPrintMode.blank;
@@ -387,8 +405,31 @@ class _OmrSheetsSheetState extends State<OmrSheetsSheet> {
   @override
   Widget build(BuildContext context) {
     final info = _info;
+    if (_fitting) {
+      return AppSheetContent(title: t('طباعة أوراق التظليل', 'Print bubble sheets'), children: [
+        BubbleFitSection(
+            examId: widget.examId,
+            api: widget.fitApi,
+            setupApi: widget.setupApi,
+            onResolved: () {
+              setState(() {
+                _fitting = false;
+                _info = null;
+              });
+              _load();
+            }),
+      ]);
+    }
     return AppSheetContent(title: t('طباعة أوراق التظليل', 'Print bubble sheets'), children: [
       if (info == null && _loadError == null) const AppListSkeleton(items: 2, padding: EdgeInsets.zero),
+      if (info != null && _resolved > 0) ...[
+        AppBanner(
+          icon: Icons.tune_rounded,
+          text: t('اخترت مسبقًا ما يحدث لأسئلة لا تتسع لها الورقة.', 'You chose earlier what happens to questions that did not fit the sheet.'),
+          action: TextButton(key: const ValueKey('omr.sheets.fit.change'), onPressed: () => setState(() => _fitting = true), child: Text(t('غيّر', 'Change'))),
+        ),
+        const SizedBox(height: AppSpace.sm),
+      ],
       if (_loadError != null) AppBanner(icon: Icons.error_outline_rounded, text: _loadError!, color: context.colors.danger),
       if (info != null)
         OmrSheetsOptionsView(

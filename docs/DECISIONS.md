@@ -4222,3 +4222,23 @@ and saves the exam's design on the draft.
 **Decision.** One card per thing the teacher owes, only when its count is above 0, most urgent first, each a sentence and one action: "1 exam has answers waiting for your grading → Grade now", "The grading of 1 exam is not finished → Continue grading", "2 exams are graded; students cannot see the results yet → Publish results", "3 drafts are not finished → Continue" (`hubAttentionText` / `hubAttentionAction`, `countText` in both languages). A card for ONE exam opens that exam's step straight away; for several it narrows the list to them across stages ("Showing: Results not published · Show all" stands in for the tabs, the card is outlined). On a phone the cards are lines of one card, so the list still shows under them. The drafts card needs no `grading` and so shows on an older server too; nothing is drawn when nothing is owed.
 
 **Why it differs from the brief.** The brief's "1 paper batch is being read…" has no count in the list (a batch's reading state lives in the scan screens); the in-progress grading card covers exams whose papers are being worked on instead.
+
+## D-720 — The "more options than bubbles" check, made right and named · 2026-11-13 · accepted
+
+**Context.** Print bubble sheets stopped at "Some questions have more options than the sheet has bubbles" and nothing else (screenshot 13: two written rows "name :-" / "section :-" then 15 MCQ). Checked: written / essay questions never reach the check (`bubble_questions` takes MCQ / true-false routed to the bubble sheet only, an e2e keeps it so). One real miscount: the server counted EMPTY options; an editor or an import can leave a blank last choice, never printed, which made a 4-choice question count as 5 (the wizard already ignored blanks).
+
+**Decision.** The server drops empty options at the END of a question when it lays out the bubble sheet (`omr_scan.sheet_option_ids`; a blank the key names stays, letters keep their positions). The 409 `question_options_exceed_sheet` now carries `questions [{question_id, n, options}]` and the print sheet opens the resolution panel (D-721) in its place, never the bare error.
+
+## D-721 — Four ways out, stored once, followed by print, reading and grading · 2026-11-13 · accepted
+
+**Decision.** `GET / PUT /exams/{id}/omr/fit` (back `services/bubble_fit.py`), per question or for all: **Remove wrong choices** (D-723); **Leave off the sheet** (route `manual`: answered on the question paper, marked by hand with marks entry / the marks file); **Answer on the written sheet** (route `written`: an NB2 choice row read and graded like the plan's own choice rows, the booklet's table when the written sheet is the booklet); **Use another sheet** (the library's sheets with enough choices and rows, `PUT …/setup omr_template_id`, or the teacher's own sheet via the one-photo import). Stored in `settings.bubble_fit` (no migration) and read by `offline_plan.fit_choices`, the ONE routing every reader asks (bubble questions, NB2 regions and reading, routes, the print plan). Moving a question after sheets were printed or read is 409 `plan_locked_by_sheets`, like a plan change. The print sheet keeps a "You chose earlier … Change" line (`describe.fit` counts) so a choice can be revisited. Tests: back `tests/exam_engine/e2e_bubble_fit.py`, front `test/org/bubble_fit_test.dart`, `test/ui/bubble_fit_layout_test.dart`.
+
+## D-722 — The wizard warns, it no longer blocks, on more choices than bubbles · 2026-11-13 · accepted
+
+**Context.** The new-exam wizard's bubble-sheet step counted `choicesOver` as a block: a second dead end.
+
+**Decision.** `BubbleCheck.choicesOver` is a warning (amber) on the bubble-sheet step naming the question numbers and the four choices that printing offers; `blocks` keeps only questions the sheet cannot hold at all and rows past the sheet. Only that step's line changed (the questions step belongs to another job).
+
+## D-723 — A trim is a new version this exam pins, undone by Restore · 2026-11-13 · accepted
+
+**Decision.** Trim removes wrong options from the last up (never one any key of the exam names: the fixed key, each printed version's key) until the question fits; nothing changes before the teacher confirms a preview of the struck choices. The server writes a new question version (edits never touch a pinned version), pins it for this exam's rows, renumbers printed versions' option orders and keeps `{from, to, removed, option_orders}`; Restore pins the original back. Both are refused once answers exist (409 `trim_after_answers`); when the correct answers alone exceed the sheet the choice is not offered (`can_trim: false`, 409 `trim_impossible`). The question paper must be printed again after a trim; the panel says so.

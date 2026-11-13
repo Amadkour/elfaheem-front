@@ -434,7 +434,7 @@ List<(String, String)> createEstimate(ExamCreatePlan p) => [
 
 /// A bubble exam's questions against its sheet.
 class BubbleCheck {
-  const BubbleCheck({this.notHeld = const [], this.importedNotHeld = 0, this.over = 0, this.choicesOver = 0, this.capacity});
+  const BubbleCheck({this.notHeld = const [], this.importedNotHeld = 0, this.over = 0, this.choicesOver = 0, this.choicesOverNumbers = const [], this.capacity});
 
   /// Questions neither the bubble sheet nor the paper can hold. Empty in the paper flow (D-697): what the sheet does not
   /// hold is answered in the question paper.
@@ -446,13 +446,20 @@ class BubbleCheck {
   /// Questions past the sheet's last row.
   final int over;
 
-  /// Questions with more choices than the sheet's bubbles.
+  /// Questions with more choices than the sheet's bubbles. A warning, not a block (D-722): printing offers the ways out
+  /// (remove wrong choices, leave them off the sheet, answer them on the written sheet, another sheet).
   final int choicesOver;
+
+  /// Their numbers in the exam (1-based), for the warning.
+  final List<int> choicesOverNumbers;
 
   /// The sheet's rows, when known.
   final int? capacity;
 
-  bool get blocks => notHeld.isNotEmpty || importedNotHeld > 0 || over > 0 || choicesOver > 0;
+  bool get blocks => notHeld.isNotEmpty || importedNotHeld > 0 || over > 0;
+
+  /// Something to say on the bubble sheet step (a block, or the choices warning).
+  bool get speaks => blocks || choicesOver > 0;
 }
 
 BubbleCheck bubbleCheckOf(ExamCreatePlan p) {
@@ -461,9 +468,15 @@ BubbleCheck bubbleCheckOf(ExamCreatePlan p) {
   final cap = tpl != null && tpl.questions > 0 ? tpl.questions : null;
   final bubbles = tpl?.options;
   final types = (p.layout ?? PaperLayout.bubbleObjective).bubbleTypes;
+  final wide = <int>[
+    if (bubbles != null)
+      for (var i = 0; i < p.exam.questions.length; i++)
+        if (types.contains(p.exam.questions[i].type) && p.exam.questions[i].options.where((o) => o.text.trim().isNotEmpty).length > bubbles) i + 1,
+  ];
   return BubbleCheck(
     over: cap != null && p.bubbleQuestionCount > cap ? p.bubbleQuestionCount - cap : 0,
-    choicesOver: bubbles == null ? 0 : p.exam.questions.where((q) => types.contains(q.type) && q.options.where((o) => o.text.trim().isNotEmpty).length > bubbles).length,
+    choicesOver: wide.length,
+    choicesOverNumbers: wide,
     capacity: cap,
   );
 }
