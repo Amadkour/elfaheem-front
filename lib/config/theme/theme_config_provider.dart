@@ -407,6 +407,40 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     return isDark ? darkBlock(light) : light;
   }
 
+  /// Identity (D-713): the header of a person or an organization (the Account page, a public /@name page, a
+  /// teacher's profile, the member home's organization block) wears a soft degree of the PRIMARY instead of the
+  /// peach band. Two stops for a gentle diagonal gradient: light mode goes from a primary tint (about #D3EADF for the
+  /// default preset) to an almost-canvas tint; dark mode from a deep primary tone (about #26503F) to a deeper one.
+  /// Every ink of the block ([blockInk], [blockIdentityMuted], [blockIdentityFaint]) reads at AA on both stops.
+  (Color, Color) get blockIdentityStops => _identityCache[(primary, _lightInk, textDark, isDark)] ??= _deriveIdentity();
+
+  final Map<(Color, Color, Color, bool), (Color, Color)> _identityCache = {};
+
+  (Color, Color) _deriveIdentity() {
+    final p = HSLColor.fromColor(primary.withValues(alpha: 1));
+    final grey = p.saturation < 0.08; // a grey primary has no hue to show
+    if (isDark) {
+      var a = HSLColor.fromAHSL(1, p.hue, grey ? p.saturation : 0.36, 0.24);
+      final b = HSLColor.fromAHSL(1, p.hue, grey ? p.saturation : 0.3, 0.15);
+      while (contrastRatio(textDark, a.toColor()) < kWcagAaText && a.lightness > 0.1) {
+        a = a.withLightness(a.lightness - 0.005);
+      }
+      return (a.toColor(), b.toColor());
+    }
+    final a = blockSurface(p.withSaturation(math.min(p.saturation, 0.48)).withLightness(0.86).toColor(), _lightInk);
+    final b = blockSurface(p.withSaturation(math.min(p.saturation, 0.3)).withLightness(0.945).toColor(), _lightInk);
+    return (a, b);
+  }
+
+  /// The identity block's fill (its first, stronger stop).
+  Color get blockIdentity => blockIdentityStops.$1;
+
+  /// Secondary ink on the identity block, at AA on both stops.
+  Color get blockIdentityMuted => ensureContrast(textMedium, [blockIdentityStops.$1, blockIdentityStops.$2]);
+
+  /// Caption ink on the identity block, at AA on both stops.
+  Color get blockIdentityFaint => ensureContrast(textLight, [blockIdentityStops.$1, blockIdentityStops.$2]);
+
   /// The signature hero (D-630): ONE deep forest block per home, from the theme's `primary_dark` — its hue, the
   /// saturation held at 0.62 and the lightness at most 0.145, then deepened until the cream ink reads at 7:1 (about
   /// #0E3B2E for the default preset). Dark mode lifts it a step (about #14392D) so it still stands off the dark canvas.

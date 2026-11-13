@@ -50,6 +50,7 @@ Color appToneStrong(BuildContext context, AppBlockTone tone) {
     AppBlockTone.emerald => c.primary,
     AppBlockTone.paper => c.textDark,
     AppBlockTone.forest => c.heroInk,
+    AppBlockTone.identity => c.primary,
   };
   // as TEXT on the card surface it must read (AA): darkened in light mode, lifted in dark mode
   return c.blockAccentInk(raw, c.cardBg);

@@ -6,6 +6,7 @@
 // → test/visual/goldens/account_<scene>_<width>_<lang>_<light|dark>.png at 390×844 and 1440×900.
 //   profile_student / profile_teacher   the Account page of each role (the hero block, the settings groups)
 //   public_teacher                      a teacher's public page (@name)
+//   hero_figures                        the identity header with figures, Edit and Share (D-713)
 //   subscription_plans / _active        the paywall: choosing a plan, and an active subscription
 //   payouts                             the teacher's earnings & payouts
 //   change_password / edit_account      the two account forms
@@ -28,6 +29,7 @@ import 'package:flutter_education_app/features/auth/teacher_document_provider.da
 import 'package:flutter_education_app/features/shared/profile/change_password_widget.dart';
 import 'package:flutter_education_app/features/shared/profile/course_instractor_profile.dart';
 import 'package:flutter_education_app/features/student/models.dart' show TeacherProfileData;
+import 'package:flutter_education_app/features/shared/profile/profile_hero.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_screen.dart';
 import 'package:flutter_education_app/features/shared/profile/update_account_widget.dart';
@@ -280,6 +282,26 @@ void main() {
 
   testWidgets('profile student', (t) => _render(t, 'profile_student', () => const ProfileScreen()));
   testWidgets('profile teacher', (t) => _render(t, 'profile_teacher', () => const ProfileScreen(), role: 'teacher'));
+  // the identity header with the teacher's figures and both actions (D-713)
+  testWidgets('hero figures', (t) => _render(t, 'hero_figures', () => BasePage(
+        enableFooterWidget: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: ProfileHero(
+            name: 'Ahmed Hamdy',
+            role: 'teacher',
+            email: 'ahmed@nextbrain.site',
+            username: 'ahmed',
+            onEdit: () {},
+            onShare: () {},
+            stats: const [
+              ProfileHeroStat(icon: Icons.menu_book_rounded, value: '12', label: 'Courses'),
+              ProfileHeroStat(icon: Icons.groups_rounded, value: '1240', label: 'Students'),
+              ProfileHeroStat(icon: Icons.star_rounded, value: '4.8', label: 'Rating'),
+            ],
+          ),
+        ),
+      ), grow: false));
   testWidgets('public teacher', (t) => _render(t, 'public_teacher',
       () => BasePage(enableFooterWidget: false, child: PublicProfileView(result: _teacher(), onOpenCourse: (_) {}))));
   testWidgets('subscription plans', (t) => _render(t, 'subscription_plans', () => const SubscriptionScreen(), act: (t) async {

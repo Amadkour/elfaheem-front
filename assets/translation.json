@@ -24570,5 +24570,77 @@
   "home_t_day_ahead": {
     "en": "Still ahead",
     "ar": "قادمة"
+  },
+  "profile_edit_short": {
+    "en": "Edit profile",
+    "ar": "تعديل الملف"
+  },
+  "profile_share": {
+    "en": "Share",
+    "ar": "مشاركة"
+  },
+  "profile_sec_teaching": {
+    "en": "My teaching",
+    "ar": "تدريسي"
+  },
+  "profile_sec_teaching_sub": {
+    "en": "Exams, your teacher file, certificates and recordings",
+    "ar": "الاختبارات وملفك كمدرس والشهادات والتسجيلات"
+  },
+  "profile_sec_learning": {
+    "en": "My learning",
+    "ar": "تعلّمي"
+  },
+  "profile_sec_learning_sub": {
+    "en": "Grades, certificates, favourites and recordings",
+    "ar": "الدرجات والشهادات والمفضلة والتسجيلات"
+  },
+  "profile_sec_talk": {
+    "en": "Messages & schedule",
+    "ar": "التواصل والمواعيد"
+  },
+  "profile_sec_talk_sub": {
+    "en": "Conversations, your calendar and how people find you",
+    "ar": "محادثاتك وتقويمك وكيف يصل إليك الناس"
+  },
+  "profile_sec_money": {
+    "en": "Money & points",
+    "ar": "المال والنقاط"
+  },
+  "profile_sec_money_sub": {
+    "en": "Your points, payments and subscriptions",
+    "ar": "نقاطك ومدفوعاتك واشتراكاتك"
+  },
+  "profile_sec_money_sub_teacher": {
+    "en": "Your points, earnings and withdrawals",
+    "ar": "نقاطك وأرباحك وسحوباتك"
+  },
+  "profile_sec_security": {
+    "en": "Account & security",
+    "ar": "الحساب والأمان"
+  },
+  "profile_sec_security_sub": {
+    "en": "Your details, password and sign-in protection",
+    "ar": "بياناتك وكلمة المرور وحماية الدخول"
+  },
+  "profile_sec_prefs_sub": {
+    "en": "Notifications, appearance, language and the assistant",
+    "ar": "الإشعارات والمظهر واللغة والمساعد"
+  },
+  "profile_sec_help_sub": {
+    "en": "Support, policies and your data",
+    "ar": "الدعم والسياسات وبياناتك"
+  },
+  "profile_fig_courses": {
+    "en": "Courses",
+    "ar": "الكورسات"
+  },
+  "profile_fig_students": {
+    "en": "Students",
+    "ar": "الطلاب"
+  },
+  "profile_fig_rating": {
+    "en": "Rating",
+    "ar": "التقييم"
   }
 }

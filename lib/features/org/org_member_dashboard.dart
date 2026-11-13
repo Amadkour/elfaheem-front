@@ -465,7 +465,7 @@ class OrgMemberHero extends StatelessWidget {
       child: AppTilt.subtle(
         radius: AppRadius.block,
         child: AppBlock(
-          tone: AppBlockTone.sage,
+          tone: AppBlockTone.identity,
           hero: true,
           padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.lg, AppSpace.lg, AppSpace.sm, AppSpace.lg),
           child: Builder(builder: (context) {

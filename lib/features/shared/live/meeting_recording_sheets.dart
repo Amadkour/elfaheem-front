@@ -1029,7 +1029,11 @@ class _CloudDrivesPageState extends State<CloudDrivesPage> {
 /// "Connected drives" group for the settings screen, next to the MFA entry. Hidden by the `profile.cloud_drives`
 /// kill switch, and never for a guest or while a super admin views as someone else (the drive is the caller's).
 class CloudDrivesSettingsEntry extends StatelessWidget {
-  const CloudDrivesSettingsEntry({super.key, this.gap = 20, this.padding = EdgeInsets.zero, this.api});
+  const CloudDrivesSettingsEntry({super.key, this.gap = 20, this.padding = EdgeInsets.zero, this.api, this.rowOnly = false});
+
+  /// Only the "Connected drives" row, no "Cloud" heading or card: it joins a section of the page around it (the
+  /// profile's teaching / learning card, D-714); [gap] and [padding] are not used then.
+  final bool rowOnly;
 
   final double gap;
   final EdgeInsetsGeometry padding;
@@ -1038,6 +1042,18 @@ class CloudDrivesSettingsEntry extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (GuestState.active || ViewAsState.active) return const SizedBox.shrink();
+    void open() => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CloudDrivesPage(api: api)));
+    if (rowOnly) {
+      return AppSettingsTile(
+        key: const ValueKey('cloud_drives.entry'),
+        featureKey: 'profile.cloud_drives',
+        icon: Icons.cloud_sync_rounded,
+        label: t('السحابات المتصلة', 'Connected drives'),
+        subtitle: t('حيث تُحفظ تسجيلات اجتماعاتك', 'Where your meeting recordings are saved'),
+        keywords: 'cloud drive google السحابة جوجل درايف',
+        onTap: open,
+      );
+    }
     return ParentComponent(
       featureKey: 'profile.cloud_drives',
       child: Padding(

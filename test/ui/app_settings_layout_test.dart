@@ -37,8 +37,38 @@ Widget page({bool many = true}) => AppSettingsPage(
       footer: const Text('v1.0'),
     );
 
+Widget sections() => SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(children: [
+        AppSettingsGroup(title: longAr, subtitle: longAr, icon: Icons.school_rounded, accent: Colors.deepPurple, children: [
+          AppSettingsTile(icon: Icons.fact_check_rounded, label: longAr, subtitle: longAr, badge: 120, onTap: () {}),
+          const SizedBox.shrink(), // a kill-switched row
+          AppSettingsTile(icon: Icons.stars_rounded, label: 'Points wallet', color: Colors.amber, onTap: () {}),
+        ]),
+        AppSettingsGroup(title: 'Settings', icon: Icons.tune_rounded, accent: Colors.blueGrey, children: [
+          AppSettingsTile(
+            icon: Icons.dark_mode_rounded,
+            label: 'dark_mode'.tr,
+            trailing: AppSwitch(value: true, onChanged: (_) {}, semanticLabel: 'dark_mode'.tr),
+          ),
+        ]),
+      ]),
+    );
+
 void main() {
   setUp(() => AppConfig.lang = 'ar');
+
+  testWidgets('section cards (D-714) lay out at both sizes and languages', (tester) async {
+    await expectNoLayoutErrors(tester, sections);
+  });
+
+  testWidgets('a section accent reaches the rows without a colour of their own', (tester) async {
+    await tester.pumpWidget(layoutHost(sections()));
+    await tester.pump();
+    final tile = find.byType(AppSettingsTile).first;
+    expect(AppSettingsAccent.of(tester.element(tile)), Colors.deepPurple);
+    expect(find.byType(AppSettingsRule), findsNWidgets(2), reason: 'a rule above every row but the first');
+  });
 
   testWidgets('settings page lays out at both sizes and languages', (tester) async {
     await expectNoLayoutErrors(tester, () => page());

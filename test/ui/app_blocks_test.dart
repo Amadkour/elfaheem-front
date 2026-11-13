@@ -82,6 +82,16 @@ void main() {
                   reason: '$tone accent $accent');
             }
           }
+          // the identity header (D-713): a primary gradient; every ink reads on BOTH stops
+          final (from, to) = p.blockIdentityStops;
+          for (final stop in [from, to]) {
+            expect(contrastRatio(p.blockInk, stop), greaterThanOrEqualTo(kWcagAaText), reason: 'identity ink');
+            expect(contrastRatio(p.blockIdentityMuted, stop), greaterThanOrEqualTo(kWcagAaText), reason: 'identity muted');
+            expect(contrastRatio(p.blockIdentityFaint, stop), greaterThanOrEqualTo(kWcagAaText), reason: 'identity faint');
+          }
+          // it is a degree of the primary, not the peach band it replaced
+          final hue = HSLColor.fromColor(from).hue, primaryHue = HSLColor.fromColor(p.primary).hue;
+          expect(((hue - primaryHue + 540) % 360 - 180).abs(), lessThan(6), reason: 'identity hue follows the primary');
           // the forest hero (D-630): cream ink at 7:1, muted / faint at AA, accents lifted to AA
           final f = p.blockForest;
           expect(contrastRatio(p.heroInk, f), greaterThanOrEqualTo(7), reason: 'forest ink');

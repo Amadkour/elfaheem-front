@@ -11,7 +11,8 @@
 //
 // Tones come from the live palette: peach = `accent` (accent1), sky / sage = `accent3` (a warm sage since D-630;
 // derived when the theme sends none), gold = a tint of accent2, emerald = a tint of the primary, paper = the card
-// surface with a hairline, forest = the primary_dark deepened to 7:1 under cream ink (the ONE hero of a home, D-630).
+// surface with a hairline, forest = the primary_dark deepened to 7:1 under cream ink (the ONE hero of a home, D-630),
+// identity = a soft primary gradient for the header of a person or an organization (D-713).
 // Dark mode draws each as a dark surface tinted with its hue. The ink inside keeps WCAG AA on every tone (main ink, muted and
 // faint captions); gold, success and warning reach AA on a block only as icons, fills or large text — for text use
 // [AppBlockColors.accentInk], which darkens them until they read.
@@ -45,7 +46,12 @@ enum AppBlockTone {
   paper,
 
   /// THE hero of a home (D-630): deep forest from the theme's primary_dark, cream ink. One per screen.
-  forest;
+  forest,
+
+  /// The header of a person or an organization (D-713): a soft degree of the primary, a gentle diagonal gradient
+  /// (a deep primary tone in dark mode). The Account page, a public /@name page, a teacher's profile, the member
+  /// home's organization block. Never a category tone, never handed out by [forKey].
+  identity;
 
   /// The sage tone ([sky]'s colour since D-630: `accent3`, the warm sage #E4ECE3 the server sends after migration
   /// 0074). Dashboards and book covers use this name.
@@ -119,6 +125,7 @@ class AppBlockColors {
       AppBlockTone.emerald => c.blockEmerald,
       AppBlockTone.paper => c.cardBg,
       AppBlockTone.forest => c.blockForest,
+      AppBlockTone.identity => c.blockIdentity,
     };
     if (tone == AppBlockTone.forest) {
       return AppBlockColors(
@@ -129,6 +136,17 @@ class AppBlockColors {
         faint: AppBrandLayer.of(context).forestFaint,
         // dark mode: a hairline of the cream so the lifted forest still has an edge on the dark canvas
         border: c.isDark ? c.heroInk.withValues(alpha: 0.10) : null,
+        palette: c,
+      );
+    }
+    if (tone == AppBlockTone.identity) {
+      return AppBlockColors(
+        surface: surface,
+        ink: c.blockInk,
+        muted: c.blockIdentityMuted,
+        faint: c.blockIdentityFaint,
+        // a primary hairline: the tint's own edge in light mode, a lifted one on the dark canvas
+        border: c.primary.withValues(alpha: c.isDark ? 0.28 : 0.16),
         palette: c,
       );
     }
@@ -215,6 +233,39 @@ class AppBlock extends StatelessWidget {
         ]),
       );
     }
+    final identity = tone == AppBlockTone.identity;
+    if (identity) {
+      // D-713: the primary tint as a gentle diagonal (stronger at the top-start, where the avatar sits) and a soft
+      // primary light in the top-end corner; static, so Reduce motion has nothing to park
+      final (from, to) = context.colors.blockIdentityStops;
+      final dir = Directionality.maybeOf(context) ?? TextDirection.ltr;
+      final glow = context.colors.primary.withValues(alpha: context.colors.isDark ? 0.16 : 0.10);
+      body = Ink(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: AlignmentDirectional.topStart.resolve(dir),
+            end: AlignmentDirectional.bottomEnd.resolve(dir),
+            colors: [from, to],
+          ),
+        ),
+        child: Stack(fit: StackFit.passthrough, children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: AlignmentDirectional.topEnd.resolve(dir),
+                    radius: 0.9,
+                    colors: [glow, glow.withValues(alpha: 0)],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          body,
+        ]),
+      );
+    }
     if (onTap != null) {
       body = InkWell(onTap: onTap, borderRadius: radius, child: body);
     }
@@ -222,7 +273,7 @@ class AppBlock extends StatelessWidget {
     body = SizedBox(
       width: double.infinity,
       child: _maybeLift(paper, radius, Material(
-        color: forest ? Colors.transparent : colors.surface,
+        color: forest || identity ? Colors.transparent : colors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: radius,
           side: colors.border == null ? BorderSide.none : BorderSide(color: colors.border!, width: AppBorder.hairline),

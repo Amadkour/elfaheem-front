@@ -50,7 +50,11 @@ class BiometricRowState {
 /// "Security" group from plain values: the MFA row (when [status] says the account may use MFA) and the fingerprint
 /// sign-in switch (when [biometric] is given: this phone supports it).
 class MfaSecurityGroup extends StatelessWidget {
-  const MfaSecurityGroup({super.key, this.status, this.onTap, this.biometric, this.onBiometricChanged});
+  const MfaSecurityGroup({super.key, this.status, this.onTap, this.biometric, this.onBiometricChanged, this.rowsOnly = false});
+
+  /// Only the rows, no "Security" heading or card: they join a section of the page around them (the profile's
+  /// "Security & account" card, D-714).
+  final bool rowsOnly;
 
   final MfaStatus? status;
   final VoidCallback? onTap;
@@ -62,7 +66,7 @@ class MfaSecurityGroup extends StatelessWidget {
     final c = context.colors;
     final s = status;
     final bio = biometric;
-    return AppSettingsGroup(title: t('الأمان', 'Security'), icon: Icons.shield_rounded, children: [
+    final rows = <Widget>[
       if (s != null && mfaEntryVisible(s))
         Builder(builder: (context) {
           final (label, on) = mfaEntryState(s);
@@ -102,14 +106,23 @@ class MfaSecurityGroup extends StatelessWidget {
                   onChanged: onBiometricChanged,
                 ),
         ),
-    ]);
+    ];
+    if (rowsOnly) {
+      return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        for (var i = 0; i < rows.length; i++) i == 0 ? rows[i] : AppSettingsRule(child: rows[i]),
+      ]);
+    }
+    return AppSettingsGroup(title: t('الأمان', 'Security'), icon: Icons.shield_rounded, children: rows);
   }
 }
 
 /// Loads the caller's MFA status and this phone's fingerprint support, and shows [MfaSecurityGroup] (followed by
 /// [gap]) when either row applies; nothing otherwise, also while loading or when the status cannot be read.
 class MfaSettingsEntry extends StatefulWidget {
-  const MfaSettingsEntry({super.key, this.api, this.gap = 20, this.padding = EdgeInsets.zero});
+  const MfaSettingsEntry({super.key, this.api, this.gap = 20, this.padding = EdgeInsets.zero, this.rowsOnly = false});
+
+  /// The rows only (see [MfaSecurityGroup.rowsOnly]); [gap] and [padding] are not used then.
+  final bool rowsOnly;
 
   /// For tests; defaults to [RemoteMfaApi] with the stored session.
   final MfaApi? api;
@@ -205,6 +218,15 @@ class _MfaSettingsEntryState extends State<MfaSettingsEntry> {
     final userId = context.select<MyAuthProvider, int?>((a) => a.currentUser?.id);
     final showBio = _bio.supported && _bio.featureOn && userId != null;
     if (!showMfa && !showBio) return const SizedBox.shrink();
+    if (widget.rowsOnly) {
+      return MfaSecurityGroup(
+        rowsOnly: true,
+        status: showMfa ? s : null,
+        onTap: _open,
+        biometric: showBio ? BiometricRowState(kind: _bio.kind, on: _bio.record?.userId == userId, busy: _bioBusy) : null,
+        onBiometricChanged: _setBiometric,
+      );
+    }
     return Padding(
       padding: widget.padding,
       child: Column(mainAxisSize: MainAxisSize.min, children: [
