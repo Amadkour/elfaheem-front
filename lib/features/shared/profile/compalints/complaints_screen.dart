@@ -769,7 +769,7 @@ class _FilterRow extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(AppSpace.xxs),
                         decoration: BoxDecoration(
-                          color: context.colors.danger,
+                          color: context.colors.dangerBase,
                           shape: BoxShape.circle,
                         ),
                         child: Text(

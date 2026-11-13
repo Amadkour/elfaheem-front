@@ -611,7 +611,7 @@ class _TabLabel extends StatelessWidget {
         const SizedBox(width: AppSpace.xs),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 1),
-          decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(AppRadius.chip)),
+          decoration: BoxDecoration(color: c.dangerBase, borderRadius: BorderRadius.circular(AppRadius.chip)),
           child: Text(badge > 99 ? '99+' : '$badge',
               style: TextStyle(color: c.onHero, fontSize: 10.5, fontWeight: FontWeight.w600)),
         ),

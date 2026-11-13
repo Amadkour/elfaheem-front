@@ -560,7 +560,7 @@ class PendingCard extends StatelessWidget {
             FilledButton.icon(
               key: ValueKey('omr.pending.approve.${row.id}'),
               onPressed: busy ? null : onApprove,
-              style: FilledButton.styleFrom(backgroundColor: c.success, foregroundColor: c.cardBg, minimumSize: const Size(AppTouch.min, AppTouch.min)),
+              style: FilledButton.styleFrom(backgroundColor: c.successBase, foregroundColor: c.onHero, minimumSize: const Size(AppTouch.min, AppTouch.min)),
               icon: const Icon(Icons.verified_rounded, size: 18),
               label: Text(t('اعتماد ونشر', 'Approve and publish')),
             ),
@@ -642,7 +642,7 @@ class _VersionTile extends StatelessWidget {
       if (row.pending && isSuperAdmin) ...[
         btn('review', t('مراجعة', 'Review'), FamilyAction.review),
         btn('reject', t('رفض', 'Reject'), FamilyAction.reject, color: c.danger),
-        btn('approve', t('اعتماد', 'Approve'), FamilyAction.approve, primary: true, color: c.success),
+        btn('approve', t('اعتماد', 'Approve'), FamilyAction.approve, primary: true, color: c.successBase),
       ],
       if (row.published && !row.isBuiltin) btn('view', t('عرض', 'View'), FamilyAction.open),
       if (row.versionable && !row.isBuiltin) btn('edit', t('تعديل (إصدار $newVersion)', 'Edit (version $newVersion)'), FamilyAction.newVersion),

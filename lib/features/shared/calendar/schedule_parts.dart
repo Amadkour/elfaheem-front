@@ -1029,11 +1029,11 @@ class CalNowLine extends StatelessWidget {
         child: Row(children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs - 1, vertical: AppSpace.xxs / 2),
-            decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(AppRadius.pill)),
+            decoration: BoxDecoration(color: c.dangerBase, borderRadius: BorderRadius.circular(AppRadius.pill)),
             child: Text(label, maxLines: 1, style: AppType.overline(context).copyWith(letterSpacing: 0, color: c.onHero, fontFeatures: const [FontFeature.tabularFigures()])),
           ),
-          Container(width: AppSpace.xs - 1, height: AppSpace.xs - 1, decoration: BoxDecoration(color: c.danger, shape: BoxShape.circle)),
-          Expanded(child: Container(height: AppBorder.strong, color: c.danger)),
+          Container(width: AppSpace.xs - 1, height: AppSpace.xs - 1, decoration: BoxDecoration(color: c.dangerBase, shape: BoxShape.circle)),
+          Expanded(child: Container(height: AppBorder.strong, color: c.dangerBase)),
         ]),
       ),
     );

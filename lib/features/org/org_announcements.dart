@@ -519,7 +519,7 @@ class _CountBadge extends StatelessWidget {
     final c = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
-      decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(AppRadius.block)),
+      decoration: BoxDecoration(color: c.dangerBase, borderRadius: BorderRadius.circular(AppRadius.block)),
       child: Text(n > 99 ? '99+' : '$n', style: AppType.overline(context).copyWith(color: c.onHero)),
     );
   }

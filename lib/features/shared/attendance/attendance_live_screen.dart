@@ -80,7 +80,7 @@ class _AttendanceLiveScreenState extends State<AttendanceLiveScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(attT('att_cancel'))),
           FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: context.colors.danger),
+              style: FilledButton.styleFrom(backgroundColor: context.colors.dangerBase),
               onPressed: () => Navigator.pop(ctx, true),
               child: Text(attT('att_t_close'))),
         ],
@@ -235,8 +235,8 @@ class _AttendanceLiveScreenState extends State<AttendanceLiveScreen> {
                         : FilledButton.icon(
                             style: FilledButton.styleFrom(
                                 minimumSize: const Size.fromHeight(AppTouch.primary),
-                                backgroundColor: c.danger,
-                                foregroundColor: appInkOnFill(context, c.danger),
+                                backgroundColor: c.dangerBase,
+                                foregroundColor: appInkOnFill(context, c.dangerBase),
                                 padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
                                 shape: RoundedRectangleBorder(borderRadius: AppRadius.controlAll)),
                             onPressed: t.loading ? null : () => _confirmClose(t),

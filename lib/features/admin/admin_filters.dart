@@ -258,7 +258,7 @@ class _FilterButton extends StatelessWidget {
                         vertical: 1,
                       ),
                       decoration: BoxDecoration(
-                        color: c.danger,
+                        color: c.dangerBase,
                         borderRadius: BorderRadius.circular(AppRadius.chip),
                       ),
                       child: Text(

@@ -424,7 +424,7 @@ class _Badge extends StatelessWidget {
     constraints: const BoxConstraints(minWidth: AppIconSize.md),
     padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs + 2, vertical: 1),
     decoration: BoxDecoration(
-      color: context.colors.danger,
+      color: context.colors.dangerBase,
       borderRadius: BorderRadius.circular(AppRadius.pill),
     ),
     child: Text(
@@ -1222,7 +1222,7 @@ class _AttachmentThumb extends StatelessWidget {
                   width: AppIconSize.lg,
                   height: AppIconSize.lg,
                   decoration: BoxDecoration(
-                    color: c.danger,
+                    color: c.dangerBase,
                     shape: BoxShape.circle,
                     border: Border.all(color: c.cardBg, width: AppBorder.focus),
                   ),

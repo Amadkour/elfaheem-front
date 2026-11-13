@@ -176,7 +176,7 @@ class _CourseAccessSheetState extends State<CourseAccessSheet> with SingleTicker
                         child: Padding(
                           padding: const EdgeInsets.all(5),
                           child: k == 'x'
-                              ? _Key(onTap: () => Navigator.of(context).pop(false), bg: context.colors.danger, label: 'cancel'.tr,
+                              ? _Key(onTap: () => Navigator.of(context).pop(false), bg: context.colors.dangerBase, label: 'cancel'.tr,
                               child: Icon(Icons.clear, color: context.colors.onHero, size: 22))
                               : k == 'del'
                               ? _Key(onTap: _del, label: 'delete'.tr, child: Icon(Icons.backspace_outlined, color: _muted, size: 22))

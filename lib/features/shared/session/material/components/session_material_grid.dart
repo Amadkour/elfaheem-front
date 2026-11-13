@@ -1046,7 +1046,7 @@ class MaterialCompletedBadge extends StatelessWidget {
       label: 'completed'.tr,
       child: Container(
         padding: const EdgeInsets.all(2),
-        decoration: BoxDecoration(color: c.success, shape: BoxShape.circle),
+        decoration: BoxDecoration(color: c.successBase, shape: BoxShape.circle),
         child: Icon(Icons.check_rounded, size: AppIconSize.xs - 2, color: c.onHero),
       ),
     );

@@ -534,7 +534,7 @@ class _Students extends StatelessWidget {
                             ],
                             if (row['ready_to_graduate'] == true)
                               FilledButton.icon(
-                                style: FilledButton.styleFrom(backgroundColor: c.success),
+                                style: FilledButton.styleFrom(backgroundColor: c.successBase),
                                 onPressed: () async {
                                   if (await confirm(context, message: t('اعتماد تخرج ${u['name']}؟', 'Confirm ${u['name']}\'s graduation?')) &&
                                       await OrgApi.i.post('$base/students/${u['id']}/graduate', null, t('مبروك التخرج 🎓', 'Graduated 🎓')) != null) p.refresh();

@@ -217,7 +217,7 @@ class Helpers {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: context.colors.danger,
+              backgroundColor: context.colors.dangerBase,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),

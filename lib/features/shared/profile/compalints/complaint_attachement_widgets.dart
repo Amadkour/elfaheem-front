@@ -204,7 +204,7 @@ class PendingAttachmentTile extends StatelessWidget {
             width: 22,
             height: 22,
             decoration: BoxDecoration(
-              color: context.colors.danger,
+              color: context.colors.dangerBase,
               shape: BoxShape.circle,
               boxShadow: [BoxShadow(color: context.colors.heroShade.withValues(alpha: 0.2), blurRadius: 5, offset: const Offset(0, 2))],
             ),

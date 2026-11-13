@@ -498,7 +498,7 @@ class _HubViewState extends State<_HubView>
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: context.colors.danger,
+                backgroundColor: context.colors.dangerBase,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -1194,7 +1194,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: ctx.colors.danger,
+                backgroundColor: ctx.colors.dangerBase,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),

@@ -285,7 +285,7 @@ class OrgActionCard extends StatelessWidget {
                     end: -AppSpace.xxs,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs + 2, vertical: 1),
-                      decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                      decoration: BoxDecoration(color: c.dangerBase, borderRadius: BorderRadius.circular(AppRadius.pill)),
                       child: Text(badge > 99 ? '99+' : '$badge',
                           style: AppType.overline(context).copyWith(color: c.onHero, fontWeight: FontWeight.w700)),
                     ),

@@ -715,8 +715,8 @@ class CourseSessionKindTile extends StatelessWidget {
     };
     final quiet = state == CourseSessionState.done || state == CourseSessionState.locked;
     final live = state == CourseSessionState.live;
-    final fill = live ? c.danger : (quiet ? c.inputBg : appTintOn(context, base, surface: on));
-    final ink = live ? appInkOnFill(context, c.danger) : (quiet ? c.textLight : appInkOn(context, base, fill));
+    final fill = live ? c.dangerBase : (quiet ? c.inputBg : appTintOn(context, base, surface: on));
+    final ink = live ? appInkOnFill(context, c.dangerBase) : (quiet ? c.textLight : appInkOn(context, base, fill));
     return Semantics(
       label: label,
       child: ExcludeSemantics(

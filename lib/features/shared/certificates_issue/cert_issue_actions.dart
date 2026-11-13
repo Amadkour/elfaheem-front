@@ -85,7 +85,7 @@ Future<String?> certAskText(BuildContext context,
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: Text('cancel'.tr)),
             FilledButton(
-              style: danger ? FilledButton.styleFrom(backgroundColor: c.danger) : null,
+              style: danger ? FilledButton.styleFrom(backgroundColor: c.dangerBase) : null,
               onPressed: ok ? () => Navigator.pop(ctx, ctrl.text.trim()) : null,
               child: Text(confirm ?? 'save'.tr),
             ),
