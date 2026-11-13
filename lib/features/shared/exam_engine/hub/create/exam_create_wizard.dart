@@ -968,7 +968,7 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
         CreatePendingTemplates(items: _pending, justSent: _justSent),
       ],
       if (_plan.ownSheet) ...[const SizedBox(height: AppSpace.sm), const CreateOwnSheetNote()],
-      if (_plan.template != null && check.blocks) ...[const SizedBox(height: AppSpace.sm), CreateBubbleProblems(check: check)],
+      if (_plan.template != null && check.speaks) ...[const SizedBox(height: AppSpace.sm), CreateBubbleProblems(check: check)],
     ]);
   }
 

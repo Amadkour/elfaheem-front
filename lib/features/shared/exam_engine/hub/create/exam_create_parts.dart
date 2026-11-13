@@ -658,11 +658,11 @@ class CreateBubbleProblems extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final lines = <Widget>[];
-    Widget row(String text, {List<Widget> actions = const []}) => Padding(
+    Widget row(String text, {List<Widget> actions = const [], bool warn = false}) => Padding(
           padding: const EdgeInsets.only(bottom: AppSpace.xs),
           // the fixes sit under the banner: its own action slot is a single short button in a row
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            AppBanner(icon: Icons.warning_amber_rounded, color: c.danger, text: text),
+            AppBanner(icon: Icons.warning_amber_rounded, color: warn ? c.warning : c.danger, text: text),
             if (actions.isNotEmpty) Wrap(alignment: WrapAlignment.end, children: actions),
           ]),
         );
@@ -692,7 +692,13 @@ class CreateBubbleProblems extends StatelessWidget {
           'This sheet holds only ${questionsCountText(check.capacity ?? 0)}. Remove ${questionsCountText(check.over)} or choose a larger sheet.')));
     }
     if (check.choicesOver > 0) {
-      lines.add(row(t('${questionsCountText(check.choicesOver)} بها اختيارات أكثر من فقاعات الورقة.', '${questionsCountText(check.choicesOver)} have more choices than the sheet has bubbles.')));
+      // D-722: a warning before print, never a block: printing offers the ways out
+      final nums = check.choicesOverNumbers.join(t('، ', ', '));
+      final which = nums.isEmpty ? '' : t(' (رقم $nums)', ' (no. $nums)');
+      lines.add(row(
+          t('${questionsCountText(check.choicesOver)}$which بها اختيارات أكثر من فقاعات الورقة. عند الطباعة تختار: حذف خيارات خاطئة، أو تركها خارج ورقة التظليل، أو الإجابة عنها في الورقة الكتابية، أو ورقة أخرى.',
+              '${questionsCountText(check.choicesOver)}$which have more choices than the sheet has bubbles. At printing you choose: remove wrong choices, leave them off the bubble sheet, answer them on the written sheet, or another sheet.'),
+          warn: true));
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: lines);
   }
