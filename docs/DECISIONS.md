@@ -4445,3 +4445,8 @@ and saves the exam's design on the draft.
 ## D-807 — Solid status fills under white ink use the `*Base` tones · 2026-11-13 · accepted
 
 **Decision.** After D-740 lifted dark-mode `danger` / `success` for use as ink, the count bubbles, close and remove dots, danger and approve buttons, the calendar's "now" line and the red toasts that painted those as solid fills under `onHero` / white text read about 2:1 in dark mode. They now use `dangerBase` / `successBase` (admin filters, org announcements / department / ui / councils, schedule now line, attendance close, material done tick, course access keypad, OMR approve, register and helpers toasts, certificate and exam-hub danger buttons, academic approve, course sessions live tile, complaints badges and remove dots). Ink (text, icons, outlines, tints) keeps the lifted tones.
+
+
+## D-808 — Grade written papers follows the AI grading switch · 2026-11-13 · accepted
+
+**Context.** A written-papers run (`exam.essay_run`, D-662) suggests marks with the AI grader, but it had only its own switch, so turning off "AI grading of written answers" (`exam.auto_grade`) left it on. **Decision (owner, 2026-11-13).** The run needs both keys: `hubGradeKinds` hides Written papers when either is off, and `essay_runs.create` / `upload` refuse with 403 `feature_disabled` (`exam.auto_grade`). Runs already made, their pages and their marks stay; teachers keep grading by hand from the results. The AI controls text says so.

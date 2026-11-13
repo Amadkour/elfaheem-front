@@ -537,11 +537,12 @@ enum GradeKind { bubble, essay }
 const kHubBubbleKey = 'exam.bubble';
 const kHubAutoCorrectKey = 'exam.auto_correct';
 const kHubEssayRunKey = 'exam.essay_run';
+const kHubAutoGradeKey = 'exam.auto_grade'; // D-808: written-paper runs are AI grading
 
 /// What Grade papers offers under the platform's switches; empty = the action is hidden.
 List<GradeKind> hubGradeKinds() => [
       if (!_off(kHubBubbleKey) && !_off(kHubAutoCorrectKey)) GradeKind.bubble,
-      if (!_off(kHubEssayRunKey)) GradeKind.essay,
+      if (!_off(kHubEssayRunKey) && !_off(kHubAutoGradeKey)) GradeKind.essay,
     ];
 
 /// The courses papers can be graded in: a run belongs to a course (its students, its results).
