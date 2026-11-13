@@ -147,6 +147,23 @@ class ProfileProvider extends BaseProvider {
     }
   }
 
+  /// Removes the picture (D-880): an unsaved pick is only dropped; a stored one is deleted on the server at once
+  /// (`DELETE /auth/me/image`, harmless twice). Returns the updated account when the server was asked (save it with
+  /// `MyAuthProvider.saveUserLocally` so every avatar shows the initial), null otherwise; throws [ApiException].
+  Future<UserModel?> removeImage() async {
+    final hadStored = imageUrl.isNotEmpty;
+    imageFile = null;
+    imageByte = null;
+    UserModel? updated;
+    if (hadStored) {
+      final r = await (_api.delete('/api/v1/auth/me/image'));
+      if (r is Map<String, dynamic>) updated = UserModel.fromJson(r);
+      imageUrl = '';
+    }
+    notifyListeners();
+    return updated;
+  }
+
   // ── Update profile ────────────────────────────────────────────────────────
   Future<UserModel?> updateProfile({
     String? name,

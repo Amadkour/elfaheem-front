@@ -28,6 +28,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show appConfirm;
+import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:http_parser/http_parser.dart';
 
 import '../sessions/components/course_reel_player.dart';
@@ -39,9 +41,12 @@ const Map<String, String> _kReelMimeByExt = {
 };
 
 class CourseReelController extends ChangeNotifier {
-  CourseReelController({String? initialUrl, ApiClient? api})
+  CourseReelController({String? initialUrl, this.courseId, ApiClient? api})
       : _existingUrl = (initialUrl == null || initialUrl.isEmpty) ? null : initialUrl,
         _api = api ?? ApiClient();
+
+  /// The course being edited (null while creating one): with it, Remove deletes the stored reel at once (D-880).
+  final int? courseId;
 
   /// Keep in sync with the server limit (minio_service.REEL_MAX_BYTES).
   static const maxBytes = 100 * 1024 * 1024;
@@ -102,6 +107,48 @@ class CourseReelController extends ChangeNotifier {
       _removeRequested = false;
     }
     notifyListeners();
+  }
+
+  /// Reads the stored reel of [courseId] (`reel_url` of GET /courses/{id}); quiet on failure (the field then offers
+  /// to add one, and an upload replaces whatever is stored).
+  Future<void> loadExisting() async {
+    final id = courseId;
+    if (id == null) return;
+    try {
+      final r = await _api.get('/api/v1/courses/$id');
+      final url = r is Map ? (r['reel_url'] as String?)?.trim() : null;
+      if (_disposed) return;
+      _existingUrl = (url == null || url.isEmpty) ? null : url;
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  bool _disposed = false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  /// Deletes the stored reel now (`DELETE /courses/{id}/reel`, harmless twice); a pending pick is dropped too.
+  /// Throws [ApiException].
+  Future<void> removeNow() async {
+    final id = courseId;
+    if (id == null) return requestRemove();
+    _busy = true;
+    error = null;
+    notifyListeners();
+    try {
+      await _api.delete('/api/v1/courses/$id/reel');
+      _existingUrl = null;
+      _bytes = null;
+      _fileName = null;
+      _removeRequested = false;
+    } finally {
+      _busy = false;
+      if (!_disposed) notifyListeners();
+    }
   }
 
   void clearPending() {
@@ -371,6 +418,21 @@ class CourseReelField extends StatelessWidget {
     );
   }
 
+  /// Remove (D-880): asks first, then deletes the stored reel at once when the course exists (the course page then
+  /// shows its cover and no "watch preview"), or marks it for the save otherwise.
+  Future<void> confirmRemove(BuildContext context) async {
+    final ok = await appConfirm(context,
+        message: 'course_reel_remove_confirm'.tr, danger: true, confirmLabel: 'course_reel_remove'.tr);
+    if (!ok) return;
+    if (controller.courseId == null) return controller.requestRemove();
+    try {
+      await controller.removeNow();
+      showAppNotice('course_reel_removed'.tr);
+    } catch (e) {
+      showAppNotice(ApiException.from(e).message, error: true);
+    }
+  }
+
   /// The reel already stored on the server: live 16:9 preview + actions.
   Widget _existingPreview(BuildContext context, String url) {
     final c = context.colors;
@@ -398,7 +460,8 @@ class CourseReelField extends StatelessWidget {
               label: Text('course_reel_replace'.tr),
             ),
             TextButton.icon(
-              onPressed: controller.requestRemove,
+              key: const ValueKey('course_reel_remove'),
+              onPressed: () => confirmRemove(context),
               style: TextButton.styleFrom(foregroundColor: c.danger),
               icon: const Icon(Icons.delete_outline_rounded, size: 18),
               label: Text('course_reel_remove'.tr),

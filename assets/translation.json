@@ -24658,5 +24658,33 @@
   "profile_fig_rating": {
     "en": "Rating",
     "ar": "التقييم"
+  },
+  "avatar_remove_confirm": {
+    "en": "Remove your profile picture? Your initial will show instead, everywhere.",
+    "ar": "إزالة صورتك الشخصية؟ سيظهر الحرف الأول من اسمك مكانها في كل مكان."
+  },
+  "avatar_removed": {
+    "en": "Profile picture removed",
+    "ar": "أُزيلت الصورة الشخصية"
+  },
+  "cover_remove_confirm": {
+    "en": "Remove the course cover? Course cards and the course page will show the default cover.",
+    "ar": "إزالة غلاف الكورس؟ ستظهر بطاقات الكورس وصفحته بالغلاف الافتراضي."
+  },
+  "cover_removed": {
+    "en": "Course cover removed",
+    "ar": "أُزيل غلاف الكورس"
+  },
+  "course_reel_remove_confirm": {
+    "en": "Remove the course reel? The course page will show the cover instead, with no preview to watch.",
+    "ar": "إزالة العرض الأولي للكورس؟ ستعرض صفحة الكورس الغلاف بدلاً منه، دون معاينة."
+  },
+  "course_reel_removed": {
+    "en": "Course reel removed",
+    "ar": "أُزيل العرض الأولي للكورس"
+  },
+  "image_remove_failed": {
+    "en": "Couldn't remove it. Try again.",
+    "ar": "تعذّرت الإزالة. حاول مرة أخرى."
   }
 }

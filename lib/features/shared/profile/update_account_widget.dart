@@ -324,7 +324,21 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
           await p.changeImage(f);
           setState(() {});
         },
+        onImageRemove: () => _removeImage(p),
       );
+
+  /// Remove picture (D-880): the confirm is EditableImage's; a stored picture is deleted at once and the account
+  /// saved, so every avatar (headers, chat, the public profile) shows the initial.
+  Future<void> _removeImage(ProfileProvider p) async {
+    try {
+      final updated = await p.removeImage();
+      if (updated != null && mounted) await context.read<MyAuthProvider>().saveUserLocally(updated);
+      showAppNotice('avatar_removed'.tr);
+    } catch (e) {
+      showAppNotice(ApiException.from(e).message, error: true);
+    }
+    if (mounted) setState(() {});
+  }
 
   // ══════════════════════════════════════════════════════════════════════════
   // MOBILE LAYOUT — hero header + form
@@ -404,6 +418,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
                 await p.changeImage(f);
                 setState(() {});
               },
+              onImageRemove: () => _removeImage(p),
             ),
           ),
         ];
@@ -496,6 +511,7 @@ class _MobileHero extends StatelessWidget {
   final ProfileProvider p;
   final ThemeConfigProvider c;
   final Future<void> Function(XFile) onImageChange;
+  final Future<void> Function()? onImageRemove;
 
   /// Off when an [AppHeader] above already carries the back button.
   final bool showBack;
@@ -507,6 +523,7 @@ class _MobileHero extends StatelessWidget {
     required this.p,
     required this.c,
     required this.onImageChange,
+    this.onImageRemove,
     this.showBack = true,
     this.card = false,
   });
@@ -539,6 +556,8 @@ class _MobileHero extends StatelessWidget {
                   size: context.height / 8,
                   isCircle: true,
                   name: p.name, // no photo: the initial, as everywhere else (N10)
+                  onRemove: onImageRemove,
+                  removeMessage: 'avatar_remove_confirm'.tr,
                 ),
               ),
               const SizedBox(height: AppSpace.md),
@@ -594,6 +613,7 @@ class _FormCard extends StatelessWidget {
   final bool isSaving;
   final Future<void> Function() onSave;
   final Future<void> Function(XFile) onImageChange;
+  final Future<void> Function()? onImageRemove;
   final bool showAvatar;
 
   /// The @username field, under the e-mail (null = not shown).
@@ -616,6 +636,7 @@ class _FormCard extends StatelessWidget {
     required this.isSaving,
     required this.onSave,
     required this.onImageChange,
+    this.onImageRemove,
     this.showAvatar = true,
     this.usernameField,
   });
@@ -638,6 +659,8 @@ class _FormCard extends StatelessWidget {
                 size: context.height / 8,
                 isCircle: true,
                 name: p.name, // no photo: the initial, as everywhere else (N10)
+                onRemove: onImageRemove,
+                removeMessage: 'avatar_remove_confirm'.tr,
               ),
             ),
             const SizedBox(height: AppSpace.xl),
