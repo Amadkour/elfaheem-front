@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/exams/engine_exams_section.dart' show EngineExamCard;
@@ -45,6 +46,29 @@ void main() {
     expect(ServerClock.fromAttempt({'remaining_seconds': null}, t0)!.timed, isFalse);
     expect(clockText(59), '00:59');
     expect(clockText(3661), '1:01:01');
+  });
+
+  test('the screen counts on a monotonic clock: a device clock changed mid-exam neither ends nor stretches it (H6)', () {
+    // the device clock is set to a far past date: only the elapsed source counts
+    var elapsed = Duration.zero;
+    final clock = ServerClock.fromAttempt({'remaining_seconds': 600}, DateTime(1999), elapsed: () => elapsed)!;
+    expect(clock.remaining(), 600);
+    elapsed = const Duration(seconds: 61);
+    expect(clock.remaining(), 539);
+    elapsed = const Duration(hours: 2);
+    expect(clock.remaining(), 0);
+    expect(ServerClock.fromAttempt({'remaining_seconds': null}, DateTime(1999), elapsed: () => elapsed)!.remaining(), isNull);
+    // a real monotonic source starts at zero
+    expect(ServerClock(remainingSeconds: 90, receivedAt: DateTime(1999), elapsed: ServerClock.monotonic()).remaining(), 90);
+
+    // the taking screen: the deadline comes from the server reply (start and every autosave), counted on the
+    // monotonic source, never on the device's wall clock
+    final src = File('lib/features/exams/exam_taking_screen.dart').readAsStringSync();
+    expect(src, isNot(contains('remainingAt(DateTime.now())')));
+    expect(RegExp(r'ServerClock\.fromAttempt\(attempt, DateTime\.now\(\), elapsed: ServerClock\.monotonic\(\)\)').hasMatch(src), isTrue);
+    expect(RegExp(r"remainingSeconds: r\.map\['remaining_seconds'\]").hasMatch(src), isTrue);
+    expect(RegExp(r'deadlineAt: _clock\.deadlineAt, elapsed: ServerClock\.monotonic\(\)').hasMatch(src), isTrue);
+    expect(RegExp(r'_saver = Timer\.periodic\(const Duration\(seconds: 4\)').hasMatch(src), isTrue); // autosave
   });
 
   test('paper: sections, answered count, one-way navigation', () {

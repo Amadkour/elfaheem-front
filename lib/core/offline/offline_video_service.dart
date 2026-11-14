@@ -60,17 +60,28 @@ class OfflineItem {
 }
 
 class OfflineVideoService {
-  OfflineVideoService._();
+  OfflineVideoService._()
+      : _keys = const _SecureKeyStore(),
+        _requestHeaders = DeviceIdService.instance.headers;
+
+  /// A service over [dir] and an in-memory key store, for tests: no platform channel, no device-id lookup.
+  @visibleForTesting
+  OfflineVideoService.test({
+    required Directory dir,
+    Map<String, String>? keys,
+    Future<Map<String, String>> Function()? requestHeaders,
+  })  : _dirCache = dir,
+        _keys = _MemoryKeyStore(keys ?? <String, String>{}),
+        _requestHeaders = requestHeaders ?? (() async => const <String, String>{});
+
   static final OfflineVideoService instance = OfflineVideoService._();
 
   static const _magic = <int>[0x45, 0x46, 0x56, 0x31]; // "EFV1"
   static const _headerLen = 12; // magic(4) + nonce(8)
   static const _defaultValidity = Duration(days: 30);
 
-  final FlutterSecureStorage _storage = const FlutterSecureStorage(
-    // iOS: the key never leaves this device (not in backups / new phones).
-    iOptions: IOSOptions(accessibility: KeychainAccessibility.unlocked_this_device),
-  );
+  final _KeyStore _keys;
+  final Future<Map<String, String>> Function() _requestHeaders;
 
   /// id -> progress (0..1) for downloads in flight.
   final ValueNotifier<Map<String, double>> downloading =
@@ -207,7 +218,7 @@ class OfflineVideoService {
         ..autoUncompress = false
         ..connectionTimeout = const Duration(seconds: 20);
       final req = await client.getUrl(Uri.parse(url));
-      final headers = await DeviceIdService.instance.headers();
+      final headers = await _requestHeaders();
       for (final e in headers.entries) {
         req.headers.set(e.key, e.value);
       }
@@ -247,7 +258,7 @@ class OfflineVideoService {
         } catch (_) {}
       }
 
-      await _storage.write(key: _keyName(id), value: base64Encode(key));
+      await _keys.write(key: _keyName(id), value: base64Encode(key));
       final index = await _loadIndex();
       index[id] = {
         'sessionId': sessionId,
@@ -285,6 +296,14 @@ class OfflineVideoService {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Stops the loopback server (tests; the app keeps it for its lifetime).
+  @visibleForTesting
+  Future<void> debugCloseServer() async {
+    await _server?.close(force: true);
+    _server = null;
+    _serverStarting = null;
   }
 
   Future<void> delete(int sessionId, int materialId) =>
@@ -372,7 +391,7 @@ class OfflineVideoService {
       if (await vtt.exists()) await vtt.delete();
     } catch (_) {}
     try {
-      await _storage.delete(key: _keyName(id));
+      await _keys.delete(key: _keyName(id));
     } catch (_) {}
     final index = await _loadIndex();
     if (index.remove(id) != null) await _saveIndex();
@@ -383,7 +402,7 @@ class OfflineVideoService {
     final cached = _entries[id];
     if (cached != null) return cached;
     try {
-      final keyB64 = await _storage.read(key: _keyName(id));
+      final keyB64 = await _keys.read(key: _keyName(id));
       if (keyB64 == null) return null;
       final file = File('${(await _dir()).path}/$id.enc');
       if (!await file.exists()) return null;
@@ -481,11 +500,15 @@ class OfflineVideoService {
         if (m != null) {
           final s = m.group(1) ?? '';
           final en = m.group(2) ?? '';
+          // a number too long for an int is a range past any file: tryParse, so it answers 416 rather than
+          // throwing into the catch (which closed the response as an empty 200)
+          final sn = s.isEmpty ? null : int.tryParse(s);
+          final enn = en.isEmpty ? null : int.tryParse(en);
           if (s.isEmpty && en.isNotEmpty) {
-            start = max(0, total - int.parse(en)); // suffix range
+            start = enn == null ? 0 : max(0, total - enn); // suffix range (an overlong one is the whole file)
           } else {
-            if (s.isNotEmpty) start = int.parse(s);
-            if (en.isNotEmpty) end = min(int.parse(en), total - 1);
+            if (s.isNotEmpty) start = sn ?? total;
+            if (en.isNotEmpty) end = enn == null ? total - 1 : min(enn, total - 1);
           }
           partial = true;
         }
@@ -572,4 +595,44 @@ class _Entry {
 
   /// Plain (decrypted) length in bytes.
   final int length;
+}
+
+/// Where the per-video keys live: the Keystore / Keychain in the app, a map in tests.
+abstract class _KeyStore {
+  Future<String?> read({required String key});
+  Future<void> write({required String key, required String value});
+  Future<void> delete({required String key});
+}
+
+class _SecureKeyStore implements _KeyStore {
+  const _SecureKeyStore();
+
+  static const FlutterSecureStorage _storage = FlutterSecureStorage(
+    // iOS: the key never leaves this device (not in backups / new phones).
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.unlocked_this_device),
+  );
+
+  @override
+  Future<String?> read({required String key}) => _storage.read(key: key);
+
+  @override
+  Future<void> write({required String key, required String value}) => _storage.write(key: key, value: value);
+
+  @override
+  Future<void> delete({required String key}) => _storage.delete(key: key);
+}
+
+class _MemoryKeyStore implements _KeyStore {
+  _MemoryKeyStore(this._map);
+
+  final Map<String, String> _map;
+
+  @override
+  Future<String?> read({required String key}) async => _map[key];
+
+  @override
+  Future<void> write({required String key, required String value}) async => _map[key] = value;
+
+  @override
+  Future<void> delete({required String key}) async => _map.remove(key);
 }

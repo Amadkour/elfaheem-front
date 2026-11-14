@@ -2,14 +2,17 @@ import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 // Release signing (Phase 9, D-026): android/key.properties (git-ignored) or the environment
-// (ANDROID_KEYSTORE_PATH / _PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD, for CI). Without either, release
-// builds fall back to the debug key and say so — such a build must never be published.
+// (ANDROID_KEYSTORE_PATH / _PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD, for CI). Without either, a release
+// build is REFUSED (S13): the release tasks fail before anything is built, so no debug-signed release can be
+// produced and published by mistake. A local test of a release build on purpose passes `-PallowDebugSigning=true`
+// (`flutter build apk --release --android-project-arg allowDebugSigning=true`); debug / profile builds are untouched.
 val keyProps = Properties().apply {
     val f = rootProject.file("key.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
 fun signingValue(prop: String, env: String): String? = keyProps.getProperty(prop) ?: System.getenv(env)
 val releaseStoreFile = signingValue("storeFile", "ANDROID_KEYSTORE_PATH")
+val allowDebugSigning = project.findProperty("allowDebugSigning")?.toString()?.let { it != "false" } ?: false
 
 plugins {
     // START: FlutterFire Configuration
@@ -78,10 +81,10 @@ android {
             // device test pass of live sessions first (D-026). Dart code IS obfuscated (scripts/build_release.sh).
             isMinifyEnabled = false
             isShrinkResources = false
+            // Configuration runs for EVERY build (debug too), so it never throws here: the refusal is on the release
+            // tasks below. The debug config is only reached with -PallowDebugSigning=true.
             signingConfig = if (releaseStoreFile != null) signingConfigs.getByName("release") else {
-                // in CI a release without a keystore is an error, never a silently debug-signed artifact
                 if (System.getenv("CI") != null) throw GradleException("release build in CI without a keystore (ANDROID_KEYSTORE_PATH)")
-                logger.warn("WARNING: no release keystore (android/key.properties or ANDROID_KEYSTORE_PATH) — release build signed with the DEBUG key, do not publish it")
                 signingConfigs.getByName("debug")
             }
             proguardFiles(
@@ -102,6 +105,20 @@ android {
                 mappingFileUploadEnabled = false
             }
         }
+    }
+}
+
+// S13: a release variant without a keystore stops at its first task (preReleaseBuild) and again at packaging,
+// unless -PallowDebugSigning=true says the debug-signed artifact is wanted (and will not be published).
+if (releaseStoreFile == null) {
+    val refusal = "no release keystore (android/key.properties or ANDROID_KEYSTORE_PATH): a release build would be " +
+        "signed with the DEBUG key. Configure the keystore, or pass -PallowDebugSigning=true for a local test build " +
+        "that is never published."
+    if (allowDebugSigning) {
+        logger.warn("WARNING: -PallowDebugSigning=true — release builds are signed with the DEBUG key, do not publish them")
+    } else {
+        tasks.matching { it.name in setOf("preReleaseBuild", "packageRelease", "packageReleaseBundle", "signReleaseBundle") }
+            .configureEach { doFirst { throw GradleException(refusal) } }
     }
 }
 
