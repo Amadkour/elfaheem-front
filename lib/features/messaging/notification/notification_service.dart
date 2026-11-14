@@ -174,7 +174,7 @@ class NotificationService {
       badge: true,
       sound: true,
     );
-    print('[FCM] Permission status: ${settings.authorizationStatus}');
+    _fcmLog('[FCM] Permission status: ${settings.authorizationStatus}');
 
     // onMessage fires on all platforms — handler is web-safe (see below)
     FirebaseMessaging.onMessage.listen(_onForegroundMessage);
@@ -205,13 +205,13 @@ class NotificationService {
         token = await _fcm.getToken();
       }
 
-      print('[FCM] Token: $token');
+      _fcmLog('[FCM] token received: ${token != null}'); // S7: never the token itself
 
       if (token != null) {
         await _registerTokenWithBackend(api, token);
       }
     } catch (e) {
-      print('[FCM] registerWithBackend error: $e');
+      _fcmLog('[FCM] registerWithBackend error: $e');
     }
   }
 
@@ -224,9 +224,9 @@ class NotificationService {
         '/api/v1/notifications/token',
         data: {'token': token, 'device_type': _deviceType()},
       );
-      print('[FCM] Token unregistered from backend.');
+      _fcmLog('[FCM] Token unregistered from backend.');
     } catch (e) {
-      print('[FCM] unregisterFromBackend failed: $e');
+      _fcmLog('[FCM] unregisterFromBackend failed: $e');
     } finally {
       _api = null;
     }
@@ -239,9 +239,9 @@ class NotificationService {
         '/api/v1/notifications/token',
         body: {'token': token, 'device_type': _deviceType()},
       );
-      print('[FCM] Token registered with backend ✓');
+      _fcmLog('[FCM] Token registered with backend ✓');
     } catch (e) {
-      print('[FCM] registerTokenWithBackend failed: $e');
+      _fcmLog('[FCM] registerTokenWithBackend failed: $e');
     }
   }
 
@@ -252,7 +252,7 @@ class NotificationService {
     // Always log first, on every platform, regardless of whether a
     // "notification" payload is present — this makes data-only messages
     // visible too.
-    print(
+    _fcmLog(
       '[FCM][foreground] id=${message.messageId} '
           'title=${message.notification?.title} '
           'body=${message.notification?.body} '
@@ -320,7 +320,7 @@ class NotificationService {
     final type = data['type'] as String?;
     // Silent push: the admin changed the disable list → reload it, show nothing.
     if (type == 'disable_list_updated') {
-      print('[FCM] disable_list_updated received → refreshing');
+      _fcmLog('[FCM] disable_list_updated received → refreshing');
       _refreshDisableList();
       return true;
     }
@@ -336,7 +336,7 @@ class NotificationService {
     if (type == 'theme_updated') {
       final target = data['platform'] as String?;
       if (target == null || target == _deviceType()) {
-        print('[FCM] theme_updated received -> refreshing theme');
+        _fcmLog('[FCM] theme_updated received -> refreshing theme');
         _refreshTheme();
       }
       return true;
@@ -363,7 +363,7 @@ class NotificationService {
     // Older server: a complaint / manual transfer / payment / payout changed, sent as `type` → every open list
     // (and the dashboard badges) reloads by itself. Shows nothing.
     if (type != null && LiveEvents.silentTypes.contains(type)) {
-      print('[FCM] $type received -> live refresh');
+      _fcmLog('[FCM] $type received -> live refresh');
       LiveEventsClient.instance.ingest(type, data['event_id']?.toString(), data);
       return true;
     }
@@ -512,7 +512,7 @@ class NotificationService {
     try {
       Provider.of<ThemeConfigProvider>(ctx, listen: false).silentRefresh();
     } catch (e) {
-      print('[FCM] refreshTheme failed: $e');
+      _fcmLog('[FCM] refreshTheme failed: $e');
     }
   }
 
@@ -525,11 +525,16 @@ class NotificationService {
       final items = ((r is Map ? r['items'] : null) as List? ?? const [])
           .map((e) => '$e')
           .toList();
-      print('[FCM] disable list from server ($platform): $items');
+      _fcmLog('[FCM] disable list from server ($platform): $items');
       final changed = AppConfig.setDisableList(items);
-      print('[FCM] disable list changed=$changed');
+      _fcmLog('[FCM] disable list changed=$changed');
     } catch (e) {
-      print('[FCM] refreshDisableList failed: $e');
+      _fcmLog('[FCM] refreshDisableList failed: $e');
     }
   }
+}
+
+/// FCM diagnostics: debug and profile builds only (S7). Release builds write nothing to logcat / the browser console.
+void _fcmLog(String message) {
+  if (AppConfig.testMode) debugPrint(message);
 }

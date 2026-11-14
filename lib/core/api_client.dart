@@ -536,7 +536,38 @@ const logSensitiveKeys = {
   'signature',
   'seed',
   'private_key',
+  // S8: the Google sign-in id token, the SSE stream ticket (POST /me/events/ticket), passcodes and PINs
+  'id_token',
+  'ticket',
+  'passcode',
+  'pin',
 };
+
+/// Time to open a connection to the API (S14).
+const kApiConnectTimeout = Duration(seconds: 20);
+
+/// Time to wait for an answer (and, off the web, to send a JSON body) on an ordinary call (S14).
+const kApiReceiveTimeout = Duration(seconds: 30);
+
+/// Uploads (FormData, a byte stream) and binary downloads: a large file on a slow line may take this long.
+const kApiTransferTimeout = Duration(minutes: 60);
+
+/// A request that moves a file: FormData or a stream body, a bytes / stream answer, or `extra['transfer'] == true`.
+bool isTransferRequest(RequestOptions o) =>
+    o.data is FormData ||
+    o.data is Stream ||
+    o.responseType == ResponseType.bytes ||
+    o.responseType == ResponseType.stream ||
+    o.extra['transfer'] == true;
+
+/// Gives a transfer request the long timeouts, unless its caller picked its own receive timeout. The send timeout
+/// stays unset on the web (a non-null one forces a CORS preflight, see `_buildDio`).
+RequestOptions applyTransferTimeouts(RequestOptions o) {
+  if (!isTransferRequest(o)) return o;
+  if (o.receiveTimeout == null || o.receiveTimeout == kApiReceiveTimeout) o.receiveTimeout = kApiTransferTimeout;
+  if (!kIsWeb) o.sendTimeout = kApiTransferTimeout;
+  return o;
+}
 
 /// Server error codes (`mfa_code_invalid`, `DEVICE_MISMATCH`) stay readable in a `code` field; any other `code`
 /// value (a 6-digit TOTP, a recovery code, a join or coupon code) is masked.
@@ -900,14 +931,15 @@ class ApiClient {
     final d = Dio(
       BaseOptions(
         baseUrl: _base,
-        connectTimeout: const Duration(minutes: 60),
+        // S14: short by default, so a hung server ends in "took too long" instead of an hour-long spinner;
+        // uploads and binary downloads get the long transfer timeouts in [applyTransferTimeouts].
+        connectTimeout: kApiConnectTimeout,
 
-        // Unlimited upload/download timeouts.
         // Web: a non-null sendTimeout makes Dio attach an XHR upload-progress
         // listener, which FORCES a CORS preflight on every request — so it is
         // left unset in the browser (XHR has no real send timeout anyway).
-        sendTimeout: kIsWeb ? null : const Duration(minutes: 60),
-        receiveTimeout: const Duration(minutes: 60),
+        sendTimeout: kIsWeb ? null : kApiReceiveTimeout,
+        receiveTimeout: kApiReceiveTimeout,
 
         // Keep the error body so we can read {"detail": ...}.
         receiveDataWhenStatusError: true,
@@ -936,6 +968,9 @@ class ApiClient {
     }
 
     d.interceptors.add(_authInterceptor());
+
+    // Uploads / binary downloads, also the ones that call `ApiClient().dio` directly: the long timeouts (S14).
+    d.interceptors.add(InterceptorsWrapper(onRequest: (o, h) => h.next(applyTransferTimeouts(o))));
 
     // Pinned (see _pinnedHttpClient above).
     // IMPORTANT: this Dio instance must only ever talk to _base's host. If any
@@ -1140,11 +1175,11 @@ class ApiClient {
     extra: {'auth': auth},
   );
 
-  /// File uploads/downloads: no send/receive timeout.
+  /// File uploads/downloads: the long transfer timeouts ([applyTransferTimeouts]).
   Options _fileOpts({bool auth = true, String method = 'POST', Map<String, String>? headers}) => Options(
     method: method,
     headers: headers,
-    extra: {'auth': auth},
+    extra: {'auth': auth, 'transfer': true},
   );
 
   // ── Core executor ─────────────────────────────────────────────────────────

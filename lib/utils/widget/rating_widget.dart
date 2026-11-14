@@ -122,12 +122,6 @@ class RatingService {
     required int value,
     String? review,
   }) async {
-    print({
-      'source_id': sourceId,
-      'type': type.name.toUpperCase(),
-      'value': value,
-      if (review != null && review.isNotEmpty) 'review': review,
-    });
     final data = await _api.post(
       '/api/v1/rates',
       body: {

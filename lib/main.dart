@@ -35,6 +35,7 @@ import 'package:flutter_education_app/utils/web_base_path.dart';
 import 'package:flutter_education_app/utils/web_entry_route.dart';
 import 'package:flutter_education_app/core/routing/app_router.dart';
 import 'package:flutter_education_app/core/routing/app_routes.dart';
+import 'package:flutter_education_app/core/routing/route_roles.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart' show EntityKind, EntityLinkRequest, EntityRef;
 import 'package:flutter_education_app/core/routing/web_history.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNav;
@@ -1217,6 +1218,11 @@ class _GuardState extends State<_Guard> {
         Navigator.of(context).pushReplacementNamed('/login');
         return;
       }
+      final home = _roleRedirect(context);
+      if (home != null) {
+        Navigator.of(context).pushReplacementNamed(home); // another role's home (S4): the user's own one instead
+        return; // that home's guard consumes the pending links below
+      }
       DeepLinkService.instance.consumePending(); // link opened while logged out
       ExportLinkPending.consume(Navigator.of(context)); // an export share link, likewise
       SignInReturn.consume(); // any other page opened by URL while signed out (D-170)
@@ -1228,12 +1234,20 @@ class _GuardState extends State<_Guard> {
     });
   }
 
+  /// S4: a signed-in user on another role's home (by URL, an edited cached user) → their own home, else null.
+  String? _roleRedirect(BuildContext context) {
+    final auth = context.read<MyAuthProvider>();
+    if (!auth.isAuthenticated) return null;
+    return routeRoleRedirect(ModalRoute.of(context)?.settings.name,
+        role: auth.currentUser?.role, homeRoute: auth.homeRoute, viewAs: ViewAsState.active);
+  }
+
   @override
   Widget build(BuildContext context) =>
-      (context.read<MyAuthProvider>().isAuthenticated ||
+      ((context.read<MyAuthProvider>().isAuthenticated && _roleRedirect(context) == null) ||
           (widget.guestOk && GuestState.active))
           ? widget.child
-          : const SizedBox.shrink();
+          : const SizedBox.shrink(); // nothing of another role's shell is built (its requests would only fail)
 }
 
 /// Sends the user to their own home screen (used when a route has no usable arguments).

@@ -161,6 +161,10 @@ class VersionCheckService {
     unawaited(_check(key).catchError((_) {}));
   }
 
+  /// Tests: one check for the platform [key] ('android', …), awaited (the dialog included).
+  @visibleForTesting
+  Future<void> debugCheck(String key) => _check(key);
+
   Future<void> _check(String key) async {
     final info = await PackageInfo.fromPlatform();
     final installed = int.tryParse(info.buildNumber) ?? 0;

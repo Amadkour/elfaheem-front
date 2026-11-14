@@ -491,8 +491,11 @@ class MyAuthProvider extends BaseProvider {
 
   void loadCachedUser() {
     final saved = _storage.savedUser;
-    if (saved != null) {
+    if (saved == null) return;
+    try {
       _currentUser = UserModel.fromJson(saved);
+    } catch (_) {
+      _currentUser = null; // a cached user this build cannot read (no role, edited prefs): signed out, not a crash at start-up
     }
   }
 
