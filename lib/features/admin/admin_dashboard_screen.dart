@@ -39,20 +39,22 @@ import '../shared/profile/change_language_screen.dart';
 import '../shared/profile/compalints/complaint_provider.dart';
 import '../shared/profile/compalints/complaints_screen.dart';
 import '../shared/profile/components/setting_group.dart';
-import '../teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import 'admin_admins_page.dart';
+import 'admin_auth_settings_page.dart';
 import 'admin_categories_page.dart';
 import 'admin_common.dart';
 import 'admin_content_page.dart';
 import 'admin_courses_page.dart';
 import 'admin_devices_page.dart';
 import 'admin_features_page.dart';
+import 'admin_flags_settings_page.dart';
 import 'admin_finance_page.dart';
 import 'admin_overview_page.dart';
 import 'admin_payment_page.dart';
 import 'admin_payouts_page.dart';
 import 'admin_profile_page.dart';
 import 'admin_providers.dart' show AdminPendingPayoutsProvider;
+import 'admin_required_documents_page.dart';
 import 'admin_send_message_page.dart';
 import 'admin_subscriptions_page.dart';
 import 'admin_theme_page.dart';
@@ -181,8 +183,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _isAdmin)
+      if (mounted && _isAdmin) {
         context.read<TeacherTransfersProvider>().ensureLoaded();
+      }
     });
   }
 
@@ -307,7 +310,7 @@ class _AdminTab extends StatelessWidget {
           ? child
           : ValueListenableBuilder<int>(
         valueListenable: epoch!,
-        builder: (_, e, __) =>
+        builder: (_, e, _) =>
             KeyedSubtree(key: ValueKey(e), child: child),
       ),
     );
@@ -537,6 +540,22 @@ class _MorePageState extends State<_MorePage> {
                         label: 'admin_devices'.tr,
                         onTap: () => _push(const AdminDevicesPage()),
                       ),
+                      SettingsTile(
+                        icon: Icons.devices_rounded,
+                        iconBg: c.primary.withAlpha(50),
+                        iconColor: c.primary,
+                        label: 'admin_devices'.tr,
+                        onTap: () => _push(const AdminAuthSettingsPage()),
+                      ),
+
+                      SettingsTile(
+                        icon: Icons.devices_rounded,
+                        iconBg: c.primary.withAlpha(50),
+                        iconColor: c.primary,
+                        label: 'admin_devices'.tr,
+                        onTap: () => _push(const AdminRequiredDocumentsPage()),
+                      ),
+
                     ],
                   ),
                 ),
@@ -562,6 +581,13 @@ class _MorePageState extends State<_MorePage> {
                         iconColor: c.primary,
                         label: 'features'.tr,
                         onTap: () => _push(const AdminFeaturesPage()),
+                      ),
+                      SettingsTile(
+                        icon: Icons.bookmark_rounded,
+                        iconBg: c.danger.withAlpha(50),
+                        iconColor: c.danger,
+                        label: 'admin_flags_title'.tr,
+                        onTap: () => _push(const AdminFlagsSettingsPage()),
                       ),
                       SettingsTile(
                         icon: Icons.rocket_launch_rounded,

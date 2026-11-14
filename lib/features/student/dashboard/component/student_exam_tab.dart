@@ -3,7 +3,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../../../config/theme/app_theme.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../core/api_client.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';

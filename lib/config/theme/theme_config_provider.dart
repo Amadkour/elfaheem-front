@@ -130,7 +130,7 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       if (_model == null) {
         // Nothing cached: give the server a short window so the very first
         // frame is usually right, then continue with the default theme.
-        await fetch.timeout(const Duration(seconds: 3), onTimeout: () => false);
+        await fetch.timeout(const Duration(seconds: 30), onTimeout: () => false);
       }
       _isLoading = false;
       notifyListeners();
@@ -559,7 +559,7 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       final platform = _currentPlatform;
       final json = await _api
           .get('/api/v1/theme/$platform')
-          .timeout(const Duration(seconds: 8)) as Map<String, dynamic>;
+          .timeout(const Duration(seconds: 30)) as Map<String, dynamic>;
       final colors = json['colors'] as Map<String, dynamic>;
       _model = ThemeConfigModel.fromJson(colors);
 

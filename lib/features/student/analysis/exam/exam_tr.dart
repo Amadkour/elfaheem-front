@@ -1,4 +1,3 @@
-import 'package:flutter/widgets.dart' show TextDirection;
 import 'package:flutter_education_app/config/app_config.dart';
 
 /// Translates [key] (from translation.json) and fills `{placeholders}`.

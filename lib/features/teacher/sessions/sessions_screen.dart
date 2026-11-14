@@ -40,7 +40,6 @@
 //     `watch` — confined to a `SliverMainAxisGroup` so its rebuilds can never
 //     leak into the hero or details card next to it.
 // ─────────────────────────────────────────────────────────────────────────
-import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';

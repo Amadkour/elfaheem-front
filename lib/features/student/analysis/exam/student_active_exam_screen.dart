@@ -3,7 +3,16 @@ import 'package:flutter/material.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../core/api_client.dart';
 import '../../../shared/models/exam_model.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+
+String _fmt(String key, Map<String, Object?> params) {
+  var out = key.tr;
+  params.forEach((k, v) => out = out.replaceAll('{$k}', '$v'));
+  return out;
+}
+
 // ── Entry point: passcode gate ───────────────────────────────────────────────
 class StudentExamEntryScreen extends StatefulWidget {
   final ExamModel exam;
@@ -24,11 +33,11 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
 
   Future<void> _enter() async {
     if (_needsPasscode && _passcodeCtrl.text.trim().isEmpty) {
-      if(mounted) setState(() => _error = 'يرجى إدخال كلمة المرور');
+      if(mounted) setState(() => _error = 'passcode_required'.tr);
       return;
     }
     if (_needsPasscode && _passcodeCtrl.text.trim() != widget.exam.passcode) {
-      if(mounted) setState(() => _error = 'كلمة المرور غير صحيحة');
+      if(mounted) setState(() => _error = 'wrong_passcode'.tr);
       return;
     }
 
@@ -49,7 +58,7 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
 
       if (questions.isEmpty) {
         setState(() {
-          _error = 'هذا الاختبار لا يحتوي على أسئلة بعد';
+          _error = 'exam_err_no_questions'.tr;
           _loading = false;
         });
         return;
@@ -66,7 +75,7 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e is ApiException ? e.message : 'فشل تحميل الأسئلة';
+        _error = e is ApiException ? e.message : 'exam_load_questions_failed'.tr;
         _loading = false;
       });
     }
@@ -85,15 +94,15 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
         exam.startDate != null && exam.startDate!.isAfter(DateTime.now());
 
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: Helpers.pageDirection,
       child: Scaffold(
         backgroundColor: context.colors.background,
         appBar: AppBar(
           backgroundColor: context.colors.primary,
           foregroundColor: Colors.white,
-          title: const Text('دخول الاختبار',
+          title: Text('enter_exam'.tr,
               style:
-              TextStyle(fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+              const TextStyle(fontFamily: 'bahji', fontWeight: FontWeight.w700)),
           leading: IconButton(
               icon: const Icon(Icons.arrow_forward_ios),
               onPressed: () => Navigator.pop(context)),
@@ -138,14 +147,14 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
             ],
             const SizedBox(height: 24),
             _InfoCard(children: [
-              _InfoRow(Icons.timer_outlined, 'مدة الاختبار',
-                  '${exam.duration ?? 0} دقيقة', Colors.teal),
-              _InfoRow(Icons.star_outline_rounded, 'درجة النجاح',
+              _InfoRow(Icons.timer_outlined, 'exam_exam_duration'.tr,
+                  _fmt('exam_n_minutes', {'n': exam.duration ?? 0}), Colors.teal),
+              _InfoRow(Icons.star_outline_rounded, 'exam_passing_score'.tr,
                   '${exam.passingScore?.toInt() ?? 0}%', Colors.amber.shade700),
-              _InfoRow(Icons.help_outline_rounded, 'عدد الأسئلة',
-                  '${exam.questionCount} سؤال', context.colors.primary),
+              _InfoRow(Icons.help_outline_rounded, 'exam_question_count'.tr,
+                  _fmt('exam_n_questions', {'n': exam.questionCount}), context.colors.primary),
               if (exam.startDate != null)
-                _InfoRow(Icons.schedule_rounded, 'وقت البدء',
+                _InfoRow(Icons.schedule_rounded, 'exam_start_time'.tr,
                     _fmtDate(exam.startDate!), Colors.orange),
             ]),
             const SizedBox(height: 20),
@@ -153,10 +162,10 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
               _CountdownBanner(target: exam.startDate!)
             else ...[
               if (_needsPasscode) ...[
-                const Align(
-                  alignment: Alignment.centerRight,
-                  child: Text('كلمة مرور الاختبار',
-                      style: TextStyle(
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text('exam_passcode'.tr,
+                      style: const TextStyle(
                           fontFamily: 'bahji',
                           fontSize: 14,
                           fontWeight: FontWeight.w600)),
@@ -226,13 +235,13 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
                       width: 22,
                       height: 22,
                       child: AppLoadingIndicator())
-                      : const Row(
+                      : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.play_arrow_rounded, size: 22),
-                        SizedBox(width: 8),
-                        Text('ابدأ الاختبار الآن',
-                            style: TextStyle(
+                        const Icon(Icons.play_arrow_rounded, size: 22),
+                        const SizedBox(width: 8),
+                        Text('exam_start_now'.tr,
+                            style: const TextStyle(
                                 fontFamily: 'bahji',
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700)),
@@ -248,14 +257,14 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
                   border:
                   Border.all(color: Colors.orange.withValues(alpha: 0.3)),
                 ),
-                child: const Row(children: [
-                  Icon(Icons.warning_amber_rounded,
+                child: Row(children: [
+                  const Icon(Icons.warning_amber_rounded,
                       color: Colors.orange, size: 18),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Expanded(
                       child: Text(
-                        'بمجرد بدء الاختبار لا يمكن إيقافه مؤقتاً. تأكد من اتصالك بالإنترنت.',
-                        style: TextStyle(
+                        'exam_warning'.tr,
+                        style: const TextStyle(
                             fontFamily: 'bahji',
                             fontSize: 12,
                             color: Colors.orange),
@@ -385,15 +394,15 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
   Widget build(BuildContext context) {
     if (_submitting) {
       return Directionality(
-        textDirection: TextDirection.rtl,
+        textDirection: Helpers.pageDirection,
         child: Scaffold(
           backgroundColor: context.colors.background,
           body: Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               const AppLoadingIndicator(),
               const SizedBox(height: 20),
-              const Text('جارٍ إرسال إجاباتك...',
-                  style: TextStyle(fontFamily: 'bahji', fontSize: 16)),
+              Text('exam_sending_answers'.tr,
+                  style: const TextStyle(fontFamily: 'bahji', fontSize: 16)),
             ]),
           ),
         ),
@@ -405,7 +414,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
     final opts = q.options;
 
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: Helpers.pageDirection,
       child: Scaffold(
         backgroundColor: context.colors.background,
         appBar: AppBar(
@@ -448,10 +457,10 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: Column(children: [
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text('السؤال ${_current + 1} من ${widget.questions.length}',
+                Text(_fmt('exam_quiz_counter', {'current': _current + 1, 'total': widget.questions.length}),
                     style: const TextStyle(
                         fontFamily: 'bahji', fontSize: 12, color: Colors.grey)),
-                Text('$_answeredCount / ${widget.questions.length} تمت الإجابة',
+                Text(_fmt('exam_quiz_answered_progress', {'answered': _answeredCount, 'total': widget.questions.length}),
                     style: const TextStyle(
                         fontFamily: 'bahji', fontSize: 12, color: Colors.grey)),
               ]),
@@ -497,7 +506,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                                   color:
                                   context.colors.primary.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8)),
-                              child: Text('${q.marks.toInt()} درجات',
+                              child: Text(_fmt('exam_n_marks', {'n': q.marks.toInt()}),
                                   style: TextStyle(
                                       fontFamily: 'bahji',
                                       fontSize: 11,
@@ -585,12 +594,12 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                     else
                     // Open-ended text field
                       TextField(
-                        textDirection: TextDirection.rtl,
+                        textDirection: Helpers.pageDirection,
                         maxLines: 4,
                         onChanged: (v) => _answers[_current] =
                         v.trim().isEmpty ? null : v.trim(),
                         decoration: InputDecoration(
-                          hintText: 'اكتب إجابتك هنا...',
+                          hintText: 'exam_quiz_answer_hint'.tr,
                           hintStyle: const TextStyle(
                               fontFamily: 'bahji', color: Colors.grey),
                           filled: true,
@@ -665,8 +674,8 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                 OutlinedButton.icon(
                   onPressed: _prev,
                   icon: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                  label: const Text('السابق',
-                      style: TextStyle(fontFamily: 'bahji')),
+                  label: Text('previous_question'.tr,
+                      style: const TextStyle(fontFamily: 'bahji')),
                   style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.grey,
                       side: BorderSide(color: Colors.grey.shade300),
@@ -679,8 +688,8 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
               if (_current < widget.questions.length - 1)
                 ElevatedButton.icon(
                   onPressed: _next,
-                  icon: const Text('التالي',
-                      style: TextStyle(
+                  icon: Text('next_question'.tr,
+                      style: const TextStyle(
                           fontFamily: 'bahji', fontWeight: FontWeight.w700)),
                   label: const Icon(Icons.arrow_back_ios_rounded, size: 14),
                   style: ElevatedButton.styleFrom(
@@ -695,8 +704,8 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                 ElevatedButton.icon(
                   onPressed: () => _showSubmitDialog(),
                   icon: const Icon(Icons.send_rounded, size: 16),
-                  label: const Text('تسليم الاختبار',
-                      style: TextStyle(
+                  label: Text('submit_exam'.tr,
+                      style: const TextStyle(
                           fontFamily: 'bahji', fontWeight: FontWeight.w700)),
                   style: ElevatedButton.styleFrom(
                       backgroundColor: context.colors.success,
@@ -717,24 +726,24 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
     showDialog(
       context: context,
       builder: (_) => Directionality(
-        textDirection: TextDirection.rtl,
+        textDirection: Helpers.pageDirection,
         child: AlertDialog(
           shape:
           RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          title: const Text('تسليم الاختبار',
+          title: Text('submit_exam'.tr,
               style:
-              TextStyle(fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+              const TextStyle(fontFamily: 'bahji', fontWeight: FontWeight.w700)),
           content: Text(
             _answeredCount < widget.questions.length
-                ? 'لم تجب على ${widget.questions.length - _answeredCount} سؤال. هل أنت متأكد من التسليم؟'
-                : 'هل تريد تسليم إجاباتك الآن؟',
+                ? _fmt('exam_quiz_unanswered_msg', {'count': widget.questions.length - _answeredCount})
+                : 'submit_confirm_all_answered'.tr,
             style: const TextStyle(fontFamily: 'bahji'),
           ),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(context),
                 child:
-                const Text('إلغاء', style: TextStyle(fontFamily: 'bahji'))),
+                Text('exam_cancel'.tr, style: const TextStyle(fontFamily: 'bahji'))),
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
@@ -744,8 +753,8 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                   backgroundColor: context.colors.success,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10))),
-              child: const Text('تأكيد التسليم',
-                  style: TextStyle(
+              child: Text('confirm_submit'.tr,
+                  style: const TextStyle(
                       fontFamily: 'bahji', fontWeight: FontWeight.w700)),
             ),
           ],
@@ -768,14 +777,14 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
         widget.questions.fold(0.0, (s, q) => (s ?? 0) + q.marks);
 
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: Helpers.pageDirection,
       child: Scaffold(
         backgroundColor: context.colors.background,
         appBar: AppBar(
           backgroundColor: passed ? context.colors.success : Colors.redAccent,
           automaticallyImplyLeading: false,
-          title: const Text('نتيجة الاختبار',
-              style: TextStyle(
+          title: Text('exam_result'.tr,
+              style: const TextStyle(
                   fontFamily: 'bahji',
                   fontWeight: FontWeight.w700,
                   color: Colors.white)),
@@ -801,7 +810,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                         child: Text(
-                          'تعذّر إرسال بعض الإجابات: $_submitError',
+                          _fmt('exam_submit_partial_error', {'error': _submitError}),
                           style: const TextStyle(
                               fontFamily: 'bahji',
                               fontSize: 12,
@@ -831,7 +840,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                                 fontWeight: FontWeight.w900,
                                 color:
                                 passed ? context.colors.success : Colors.redAccent)),
-                        Text(passed ? 'ناجح ✓' : 'راسب ✗',
+                        Text(passed ? 'exam_passed_mark'.tr : 'exam_failed_mark'.tr,
                             style: TextStyle(
                                 fontFamily: 'bahji',
                                 fontSize: 16,
@@ -844,8 +853,8 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
               const SizedBox(height: 28),
               Text(
                 passed
-                    ? 'تهانينا! اجتزت الاختبار بنجاح'
-                    : 'لم تجتز الاختبار هذه المرة',
+                    ? 'congratulations_passed'.tr
+                    : 'sorry_failed'.tr,
                 style: TextStyle(
                     fontFamily: 'bahji',
                     fontSize: 18,
@@ -869,20 +878,20 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                 ),
                 child: Column(children: [
                   _ResultRow(
-                    'درجتك',
+                    'your_score'.tr,
                     marksObtained != null
                         ? '${marksObtained.toStringAsFixed(0)} / ${totalMarks?.toStringAsFixed(0)}'
-                        : '$_answeredCount / ${widget.questions.length} إجابة',
+                        : _fmt('exam_answers_count', {'answered': _answeredCount, 'total': widget.questions.length}),
                     context.colors.primary,
                   ),
                   const Divider(height: 20),
                   _ResultRow(
-                      'الأسئلة المجابة',
+                      'questions_answered'.tr,
                       '$_answeredCount / ${widget.questions.length}',
                       Colors.teal),
                   const Divider(height: 20),
                   _ResultRow(
-                      'درجة النجاح',
+                      'exam_passing_score'.tr,
                       '${widget.exam.passingScore?.toInt() ?? 60}%',
                       Colors.orange),
                 ]),
@@ -900,8 +909,8 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14)),
                   ),
-                  child: const Text('العودة للرئيسية',
-                      style: TextStyle(
+                  child: Text('back_to_home'.tr,
+                      style: const TextStyle(
                           fontFamily: 'bahji',
                           fontSize: 15,
                           fontWeight: FontWeight.w700)),
@@ -1029,15 +1038,15 @@ class _CountdownBannerState extends State<_CountdownBanner> {
       border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
     ),
     child: Column(children: [
-      const Text('يبدأ الاختبار خلال',
-          style: TextStyle(
+      Text('exam_starts_in'.tr,
+          style: const TextStyle(
               fontFamily: 'bahji',
               fontSize: 14,
               color: Colors.orange,
               fontWeight: FontWeight.w600)),
       const SizedBox(height: 10),
       Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        _TimeBox(_remaining.inHours.toString().padLeft(2, '0'), 'ساعة'),
+        _TimeBox(_remaining.inHours.toString().padLeft(2, '0'), 'exam_hours'.tr),
         const Padding(
             padding: EdgeInsets.symmetric(horizontal: 8),
             child: Text(':',
@@ -1046,7 +1055,7 @@ class _CountdownBannerState extends State<_CountdownBanner> {
                     fontWeight: FontWeight.w800,
                     color: Colors.orange))),
         _TimeBox(((_remaining.inMinutes) % 60).toString().padLeft(2, '0'),
-            'دقيقة'),
+            'exam_minutes'.tr),
         const Padding(
             padding: EdgeInsets.symmetric(horizontal: 8),
             child: Text(':',
@@ -1055,7 +1064,7 @@ class _CountdownBannerState extends State<_CountdownBanner> {
                     fontWeight: FontWeight.w800,
                     color: Colors.orange))),
         _TimeBox(((_remaining.inSeconds) % 60).toString().padLeft(2, '0'),
-            'ثانية'),
+            'exam_seconds'.tr),
       ]),
     ]),
   );

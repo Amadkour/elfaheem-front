@@ -21,11 +21,21 @@ class GatewayConfig {
   final String? currency;
   final List<PaymentMethodOption> paymentMethods;
 
+  /// Apple Pay / Google Pay as the server reports them (admin switch AND the active gateway supports it).
+  final List<PaymentMethodOption> walletMethods;
+
+  /// "moyasar_sdk" (pay in the Moyasar SDK, then record-sdk-payment) · "intention" (Paymob native SDK) · null.
+  final String? walletFlow;
+  final String? applePayMerchantId; // Moyasar Apple Pay only
+
   const GatewayConfig({
     this.provider,
     this.publishableKey,
     this.currency,
     this.paymentMethods = const [],
+    this.walletMethods = const [],
+    this.walletFlow,
+    this.applePayMerchantId,
   });
 
   factory GatewayConfig.fromJson(Map<String, dynamic> j) => GatewayConfig(
@@ -36,11 +46,22 @@ class GatewayConfig {
       for (final raw in (j['payment_methods'] as List? ?? const []))
         PaymentMethodOption.fromJson(Map<String, dynamic>.from(raw as Map)),
     ],
+    walletMethods: [
+      for (final raw in (j['wallet_methods'] as List? ?? const []))
+        PaymentMethodOption.fromJson(Map<String, dynamic>.from(raw as Map)),
+    ],
+    walletFlow: j['wallet_flow'] as String?,
+    applePayMerchantId: j['apple_pay_merchant_id'] as String?,
   );
+
+  /// Wallets the admin has switched on that this gateway really supports.
+  List<PaymentMethodOption> get enabledWallets => [for (final w in walletMethods) if (w.enabled) w];
+
+  bool isWalletEnabled(String type) => walletMethods.any((m) => m.type == type && m.enabled);
 
   /// The name the admin gave [type] (or the server default), already in the app's language.
   String? labelFor(String type) {
-    for (final m in paymentMethods) {
+    for (final m in [...paymentMethods, ...walletMethods]) {
       if (m.type == type && m.label.trim().isNotEmpty) return m.label;
     }
     return null;
@@ -57,7 +78,8 @@ class GatewayConfig {
   bool get instapayEnabled => isEnabled('instapay');
 
   /// At least one way to pay is open.
-  bool get anyMethodEnabled => cardEnabled || bankTransferEnabled || instapayEnabled;
+  bool get anyMethodEnabled =>
+      cardEnabled || bankTransferEnabled || instapayEnabled || enabledWallets.isNotEmpty;
 }
 
 /// A plan a course is sold in. Keys match the backend: monthly | six_months | yearly.

@@ -1,6 +1,5 @@
 import 'package:flutter_education_app/features/student/models.dart';
 
-import '../shared/course/discount_info.dart';
 
 
 class CategoryCourseModel with DiscountInfo {

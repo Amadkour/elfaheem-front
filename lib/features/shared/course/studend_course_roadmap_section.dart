@@ -10,12 +10,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
-import 'course_row.dart';
 import '../../student/models.dart';
 import 'teacher_course_roadmap_section.dart';
 

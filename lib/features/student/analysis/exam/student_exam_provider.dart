@@ -5,9 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import '../../../../core/base_provider.dart';
 import '../../../shared/models/exam_model.dart';
-import '../../courses/details/course_detail_provider.dart';
 import 'student_exam_api.dart';
 import 'exam_tr.dart';
+import '../flags/student_flags_api.dart';
 
 // ── Quiz session state ────────────────────────────────────────────────────────
 
@@ -193,6 +193,7 @@ class StudentExamProvider extends BaseProvider {
       }
       _session = QuizSession(exam: exam, questions: questions);
       _startTimer(exam.duration ?? 60);
+      _loadFlagState(exam); // review-flag state (non-blocking)
       return true;
     } on ApiException catch (e) {
       _questionsError = e.message;
@@ -285,12 +286,77 @@ class StudentExamProvider extends BaseProvider {
         // Result fetch failed — still mark submitted
       }
 
+      // Wrong answers → read flags (server side, idempotent). Never blocks the result.
+      try {
+        await _flagsApi.syncReadFlags(s.exam.id);
+      } catch (_) {}
+
       s.submitted = true;
       _markSubmittedInList(s.exam.id, s.result);
     } catch (e) {
       s.submitError = e is ApiException ? e.message : e.toString();
     } finally {
       s.submitting = false;
+      notifyListeners();
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Review flags (bookmarks taken while answering)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  final StudentFlagsApi _flagsApi = StudentFlagsApi();
+  FlagSettings flagSettings = const FlagSettings();
+  FlagUsage? flagUsage;
+  final Set<int> reviewFlagged = {};
+  bool flagBusy = false;
+
+  /// The admin allows review flags (false until the server has answered).
+  bool get reviewFlagsEnabled => flagSettings.allowReview;
+
+  bool isReviewFlagged(int questionId) => reviewFlagged.contains(questionId);
+
+  Future<void> _loadFlagState(StudentExamListItem exam) async {
+    reviewFlagged.clear();
+    flagUsage = null;
+    try {
+      final r =
+      await _flagsApi.fetchReview(examId: exam.id, courseId: exam.courseId);
+      flagSettings = r.settings;
+      flagUsage = r.usage;
+      reviewFlagged.addAll(r.items.map((e) => e.questionId));
+    } catch (_) {
+      flagSettings = const FlagSettings(); // feature unavailable → hide the button
+    }
+    notifyListeners();
+  }
+
+  /// Adds / removes the review flag of [q]. Returns an error text, or null on success.
+  Future<String?> toggleReviewFlag(Question q) async {
+    if (flagBusy) return null;
+    flagBusy = true;
+    notifyListeners();
+    try {
+      if (reviewFlagged.contains(q.id)) {
+        flagUsage = await _flagsApi.removeReview(q.id);
+        reviewFlagged.remove(q.id);
+      } else {
+        flagUsage = await _flagsApi.addReview(q.id);
+        reviewFlagged.add(q.id);
+      }
+      return null;
+    } on ApiException catch (e) {
+      if (e.message.contains('review_limit_exam')) {
+        return tx('flag_limit_exam', {'n': flagSettings.limitExam});
+      }
+      if (e.message.contains('review_limit_course')) {
+        return tx('flag_limit_course', {'n': flagSettings.limitCourse});
+      }
+      return e.message;
+    } catch (e) {
+      return e.toString();
+    } finally {
+      flagBusy = false;
       notifyListeners();
     }
   }

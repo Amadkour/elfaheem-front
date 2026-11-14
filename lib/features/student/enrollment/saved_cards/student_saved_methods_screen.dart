@@ -1,6 +1,3 @@
-/// student_saved_methods_screen.dart
-/// Student manages saved Moyasar cards and bank accounts.
-/// Premium design: animated card flip, brand icons, smooth tab switching.
 library;
 
 import 'package:flutter/material.dart';

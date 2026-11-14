@@ -214,7 +214,7 @@ class _ProgressRing extends StatelessWidget {
               tween: Tween(begin: 0, end: (value.clamp(0, 100)) / 100),
               duration: const Duration(milliseconds: 900),
               curve: Curves.easeOutCubic,
-              builder: (_, animated, __) => CircularProgressIndicator(
+              builder: (_, animated, _) => CircularProgressIndicator(
                 value: animated,
                 strokeWidth: 9,
                 strokeCap: StrokeCap.round,
@@ -420,7 +420,7 @@ class _StudentsSliver extends StatelessWidget {
           slivers: [
             SliverList.separated(
               itemCount: p.students.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (_, i) => _StaggeredEntrance(
                 index: i,
                 child: _StudentCard(student: p.students[i], course: course),
@@ -705,7 +705,7 @@ class _RingAvatar extends StatelessWidget {
             tween: Tween(begin: 0, end: student.progressPercentage.clamp(0, 100) / 100),
             duration: const Duration(milliseconds: 700),
             curve: Curves.easeOutCubic,
-            builder: (_, v, __) => SizedBox(
+            builder: (_, v, _) => SizedBox(
               width: 52,
               height: 52,
               child: CircularProgressIndicator(
@@ -726,7 +726,7 @@ class _RingAvatar extends StatelessWidget {
                 width: 42,
                 height: 42,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _initials,
+                errorBuilder: (_, _, _) => _initials,
               )
                   : _initials,
             ),

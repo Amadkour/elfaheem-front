@@ -615,6 +615,9 @@ import WebRTC
             self, selector: #selector(appWillEnterForeground),
             name: UIApplication.willEnterForegroundNotification, object: nil)
 
+        // Downloaded (encrypted) videos must never go to iCloud / iTunes backups.
+        excludeOfflineFolderFromBackup()
+
         let vc = FlutterViewController(engine: engine, nibName: nil, bundle: nil)
         window = UIWindow(frame: UIScreen.main.bounds)
         window?.rootViewController = vc
@@ -641,6 +644,18 @@ import WebRTC
 
     @objc private func appWillEnterForeground() {
         endBgTask()
+    }
+
+    /// Keeps <Application Support>/offline (the encrypted downloads written by
+    /// OfflineVideoService) out of iCloud / iTunes backups.
+    private func excludeOfflineFolderFromBackup() {
+        guard var dir = FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return }
+        dir.appendPathComponent("offline", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? dir.setResourceValues(values)
     }
 
     private func endBgTask() {

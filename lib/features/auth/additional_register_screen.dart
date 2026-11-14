@@ -14,7 +14,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
-import '../../config/theme/app_theme.dart';
 import '../../utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';

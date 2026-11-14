@@ -63,6 +63,8 @@ String _pct(Object? v) {
 IconData _methodIcon(String m) => switch (m) {
   'card' => Icons.credit_card_rounded,
   'bank_transfer' => Icons.account_balance_rounded,
+  'apple_pay' => Icons.apple,
+  'google_pay' => Icons.account_balance_wallet_rounded,
   _ => Icons.qr_code_2_rounded,
 };
 
@@ -430,7 +432,8 @@ class _MethodsTab extends StatelessWidget {
         for (final m in pm.items) _MethodCard(m),
       const SizedBox(height: 4),
       Text(
-        _t('إنستاباي يظهر للطلاب بالجنيه المصري فقط.', 'InstaPay is only shown to students paying in EGP.'),
+        _t('إنستاباي يظهر للطلاب بالجنيه المصري فقط. Apple Pay / Google Pay تظهر على الجوال فقط، وعندما تدعمها بوابة الدفع. رسومها من تبويب الرسوم.',
+            'InstaPay is only shown to students paying in EGP. Apple Pay / Google Pay show on mobile only, and only when the gateway supports them. Set their fees in the Fees tab.'),
         style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: c.textLight),
       ),
     ]);
@@ -556,6 +559,11 @@ class _MethodCardState extends State<_MethodCard> {
         final id = asStr(m['instapay_id']).trim();
         if (id.isEmpty) return (text: 'admin_method_details_required'.tr, incomplete: true);
         return (text: id, incomplete: false);
+      case 'apple_pay' || 'google_pay':
+        return (
+        text: _t('محفظة رقمية — تظهر فقط إذا كانت البوابة تدعمها', 'Digital wallet — shown only when the gateway supports it'),
+        incomplete: false,
+        );
       default:
         return (text: _t('عبر البوابة الافتراضية', 'Via the default gateway'), incomplete: false);
     }
@@ -712,6 +720,7 @@ class _MethodFormState extends State<_MethodForm> {
   bool get _isBank => widget.method == 'bank_transfer';
   bool get _isInstapay => widget.method == 'instapay';
   bool get _isManual => _isBank || _isInstapay;
+  bool get _isWallet => widget.method == 'apple_pay' || widget.method == 'google_pay';
 
   @override
   void initState() {
@@ -865,10 +874,11 @@ class _MethodFormState extends State<_MethodForm> {
               _field(_labelAr, 'apm_label_ar'),
               _field(_labelEn, 'apm_label_en', ltr: true),
             ),
-            _Pair(
-              _field(_insAr, 'apm_instructions_ar', maxLines: 5),
-              _field(_insEn, 'apm_instructions_en', maxLines: 5, ltr: true),
-            ),
+            if (!_isWallet)
+              _Pair(
+                _field(_insAr, 'apm_instructions_ar', maxLines: 5),
+                _field(_insEn, 'apm_instructions_en', maxLines: 5, ltr: true),
+              ),
           ],
         ),
         if (_isBank) ...[

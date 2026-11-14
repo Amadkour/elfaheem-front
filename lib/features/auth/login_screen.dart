@@ -36,6 +36,10 @@ class _LoginScreenState extends State<LoginScreen> {
       _emailController.clear();
       _passwordController.clear();
     // }
+    // Which identifiers the admin allows (email / phone / either).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<AuthProvider>().loadPolicy();
+    });
   }
 
   @override
@@ -63,7 +67,10 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => OtpVerificationScreen(
-            email: _emailController.text.trim(),
+            // Always the account e-mail from the server (the user may have typed a phone).
+            email: authProvider.pendingGmail ?? _emailController.text.trim(),
+            channels: authProvider.pendingChannels,
+            phoneNumber: authProvider.pendingPhoneMasked,
             role: authProvider.pendingRole ?? 'student',
             flow: OtpFlowEnum.registration,
           ),
@@ -198,13 +205,30 @@ class _LoginScreenState extends State<LoginScreen> {
 
           const SizedBox(height: 32),
 
-          // Email
-          IconTextField(
-            controller: _emailController,
-            label: 'email'.tr,
-            icon: Icons.email_outlined,
-            keyboard: TextInputType.emailAddress,
-          ),
+          // Email / phone / either — controlled by the admin (login_identifier)
+          Builder(builder: (context) {
+            final a = context.watch<AuthProvider>();
+            final phoneOnly = !a.loginAllowsEmail;
+            final both = a.loginAllowsEmail && a.loginAllowsPhone;
+            return IconTextField(
+              controller: _emailController,
+              label: phoneOnly
+                  ? 'phone'.tr
+                  : both
+                      ? 'email_or_phone'.tr
+                      : 'email'.tr,
+              icon: phoneOnly
+                  ? Icons.phone_outlined
+                  : both
+                      ? Icons.person_outline
+                      : Icons.email_outlined,
+              keyboard: phoneOnly
+                  ? TextInputType.phone
+                  : both
+                      ? TextInputType.text
+                      : TextInputType.emailAddress,
+            );
+          }),
           const SizedBox(height: 20),
 
           // Password

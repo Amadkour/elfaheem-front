@@ -12,7 +12,6 @@ library;
 import 'dart:typed_data';
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart' show ChangeNotifier;
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -683,7 +682,7 @@ class AdminFeaturesProvider extends AdminBase {
         ? tabs[selectedTabIndex].id
         : null;
     final r = await run(() => api.get('$_base/features', queryParams: {
-      if (tabId != null) 'tab': tabId,
+      'tab': ?tabId,
       'page': toPage,
       'size': pageSize,
     }));

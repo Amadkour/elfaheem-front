@@ -4,7 +4,6 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../utils/widget/app_bar.dart';
@@ -597,8 +596,9 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                           if (await p.unenroll(
                             u.id,
                             asInt(e['course_id']),
-                          ))
+                          )) {
                             await _load();
+                          }
                         },
                       ),
                   ],

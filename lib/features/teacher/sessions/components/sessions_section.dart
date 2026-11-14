@@ -5,12 +5,9 @@
 // slice, so rebuilds are isolated to this widget tree.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/utils/helpers.dart';
 
-import '../../../../config/theme/app_theme.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../shared/session/material/session_material_widget.dart';

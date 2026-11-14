@@ -18,12 +18,13 @@ import '../../../../../utils/widget/rating_widget.dart';
 import '../../../../student/courses/details/course_detail_provider.dart';
 import '../../../../student/models.dart';
 import '../../../../teacher/sessions/sessions_provider.dart';
-import '../../../course/studend_course_roadmap_section.dart';
-import '../../screen_vedio_recorder.dart';
+import '../../video_player_screen.dart';
 import '../session_material_model.dart';
 import 'material_file_style.dart';
 import 'session_exam_tile.dart';
 import 'session_shared_widgets.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_education_app/core/offline/offline_video_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Material grid
@@ -451,6 +452,10 @@ class SessionMaterialGrid extends StatelessWidget {
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
+                              if (m.type == SessionMaterialType.video ||
+                                  m.type == SessionMaterialType.recorded)
+                                _OfflineBadge(
+                                    sessionId: m.sessionId, materialId: m.id),
                               AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 300),
                                 transitionBuilder: (child, anim) =>
@@ -1045,6 +1050,56 @@ class MaterialImageViewerDialog extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Small indicator on a material tile: downloading ring / "available offline".
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _OfflineBadge extends StatelessWidget {
+  const _OfflineBadge({required this.sessionId, required this.materialId});
+
+  final int sessionId;
+  final int materialId;
+
+  @override
+  Widget build(BuildContext context) {
+    if (kIsWeb) return const SizedBox.shrink();
+    final svc = OfflineVideoService.instance;
+    final id = svc.idOf(sessionId, materialId);
+    final primary = context.colors.primary;
+
+    return ValueListenableBuilder<Map<String, double>>(
+      valueListenable: svc.downloading,
+      builder: (_, progress, _) {
+        final p = progress[id];
+        if (p != null) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: SizedBox(
+              width: 15,
+              height: 15,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                value: p > 0 ? p : null,
+                color: primary,
+              ),
+            ),
+          );
+        }
+        return ValueListenableBuilder<Set<String>>(
+          valueListenable: svc.downloadedIds,
+          builder: (_, ids, _) => ids.contains(id)
+              ? Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Icon(Icons.offline_pin_rounded,
+                size: 16, color: primary),
+          )
+              : const SizedBox.shrink(),
+        );
+      },
     );
   }
 }

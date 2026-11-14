@@ -96,7 +96,7 @@ class _ImageDialog extends StatelessWidget {
                       : const SizedBox(height: 240, child: Center(child: AppLoadingIndicator())),
                   // Web (CanvasKit) needs CORS headers on the storage host to DRAW a network image.
                   // If they are missing, offer the browser instead of a blank box.
-                  errorBuilder: (_, __, ___) => SizedBox(
+                  errorBuilder: (_, _, _) => SizedBox(
                     height: 200,
                     child: Center(
                       child: FilledButton.icon(

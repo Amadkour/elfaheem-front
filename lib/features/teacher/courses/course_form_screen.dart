@@ -396,8 +396,9 @@ class _CourseFormInnerState extends State<_CourseFormInner>
       ) async {
     if (_progressStatusLoading ||
         widget.course == null ||
-        status == _progressStatus)
+        status == _progressStatus) {
       return;
+    }
     setState(() => _progressStatusLoading = true);
 
     final formProvider = context.read<CourseFormProvider>();
@@ -2038,7 +2039,7 @@ class _StatusCard extends StatelessWidget {
             else
               Switch(
                 value: isPublished,
-                activeColor: context.colors.primary,
+                activeThumbColor: context.colors.primary,
                 onChanged: (_) => onToggle(),
               ),
           ],
@@ -2207,7 +2208,7 @@ class _LocalAddScheduleSheetState extends State<_LocalAddScheduleSheet> {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _days.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (_, i) {
                 final (v, l) = _days[i];
                 final sel = _day == v;

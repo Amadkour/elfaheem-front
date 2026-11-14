@@ -224,8 +224,9 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
                 if (!_teacherModules.contains(_module)) _module = 'profile';
               } else if (v == 'student') {
                 // the course picked for a "student" / "all" message must not silently become the audience
-                if (!(_display == 'dialog_action' && _module == 'course'))
+                if (!(_display == 'dialog_action' && _module == 'course')) {
                   _course = null;
+                }
               }
             }),
           ),

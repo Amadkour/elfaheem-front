@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/category/categories_provider.dart';
 import 'package:flutter_education_app/features/category/categories_screen.dart';
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
@@ -315,7 +314,7 @@ class _HomeScreenState extends State<HomeScreen> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _UpcomingBanner extends StatefulWidget {
-  const _UpcomingBanner({super.key});
+  const _UpcomingBanner();
 
   @override
   State<_UpcomingBanner> createState() => _UpcomingBannerState();

@@ -5,9 +5,11 @@
 /// ─────────────────────────────────────────────────────────────────────────────
 library;
 
-import 'package:flutter/cupertino.dart';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/offline/offline_video_service.dart';
+import 'package:flutter_education_app/features/shared/downloads/downloads_screen.dart';
 import 'package:flutter_education_app/features/shared/profile/components/setting_group.dart';
 import 'package:flutter_education_app/features/shared/profile/student_favorite_screen.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
@@ -15,11 +17,14 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
+import '../../../core/offline/offline_strings.dart';
 import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/count_badge.dart';
 import '../../auth/auth_provider.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../../../utils/widget/parent_component.dart';
+import '../../student/certificates/my_certificates_screen.dart';
+import '../../teacher/certificates/certificate_requests_screen.dart';
 import '../../teacher/profile/payout/teacher_payouts_screen.dart';
 import '../../teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import '../../teacher/profile/switch_device_requests/teacher_device_requests_screen.dart';
@@ -131,6 +136,18 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               onTap: () => _push(const ChangePasswordScreen()),
                             ),
                           ),
+                          // Downloaded (encrypted) videos — native apps only.
+                          if (!kIsWeb)
+                            ParentComponent(
+                              featureKey: 'profile.downloads',
+                              child: SettingsTile(
+                                icon: Icons.download_for_offline_rounded,
+                                iconBg: c.accentTint,
+                                iconColor: c.accent,
+                                label: offlineT('dl_title'),
+                                onTap: () => _push(const DownloadsScreen()),
+                              ),
+                            ),
                           if (context.read<AuthProvider>().isTeacher) ...[
                             ParentComponent(
                               featureKey: 'profile.teacher_profile',
@@ -151,6 +168,16 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                                         .stats,
                                   ),
                                 ),
+                              ),
+                            ),
+                            ParentComponent(
+                              featureKey: 'profile.certificate_requests',
+                              child: SettingsTile(
+                                icon: Icons.workspace_premium_rounded,
+                                iconBg: c.primaryTint,
+                                iconColor: c.primary,
+                                label: 'certificate_requests'.tr,
+                                onTap: () => _push(const CertificateRequestsScreen()),
                               ),
                             ),
                             ParentComponent(
@@ -179,6 +206,16 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                           ] else ...[
+                            ParentComponent(
+                              featureKey: 'profile.my_certificates',
+                              child: SettingsTile(
+                                icon: Icons.workspace_premium_rounded,
+                                iconBg: c.primaryTint,
+                                iconColor: c.primary,
+                                label: 'my_certificates'.tr,
+                                onTap: () => _push(const MyCertificatesScreen()),
+                              ),
+                            ),
                             ParentComponent(
                               featureKey: 'profile.my_favorite',
                               child: SettingsTile(
@@ -366,6 +403,9 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               onTap: () async {
                                 final ok = await Helpers.confirmDialog(context);
                                 if (ok == true && context.mounted) {
+                                  // Downloaded videos belong to this login only.
+                                  await OfflineVideoService.instance.deleteAll();
+                                  if (!context.mounted) return;
                                   await context.read<ProfileProvider>().logout(
                                     context,
                                   );
@@ -392,6 +432,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                                         .tr,
                                   );
                                   await Future.delayed(Duration(seconds: 5));
+                                  await OfflineVideoService.instance.deleteAll();
                                   await context
                                       .read<ProfileProvider>()
                                       .deleteAccount(context);

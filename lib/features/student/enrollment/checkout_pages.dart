@@ -105,6 +105,43 @@ class _MobileCheckoutPageState extends State<MobileCheckoutPage> {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// Moyasar Apple Pay (iOS) — needs the Apple merchant id from GET /config
+// ═════════════════════════════════════════════════════════════════════════════
+
+class MoyasarApplePayScreen extends StatelessWidget {
+  final PaymentConfig config;
+  final void Function(dynamic) onPaymentResult;
+
+  const MoyasarApplePayScreen({super.key, required this.config, required this.onPaymentResult});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Directionality(
+      textDirection: helpers.pageDirection,
+      child: Scaffold(
+        backgroundColor: c.background,
+        appBar: AppBar(
+          title: const Text('Apple Pay',
+              style: TextStyle(fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+          backgroundColor: c.cardBg,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          iconTheme: IconThemeData(color: c.textDark),
+        ),
+        body: ParentComponent(
+          featureKey: 'payments.card',
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: ApplePay(config: config, onPaymentResult: onPaymentResult),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // Moyasar native card form
 // ═════════════════════════════════════════════════════════════════════════════
 

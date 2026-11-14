@@ -214,7 +214,7 @@ class AdminSimpleList extends StatelessWidget {
     }
     return Column(
       children: [
-        if (header != null) header!,
+        ?header,
         if (children.length > 20)
           PagedCountCard(
             loaded: children.length,

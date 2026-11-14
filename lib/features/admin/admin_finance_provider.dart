@@ -15,8 +15,8 @@ import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/utils/live_events.dart';
 
-import '../../utils/live_events.dart';
 import 'admin_common.dart';
 
 const _base = '/api/v1/admin/finance';

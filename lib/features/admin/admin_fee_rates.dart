@@ -62,8 +62,8 @@ class AdminFeeRatesProvider extends BaseProvider {
     final json = asJsonMap(await run(() async => api.put(
       '/api/v1/admin/fees/$method',
       body: {
-        if (percent != null) 'percent': percent,
-        if (fixed != null) 'fixed': fixed,
+        'percent': ?percent,
+        'fixed': ?fixed,
         if (reset) 'reset': true,
       },
     )));
@@ -82,8 +82,8 @@ class AdminFeeRatesProvider extends BaseProvider {
     final json = asJsonMap(await run(() async => api.put(
       '/api/v1/admin/fees/platform',
       body: {
-        if (percent != null) 'percent': percent,
-        if (fixed != null) 'fixed': fixed,
+        'percent': ?percent,
+        'fixed': ?fixed,
         if (reset) 'reset': true,
       },
     )));
@@ -101,7 +101,7 @@ class AdminFeeRatesProvider extends BaseProvider {
     final json = asJsonMap(await run(() async => api.put(
       '/api/v1/admin/fees/vat',
       body: {
-        if (percent != null) 'percent': percent,
+        'percent': ?percent,
         if (reset) 'reset': true,
       },
     )));
@@ -119,7 +119,7 @@ class AdminFeeRatesProvider extends BaseProvider {
     final json = asJsonMap(await run(() async => api.put(
       '/api/v1/admin/fees/teacher-vat',
       body: {
-        if (percent != null) 'percent': percent,
+        'percent': ?percent,
         if (reset) 'reset': true,
       },
     )));

@@ -402,7 +402,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
         '/api/v1/sessions/$sessionId/materials/from-upload',
         body: {
           'object_key': objectKey,
-          if (durationSeconds != null) 'duration_seconds': durationSeconds,
+          'duration_seconds': ?durationSeconds,
           'name': name,
           if (description != null && description.isNotEmpty)
             'description': description,

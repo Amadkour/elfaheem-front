@@ -26,7 +26,9 @@ class _ForgetScreenState extends State<ForgetScreen> {
   @override
   void initState() {
     super.initState();
-    // _emailController.text = 'ahmed@gmail.com';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<AuthProvider>().loadPolicy();
+    });
   }
 
   @override
@@ -150,12 +152,16 @@ class _ForgetScreenState extends State<ForgetScreen> {
           ),
           const SizedBox(height: 50),
 
-          IconTextField(
-            controller: _emailController,
-            label: 'email'.tr,
-            icon: Icons.email_outlined,
-            keyboard: TextInputType.emailAddress,
-          ),
+          Builder(builder: (context) {
+            final a = context.watch<AuthProvider>();
+            final phoneOk = a.loginAllowsPhone || a.verifyByPhone;
+            return IconTextField(
+              controller: _emailController,
+              label: phoneOk ? 'email_or_phone'.tr : 'email'.tr,
+              icon: phoneOk ? Icons.person_outline : Icons.email_outlined,
+              keyboard: phoneOk ? TextInputType.text : TextInputType.emailAddress,
+            );
+          }),
           const SizedBox(height: 12),
 
           // Hint

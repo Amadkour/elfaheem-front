@@ -1,8 +1,6 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
-import 'package:flutter_education_app/features/teacher/courses/courses_screen.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
 import 'package:flutter_education_app/features/teacher/home/queue_work_items.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';

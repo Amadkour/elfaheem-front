@@ -361,8 +361,9 @@ class _PreJoinPageState extends State<PreJoinPage>
 
       final listener = room.createListener();
       final data = await args.onStart() as LiveResponseModel?;
-      if (data == null)
+      if (data == null) {
         throw Exception('No LiveResponseModel returned from onStart');
+      }
 
       await room.prepareConnection(data.url, data.token);
       await room.connect(

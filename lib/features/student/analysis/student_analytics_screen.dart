@@ -8,6 +8,7 @@ import 'attendance/student_attendance_model.dart';
 import 'exam/student_exam_list_screen.dart';
 import 'exam/student_exam_provider.dart';
 import 'student_analytics_provider.dart';
+import 'flags/student_flags_screen.dart';
 import 'student_course_analytics_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 class StudentAnalyticsScreen extends StatelessWidget {
@@ -295,14 +296,15 @@ class _CourseCard extends StatelessWidget {
                   ]),
             ),
             const SizedBox(width: 8),
-            Icon(Icons.arrow_back_ios_rounded,
+            Icon(Icons.arrow_forward_ios_rounded,
                 size: 16, color: Colors.grey.shade400),
           ]),
         ),
         // Bottom action strip
         Padding(
           padding: const EdgeInsets.fromLTRB(14, 4, 14, 12),
-          child: Row(children: [
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: Wrap(spacing: 8, runSpacing: 6, children: [
             ParentComponent(
               featureKey: 'analytics.attendance_chip',
               child: _ActionChip(
@@ -311,7 +313,6 @@ class _CourseCard extends StatelessWidget {
                 color: context.colors.success,
               ),
             ),
-            const SizedBox(width: 10),
             ParentComponent(
                 featureKey: 'analytics.exams_chip',
                 child: InkWell(
@@ -332,7 +333,44 @@ class _CourseCard extends StatelessWidget {
                     color: context.colors.primary,
                   ),
                 )),
-            const Spacer(),
+            ParentComponent(
+                featureKey: 'analytics.review_chip',
+                child: InkWell(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => StudentFlagsScreen(
+                          courseId: course.id,
+                          courseTitle: course.title,
+                          initialTab: 0),
+                    ),
+                  ),
+                  child: _ActionChip(
+                    icon: Icons.bookmark_rounded,
+                    label: 'flag_review_bank'.tr,
+                    color: Colors.deepOrange,
+                  ),
+                )),
+            ParentComponent(
+                featureKey: 'analytics.read_flags_chip',
+                child: InkWell(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => StudentFlagsScreen(
+                          courseId: course.id,
+                          courseTitle: course.title,
+                          initialTab: 1),
+                    ),
+                  ),
+                  child: _ActionChip(
+                    icon: Icons.menu_book_rounded,
+                    label: 'flag_read_bank'.tr,
+                    color: Colors.redAccent,
+                  ),
+                )),
+                        ])),
+            const SizedBox(width: 8),
             Row(children: [
               const Icon(Icons.video_library_outlined,
                   size: 13, color: Colors.grey),

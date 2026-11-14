@@ -141,8 +141,9 @@ class _TransferCard extends StatelessWidget {
       requireReason: true,
       quickReasons: _quickReasons,
     );
-    if (reason == null || reason.isEmpty)
+    if (reason == null || reason.isEmpty) {
       return false; // cancelled → spring back
+    }
 
     final ok = await p.reject(transfer.paymentId, reason);
     showRequestSnack(
@@ -173,7 +174,7 @@ class _TransferCard extends StatelessWidget {
                 child: Image.network(
                   transfer.proofImageUrl,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Center(
+                  errorBuilder: (_, _, _) => const Center(
                     child: Icon(
                       Icons.broken_image_outlined,
                       color: Colors.white54,
@@ -413,7 +414,7 @@ class _ProofImage extends StatelessWidget {
                         child: AppLoadingIndicator(showLogo: false),
                       ),
                     ),
-              errorBuilder: (_, __, ___) => Container(
+              errorBuilder: (_, _, _) => Container(
                 height: _height,
                 alignment: Alignment.center,
                 color: c.divider.withValues(alpha: 0.4),

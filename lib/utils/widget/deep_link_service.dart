@@ -53,7 +53,7 @@ class DeepLinkService {
   Future<void> recordClick(int courseId, int? ref) async {
     try {
       await ApiClient().post('/api/v1/courses/$courseId/share-click', body: {
-        if (ref != null) 'ref': ref,
+        'ref': ?ref,
         'platform': kIsWeb ? 'web' : defaultTargetPlatform.name.toLowerCase(),
       });
     } catch (_) {}

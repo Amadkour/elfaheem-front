@@ -8,7 +8,6 @@ import 'package:flutter_education_app/features/student/courses/my_courses/my_cou
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart' as Helpers;
-import '../../../../config/theme/app_theme.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/app_loading_indicator.dart';
@@ -16,7 +15,6 @@ import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/paged_progress.dart';
 import '../../../../utils/widget/search_text_field.dart';
 import '../../models.dart';
-import '../details/course_detail_screen.dart';
 
 class CoursesListScreen extends StatefulWidget {
   const CoursesListScreen({

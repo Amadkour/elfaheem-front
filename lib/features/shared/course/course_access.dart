@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart'; // String.tr
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/student/analysis/exam/passcode_screen.dart';
 import 'package:flutter_education_app/features/student/models.dart';
-import 'package:provider/provider.dart';
 
 import '../passcode/passcode_screen.dart';
 

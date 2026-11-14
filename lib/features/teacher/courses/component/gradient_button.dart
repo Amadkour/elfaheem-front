@@ -5,7 +5,6 @@
 // FIX: removed unused `dart:math` import that caused an analysis warning.
 import 'package:flutter/material.dart';
 
-import '../../../../config/theme/app_theme.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 

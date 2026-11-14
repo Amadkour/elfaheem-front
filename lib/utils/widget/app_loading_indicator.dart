@@ -99,7 +99,7 @@ class _AppLoadingIndicatorState extends State<AppLoadingIndicator>
                           child: Image.asset(
                             'assets/images/logo.png',
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => Icon(
+                            errorBuilder: (_, _, _) => Icon(
                               Icons.school_rounded,
                               size: widget.size * 0.5,
                               color: context.colors.primary,

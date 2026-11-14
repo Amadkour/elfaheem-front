@@ -11,6 +11,7 @@ import 'package:timezone/data/latest.dart' as tz;
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
 import '../../../main.dart';
+import '../../../utils/live_events.dart';
 import '../../../utils/top_route_observer.dart';
 import 'package:provider/provider.dart';
 import 'dart:convert';
@@ -49,7 +50,7 @@ class NotificationService {
   static final NotificationService instance = NotificationService._();
 
   final FlutterLocalNotificationsPlugin _plugin =
-      FlutterLocalNotificationsPlugin();
+  FlutterLocalNotificationsPlugin();
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
 
   ApiClient? _api;
@@ -129,8 +130,8 @@ class NotificationService {
 
       final androidPlugin = _plugin
           .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >();
+          AndroidFlutterLocalNotificationsPlugin
+      >();
       await androidPlugin?.requestNotificationsPermission();
       await androidPlugin?.createNotificationChannel(_channel);
     }
@@ -166,7 +167,7 @@ class NotificationService {
       if (kIsWeb) {
         token = await _fcm.getToken(
           vapidKey:
-              'BLpXoCZIPMtfWfU9Ftnl8NzJgx4wHo-ZY16GCZ01ZD5fvs12c8KcMpAYPQ30-0kWdTrZku8dVxc3Gxl0smubJJ0',
+          'BLpXoCZIPMtfWfU9Ftnl8NzJgx4wHo-ZY16GCZ01ZD5fvs12c8KcMpAYPQ30-0kWdTrZku8dVxc3Gxl0smubJJ0',
         );
       } else {
         token = await _fcm.getToken();
@@ -221,9 +222,9 @@ class NotificationService {
     // visible too.
     print(
       '[FCM][foreground] id=${message.messageId} '
-      'title=${message.notification?.title} '
-      'body=${message.notification?.body} '
-      'data=${message.data}',
+          'title=${message.notification?.title} '
+          'body=${message.notification?.body} '
+          'data=${message.data}',
     );
 
     final data = message.data;
@@ -242,6 +243,20 @@ class NotificationService {
         _refreshTheme();
       }
       return;
+    }
+    // Silent push: a complaint / manual transfer / payment / payout changed → every open list
+    // (and the dashboard badges) reloads by itself. Shows nothing.
+    final liveType = data['type'] as String?;
+    if (liveType != null && LiveEvents.silentTypes.contains(liveType)) {
+      print('[FCM] $liveType received -> live refresh');
+      LiveEvents.instance.emit(liveType, Map<String, dynamic>.from(data));
+      return;
+    }
+    // The visible "new complaint / new transfer" notification also nudges the lists, then is
+    // shown normally below.
+    final nudged = LiveEvents.fromNotificationType(liveType);
+    if (nudged != null) {
+      LiveEvents.instance.emit(nudged, Map<String, dynamic>.from(data));
     }
     if (data['type'] == 'session_started' || data['type'] == 'session_ended') {
       _refreshCourseDetailIfActive(data['course_id'] as String?);
@@ -346,8 +361,9 @@ class NotificationService {
     final ctx = navigatorKey.currentContext;
     if (ctx == null ||
         !ctx.mounted ||
-        !ctx.read<AuthProvider>().isAuthenticated)
+        !ctx.read<AuthProvider>().isAuthenticated) {
       return;
+    }
     _pendingPush = null;
     AppNavigator.openFromPush(data);
   }

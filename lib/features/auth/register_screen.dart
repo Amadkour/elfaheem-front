@@ -64,6 +64,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AuthProvider>().loadSpecialization(context);
+      context.read<AuthProvider>().loadPolicy();
       context.read<AboutTermsProvider>().loadTerms(context);
     });
   }
@@ -136,6 +137,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       return;
     }
+    if (authProvider.verifyByPhone && _phoneController.text.trim().isEmpty) {
+      Fluttertoast.showToast(
+        msg: 'phone_required'.tr,
+        timeInSecForIosWeb: 3,
+        backgroundColor: context.colors.danger,
+      );
+      return;
+    }
     final success = await authProvider.register(
       gmail: _emailController.text.trim(),
       phone: _phoneController.text.trim(),
@@ -148,6 +157,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (_) => OtpVerificationScreen(
+            channels: authProvider.pendingChannels,
             phoneNumber: _phoneController.text.trim(),
             email: _emailController.text.trim(),
             role: authProvider.selectedRole!['text'],
@@ -271,14 +281,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Phone
-          ParentComponent(featureKey: 'register.phone', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [IconTextField(
-            controller: _phoneController,
-            label: 'phone'.tr,
-            icon: Icons.phone_outlined,
-            keyboard: TextInputType.phone,
-          ),
-            const SizedBox(height: 20)])),
+          // Phone — always shown when the admin verifies accounts by phone,
+          // otherwise only if the 'register.phone' feature is enabled.
+          Builder(builder: (context) {
+            final phoneField = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconTextField(
+                  controller: _phoneController,
+                  label: context.read<AuthProvider>().verifyByPhone
+                      ? 'phone_with_country_code'.tr
+                      : 'phone'.tr,
+                  icon: Icons.phone_outlined,
+                  keyboard: TextInputType.phone,
+                ),
+                const SizedBox(height: 20),
+              ],
+            );
+            return context.watch<AuthProvider>().verifyByPhone
+                ? phoneField
+                : ParentComponent(featureKey: 'register.phone', child: phoneField);
+          }),
 
           // Date of birth
           ParentComponent(featureKey: 'register.dob', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [SectionLabel(label: 'dob'.tr),

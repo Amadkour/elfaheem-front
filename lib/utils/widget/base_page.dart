@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/paint_background.dart';
 
 import '../../features/shared/upload/upload_progress_footer.dart';
-import '../../features/student/courses/details/components/app_responsive.dart';
 import '../helpers.dart';
 import 'app_bar.dart';
 
@@ -58,7 +56,7 @@ class BasePage extends StatelessWidget {
     // Rebuild whenever the disable list changes (silent FCM push / theme fetch).
     return ValueListenableBuilder<int>(
       valueListenable: AppConfig.disableListVersion,
-      builder: (context, _, __) => _buildPage(context),
+      builder: (context, _, _) => _buildPage(context),
     );
   }
 
