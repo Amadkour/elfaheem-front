@@ -217,6 +217,8 @@ LINUX_PACKAGING = ('scripts/release/build_linux.sh', 'scripts/release/package_li
 def transform(rel: str, text: str) -> str:
     for a, b in PHRASES:
         text = text.replace(a, b)
+    if E.get('CONTACT_EMAIL'):  # NextBrain's contact address -> Alfaheem's
+        text = text.replace('nextbrain.2y@gmail.com', E['CONTACT_EMAIL'])
     text = text.replace(NB_ID, APP_ID)
     text = text.replace('com/doubley/nextbrain', '/'.join(APP_ID.split('.')))
     text = text.replace('…nextbrain.', f'…{SHORT_ID}.')  # Darwin names in comments ("…nextbrain.frame")

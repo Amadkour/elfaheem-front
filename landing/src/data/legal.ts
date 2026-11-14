@@ -24,7 +24,7 @@ const BUNDLED: Record<LegalDocId, LegalDoc> = {
   terms: termsJson as LegalDoc,
 };
 
-export const CONTACT_EMAIL = 'nextbrain.2y@gmail.com';
+export const CONTACT_EMAIL = 'alfaheem.2y@gmail.com';
 
 const isPair = (v: unknown): v is Pair =>
   !!v && typeof v === 'object' && typeof (v as Pair).ar === 'string' && typeof (v as Pair).en === 'string';

@@ -32,7 +32,7 @@ void main() {
           {'id': 'empty', 'icon_name': 'info', 'title': '', 'body': ''},
           {'id': 'google', 'icon_name': 'verified', 'title': 'Google user data', 'body': '- drive.file'},
         ],
-        'contact_email': 'nextbrain.2y@gmail.com',
+        'contact_email': 'alfaheem.2y@gmail.com',
         'url': 'https://alfheemacademy.com/en/privacy/',
       });
       expect(m.title, 'Privacy Policy');
@@ -42,7 +42,7 @@ void main() {
       expect(m.sections.last.iconName, 'verified');
       expect(m.meta!.lastUpdated, '8 November 2026');
       expect(m.meta!.version, '2.0');
-      expect(m.contactEmail, 'nextbrain.2y@gmail.com');
+      expect(m.contactEmail, 'alfaheem.2y@gmail.com');
       expect(m.url, 'https://alfheemacademy.com/en/privacy/');
     });
 
@@ -75,7 +75,7 @@ void main() {
             otherLabel: 'شروط الاستخدام Terms of service',
             otherIcon: Icons.gavel_rounded,
             onOther: () {},
-            email: 'nextbrain.2y@gmail.com',
+            email: 'alfaheem.2y@gmail.com',
             onEmail: () {},
             onCopyLink: () {},
           ),

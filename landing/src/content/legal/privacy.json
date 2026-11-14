@@ -19,8 +19,8 @@
       "icon": "info",
       "title": {"ar": "من نحن", "en": "Who we are"},
       "body": {
-        "ar": "الفهيم (Alfaheem) منصة تعليمية تقدمها DoubleY، تجمع الدورات المسجلة والحصص المباشرة والاختبارات والحضور وإدارة المؤسسات التعليمية في مكان واحد.\n\nDoubleY هي الجهة المسؤولة عن بياناتك الشخصية على المنصة، إلا عندما تدير مؤسسة تعليمية (مدرسة أو جامعة أو مركز) حسابك؛ عندها تكون المؤسسة مسؤولة عن البيانات التي تدخلها عنك ونعالجها نحن نيابة عنها (انظر قسم «المؤسسات»).\n\nللتواصل بخصوص الخصوصية: nextbrain.2y@gmail.com",
-        "en": "Alfaheem is an education platform provided by DoubleY. It brings recorded courses, live classes, exams, attendance and the management of schools and institutes together in one place.\n\nDoubleY is responsible for your personal data on the platform, except when an educational organization (a school, university or centre) manages your account: the organization is then responsible for the data it enters about you, and we process it on its behalf (see Organizations).\n\nPrivacy questions: nextbrain.2y@gmail.com"
+        "ar": "الفهيم (Alfaheem) منصة تعليمية تقدمها DoubleY، تجمع الدورات المسجلة والحصص المباشرة والاختبارات والحضور وإدارة المؤسسات التعليمية في مكان واحد.\n\nDoubleY هي الجهة المسؤولة عن بياناتك الشخصية على المنصة، إلا عندما تدير مؤسسة تعليمية (مدرسة أو جامعة أو مركز) حسابك؛ عندها تكون المؤسسة مسؤولة عن البيانات التي تدخلها عنك ونعالجها نحن نيابة عنها (انظر قسم «المؤسسات»).\n\nللتواصل بخصوص الخصوصية: alfaheem.2y@gmail.com",
+        "en": "Alfaheem is an education platform provided by DoubleY. It brings recorded courses, live classes, exams, attendance and the management of schools and institutes together in one place.\n\nDoubleY is responsible for your personal data on the platform, except when an educational organization (a school, university or centre) manages your account: the organization is then responsible for the data it enters about you, and we process it on its behalf (see Organizations).\n\nPrivacy questions: alfaheem.2y@gmail.com"
       }
     },
     {
@@ -64,8 +64,8 @@
       "icon": "school",
       "title": {"ar": "الطلاب والأطفال وأولياء الأمور", "en": "Students, children and parents"},
       "body": {
-        "ar": "كثير من مستخدمينا طلاب دون سن الثامنة عشرة. لذلك:\n- يستخدم الطالب القاصر المنصة بموافقة ولي أمره، أو من خلال مدرسته أو مؤسسته التي تتولى الحصول على هذه الموافقة.\n- نجمع من الطلاب أقل قدر ممكن من البيانات اللازمة للتعلم فقط، ولا نعرض لهم إعلانات موجهة.\n- يستطيع ولي الأمر ربط حسابه بحساب ابنه لمتابعة التقدم والدرجات والحضور، ويمكنه أن يطلب منا الاطلاع على بيانات ابنه أو تصحيحها أو حذفها.\n- إذا علمنا أننا جمعنا بيانات طفل دون موافقة صحيحة، نحذفها.\n\nلأولياء الأمور: راسلونا على nextbrain.2y@gmail.com لأي طلب يخص بيانات أبنائكم.",
-        "en": "Many of our users are students under 18. That is why:\n- A minor uses the platform with a parent's or guardian's consent, or through their school or organization, which is responsible for obtaining that consent.\n- We collect from students only the minimum needed for learning, and we never show them targeted ads.\n- A parent can link their account to their child's to follow progress, grades and attendance, and can ask us to see, correct or delete their child's data.\n- If we learn that we collected a child's data without valid consent, we delete it.\n\nParents: write to nextbrain.2y@gmail.com for any request about your child's data."
+        "ar": "كثير من مستخدمينا طلاب دون سن الثامنة عشرة. لذلك:\n- يستخدم الطالب القاصر المنصة بموافقة ولي أمره، أو من خلال مدرسته أو مؤسسته التي تتولى الحصول على هذه الموافقة.\n- نجمع من الطلاب أقل قدر ممكن من البيانات اللازمة للتعلم فقط، ولا نعرض لهم إعلانات موجهة.\n- يستطيع ولي الأمر ربط حسابه بحساب ابنه لمتابعة التقدم والدرجات والحضور، ويمكنه أن يطلب منا الاطلاع على بيانات ابنه أو تصحيحها أو حذفها.\n- إذا علمنا أننا جمعنا بيانات طفل دون موافقة صحيحة، نحذفها.\n\nلأولياء الأمور: راسلونا على alfaheem.2y@gmail.com لأي طلب يخص بيانات أبنائكم.",
+        "en": "Many of our users are students under 18. That is why:\n- A minor uses the platform with a parent's or guardian's consent, or through their school or organization, which is responsible for obtaining that consent.\n- We collect from students only the minimum needed for learning, and we never show them targeted ads.\n- A parent can link their account to their child's to follow progress, grades and attendance, and can ask us to see, correct or delete their child's data.\n- If we learn that we collected a child's data without valid consent, we delete it.\n\nParents: write to alfaheem.2y@gmail.com for any request about your child's data."
       }
     },
     {
@@ -163,8 +163,8 @@
       "icon": "email",
       "title": {"ar": "تواصل معنا", "en": "Contact us"},
       "body": {
-        "ar": "لأي سؤال أو طلب يخص خصوصيتك أو بياناتك:\n- البريد الإلكتروني: nextbrain.2y@gmail.com\n- من داخل التطبيق: الإعدادات ← الشكاوى والدعم.\n\nالفهيم — DoubleY",
-        "en": "For any question or request about your privacy or your data:\n- Email: nextbrain.2y@gmail.com\n- In the app: Settings → Complaints & support.\n\nAlfaheem — DoubleY"
+        "ar": "لأي سؤال أو طلب يخص خصوصيتك أو بياناتك:\n- البريد الإلكتروني: alfaheem.2y@gmail.com\n- من داخل التطبيق: الإعدادات ← الشكاوى والدعم.\n\nالفهيم — DoubleY",
+        "en": "For any question or request about your privacy or your data:\n- Email: alfaheem.2y@gmail.com\n- In the app: Settings → Complaints & support.\n\nAlfaheem — DoubleY"
       }
     }
   ]
