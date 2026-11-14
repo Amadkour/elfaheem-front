@@ -29,6 +29,7 @@ dependencies:
   flutter_native_splash:
   permission_handler: ^13.0.2
   collection: '>=1.16.0'
+  clock: ^1.1.3   # already locked (transitive); the studio's double-click timing follows the test clock
   nested: any
   flutter_webrtc: ^1.6.0
   responsive_framework: ^1.5.1
